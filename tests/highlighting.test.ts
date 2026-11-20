@@ -39,13 +39,11 @@ test('digit input can distinguish a given-only selection from an editable select
   assert.equal(onlyGivensSelected(givens, []), false)
 })
 
-test('an explicit font color choice applies even without automatic candidate matching', () => {
+test('older highlight preferences keep the automatic toggles and discard the candidate style', () => {
   const read = (saved: Record<string, unknown>) => readPreferences({
     getItem: key => key === HIGHLIGHT_KEY ? JSON.stringify(saved) : null,
   }).highlighting
   assert.deepEqual(read({ defaultsVersion: 2, candidateStyle: 'text', matchingCandidates: false }), {
-    relatedCells: true, matchingDigits: true, matchingCandidates: false, candidateStyle: 'text',
+    relatedCells: true, matchingDigits: true, matchingCandidates: false,
   })
-  assert.equal(read({ defaultsVersion: 2, candidateStyle: 'outline' }).candidateStyle, 'shape')
-  assert.equal(read({ candidateStyle: 'text' }).candidateStyle, 'shape')
 })

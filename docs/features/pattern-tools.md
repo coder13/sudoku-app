@@ -2,7 +2,11 @@
 
 Enable **Experimental mode** in **Settings → Solving style** to use Subsets. The mode starts on in local development and pull request previews. It starts off in production. This browser saves your choice.
 
-In **Puzzle options**, select **Chains**, **Subsets**, or **Colors** to open or close that panel. The menu stays open so you can change several panels before you close it.
+In **Puzzle options**, select a panel to open or close its tab. On mobile, the three-dot **Input tools** menu has the same toggles. Both menus stay open while you toggle panels. Scroll the tab row horizontally when the tabs extend beyond the panel. On mobile, drag the divider to resize the input card. Double-tap it or focus it and press Enter to expand the active panel as far as its content and the available space allow. The card keeps its height when you switch tabs. Close all tool tabs to return to the normal keypad height.
+
+Open tools and the selected tab follow you when you switch between mobile and desktop widths. Reloading Sudoku restores them, along with the input card height you chose on mobile. A revealed **Solution** returns to the selected step, and **Techniques** keeps its filter.
+
+Pausing hides the contents of **Solution** and **Techniques**. Resume the puzzle to see them again.
 
 You can also open **Subsets** from the mobile input tools.
 
@@ -11,12 +15,16 @@ You can also open **Subsets** from the mobile input tools.
 - Select a naked subset to mark its candidates in blue. Red marks candidates you can remove from other cells in the shared houses.
 - Select a cell again to remove it from the selection. The marks appear while **Subsets** is active.
 
-Open **Chains** and select **Show strong links**. Use the shared keypad or select a candidate on the grid to toggle its digit. The overlay marks every strong link between highlighted candidates. If you highlight both digits in a two-candidate cell, the overlay also marks that link. Select a link endpoint to start a sketch. All links use the same style, and the overlay reads the current candidate graph.
+Open **Chains** and select **Show strong links**. Press 1–9 or tap the keypad to switch the highlight to one digit. Press the same digit again to clear it. Hold a digit on the mobile keypad or press **Shift+1–9** to toggle that digit without changing the others. With no selected digits, the overlay shows no automatic links or highlights. If you highlight both digits in a two-candidate cell, the overlay also marks that link.
+
+The overlay cycles through five pairs, with two alternating colors per connected group. Select a candidate or line to add its connected links to the active chain, starting with **Chain 1**. The selected candidate becomes the endpoint for the next link. Other strong links stay visible while you draw branches. Turn off **Show strong links** to hide the automatic overlay.
 
 The overlay stays visible when you switch to the mobile Digits tab or the Advanced workspace Input tab.
 
 The grid badge shows a chain icon while **Chains** is active and you draw links. Select the badge to stop the drawing.
 
-In **Settings → Highlighting**, choose **Font color** or **Font color + shape**. Highlight shapes use a background fill. This setting applies in Play and Learn.
+Selecting a digit in Pen, Pencil, or Highlight mode highlights matching cells. Candidate Colors uses a colored shape and matching text. With **Show strong links** off, Chains highlights matching cells and cells with possible link targets. The candidates that can form a link also stand out within their cells. Connected candidates have a solid fill and contrasting text. A ring marks the selected endpoint.
+
+Choose **Highlight mode** to select multiple cells and edit their digits or candidates while a solving tool tab stays open. In Pen, Pencil, and Highlight modes, use **Shift+1–9** to toggle digits and match any highlighted digit. With no cells selected, **Cmd/Ctrl+1–9** toggles digits and matches all highlighted digits. With cells selected, **Cmd/Ctrl+1–9** toggles candidates and unmodified digit keys place digits. Digit and candidate edits from the keyboard or keypad keep the active highlights.
 
 The menu buttons preserve the selected cells and digit. The background stays blurred when you change sections in Settings.

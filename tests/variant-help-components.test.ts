@@ -25,7 +25,7 @@ let ChainsPanel: (props: Record<string, unknown>) => ReactNode
 let Board: (props: Record<string, unknown>) => ReactNode
 let PuzzleAnalysisContents: (props: Record<string, unknown>) => ReactNode
 let preferences: Record<string, unknown>
-let playPreferences: { DEFAULT_PLAY_PREFERENCES: { desktopViews: { open: string[]; active: string | null } } }
+let playSession: typeof import('../src/sudoku/play-session.ts').playSession
 
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
@@ -40,7 +40,7 @@ before(async () => {
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
   ;({ PuzzleAnalysisContents } = await server.ssrLoadModule('/src/components/PuzzleAnalysis.tsx'))
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
-  playPreferences = await server.ssrLoadModule('/src/sudoku/play-preferences.ts')
+  ;({ playSession } = await server.ssrLoadModule('/src/sudoku/play-session.ts'))
 })
 after(async () => { await server?.close() })
 
@@ -225,8 +225,9 @@ function desktopPlayMarkup(tree: ReturnType<typeof worktableTree>) {
 
 for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixed'>)[]) {
   test(`${id} exposes hint actions, solution, and technique finder in both desktop workspaces`, () => {
-    const previous = playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews
-    playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews = { open: ['solution', 'techniques'], active: 'techniques' }
+    const previous = playSession.getServerSnapshot
+    playSession.getServerSnapshot = () => ({ ...previous(), puzzleId: 'help-controls',
+      toolPanels: { open: ['solution', 'techniques'], active: 'techniques' } })
     try {
       const standard = worktableTree(id, 'standard')
       if (id !== 'classic') assert.ok(standard.some(({ type, props }) => type === 'button' &&
@@ -246,6 +247,6 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
           assert.ok(elements(dock.props.techniques).some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
         }
       }
-    } finally { playPreferences.DEFAULT_PLAY_PREFERENCES.desktopViews = previous }
+    } finally { playSession.getServerSnapshot = previous }
   })
 }

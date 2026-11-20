@@ -14,7 +14,7 @@ function SubsetsExample({ unavailable, initialSelection = [] }: { unavailable?: 
   const tool = useSubsets(unavailable ? null : masks, masks, selected, values, CLASSIC_GRID)
   return <div className="puzzle-stage">
     <Board givens={values} values={values} candidates={masks} annotations={tool.annotations} showGuides
-      selected={tool.cells} highlighting={{ relatedCells: false, matchingDigits: false, matchingCandidates: false, candidateStyle: 'shape' }}
+      selected={tool.cells} highlighting={{ relatedCells: false, matchingDigits: false, matchingCandidates: false }}
       onCell={unavailable ? undefined : (cell) => {
         setSelected((current) => current.includes(cell) ? current.filter((item) => item !== cell) : [...current, cell])
       }} />

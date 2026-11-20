@@ -1,8 +1,8 @@
 import { Button } from './Button'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { useContext, useId, useState, type CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import { foundationBoard, foundationVisuals, visualColors, type FoundationVisualId, type VisualBranch, type VisualKey } from '../sudoku/foundation-visuals'
-import { Board, CandidateHighlightStyleContext } from './Board'
+import { Board } from './Board'
 
 const keyLabels: Record<VisualKey, string> = {
   pattern: 'Blue marks a candidate in the pattern.',
@@ -35,13 +35,12 @@ function ProofBranches({ branches }: { branches: VisualBranch[] }) {
 }
 
 function VisualWalkthrough({ visual: id }: { visual: FoundationVisualId }) {
-  const candidateStyle = useContext(CandidateHighlightStyleContext)
   const visual = foundationVisuals[id]
   const [index, setIndex] = useState(0)
   const step = visual.steps[index]
   const heading = useId()
   const note = useId()
-  return <figure className="lesson-diagram foundation-visual" aria-labelledby={heading} data-visual={id} data-candidate-style={candidateStyle}>
+  return <figure className="lesson-diagram foundation-visual" aria-labelledby={heading} data-visual={id}>
     <header className="foundation-visual-heading"><h3 id={heading}>{visual.title}</h3>
       {visual.steps.length > 1 && <div className="foundation-step-controls" role="group" aria-label={`${visual.title} steps`}>
         <Button type="button" aria-label="Previous diagram step" disabled={index === 0}

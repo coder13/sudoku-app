@@ -11,6 +11,7 @@ import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSharedPuzzleId } from './puzzle-sharing.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
+import { puzzleTabsKey } from './play-session.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
@@ -600,6 +601,7 @@ export const roomStore = {
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
       localStorage.removeItem(puzzleSelectionKey(id))
+      localStorage.removeItem(puzzleTabsKey(id))
       localStorage.removeItem(activityPrefix + id)
     })
     const outcomeSaved = rememberOutcome(removed && (removed.ratingAttempt?.outcome ?? hintEvidence(removed)))

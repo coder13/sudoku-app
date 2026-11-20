@@ -59,8 +59,7 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   canContinueGroup, groupMessage, onContinueGroup }: Props) {
   const groupMessageId = useId()
   const subject = target === 'cell' ? 'cells' : 'candidates'
-  const instructions = disabled ? 'Coloring is available while playing.'
-    : brush === null ? target === 'cell'
+  const instructions = brush === null ? target === 'cell'
       ? 'Pick a color, then choose cells. You can also select cells first.'
       : 'Pick a color, then tap individual candidates.'
     : brush === 0 ? `Choose ${subject} to erase their color.` : `Choose ${subject} to paint ${COLORS[brush - 1].toLowerCase()}.`
@@ -68,7 +67,7 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   return (
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
-      <p aria-live="polite">{instructions}</p>
+      {!disabled && <p aria-live="polite">{instructions}</p>}
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
       <div className="cell-color-actions">
         <Button type="button" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}

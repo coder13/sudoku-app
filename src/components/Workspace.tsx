@@ -34,12 +34,11 @@ import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
-import { isSettingsSection, Settings } from './Settings'
+import { isSettingsSection, Settings, type SettingsSection } from './Settings'
 import { SyncConnectionStatus } from './SyncConnectionStatus'
 import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
-import { CandidateHighlightStyleContext } from './Board'
 
 type Panel = 'import' | 'share' | 'publish' | 'cages' | 'six-rules' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
@@ -359,7 +358,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
   }
 
-  function openSettings() {
+  function openSettings(section?: SettingsSection) {
     if (!settingsRoute) settingsReturnLocation.current = {
       href: locationHref,
       left: window.scrollX,
@@ -368,7 +367,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
     setMenuOpen(false)
     setPanel(null)
-    void navigate({ to: '/settings' })
+    if (section) void navigate({ to: '/settings/$section', params: { section } })
+    else void navigate({ to: '/settings' })
   }
 
   function closeSettings() {
@@ -498,7 +498,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
   </div>
   return (
-    <CandidateHighlightStyleContext.Provider value={highlighting.candidateStyle}>
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
       enabled={playing && workspaceReady && desktopStandard}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
@@ -561,7 +560,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 <BarChart3 size={17} /> Statistics
               </Link>
               <Link to="/sync" onClick={() => setMenuOpen(false)}><Monitor size={17} /> Device sync</Link>
-              <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
+              <button onClick={() => openSettings()}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
@@ -623,6 +622,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
                 onEditCages={() => setPanel('cages')}
                 onEditSixRules={() => setPanel('six-rules')}
+                onEditChainColors={() => openSettings('chain-colors')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
                   if (!game) return
@@ -667,6 +667,5 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         key={game.id} game={game} layout={game.grid} close={close} />}
       {panel === 'cages' && game?.position.draftCages && <EditCages game={game} close={close} />}
     </DesktopPlayLayout>
-    </CandidateHighlightStyleContext.Provider>
   )
 }

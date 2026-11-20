@@ -1,43 +1,124 @@
-export type MobileInputTool = 'colors' | 'chains' | 'subsets'
-export type MobileInputTab = 'digits' | MobileInputTool
-type MobileInput = { open: MobileInputTool[]; active: MobileInputTab }
-export const defaultMobileInput: MobileInput = { open: [], active: 'digits' }
+import type { DigitHighlightMatch } from './highlighting.ts'
+import { readLegacyDesktopToolPanels } from './play-preferences.ts'
 
-type PlaySession = {
-  puzzleId: string | null
-  launchPaused: boolean
-  mobileInput: MobileInput
+export const PUZZLE_TOOL_ORDER = ['colors', 'chains', 'subsets'] as const
+export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER] as const
+export type PuzzleTool = typeof TOOL_PANEL_ORDER[number]
+export type ToolPanelTab = 'digits' | PuzzleTool
+type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }
+export const defaultToolPanels: ToolPanels = { open: [], active: 'digits' }
+type DigitHighlight = { mask: number; match: DigitHighlightMatch; modeOverridden: boolean }
+export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all', modeOverridden: false }
+type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
+
+type PuzzleTabs = {
+  toolPanels: ToolPanels
   drawingIntent: boolean | null
+  digitHighlight: DigitHighlight
+  showStrongLinks: boolean
+  solutionView: SolutionView | null
 }
-const initial: PlaySession = { puzzleId: null, launchPaused: false, mobileInput: defaultMobileInput, drawingIntent: null }
+type PlaySession = PuzzleTabs & { puzzleId: string | null; launchPaused: boolean }
+type SavedPuzzleTabs = Partial<PuzzleTabs> & { mobileInput?: Partial<ToolPanels> }
+type ToolLayout = Pick<ToolPanels, 'open' | 'active'>
+const defaultTabs: PuzzleTabs = {
+  toolPanels: defaultToolPanels, drawingIntent: null, digitHighlight: defaultDigitHighlight,
+  showStrongLinks: false, solutionView: null,
+}
+const initial: PlaySession = { ...defaultTabs, puzzleId: null, launchPaused: false }
 const key = 'sudoku-app:v1:play-session'
-type SessionStorage = Pick<Storage, 'getItem' | 'setItem'>
+const toolPanelLayoutKey = 'sudoku-app:v1:tool-panel-layout'
+const legacyMobileLayoutKey = 'sudoku-app:v1:mobile-input-layout'
+type PlayStorage = Pick<Storage, 'getItem' | 'setItem'>
+export const puzzleTabsKey = (id: string) => `sudoku-app:v1:puzzle-tabs:${id}`
 
-function readSession(storage: SessionStorage): PlaySession {
-  const value = JSON.parse(storage.getItem(key) ?? 'null')
-  if (typeof value?.puzzleId !== 'string') return initial
-  const input = value.mobileInput
-  const open = Array.isArray(input?.open)
-    ? [...new Set<MobileInputTool>(input.open.filter((tool: unknown) => tool === 'colors' || tool === 'chains' || tool === 'subsets'))]
-    : []
+function readToolLayout(input: unknown, fromDesktop = false): ToolLayout {
+  const savedTools = input && typeof input === 'object' && 'open' in input ? input.open : undefined
+  const active = input && typeof input === 'object' && 'active' in input ? input.active : undefined
+  const open = Array.isArray(savedTools) ? TOOL_PANEL_ORDER.filter(tool => savedTools.includes(tool)) : []
+  return { open, active: open.find(tool => tool === active) ?? (fromDesktop ? open[0] : undefined) ?? 'digits' }
+}
+
+function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs {
+  const input = value.toolPanels ?? value.mobileInput
+  const height = input?.height
+  const layout = readToolLayout(input)
+  const highlight = value.digitHighlight
+  const solution = value.solutionView
   return {
-    puzzleId: value.puzzleId,
-    launchPaused: value.launchPaused === true,
-    mobileInput: { open, active: open.includes(input?.active) ? input.active : 'digits' },
-    drawingIntent: typeof value.drawingIntent === 'boolean' ? value.drawingIntent : null,
+    toolPanels: {
+      ...(value.toolPanels !== undefined || layout.open.length || height ? layout : legacyDesktop),
+      ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
+    },
+    drawingIntent: typeof value?.drawingIntent === 'boolean' ? value.drawingIntent : null,
+    digitHighlight: highlight && Number.isInteger(highlight.mask) && highlight.mask >= 0 && highlight.mask <= 0x1ff
+      ? { mask: highlight.mask, match: highlight.match === 'any' ? 'any' : 'all', modeOverridden: highlight.modeOverridden === true }
+      : defaultDigitHighlight,
+    showStrongLinks: value?.showStrongLinks === true,
+    solutionView: solution && typeof solution.identity === 'string' && Number.isSafeInteger(solution.step) && solution.step >= 0
+      ? { identity: solution.identity, step: solution.step, hintOpen: solution.hintOpen === true,
+        ...(solution.hidden === true ? { hidden: true } : {}) }
+      : null,
   }
 }
 
-export function createPlaySession(storage?: SessionStorage) {
+export function createPlaySession(storage?: PlayStorage, persistentStorage?: PlayStorage) {
+  const durable = () => persistentStorage ?? (storage ? undefined : localStorage)
   let current = initial
-  try { current = readSession(storage ?? sessionStorage) }
+  let legacyDesktop: ToolLayout = defaultToolPanels
+  let lastToolLayout: ToolLayout = defaultToolPanels
+  try {
+    const target = durable()
+    if (target) {
+      legacyDesktop = readToolLayout(readLegacyDesktopToolPanels(target), true)
+      const savedLayout = target.getItem(toolPanelLayoutKey)
+      if (savedLayout !== null) lastToolLayout = readToolLayout(JSON.parse(savedLayout))
+      else {
+        const oldMobile = readToolLayout(JSON.parse(target.getItem(legacyMobileLayoutKey) ?? 'null'))
+        lastToolLayout = oldMobile.open.length ? oldMobile : legacyDesktop
+      }
+    }
+  } catch { /* A fresh layout is available when persistent storage is unavailable. */ }
+  try {
+    const saved = JSON.parse((storage ?? sessionStorage).getItem(key) ?? 'null')
+    if (typeof saved?.puzzleId === 'string') {
+      const tabs = readTabs(saved, legacyDesktop)
+      current = { ...tabs, puzzleId: saved.puzzleId, launchPaused: saved.launchPaused === true }
+      lastToolLayout = readToolLayout(current.toolPanels)
+      if ((saved.toolPanels === undefined || saved.solutionView === undefined) && !durable()?.getItem(puzzleTabsKey(saved.puzzleId))) {
+        durable()?.setItem(puzzleTabsKey(saved.puzzleId), JSON.stringify(tabs))
+      }
+    }
+  }
   catch { /* The tab can still play when session storage is unavailable. */ }
   const listeners = new Set<() => void>()
 
-  function commit(next: PlaySession) {
+  function forPuzzle(puzzleId: string | null): PlaySession {
+    if (current.puzzleId === puzzleId) return current
+    if (puzzleId === null) return initial
+    try {
+      const saved = JSON.parse(durable()?.getItem(puzzleTabsKey(puzzleId)) ?? 'null')
+      if (saved) return { ...readTabs(saved, legacyDesktop), puzzleId, launchPaused: false }
+    } catch { /* Fall back to the latest tab layout when the puzzle has no usable save. */ }
+    return { ...initial, puzzleId, toolPanels: lastToolLayout }
+  }
+
+  function commit(next: PlaySession, persistTabs = false) {
+    const changedLayout = next.puzzleId && (current.puzzleId !== next.puzzleId ||
+      current.toolPanels.open !== next.toolPanels.open || current.toolPanels.active !== next.toolPanels.active)
     current = next
     try { (storage ?? sessionStorage).setItem(key, JSON.stringify(next)) }
     catch { /* Keep changes in memory when session storage is unavailable. */ }
+    if (changedLayout) {
+      lastToolLayout = readToolLayout(next.toolPanels)
+      try { durable()?.setItem(toolPanelLayoutKey, JSON.stringify(lastToolLayout)) }
+      catch { /* Keep the latest layout in memory. */ }
+    }
+    if (persistTabs && next.puzzleId) {
+      const { puzzleId, launchPaused, ...tabs } = next
+      try { durable()?.setItem(puzzleTabsKey(puzzleId), JSON.stringify(tabs)) }
+      catch { /* Leave the tab's session storage as a fallback. */ }
+    }
     listeners.forEach(listener => listener())
   }
 
@@ -49,14 +130,14 @@ export function createPlaySession(storage?: SessionStorage) {
     getSnapshot: () => current,
     getServerSnapshot: () => initial,
     activate(puzzleId: string | null) {
-      if (current.puzzleId !== puzzleId) commit({ ...initial, puzzleId })
+      if (current.puzzleId !== puzzleId) commit(forPuzzle(puzzleId), true)
     },
     set<K extends keyof Omit<PlaySession, 'puzzleId'>>(puzzleId: string, field: K,
       value: PlaySession[K] | ((previous: PlaySession[K]) => PlaySession[K])) {
-      const session = current.puzzleId === puzzleId ? current : { ...initial, puzzleId }
+      const session = forPuzzle(puzzleId)
       const next = typeof value === 'function' ? value(session[field]) : value
       if (current === session && Object.is(next, session[field])) return
-      commit({ ...session, [field]: next })
+      commit({ ...session, [field]: next }, current !== session || field !== 'launchPaused')
     },
   }
 }

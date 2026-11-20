@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { Delete, Highlighter, Link2, Palette, Pen, Pencil } from 'lucide-react'
+import { Delete, Highlighter, Link2, Pen, Pencil } from 'lucide-react'
 import { MODE_BADGE_EDGES, type ModeBadgePosition } from '../sudoku/play-preferences'
 
 const MODES = {
   pen: { label: 'Pen', Icon: Pen },
   pencil: { label: 'Pencil', Icon: Pencil },
   highlight: { label: 'Highlight', Icon: Highlighter },
-  color: { label: 'Color', Icon: Palette },
   erase: { label: 'Erase', Icon: Delete },
   chain: { label: 'Chain drawing', Icon: Link2 },
 } as const

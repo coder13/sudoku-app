@@ -2,14 +2,14 @@ import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { createPortal } from 'react-dom'
-import { ArrowRight, Check, CircleCheck } from 'lucide-react'
+import { ArrowRight, CircleCheck } from 'lucide-react'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulties, miniDifficulty, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
-import { variantDifficulties, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
+import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
+import { variantDifficulty, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
 import { collectionProgress, findCollectionGame, getGameCollection, nextCollectionPuzzle } from '../sudoku/collections'
@@ -66,11 +66,13 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
-  const resumeFirst = Boolean(nextActive && (!inCollection || !collectionNext))
+  const resumeFirst = Boolean(nextActive && inCollection && !collectionNext)
+  const pairedActions = Boolean(nextActive && !inCollection)
   const sizedRecipe = isSizedPuzzleId(recipe)
-  const nextDifficulty = sizedRecipe ? miniDifficulty(game.difficulty ?? preferredDifficulty) : variantDifficulty(recipe, preferredDifficulty)
-  const nextLabel = needsChoice ? 'Choose another puzzle' : nextDifficulty === 'auto'
-    ? `Next ${variantDifficultyLabel(sizedRecipe ? undefined : recipe, 'auto', recommended)}` : `Next ${DIFFICULTY_LABELS[nextDifficulty].toLowerCase()} puzzle`
+  const difficultyPreference = game.difficulty ?? preferredDifficulty
+  const nextDifficulty = sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
+  const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
+  const nextLabel = needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
@@ -110,7 +112,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
       aria-keyshortcuts={resumeFirst ? shortcutLabel(shortcuts.nextPuzzle) : undefined}
       disabled={!canResume} onClick={resume}>
       <span><strong>{catchUpPuzzle ? 'Catch up' : 'Play next active puzzle'}</strong><small>{activePuzzleSummary(nextActive)}</small></span>
-      <ArrowRight size={18} aria-hidden="true" />
+      {!pairedActions && <ArrowRight size={18} aria-hidden="true" />}
     </Button>
   )
 
@@ -136,27 +138,23 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const footer = <div className="completion-footer">
     {!actionsTarget && collectionStatus}
     {(collectionError || error) && <p className="form-error" role="alert">{collectionError || error}</p>}
-    <div className="completion-actions">
-      {!inCollection && nextActive ? <>
-        {resumeAction}
-        <Button className="completion-next" disabled={busy} onClick={onChooseVariant}>New puzzle</Button>
-      </> : <>
-        {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
-          ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
-          : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
-          : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)}
-            disabled={!canPlayNext} onClick={playNext}>
-            {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
-            {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
-          </Button>}
-        {resumeAction}
-        {collectionEntry ? <>
-          <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
-          <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles">Choose a different puzzle</Link>
-        </> : !needsChoice && <>
-          <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
-          <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
-        </>}
+    <div className="completion-actions" data-paired-next={pairedActions || undefined}>
+      {pairedActions && resumeAction}
+      {collectionEntry && !collectionNext ? progress && progress.unplayed === 0 && progress['in-progress'] === 0
+        ? <p className="completion-collection-complete" role="status">You solved all the puzzles at this difficulty.</p>
+        : <p className="completion-collection-complete" role="status">Go online to play more puzzles at this difficulty.</p>
+        : <Button variant="primary" className="completion-next" aria-keyshortcuts={shortcutLabel(shortcuts.nextPuzzle)}
+          disabled={!canPlayNext} onClick={playNext}>
+          {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
+          {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
+        </Button>}
+      {inCollection && resumeAction}
+      {collectionEntry ? <>
+        <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>
+        <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles">Choose a different puzzle</Link>
+      </> : !needsChoice && <>
+        <Button disabled={busy} onClick={onChooseVariant}>Choose variant</Button>
+        <Button disabled={busy} onClick={onChooseDifficulty}>Choose difficulty</Button>
       </>}
     </div>
   </div>

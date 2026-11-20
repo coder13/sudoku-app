@@ -40,12 +40,10 @@ export type AppearancePreferences = {
   appTextZoom: number
 }
 
-export type CandidateHighlightStyle = 'text' | 'shape'
 export type HighlightPreferences = {
   relatedCells: boolean
   matchingDigits: boolean
   matchingCandidates: boolean
-  candidateStyle: CandidateHighlightStyle
 }
 
 export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
@@ -73,7 +71,6 @@ export const DEFAULT_HIGHLIGHT_PREFERENCES: HighlightPreferences = {
   relatedCells: true,
   matchingDigits: true,
   matchingCandidates: true,
-  candidateStyle: 'shape',
 }
 export const DEFAULT_INPUT_SIZE = 210
 export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = 'standard'
@@ -149,15 +146,12 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
           ? clampAppTextZoom(Math.round(savedAppearance.appTextZoom)) : DEFAULT_APP_TEXT_ZOOM,
       }
     }
-    const savedHighlighting = JSON.parse(target.getItem(HIGHLIGHT_KEY) ?? 'null') as
-      (Partial<HighlightPreferences> & { defaultsVersion?: number }) | null
+    const savedHighlighting = JSON.parse(target.getItem(HIGHLIGHT_KEY) ?? 'null') as Partial<HighlightPreferences> | null
     if (savedHighlighting) {
       highlighting = {
         relatedCells: savedHighlighting.relatedCells !== false,
         matchingDigits: savedHighlighting.matchingDigits !== false,
         matchingCandidates: savedHighlighting.matchingCandidates !== false,
-        candidateStyle: savedHighlighting.defaultsVersion === 2 && savedHighlighting.candidateStyle === 'text'
-          ? 'text' : DEFAULT_HIGHLIGHT_PREFERENCES.candidateStyle,
       }
     }
   } catch { /* Keep defaults when preferences cannot be read. */ }
@@ -221,7 +215,7 @@ export function saveAppearance(value: AppearancePreferences) {
 }
 
 export function saveHighlightPreferences(value: HighlightPreferences) {
-  try { localStorage.setItem(HIGHLIGHT_KEY, JSON.stringify({ ...value, defaultsVersion: 2 })); notifySettingsEdit() }
+  try { localStorage.setItem(HIGHLIGHT_KEY, JSON.stringify(value)); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }
 

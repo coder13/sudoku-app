@@ -1,4 +1,5 @@
 import { isSolved, STARTER_GAME, type Game } from '../../src/sudoku/game'
+import { pruneChainsAfterMove } from '../../src/sudoku/chain-sketch'
 import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
 
@@ -68,7 +69,7 @@ export const roomStore: typeof appStore = {
   update(id, update) {
     const game = room.games.find((item) => item.id === id)
     if (!game) return
-    const next = update(game)
+    const next = pruneChainsAfterMove(game, update(game))
     if (next !== game) publish({ ...room, games: room.games.map((item) => item.id === id ? next : item) })
   },
   finishRatingAttempt() {},

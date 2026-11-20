@@ -308,8 +308,8 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .foundation-step-copy h4 { margin: 0; font-size: 0.9375rem; }
 .foundation-notation { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px; }
 .foundation-notation code { padding: 3px 5px; border-radius: 4px; font-size: 0.8125rem; }
-.foundation-notation code[data-active] { color: var(--lesson-pattern); }
-.foundation-visual[data-candidate-style="shape"] .foundation-notation code[data-active] {
+.foundation-notation code[data-active] {
+  color: var(--lesson-pattern);
   background: var(--lesson-pattern-fill);
   box-shadow: inset 0 -2px var(--lesson-pattern);
 }

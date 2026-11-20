@@ -1,6 +1,6 @@
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from 'react'
 
-type MotionSpeed = 'standard' | 'overlay'
+type MotionSpeed = 'standard' | 'overlay' | 'panel'
 type PresenceState = 'open' | 'exit'
 const EXIT_PAINT_BUFFER_MS = 34
 
@@ -9,6 +9,22 @@ export function motionDuration(speed: MotionSpeed) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(`--motion-${speed}-duration`).trim()
   const duration = Number.parseFloat(value) * (value.endsWith('ms') ? 1 : 1000)
   return duration > 0 ? duration : 0
+}
+
+export function animatePanelLayout(element: HTMLElement, before: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>, duration: number) {
+  const after = element.getBoundingClientRect()
+  if (!after.width || !after.height) return
+  const x = before.left - after.left
+  const y = before.top - after.top
+  const scaleX = before.width / after.width
+  const scaleY = before.height / after.height
+  if (Math.abs(x) < .5 && Math.abs(y) < .5 &&
+    Math.abs(before.width - after.width) < .5 && Math.abs(before.height - after.height) < .5) return
+  const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+  return element.animate([
+    { transform: `translate(${x}px, ${y}px) scale(${scaleX}, ${scaleY})`, transformOrigin: 'top left' },
+    { transform: 'none', transformOrigin: 'top left' },
+  ], { duration, easing })
 }
 
 export function exitDelay(speed: MotionSpeed) {
