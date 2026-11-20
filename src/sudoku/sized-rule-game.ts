@@ -1,6 +1,7 @@
 import { runEngine, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { sizedRegionSumParts } from './region-sum.ts'
 import { validation } from './puzzle-validation.ts'
 
 export type SizedRuleDefinition = { grid: SizedGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string }
@@ -21,7 +22,8 @@ function validKropkiMarks(value: unknown, size: number): value is MarkedPairs {
         gridCellsShareEdge(pair[0], pair[1], size)))
 }
 
-export function isSizedRuleList(value: unknown, size: number): value is SizedRuleDefinition['rules'] {
+export function isSizedRuleList(value: unknown, grid: SizedGrid): value is SizedRuleDefinition['rules'] {
+  const { size } = grid
   if (!Array.isArray(value) || value.length > 128) return false
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
@@ -47,9 +49,13 @@ export function isSizedRuleList(value: unknown, size: number): value is SizedRul
     if (rule.type === 'parity') {
       return Object.keys(rule).length === 3 && cells.length > 0 && (rule.parity === 'even' || rule.parity === 'odd')
     }
-    if (!cells.length || cells.length > size || new Set(cells).size !== cells.length) return false
+    if (!cells.length || new Set(cells).size !== cells.length || (rule.type !== 'region-sum' && cells.length > size)) return false
     if (rule.type === 'thermometer') return Object.keys(rule).length === 2 && cells.length >= 2
-    if (rule.type !== 'renban' || Object.keys(rule).some(key => !['type', 'cells', 'segments'].includes(key))) return false
+    if (rule.type === 'region-sum') {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'segments', 'groupByRegion'].includes(key)) ||
+        (rule.groupByRegion !== undefined && typeof rule.groupByRegion !== 'boolean') ||
+        sizedRegionSumParts(rule, grid).length < 2) return false
+    } else if (rule.type !== 'renban' || Object.keys(rule).some(key => !['type', 'cells', 'segments'].includes(key))) return false
     if (rule.segments === undefined) return true
     const segments: unknown = rule.segments
     if (!Array.isArray(segments) || segments.length === 0 || segments.length > 128 ||
@@ -64,7 +70,7 @@ export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame
 }
 
 export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution }: SizedRuleDefinition): Promise<SizedRuleGame> {
-  if (!isSizedRuleList(rules, grid.size)) throw new Error('This grid has invalid or unsupported rules.')
+  if (!isSizedRuleList(rules, grid)) throw new Error('This grid has invalid or unsupported rules.')
   const position = sizedRulePosition(grid, { rules }, givens)
   const status = await runEngine({ type: 'sized-variant', operation: 'analyze', position })
   if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
@@ -79,7 +85,7 @@ export async function verifySizedRulePuzzle({ grid, givens, rules, author, autho
 }
 
 export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame, grid: SizedGrid, givens: string): SizedRuleGame | undefined {
-  if (!isSizedRuleList(rules, grid.size) || (grid.size === 4 && !rules.length) || !isGridText(solution, grid) || solution.includes('0') ||
+  if (!isSizedRuleList(rules, grid) || (grid.size === 4 && !rules.length) || !isGridText(solution, grid) || solution.includes('0') ||
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
   for (const rule of rules) {
@@ -90,6 +96,9 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     } else if (rule.type === 'renban') {
       const digits = rule.cells.map(cell => Number(solution[cell]))
       if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
+    } else if (rule.type === 'region-sum') {
+      const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
+      if (new Set(totals).size !== 1) return
     } else if (rule.type === 'arrow') {
       if (rule.cells.reduce((sum, cell) => sum + Number(solution[cell]), 0) !== Number(solution[rule.circle])) return
     } else if (rule.type === 'difference') {
@@ -115,6 +124,9 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
+    else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
+      ? 'The digits on a Region Sum line have the same total in each box. All cells in the same box count together.'
+      : 'Box borders split a Region Sum line into segments with the same total. If the line returns to a box, that visit is a separate segment.')
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')

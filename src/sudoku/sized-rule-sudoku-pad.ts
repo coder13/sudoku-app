@@ -1,3 +1,4 @@
+import { closedRegionSumCells, rectangularRegionIndex } from './region-sum.ts'
 import type { SizedConstraintRule } from './engine.ts'
 import { isGridText, matchesRectangularRegions, MINI_GRID, sixGridFromRegions } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
@@ -165,9 +166,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const authoredThermometers = clauses.some(isThermometer)
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause))
   const authoredRenban = clauses.some(isRenban)
+  const regionSum = /^Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums\.$/i
+  const authoredRegionSum = clauses.some(clause => regionSum.test(clause))
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
     Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns : Number(compactBase?.[1]) === size
-  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) && !arrow.test(clause))) {
+  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) && !arrow.test(clause) && !regionSum.test(clause))) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
@@ -191,7 +194,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0) {
       throw new Error('This SudokuPad export has an unsupported line.')
     }
-    const path = readPath(line.wayPoints, size)
+    const mayBeRegionSum = authoredRegionSum &&
+      ((!authoredThermometers && !authoredRenban) || /^#2ecbff(?:ff)?$/i.test(line.color))
+    const mayBeRenban = authoredRenban &&
+      ((!authoredThermometers && !authoredRegionSum) || /^#f067f0(?:ff)?$/i.test(line.color))
+    const path = readPath(line.wayPoints, size, mayBeRegionSum ? size ** 2 + 1 : size)
     // This compact export convention uses a darker, unbordered bulb.
     const compactShaft = compactBulbs && /^#(?:ccc|cccccc(?:ff)?)$/i.test(line.color)
     const matching = bulbs.flatMap((bulb, index) => {
@@ -201,7 +208,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     if (matching.length === 1) {
       const [bulb] = bulbs.splice(matching[0], 1)
       rules.push({ type: 'thermometer', cells: bulb.cell === path[0] ? path : path.reverse() })
-    } else if (matching.length === 0 && authoredRenban && (!authoredThermometers || /^#f067f0(?:ff)?$/i.test(line.color))) {
+    } else if (matching.length === 0 && mayBeRegionSum) {
+      const unique = [...new Set(path)]
+      const cells = closedRegionSumCells(unique, [path], cell => rectangularRegionIndex(cell, grid))
+      rules.push({ type: 'region-sum', cells, ...(unique.length !== path.length || cells !== unique ? { segments: [path] } : {}) })
+    } else if (matching.length === 0 && mayBeRenban) {
       rules.push({ type: 'renban', cells: path })
     } else {
       throw new Error(authoredThermometers ? 'A thermometer bulb must identify exactly one end of its path.'
@@ -218,7 +229,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   if (authoredKropki) rules.push(readKropkiDots(remainingOverlays, size))
   else if (remainingOverlays !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   if (bulbs.length || authoredThermometers !== rules.some(rule => rule.type === 'thermometer') ||
-    authoredRenban !== rules.some(rule => rule.type === 'renban') || !isSizedRuleList(rules, size) ||
+    authoredRenban !== rules.some(rule => rule.type === 'renban') ||
+    authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') || !isSizedRuleList(rules, grid) ||
     (size === 4 && !rules.length)) {
     throw new Error('This SudokuPad export has incomplete or invalid lines.')
   }

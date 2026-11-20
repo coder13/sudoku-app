@@ -2,8 +2,8 @@ import { useId, useMemo } from 'react'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
-import { regionSumParts } from '../sudoku/region-sum'
-import { gridDiagonalCells } from '../sudoku/grid'
+import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
+import { gridDiagonalCells, type SizedGrid } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
 
 const x = (cell: number, size = 9) => cell % size
@@ -34,6 +34,7 @@ function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?:
 }
 
 const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
+const regionSumColors = ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0']
 
 function RenbanClue({ cells, segments, number, size = 9 }: {
   cells: readonly number[]; segments?: readonly (readonly number[])[]; number: number; size?: number
@@ -81,18 +82,35 @@ function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferen
 
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const marker = useId()
-  const renbans = rules.filter(rule => rule.type === 'renban')
-  const lanes = coloredLineOverlapLanes(renbans, size)
+  let renbanNumber = 0, regionSumNumber = 0
+  const colored = rules.flatMap<{
+    rule: Extract<SizedConstraintRule, { type: 'renban' | 'region-sum' }>
+    number: number
+    color: string
+  }>(rule => {
+    if (rule.type === 'renban') return [{ rule, number: ++renbanNumber, color: renbanColors[(renbanNumber - 1) % renbanColors.length] }]
+    if (rule.type === 'region-sum') return [{ rule, number: ++regionSumNumber, color: regionSumColors[(regionSumNumber - 1) % regionSumColors.length] }]
+    return []
+  })
+  const lanes = coloredLineOverlapLanes(colored.map(({ rule }) => rule), size)
   const dots = kropkiDots(rules, size)
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
     {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
-    {renbans.map((rule, index) => <RenbanClue key={index} {...rule} number={index + 1} size={size} />)}
-    {[...lanes].map(([index, edges]) => <g key={index} className="variant-renban-overlap" data-renban={index + 1}>
-      {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={renbanColors[index % renbanColors.length]} />)}
-    </g>)}
+    {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
+      ? <RenbanClue key={index} {...rule} number={number} size={size} />
+      : <RegionSumClue key={index} rule={rule} color={color} number={number} size={size} />)}
+    {[...lanes].map(([index, edges]) => {
+      const { rule, number, color } = colored[index]
+      const dashed = rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path, size))
+      return <g key={index} className={`variant-${rule.type}-overlap`}
+        data-renban={rule.type === 'renban' ? number : undefined}
+        data-region-sum={rule.type === 'region-sum' ? number : undefined}>
+        {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={color} dashed={dashed} />)}
+      </g>
+    })}
     {rules.map((rule, index) => rule.type === 'arrow' && <ArrowClue key={index} {...rule} size={size} marker={marker} />)}
     {[...dots].flatMap(([edge, marks]) => {
       const a = Math.floor(edge / (size ** 2)), b = edge % (size ** 2)
@@ -104,10 +122,11 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
   </svg>
 }
 
-export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size: number) {
+export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid: SizedGrid) {
+  const { size } = grid
   const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
   const at = (cell: number) => `row ${y(cell, size) + 1}, column ${x(cell, size) + 1}`
-  let renbanNumber = 0
+  let renbanNumber = 0, regionSumNumber = 0
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
       for (const cell of gridDiagonalCells(size, rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
@@ -120,6 +139,11 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
         ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
+    } else if (rule.type === 'region-sum') {
+      regionSumNumber++
+      for (const [part, cells] of sizedRegionSumParts(rule, grid).entries()) for (const cell of cells) {
+        labels[cell].add(`Region Sum line ${regionSumNumber}, ${rule.groupByRegion ? 'box group' : 'segment'} ${part + 1}`)
+      }
     } else if (rule.type === 'arrow') {
       labels[rule.circle].add(`arrow bulb for ${rule.cells.map(at).join('; ')}`)
       for (const cell of rule.cells) labels[cell].add(`arrow shaft from the bulb at ${at(rule.circle)}`)
@@ -265,16 +289,16 @@ function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; e
   </g>
 }
 
-function RegionSumClue({ rule, color, number }: { rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number }) {
+function RegionSumClue({ rule, color, number, size = 9 }: { rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number; size?: number }) {
   const paths = rule.segments ?? [rule.cells]
-  const separated = paths.some(lineSkipsCells)
+  const separated = paths.some(path => lineSkipsCells(path, size))
   return <g className="variant-region-sum" data-region-sum={number} style={{ color }}>
-    {paths.map((path, index) => lineSkipsCells(path)
-      ? <g key={index}>{path.slice(1).map((cell, i) => <line key={i} className={lineSkipsCells([path[i], cell]) ? 'variant-region-sum-jump' : undefined}
-        x1={center(path[i])[0]} y1={center(path[i])[1]} x2={center(cell)[0]} y2={center(cell)[1]} />)}</g>
-      : <polyline key={index} points={points(path)} />)}
+    {paths.map((path, index) => lineSkipsCells(path, size)
+      ? <g key={index}>{path.slice(1).map((cell, i) => <line key={i} className={lineSkipsCells([path[i], cell], size) ? 'variant-region-sum-jump' : undefined}
+        x1={center(path[i], size)[0]} y1={center(path[i], size)[1]} x2={center(cell, size)[0]} y2={center(cell, size)[1]} />)}</g>
+      : <polyline key={index} points={points(path, size)} />)}
     {(separated ? rule.cells : paths.filter(path => path.length === 1).flat()).map(cell =>
-      <circle key={cell} className="variant-region-sum-node" cx={center(cell)[0]} cy={center(cell)[1]} r=".11" />)}
+      <circle key={cell} className="variant-region-sum-node" cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".11" />)}
   </g>
 }
 
@@ -361,7 +385,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
   const renbanColor = (index: number) => renbanColors[renbanIndices.get(index)! % renbanColors.length]
   const regionSumIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
-  const regionSumColor = (index: number) => ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0'][regionSumIndices.get(index)! % 4]
+  const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
@@ -396,7 +420,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
         const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
-        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(lineSkipsCells)
+        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))
         const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
           {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}

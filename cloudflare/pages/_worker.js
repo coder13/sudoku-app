@@ -121,11 +121,16 @@ const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
-function sizedRules(value, size) {
+function sizedRules(value, { size, boxRows, boxColumns }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) &&
     Math.abs(Math.floor(value[0] / size) - Math.floor(value[1] / size)) + Math.abs(value[0] % size - value[1] % size) === 1
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
+  const drawing = list(list(cell, 1, 128), 1, 128)
+  const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
+    (segments === undefined || new Set(segments.flat()).size === cells.length &&
+      segments.every(part => part.every(index => cells.includes(index))))
+  const region = cell => Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
@@ -133,10 +138,9 @@ function sizedRules(value, size) {
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
-    (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: list(list(cell, 1, 128), 1, 128) }) &&
-      new Set(rule.cells).size === rule.cells.length &&
-      (rule.segments === undefined || new Set(rule.segments.flat()).size === rule.cells.length &&
-        rule.segments.every(part => part.every(index => rule.cells.includes(index)))))
+    (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: drawing }) && coversCells(rule)) ||
+    (fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
+      coversCells(rule) && new Set(rule.cells.map(region)).size >= 2)
   return list(valid, size === 4 ? 1 : 0, 128)(value)
 }
 const ruleAuthor = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 72
@@ -219,10 +223,10 @@ async function sharePuzzle(request, db, path) {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
       givens: value => givens(value, data.grid?.size),
     }, { grid: value => miniGrid(value) || sixGrid(value), algebraic: value => data.grid?.size === 4 && algebraic(value),
-      sixRules: value => data.grid?.size === 6 && sizedRules(value, 6) && !Object.hasOwn(data, 'sizedRules'),
+      sixRules: value => data.grid?.size === 6 && sizedRules(value, data.grid) && !Object.hasOwn(data, 'sizedRules'),
       sixAuthor: value => Object.hasOwn(data, 'sixRules') && ruleAuthor(value),
       sizedRules: value => (data.grid?.size === 4 || data.grid?.size === 6) &&
-        !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid.size),
+        !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
       (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {

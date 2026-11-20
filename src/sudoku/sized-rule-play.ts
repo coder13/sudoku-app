@@ -4,7 +4,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-difference', 'sized-arrow', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -44,6 +44,11 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'renban') {
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
+  } else if (rule.type === 'region-sum') {
+    description = rule.groupByRegion
+      ? 'The cells on this line have the same total in each box.'
+      : 'Box borders split this line into segments with the same total.'
+    reason = 'Remove the candidates that cannot contribute to a total shared by every part of the line.'
   } else if (rule.type === 'arrow') {
     description = 'The digits along this arrow add up to the digit in its bulb.'
     reason = 'Remove the candidates that cannot appear in an arrow sum that fits the bulb.'
@@ -83,7 +88,8 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
         : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
           : rule.type === 'difference' ? `No pair of digits differs by exactly ${rule.difference} across the marker.`
-            : 'The thermometer has no strictly increasing sequence from bulb to tip.'
+            : rule.type === 'region-sum' ? 'No total fits every part of this Region Sum line.'
+              : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
   } else if (failure.type === 'kropki') {
     locations.push(...failure.pair.cells)
