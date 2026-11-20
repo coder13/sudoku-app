@@ -240,7 +240,6 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   const newKey = shortcutLabel(shortcuts.newChain)
   const applyKey = shortcutLabel(shortcuts.applyEdits)
   const strongLinkStatus = strongLinks?.hasHighlights && !strongLinks.count ? 'No strong links between the highlighted candidates.' : ''
-  const showStrongLinkInstructions = !sketch.drawing || (sketch.pending === null && !sketch.hasLinks)
   const completablePaths = sketch.chains.filter(sketch.canFinishLoop)
   const loopPath = completablePaths.length === 1 ? completablePaths[0]
     : completablePaths.find(({ nodes }) => sketch.pending !== null && nodes.includes(sketch.pending))
@@ -287,9 +286,8 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         </div>
       </div>
       {applyFailed && <p role="status">Some chain edits conflict or the grid has changed.</p>}
-      {strongLinks?.shown && (showStrongLinkInstructions || strongLinkStatus) && <div className="strong-link-tool">
-        {showStrongLinkInstructions && <p>Select a candidate or link to start drawing.</p>}
-        {strongLinkStatus && <p role="status">{strongLinkStatus}</p>}
+      {strongLinks?.shown && strongLinkStatus && <div className="strong-link-tool">
+        <p role="status">{strongLinkStatus}</p>
       </div>}
       <ul className="chain-list" aria-label="Drawn chains">
         {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths }, index) => {
