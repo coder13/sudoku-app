@@ -79,11 +79,9 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           setPending(null)
         }, fail)
       }
-      if (game === 'calcudoku') {
-        void prepareGeneratedHistory(game).then(() => {
-          if (workerRef.current === worker) worker.postMessage(request)
-        }).catch(() => { if (workerRef.current === worker) sendFullHistory() })
-      } else sendFullHistory()
+      void prepareGeneratedHistory(game).then(() => {
+        if (workerRef.current === worker) worker.postMessage(request)
+      }).catch(() => { if (workerRef.current === worker) sendFullHistory() })
     } catch {
       fail()
     }

@@ -4,7 +4,7 @@ import {
   saveNumberProgress, type NumberProgress, type SavedNumberProgress,
 } from './progress.ts'
 
-type GeneratedRecord = {
+export type GeneratedRecord = {
   game: GeneratedNumberGame
   id: string
   number: number
@@ -185,10 +185,15 @@ export function prepareGeneratedHistory(game: GeneratedNumberGame) {
   return migration
 }
 
+// The window prepares legacy and pending saves before either worker reads the database.
+export function readGeneratedRecords(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
+  return runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
+}
+
 export async function generatedNumberHistory(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
   try {
     await prepareGeneratedHistory(game)
-    return await runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
+    return await readGeneratedRecords(game)
   } catch {
     const { ids, positions, pending } = await readLegacy(game)
     return Array.from(ids, (id, index) => ({

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { expect, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
 import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
-import { KakuroPlay } from '../../src/components/Kakuro'
+import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
@@ -79,6 +79,37 @@ export const SavedDifficultyResults: Story = {
     await userEvent.click(increase)
     await userEvent.keyboard('{ArrowLeft}')
     await expect(canvas.getByLabelText('Easy results')).toBeVisible()
+  },
+}
+
+export const MorePuzzlesInProgress: Story = {
+  render: () => <PreviewRouter shell><KakuroDifficultyPage /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const saved = new Map(kakuroCatalog.map(({ id, puzzle }) => {
+      const key = numberPositionKey('kakuro', id)
+      const previous = localStorage.getItem(key)
+      const first = puzzle.cells.indexOf(null)
+      const values = puzzle.cells.map((_, index) => index === first ? 1 : 0)
+      localStorage.setItem(key, JSON.stringify({ values, notes: values.map(() => 0) }))
+      return [key, previous]
+    }))
+    return () => {
+      for (const [key, previous] of saved) {
+        if (previous === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, previous)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const resume = within(await canvas.findByRole('region', { name: 'In progress' }))
+    await expect(resume.getAllByRole('link')).toHaveLength(24)
+    const more = resume.getByRole('button', { name: 'Show more puzzles' })
+    more.focus()
+    await userEvent.keyboard('{Enter}')
+    const links = resume.getAllByRole('link')
+    await expect(links.length).toBeGreaterThanOrEqual(kakuroCatalog.length)
+    await expect(links[24]).toHaveFocus()
   },
 }
 

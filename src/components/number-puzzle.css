@@ -17,6 +17,10 @@
   contain-intrinsic-block-size: auto 61px;
 }
 
+.number-puzzle-resume > button {
+  margin-top: .75rem;
+}
+
 .number-puzzle-play.workspace {
   height: auto;
   min-width: 0;
