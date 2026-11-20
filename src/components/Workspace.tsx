@@ -8,7 +8,7 @@ import {
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
-import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows, type SizedGrid } from '../sudoku/grid'
+import { fiveJigsawForSeed, MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows, type SizedGrid } from '../sudoku/grid'
 import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -494,7 +494,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function createPuzzle(variant?: NewPuzzleId, boxRows?: 2 | 3, layout?: SizedGrid) {
     setPanel(null)
-    const grid = layout ?? (variant === 'six' ? sixGridForBoxRows(boxRows) : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined)
+    const grid = layout ?? (variant === 'six' ? sixGridForBoxRows(boxRows)
+      : variant === 'jigsaw-five' ? fiveJigsawForSeed() : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined)
     const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
     const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
     if (variant === 'algebraic-cages') draft.position.draftCages = []
@@ -641,7 +642,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
                 onNewPuzzle={openNewPuzzle} onEditPuzzle={editPuzzle}
                 onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages'
-                  : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined,
+                  : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 5 ? 'jigsaw-five' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined,
                 boxRows, boxlessDraftLayout)}
                 onEditCages={() => setPanel('cages')}
                 onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}

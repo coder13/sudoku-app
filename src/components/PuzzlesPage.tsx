@@ -13,8 +13,8 @@ import { sixGridForBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
-import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, type NewPuzzleId } from '../sudoku/new-puzzle'
-import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel } from '../sudoku/variants'
+import { ALGEBRAIC_CAGES_NAME, ALGEBRAIC_CAGES_RULE, FIVE_JIGSAW_NAME, FIVE_JIGSAW_RULE, gameVariantId, isGameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, MINI_RULE, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SEVEN_JIGSAW_RULE, SIX_NAME, SIX_RULE, newPuzzleVariants, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { VARIANTS, PUZZLE_VARIANTS, variantDifficulty, variantDifficultyLabel, variantName } from '../sudoku/variants'
 import { ManagePuzzle } from './PuzzleDialogs'
 import { VariantPreview } from './VariantPreview'
 import { VariantRulesetSelector } from './VariantRulesetSelector'
@@ -60,7 +60,8 @@ function PuzzleRows({ puzzles, active, manage }: {
         const name = useRatingTitle ? rating || 'Unrated' : game.title
         const variant = gameVariantId(game)
         const variantLabel = variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME
-          : variant === 'six' ? SIX_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : variant === 'boxless-seven' ? SEVEN_BOXLESS_NAME : variant === 'mini' ? MINI_NAME : variant === 'mixed' ? 'Mixed rules' : PUZZLE_VARIANTS[variant].name
+          : game.grid ? sizedGridName(game.grid)
+          : variant === 'mixed' ? 'Mixed rules' : variantName(game.variant)
         const detail = (manage
           ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
@@ -102,6 +103,7 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
         {Object.entries(PUZZLE_VARIANTS).map(([id, variant]) => <option key={id} value={id}>{variant.name}</option>)}
         <option value="mini">{MINI_NAME}</option>
         <option value="six">{SIX_NAME}</option>
+        <option value="jigsaw-five">{FIVE_JIGSAW_NAME}</option>
         <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
         <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>
         <option value="algebraic-cages">{ALGEBRAIC_CAGES_NAME}</option>
@@ -171,6 +173,7 @@ function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
   const index = newPuzzleVariants.indexOf(variant)
   const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE }
     : variant === 'six' ? { name: SIX_NAME, rule: SIX_RULE }
+    : variant === 'jigsaw-five' ? { name: FIVE_JIGSAW_NAME, rule: FIVE_JIGSAW_RULE }
     : variant === 'jigsaw-seven' ? { name: SEVEN_JIGSAW_NAME, rule: SEVEN_JIGSAW_RULE }
     : variant === 'algebraic-cages' ? { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE } : VARIANTS[variant]
 
@@ -244,7 +247,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
     void generate(selected, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
-  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
+  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'jigsaw-five' ? FIVE_JIGSAW_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
   return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
     busy={busy} error={error} onStart={start}
     startLabel={selected === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[selected].toLowerCase()} puzzle`}>

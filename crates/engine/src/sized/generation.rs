@@ -152,6 +152,20 @@ pub fn generate_six(
     None
 }
 
+/// Generate a uniquely solvable puzzle on a connected 5 × 5 layout.
+pub fn generate_five_jigsaw(
+    layout: &SizedGrid,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+) -> Option<[u8; 25]> {
+    let minimum = match difficulty {
+        MiniDifficulty::Easy => 7,
+        MiniDifficulty::Medium => 5,
+    };
+    generate_jigsaw_with_recipe(layout, seed, difficulty, exclude, minimum)
+}
+
 /// Generate a uniquely solvable puzzle on a connected 7 × 7 layout.
 pub fn generate_jigsaw(
     layout: &SizedGrid,
@@ -159,24 +173,38 @@ pub fn generate_jigsaw(
     difficulty: MiniDifficulty,
     exclude: &[Vec<u8>],
 ) -> Option<[u8; 49]> {
-    if layout.size() != 7 {
+    let minimum = match difficulty {
+        MiniDifficulty::Easy => 20,
+        MiniDifficulty::Medium => 15,
+    };
+    generate_jigsaw_with_recipe(layout, seed, difficulty, exclude, minimum)
+}
+
+fn generate_jigsaw_with_recipe<const CELLS: usize>(
+    layout: &SizedGrid,
+    seed: u32,
+    difficulty: MiniDifficulty,
+    exclude: &[Vec<u8>],
+    minimum: usize,
+) -> Option<[u8; CELLS]> {
+    let size = layout.size();
+    if layout.cell_count() != CELLS || !layout.has_regions() {
         return None;
     }
     let excluded: HashSet<&[u8]> = exclude.iter().map(Vec::as_slice).collect();
     // Relabeling a completion can always put these digits in the first row.
-    let mut labeled = [0; 49];
-    labeled[..7].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7]);
-    let base: [u8; 49] = layout.solve(&labeled, 500_000)?.try_into().ok()?;
+    let mut labeled = [0; CELLS];
+    for (cell, digit) in labeled[..size].iter_mut().enumerate() {
+        *digit = cell as u8 + 1;
+    }
+    let base: [u8; CELLS] = layout.solve(&labeled, 500_000)?.try_into().ok()?;
     let mut random = Random::from_seed(seed);
-    let (minimum, spread) = match difficulty {
-        MiniDifficulty::Easy => (20, 4),
-        MiniDifficulty::Medium => (15, 4),
-    };
     for _ in 0..160 {
-        let mut digits = [1, 2, 3, 4, 5, 6, 7];
-        random.shuffle(&mut digits);
+        let mut digits = [0; super::MAX_SIZE];
+        digits[..size].copy_from_slice(&labeled[..size]);
+        random.shuffle(&mut digits[..size]);
         let solution = base.map(|digit| digits[usize::from(digit - 1)]);
-        if let Some(puzzle) = carve(layout, solution, minimum, spread, 10_000, &mut random)
+        if let Some(puzzle) = carve(layout, solution, minimum, 4, 10_000, &mut random)
             && !excluded.contains(puzzle.as_slice())
             && recipe_matches(layout, puzzle, solution, difficulty)
         {

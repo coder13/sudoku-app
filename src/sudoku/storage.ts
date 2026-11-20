@@ -1,4 +1,4 @@
-import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isSevenJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
+import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
@@ -70,8 +70,8 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
   }
   const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
-    const layout = { size: 7, regions: draftRegions }
-    if (!isSevenJigsawGrid(layout)) return false
+    const layout = { size: grid.size, regions: draftRegions }
+    if (!isJigsawGrid(layout)) return false
     grid = layout
   } else if (draftRegions !== undefined) return false
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
@@ -79,7 +79,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
-    (draftSizedRules === undefined ? !(draft && (grid.size === 6 || grid.size === 7)) :
+    (draftSizedRules === undefined ? !(draft && grid.size !== 4 && grid.size !== 9) :
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
