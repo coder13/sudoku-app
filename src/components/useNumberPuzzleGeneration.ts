@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { NumberPuzzleDifficulty } from '../number-puzzles/catalog'
-import { generatedNumberToken, type GeneratedNumberGame } from '../number-puzzles/generated'
+import { generatedNumberToken, RECENT_GENERATED_PUZZLE_LIMIT, type GeneratedNumberGame } from '../number-puzzles/generated'
 import type { GenerationRequest } from '../number-puzzles/generation.worker'
 import { generatedNumberTokens, rememberGeneratedNumberPuzzle, rememberNumberDifficulty } from '../number-puzzles/progress'
 
@@ -47,10 +47,11 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           setPending(null)
         }, fail)
       }
+      const previous = generatedNumberTokens(game)
       const request: GenerationRequest = {
         game, difficulty,
         seed: crypto.getRandomValues(new Uint32Array(1))[0],
-        previous: generatedNumberTokens(game).slice(-150),
+        previous: game === 'calcudoku' ? previous : previous.slice(-RECENT_GENERATED_PUZZLE_LIMIT),
       }
       worker.postMessage(request)
     } catch {
