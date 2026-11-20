@@ -10,8 +10,9 @@ const blank = {
 test('puzzle always has an active input mode', () => {
   const valid: readonly PuzzleInputMode[] = ['pen', 'pencil', 'highlight', 'erase', 'color', 'chain']
   for (let flags = 0; flags < 1 << 7; flags++) {
-    const options = Object.fromEntries(Object.keys(blank).map((key, index) => [key, Boolean(flags & (1 << index))]))
-      as typeof blank
+    const options = Object.fromEntries(
+      Object.keys(blank).map((key, index) => [key, Boolean(flags & (1 << index))]),
+    ) as typeof blank
     assert.ok(valid.includes(puzzleInputMode(options)), `flags ${flags} produced no active mode`)
   }
   assert.equal(puzzleInputMode(blank), 'pen')
