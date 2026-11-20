@@ -247,14 +247,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               : kind === 'extra-house' ? `Select ${size} cells that contain each digit once.`
                 : 'Select the cells that should have a marker.'}</p>}
       {kind === 'killer-cages' && <>
-        {cages.length > 0 && <label>Cage
-          <SelectControl value={cageIndex} onChange={event => selectCage(Number(event.currentTarget.value))}>
+        {cages.length > 0 && <>
+          <label htmlFor={`${id}-cage`}>Cage</label>
+          <SelectControl id={`${id}-cage`} value={cageIndex} onChange={event => selectCage(Number(event.currentTarget.value))}>
             <option value={-1}>New cage</option>
             {cages.map(({ cells, sum }, index) => <option key={index} value={index}>
               {sum} · {cellName(Math.min(...cells))}
             </option>)}
           </SelectControl>
-        </label>}
+        </>}
         <label htmlFor={`${id}-cage-total`}>Cage total</label>
         <input id={`${id}-cage-total`} inputMode="numeric" type="number" min={1}
           max={size * (size + 1) / 2} value={cageTotal} onChange={event => {
