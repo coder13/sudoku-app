@@ -515,7 +515,8 @@ export function Worktable({
     : advancedWorkspace && desktopInputVisible)
   const drawingIntent = savedPlayState?.drawingIntent ?? null
   const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
-  const chainsActive = chainsVisible || (chainKeypadVisible && (showStrongLinks || chainDrawingRequested))
+  // Strong-link highlighting also works directly from the puzzle footer, without opening Chains.
+  const chainsActive = !grid && (chainsVisible || (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -2390,13 +2391,12 @@ export function Worktable({
           if (savedHighlightMode) setHighlightMode(false)
           changeHintVisuals('player')
         }
-        showPuzzleTool('chains')
         setStartDrawingOnOpen(false)
         if (sketch.drawing) sketch.suspend()
         setShowStrongLinks(current => !current)
       },
       disabled: !panelAvailable('chains'),
-      pressed: showStrongLinks && chainsVisible,
+      pressed: showStrongLinks,
     },
     techniques: { Icon: ListFilter, run: () => showPuzzleTool('techniques'),
       disabled: !panelAvailable('techniques'), pressed: activeToolPanel === 'techniques' },
