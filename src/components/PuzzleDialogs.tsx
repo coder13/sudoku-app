@@ -1,5 +1,6 @@
 import { Button, ChoiceButton } from './Button'
-import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
+import { type FormEvent, type RefObject, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useBlocker, useLocation, type ShouldBlockFn } from '@tanstack/react-router'
 import { Bookmark, Clipboard, Link2, Trash2 } from 'lucide-react'
 import { analyzeMini } from '../sudoku/mini-play'
 import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
@@ -7,7 +8,7 @@ import { runEngine } from '../sudoku/engine'
 import { algebraicLabel, connectedCage, isAlgebraicCageList, parseAlgebraicTotal, type AlgebraicCage } from '../sudoku/algebraic-cages'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
-import { isSolved, makeGame, move, valuesOf, type Game } from '../sudoku/game'
+import { isSolved, makeGame, shouldOfferPuzzleSave, move, valuesOf, type Game } from '../sudoku/game'
 import { MINI_GRID } from '../sudoku/grid'
 import { publishSharedPuzzle, sharedPuzzleLink } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
@@ -22,6 +23,75 @@ function useMounted() {
     return () => { mounted.current = false }
   }, [])
   return mounted
+}
+
+type PendingDeparture = { game: Game; continueNavigation: (leave: boolean) => void }
+
+export function useUnstartedPuzzleDeparture(settingsReturnLocation: RefObject<{ href: string } | null>) {
+  const [departure, setDeparture] = useState<PendingDeparture | null>(null)
+  const pending = useRef<PendingDeparture | null>(null)
+  const leavingPuzzle = useRef<string | null>(null)
+  const locationHref = useLocation({ select: location => location.href })
+
+  useEffect(() => {
+    if (leavingPuzzle.current && new URL(locationHref, window.location.origin).searchParams.get('puzzle') !== leavingPuzzle.current) {
+      leavingPuzzle.current = null
+    }
+  }, [locationHref])
+
+  const requestDeparture = useCallback((id: string | undefined, continueNavigation: (leave: boolean) => void) => {
+    if (pending.current) {
+      continueNavigation(false)
+      return
+    }
+    const game = roomStore.getSnapshot().games.find(item => item.id === id)
+    if (!shouldOfferPuzzleSave(game)) {
+      continueNavigation(true)
+      return
+    }
+    pending.current = { game, continueNavigation }
+    setDeparture(pending.current)
+  }, [])
+
+  const shouldBlock = useCallback<ShouldBlockFn>(({ current, next }) => {
+    const settingsPath = /^\/settings(?:\/|$)/
+    if (settingsPath.test(next.pathname)) return false
+    const fromSettings = settingsPath.test(current.pathname) ? settingsReturnLocation.current : null
+    const id = fromSettings
+      ? new URL(fromSettings.href, window.location.origin).searchParams.get('puzzle') ?? undefined
+      : current.pathname === '/' && 'puzzle' in current.search && typeof current.search.puzzle === 'string'
+        ? current.search.puzzle : undefined
+    if (!id || (next.pathname === '/' && 'puzzle' in next.search && next.search.puzzle === id)) return false
+    return new Promise<boolean>(resolve => requestDeparture(id, leave => resolve(!leave)))
+  }, [requestDeparture, settingsReturnLocation])
+  useBlocker({ shouldBlockFn: shouldBlock, enableBeforeUnload: false })
+  useEffect(() => () => pending.current?.continueNavigation(false), [])
+
+  function finish(save?: boolean) {
+    const request = pending.current
+    if (!request) return
+    pending.current = null
+    setDeparture(null)
+    if (save !== undefined) {
+      // The previous route can still render while the next one loads.
+      leavingPuzzle.current = request.game.id
+      roomStore.resolvePendingSave(request.game.id, save)
+    }
+    request.continueNavigation(save !== undefined)
+  }
+
+  return { departure, requestDeparture, finish, isLeaving: (id: string) => leavingPuzzle.current === id }
+}
+
+export function SaveUnstartedPuzzle({ close, resolve }: { close: () => void; resolve: (save: boolean) => void }) {
+  return <Modal title="Save this puzzle for later?" onClose={close}>
+    <p>You haven’t started this puzzle. Save it to keep it in Your puzzles.</p>
+    <div className="dialog-actions">
+      <Button type="button" onClick={close}>Stay here</Button>
+      <Button type="button" variant="danger" onClick={() => resolve(false)}>Leave without saving</Button>
+      <Button type="button" variant="primary" autoFocus onClick={() => resolve(true)}>Save for later</Button>
+    </div>
+  </Modal>
 }
 
 export function ManagePuzzle({ game, close }: {
