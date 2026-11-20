@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { generateCalcudoku, calcudokuRecipeKey, calcudokuRecipeSignature } from '../src/calcudoku/generator.ts'
-import { generateKakuro, kakuroRecipeSignature } from '../src/kakuro/generator.ts'
+import { kakuroCatalog } from '../src/kakuro/catalog.ts'
+import { findKakuroRecipes, generateKakuro, kakuroLayouts, kakuroRecipeFromPuzzle, kakuroRecipeSignature } from '../src/kakuro/generator.ts'
 import { checkKakuro, findKakuroHint, solveKakuro } from '../src/kakuro/engine.ts'
 import { checkLatin, findLatinHint, solveLatin } from '../src/latin/engine.ts'
 import { numberPuzzleDifficulties } from '../src/number-puzzles/catalog.ts'
@@ -11,6 +12,7 @@ import {
   kakuroFromRecipe, RECENT_GENERATED_PUZZLE_LIMIT,
 } from '../src/number-puzzles/generated.ts'
 import { generateNumberPuzzle } from '../src/number-puzzles/generation.ts'
+import { seededIndex, shuffled } from '../src/number-puzzles/generation-random.ts'
 
 test('Kakuro generation avoids previous recipes and rates the full hint replay', () => {
   for (const difficulty of numberPuzzleDifficulties) {
@@ -42,6 +44,53 @@ test('Kakuro generation avoids previous recipes and rates the full hint replay',
       assert.equal(depth === 1 ? 'easy' : depth === 2 ? 'medium' : 'hard', difficulty)
     }
   }
+})
+
+test('Kakuro retries and keeps a fresh play available when both searches reach their limits', () => {
+  const game = 'kakuro'
+  const difficulty = 'hard'
+  const seed = 7499330
+  const retrySeed = (seed ^ 0x9e3779b1) >>> 0
+  const excluded = new Set(kakuroCatalog.map(({ puzzle }) => kakuroRecipeSignature(puzzle)))
+  const request = { game, difficulty, seed } as const
+  const exhaustSeed = (value: number) => {
+    const pick = seededIndex(value)
+    const recipes = shuffled(kakuroLayouts.hard, pick)
+      .flatMap(layout => findKakuroRecipes(layout, difficulty, excluded, pick, Infinity))
+    return recipes.map(recipe => encodeGeneratedNumberPuzzle({ game, difficulty, recipe }))
+  }
+
+  const first = exhaustSeed(seed)
+  assert.ok(first.length > 0)
+  assert.equal(generateKakuro(difficulty, seed, excluded), null)
+  const retry = generateKakuro(difficulty, retrySeed, excluded)
+  assert.ok(retry)
+  const retried = generateNumberPuzzle({ ...request, previous: first })
+  assert.deepEqual(decodeGeneratedNumberPuzzle(retried, game), { game, difficulty, recipe: retry })
+
+  const second = exhaustSeed(retrySeed)
+  assert.equal(generateKakuro(difficulty, retrySeed, excluded), null)
+  const exhausted = [...first, ...second]
+  assert.ok(exhausted.length < RECENT_GENERATED_PUZZLE_LIMIT)
+  const catalogPlay = generateNumberPuzzle({ ...request, previous: exhausted })
+  const catalog = kakuroCatalog.find(entry => entry.difficulty === difficulty)
+  assert.ok(catalog)
+  assert.deepEqual(decodeGeneratedNumberPuzzle(catalogPlay, game), {
+    game, difficulty, recipe: kakuroRecipeFromPuzzle(catalog.puzzle),
+  })
+
+  const filler = exhaustSeed(123).slice(0, RECENT_GENERATED_PUZZLE_LIMIT + 1 - exhausted.length)
+  const previous = [...exhausted, ...filler]
+  assert.equal(previous.length, RECENT_GENERATED_PUZZLE_LIMIT + 1)
+  const replay = generateNumberPuzzle({ ...request, previous })
+  const original = decodeGeneratedNumberPuzzle(first[0], game)
+  assert.ok(original)
+  assert.ok(generatedNumberToken(replay))
+  assert.ok(!previous.includes(replay))
+  assert.notEqual(generateNumberPuzzle({ ...request, previous }), replay)
+  assert.equal(decodeGeneratedNumberPuzzle(replay, 'calcudoku'), null)
+  assert.deepEqual(decodeGeneratedNumberPuzzle(replay, game), original)
+  assert.equal(solveKakuro(kakuroFromRecipe(original.recipe), [], 1).status, 'unique')
 })
 
 test('Calcudoku generation gives a distinct cage set and complete hints at each difficulty', () => {

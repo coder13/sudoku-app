@@ -34,6 +34,9 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     if (rule.type === 'diagonal') {
       return Object.keys(rule).length === 2 && (rule.diagonal === 'main' || rule.diagonal === 'anti')
     }
+    if (rule.type === 'anti-sum') {
+      return Object.keys(rule).length === 2 && Number.isInteger(rule.sum) && rule.sum >= 2 && rule.sum <= 2 * size
+    }
     if (rule.type === 'kropki') {
       return Object.keys(rule).every(key => ['type', 'consecutive', 'ratioTwo'].includes(key)) &&
         [rule.consecutive, rule.ratioTwo].every(marks => marks === undefined || validKropkiMarks(marks, size))
@@ -136,6 +139,13 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
       const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + Number(solution[cell]), 0)
       if (total(rule.cells) !== total(ends)) return
+    } else if (rule.type === 'anti-sum') {
+      const { size } = grid
+      for (let cell = 0; cell < size ** 2; cell++) {
+        const digit = Number(solution[cell])
+        if (cell % size < size - 1 && digit + Number(solution[cell + 1]) === rule.sum ||
+          cell < size * (size - 1) && digit + Number(solution[cell + size]) === rule.sum) return
+      }
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
@@ -172,6 +182,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     }
     else if (rule.type === 'double-arrow') clues.add('The digits along each Double Arrow add up to the sum of the digits in its two end circles.')
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
+    else if (rule.type === 'anti-sum') clues.add(`Digits in cells that share an edge cannot add to ${rule.sum}.`)
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'labeled-dots') {
       if (rule.marks.length) clues.add(rule.relation === 'ratio'

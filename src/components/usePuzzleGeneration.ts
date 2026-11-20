@@ -55,7 +55,7 @@ export function usePuzzleGeneration() {
         if (!active()) return
         if (rating?.difficulty !== difficulty) throw new Error('The walkthrough did not match the selected difficulty.')
         const game = makeGame(createGameId(), nextPuzzleTitle(`${ALGEBRAIC_CAGES_NAME} `), givens, 'generated', undefined, MINI_GRID)
-        roomStore.add({ ...game, algebraic, difficulty, score: rating.points })
+        roomStore.add({ ...game, pendingSave: true, algebraic, difficulty, score: rating.points })
         onGenerated?.()
         return
       }
@@ -70,7 +70,7 @@ export function usePuzzleGeneration() {
         const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] }, run)
         if (!active()) return
         const game = makeGame(createGameId(), nextPuzzleTitle(`${sizedGridName(grid)} `), givens, 'generated', undefined, grid)
-        roomStore.add({ ...game, sized, difficulty, score: null })
+        roomStore.add({ ...game, pendingSave: true, sized, difficulty, score: null })
         onGenerated?.()
         return
       }
@@ -80,7 +80,7 @@ export function usePuzzleGeneration() {
         const givens = (await run({ type: 'generate-mini', seed, difficulty, exclude })).join('')
         if (!active()) return
         const game = makeGame(createGameId(), nextPuzzleTitle(`${MINI_NAME} `), givens, 'generated', undefined, MINI_GRID)
-        roomStore.add({ ...game, difficulty, score: null })
+        roomStore.add({ ...game, pendingSave: true, difficulty, score: null })
         onGenerated?.()
         return
       }
@@ -99,7 +99,7 @@ export function usePuzzleGeneration() {
           difficulty, points: result.rating.points, scoringVersion: result.rating.scoringVersion,
           techniqueOrder: result.rating.techniqueOrder,
         }, auto ? undefined : 'fixed')
-        roomStore.add(game)
+        roomStore.add({ ...game, pendingSave: true })
         onGenerated?.()
         return
       }
@@ -118,7 +118,7 @@ export function usePuzzleGeneration() {
         difficulty: canonical.status.solved, points: canonical.score.points,
         scoringVersion: canonical.scoringVersion, techniqueOrder: canonical.techniqueOrder,
       }, auto ? undefined : 'fixed')
-      roomStore.add({ ...game, difficulty: game.difficulty ?? difficulty })
+      roomStore.add({ ...game, pendingSave: true, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
     } catch (reason) {
       if (active() && !(reason instanceof Error && reason.name === 'AbortError')) {

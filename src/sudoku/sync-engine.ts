@@ -43,14 +43,14 @@ async function digest(content: unknown) {
 function fingerprint(game: Game) {
   // Filing is local to the workspace. Clocks on two displays of the same
   // position converge to the highest elapsed time without creating a fork.
-  const { elapsed, savedForLater, ...content } = game
+  const { elapsed, savedForLater, pendingSave, ...content } = game
   return digest(content)
 }
 
 function progressFingerprint(game: Game) {
   // A receiving device can rate a puzzle or classify the same moves itself.
   // Preserve actual moves, independent of their technique labels and grouping.
-  const { elapsed, savedForLater, difficulty, score, ratingAttempt, actionHistory, ...progress } = game
+  const { elapsed, savedForLater, pendingSave, difficulty, score, ratingAttempt, actionHistory, ...progress } = game
   const actions = actionHistory?.flatMap(({ kind, changes }) => changes.map(change => ({ kind, change })))
   const hasRatingEvidence = ratingAttempt && (ratingAttempt.outcome || ratingAttempt.lastHintAt !== undefined ||
     ratingAttempt.viewed.length || ratingAttempt.applied.length || ratingAttempt.requested?.length ||

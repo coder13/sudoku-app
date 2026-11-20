@@ -69,6 +69,7 @@ export type Game = {
   created: number
   saved?: boolean
   savedForLater?: true
+  pendingSave?: true
   archived?: boolean
   editingId?: string
   returnId?: string
@@ -135,6 +136,11 @@ export function restartGame(game: Game): Game {
     editingId: game.editingId,
     returnId: game.returnId,
   }
+}
+
+export function shouldOfferPuzzleSave(game: Game | undefined): game is Game & { pendingSave: true } {
+  return Boolean(game?.source === 'generated' && game.pendingSave && !game.started && !game.saved &&
+    !game.savedForLater && !game.archived && !isSolved(game))
 }
 
 export function isPuzzleSaved(game: Game): boolean {

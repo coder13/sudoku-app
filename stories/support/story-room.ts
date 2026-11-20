@@ -1,4 +1,4 @@
-import { isSolved, STARTER_GAME, type Game } from '../../src/sudoku/game'
+import { isSolved, shouldOfferPuzzleSave, STARTER_GAME, type Game } from '../../src/sudoku/game'
 import { pruneChainsAfterMove } from '../../src/sudoku/chain-sketch'
 import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
@@ -56,7 +56,12 @@ export const roomStore: typeof appStore = {
     const game = room.games.find(item => item.id === id)
     if (!game || game.source === 'draft' || isSolved(game)) return
     roomStore.stopPlaying(id)
-    roomStore.update(id, current => ({ ...current, savedForLater: true }))
+    roomStore.update(id, current => ({ ...current, pendingSave: undefined, savedForLater: true }))
+  },
+  resolvePendingSave(id, save) {
+    if (!shouldOfferPuzzleSave(room.games.find(game => game.id === id))) return
+    if (save) roomStore.saveForLater(id, { notify: false })
+    else roomStore.remove(id, { notify: false })
   },
   stopPlaying(id) {
     if (room.active === id) publish({ ...room, active: null, stoppedPlaying: true })
