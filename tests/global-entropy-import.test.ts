@@ -173,10 +173,8 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
   await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
   assert.match(ordered.deferred, /order digit groups.*169/)
-  for (const id of ['FLAb', '2j53']) {
-    const source = deferred.find((source: { url: string }) => source.url.endsWith(id))
-    await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region/i)
-  }
+  const bento = deferred.find((source: { url: string }) => source.url.endsWith('FLAb'))
+  await assert.rejects(detectPuzzle(bento.code), /unsupported|not supported|region/i)
 })
 
 

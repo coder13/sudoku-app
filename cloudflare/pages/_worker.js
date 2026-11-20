@@ -47,7 +47,7 @@ const publicPuzzleSources = {
     url: id => `https://sudoku.coach/en/s/${id}`,
     maxBytes: 512 * 1024,
     code(text) {
-      const codes = new Set(text.match(/\bSCv7_32_[0-9a-v]+\b/gi) ?? [])
+      const codes = new Set(text.match(/\bSCv(?:7_32_[0-9a-v]+\b|[456]_[0-9a-z_()[\]+.-]+)/gi) ?? [])
       return codes.size === 1 ? codes.values().next().value : undefined
     },
   },

@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
+import { decodeLegacyCoach } from './legacy-coach.ts'
 import type { OutsideSide } from './outside-clues.ts'
 import { closedRegionSumCells, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
@@ -165,6 +166,8 @@ function parseJSON(text: string, format: ImportFormat): unknown {
 
 async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
+  const legacy = /^SCv([456])_/i.exec(code)
+  if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as '4' | '5' | '6', MAX_DECODED_LENGTH)
   const prefix = COACH_CODE.exec(code)
   if (!prefix || prefix[1] !== '7' || prefix[2] !== '32') {
     throw new Error('This Sudoku Coach code uses an unsupported format. Copy the puzzle from Sudoku Coach and try again.')

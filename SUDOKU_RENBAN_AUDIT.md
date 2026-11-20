@@ -26,7 +26,7 @@ The original Renban release deferred [Ksy3](https://sudoku.coach/en/s/Ksy3) for 
 
 [Race track](https://sudoku.coach/en/s/9uMo) imports through the sized rule path with its two Renban lines and three numbered Difference markers. [Sized-grid verification](SUDOKU_SHARED_GRID_RULES_AUDIT.md)
 
-[5NW](https://sudoku.coach/en/s/5NW) still requires legacy SCv4 interchange and Consecutive Line support.
+[5NW](https://sudoku.coach/en/s/5NW) uses the supported SCv4 record format. Its authored cell colors and active Consecutive Line still require support.
 
 ## Compiler and drawing semantics
 

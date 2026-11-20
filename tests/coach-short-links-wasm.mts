@@ -27,6 +27,7 @@ const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
   JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
 const entropySums = entropySources.find(({ url }) => url.endsWith('HqJ9'))!
 const negativeBlackDots = entropySources.find(({ url }) => url.endsWith('K95q'))!
+const legacyEntropy = entropySources.find(({ url }) => url.endsWith('2j53'))!
 
 const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8')) as {
   source: string
@@ -336,6 +337,37 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     assert.equal(kropkiDigitExclusions(split, 11, 12, 2, 9) & (1 << 3), 1 << 3)
     await assert.rejects(detectPuzzle('sudoku.coach/s/MissingLayer'), /missing the black Kropki dot layer/)
     await assert.rejects(detectPuzzle('sudoku.coach/s/WhiteLayer'), /uses white dots/)
+  } finally { sqlite.close() }
+})
+
+test('a published legacy Coach code retains its Global Entropy rule through help and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, solution } = legacyEntropy
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('2j53', code, '')))
+    : fetcher(path, init))
+  try {
+    const { game, format } = await prepareImportedPuzzle(url)
+    assert.equal(format, 'Sudoku Coach')
+    assert.equal(game.variant?.id, 'global-entropy')
+    assert.deepEqual(game.variant.puzzle, (await detectPuzzle(code)).variant?.puzzle)
+    assert.deepEqual(game.variant.puzzle.rules, [{ type: 'global-entropy' }])
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    assert.equal((await puzzleHints(game)).choices.length, 10)
+
+    const selected = await puzzleHints(game, 'all', 'global-entropy')
+    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('global-entropy'), actions.size) } finally { scan.close() }
+
+    const walkthrough = await puzzleSolution(game)
+    assert.deepEqual(walkthrough.rating.status, { solved: 'easy' })
+    assert.equal(walkthrough.board, solution)
+    const id = await publishSharedPuzzle(game)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.equal(shared.game.title, game.title)
   } finally { sqlite.close() }
 })
 
