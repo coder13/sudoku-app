@@ -47,7 +47,7 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
   </g>
 }
 
-function kropkiDots(rules: readonly (VariantRule | SizedDifferenceRule)[], size = 9) {
+function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
   const dots = new Map<number, number>()
   for (const rule of rules) {
     if (rule.type !== 'kropki') continue
@@ -61,12 +61,18 @@ function kropkiDots(rules: readonly (VariantRule | SizedDifferenceRule)[], size 
   return dots
 }
 
-function renderKropkiDot(a: number, b: number, kind: number, paired: boolean, compact: boolean, size: number) {
+function renderKropkiDot(a: number, b: number, kind: number, paired: boolean, compact: boolean, size: number, value?: number) {
   const offset = paired ? (kind ? 1 : -1) * (compact ? .1 : .125) : 0
   const [ax, ay] = center(a, size), [bx, by] = center(b, size)
-  return <circle key={`${kind}-${a}-${b}`} className={`variant-dot ${kind ? 'variant-dot-black' : 'variant-dot-white'}`}
-    cx={(ax + bx) / 2 + (ax === bx ? offset : 0)}
-    cy={(ay + by) / 2 + (ay === by ? offset : 0)} r={compact ? .085 : .105} />
+  const cx = (ax + bx) / 2 + (ax === bx ? offset : 0)
+  const cy = (ay + by) / 2 + (ay === by ? offset : 0)
+  const key = `${kind}-${a}-${b}`
+  const color = kind ? 'variant-dot-black' : 'variant-dot-white'
+  if (value === undefined) return <circle key={key} className={`variant-dot ${color}`} cx={cx} cy={cy} r={compact ? .085 : .105} />
+  return <g key={key} className={`variant-labeled-dot ${kind ? 'ratio' : 'difference'}`}>
+    <circle className={`variant-dot ${color}`} cx={cx} cy={cy} r={paired ? .111 : .145} />
+    <text x={cx} y={cy}>{value}</text>
+  </g>
 }
 
 function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferenceRule & { dots: number; size: number }) {
@@ -94,6 +100,17 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
   })
   const lanes = coloredLineOverlapLanes(colored.map(({ rule }) => rule), size)
   const dots = kropkiDots(rules, size)
+  const dotValues = new Map<number, [number?, number?]>()
+  for (const rule of rules) if (rule.type === 'labeled-dots') {
+    const kind = rule.relation === 'ratio' ? 1 : 0
+    for (const { cells: [a, b], value } of rule.marks) {
+      const edge = pairKey(a, b, size)
+      const values = dotValues.get(edge) ?? []
+      values[kind] = value
+      dotValues.set(edge, values)
+      dots.set(edge, (dots.get(edge) ?? 0) | 1 << kind)
+    }
+  }
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
     {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
@@ -115,7 +132,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     {[...dots].flatMap(([edge, marks]) => {
       const a = Math.floor(edge / (size ** 2)), b = edge % (size ** 2)
       return [0, 1].filter(kind => marks & (1 << kind))
-        .map(kind => renderKropkiDot(a, b, kind, marks === 3, false, size))
+        .map(kind => renderKropkiDot(a, b, kind, marks === 3, false, size, dotValues.get(edge)?.[kind]))
     })}
     {rules.map((rule, index) => rule.type === 'difference' &&
       <DifferenceClue key={index} {...rule} dots={dots.get(pairKey(...rule.cells, size)) ?? 0} size={size} />)}
@@ -151,6 +168,12 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       const [a, b] = rule.cells
       labels[a].add(`difference of ${rule.difference} with ${at(b)}`)
       labels[b].add(`difference of ${rule.difference} with ${at(a)}`)
+    } else if (rule.type === 'labeled-dots') {
+      for (const { cells: [a, b], value } of rule.marks) {
+        const relation = rule.relation === 'ratio' ? `ratio of 1 to ${value}` : `difference of ${value}`
+        labels[a].add(`${relation} with ${at(b)}`)
+        labels[b].add(`${relation} with ${at(a)}`)
+      }
     } else if (rule.type === 'kropki') {
       for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
         for (const [a, b] of marks?.pairs ?? []) {

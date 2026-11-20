@@ -4,12 +4,14 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
-function kropkiPairRule({ relation, negative }: SizedKropkiPair) {
+function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
   if (negative) return white ? 'The digits on this unmarked edge cannot be consecutive.'
     : 'The digits on this unmarked edge cannot have a 1:2 ratio.'
+  if (value !== undefined) return white ? `The digits across this white dot differ by exactly ${value}.`
+    : `Across this black dot, one digit is ${value} times the other.`
   return white ? 'Digits separated by a white dot are consecutive.'
     : 'Across a black dot, one digit is double the other.'
 }
@@ -19,7 +21,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   if (step.type === 'house') return miniHintChoice(step.proof)
   if (step.type === 'contradiction') return contradictionHint(rules, step, size)
   if (step.type === 'kropki') return {
-    actions: step.actions, technique: 'sized-kropki',
+    actions: step.actions, technique: step.pair.value === undefined ? 'sized-kropki' : 'sized-labeled-dots',
     evidence: { variant: { description: kropkiPairRule(step.pair),
       reason: 'Remove the candidates that cannot be paired with a digit in the neighboring cell under this rule.' } },
     pattern: { houses: [], cells: [...step.pair.cells],

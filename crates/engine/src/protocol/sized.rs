@@ -19,14 +19,18 @@ pub(super) struct Regions {
 }
 
 impl Layout {
-    pub(super) fn compile(&self, digits: &[u8]) -> ResultValue<SizedGrid> {
-        let layout = match self {
+    pub(super) fn build(&self) -> ResultValue<SizedGrid> {
+        match self {
             Self::Boxes(spec) => SizedGrid::new(*spec),
             Self::Regions(spec) => SizedGrid::with_regions(spec.size, &spec.regions),
         }.ok_or((
             "invalid-layout",
             "Choose boxes or connected regions with one cell for each digit.",
-        ))?;
+        ))
+    }
+
+    pub(super) fn compile(&self, digits: &[u8]) -> ResultValue<SizedGrid> {
+        let layout = self.build()?;
         if digits.len() != layout.cell_count()
             || digits.iter().any(|&digit| usize::from(digit) > layout.size())
         {

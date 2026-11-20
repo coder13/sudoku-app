@@ -1,4 +1,4 @@
-import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isSevenJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
@@ -65,13 +65,18 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, chainSketch } = position
+  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  if (draft && grid.size === 7) {
+    const layout = { size: 7, regions: draftRegions }
+    if (!isSevenJigsawGrid(layout)) return false
+    grid = layout
+  } else if (draftRegions !== undefined) return false
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
-    (draftSizedRules === undefined ? !(draft && grid.size === 6) :
+    (draftSizedRules === undefined ? !(draft && (grid.size === 6 || grid.size === 7)) :
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
@@ -106,6 +111,10 @@ export function readGame(id: string, data: string | null): Game | undefined {
       (value.editingId === undefined || (typeof value.editingId === 'string' && value.editingId.length <= 100)) &&
       (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
     ) {
+      if (draft && grid.size === 7) {
+        if (JSON.stringify(value.position.draftRegions) !== JSON.stringify(grid.regions)) return
+        value.position.draftRegions = grid.regions
+      }
       if (value.algebraic !== undefined) {
         if (grid.size !== 4 || value.source === 'draft' || !value.algebraic) return
         const algebraic = restoreAlgebraicGame(value.algebraic, value.givens)
@@ -479,15 +488,16 @@ export const roomStore = {
     } catch { /* Saved puzzles remain available if browser storage is unavailable. */ }
     return [...result]
   },
-  playedSixGivens(boxRows: 2 | 3) {
-    const result = new Set(room.games.filter(game => game.grid?.size === 6 && game.grid.boxRows === boxRows &&
+  playedSizedGivens(grid: Exclude<SizedGrid, typeof MINI_GRID>) {
+    const layout = sizedGridIdentity(grid)
+    const result = new Set(room.games.filter(game => game.grid?.size === grid.size && sizedGridIdentity(game.grid) === layout &&
       game.sized?.rules.length === 0 && game.source !== 'draft').map(game => game.givens))
-    const prefix = `${SEEN_PREFIX}six:${boxRows}:`
+    const prefix = `${SEEN_PREFIX}${layout}:`
     try {
       for (const key of Object.keys(localStorage)) {
-        if (!key.startsWith(prefix)) continue
-        const match = /^([0-6]{36}):$/.exec(key.slice(prefix.length))
-        if (match) result.add(match[1])
+        if (!key.startsWith(prefix) || !key.endsWith(':')) continue
+        const givens = key.slice(prefix.length, -1)
+        if (isGridText(givens, grid)) result.add(givens)
       }
     } catch { /* Saved puzzles remain available if browser storage is unavailable. */ }
     return [...result]

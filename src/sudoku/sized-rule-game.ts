@@ -34,6 +34,19 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).every(key => ['type', 'consecutive', 'ratioTwo'].includes(key)) &&
         [rule.consecutive, rule.ratioTwo].every(marks => marks === undefined || validKropkiMarks(marks, size))
     }
+    if (rule.type === 'labeled-dots') {
+      const ratio = rule.relation === 'ratio'
+      return Object.keys(rule).every(key => ['type', 'relation', 'marks', 'negative'].includes(key)) &&
+        (ratio || rule.relation === 'difference') &&
+        (rule.negative === undefined || typeof rule.negative === 'boolean') &&
+        Array.isArray(rule.marks) && rule.marks.length <= 2 * size * (size - 1) &&
+        (rule.marks.length > 0 || rule.negative === true) && rule.marks.every((mark: { cells?: unknown; value?: unknown }) =>
+          mark && typeof mark === 'object' && Object.keys(mark).length === 2 &&
+          Array.isArray(mark.cells) && mark.cells.length === 2 &&
+          mark.cells.every((cell: unknown) => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell < size ** 2) &&
+          gridCellsShareEdge(mark.cells[0], mark.cells[1], size) &&
+          typeof mark.value === 'number' && Number.isInteger(mark.value) && (ratio ? mark.value >= 2 && mark.value <= size : mark.value >= 1 && mark.value < size))
+    }
     const cells: unknown = rule.cells
     if (!Array.isArray(cells) || cells.length > size ** 2 ||
       !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2)) return false
@@ -106,7 +119,7 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
   }
-  if (rules.some(rule => rule.type === 'kropki')) {
+  if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
     const { size } = grid
     for (let cell = 0; cell < size ** 2; cell++) {
       const digit = Number(solution[cell])
@@ -130,6 +143,14 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
       : `${group === 'region' ? 'Region' : 'Box'} borders split a Region Sum line into segments with the same total. If the line returns to a ${group}, that visit is a separate segment.`)
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
+    else if (rule.type === 'labeled-dots') {
+      if (rule.marks.length) clues.add(rule.relation === 'ratio'
+        ? 'The number on a black dot gives the ratio between its two digits.'
+        : 'The number on a white dot gives the exact difference between its two digits.')
+      if (rule.negative) clues.add(rule.relation === 'ratio'
+        ? 'An edge without a labeled black dot cannot have one digit double the other.'
+        : 'An edge without a labeled white dot cannot separate consecutive digits.')
+    }
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
     else {
       if (rule.consecutive?.pairs?.length) clues.add('Digits separated by a white dot are consecutive.')

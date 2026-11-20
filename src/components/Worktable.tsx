@@ -246,7 +246,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditChainColors, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -282,6 +282,7 @@ export function Worktable({
   onEditPuzzle: () => void
   onEditCages?: () => void
   onEditSizedRules?: () => void
+  onEditRegions?: () => void
   onEditChainColors?: () => void
   showLeftPanel: boolean
   showRightPanel: boolean
@@ -1759,7 +1760,8 @@ export function Worktable({
         ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
         : await runEngine({ type: 'analyze', values })
       const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages || current.position.draftSizedRules !== game.position.draftSizedRules) return
+      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages || current.position.draftSizedRules !== game.position.draftSizedRules ||
+        current.position.draftRegions !== game.position.draftRegions) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
       } else if (!draft && status !== 'search-limit') {
@@ -2470,6 +2472,7 @@ export function Worktable({
           {presentationDraft ? (
             <>
               <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+              {grid?.size === 7 && onEditRegions && <Button onClick={onEditRegions} aria-haspopup="dialog">Edit regions</Button>}
               {grid && !draftCages && onEditSizedRules && <Button onClick={onEditSizedRules} aria-haspopup="dialog">Edit rules</Button>}
               {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
               <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>

@@ -243,7 +243,7 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
       if (rules && sizedRules?.length) throw new Error('This puzzle combines rules the editor cannot verify yet.')
       const algebraic = rules ? await verifyAlgebraicPuzzle({ givens, rules }) : undefined
       const rating = algebraic ? await rateAlgebraicPuzzle(givens, algebraic.rules) : null
-      const sized = game.grid && (game.grid.size === 6 || sizedRules?.length)
+      const sized = game.grid && (game.grid.size !== 4 || sizedRules?.length)
         ? await verifySizedRulePuzzle({ grid: game.grid, givens, rules: sizedRules ?? [] }) : undefined
       if (!algebraic && !sized) {
         const status = game.grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
@@ -253,7 +253,8 @@ export function SavePuzzle({ game, close }: { game: Game; close: () => void }) {
       const current = roomStore.getSnapshot().games.find((item) => item.id === game.id)
       if (!current || current.source !== 'draft' || valuesOf(current) !== givens ||
         JSON.stringify(current.position.draftCages) !== JSON.stringify(rules) ||
-        JSON.stringify(current.position.draftSizedRules) !== JSON.stringify(sizedRules)) {
+        JSON.stringify(current.position.draftSizedRules) !== JSON.stringify(sizedRules) ||
+        JSON.stringify(current.position.draftRegions) !== JSON.stringify(game.position.draftRegions)) {
         throw new Error('The draft changed. Reopen this dialog to save the latest grid.')
       }
       const saveGame = (id: string, created: number) => ({

@@ -65,6 +65,14 @@ enum Request {
         #[serde(default)]
         exclude: Vec<Vec<u8>>,
     },
+    #[cfg(feature = "generation")]
+    GenerateJigsaw {
+        seed: u32,
+        difficulty: crate::MiniDifficulty,
+        grid: sized::Regions,
+        #[serde(default)]
+        exclude: Vec<Vec<u8>>,
+    },
     #[cfg(all(feature = "generation", feature = "variants"))]
     GenerateAlgebraic {
         seed: u32,
@@ -1015,6 +1023,18 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             crate::generate_six(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
+        #[cfg(feature = "generation")]
+        Request::GenerateJigsaw { seed, difficulty, grid, exclude } => {
+            let layout = sized::Layout::Regions(grid).build()?;
+            if layout.size() != 7 {
+                return Err(("invalid-layout", "Use a 7 × 7 grid with seven connected regions."));
+            }
+            if exclude.iter().any(|puzzle| puzzle.len() != 49 || puzzle.iter().any(|digit| *digit > 7)) {
+                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            }
+            crate::generate_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+        }
         #[cfg(all(feature = "generation", feature = "variants"))]
         Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),
         Request::SizedClassic { position, operation } => return sized::execute(position, operation),
@@ -1637,6 +1657,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
                 | "generate-targeted"
                 | "generate-mini"
                 | "generate-six"
+                | "generate-jigsaw"
                 | "generate-algebraic"
                 | "generate-constrained"
                 | "generate-from-pool"

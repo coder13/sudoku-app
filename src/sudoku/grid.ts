@@ -14,6 +14,26 @@ export function sixGridForBoxRows(boxRows?: SixGrid['boxRows']): SixGrid {
 export type MiniGrid = typeof MINI_GRID
 export type SevenJigsawGrid = { size: 7; regions: readonly (readonly number[])[] }
 export type SizedGrid = MiniGrid | SixGrid | SevenJigsawGrid
+const sevenJigsawLayouts: readonly SevenJigsawGrid[] = [
+  ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
+  ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
+  ['0011111', '0211334', '0222334', '0223334', '0255644', '0556664', '5556664'],
+  ['0111111', '0223314', '0233334', '0222344', '0255664', '0556664', '0555664'],
+].map(rows => ({
+  size: 7,
+  regions: regionsFromMembership(Array.from(rows.join(''), Number), 7),
+}))
+
+export function regionsFromMembership(membership: readonly number[], size: number): number[][] {
+  const regions: number[][] = Array.from({ length: size }, () => [])
+  membership.forEach((region, cell) => regions[region].push(cell))
+  return regions
+}
+
+export function sevenJigsawForSeed(seed = 0): SevenJigsawGrid {
+  return sevenJigsawLayouts[seed % sevenJigsawLayouts.length]
+}
+
 export type PlayGrid = typeof CLASSIC_GRID | SizedGrid
 
 export function isMiniGrid(value: unknown): value is MiniGrid {
@@ -112,20 +132,37 @@ export function kropkiDigitExclusions(rules: readonly SizedConstraintRule[], cel
   if (!gridCellsShareEdge(cell, other, size)) return 0
   let white = false, black = false, negativeWhite = false, negativeBlack = false
   const matches = ([a, b]: readonly [number, number]) => a === cell && b === other || a === other && b === cell
+  let excluded = 0, labeledEdges = 0, labeledNegative = 0
   for (const rule of rules) {
-    if (rule.type !== 'kropki') continue
-    white ||= rule.consecutive?.pairs?.some(matches) === true
-    black ||= rule.ratioTwo?.pairs?.some(matches) === true
-    negativeWhite ||= rule.consecutive?.negative === true
-    negativeBlack ||= rule.ratioTwo?.negative === true
+    if (rule.type === 'kropki') {
+      white ||= rule.consecutive?.pairs?.some(matches) === true
+      black ||= rule.ratioTwo?.pairs?.some(matches) === true
+      negativeWhite ||= rule.consecutive?.negative === true
+      negativeBlack ||= rule.ratioTwo?.negative === true
+    } else if (rule.type === 'labeled-dots') {
+      const ratio = rule.relation === 'ratio'
+      const bit = ratio ? 2 : 1
+      if (rule.negative) labeledNegative |= bit
+      for (const mark of rule.marks) {
+        if (!matches(mark.cells)) continue
+        labeledEdges |= bit
+        for (let other = 1; other <= size; other++) {
+          if (ratio ? Math.max(digit, other) !== mark.value * Math.min(digit, other) : Math.abs(digit - other) !== mark.value) {
+            excluded |= 1 << (other - 1)
+          }
+        }
+      }
+    }
   }
-  let excluded = 0
   if (white || black || negativeWhite || negativeBlack) for (let candidate = 1; candidate <= size; candidate++) {
     const consecutive = Math.abs(digit - candidate) === 1
     const ratioTwo = digit === 2 * candidate || candidate === 2 * digit
     if (white && !consecutive || black && !ratioTwo ||
       !white && !black && (negativeWhite && consecutive || negativeBlack && ratioTwo)) excluded |= 1 << (candidate - 1)
   }
+  const unmarkedNegative = labeledNegative & ~labeledEdges
+  if (unmarkedNegative & 1) excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < size ? 1 << digit : 0)
+  if (unmarkedNegative & 2) excluded |= (2 * digit <= size ? 1 << (2 * digit - 1) : 0) | (digit % 2 === 0 ? 1 << (digit / 2 - 1) : 0)
   return excluded
 }
 
