@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -12,7 +12,7 @@ import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
@@ -43,7 +43,7 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../sudoku/puzzle-help'
 import { playCandidates } from '../sudoku/variant-play'
-import { variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -58,6 +58,7 @@ import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
 import { MobileInputTabs } from './MobileInputTabs'
+import { VariantRules } from './VariantRules'
 import { PlayHint, PlayLayout } from './PlayLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
@@ -84,6 +85,7 @@ const desktopInsightTabs = [
   { id: 'solution', label: 'Solution', Icon: ListOrdered },
   { id: 'techniques', label: TECHNIQUE_FINDER_TITLE, Icon: ListFilter },
   ...puzzleTools,
+  { id: 'rules', label: 'Rules', Icon: Info },
 ] as const
 
 const ARROWS: Record<string, [number, number]> = {
@@ -349,6 +351,8 @@ export function Worktable({
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
+  const [dialogRule, setDialogRule] = useState<VariantRuleSectionId | null>(null)
+  const [pinnedRule, setPinnedRule] = useState<VariantRuleSectionId | null>(null)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -383,6 +387,9 @@ export function Worktable({
   const puzzleGridBorderRef = useRef<HTMLDivElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const rulesButtonRef = useRef<HTMLButtonElement>(null)
+  const rulesPanelRef = useRef<HTMLElement>(null)
+  const focusRulesAfterDialog = useRef(false)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
   const insightTabsRef = useRef<HTMLDivElement>(null)
   const activeMobileInputTabRef = useRef<HTMLButtonElement>(null)
@@ -414,6 +421,8 @@ export function Worktable({
   const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle, grid, game.sized?.rules), [values, game.variant, grid, game.sized])
   const draft = game.source === 'draft'
   const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto } = game
+  const mixedVariant = !grid && variant?.id === 'mixed'
+  const ruleSections = useMemo(() => variant ? variantRuleSections(variant.puzzle) : [], [variant])
   const solutionIdentity = useMemo(() => puzzleIdentity({ givens, variant, algebraic, grid, sized }), [givens, variant, algebraic, grid, sized])
   const savedSolution = savedPlayState?.solutionView
   const solutionView = !draft && savedSolution?.identity === solutionIdentity ? savedSolution : null
@@ -489,8 +498,8 @@ export function Worktable({
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const panelAvailable = (panel: PuzzleTool) => !placeholder && !draft &&
-    (panel !== 'chains' || !grid) && (panel !== 'subsets' || experimentalMode) &&
-    (!solved || panel === 'solution' || panel === 'techniques')
+    (panel !== 'chains' || !grid) && (panel !== 'subsets' || experimentalMode) && (panel !== 'rules' || mixedVariant) &&
+    (!solved || panel === 'solution' || panel === 'techniques' || panel === 'rules')
   const openPuzzlePanels = toolPanels.open.filter(panelAvailable)
   const activeToolPanel = toolPanels.active !== 'digits' && openPuzzlePanels.includes(toolPanels.active) ? toolPanels.active : 'digits'
   const advancedPanelOpen = (panel: PuzzleTool) => openPuzzlePanels.includes(panel)
@@ -734,6 +743,8 @@ export function Worktable({
     setActionsOpen(false)
     setResetOpen(false)
     setVariantRulesOpen(false)
+    setDialogRule(null)
+    setPinnedRule(null)
     setChainColorsOpen(false)
     setHint(null)
     setHintRevealed(false)
@@ -2123,7 +2134,7 @@ export function Worktable({
   function selectToolPanel(tab: ToolPanelTab, alsoOpen?: PuzzleTool) {
     if (tab !== 'digits') {
       if (!panelAvailable(tab)) return
-      changeHintVisuals('player')
+      if (tab !== 'rules') changeHintVisuals('player')
       if (advancedWorkspace && !showRightPanel) onOpenRightPanel()
     }
     if (tab === 'solution' || tab === 'techniques') setHintRevealed(false)
@@ -2138,7 +2149,7 @@ export function Worktable({
 
   function closeToolPanel(tool: PuzzleTool, fromMenu = false) {
     if (tool === 'solution') hideSolutionPath()
-    if (mobile && !fromMenu) focusMobileInput.current = openPuzzlePanels.length === 1
+    if (mobile && !fromMenu) focusMobileInput.current = openPuzzlePanels.length === 1 || tool === 'rules'
     playSession.set(id, 'toolPanels', (current) => {
       const open = current.open.filter((tab) => tab !== tool)
       return open.length ? { ...current, open, active: current.active === tool ? 'digits' : current.active } : defaultToolPanels
@@ -2146,8 +2157,24 @@ export function Worktable({
     if (mobile || fromMenu) return
     const remaining = openInsightTabs.filter(({ id }) => id !== tool)
     const next = remaining.find(({ id }) => id === activeDesktopTab?.id) ?? remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
-    const focus = next ? insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`) : puzzleMenuButtonRef.current
+    const focus = next ? insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`) : (tool === 'rules' ? rulesButtonRef : puzzleMenuButtonRef).current
     focus?.focus({ preventScroll: true })
+  }
+
+  function showRulesTab() {
+    if (mobile) {
+      mobileToolsOpener.current = rulesButtonRef.current
+      focusMobileInput.current = true
+    }
+    selectToolPanel('rules')
+  }
+
+  function focusPinnedRules() {
+    if (!focusRulesAfterDialog.current) return null
+    focusRulesAfterDialog.current = false
+    if (mobile) return activeMobileInputTabRef.current
+    if (advancedWorkspace) return rulesPanelRef.current
+    return insightTabsRef.current?.querySelector<HTMLButtonElement>('[data-insight-tab="rules"]') ?? null
   }
 
   function showPuzzleTool(tool: PuzzleTool, alsoOpen?: PuzzleTool) {
@@ -2317,14 +2344,15 @@ export function Worktable({
   const showPlayerColors = colorsPanelOpen || colorMode
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
+  const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const solutionGrid = (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} highlighting={highlighting} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
@@ -2339,7 +2367,7 @@ export function Worktable({
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
       showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
@@ -2483,9 +2511,13 @@ export function Worktable({
                 aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
                 <ZoomOut size={18} aria-hidden="true" />
               </IconButton>}
-              {(variant || grid) && <Button type="button" variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
+              {mixedVariant ? <IconButton ref={rulesButtonRef} variant="quiet" className="variant-rules-button"
+                aria-label="Puzzle rules" title="Puzzle rules" aria-haspopup={openPuzzlePanels.includes('rules') ? undefined : 'dialog'}
+                onClick={() => openPuzzlePanels.includes('rules') ? showRulesTab() : setVariantRulesOpen(true)}>
+                <Info size={16} aria-hidden="true" />
+              </IconButton> : (variant || grid) && <Button variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
                 aria-label={grid ? `${sizedName} rules` : `${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
-                <Info size={16} aria-hidden="true" />{grid ? sizedName : variant?.id === 'mixed' ? 'Mixed rules' : variantName(variant)}
+                <Info size={16} aria-hidden="true" />{grid ? sizedName : variantName(variant)}
               </Button>}
               {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
                 aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
@@ -2642,11 +2674,21 @@ export function Worktable({
       onRestorePuzzle={(id) => roomStore.update(id, (puzzle) => ({ ...puzzle, archived: false }))} />
   )
 
+  const rulesPanel = openPuzzlePanels.includes('rules') && <section ref={rulesPanelRef} className="variant-rules-panel"
+    aria-label="Puzzle rules" tabIndex={advancedWorkspace ? -1 : undefined}>
+    {advancedWorkspace && <div className="variant-rules-panel-actions">
+      <IconButton variant="quiet" aria-label="Unpin rules" title="Unpin rules" onClick={() => closeToolPanel('rules')}>
+        <PinOff size={17} aria-hidden="true" />
+      </IconButton>
+    </div>}
+    <VariantRules key={id} sections={ruleSections} active={!mobile || activeToolPanel === 'rules'} onHighlight={setPinnedRule} />
+  </section>
+
   return (
     <>
       <PlayLayout desktop={desktop} puzzle={puzzlePanel} hint={hintPanel}
         input={desktop ? inputPanel : <MobileInputTabs active={activeToolPanel} open={openPuzzlePanels}
-          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, subsets: subsetsPanel,
+          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, subsets: subsetsPanel, rules: rulesPanel,
             solution: activeToolPanel === 'solution' ? solutionPathPanel : undefined,
             techniques: activeToolPanel === 'techniques' ? techniquesPanel : undefined,
           }} activeTabRef={activeMobileInputTabRef}
@@ -2658,7 +2700,8 @@ export function Worktable({
           onClose: () => closeToolPanel(activeDesktopTab.id),
           content: activeDesktopTab.id === 'colors' ? cellColorsPanel : activeDesktopTab.id === 'techniques'
             ? techniquesPanel
-            : activeDesktopTab.id === 'chains' ? chainsPanel : activeDesktopTab.id === 'subsets' ? subsetsPanel : solutionPathPanel,
+            : activeDesktopTab.id === 'chains' ? chainsPanel : activeDesktopTab.id === 'subsets' ? subsetsPanel
+              : activeDesktopTab.id === 'rules' ? rulesPanel : solutionPathPanel,
         } : undefined}
         mobile={{
           puzzleId: game.id, rearranging, withHint: showMobileHintCard,
@@ -2686,7 +2729,7 @@ export function Worktable({
         advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel}
           chains={advancedPanelOpen('chains') ? chainsPanel : undefined}
           subsets={advancedPanelOpen('subsets') ? subsetsPanel : undefined}
-          cellColors={advancedPanelOpen('colors') ? cellColorsPanel : undefined}
+          cellColors={advancedPanelOpen('colors') ? cellColorsPanel : undefined} rules={rulesPanel || undefined}
           hint={advancedHintPanel} solutionPath={advancedPanelOpen('solution') ? solutionPathPanel : undefined}
           techniques={advancedPanelOpen('techniques') ? techniquesPanel : undefined}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
@@ -2702,11 +2745,28 @@ export function Worktable({
           setChainColorsOpen(false)
           onEditChainColors()
         })} />
-      {(variant || grid) && <Modal title={`${grid ? sizedName : variantName(variant)} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
+      {variant && !grid && <Modal title={mixedVariant ? <span className="sr-only">Puzzle rules</span> : `${variantName(variant)} rules`}
+        className="variant-rules-dialog" open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)} returnFocus={focusPinnedRules}>
+        <div className="variant-rules-layout">
+          <div className="variant-rules-preview">
+            <Board variantPuzzle={variant.puzzle} highlightedRule={dialogRule} givens={givens} values={game.paused ? EMPTY : values}
+              label="Rule preview" showGuides={false} />
+          </div>
+          <VariantRules key={id} sections={ruleSections} active={variantRulesOpen} onHighlight={setDialogRule} />
+        </div>
+        {panelAvailable('rules') && <div className="dialog-actions">
+          <Button onClick={() => {
+            focusRulesAfterDialog.current = true
+            setVariantRulesOpen(false)
+            showRulesTab()
+          }}><Pin size={17} aria-hidden="true" /> Pin rules</Button>
+        </div>}
+      </Modal>}
+      {grid && <Modal title={`${sizedName} rules`} open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)}>
         <div className="variant-rules-copy">
           {algebraic?.source?.author && <p>By {algebraic.source.author}</p>}
           {sized?.author && <p>By {sized.author}</p>}
-          {(algebraic ? algebraicRules(algebraic) : sized && grid ? sizedRuleDescriptions(grid, sized.rules) : variant ? variantRuleDescriptions(variant.puzzle) : [MINI_RULE]).map(rule => <p key={rule}>{rule}</p>)}
+          {(algebraic ? algebraicRules(algebraic) : sized ? sizedRuleDescriptions(grid, sized.rules) : [MINI_RULE]).map(rule => <p key={rule}>{rule}</p>)}
         </div>
       </Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}

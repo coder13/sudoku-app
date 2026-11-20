@@ -1,6 +1,8 @@
 import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
+import mixedPuzzles from '../../tests/fixtures/mixed-puzzles.json'
+import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
 import { useMobileLayout } from '../../src/components/mobile-layout'
@@ -45,7 +47,34 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const mixedFixture = mixedPuzzles['x-killer']
+const mixedRulesGame = {
+  ...makeGame('story-mixed-rules', 'X Sudoku + Killer', mixedFixture.puzzle.givens, 'imported'),
+  variant: { id: 'mixed' as const, puzzle: mixedFixture.puzzle as VariantPuzzle, solution: mixedFixture.solution },
+}
+
 export const Starter: Story = {}
+export const MixedRules: Story = {
+  args: { game: mixedRulesGame, games: [mixedRulesGame] },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Puzzle rules' }))
+    const dialog = await canvas.findByRole('dialog', { name: 'Puzzle rules' })
+    const rules = within(dialog)
+    await expect(rules.getByRole('heading', { name: 'Normal Sudoku' })).toBeVisible()
+    await userEvent.hover(rules.getByRole('heading', { name: 'Killer Sudoku' }))
+    await waitFor(() => expect(dialog.querySelector('.variant-rules-preview [data-highlighted-rule="killer-cages"]')).toBeInTheDocument())
+    await userEvent.click(rules.getByRole('button', { name: 'Pin rules' }))
+    await waitFor(() => expect(dialog).not.toBeVisible())
+    await expect(canvas.getByRole('tab', { name: 'Rules' })).toHaveAttribute('aria-selected', 'true')
+    const panel = canvas.getByRole('region', { name: 'Puzzle rules' })
+    within(panel).getByRole('region', { name: 'Diagonal' }).focus()
+    await waitFor(() => expect(canvasElement.querySelector('.puzzle-stage [data-highlighted-rule="diagonal"]')).toBeInTheDocument())
+  },
+}
+export const MixedRulesMobile: Story = {
+  ...MixedRules,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
 export const DesktopModeBadge: Story = {
   args: { game: inProgress, games: [inProgress] },
   beforeEach: () => {

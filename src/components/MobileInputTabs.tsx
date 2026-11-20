@@ -5,7 +5,7 @@ import { scrollActiveTabIntoView } from './PlayLayout'
 import { TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 
-const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', subsets: 'Subsets' }
+const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', subsets: 'Subsets', rules: 'Rules' }
 
 function InputToolsMenu({ disabled, onShow, children }: {
   disabled: boolean
