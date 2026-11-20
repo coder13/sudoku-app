@@ -49,6 +49,7 @@ export type Game = {
   source: Source
   collection?: CollectionReference
   sharedPuzzleId?: string
+  whispersGuide?: true
   difficulty?: Difficulty | null
   score?: number | null
   variant?: VariantGame
@@ -124,6 +125,7 @@ export function restartGame(game: Game): Game {
     difficulty: game.difficulty,
     collection: game.collection,
     sharedPuzzleId: game.sharedPuzzleId,
+    ...(game.whispersGuide && { whispersGuide: true }),
     score: game.score,
     variant: game.variant,
     algebraic: game.algebraic,

@@ -102,6 +102,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
+      (value.whispersGuide === undefined || value.whispersGuide === true && value.variant?.id === 'whispers') &&
       validPosition(value.position, grid, draft, cageDraft) &&
       Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, draft, cageDraft)) &&
       Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, draft, cageDraft)) &&

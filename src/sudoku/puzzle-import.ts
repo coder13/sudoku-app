@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
+import { isCoachWhispersGuide } from './coach-whispers-guide.ts'
 import { decodeLegacyCoach } from './legacy-coach.ts'
 import type { OutsideSide } from './outside-clues.ts'
 import { closedRegionSumCells, regionIndex } from './region-sum.ts'
@@ -56,14 +57,16 @@ export type ImportedPuzzle = {
   sharedPuzzleId?: string
   collection?: CollectionReference
   progress?: Pick<Position, 'entries' | 'center' | 'corner'>
+  whispersGuide?: true
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
-  const { givens, variant, collection, title, grid, algebraic, sizedRules, sizedAuthor } = await downloadSharedPuzzle(id, signal)
+  const { givens, variant, collection, title, grid, algebraic, sizedRules, sizedAuthor, whispersGuide } = await downloadSharedPuzzle(id, signal)
   const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
   if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
   const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
-  return { givens, variant, collection, title, grid, sizedRules, sizedAuthor, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
+  return { givens, variant, collection, title, grid, sizedRules, sizedAuthor, ...(cages && { algebraic: cages }),
+    ...(whispersGuide && { whispersGuide }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -198,6 +201,7 @@ type CoachPublication = {
   title?: string
   authoredRule?: 'x-sum' | 'all-black-dots'
   declaredRules?: CoachTypedDeclaration
+  whispersGuide?: true
 }
 
 function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration {
@@ -263,15 +267,25 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
   }
   if (publication === null) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
-  if (publication?.hasAuthorInstructions && !publication.authoredRule && !publication.declaredRules) {
+  if (publication?.hasAuthorInstructions && !publication.authoredRule && !publication.declaredRules && !publication.whispersGuide) {
     throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
   }
   const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
   const constraints = data.givenConstraints ?? []
   const regions = readRegions(data.regions)
-  const rules = readCoachRules(constraints, { regions, authoredRule: publication?.authoredRule })
-  if (publication && (COACH_DRAWINGS.some(key => hasData(data[key])) || !coachColoursMatchExtraHouses(data, rules))) {
+  const guideLayers = Array.isArray(constraints) && constraints.every(layer => record(layer) &&
+    ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
+    constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
+    ? constraints.filter(layer => layer.type !== 'whisper') : []
+  const encodedRules = guideLayers.length ? (constraints as Record<string, unknown>[]).filter(layer => layer.type === 'whisper') : constraints
+  const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
+  const whispersGuide = guideLayers.length > 0 && isCoachWhispersGuide(data, guideLayers, { version: 1, givens, regions, rules })
+  if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
+    throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
+  }
+  if ((publication || whispersGuide) &&
+    (COACH_DRAWINGS.some(key => hasData(data[key])) || !whispersGuide && !coachColoursMatchExtraHouses(data, rules))) {
     throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   }
   if (publication?.authoredRule === 'all-black-dots') {
@@ -294,7 +308,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
   const progress = readCoachProgress(data, givens)
-  return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }) }
+  return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }),
+    ...(whispersGuide && { whispersGuide: true }) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
@@ -923,6 +938,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
+      ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
     : null
   return { code, publication }

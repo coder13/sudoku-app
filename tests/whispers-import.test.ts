@@ -10,6 +10,7 @@ import { generationVariant, isPlayablePuzzle, variantDigitExclusions, variantPee
 import { countWhispersSolutions } from './helpers/whispers-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { whispersLinkCounts } from '../src/sudoku/whispers-guide.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 const constraints = fixture.puzzle.rules!.map(rule => { assert.equal(rule.type, 'whispers'); return { type: 'whisper', settings: {}, segments: [{ cells: rule.cells, parameters: {} }] } })
 const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
@@ -125,6 +126,33 @@ test('Coach keeps rejecting unknown cage settings', async () => {
     await assert.rejects(detectPuzzle(coachCode({
       givenConstraints: [{ type: 'cage', settings, segments: [{ cells: [0, 1], parameters: { sum: 8 } }] }],
     })), /unsupported settings for cage/)
+  }
+})
+
+test('the Coach Whispers lesson retains every link and derives its guide from the encoded geometry', async () => {
+  const lesson = examples.find(example => example.url.endsWith('/B5mt'))!
+  const state = decodeSource(lesson.code)
+  const { variant, whispersGuide, givens } = await detectPuzzle(lesson.code)
+  assert.equal(whispersGuide, true)
+  assert.equal(givens, state.givenDigits)
+  assert.equal(variant?.id, 'whispers')
+  const source = state.givenConstraints.find((rule: { type: string }) => rule.type === 'whisper')
+  assert.deepEqual(variant.puzzle.rules, source.segments.map(({ cells }: { cells: number[] }) =>
+    ({ type: 'whispers', cells, minDifference: 5 })))
+  const palette: Record<string, number> = { orange: 1, yellow: 2, lime: 3, magenta: 4 }
+  const counts = state.givenColours.split(',').map((shade: string) => shade ? palette[state.colours[Number(shade)]] : 0)
+  assert.equal(counts.filter(Boolean).length, 44)
+  assert.deepEqual(whispersLinkCounts(variant.puzzle), counts)
+
+  for (const mutate of [
+    (data: typeof state) => { data.givenColours = data.givenColours.replace('0', '1') },
+    (data: typeof state) => { data.givenConstraints[1].segments[0].parameters.text = '= 3 unique links' },
+    (data: typeof state) => { data.givenConstraints[2].segments[0].parameters.shape = 'circle' },
+    (data: typeof state) => { data.givenConstraints[0].settings.difference = 4 },
+  ]) {
+    const damaged = structuredClone(state)
+    mutate(damaged)
+    await assert.rejects(detectPuzzle(coachCode(damaged)), /unsupported Whispers guide/)
   }
 })
 

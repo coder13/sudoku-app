@@ -24,10 +24,11 @@ export function findImportedPuzzle(games: readonly Game[], imported: Pick<Import
 
 export function findImportAttempt(games: readonly Game[], { game, hasProgress }: PuzzlePreview): Game | undefined {
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
-  if (!hasProgress) return findImportedPuzzle(games, game)
+  const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
+  if (!hasProgress) return findImportedPuzzle(attempts, game)
   const { entries, center, corner } = game.position
   const identity = puzzleIdentity(game)
-  return games.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
+  return attempts.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
     center.every((mask, cell) => mask === saved.position.center[cell]) &&
     corner.every((mask, cell) => mask === saved.position.corner[cell]) && puzzleIdentity(saved) === identity)
 }
@@ -50,7 +51,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress } = imported
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress, whispersGuide } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
@@ -58,7 +59,8 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
       : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
         : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
         : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
-  let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
+  let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId,
+    ...(whispersGuide && { whispersGuide }) }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
     game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })

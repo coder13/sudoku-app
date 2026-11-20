@@ -93,7 +93,7 @@ function coachTypedDeclaration(lines) {
 }
 
 // Coach publishes the puzzle code and its author instructions separately.
-function coachPublication(html, id, code) {
+async function coachPublication(html, id, code) {
   const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
   if (scripts.length !== 1) return
   let puzzle
@@ -108,10 +108,14 @@ function coachPublication(html, id, code) {
   const lines = puzzle.description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
   const declaredRules = puzzle.custom_constraints ? undefined : coachTypedDeclaration(lines)
   const authoredRule = coachAuthoredRule(lines)
+  // The published Whispers lesson explains the encoded rules and its digit guide.
+  const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
+    await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
   return {
     hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
     ...(authoredRule && { authoredRule }),
     ...(declaredRules && { declaredRules }),
+    ...(whispersGuide && { whispersGuide: true }),
     ...(title && { title }),
   }
 }
@@ -157,7 +161,7 @@ async function loadPublicPuzzle(request, path) {
   if (!code || code.length > maximumPuzzleCodeLength) {
     throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   }
-  const coach = provider === 'sudoku-coach' ? coachPublication(content, id, code) : undefined
+  const coach = provider === 'sudoku-coach' ? await coachPublication(content, id, code) : undefined
   return json({ code, ...(coach && { coach }) })
 }
 
@@ -329,7 +333,8 @@ async function sharePuzzle(request, db, path) {
       sizedRules: value => sizedGrid(data.grid) &&
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
-      variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
+      variant: value => data.grid === undefined && variant(value, data.givens), collection,
+      whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }

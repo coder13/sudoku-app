@@ -1,12 +1,12 @@
 {
-  "description": "Unmodified real SCv7 exports for Whispers and mixed rules. The German Whisper Line Basics lesson still needs its authored legend.",
+  "description": "Unmodified real SCv7 exports for Whispers, the link-count guide, and mixed rules.",
   "examples": [
     {
       "url": "https://sudoku.coach/en/s/B5mt",
       "title": "Variant Lesson: German Whisper Line Basics",
       "author": "Aeb",
       "code": "SCv7_32_f2eaqlmrhrd3047t2nibsjinu4mici3tkbnpbehs2noh018jlg6gsjcsdqrogvvfsj174iocfdoi5c7ceducsj160ctp45j6v5kfsq9ih6028ucmat2ki9jji8br2j9l07pa5cpcfv3ci9iemlqj3jhimf8m80946lvr9vbeabhp0gk2fc36qfmlsn1fj26q5v92ij0flo408u71120e41e0n9snrdqrtl70eqmmrbahcmqfd2thd71i55oegjj8iok1oq6t44e4tn6oq8ar3cblq3phqcab6agg247nmb2i94n7mkkrfei0eikt739uk09coohtkc5cd84099g05604l8o8vmtoh0rtlq9qorens3q7f0418o8s73fc52r4s4mk9i219842aa7eolgvgu27fqqhlgo25t32l433i08o865h7v61l92094nog1p00a87skeeda81guq1186kac7mju20gt93803950vgcueim411h0dv2so8r4qm4k8ni5psd9lfhijdlq3bmkinj2boif6f8npnahp77t9045t912qb07h6llk4fgdoikb5pnnkl3picefkksn6lmgnu3dsfjje7curfhtclrt1vfev6ivlueu3abfeauf6uvikh33tod9dpv3dmm9upk5tn75mhapl4grjcjdgopbg9grruinnsctdtqm1fg3o60cn1lnk42ktn1lpurfnonmiuat58khcjkc2f2hgbu892pbelj42fh3hcukvreugt5nqo90vh3h4fj443bdv79qq1nnms9qoa40eqon6an2sihtse4c3jh88r8obhqu479sv68m77bei7r8621j5nm262ltte5s1aunhoc152vpfv2ksmf5bjj4irfn7uuqg71hvu1subc61t3ctk92faqbgh8udu5aqj2sjnsk9uf284u032jr3ncqcnm79u8k4ftnv07shm0bs",
-      "deferred": "cosmeticText"
+      "solution": "386725491241869357597341826953274618814596273672183549125938764768412935439657182"
     },
     {
       "url": "https://sudoku.coach/en/s/Chcs",

@@ -145,7 +145,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <span className="import-preview-format">{preview.format}</span>
       </p>
       {preview.hasProgress && <p>This import includes your progress.</p>}
-      <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
+      <Board grid={preview.game.grid} whispersGuide={preview.game.whispersGuide} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
         position={preview.hasProgress ? preview.game.position : undefined} candidateLayout="center-corner"
         variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
       {preview.game.algebraic ? <>

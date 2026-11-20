@@ -79,6 +79,25 @@ test('the imported Cmdt board renders every region, diagonal, cage total and lin
   }
 })
 
+test('the imported Whispers lesson renders its link-count guide in desktop and mobile', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
+  const source = examples.find(fixture => fixture.url.endsWith('/B5mt'))!
+  const { variant, givens, whispersGuide } = await detectPuzzle(source.code)
+  const props = { variantPuzzle: variant?.puzzle, givens, values: givens }
+  const board = createElement(Board, { ...props, whispersGuide })
+  const mobile = createElement(MobilePanelLayout, { puzzleId: 'coach-guide', rearranging: false, blocked: false,
+    onRearrangingChange() {}, withHint: false, panels: { puzzle: { title: 'Puzzle', content: board } } })
+  for (const node of [board, mobile]) {
+    const html = renderToStaticMarkup(node)
+    assert.match(html, /<ul aria-label="Whispers neighbors">/)
+    assert.match(html, /1 distinct digit<\/strong><span>1–4 or 6–9/)
+    assert.match(html, /4 distinct digits<\/strong><span>1 or 9/)
+    assert.equal([...html.matchAll(/data-cell="[^"]+"[^>]*data-whispers-links=/g)].length, 44)
+    assert.match(html, /data-cell="11"[^>]+Whispers neighbors need at least 4 distinct digits[^>]+data-whispers-links="4"/)
+  }
+  assert.equal(renderToStaticMarkup(createElement(Board, props)).includes('whispers-guide'), false)
+})
+
 test('sharing a progressed Whispers puzzle retains its complete starting definition', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { hostname: 'example.test', origin: 'https://example.test' } } })

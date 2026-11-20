@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { applyDeduction, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantRuleDescriptions } from '../src/sudoku/variants.ts'
@@ -22,8 +23,9 @@ useWasmWorker()
 type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle; solution: string }
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
-const mixedWhispers = (JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as Omit<Fixture, 'puzzle'>[])
-  .find(source => source.url.endsWith('/Cmdt'))!
+const whispersSources = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as Omit<Fixture, 'puzzle'>[]
+const mixedWhispers = whispersSources.find(source => source.url.endsWith('/Cmdt'))!
+const whispersLesson = whispersSources.find(source => source.url.endsWith('/B5mt'))!
 
 const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
   JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
@@ -438,6 +440,55 @@ test('published markings require exact colour-to-region membership', async ({ mo
     for (const id of Object.keys(cases).filter(key => key !== 'Exact')) {
       await assert.rejects(detectPuzzle(`https://sudoku.coach/en/s/${id}`), /unsupported authored markings/)
     }
+  } finally { sqlite.close() }
+})
+
+test('the Whispers lesson verifies, rates, and keeps its guide through attempts and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { code, solution } = whispersLesson
+  const title = 'Variant Lesson: German Whisper Line Basics'
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === '/api/v1/import/sudoku-coach/B5mt'
+    ? Promise.resolve(Response.json({ code, coach: { title, hasAuthorInstructions: true, whispersGuide: true } }))
+    : fetcher(path, init))
+  try {
+    const preview = await prepareImportedPuzzle(whispersLesson.url)
+    const { game, grade } = preview
+    assert.equal(game.title, title)
+    assert.equal(game.whispersGuide, true)
+    assert.equal(game.variant?.id, 'whispers')
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2534])
+    assert.equal(findImportAttempt([{ ...game, whispersGuide: undefined }], preview), undefined)
+    const restored = readGame(game.id, JSON.stringify(game))!
+    assert.equal(findImportAttempt([restored], preview), restored)
+    assert.equal(restartGame(restored).whispersGuide, true)
+
+    const hints = await puzzleHints(game)
+    assert.equal(hints.choices.length, 10)
+    const chosen = await puzzleHints(game, 'all', 'whispers')
+    const actions = new Set(chosen.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(actions.size > 10)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('whispers'), actions.size) } finally { scan.close() }
+    const walkthrough = await puzzleSolution(game)
+    assert.equal(walkthrough.board, solution)
+
+    const id = await publishSharedPuzzle(restored)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.whispersGuide, true)
+    assert.deepEqual(shared.game.variant, game.variant)
+  } finally { sqlite.close() }
+})
+
+test('a changed author declaration blocks the matching Whispers lesson short link', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title } = whispersLesson
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('B5mt', code, title, { description: 'All unmarked edges also obey Whispers.' })))
+    : fetcher(path, init))
+  try {
+    await assert.rejects(detectPuzzle(url), /has author instructions/)
   } finally { sqlite.close() }
 })
 

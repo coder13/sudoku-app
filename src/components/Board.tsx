@@ -8,6 +8,7 @@ import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sud
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
+import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '../sudoku/whispers-guide'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
@@ -17,6 +18,7 @@ import { BoardMarks, type BoardMark } from './BoardMarks'
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  whispersGuide?: true
   highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
@@ -74,7 +76,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
@@ -86,6 +88,8 @@ export function Board({
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
   const variantRules = variantPuzzle?.rules
+  const linkCounts = useMemo(() => whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined,
+    [whispersGuide, variantPuzzle])
   const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
     ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
   const linkedDoubleArrows = useMemo(() => sizedRules?.filter(rule => rule.type === 'linked-double-arrow') ?? [], [sizedRules])
@@ -249,6 +253,7 @@ export function Board({
                 const inSelection = selected.includes(index)
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)
+                const linkCount = linkCounts?.[index]
                 const candidateAnnotations = annotations?.candidates?.get(index)
                 const candidateMatches = !value && focusDigit != null && hasCandidate(candidateMask, focusDigit)
                 const matchingMask = filterCandidates && !value ? candidateMask & highlightedDigitMask : 0
@@ -280,6 +285,7 @@ export function Board({
                   color ? COLORS[color - 1] : '',
                   regionAtCell !== undefined && `region ${regionAtCell + 1}`,
                   cellAnnotation?.label,
+                  linkCount ? `Whispers neighbors need at least ${linkCount} distinct digit${linkCount === 1 ? '' : 's'}` : '',
                   cellClues?.[index]?.join(', '),
                   sizedLabels?.[index],
                   algebraicLabels.descriptions.get(index)?.join(', '),
@@ -364,6 +370,7 @@ export function Board({
 
                 return (
                   <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
+                    data-whispers-links={linkCount || undefined}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
                     data-box-edge={rectangularBoxes && col % boxColumns === 0 || undefined}
@@ -402,6 +409,18 @@ export function Board({
         {modeBadge}
       </div>
       {outside.legend.length > 0 && <div className="outside-clue-legend" aria-hidden={overlay?.visible || undefined}>{outside.legend.join(' · ')}</div>}
+      {linkCounts && <div className="whispers-guide" aria-hidden={overlay?.visible || undefined}>
+        <p>The colors show the minimum number of distinct digits in linked cells. Each range shows what can go in the colored cell.</p>
+        <ul aria-label="Whispers neighbors">
+          {WHISPERS_GUIDE_COUNTS.map(count => {
+            const ranges = whispersGuideDigits(count).map(digits => digits.length === 1 ? digits : `${digits[0]}–${digits.at(-1)}`)
+            return <li key={count} data-whispers-links={count}>
+              <strong>{count} distinct {count === 1 ? 'digit' : 'digits'}</strong>
+              <span>{ranges.join(' or ')}</span>
+            </li>
+          })}
+        </ul>
+      </div>}
     </div>
   )
 }

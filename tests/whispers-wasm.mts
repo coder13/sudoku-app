@@ -112,11 +112,13 @@ test('Whispers rules and player history survive the real save and reload service
   } finally { keys.forEach((key, i) => { if (prior[i]) Object.defineProperty(globalThis, key, prior[i]!); else Reflect.deleteProperty(globalThis, key) }) }
 })
 
-test('real Coach exports retain Whispers settings while unsupported companion rules still reject', async () => {
+test('real Coach exports retain Whispers settings, the teaching guide, and XV marks', async () => {
   const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string; url: string }[]
   const lesson = examples.find(source => source.url.endsWith('/B5mt'))!
   const colouring = examples.find(source => source.url.endsWith('/Chcs'))!
-  await assert.rejects(detectPuzzle(lesson.code), /unsupported|not supported/)
+  const guided = await prepareImportedPuzzle(lesson.code)
+  assert.equal(guided.game.whispersGuide, true)
+  assert.equal(guided.game.variant?.puzzle.rules?.length, 15)
   const imported = (await detectPuzzle(colouring.code)).variant!.puzzle
   assert.equal(imported.rules!.length, 12)
   assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])

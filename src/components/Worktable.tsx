@@ -2369,13 +2369,13 @@ export function Worktable({
     ? sketch.annotations : undefined
   const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const solutionGrid = (
-    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : givens}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} highlighting={highlighting} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
-    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
@@ -2391,7 +2391,7 @@ export function Worktable({
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
       showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
@@ -2802,7 +2802,7 @@ export function Worktable({
         className="variant-rules-dialog" open={variantRulesOpen} onClose={() => setVariantRulesOpen(false)} returnFocus={focusPinnedRules}>
         <div className="variant-rules-layout">
           <div className="variant-rules-preview">
-            <Board variantPuzzle={variant.puzzle} highlightedRule={dialogRule} givens={givens} values={game.paused ? EMPTY : values}
+            <Board variantPuzzle={variant.puzzle} whispersGuide={game.whispersGuide} highlightedRule={dialogRule} givens={givens} values={game.paused ? EMPTY : values}
               label="Rule preview" showGuides={false} />
           </div>
           <VariantRules key={id} sections={ruleSections} active={variantRulesOpen} onHighlight={setDialogRule} />

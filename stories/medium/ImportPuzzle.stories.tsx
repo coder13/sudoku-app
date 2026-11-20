@@ -3,6 +3,7 @@ import { expect, fn } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
 import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
 import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
+import whispers from '../../tests/fixtures/whispers-coach.json'
 import { starter } from '../support/fixtures'
 import { DialogStory } from '../support/frames'
 
@@ -55,6 +56,19 @@ export const CoachProgressPreview: Story = {
     await expect(grid.querySelector('[data-cell="2"]')).toHaveAccessibleName(/Row 1, column 3, digit 4/)
     await expect(grid.querySelector('[data-cell="3"]')).toHaveAccessibleName(/corner candidates 8.*center candidates 2 6/)
     await expect(canvas.getByRole('button', { name: 'Open puzzle' })).toBeVisible()
+  },
+}
+
+export const CoachWhispersGuidePreview: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const lesson = whispers.examples.find(source => source.url.endsWith('/B5mt'))!
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(lesson.code)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
+    const grid = await canvas.findByRole('grid', { name: 'Puzzle preview' })
+    await expect(grid.querySelector('[data-cell="11"]')).toHaveAccessibleName(/Whispers neighbors need at least 4 distinct digits/)
+    await expect(canvas.getByRole('list', { name: 'Whispers neighbors' })).toBeVisible()
   },
 }
 
