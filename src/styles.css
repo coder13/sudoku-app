@@ -798,27 +798,35 @@ svg { flex-shrink: 0; }
   box-shadow: 0 0 0 .75px color-mix(in srgb, var(--border) 85%, var(--surface)), var(--surface-shadow);
 }
 .puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-height: 0px; --board-guide-offset: 0px; }
-.puzzle[data-input-mode] {
+:is(.puzzle, .board-body)[data-input-mode] {
   --puzzle-mode-border-width: 3px;
   --puzzle-mode-border-inset: -1px;
   --puzzle-mode-corner-radius: var(--radius);
   overflow: visible;
 }
-.desktop-dock .puzzle[data-input-mode],
-:root[data-theme="andoku"] .puzzle[data-input-mode] { --puzzle-mode-border-inset: 0px; }
-.desktop-dock .puzzle[data-input-mode] { --puzzle-mode-corner-radius: 0px; }
-.puzzle:is([data-input-mode="pen"], [data-input-mode="chain"]) { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
-.puzzle[data-input-mode="pencil"] {
+/* On mobile the mode border is the Sudoku grid's border, not the outer play area. */
+.board-body[data-input-mode] {
+  --puzzle-mode-border-inset: 0px;
+  --puzzle-mode-corner-radius: 8px;
+  border-radius: var(--puzzle-mode-corner-radius);
+}
+.board-body[data-input-mode]::after { z-index: 6; }
+.board-body[data-input-mode] > .sudoku-grid { border-color: transparent; }
+.desktop-dock :is(.puzzle, .board-body)[data-input-mode],
+:root[data-theme="andoku"] :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-border-inset: 0px; }
+.desktop-dock :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-corner-radius: 0px; }
+:is(.puzzle, .board-body):is([data-input-mode="pen"], [data-input-mode="chain"]) { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
+:is(.puzzle, .board-body)[data-input-mode="pencil"] {
   --puzzle-mode-accent: light-dark(#684a99, #c8aff8);
   --puzzle-mode-border: dashed;
 }
-.puzzle[data-input-mode="highlight"] { --puzzle-mode-accent: light-dark(#82560d, #f1ca75); }
-.puzzle[data-input-mode="color"] { --puzzle-mode-accent: light-dark(#176c5e, #83dac6); }
-.puzzle[data-input-mode="erase"] {
+:is(.puzzle, .board-body)[data-input-mode="highlight"] { --puzzle-mode-accent: light-dark(#82560d, #f1ca75); }
+:is(.puzzle, .board-body)[data-input-mode="color"] { --puzzle-mode-accent: light-dark(#176c5e, #83dac6); }
+:is(.puzzle, .board-body)[data-input-mode="erase"] {
   --puzzle-mode-accent: light-dark(#a63852, #f4a8b5);
   --puzzle-mode-border: dotted;
 }
-.puzzle[data-input-mode]::after {
+:is(.puzzle, .board-body)[data-input-mode]::after {
   content: '';
   position: absolute;
   inset: var(--puzzle-mode-border-inset);
@@ -826,7 +834,7 @@ svg { flex-shrink: 0; }
   border-radius: inherit;
   pointer-events: none;
 }
-.puzzle[data-input-mode="pencil"]::after {
+:is(.puzzle, .board-body)[data-input-mode="pencil"]::after {
   --pencil-dash-length: 4.5px;
   --pencil-dash-period: 7px;
   --pencil-dashes: var(--puzzle-mode-accent) 0 var(--pencil-dash-length), transparent var(--pencil-dash-length) var(--pencil-dash-period);
@@ -853,14 +861,40 @@ svg { flex-shrink: 0; }
 }
 @media (forced-colors: active) {
   .puzzle:where(:not([data-input-mode])),
-  .puzzle[data-input-mode]::after { border-color: CanvasText; }
-  .puzzle[data-input-mode="pencil"]::after { background: none; mask: none; }
+  :is(.puzzle, .board-body)[data-input-mode]::after { border-color: CanvasText; }
+  :is(.puzzle, .board-body)[data-input-mode="pencil"]::after { background: none; mask: none; }
 }
 .standard-workspace-page [data-reserve-badge-space] > .puzzle,
 .standard-workspace-page .standard-puzzle-stack:has(> .puzzle-column[data-reserve-badge-space]) .standard-hint-slot .hint-dock {
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
 }
+
+/* The grid is the only bordered play surface on desktop and mobile. */
+.puzzle.puzzle-flat {
+  --puzzle-padding-inline: 0px;
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.standard-workspace-page [data-reserve-badge-space] > .puzzle.puzzle-flat {
+  max-inline-size: min(100%, var(--board-frame-limit));
+  margin-inline: auto;
+}
+.dock-puzzle-panel .puzzle.puzzle-flat { --puzzle-padding-inline: 0px; padding-inline: 0; }
+.puzzle.puzzle-flat .puzzle-quick-actions {
+  inline-size: 100%;
+  justify-content: stretch;
+  border-block-start: 0;
+}
+.puzzle.puzzle-flat .puzzle-quick-actions > .button {
+  flex: 1 0 max-content;
+  justify-content: center;
+}
+
 .desktop-play-resizable .standard-puzzle-stack {
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
 }
@@ -3154,9 +3188,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-zoom .board-frame { width: 100%; }
   .puzzle-zoom .sudoku-grid { overflow: clip; }
   .puzzle-zoom-content { transform-origin: top left; }
-  .puzzle-zoom[data-resize-preview] { overflow: clip; }
+  /* The mode icon sits just beyond the grid border. During a resize preview,
+     never clip that overflow or paint-contain its parent, or the icon vanishes. */
+  .puzzle-zoom[data-resize-preview] { overflow: visible; }
   .puzzle-zoom[data-resize-preview] .puzzle-zoom-content {
-    contain: size layout paint;
+    contain: size layout;
     will-change: scale;
   }
   .puzzle-zoom[data-zoomed] { overflow: clip; border-radius: 8px; }
@@ -3191,6 +3227,80 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-panel-space { flex: 1 0 0; }
   .mobile-panel-gap { flex-basis: 8px; }
+  @media (orientation: portrait) {
+    /* Keep equal outer gaps while making the space between cards independent. */
+    .standard-workspace-page { padding-block: var(--space-4); }
+    .mobile-panel-space { flex: 1 1 0; }
+    .mobile-panel-gap { flex: 0 0 var(--space-8); }
+
+    /* Use a shared inset, including for new and imported puzzles. */
+    .standard-workspace-page .workspace:has(.puzzle-column)
+      .mobile-panel[data-mobile-panel="input"] {
+      margin-inline: var(--space-16);
+    }
+
+    /* Let the input card grow only when the user explicitly resizes it. */
+    .mobile-panel-layout:not([data-input-sized], [data-fit-hint])
+      > .mobile-panel[data-mobile-panel="input"] {
+      flex: none;
+    }
+
+    /* Both panels use the same page-side gutter and neither can exceed it. */
+    .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
+      --board-frame-limit: 100%;
+    }
+    /* Center the puzzle itself as well as its zoomed content at every size. */
+    .standard-workspace-page .mobile-panel[data-mobile-panel="puzzle"] .puzzle-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+    }
+    .standard-workspace-page .mobile-panel .puzzle.puzzle-flat {
+      box-sizing: border-box;
+      inline-size: 100%;
+      max-inline-size: min(100%, var(--board-frame-limit));
+      margin-inline: auto;
+      min-inline-size: 0;
+      justify-self: center;
+    }
+    .standard-workspace-page .puzzle.puzzle-flat .puzzle-zoom {
+      justify-self: center;
+      margin-inline: auto;
+      max-inline-size: 100%;
+    }
+    .standard-workspace-page .puzzle-flat:has(.board-frame:not(.has-outside-clues)) {
+      --puzzle-grid-inset: 0px;
+    }
+    .standard-workspace-page .puzzle-flat :is(.puzzle-metadata, .puzzle-actions, .puzzle-quick-actions) {
+      max-inline-size: 100%;
+    }
+    /* Pinned controls fill the full input card even when the grid is reduced. */
+    .standard-workspace-page .puzzle.puzzle-flat .puzzle-quick-actions {
+      inline-size: var(--mobile-input-panel-width, 100%);
+      max-inline-size: none;
+      justify-self: start;
+      margin-inline-start: calc((100% - var(--mobile-input-panel-width, 100%)) / 2);
+    }
+    /* If dragging the input makes the board smaller, the header follows the grid. */
+    .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle.puzzle-flat {
+      max-inline-size: min(100%, var(--board-frame-limit));
+    }
+    /* Put row numbers in the side gutter instead of taking width from the grid. */
+    .standard-workspace-page .puzzle-flat .board-frame:not(.has-outside-clues) {
+      --board-guide-width: 0px;
+      position: relative;
+    }
+    .standard-workspace-page .puzzle-flat .board-frame:not(.has-outside-clues, .guides-hidden) > .row-labels {
+      position: absolute;
+      grid-area: auto;
+      inset-block: var(--board-guide-height) 0;
+      inset-inline-end: 100%;
+      inline-size: 14px;
+      overflow: visible;
+      padding-inline: 0;
+      justify-items: center;
+    }
+  }
   .mobile-panel-layout[data-fit-hint] > .mobile-panel[data-mobile-panel="input"] {
     display: flex;
     flex: 0 1 auto;
@@ -3273,6 +3383,32 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     --board-frame-limit: max(220px, min(var(--mobile-fit-board-height, 100dvh), calc(100dvh - var(--topbar-height) - 320px)));
     padding-block: var(--space-4) var(--space-6);
     row-gap: var(--space-2);
+  }
+  /* Mobile play sits directly on the page; only the grid retains its border. */
+  .standard-workspace-page .puzzle.puzzle-flat {
+    --puzzle-padding-inline: 0px;
+    padding-inline: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .standard-workspace-page .puzzle.puzzle-flat .puzzle-quick-actions {
+    margin-block-start: var(--space-2);
+    padding-block: var(--space-6) 0;
+    border-block-start: 0;
+  }
+  /* Both Pause and Play states stay as transparent toolbar icons. */
+  .standard-workspace-page .puzzle.puzzle-flat .puzzle-pause-trigger {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  /* Reserve room for the mode icon at every edge, even when the icon is hidden.
+     Toggling it must never change the grid's height or centered position. */
+  .standard-workspace-page .puzzle-flat:has(.puzzle-quick-actions) .puzzle-stage {
+    margin-block-end: var(--space-10);
   }
   .standard-workspace-page .mobile-panel .puzzle { max-inline-size: none; }
   .standard-workspace-page .puzzle-column {

@@ -1,4 +1,5 @@
 import { type PointerEvent, useLayoutEffect, useRef } from 'react'
+import { mobileInputResizeBudget, mobilePreviewGridWidth, mobileResizedPuzzleHeight } from '../sudoku/mobile-input-sizing'
 
 const MIN_GRID_WIDTH = 180
 const MIN_GRID_WIDTH_WITH_HINT = 130
@@ -8,7 +9,7 @@ const DOUBLE_TAP_MS = 350
 const TAP_MOVE_LIMIT = 6
 const DOUBLE_TAP_DISTANCE = 24
 
-type Split = { input: number; total: number; chrome: number; minPuzzle: number; min: number; max: number }
+type Split = { input: number; total: number; chrome: number; naturalPuzzle: number; minPuzzle: number; min: number; max: number }
 type BoardPreview = { viewport: HTMLElement; content: HTMLElement; width: number; height: number; maxWidth: number }
 type Tap = { time: number; x: number; y: number; pointerType: string }
 type Drag = {
@@ -41,8 +42,19 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const chrome = parseFloat(layout.style.getPropertyValue('--mobile-puzzle-chrome-height')) ||
     blockSize(puzzle) - parseFloat(getComputedStyle(grid).inlineSize)
   const puzzleHeight = parseFloat(layout.style.getPropertyValue('--mobile-resized-puzzle-height')) || blockSize(puzzle)
+  // Retain the unsized grid height so shrinking the input can restore the original board.
+  const naturalPuzzle = parseFloat(layout.style.getPropertyValue('--mobile-natural-puzzle-height')) || blockSize(puzzle)
   const minGrid = withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH
-  const minPuzzle = Math.min(puzzleHeight, chrome + minGrid)
+  const minPuzzle = Math.min(naturalPuzzle, chrome + minGrid)
+  const workspace = layout.parentElement
+  // Only the portrait stack has flex spacers. The fixed middle gap and the
+  // puzzle's badge gutter must not count as available resize space.
+  const verticalStack = !withHint && workspace && getComputedStyle(workspace).display === 'flex' &&
+    getComputedStyle(workspace).flexDirection === 'column'
+  const unusedSpace = verticalStack
+    ? [...layout.querySelectorAll<HTMLElement>('.mobile-panel-space:not(.mobile-panel-gap)')]
+      .reduce((total, space) => total + Math.max(0, blockSize(space) || 0), 0) : 0
+  const total = mobileInputResizeBudget(height, puzzleHeight, unusedSpace)
   const keypadHeight = blockSize(keypad)
   const minBody = withHint ? Math.min(MIN_SCROLLABLE_INPUT_HEIGHT, keypadHeight) : keypadHeight
   const inputPanel = input.closest<HTMLElement>('[data-mobile-panel="input"]')
@@ -50,11 +62,12 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const min = Math.max(minPanel, height - blockSize(body) + minBody)
   return {
     input: height,
-    total: height + puzzleHeight,
+    total,
     chrome,
+    naturalPuzzle,
     minPuzzle,
     min,
-    max: Math.max(min, height + puzzleHeight - minPuzzle),
+    max: Math.max(min, total - minPuzzle),
   }
 }
 
@@ -65,7 +78,15 @@ function previewBoard(layout: HTMLElement): BoardPreview | null {
   const width = viewport.offsetWidth
   const height = viewport.offsetHeight
   if (!width || !height) return null
-  const maxWidth = viewport.parentElement.clientWidth
+  // The stage is already narrow after a previous resize. Measure the full puzzle
+  // column instead, or a collapsing input panel can never grow the board again.
+  const column = viewport.closest<HTMLElement>('.puzzle-column')
+  const inputPanel = layout.querySelector<HTMLElement>('[data-mobile-panel="input"]')
+  const columnStyle = column && getComputedStyle(column)
+  const columnWidth = column && columnStyle
+    ? column.clientWidth - parseFloat(columnStyle.paddingInlineStart) - parseFloat(columnStyle.paddingInlineEnd)
+    : viewport.parentElement.clientWidth
+  const maxWidth = Math.max(width, Math.min(columnWidth, inputPanel?.clientWidth ?? columnWidth))
   // Keep the grid's layout fixed while its viewport and both cards follow the pointer.
   viewport.style.height = `${height}px`
   content.style.width = `${width}px`
@@ -86,14 +107,15 @@ function clearBoardPreview(board: BoardPreview | null) {
 function applySplit(layout: HTMLElement, split: Split, height: number, board?: BoardPreview | null) {
   layout.toggleAttribute('data-input-sized', true)
   layout.style.setProperty('--mobile-resized-input-height', `${height}px`)
-  const puzzleHeight = Math.max(split.minPuzzle, split.total - height)
+  const puzzleHeight = mobileResizedPuzzleHeight(split.total, height, split.naturalPuzzle, split.minPuzzle)
+  layout.style.setProperty('--mobile-natural-puzzle-height', `${split.naturalPuzzle}px`)
   layout.style.setProperty('--mobile-resized-puzzle-height', `${puzzleHeight}px`)
   const chrome = `${split.chrome}px`
   if (layout.style.getPropertyValue('--mobile-puzzle-chrome-height') !== chrome) {
     layout.style.setProperty('--mobile-puzzle-chrome-height', chrome)
   }
   if (board) {
-    const width = Math.min(board.maxWidth, puzzleHeight - split.chrome)
+    const width = mobilePreviewGridWidth(board.maxWidth, puzzleHeight, split.chrome)
     const viewportHeight = board.height + width - board.width
     board.viewport.style.height = `${viewportHeight}px`
     board.content.style.scale = `${width / board.width} ${viewportHeight / board.height}`
@@ -104,6 +126,7 @@ function clearSplit(layout: HTMLElement) {
   layout.removeAttribute('data-input-sized')
   layout.style.removeProperty('--mobile-resized-input-height')
   layout.style.removeProperty('--mobile-resized-puzzle-height')
+  layout.style.removeProperty('--mobile-natural-puzzle-height')
   layout.style.removeProperty('--mobile-puzzle-chrome-height')
 }
 
@@ -213,7 +236,25 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
       stopResize()
       clearSplit(layout)
     }
-  }, [withHint, edge, hasOpenTabs, savedHeight])
+  }, [withHint, edge, hasOpenTabs])
+
+  // Saving a completed drag must not clear the sizing styles and briefly snap
+  // the board back to its initial position. Apply only independent height changes.
+  useLayoutEffect(() => {
+    preferredHeight.current = savedHeight
+    const layout = getLayout()
+    if (!layout || drag.current) return
+    const appliedHeight = parseFloat(layout.style.getPropertyValue('--mobile-resized-input-height'))
+    if (savedHeight === undefined) {
+      if (!layout.hasAttribute('data-input-sized')) return
+      clearSplit(layout)
+      const split = measureSplit(layout, withHint)
+      if (split) describe(split)
+    } else if (!Number.isFinite(appliedHeight) || Math.abs(appliedHeight - savedHeight) > 1) {
+      const split = measureSplit(layout, withHint)
+      if (split) updateHeight(layout, split, clampHeight(split, savedHeight))
+    }
+  }, [savedHeight])
 
   useLayoutEffect(() => {
     if (disabled) lastTap.current = null
