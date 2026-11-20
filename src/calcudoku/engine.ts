@@ -6,10 +6,25 @@ export type Cage = { target: number; operator: CageOperator; cells: readonly num
 
 export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[] }
 
+const tupleTables = new Map<string, Uint16Array>()
+
 function cageTuples(size: number, cage: Cage): Uint16Array {
   const { cells, operator, target } = cage
-  const peers = cells.map((cell, i) => cells.slice(0, i).flatMap((peer, p) =>
-    peer % size === cell % size || Math.floor(peer / size) === Math.floor(cell / size) ? [p] : []))
+  // Four bits per cell identify earlier cage positions in the same row or column.
+  let layout = 0
+  for (let i = 1; i < cells.length; i++) {
+    const cell = cells[i]
+    for (let p = 0; p < i; p++) {
+      const peer = cells[p]
+      if (cell % size === peer % size || Math.floor(cell / size) === Math.floor(peer / size)) {
+        layout |= 1 << (4 * i + p)
+      }
+    }
+  }
+  const key = `${size}|${operator}|${target}|${cells.length}|${layout}`
+  const cached = tupleTables.get(key)
+  if (cached) return cached
+
   const tuple = new Uint16Array(cells.length)
   const result: number[] = []
 
@@ -19,9 +34,13 @@ function cageTuples(size: number, cage: Cage): Uint16Array {
       return
     }
 
+    let used = 0
+    for (let peers = (layout >>> (4 * index)) & 15; peers; peers &= peers - 1) {
+      used |= tuple[31 - Math.clz32(peers & -peers)]
+    }
     for (let digit = 1; digit <= size; digit++) {
       const mask = bit(digit)
-      if (peers[index].some(peer => tuple[peer] === mask)) continue
+      if (used & mask) continue
       let next = digit
       if (operator === 'add') next = total + digit
       if (operator === 'multiply') next = total * digit
@@ -36,7 +55,13 @@ function cageTuples(size: number, cage: Cage): Uint16Array {
 
   // A 9 × 9 alphabet needs nine bits per value.
   build(0, operator === 'multiply' ? 1 : 0)
-  return Uint16Array.from(result)
+  const tuples = Uint16Array.from(result)
+  // Keep small tables for other cages with these rules.
+  if (tuples.byteLength <= 16 * 1024) {
+    if (tupleTables.size === 256) tupleTables.delete(tupleTables.keys().next().value!)
+    tupleTables.set(key, tuples)
+  }
+  return tuples
 }
 
 function checkCages(size: number, cages: readonly Cage[]) {
