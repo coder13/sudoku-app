@@ -142,9 +142,20 @@ test('mixed 6 × 6 Renban and thermometer need both overlapping rules in both bo
 })
 
 test('Race track keeps both rule families through exact solving and replay in either 6 × 6 box orientation', async () => {
-  const fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples
-    .find((source: { url: string }) => source.url.endsWith('9uMo')) as { code: string; solution: string }
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-race-track.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string
+  }
   const original = await decodeCoachSix(fixture.code)
+  assert.deepEqual(original.rules, [
+    { type: 'renban', cells: [9, 8, 14, 20, 26, 27] },
+    { type: 'renban', cells: [8, 9, 15, 21, 27, 26] },
+    { type: 'difference', cells: [26, 20], difference: 1 },
+    { type: 'difference', cells: [8, 9], difference: 3 },
+    { type: 'difference', cells: [20, 14], difference: 2 },
+  ])
+  const { game } = await prepareImportedPuzzle(fixture.code)
+  assert.deepEqual(game.sized?.rules, original.rules)
+  assert.equal(game.sized?.solution, fixture.solution)
   const transpose = (cell: number) => cell % 6 * 6 + Math.floor(cell / 6)
   for (const transposeBoxes of [false, true]) {
     const cellMap = transposeBoxes ? transpose : (cell: number) => cell
