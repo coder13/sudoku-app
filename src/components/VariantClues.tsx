@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import type { SizedConstraintRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
+import type { SizedConstraintRule, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
@@ -46,7 +46,7 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
   </g>
 }
 
-function kropkiDots(rules: readonly VariantRule[], size = 9) {
+function kropkiDots(rules: readonly (VariantRule | SizedDifferenceRule)[], size = 9) {
   const dots = new Map<number, number>()
   for (const rule of rules) {
     if (rule.type !== 'kropki') continue
@@ -68,6 +68,17 @@ function renderKropkiDot(a: number, b: number, kind: number, paired: boolean, co
     cy={(ay + by) / 2 + (ay === by ? offset : 0)} r={compact ? .085 : .105} />
 }
 
+function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferenceRule & { dots: number; size: number }) {
+  const offset = dots === 3 ? .43 : dots ? .3 : 0
+  const point = pairCenter(a, b, offset, size)
+  const [cx, cy] = point.some(coordinate => coordinate < .18 || coordinate > size - .18)
+    ? pairCenter(a, b, -offset, size) : point
+  return <g className="variant-difference" data-difference={difference}>
+    <circle cx={cx} cy={cy} r=".16" />
+    <text x={cx} y={cy}>{difference}</text>
+  </g>
+}
+
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const renbans = rules.filter(rule => rule.type === 'renban')
   const lanes = coloredLineOverlapLanes(renbans, size)
@@ -85,11 +96,14 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
       return [0, 1].filter(kind => marks & (1 << kind))
         .map(kind => renderKropkiDot(a, b, kind, marks === 3, false, size))
     })}
+    {rules.map((rule, index) => rule.type === 'difference' &&
+      <DifferenceClue key={index} {...rule} dots={dots.get(pairKey(...rule.cells, size)) ?? 0} size={size} />)}
   </svg>
 }
 
 export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size: number) {
   const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
+  const at = (cell: number) => `row ${y(cell, size) + 1}, column ${x(cell, size) + 1}`
   let renbanNumber = 0
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
@@ -103,8 +117,11 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
         ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
+    } else if (rule.type === 'difference') {
+      const [a, b] = rule.cells
+      labels[a].add(`difference of ${rule.difference} with ${at(b)}`)
+      labels[b].add(`difference of ${rule.difference} with ${at(a)}`)
     } else if (rule.type === 'kropki') {
-      const at = (cell: number) => `row ${y(cell, size) + 1}, column ${x(cell, size) + 1}`
       for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
         for (const [a, b] of marks?.pairs ?? []) {
           labels[a].add(`${color} dot with ${at(b)}`)
@@ -119,9 +136,9 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
 }
 
 // Use the same side of an edge even when a directed clue reverses its endpoints.
-function pairCenter(a: number, b: number, offset = 0) {
+function pairCenter(a: number, b: number, offset = 0, size = 9) {
   const [first, second] = a < b ? [a, b] : [b, a]
-  const [ax, ay] = center(first), [bx, by] = center(second)
+  const [ax, ay] = center(first, size), [bx, by] = center(second, size)
   const length = Math.hypot(bx - ax, by - ay)
   return [(ax + bx) / 2 - (by - ay) / length * offset,
     (ay + by) / 2 + (bx - ax) / length * offset] as const

@@ -124,7 +124,13 @@ test('the sharing API validates the common rule contract against a Mini layout',
     ] }
     const { id: dotShareId } = await api<{ id: string }>('shares', 'POST', kropki)
     assert.deepEqual(await api(`shares/${dotShareId}`), kropki)
+    const mixed = { ...kropki, sizedRules: [...kropki.sizedRules,
+      { type: 'difference', cells: [4, 5], difference: 3 }] }
+    const { id: differenceShareId } = await api<{ id: string }>('shares', 'POST', mixed)
+    assert.deepEqual(await api(`shares/${differenceShareId}`), mixed)
     for (const invalid of [
+      { ...mixed, sizedRules: [{ type: 'difference', cells: [4, 5], difference: 4 }] },
+      { ...mixed, sizedRules: [{ type: 'difference', cells: [0, 5], difference: 2 }] },
       { ...kropki, sizedRules: [{ type: 'kropki', consecutive: { pairs: [[3, 4]] } }] },
       { ...kropki, sizedRules: [{ type: 'kropki', ratioTwo: { negative: 'true' } }] },
       { ...definition, sizedRules: [] },

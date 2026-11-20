@@ -38,8 +38,7 @@ test('three unmodified modern Coach sources import while unsupported complete ex
         assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
         continue
       }
-      const reason = source.url.endsWith('9uMo') ? /6 × 6.*unsupported active rule/ : /format|version/i
-      await assert.rejects(detectPuzzle(source.code), reason)
+      await assert.rejects(detectPuzzle(source.code), /format|version/i)
       continue
     }
     const imported = (await detectPuzzle(source.code)).variant!

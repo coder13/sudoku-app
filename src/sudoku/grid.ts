@@ -89,6 +89,12 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
         if (candidate === digit || Math.abs(candidate - digit) >= rule.cells.length) excluded |= 1 << (candidate - 1)
       }
     }
+    if (rule.type === 'difference' && (rule.cells[0] === cell && rule.cells[1] === other ||
+      rule.cells[1] === cell && rule.cells[0] === other)) {
+      const lower = digit - rule.difference, upper = digit + rule.difference
+      const allowed = (lower >= 1 ? 1 << (lower - 1) : 0) | (upper <= size ? 1 << (upper - 1) : 0)
+      excluded |= ((1 << size) - 1) & ~allowed
+    }
     if (rule.type !== 'thermometer') continue
     const offset = rule.cells.indexOf(cell)
     const otherOffset = rule.cells.indexOf(other)

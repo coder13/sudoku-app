@@ -1,6 +1,6 @@
 import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
-import type { VariantPuzzle, VariantRule } from './engine.ts'
+import type { SizedDifferenceRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
@@ -192,6 +192,25 @@ async function fromCoach(code: string, published = false): Promise<ImportedPuzzl
   return makeImportedPuzzle('Sudoku Coach', givens, readCoachRules(constraints, regions), regions)
 }
 
+function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
+  const { settings, segments } = constraint
+  if (hasData(settings) && (!record(settings) ||
+    Object.keys(settings).some(key => key !== 'negativeConstraint') ||
+    settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {
+    throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${kind}.`)
+  }
+  if (!Array.isArray(segments)) throw new Error(`This Sudoku Coach puzzle has invalid ${kind} markers.`)
+  const markers = segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+      !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== kind)) {
+      throw new Error(`This Sudoku Coach puzzle has an invalid ${kind} marker.`)
+    }
+    const amount = segment.parameters[kind]
+    return { cells: segment.cells as [number, number], amount: amount === undefined ? (kind === 'difference' ? 1 : 2) : amount }
+  })
+  return { markers, negative: record(settings) && settings.negativeConstraint === true }
+}
+
 function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
@@ -307,25 +326,13 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
       }
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type
-      const settings = constraint.settings
-      if (hasData(settings) && (!record(settings) ||
-        Object.keys(settings).some(key => key !== 'negativeConstraint') ||
-        settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {
-        throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+      const { markers, negative } = readCoachPairMarkers(constraint, kind)
+      const expected = kind === 'difference' ? 1 : 2
+      if (markers.some(({ amount }) => amount !== expected)) {
+        throw new Error(`This Sudoku Coach ${kind} marker is not supported yet.`)
       }
-      const pairs = constraint.segments.map((segment: unknown) => {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
-          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== kind)) {
-          throw new Error(`This Sudoku Coach puzzle has an invalid ${constraint.type} marker.`)
-        }
-        const expected = constraint.type === 'difference' ? 1 : 2
-        if (segment.parameters[kind] !== undefined && segment.parameters[kind] !== expected) {
-          throw new Error(`This Sudoku Coach ${constraint.type} marker is not supported yet.`)
-        }
-        return segment.cells as [number, number]
-      })
-      const marks = { pairs, negative: record(settings) && settings.negativeConstraint === true }
-      rules.push(constraint.type === 'difference'
+      const marks = { pairs: markers.map(({ cells }) => cells), negative }
+      rules.push(kind === 'difference'
         ? { type: 'kropki', consecutive: marks }
         : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
@@ -473,13 +480,23 @@ function readCoachSized(data: Record<string, unknown>) {
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
   const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio']
-  if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)) ||
-    rule.type === 'difference' && Array.isArray(rule.segments) && rule.segments.some(segment =>
-      record(segment) && record(segment.parameters) && segment.parameters.difference !== undefined &&
-      segment.parameters.difference !== 1))) {
+  if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
-  const rules = readCoachRules(active)
+  const rules = active.flatMap((constraint): (VariantRule | SizedDifferenceRule)[] => {
+    if (!record(constraint) || constraint.type !== 'difference') return readCoachRules([constraint])
+    const { markers, negative } = readCoachPairMarkers(constraint, 'difference')
+    if (markers.every(({ amount }) => amount === 1)) {
+      return [{ type: 'kropki', consecutive: { pairs: markers.map(({ cells }) => cells), negative } }]
+    }
+    if (negative) throw new Error('This Sudoku Coach export uses an unsupported negative rule for labeled differences.')
+    return markers.map(({ cells, amount }) => {
+      if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount >= grid.size) {
+        throw new Error(`A Difference marker on this grid must be a whole number between 1 and ${grid.size - 1}.`)
+      }
+      return { type: 'difference', cells, difference: amount }
+    })
+  })
   if (!isSizedRuleList(rules, grid.size)) throw new Error('This Sudoku Coach export contains invalid rules.')
   return { version: 2 as const, grid, givens, rules }
 }

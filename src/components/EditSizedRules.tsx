@@ -17,6 +17,7 @@ const ruleNames = {
   thermometer: 'Thermometer',
   renban: 'Renban line',
   kropki: 'Kropki dots',
+  difference: 'Difference marker',
 }
 
 type RuleChoice = keyof typeof ruleNames
@@ -26,7 +27,8 @@ const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rul
 type KropkiKind = 'consecutive' | 'ratioTwo'
 type KropkiMarks = Partial<Record<KropkiKind, MarkedPairs>>
 
-function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks): SizedConstraintRule {
+function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number): SizedConstraintRule {
+  if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
   if (kind === 'kropki') return { type: kind, ...marks }
   if (kind === 'main' || kind === 'anti') return { type: 'diagonal', diagonal: kind }
   if (kind === 'thermometer' || kind === 'renban') return { type: kind, cells }
@@ -42,13 +44,14 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [cells, setCells] = useState<readonly number[]>([])
   const [marks, setMarks] = useState<KropkiMarks>({})
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
+  const [difference, setDifference] = useState(1)
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
   const previous = rules[editing]
   const rule = kind === 'renban' && previous?.type === 'renban' && cells === previous.cells
-    ? previous : draftRule(kind, cells, marks)
+    ? previous : draftRule(kind, cells, marks, difference)
   const preview = isSizedRuleList([rule], size) ? [...otherRules, rule] : otherRules
   const canSelectCells = 'cells' in rule || kind === 'kropki'
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
@@ -64,6 +67,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setCells(previous && 'cells' in previous ? previous.cells : [])
     setMarks(previous?.type === 'kropki' ? { consecutive: previous.consecutive, ratioTwo: previous.ratioTwo } : {})
     setDotKind('consecutive')
+    setDifference(previous?.type === 'difference' ? previous.difference : 1)
     setActive(previous && 'cells' in previous ? previous.cells[0] : 0)
     setError('')
   }
@@ -73,7 +77,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setError('')
     setCells(current => {
       if (current.includes(cell)) return current.filter(item => item !== cell)
-      if (kind === 'kropki' && current.length === 2) return [cell]
+      if ((kind === 'kropki' || kind === 'difference') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban') && current.length === size) return current
       return [...current, cell]
     })
@@ -129,6 +133,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       setError('Add a dot or enable a negative rule.')
       return
     }
+    if (kind === 'difference' && !selectedEdge) {
+      setError('Select two cells that share an edge.')
+      return
+    }
     if (!isSizedRuleList(next, size)) {
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.` : 'Select the cells for this rule.')
@@ -143,7 +151,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       <SelectControl id={`${id}-clue`} value={editing} onChange={event => selectRule(Number(event.currentTarget.value))}>
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
-          {ruleNames[ruleChoice(rule)]}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
+          {ruleNames[ruleChoice(rule)]}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
@@ -152,6 +160,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setCells([])
         setMarks({})
         setDotKind('consecutive')
+        setDifference(1)
         setError('')
       }}>
         {Object.entries(ruleNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -159,7 +168,17 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       {'cells' in rule && <p id={`${id}-instructions`}>{kind === 'thermometer'
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' ? 'Select the cells in the order you want to draw the line.'
-          : 'Select the cells that should have a marker.'}</p>}
+          : kind === 'difference' ? 'Select two cells that share an edge.'
+            : 'Select the cells that should have a marker.'}</p>}
+      {kind === 'difference' && <>
+        <label htmlFor={`${id}-difference`}>Exact difference</label>
+        <SelectControl id={`${id}-difference`} value={difference} onChange={event => {
+          setDifference(Number(event.currentTarget.value))
+          setError('')
+        }}>
+          {Array.from({ length: size - 1 }, (_, index) => <option key={index + 1}>{index + 1}</option>)}
+        </SelectControl>
+      </>}
       {kind === 'kropki' && <>
         <label htmlFor={`${id}-dot-kind`}>Dot</label>
         <SelectControl id={`${id}-dot-kind`} value={dotKind}

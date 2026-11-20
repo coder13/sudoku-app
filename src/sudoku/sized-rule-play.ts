@@ -4,7 +4,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-difference', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -43,6 +43,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'renban') {
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
+  } else if (rule.type === 'difference') {
+    description = `The digits across this numbered marker differ by exactly ${rule.difference}.`
+    reason = 'Remove the candidates that have no partner at that difference in the neighboring cell.'
   } else {
     description = 'The digits strictly increase along this thermometer, from the bulb to the tip.'
     reason = 'Each remaining candidate fits in at least one increasing sequence using the candidates along the thermometer. Remove the candidates that fit in none.'
@@ -72,7 +75,8 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       locations.push(...rule.cells)
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
         : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
-          : 'The thermometer has no strictly increasing sequence from bulb to tip.'
+          : rule.type === 'difference' ? `No pair of digits differs by exactly ${rule.difference} across the marker.`
+            : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
   } else if (failure.type === 'kropki') {
     locations.push(...failure.pair.cells)
