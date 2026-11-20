@@ -27,7 +27,7 @@ use lines::LineConstraint;
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
-    VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
+    VariantLogicalError, VariantRating, VariantRenbanSumProof, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, ParityClue};
 #[cfg(all(

@@ -1,6 +1,7 @@
 import { Button } from '../../src/components/Button'
 import { useState, type ComponentProps } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
+import { fn } from 'storybook/test'
 import { HintCard } from '../../src/components/HintCard'
 import { SelectControl } from '../../src/components/SelectControl'
 import { DIFFICULTY_LABELS } from '../../src/sudoku/difficulty'
@@ -75,4 +76,18 @@ function DismissibleCard({ hint, onClose }: ComponentProps<typeof HintCard>) {
   const [open, setOpen] = useState(true)
   return open ? <HintCard hint={hint} onClose={() => { onClose(); setOpen(false) }} />
     : <Button onClick={() => setOpen(true)}>View hint</Button>
+}
+
+export const LongTitleWithActions: Story = {
+  args: {
+    hint: { title: 'Renban and Little Killer', text: '' },
+    navigation: { index: 0, count: 4, onMove: fn() },
+    visuals: { visible: true, onToggle: fn() },
+    lessDetail: { disabled: false, onClick: fn() },
+    action: { label: 'Apply hint', onClick: fn() },
+    lesson: { id: 'renban-sum', title: 'Renban and Little Killer' },
+  },
+  render: (args) => <div className="standard-puzzle-stack" style={{ width: 'min(506px, 100vw)' }}>
+    <HintCard {...args} />
+  </div>,
 }

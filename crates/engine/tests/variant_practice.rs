@@ -94,6 +94,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::RenbanSum(proof) => {
+                    let [renban, ray] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(renban, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(ray, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::LockedDigit { clue, .. } => {
                     assert!(
                         clue.rules

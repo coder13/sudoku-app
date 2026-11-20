@@ -978,4 +978,6 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 - [ ] Verify Technique Finder progress/cancellation, enabled techniques, counts, pages and action application against the same live candidate state.
 - [ ] Verify exact solutions and human walkthroughs under every active rule, with honest partial paths. Fix discovered defects and retain meaningful regressions.
 - [x] Test bounded support for a Renban set wholly inside a Little Killer sum. The untouched ModE opening yields four groups of valid eliminations when either clue alone yields none. Check support against literal digit tuples, including repeated digits and explicit candidate removals. [Issue 202](https://github.com/coder13/sudoku-app/issues/202).
-- [ ] Expose joined Renban and sum proofs as an independently selectable technique. Add proof explanations, Learn and practice, then check scoring, default order, full paths, and retained behavior before enabling it.
+- [x] Expose Renban and Little Killer as a 66-point Medium technique in explicit engine profiles, Technique Finder, and the app’s hint, walkthrough, and rating profile when a ray contains a full Renban. Add a Learn article, three practice positions, and fresh drills.
+- [x] Verify four opening hints with 53 candidate removals on Renban ModE and replay all ten steps of its partial human path against its exact completion.
+- [ ] Extend the detector to explain the separate three-clue Renban ModE deduction at R9C5, and continue auditing mixed-rule paths that stall.

@@ -1,5 +1,4 @@
 mod groups;
-#[cfg(test)]
 pub(super) mod renban_sum;
 
 use std::{collections::HashMap, ops::Range};

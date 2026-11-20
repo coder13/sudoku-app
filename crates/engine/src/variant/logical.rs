@@ -7,6 +7,7 @@ use std::{
 use super::{
     CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
     VariantPosition, VariantPositionError, cell_mask, cells_in, digit_sum,
+    lines::renban_sum::contained_joins,
 };
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
@@ -29,11 +30,16 @@ mod pruning;
 mod line_houses;
 
 macro_rules! catalog {
-    ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
+    (
+        $($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+
+        @explicit
+        $($(#[$extra_doc:meta])* $extra:ident: $extra_id:literal, $extra_cost:expr, $extra_tier:ident;)+
+    ) => {
         /// Techniques with rule-based explanations on a structured 9 × 9 grid.
         #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
         pub enum VariantTechnique {
             $($(#[$doc])* $name),+,
+            $($(#[$extra_doc])* $extra),+,
             /// A classic detector, subject to its house and uniqueness assumptions.
             Classic(Technique),
         }
@@ -42,24 +48,27 @@ macro_rules! catalog {
             /// Techniques in default solve order.
             pub const DEFAULT_ORDER: &'static [Self] = &[$(Self::$name),+];
 
+            /// Additional native techniques available in explicit profiles.
+            pub const EXPLICIT_TECHNIQUES: &'static [Self] = &[$(Self::$extra),+];
+
             /// Stable identifier for a proof or solver profile.
             pub const fn id(self) -> &'static str {
-                match self { $(Self::$name => $id),+, Self::Classic(technique) => technique.id() }
+                match self { $(Self::$name => $id,)+ $(Self::$extra => $extra_id,)+ Self::Classic(technique) => technique.id() }
             }
 
             /// Look up a supported technique by its case-sensitive ID.
             pub fn from_id(id: &str) -> Option<Self> {
-                match id { $($id => Some(Self::$name),)+ _ => Technique::from_id(id).map(Self::Classic) }
+                match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id).map(Self::Classic) }
             }
 
             /// Point cost per move made with this technique.
             pub const fn cost(self) -> u16 {
-                match self { $(Self::$name => $cost),+, Self::Classic(technique) => technique.cost() }
+                match self { $(Self::$name => $cost,)+ $(Self::$extra => $extra_cost,)+ Self::Classic(technique) => technique.cost() }
             }
 
             /// The minimum difficulty of a path that uses the technique.
             pub const fn difficulty(self) -> Difficulty {
-                match self { $(Self::$name => Difficulty::$tier),+, Self::Classic(technique) => technique.difficulty() }
+                match self { $(Self::$name => Difficulty::$tier,)+ $(Self::$extra => Difficulty::$extra_tier,)+ Self::Classic(technique) => technique.difficulty() }
             }
         }
     };
@@ -136,6 +145,10 @@ catalog! {
     Sandwich: "sandwich", 76, Hard;
     /// Apply a sum of the first X digits of a row or column.
     XSum: "x-sum", 80, Hard;
+
+    @explicit
+    /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
+    RenbanSum: "renban-sum", 66, Medium;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -150,6 +163,7 @@ impl VariantTechnique {
     pub fn all() -> impl Iterator<Item = Self> {
         Self::DEFAULT_ORDER
             .iter()
+            .chain(Self::EXPLICIT_TECHNIQUES)
             .copied()
             .chain(
                 Technique::ALL
@@ -236,6 +250,8 @@ pub enum VariantEvidence {
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
+    /// Candidate support from a Little Killer ray and a Renban it contains.
+    RenbanSum(Box<VariantRenbanSumProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -298,6 +314,22 @@ pub struct VariantLineHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Number of valid assignments in the complete enumeration.
     pub assignments: u32,
+}
+
+/// Replayable support for a Renban set inside a Little Killer ray.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanSumProof {
+    /// Rule indices for the Renban and then the Little Killer clue.
+    pub rules: [usize; 2],
+    /// Ray cells in their printed order.
+    pub cells: Vec<usize>,
+    /// Current candidate masks, including singleton masks for placed digits.
+    pub domains: Vec<u16>,
+    /// Digits present in a complete assignment satisfying both clues.
+    pub supported: Vec<u16>,
+    /// Digit mask for the smallest digits of supported Renban intervals.
+    pub starts: u16,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -504,6 +536,7 @@ impl VariantDeduction {
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
+            VariantEvidence::RenbanSum(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1007,6 +1040,39 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
+            RenbanSum => {
+                for join in contained_joins(self) {
+                    let cells = join.cells();
+                    let mut domains = [0; 9];
+                    let domains = &mut domains[..cells.len()];
+                    for (mask, &cell) in domains.iter_mut().zip(cells) {
+                        *mask = position.domain(cell);
+                    }
+                    let joint = join.support(domains);
+                    if joint.starts == 0 {
+                        continue;
+                    }
+                    let individual = join.individual_support(domains);
+                    // This proof only removes candidates supported by each clue on its own.
+                    let actions = position.removals(
+                        cells,
+                        joint.masks.into_iter().zip(individual).map(|(both, each)| both | !each),
+                    );
+                    if !actions.is_empty() {
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions,
+                            evidence: VariantEvidence::RenbanSum(Box::new(VariantRenbanSumProof {
+                                rules: join.rules(),
+                                cells: cells.to_vec(),
+                                domains: domains.to_vec(),
+                                supported: joint.masks[..cells.len()].to_vec(),
+                                starts: joint.starts,
+                            })),
+                        });
+                    }
+                }
+            }
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

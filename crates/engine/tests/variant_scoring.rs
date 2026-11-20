@@ -41,6 +41,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
+        VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::CageSum {
             cells,
             domains,
@@ -66,6 +67,8 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
+        // Compare each possible Renban interval's sum with the remainders on the ray.
+        RenbanSum => 42 + span + 2 * choices,
         CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
         Skyscrapers | Sandwich | XSum => 40 + span + 2 * choices,
         technique => panic!("no variant scoring model for {}", technique.id()),
@@ -76,7 +79,10 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
 fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     let mut path_scores = Vec::new();
     let mut tiers = [0; 5];
-    for &technique in VariantTechnique::DEFAULT_ORDER {
+    for &technique in VariantTechnique::DEFAULT_ORDER
+        .iter()
+        .chain(VariantTechnique::EXPLICIT_TECHNIQUES)
+    {
         if matches!(
             technique,
             VariantTechnique::FullHouse
@@ -161,7 +167,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     }
     assert_eq!(
         path_scores.len(),
-        3 * (VariantTechnique::DEFAULT_ORDER.len() - 3)
+        3 * (VariantTechnique::DEFAULT_ORDER.len() + VariantTechnique::EXPLICIT_TECHNIQUES.len() - 3)
     );
     path_scores.sort_unstable();
     println!(

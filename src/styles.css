@@ -1096,7 +1096,7 @@ svg { flex-shrink: 0; }
 .hint-card-explanation summary { width: fit-content; padding-block: var(--space-4); cursor: pointer; }
 .hint-card-explanation p { margin-top: var(--space-4); }
 
-@container hint-card (width > 470px) {
+@container hint-card (width > 620px) {
   .hint-card-heading:has(.hint-card-actions) { grid-template-columns: 38px minmax(0, 1fr) auto auto; }
   .hint-card-actions { grid-column: 3; grid-row: 1; }
 }

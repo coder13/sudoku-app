@@ -1,4 +1,4 @@
-use super::contained_support;
+use super::{JointSupport, contained_support};
 
 const ALL: u16 = 511;
 
@@ -8,7 +8,8 @@ fn mask(values: &[u8]) -> u16 {
 
 // Literal digit tuples, tested only at a full assignment. This uses neither
 // interval matching nor the sum engine.
-fn literal_support(domains: &[u16], members: u16, total: u16) -> [u16; 9] {
+fn literal_support(domains: &[u16], members: u16, total: u16) -> JointSupport {
+    let mut starts = 0;
     let mut support = [0; 9];
     let mut tuple = vec![1u8; domains.len()];
     for _ in 0..9usize.pow(domains.len() as u32) {
@@ -25,6 +26,7 @@ fn literal_support(domains: &[u16], members: u16, total: u16) -> [u16; 9] {
                 .collect::<Vec<_>>();
             consecutive.sort_unstable();
             if consecutive.windows(2).all(|pair| pair[1] == pair[0] + 1) {
+                starts |= 1 << (consecutive[0] - 1);
                 for (support, &digit) in support.iter_mut().zip(&tuple) {
                     *support |= 1 << (digit - 1);
                 }
@@ -38,7 +40,10 @@ fn literal_support(domains: &[u16], members: u16, total: u16) -> [u16; 9] {
             *digit = 1;
         }
     }
-    support
+    JointSupport {
+        masks: support,
+        starts,
+    }
 }
 
 #[test]
@@ -77,33 +82,33 @@ fn the_complete_mode_opening_has_multiple_two_rule_deductions() {
         );
     }
     assert_eq!(
-        contained_support(&[ALL; 4], 0b1110, 25)[0],
+        contained_support(&[ALL; 4], 0b1110, 25).masks[0],
         mask(&[1, 4, 7])
     );
     assert_eq!(
-        contained_support(&[ALL; 4], 0b1110, 23)[0],
+        contained_support(&[ALL; 4], 0b1110, 23).masks[0],
         mask(&[2, 5, 8])
     );
     let low = contained_support(&[ALL; 5], 0b01110, 15);
-    for &middle in &low[1..4] {
+    for &middle in &low.masks[1..4] {
         assert_eq!(middle, mask(&[1, 2, 3, 4, 5]));
     }
     // The two printed rules alone still permit 8 at R9C5. A third clue and
     // real house geometry are needed to reproduce Agent D's stronger proof.
-    assert_ne!(low[0] & mask(&[8]), 0);
+    assert_ne!(low.masks[0] & mask(&[8]), 0);
 }
 
 #[test]
 fn allows_legal_repeats_and_respects_explicit_candidate_removals() {
     let domains = [mask(&[1]), mask(&[2]), mask(&[1]), mask(&[1])];
-    assert_eq!(contained_support(&domains, 0b0011, 5)[..4], domains);
-    assert_eq!(contained_support(&domains, 0b0011, 6), [0; 9]);
+    assert_eq!(contained_support(&domains, 0b0011, 5).masks[..4], domains);
+    assert_eq!(contained_support(&domains, 0b0011, 6).masks, [0; 9]);
     let mut domains = [ALL; 4];
     domains[0] &= !mask(&[4]);
     let support = contained_support(&domains, 0b1110, 25);
     assert_eq!(support, literal_support(&domains, 0b1110, 25));
-    assert_eq!(support[0], mask(&[1, 7]));
-    for &inside in &support[1..4] {
+    assert_eq!(support.masks[0], mask(&[1, 7]));
+    for &inside in &support.masks[1..4] {
         assert_eq!(inside, mask(&[5, 6, 7, 8, 9]));
     }
 }
@@ -113,7 +118,7 @@ fn a_long_renban_uses_its_full_interval_and_keeps_the_placed_value() {
     let mut domains = [ALL; 9];
     domains[5] = mask(&[3]);
     let support = contained_support(&domains, ALL, 45);
-    for (index, &domain) in support.iter().enumerate() {
+    for (index, &domain) in support.masks.iter().enumerate() {
         assert_eq!(
             domain,
             if index == 5 {
@@ -123,5 +128,5 @@ fn a_long_renban_uses_its_full_interval_and_keeps_the_placed_value() {
             }
         );
     }
-    assert_eq!(contained_support(&domains, ALL, 46), [0; 9]);
+    assert_eq!(contained_support(&domains, ALL, 46).masks, [0; 9]);
 }

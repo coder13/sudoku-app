@@ -1,4 +1,4 @@
-import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
@@ -10,7 +10,7 @@ import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions
 
 let playOrder: Promise<string[]> | undefined
 
-export function getVariantPlayOrder() {
+export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
     .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
       Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
@@ -18,7 +18,15 @@ export function getVariantPlayOrder() {
       playOrder = undefined
       throw error
     })
-  return playOrder
+  const rules = puzzle?.rules
+  if (!rules?.some(ray => ray.type === 'little-killer' && rules.some(rule =>
+    rule.type === 'renban' && rule.cells.length >= 2 && rule.cells.every(cell => ray.cells.includes(cell))
+  ))) return playOrder
+
+  return playOrder.then(order => {
+    const afterLittleKiller = order.indexOf('little-killer') + 1
+    return [...order.slice(0, afterLittleKiller), 'renban-sum', ...order.slice(afterLittleKiller)]
+  })
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
@@ -77,7 +85,7 @@ export async function playCandidates(game: Game) {
   }
 }
 
-export async function variantHintOrder() {
+export async function variantHintOrder(puzzle: VariantPuzzle) {
   const disabled = new Set(readDisabledHintTechniques())
-  return (await getVariantPlayOrder()).filter((id) => !disabled.has(id))
+  return (await getVariantPlayOrder(puzzle)).filter((id) => !disabled.has(id))
 }

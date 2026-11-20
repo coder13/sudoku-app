@@ -59,7 +59,7 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
     const { variant } = game
     const request = {
       type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations },
-      techniqueOrder: technique ? [technique] : await variantHintOrder(),
+      techniqueOrder: technique ? [technique] : await variantHintOrder(variant.puzzle),
       limit: technique || limit === 'all' ? 0xffff_ffff : limit,
       preferProgress: !technique, difficulty: game.difficulty ?? 'medium',
     } as const
@@ -95,6 +95,6 @@ export async function puzzleSolution(game: Game) {
   if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens)
   if (game.grid) return miniSolutionTrace(game.givens)
   return game.variant ? variantSolutionPath(await runEngine({
-    type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(),
+    type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(game.variant.puzzle),
   })) : runEngine({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
 }

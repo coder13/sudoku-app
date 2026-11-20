@@ -4,7 +4,9 @@ import { test } from 'node:test'
 import { runEngine, type VariantDeduction, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
-import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { puzzleHintPage, puzzleHints, puzzleSolution, puzzleTechniqueCatalog } from '../src/sudoku/puzzle-help.ts'
+import { saveDisabledHintTechniques } from '../src/sudoku/hint-preferences.ts'
+import { ratePuzzle } from '../src/sudoku/puzzle-rating.ts'
 import {
   generatePlayableVariant,
   getVariantPlayOrder,
@@ -309,19 +311,88 @@ test('converted typed Coach controls and authored Jigsaw companions retain every
   }
 })
 
-test('the full zero-given Renban companion imports its exact completion and preserves honest zero-hint and partial statuses', async () => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8'))
+test('Renban ModE opens with four combined proofs and shows an honest ten-step partial path', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8')) as {
+    puzzle: VariantPuzzle; solution: string
+  }
   const { game } = await prepareImportedPuzzle(share(source.puzzle))
-  assert.deepEqual(game.variant!.puzzle, source.puzzle)
-  assert.equal(game.variant!.solution, source.solution)
+  const variant = game.variant!
+  assert.deepEqual(variant.puzzle, source.puzzle)
+  assert.equal(variant.solution, source.solution)
   assertVariantCompletion(source.puzzle, source.solution)
-  assert.equal((await puzzleHints(game)).choices.length, 0)
+  const technique = 'renban-sum'
+  const position = variantPosition(variant, game.position)
+  const baseOrder = await getVariantPlayOrder()
+  assert.ok(!baseOrder.includes(technique))
+  assert.deepEqual(await getVariantPlayOrder(sources[0].puzzle), baseOrder)
+  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique), baseOrder)
+
+  const catalog = await puzzleTechniqueCatalog(true)
+  assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
+    id: technique, cost: 66, difficulty: 'medium', requiresUniqueSolution: false, aliases: [],
+  })
+  const { choices, candidates } = await puzzleHints(game)
+  assert.equal(choices.length, 4)
+  const selected = await puzzleHints(game, 'all', technique)
+  assert.equal(selected.choices.length, 4)
+  assert.deepEqual(new Set(choices), new Set(selected.choices))
+  for (const hint of choices) {
+    assert.equal(hint.technique, technique)
+    assert.ok('variant' in hint.evidence)
+    const proof = hint.evidence.variant.source?.deduction.evidence
+    assert.ok(proof?.type === 'renban-sum')
+    assert.deepEqual(hint.pattern?.cells, proof.cells)
+    assert.equal(source.puzzle.rules?.[proof.rules[0]].type, 'renban')
+    assert.equal(source.puzzle.rules?.[proof.rules[1]].type, 'little-killer')
+    assert.match(hint.evidence.variant.description, /Little Killer diagonal.*totals.*Renban/)
+    assert.match(hint.evidence.variant.reason, /sets that fit both clues/)
+  }
+
+  const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, position)
+  try {
+    const count = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action)))).size
+    assert.equal(count, 53)
+    assert.equal(await scan.count(technique), count)
+  } finally {
+    scan.close()
+  }
+
+  const first = choices.find(hint => 'variant' in hint.evidence && /totals 25/.test(hint.evidence.variant.description))!
+  assert.ok('variant' in first.evidence)
+  assert.match(first.evidence.variant.reason, /5 to 7 adds to 18, leaving 7/)
+  assert.match(first.evidence.variant.reason, /7 to 9 adds to 24, leaving 1/)
+  const played = applyDeduction(game, first.actions, candidates!)
+  assert.notDeepEqual(played.position.eliminations, game.position.eliminations)
+  assert.deepEqual(undo(played).position, game.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+  assert.ok((await puzzleHints(played)).choices.length > 0)
+
+  const storage = new MemoryStorage()
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
+  try {
+    saveDisabledHintTechniques([technique])
+    assert.deepEqual((await puzzleHints(game)).choices, [])
+    assert.equal((await puzzleHints(game, 'all', technique)).choices.length, 4)
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
   const path = await puzzleSolution(game)
   assert.equal(path.rating.status, 'stalled')
-  assert.equal(path.steps.length, 0)
+  assert.equal(path.steps.length, 10)
+  assert.equal(path.rating.score.counts[technique], 5)
+  assert.equal(path.rating.score.points, 530)
+  assert.equal(path.positions!.length, path.steps.length + 1)
   assert.equal(path.board, source.puzzle.givens)
+  for (const step of path.steps) for (const action of step.actions) {
+    assert.ok('eliminate' in action)
+    assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+  }
+  assert.equal(await ratePuzzle(game.givens, variant), null)
   assert.equal(
-    await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: source.puzzle }, maxNodes: 20_000 }),
+    await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 20_000 }),
     'search-limit',
   )
 })

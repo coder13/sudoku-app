@@ -2464,7 +2464,8 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
   assert.equal(catalog.scoringVersion, 8)
-  const expectedIds = new Set([...catalog.defaultOrder, ...classic.techniques.map(technique => technique.id)])
+  assert.ok(!catalog.defaultOrder.includes('renban-sum'))
+  const expectedIds = new Set([...catalog.defaultOrder, 'renban-sum', ...classic.techniques.map(technique => technique.id)])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
@@ -2475,6 +2476,7 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(costs.get('non-consecutive-bivalue'), 22)
   assert.equal(costs.get('non-consecutive-trivalue'), 24)
   assert.equal(costs.get('cage-house-sum'), 67)
+  assert.equal(costs.get('renban-sum'), 66)
   assert.equal(costs.get('x-sum'), 80)
 
   for (const technique of catalog.defaultOrder) {

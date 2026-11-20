@@ -566,6 +566,7 @@ export type VariantDeduction = {
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
+    | { type: 'renban-sum'; rules: [number, number]; cells: number[]; domains: number[]; supported: number[]; starts: number }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }

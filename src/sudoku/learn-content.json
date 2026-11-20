@@ -8027,6 +8027,48 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-sum",
+          "title": "Renban and Little Killer",
+          "summary": "When a Little Killer diagonal contains a whole Renban, each possible set of consecutive digits leaves a different total for the other cells on the diagonal. Compare those totals to rule out candidates.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Subtract the sum of each Renban set"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a Renban with all of its cells on the same Little Killer diagonal. List the sets of consecutive digits that can fit the Renban candidates. Each set has the same sum in any order.",
+                "Subtract each set’s sum from the Little Killer total. Check whether the other cells on the diagonal can make the remainder. Cross out any candidate that cannot fit a set and a remainder together."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum",
+              "copy": {
+                "description": "The diagonal totals 19. Only the set {2, 3, 4} fits the Renban and leaves a sum the other two cells can make. The set adds to 9. R8C4 is already 3, so R9C5 must be 7."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum",
+                  "title": "Renban and Little Killer"
+                }
+              ],
+              "guide": {
+                "start": "Find the Renban whose cells all lie on the Little Killer diagonal.",
+                "check": "For each consecutive set that fits the Renban, subtract its sum from the total. See whether the remaining cells can make that remainder.",
+                "reason": "A candidate must appear in an assignment that fits both the Renban and the Little Killer total."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
           "id": "skyscrapers",
           "title": "Skyscrapers clues",
           "summary": "In a Skyscrapers clue, each digit is the height of a building. A taller building hides every shorter building behind it until the view reaches an even taller one. The outside clue counts the buildings you can see from that side.",

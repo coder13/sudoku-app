@@ -4,8 +4,6 @@ use crate::{HintAction, VariantPuzzle, parse_givens};
 #[cfg(feature = "wasm-api")]
 #[test]
 fn renban_sum_scopes_and_actions_replay_on_the_complete_mode_position() {
-    use crate::variant::lines::renban_sum::contained_joins;
-
     let fixture: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../tests/fixtures/little-killer-menace.json"
     ))
@@ -13,36 +11,79 @@ fn renban_sum_scopes_and_actions_replay_on_the_complete_mode_position() {
     let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
     let solution = parse_givens(fixture["solution"].as_str().unwrap()).unwrap();
     let compiled = puzzle.compile().unwrap();
-    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
     for technique in [VariantTechnique::Renban, VariantTechnique::LittleKiller] {
-        assert!(compiled.explain(&position, technique).is_empty());
+        assert!(compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap().is_empty());
     }
-    let joins = contained_joins(&compiled).collect::<Vec<_>>();
-    assert_eq!(
-        joins.iter().map(|join| join.rules).collect::<Vec<_>>(),
-        [[4, 0], [7, 1], [14, 2], [13, 3]],
-    );
-    for (join, expected_count) in joins.into_iter().zip([18, 18, 3, 14]) {
-        let [_, sum_rule] = join.rules;
+    let technique = VariantTechnique::RenbanSum;
+    let deductions = compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap();
+    let mut scopes = Vec::new();
+    for deduction in &deductions {
+        let VariantEvidence::RenbanSum(proof) = &deduction.evidence else {
+            unreachable!()
+        };
+        let [_, sum_rule] = proof.rules;
         let PuzzleRule::LittleKiller { cells, .. } = &puzzle.rules[sum_rule] else {
             unreachable!()
         };
-        assert_eq!(join.cells, cells);
-        let domains = join
-            .cells
-            .iter()
-            .map(|&cell| position.domain(cell))
-            .collect::<Vec<_>>();
-        let support = join.support(&domains);
-        let actions = position.removals(join.cells, support.into_iter());
-        assert_eq!(actions.len(), expected_count);
-        for action in actions {
+        assert_eq!(&proof.cells, cells);
+        scopes.push((proof.rules, deduction.actions.len()));
+        for action in &deduction.actions {
             let HintAction::Eliminate(candidate) = action else {
                 unreachable!()
             };
             assert_ne!(solution[candidate.cell], candidate.digit);
         }
     }
+    scopes.sort_unstable();
+    assert_eq!(scopes, [([4, 0], 18), ([7, 1], 18), ([13, 3], 14), ([14, 2], 3)]);
+
+    let start = VariantPosition::new(puzzle);
+    let trace = start.solve_logically(&[technique]).unwrap();
+    assert!(deductions.contains(&trace.steps[0]));
+    for index in 0..trace.steps.len() {
+        let replay = trace.replay_step(index).unwrap();
+        for action in &replay.deduction.actions {
+            let candidate = action.candidate();
+            let digit = digit_bit(candidate.digit);
+            assert_eq!(replay.before.eliminations[candidate.cell] & digit, 0);
+            assert_eq!(replay.after.eliminations[candidate.cell] & digit, digit);
+            assert_ne!(solution[candidate.cell], candidate.digit);
+        }
+    }
+}
+
+#[test]
+fn renban_sum_works_with_jigsaw_regions_and_skips_partial_overlaps() {
+    let givens = parse_givens(
+        "490081700000427068000900421300200094056009080800060010070000205001304806000000030",
+    )
+    .unwrap();
+    let mut regions: [Vec<usize>; 9] = std::array::from_fn(|region| {
+        let base = 27 * (region / 3) + 3 * (region % 3);
+        (0..9).map(|i| base + 9 * (i / 3) + (i % 3)).collect()
+    });
+    // Swap two equally valued cells between adjacent regions, away from the ray.
+    regions[1][5] = 6;
+    regions[2][0] = 14;
+    let mut puzzle = VariantPuzzle::jigsaw(givens, regions.into());
+    puzzle.rules = vec![
+        PuzzleRule::Renban { cells: vec![36, 46, 56], segments: None },
+        PuzzleRule::LittleKiller {
+            cells: vec![36, 46, 56, 66, 76],
+            direction: crate::ClueDirection::SouthEast,
+            sum: 19,
+        },
+    ];
+    let technique = VariantTechnique::RenbanSum;
+    let compiled = puzzle.compile().unwrap();
+    let deductions = compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap();
+    assert_eq!(deductions.len(), 1);
+    assert!(deductions[0].actions.contains(&HintAction::Eliminate(Candidate { cell: 76, digit: 5 })));
+
+    // Keep one intersection and a valid completion, with a Renban extending off the ray.
+    puzzle.rules[0] = PuzzleRule::Renban { cells: vec![36, 27], segments: None };
+    let compiled = puzzle.compile().unwrap();
+    assert!(compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap().is_empty());
 }
 
 #[cfg(feature = "wasm-api")]

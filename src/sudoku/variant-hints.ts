@@ -291,6 +291,30 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         .map(digit => ({ cell: cells[i], digit })))
       break
     }
+    case 'renban-sum': {
+      cells = evidence.cells
+      const renban = puzzle.rules?.[evidence.rules[0]]
+      const ray = puzzle.rules?.[evidence.rules[1]]
+      description = 'The highlighted Renban lies entirely on the Little Killer diagonal.'
+      reason = 'Each crossed-out candidate has no assignment that fits both clues.'
+      if (renban?.type === 'renban' && ray?.type === 'little-killer') {
+        const length = renban.cells.length
+        description = `The Little Killer diagonal from ${nameCell(cells[0])} to ${nameCell(cells[cells.length - 1])} totals ${ray.sum}. It includes all ${length} cells of the Renban.`
+        const remaining = cells.filter(cell => !renban.cells.includes(cell))
+        const ranges = DIGITS.filter(digit => evidence.starts & 1 << (digit - 1)).map(first => {
+          const end = first + length - 1
+          const sum = length * (first + end) / 2
+          return remaining.length
+            ? `The set from ${first} to ${end} adds to ${sum}, leaving ${ray.sum - sum}.`
+            : `The set from ${first} to ${end} adds to the full total.`
+        })
+        const totals = remaining.length === 1
+          ? `Check the candidates in ${nameCell(remaining[0])} against what remains.`
+          : remaining.length > 1 ? 'Check whether the other cells on the diagonal can add to what remains.' : ''
+        reason = `Try consecutive sets of ${length} digits on the Renban. Here are the sets that fit both clues. ${ranges.join(' ')} ${totals ? totals + ' ' : ''}None of these sets gives a complete assignment with a crossed-out candidate.`
+      }
+      break
+    }
     case 'constraint': {
       cells = evidence.cells
       const clue = constraintClue(evidence, puzzle, nameCell, focus)

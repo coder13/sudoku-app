@@ -786,6 +786,56 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
         ],
+        RenbanSum => [
+            seed(
+                "490081700000427068000900421300200094056009080800060010070000205001304806000000030",
+                76,
+                5,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![36, 46, 56],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![36, 46, 56, 66, 76],
+                        direction: ClueDirection::SouthEast,
+                        sum: 19,
+                    },
+                ],
+            ),
+            seed(
+                "710900004004573802058000069207000000109820300030000900070081003500036000080090601",
+                61,
+                2,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![77, 69],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![77, 69, 61, 53],
+                        direction: ClueDirection::NorthEast,
+                        sum: 21,
+                    },
+                ],
+            ),
+            seed(
+                "601080000070004500080000100090310870000070950820400600050001369712090080006008210",
+                44,
+                1,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![68, 76],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![44, 52, 60, 68, 76],
+                        direction: ClueDirection::SouthWest,
+                        sum: 17,
+                    },
+                ],
+            ),
+        ],
         RegionSum => [
             seed(
                 "913070400002000071700040000605710234070006010100400760056807020890304050237600000",

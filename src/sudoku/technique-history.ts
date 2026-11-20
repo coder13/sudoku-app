@@ -143,7 +143,7 @@ export function observeTechniqueActions(game: Game, actions: readonly DeductionA
 async function classifyVariantActions(game: Game, variant: VariantGame, actions: readonly DeductionAction[], eliminations?: readonly number[]) {
   const hints = await runEngine({
     type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations },
-    techniqueOrder: await getVariantPlayOrder(), limit: 64,
+    techniqueOrder: await getVariantPlayOrder(variant.puzzle), limit: 64,
   }, { background: true })
   const byAction = new Map<string, string>()
   for (const hint of hints) {
