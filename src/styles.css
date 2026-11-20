@@ -3216,6 +3216,36 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       > .mobile-panel[data-mobile-panel="input"] {
       flex: none;
     }
+
+    /* Both panels use the same page-side gutter and neither can exceed it. */
+    .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
+      --board-frame-limit: 100%;
+    }
+    .standard-workspace-page .puzzle.puzzle-flat {
+      box-sizing: border-box;
+      inline-size: 100%;
+      max-inline-size: min(100%, var(--board-frame-limit));
+      margin-inline: auto;
+    }
+    /* If dragging the input makes the board smaller, the header follows the grid. */
+    .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle.puzzle-flat {
+      max-inline-size: min(100%, var(--board-frame-limit));
+    }
+    /* Put row numbers in the side gutter instead of taking width from the grid. */
+    .standard-workspace-page .puzzle-flat .board-frame:not(.has-outside-clues) {
+      --board-guide-width: 0px;
+      position: relative;
+    }
+    .standard-workspace-page .puzzle-flat .board-frame:not(.has-outside-clues, .guides-hidden) > .row-labels {
+      position: absolute;
+      grid-area: auto;
+      inset-block: var(--board-guide-height) 0;
+      inset-inline-end: 100%;
+      inline-size: 14px;
+      overflow: visible;
+      padding-inline: 0;
+      justify-items: center;
+    }
   }
   .mobile-panel-layout[data-fit-hint] > .mobile-panel[data-mobile-panel="input"] {
     display: flex;
