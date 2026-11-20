@@ -18,6 +18,29 @@ test('Home lists active puzzles before their first move and keeps last-played or
   assert.deepEqual(inProgress([opened, saved, archived, solved, played], storage), [played, opened])
 })
 
+test('active puzzle sorting reads each activity key once and refreshes keys on the next sort', () => {
+  const storage = new MemoryStorage()
+  const games = Array.from({ length: 150 }, (_, index) => makeGame(`game-${index}`, 'Puzzle', EMPTY, 'imported', index + 1))
+  const times = games.map((game, index) => {
+    const time = ((index * 73) % 151 + 1) * 1000
+    storage.setItem(activityPrefix + game.id, String(time))
+    return { game, time }
+  })
+  const expected = times.slice().sort((a, b) => b.time - a.time).map(({ game }) => game)
+  const read = storage.getItem.bind(storage)
+  let reads = 0
+  Object.defineProperty(storage, 'getItem', { value: (key: string) => { reads++; return read(key) } })
+
+  for (let index = 0; index < 6; index++) assert.deepEqual(inProgress(games, storage), expected)
+  assert.equal(reads, 900, 'six sorts read 150 activity keys each, regardless of comparator calls')
+  assert.equal(games[0].id, 'game-0', 'sorting preserves the caller order')
+
+  storage.setItem(activityPrefix + games[0].id, '999999')
+  reads = 0
+  assert.equal(inProgress(games, storage)[0], games[0], 'a later call sees activity from another tab')
+  assert.equal(reads, 150)
+})
+
 test('solve history orders by completion, preserves older records, and combines filters on local calendar days', () => {
   const storage = new MemoryStorage()
   const answer = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'

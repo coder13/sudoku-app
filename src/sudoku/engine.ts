@@ -708,10 +708,34 @@ export class EngineError extends Error {
   }
 }
 
+export type EngineRunOptions = {
+  interactive?: boolean
+  background?: boolean
+  signal?: AbortSignal
+  /** Keep only the newest waiting request for this caller. Active work is unchanged. */
+  latestKey?: object | string | symbol
+}
+
+export type EngineRunner = <T extends EngineRequest>(request: T, options?: EngineRunOptions) => Promise<EngineResult<T>>
+
+type PendingRequest = {
+  request: EngineRequest
+  latestKey?: EngineRunOptions['latestKey']
+  resolve: (value: unknown) => void
+  reject: (error: Error) => void
+  cleanup: () => void
+}
+
 type EngineConnection = {
   worker?: Worker
-  pending: Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>
+  active?: number
+  pending: Map<number, PendingRequest>
+  owned?: boolean
+  closed?: Error
+  prepared?: boolean
 }
+const candidateEngine: EngineConnection = { pending: new Map() }
+const metadataEngine: EngineConnection = { pending: new Map() }
 const playEngine: EngineConnection = { pending: new Map() }
 const generationEngine: EngineConnection = { pending: new Map() }
 const historyEngine: EngineConnection = { pending: new Map() }
@@ -724,11 +748,16 @@ function connect(connection: EngineConnection) {
   const { pending } = connection
   const instance = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })
   instance.onmessage = ({ data }: MessageEvent<EngineResponse>) => {
+    if (connection.worker !== instance || connection.active !== data.id) return
     const request = pending.get(data.id)
-    if (!request) return
+    connection.active = undefined
     pending.delete(data.id)
-    if ('error' in data) request.reject(new EngineError(data.error, data.code))
-    else request.resolve(data.value)
+    if (request) {
+      request.cleanup()
+      if ('error' in data) request.reject(new EngineError(data.error, data.code))
+      else request.resolve(data.value)
+    }
+    dispatchNext(connection)
   }
   instance.onerror = () => {
     if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine could not start. Try again.'))
@@ -739,14 +768,25 @@ function connect(connection: EngineConnection) {
 function closeConnection(connection: EngineConnection, error: Error) {
   connection.worker?.terminate()
   connection.worker = undefined
-  for (const request of connection.pending.values()) request.reject(error)
+  connection.active = undefined
+  for (const request of connection.pending.values()) {
+    request.cleanup()
+    request.reject(error)
+  }
   connection.pending.clear()
 }
 
-type WorkerOptions = { interactive?: boolean; background?: boolean }
-
-function connectionFor(request: EngineRequest, options: WorkerOptions) {
+function connectionFor(request: EngineRequest, options: EngineRunOptions) {
+  // Candidates must not queue behind a rating, hint search, or full solve.
+  if (request.type === 'notes' || request.type === 'solve-singles' ||
+    ('operation' in request && (request.operation === 'candidates' || request.operation === 'solve-singles')) ||
+    (request.type === 'sized-variant' && request.operation === 'hints' && request.limit === 0) ||
+    ('singlesOnly' in request && request.singlesOnly)) return candidateEngine
   switch (request.type) {
+    case 'techniques':
+    case 'capabilities':
+    case 'lesson-examples':
+      return metadataEngine
     case 'generate':
     case 'generate-mini':
     case 'generate-six':
@@ -771,9 +811,24 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
   }
 }
 
-export function runEngine<T extends EngineRequest>(request: T, options: WorkerOptions = {}): Promise<EngineResult<T>> {
-  return sendRequest(connectionFor(request, options), request)
+export function runEngine<T extends EngineRequest>(request: T, options: EngineRunOptions = {}): Promise<EngineResult<T>> {
+  return sendRequest(connectionFor(request, options), request, options)
 }
+
+/** Own a worker for a cancelable workflow. Keep paged hint calls in the same session. */
+export function createEngineSession({ prepared = false }: { prepared?: boolean } = {}) {
+  const connection: EngineConnection = { pending: new Map(), owned: true, prepared }
+  const run: EngineRunner = (request, options) => sendRequest(connection, request, options)
+  return {
+    run,
+    close() {
+      connection.closed ??= new DOMException('Engine session closed.', 'AbortError')
+      closeConnection(connection, connection.closed)
+    },
+  }
+}
+
+export type EngineSession = ReturnType<typeof createEngineSession>
 
 // Each visible board owns its synchronous Wasm work. Closing it interrupts even
 // an in-flight forcing search without cancelling another board or action history.
@@ -804,42 +859,91 @@ export function createCountWorker(values: string, eliminations: readonly number[
   }
 }
 
-function sendRequest<T extends EngineRequest>(connection: EngineConnection, request: T): Promise<EngineResult<T>> {
-  return new Promise((resolve, reject) => {
+function dispatchNext(connection: EngineConnection) {
+  if (connection.active !== undefined || connection.closed) return
+  const next = connection.pending.entries().next().value
+  if (!next) return
+  const [id, pending] = next
+  try {
     connection.worker ??= connect(connection)
+    connection.active = id
+    connection.worker.postMessage({ id, request: pending.request })
+  } catch (error) {
+    closeConnection(connection, error instanceof Error ? error : new Error(String(error)))
+  }
+}
+
+function sendRequest<T extends EngineRequest>(connection: EngineConnection, request: T, { signal, latestKey }: EngineRunOptions = {}): Promise<EngineResult<T>> {
+  return new Promise((resolve, reject) => {
+    if (connection.closed || signal?.aborted) {
+      reject(connection.closed ?? new DOMException('Engine request cancelled.', 'AbortError'))
+      return
+    }
+    if (latestKey !== undefined) {
+      for (const [id, pending] of connection.pending) {
+        if (id === connection.active || pending.latestKey !== latestKey) continue
+        pending.cleanup()
+        pending.reject(new DOMException('Engine request superseded.', 'AbortError'))
+        connection.pending.delete(id)
+      }
+    }
     const id = ++requestId
-    connection.pending.set(id, { resolve: (value) => resolve(value as EngineResult<T>), reject })
-    connection.worker.postMessage({ id, request: withHintPreferences(withSolverProfile(request)) })
+    const abort = () => {
+      const error = new DOMException('Engine request cancelled.', 'AbortError')
+      if (connection.owned && connection.active === id) {
+        // Wasm is synchronous: only terminating its owned worker can interrupt it.
+        connection.closed = error
+        closeConnection(connection, error)
+        return
+      }
+      const pending = connection.pending.get(id)
+      if (!pending) return
+      pending.cleanup()
+      pending.reject(error)
+      connection.pending.delete(id)
+      // An active shared request still occupies the worker until its response.
+      dispatchNext(connection)
+    }
+    connection.pending.set(id, {
+      request: connection.prepared ? request : withHintPreferences(withSolverProfile(request)), latestKey,
+      resolve: (value) => resolve(value as EngineResult<T>), reject,
+      cleanup: () => signal?.removeEventListener('abort', abort),
+    })
+    signal?.addEventListener('abort', abort, { once: true })
+    dispatchNext(connection)
   })
 }
 
-/** Run a targeted search with an attempt count and cancellation at attempt boundaries. */
+/** Run a targeted search with an attempt count and an interruptible owned worker. */
 export async function runGeneration<T extends GenerationRequest>(
   request: T,
   { signal, onProgress }: { signal?: AbortSignal; onProgress?: (attempts: number) => void } = {},
 ): Promise<GenerationOutcome<EngineResult<T>>> {
   if (signal?.aborted) return { status: 'cancelled', attempts: 0 }
+  const session = createEngineSession()
   const job = ++generationId
-  let current: GenerationProgress<Generated>
+  let current: GenerationProgress<Generated> | undefined
   try {
-    current = await runEngine({ type: 'generation-start', job, request })
+    current = await session.run({ type: 'generation-start', job, request }, { signal })
+    while (current.status === 'pending') {
+      const previous = current.attempts
+      current = signal?.aborted
+        ? await session.run({ type: 'generation-cancel', job })
+        : await session.run({ type: 'generation-advance', job }, { signal })
+      if (current.attempts > previous) onProgress?.(current.attempts)
+    }
+    if (signal?.aborted) return { status: 'cancelled', attempts: current.attempts }
+    return current as GenerationOutcome<EngineResult<T>>
   } catch (error) {
-    if (error instanceof EngineError && error.code && error.code !== 'generation-active') {
+    if (error instanceof Error && error.name === 'AbortError') return { status: 'cancelled', attempts: current?.attempts ?? 0 }
+    if (!current && error instanceof EngineError && error.code && error.code !== 'generation-active') {
       return { status: 'invalid', attempts: 0, code: error.code, message: error.message }
     }
     throw error
-  }
-
-  try {
-    while (current.status === 'pending') {
-      const previous = current.attempts
-      current = await runEngine({ type: signal?.aborted ? 'generation-cancel' : 'generation-advance', job })
-      if (current.attempts > previous) onProgress?.(current.attempts)
-    }
-    return current as GenerationOutcome<EngineResult<T>>
   } finally {
-    if (current.status === 'pending') {
-      await runEngine({ type: 'generation-cancel', job }).catch(() => {})
+    if (current?.status === 'pending') {
+      await session.run({ type: 'generation-cancel', job }).catch(() => {})
     }
+    session.close()
   }
 }

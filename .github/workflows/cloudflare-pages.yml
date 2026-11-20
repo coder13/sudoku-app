@@ -39,6 +39,20 @@ jobs:
           RUSTUP_TOOLCHAIN: stable
           VITE_EXPERIMENTAL_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
 
+      - name: Check board, startup, resize, and solver lifecycles
+        if: github.event_name == 'pull_request'
+        run: |
+          npm run check
+          npm test
+          npm --prefix tools/react-board-performance ci
+          npm --prefix tools/react-board-performance run check
+          npm exec --prefix tools/react-board-performance -- playwright install --with-deps chromium
+          npm --prefix tools/react-board-performance run benchmark -- --samples 4 --rounds 1 --warmup 2 --profile desktop --output results/ci.json
+          node tools/react-board-performance/scripts/motion.mjs --regression-only --output results/motion-ci.json
+          node scripts/check-mobile-resize.mjs --regression-only --output tools/react-board-performance/results/resize-ci.json
+          node --experimental-strip-types scripts/check-worktable-lifecycle.mjs --output tools/react-board-performance/results/lifecycle-ci.json
+          node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
+
       - name: Deploy to Cloudflare Pages
         id: pages
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3

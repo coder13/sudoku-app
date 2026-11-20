@@ -1,0 +1,7 @@
+body { overflow: auto; }
+main { max-width: 720px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.2rem; }
+p { font-size: .875rem; }
+#board-root { width: min(100%, 520px); margin-inline: auto; }
+.board-frame { --board-frame-width: 100%; }
+#board-description { color: var(--muted); }

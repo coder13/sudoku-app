@@ -112,7 +112,33 @@ svg { flex-shrink: 0; }
     box-shadow var(--motion-fast), opacity var(--motion-fast);
 }
 
-.topbar { background: var(--surface); border-bottom: 1px solid var(--border); transition: background-color var(--motion-standard), border-color var(--motion-standard); }
+.topbar { position: relative; background: var(--surface); border-bottom: 1px solid var(--border); transition: background-color var(--motion-standard), border-color var(--motion-standard); }
+.startup-progress {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  block-size: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--primary-bg) 12%, transparent);
+}
+.startup-progress > span {
+  display: block;
+  inline-size: 35%;
+  block-size: 100%;
+  background: var(--primary-bg);
+  opacity: .65;
+  animation: startup-progress 1.5s ease-in-out infinite;
+}
+@keyframes startup-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(286%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-progress > span { inline-size: 100%; animation: none; opacity: .3; }
+}
+.startup-loading { pointer-events: none; }
 .topbar-inner, .page { width: min(100%, 1128px); margin-inline: auto; padding-inline: 26px; }
 .topbar-inner { min-height: calc(var(--topbar-height) - 1px); display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); }
 .advanced-topbar .topbar-inner { width: 100%; max-width: none; padding-inline: var(--space-12); }
@@ -1241,7 +1267,8 @@ svg { flex-shrink: 0; }
   line-height: 1;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  transition: background-color var(--board-mark-motion), border-color var(--board-mark-motion), color var(--board-mark-motion), box-shadow var(--board-mark-motion);
+  /* Selection and dense highlights update in one paint. Mark entry/exit still fades. */
+  transition: none;
 }
 .cell[data-box-edge] { border-right: 2px solid var(--grid-strong); }
 .grid-row[data-box-edge] .cell { border-bottom: 2px solid var(--grid-strong); }
@@ -1341,12 +1368,11 @@ svg { flex-shrink: 0; }
 .board-candidate {
   position: relative;
   opacity: var(--board-mark-opacity, 1);
-  transition: opacity var(--candidate-fade-motion, var(--board-mark-motion)), color var(--board-mark-motion),
-    background-color var(--board-mark-motion), box-shadow var(--board-mark-motion);
+  transition: opacity var(--candidate-fade-motion, var(--board-mark-motion));
 }
 .board-candidate, .candidate-glyph { --candidate-shape-size: 1.35em; }
 .puzzle .candidate-marks :is(.board-candidate, .candidate-glyph) { --candidate-shape-size: min(1.35em, calc(100cqmin / 3)); }
-.candidate-glyph { transition: color var(--board-mark-motion), background-color var(--board-mark-motion), box-shadow var(--board-mark-motion); }
+.candidate-glyph { transition: none; }
 .cell [data-candidate-preview] { color: var(--dark-purple); --board-mark-opacity: .5; }
 [data-board-fade="exit"] { opacity: 0; pointer-events: none; }
 @starting-style {
@@ -1548,8 +1574,7 @@ svg { flex-shrink: 0; }
 .board-link-target { pointer-events: stroke; cursor: pointer; }
 .board-links [data-board-fade="exit"] .board-link-target { pointer-events: none; }
 .board-body:has(.board-link-target) .candidate-glyph { position: relative; z-index: 3; }
-.board-links :is(line, polyline) { transition: stroke var(--board-shape-motion); }
-.board-links marker path { transition: fill var(--board-shape-motion); }
+.board-links :is(line, polyline, marker path) { transition: none; }
 .draft-tip { display: flex; align-items: center; justify-content: center; gap: var(--space-8); width: calc(var(--board-frame-width) - var(--board-guide-width)); margin: var(--space-18) auto 0; translate: var(--board-guide-offset) 0; color: var(--muted); font-size: 0.8125rem; }
 
 .workspace-controls { grid-area: controls; display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
@@ -3212,7 +3237,20 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .puzzle-zoom .board-frame { width: 100%; }
   .puzzle-zoom .sudoku-grid { overflow: clip; }
-  .puzzle-zoom-content { transform-origin: top left; }
+  .puzzle-zoom-content {
+    transform-origin: top left;
+    /* The viewport owns outer card sizing. Do not carry that bookkeeping into
+       every cell and candidate when only the surrounding panels change size. */
+    --mobile-resized-input-height: initial;
+    --mobile-resized-puzzle-height: initial;
+    --mobile-natural-puzzle-height: initial;
+    --mobile-puzzle-chrome-height: initial;
+    --mobile-fit-board-height: initial;
+    --mobile-input-panel-width: initial;
+    --board-frame-limit: 100%;
+    --board-frame-width: 100%;
+    --puzzle-grid-inset: 0px;
+  }
   /* The mode icon sits just beyond the grid border. During a resize preview,
      never clip that overflow or paint-contain its parent, or the icon vanishes. */
   .puzzle-zoom[data-resize-preview] { overflow: visible; }

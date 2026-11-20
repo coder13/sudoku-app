@@ -5,6 +5,7 @@ import { createElement, Fragment, isValidElement, type ReactElement, type ReactN
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
+import { renderedElements } from './component-tree.ts'
 
 let server: ViteDevServer
 let Board: (props: Record<string, unknown>) => ReactNode
@@ -29,7 +30,7 @@ before(async () => {
 
 after(async () => { await server?.close() })
 
-test('a saved puzzle URL renders the same initial shell as the prerendered home page', async () => {
+test('home and saved puzzle URLs render the same blank loading shell before device data', async () => {
   const { getRouter } = await server.ssrLoadModule('/src/router.tsx') as typeof import('../src/router.tsx')
 
   async function renderHome(path: string) {
@@ -43,8 +44,13 @@ test('a saved puzzle URL renders the same initial shell as the prerendered home 
   const savedPuzzle = await renderHome('/?puzzle=saved-puzzle')
   const openingTag = /<main\b[^>]*>/
   const homeMain = home.match(openingTag)?.[0]
-  assert.match(homeMain ?? '', /puzzles-home/)
+  assert.match(homeMain ?? '', /startup-loading/)
+  assert.match(homeMain ?? '', /aria-busy="true"/)
   assert.equal(savedPuzzle.match(openingTag)?.[0], homeMain)
+  for (const markup of [home, savedPuzzle]) {
+    assert.match(markup, /class="startup-progress" role="progressbar" aria-label="Loading puzzles"/)
+    assert.doesNotMatch(markup, /class="[^"]*\bpuzzles-(?:home|page)\b|id="sudoku-workspace"/)
+  }
 })
 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
@@ -54,16 +60,15 @@ function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
 }
 
 function boardTree(props: Record<string, unknown>) {
-  let tree: ReactNode
-  function RenderBoard() {
-    tree = Board({
-      givens: '0'.repeat(81), values: '0'.repeat(81), showGuides: true,
-      candidates: [3, 3, ...Array(79).fill(0)], ...props,
-    })
-    return tree
-  }
-  renderToStaticMarkup(createElement(RenderBoard))
-  return elements(tree!)
+  const tree = renderedElements(Board, {
+    givens: '0'.repeat(81), values: '0'.repeat(81), showGuides: true,
+    candidates: [3, 3, ...Array(79).fill(0)], ...props,
+  })
+  const size = (props.grid as { size: number } | undefined)?.size ?? 9
+  const region = props.region as { rows: number; columns: number } | undefined
+  assert.equal(tree.filter(({ props }) => props.role === 'gridcell').length,
+    (region?.rows ?? size) * (region?.columns ?? size), 'Every visible cell must be rendered and inspected')
+  return tree
 }
 
 test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {

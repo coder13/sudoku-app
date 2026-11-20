@@ -1,0 +1,63 @@
+{
+  "schema": "react-responsiveness-evidence-v1",
+  "publishedSourceCommit": "92f0b21eb456077980c497e39f9fc898246ae730",
+  "reports": {
+    "board": {
+      "file": "board.json.gz",
+      "rawSha256": "09890cc811f0e8df1f7e3490f5901e10c645d771e4a0891e0fd5c539e4d7bcd1",
+      "gzipSha256": "92bd3c582318929ac195230e9a2d7a7d69935b55d1c8653642b8bc34085bea37",
+      "rawBytes": 1168357,
+      "gzipBytes": 41307,
+      "recordedSourceCommit": "589f83dce0f6b52c14d2bb43c96e2fbc431aadb7",
+      "recordedSourceStatus": "",
+      "verifiedSourceFiles": 29
+    },
+    "motion": {
+      "file": "motion.json.gz",
+      "rawSha256": "1d21c24e69e35f7b6738fe9fdd7d66dad1230febc982374b700391dcf1a86439",
+      "gzipSha256": "fe9685385d88178aa07d42ad1c4b417de77401faf926334220413ef2dc69c8c7",
+      "rawBytes": 499895,
+      "gzipBytes": 23135,
+      "recordedSourceCommit": "6a5cd8532a7fb23ac18026094687e0ef40fbb108",
+      "recordedSourceStatus": "M .github/workflows/cloudflare-pages.yml\n M scripts/check-mobile-resize.mjs\n M scripts/check-worktable-lifecycle.mjs\n M tests/browser/mobile-resize/fixture.tsx\n M tools/react-board-performance/.gitignore\n M tools/react-board-performance/README.md\n M tools/react-board-performance/baseline/Board.tsx\n M tools/react-board-performance/baseline/manifest.json\n M tools/react-board-performance/baseline/paint-transitions.json\n M tools/react-board-performance/scripts/motion.mjs\n M tools/react-board-performance/src/benchmark.ts\n M tools/react-board-performance/src/fixtures.tsx\n M tools/react-board-performance/src/main.tsx",
+      "verifiedSourceFiles": 29
+    },
+    "resize": {
+      "file": "resize.json.gz",
+      "rawSha256": "d8bf63a3f85264208555ef7ca77b56b9e75cd1daf5bfdb19ece6c0b41bd422cd",
+      "gzipSha256": "513a5ac1813b1005baafe6602f29d1f717e1af2c0e5872eb627e7b9dbbbad007",
+      "rawBytes": 20623,
+      "gzipBytes": 3870,
+      "recordedSourceCommit": "589f83dce0f6b52c14d2bb43c96e2fbc431aadb7",
+      "recordedSourceStatus": "",
+      "verifiedSourceFiles": 17
+    },
+    "lifecycle": {
+      "file": "lifecycle.json.gz",
+      "rawSha256": "b7900f147eaedbb2a5a64e81a52314ceebcfa8b9e6ed31d00348b46c5ca425b9",
+      "gzipSha256": "6d75eda539b75264d0aaf62ab91d57126c5eb6c4c8c61bc35df348e5dc105f50",
+      "rawBytes": 17287,
+      "gzipBytes": 1788,
+      "recordedSourceCommit": "53aa9da1e045a523312c7e820974417c1743e798",
+      "recordedSourceStatus": null,
+      "verifiedSourceFiles": 8
+    }
+  },
+  "provenance": "Original report commit and working-tree status are retained. Every measured source hash was checked against the published source commit, including reports made before its GitHub commit was created.",
+  "localEngine": {
+    "ciCommit": "55067cc61d09e4e953f9d7fc6d599be4d8a01a5e",
+    "workflowRun": 44780347680,
+    "engineUrl": "https://d28fd15d.klyn-sudoku.pages.dev/assets/engine-u_EBPwze.wasm",
+    "sha256": "a27b42bba213602f4ff790a9d27325bdf594c6593206f566a1d3a3b539b1da79",
+    "restoredAt": "2026-11-20T17:16:34.865Z",
+    "profile": "app",
+    "capabilities": {
+      "classic": true,
+      "generation": true,
+      "teaching": true,
+      "variants": true
+    },
+    "bytes": 3867507,
+    "verifiedWasmSha256": "a27b42bba213602f4ff790a9d27325bdf594c6593206f566a1d3a3b539b1da79"
+  }
+}
