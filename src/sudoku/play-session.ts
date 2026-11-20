@@ -2,7 +2,7 @@ import type { DigitHighlightMatch } from './highlighting.ts'
 import { readLegacyDesktopToolPanels } from './play-preferences.ts'
 
 export const PUZZLE_TOOL_ORDER = ['colors', 'chains', 'subsets'] as const
-export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER] as const
+export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER, 'rules'] as const
 export type PuzzleTool = typeof TOOL_PANEL_ORDER[number]
 export type ToolPanelTab = 'digits' | PuzzleTool
 type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }

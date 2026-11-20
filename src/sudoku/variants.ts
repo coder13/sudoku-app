@@ -526,11 +526,20 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): strin
   return [...new Set(names)].filter(Boolean).join(' + ')
 }
 
-/** Explain every active rule, including the direction and negative dot clues. */
-export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
-  const descriptions: string[] = [puzzle.regions?.type === 'jigsaw' ? VARIANTS.jigsaw.rule : VARIANTS.classic.rule]
-  const disjoint = disjointGroupRuleIndices(puzzle.rules ?? [])
-  for (const [index, rule] of (puzzle.rules ?? []).entries()) {
+export type VariantRuleSectionId = 'classic' | 'jigsaw' | VariantRule['type']
+export type VariantRuleSection = { id: VariantRuleSectionId; title: string; descriptions: string[] }
+
+function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
+  return puzzle.regions?.type === 'jigsaw'
+    ? { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions: [VARIANTS.jigsaw.rule] }
+    : { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
+}
+
+function describedVariantRules(puzzle: VariantPuzzle) {
+  const rules = puzzle.rules ?? []
+  const disjoint = disjointGroupRuleIndices(rules)
+  return rules.map((rule, index) => {
+    const descriptions: string[] = []
     switch (rule.type) {
       case 'little-killer':
         descriptions.push(VARIANTS['little-killer'].rule, outsideClueLabel(rule))
@@ -633,8 +642,26 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
       default:
         if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)
     }
+    return { id: rule.type, descriptions }
+  })
+}
+
+/** Explain every active rule, including the direction and negative dot clues. */
+export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
+  return [...new Set([...baseRuleSection(puzzle).descriptions, ...describedVariantRules(puzzle).flatMap(rule => rule.descriptions)])]
+}
+
+export function variantRuleSections(puzzle: VariantPuzzle): VariantRuleSection[] {
+  const sections = new Map<VariantRuleSectionId, VariantRuleSection>()
+  const base = baseRuleSection(puzzle)
+  sections.set(base.id, base)
+  for (const { id, descriptions } of describedVariantRules(puzzle)) {
+    if (!descriptions.length) continue
+    const current = sections.get(id)
+    if (current) current.descriptions = [...new Set([...current.descriptions, ...descriptions])]
+    else sections.set(id, { id, title: id === 'killer-cages' ? 'Killer Sudoku' : RULE_NAMES[id], descriptions })
   }
-  return [...new Set(descriptions)]
+  return [...sections.values()]
 }
 
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {

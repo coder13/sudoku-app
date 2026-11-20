@@ -7,7 +7,7 @@ import { createServer, type ViteDevServer } from 'vite'
 import type { PuzzleRating } from '../src/sudoku/engine.ts'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR } from '../src/sudoku/hints.ts'
-import { PUZZLE_VARIANTS, type PuzzleVariantId } from '../src/sudoku/variants.ts'
+import { PUZZLE_VARIANTS, variantRuleSections, type PuzzleVariantId } from '../src/sudoku/variants.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { describeHint, type CellReferenceStyle } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
@@ -43,6 +43,21 @@ before(async () => {
   ;({ playSession } = await server.ssrLoadModule('/src/sudoku/play-session.ts'))
 })
 after(async () => { await server?.close() })
+
+test('mixed rules group repeated clues under one heading and preserve both diagonal descriptions', () => {
+  const sections = variantRuleSections({ version: 1, givens: STARTER, rules: [
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 8 }] },
+    { type: 'diagonal', diagonal: 'main' },
+    { type: 'quadruple', topLeft: 10, digits: [1, 2] },
+    { type: 'diagonal', diagonal: 'anti' },
+    { type: 'quadruple', topLeft: 20, digits: [3, 4] },
+  ] })
+  assert.deepEqual(sections.map(({ title, descriptions }) => [title, descriptions.length]), [
+    ['Normal Sudoku', 1], ['Killer Sudoku', 1], ['Diagonal', 2], ['Quadruple', 1],
+  ])
+  assert.match(sections[2].descriptions[0], /top-left to bottom-right/)
+  assert.match(sections[2].descriptions[1], /top-right to bottom-left/)
+})
 
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
