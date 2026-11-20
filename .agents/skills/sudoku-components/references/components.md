@@ -71,6 +71,7 @@ Search by component name or browse the sections below.
 | [PuzzleCamera](../../../../src/components/PuzzleCamera.tsx) | `PuzzleCamera` captures a still image of a puzzle for import. |
 | [PhotoCropEditor](../../../../src/components/PhotoCropEditor.tsx) | `PhotoCropEditor` lets a player align the crop with a photographed grid before recognition. |
 | [PhotoPuzzleReview](../../../../src/components/PhotoPuzzleReview.tsx) | `PhotoPuzzleReview` lets a player correct recognized givens before opening a photographed puzzle. |
+| [Save before leaving](../../../../src/components/PuzzleDialogs.tsx) | `SaveUnstartedPuzzle` asks whether to save for later, leave without saving, or stay when leaving a newly generated puzzle before the first move. |
 
 ## Settings and linked devices
 
@@ -121,5 +122,3 @@ Search by component name or browse the sections below.
 | [Hidato play route](../../../../src/routes/puzzles.hidato_.$puzzle.tsx) | `HidatoPlayRoute` opens a catalog puzzle from its URL. |
 | [Rullo](../../../../src/components/Rullo.tsx) | `RulloDifficultyPage` selects difficulty. `RulloPlay` lets players toggle printed numbers and shows row and column targets on both ends of each line. |
 | [Rullo play route](../../../../src/routes/puzzles.rullo_.$puzzle.tsx) | `RulloPlayRoute` opens a catalog puzzle from its URL. |
-
-Use `SaveUnstartedPuzzle` from [PuzzleDialogs](../../../../src/components/PuzzleDialogs.tsx) when someone leaves a newly generated puzzle before the first move. Offer to save it for later, leave without saving, or stay.
