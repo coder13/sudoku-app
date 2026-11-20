@@ -58,3 +58,27 @@ test('a Mini Arrow clears both kinds of candidates, reports bad sums, and surviv
   assert.deepEqual(redo(undo(loaded)).position, correct.position)
   assert.equal(readGame(game.id, JSON.stringify({ ...game, sized: { solution, rules: [{ ...rules[0], cells: [0, 5] }] } })), undefined)
 })
+
+test('Mini Region Sum applies each box visit to Pencil and preserves the rule on reload', () => {
+  const solution = '1234341221434321'
+  const rules = [{ type: 'region-sum', cells: [0, 4, 9, 13, 10, 5] }] as const
+  const game = { ...makeGame('mini-region-sum', 'Mini Region Sum', '0030000000000001', 'imported', 0, MINI_GRID),
+    sized: { solution, rules } }
+  game.position.center.fill(15)
+  game.position.corner.fill(15)
+  const played = enter(game, [10], 'value', 4)
+  for (const kind of ['center', 'corner'] as const) {
+    assert.equal(played.position[kind][0] & 8, 0)
+    assert.equal(played.position[kind][5], 8)
+    assert.deepEqual(fillEntries(game, valuesOf(played)).position[kind], played.position[kind])
+  }
+  const wrong = enter(played, [5], 'value', 2)
+  assert.deepEqual(conflictsOf(valuesOf(wrong), undefined, MINI_GRID, rules), new Set([10, 5]))
+  const correct = enter(played, [5], 'value', 4)
+  assert.equal(conflictsOf(valuesOf(correct), undefined, MINI_GRID, rules).size, 0)
+  const loaded = readGame(correct.id, JSON.stringify(correct))!
+  assert.deepEqual(loaded.sized, game.sized)
+  assert.deepEqual(redo(undo(loaded)).position, correct.position)
+  const grouped = [{ ...rules[0], groupByRegion: true }]
+  assert.equal(readGame(game.id, JSON.stringify({ ...game, sized: { solution, rules: grouped } })), undefined)
+})

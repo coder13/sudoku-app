@@ -169,3 +169,17 @@ test('sized SudokuPad aligns shortened arrow paths to bulbs and preserves compan
   await assert.rejects(detectPuzzle(code([{ ...arrow, wayPoints: [[.88, .5], ...arrow.wayPoints.slice(1)] }])), /does not align/)
   await assert.rejects(detectPuzzle(code([arrow], [dot, bulb, { ...bulb, center: [1.5, 1.5] }])), /between two neighboring cells|unsupported dot/)
 })
+
+test('SudokuPad Region Sum keeps box visits and authored line geometry beside other rules', async () => {
+  const { lines, underlays, ...source } = thermoExport(2)
+  source.metadata.rules = source.metadata.rules.split('\n\n')[0] + '\n\n' +
+    'Box borders split region sum lines into segments with the same sum. Different lines can have different segment sums.\n\n' +
+    'Digits along a pink line form a set of non-repeating consecutive digits in any order.'
+  const blue = { wayPoints: [[0.5, 1.5], [0.5, 3.5], [1.5, 3.5], [1.5, 2.5], [0.5, 1.5]], color: '#2ecbff', thickness: 10 }
+  const pink = { wayPoints: [[1.5, 0.5], [1.5, 2.5]], color: '#f067f0', thickness: 10 }
+  assert.deepEqual((await detectPuzzle(encode({ ...source, lines: [blue, pink] }))).sizedRules, [
+    { type: 'region-sum', cells: [3, 9, 8, 1, 2], segments: [[1, 2, 3, 9, 8, 1]] },
+    { type: 'renban', cells: [6, 7, 8] },
+  ])
+  await assert.rejects(detectPuzzle(encode({ ...source, lines: [{ ...blue, color: '#bada55' }, pink] })), /markings without supported rules/)
+})

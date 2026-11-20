@@ -1,10 +1,12 @@
 mod pairs;
+mod region_sum;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 
 use self::pairs::{SizedPairLink, compile_pairs};
+use self::region_sum::RegionSum;
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -20,6 +22,10 @@ pub enum SizedConstraint {
     Arrow {
         circle: usize,
         cells: Vec<usize>,
+    },
+    RegionSum {
+        cells: Vec<usize>,
+        group_by_region: bool,
     },
     Renban {
         cells: Vec<usize>,
@@ -116,6 +122,7 @@ pub struct SizedConstraintGrid {
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
+    region_sums: Vec<Option<RegionSum>>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
 
@@ -132,7 +139,8 @@ impl SizedConstraintGrid {
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
         let mut arrows = Vec::new();
-        for rule in rules {
+        let mut region_sums = Vec::new();
+        for (index, rule) in rules.iter().enumerate() {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
                     let diagonal = diagonal_cells(size, *direction).collect();
@@ -176,6 +184,10 @@ impl SizedConstraintGrid {
                     }
                     arrows.push((*circle, cells.clone()));
                 }
+                SizedConstraint::RegionSum { cells, group_by_region } => {
+                    region_sums.resize_with(index + 1, || None);
+                    region_sums[index] = Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
@@ -203,6 +215,7 @@ impl SizedConstraintGrid {
             thermometers,
             renbans,
             arrows,
+            region_sums,
             pair_links,
         })
     }
@@ -270,6 +283,14 @@ impl SizedConstraintGrid {
                 for (&cell, mask) in cells.iter().zip(shaft) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
+                }
+            }
+            for line in self.region_sums.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                line.support(candidates, &mut supported);
+                for cell in line.cells() {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
                 }
             }
             for link in self.pair_links.iter().flatten() {
@@ -431,6 +452,16 @@ impl SizedConstraintGrid {
                     eliminations_for(*circle, candidates[*circle] & !bulb, &mut actions);
                     for (&cell, mask) in cells.iter().zip(shaft) {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::RegionSum { cells, .. } => {
+                    let line = self.region_sums[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !line.support(&domains, &mut supported) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
                 SizedConstraint::Renban { cells } => {
@@ -663,6 +694,8 @@ impl SizedConstraintGrid {
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
+                SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
+                    .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
@@ -763,6 +796,7 @@ impl SizedConstraintGrid {
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
                 total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
             })
+            && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
                 left == 0 || right == 0 || link.constraint.permits(left, right)
@@ -778,8 +812,8 @@ fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16
     }
     // A bulb is a single digit, so sums that exceed the bitset cannot qualify.
     let totals = u128::from(candidates[circle]) << 1;
-    let matching = crate::variant::sum_support_with_prefix(
-        &shaft[..cells.len()], totals, &mut support[..cells.len()], &mut [0; MAX_SIZE + 1],
+    let [matching] = crate::variant::sum_support_with_prefix(
+        &shaft[..cells.len()], [totals], &mut support[..cells.len()], &mut [[0]; MAX_SIZE + 1],
     );
     ((matching >> 1) as u16, support)
 }

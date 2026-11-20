@@ -105,3 +105,11 @@ Warm timings from 200 local app-profile calls exclude network latency. The publi
 | Complete app replay | 4,564 µs | 6,145 µs |
 
 The sized engine now scans for ordinary house hints only when rule deductions leave room in the result. Paired before-and-after Wasm calls returned identical hint and replay payloads for Arrow and Race track. Arrow replay fell from 7.47 ms to 4.79 ms median, and Race track replay from 303 µs to 272 µs. A paired 9×9 Arrow control also returned identical candidates, hints, and replay. Its candidate and hint medians stayed at 29 and 36 µs, with replay at 72 and 73 µs.
+
+## Region Sum on sized grids
+
+The same native code partitions Region Sum paths into box visits on standard and sized grids. Distinct visits to a box remain separate unless the authored rule groups them explicitly. A closed drawing starts its logical path at a box boundary so one visit does not get split between the first and last cells. The importer preserves the authored drawing for rendering.
+
+TVDK’s published 6×6 puzzle has five lines and no given digits. An independent exact solver found one completion with all lines and multiple completions with the box rules alone. The app reproduced the author's solution in both rectangular box orientations and replayed the original in 85 steps. Chrome verified the SudokuPad short link, all path coordinates, the author credit, Technique Finder, reload, replay, and a shared puzzle on a phone-size viewport. The Mini editor verified separate and grouped visits, cell labels, keyboard input, undo, and redo. [Published Region Sum puzzle](https://sudokupad.app/2yastk3l6j)
+
+An independent enumeration of all 288 Mini completions found a re-entry puzzle with one solution under the segment rule and zero under the grouped rule. A second Mini Coach fixture composes an overlapping Renban line with the same Region Sum path. Each rule alone leaves six completions, and together they leave one. The engine and player replay both rule families. A 16×16 engine contract exercises equal totals of 136 across two complete boxes.
