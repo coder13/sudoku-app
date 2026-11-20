@@ -836,6 +836,50 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 ],
             ),
         ],
+        RenbanSumHouse => [
+            seed(
+                "063907010097052608100300000004000070000001004200740061080570000051020309009000527",
+                76,
+                3,
+                [
+                    PuzzleRule::Renban { cells: vec![66, 56, 46], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![76, 66, 56, 46, 36],
+                        direction: ClueDirection::NorthWest,
+                        sum: 19,
+                    },
+                    PuzzleRule::Renban { cells: vec![76, 67, 77], segments: None },
+                ],
+            ),
+            seed(
+                "002600080001007009000080500024700805080042736007809200006008003040060001293400070",
+                25,
+                4,
+                [
+                    PuzzleRule::Renban { cells: vec![25, 35], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![5, 15, 25, 35],
+                        direction: ClueDirection::SouthEast,
+                        sum: 18,
+                    },
+                    PuzzleRule::Renban { cells: vec![15, 16, 24], segments: None },
+                ],
+            ),
+            seed(
+                "609800010810900070734251900950000000063020800207300000400103005086700401000000080",
+                44,
+                4,
+                [
+                    PuzzleRule::Renban { cells: vec![60, 52, 44], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![76, 68, 60, 52, 44],
+                        direction: ClueDirection::NorthEast,
+                        sum: 24,
+                    },
+                    PuzzleRule::Renban { cells: vec![52, 43], segments: None },
+                ],
+            ),
+        ],
         RegionSum => [
             seed(
                 "913070400002000071700040000605710234070006010100400760056807020890304050237600000",

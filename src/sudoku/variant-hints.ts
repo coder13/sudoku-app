@@ -315,6 +315,31 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       }
       break
     }
+    case 'renban-sum-house': {
+      cells = evidence.cells
+      const ray = puzzle.rules?.[evidence.rules[1]]
+      const total = ray?.type === 'little-killer' ? `The diagonal totals ${ray.sum}.` : 'Follow the Little Killer diagonal.'
+      const shared = nameCell(evidence.shared)
+      const restricted = nameCell(evidence.restricted)
+      description = `${total} One Renban lies on the diagonal. The other Renban meets it at ${shared} and shares ${houseLabel(evidence.house)} with ${restricted}.`
+      reason = `Try each consecutive set that fits the Renban through ${shared}. All digits in that set are used in the house, so they are unavailable at ${restricted}. Check the remaining candidates against the total and the Renban on the diagonal. None of the assignments that fit all these clues uses a crossed-out candidate.`
+      const { witness } = evidence
+      const first = puzzle.rules?.[evidence.rules[0]]
+      const other = puzzle.rules?.[evidence.rules[2]]
+      if (witness && ray?.type === 'little-killer' && first?.type === 'renban' && other?.type === 'renban') {
+        const digitList = new Intl.ListFormat('en', { type: 'conjunction' })
+        const range = (start: number, length: number) => digitList.format(DIGITS.slice(start - 1, start - 1 + length).map(String))
+        const remaining = ray.sum - witness.candidate.digit
+        const line = witness.containedStart === null ? ''
+          : ` The Renban on the diagonal must use ${range(witness.containedStart, first.cells.length)}.`
+        const pivot = witness.candidate.cell === evidence.shared ? ''
+          : ` The two clues force ${shared} to be ${witness.sharedDigit}.`
+        const limits = digitList.format(DIGITS.filter(digit => witness.restrictedDigits & (1 << (digit - 1))).map(String))
+        reason = `If ${nameCell(witness.candidate.cell)} is ${witness.candidate.digit}, the other cells of the diagonal must add to ${remaining}.${line}${pivot} The Renban through ${shared} must then use ${range(witness.otherStart, other.cells.length)}. That uses ${limits} in ${houseLabel(evidence.house)} and leaves no candidate for ${restricted}.`
+        if (actions.length > 1) reason += 'Checking the other possibilities also rules out the remaining crossed-out candidates.'
+      }
+      break
+    }
     case 'constraint': {
       cells = evidence.cells
       const clue = constraintClue(evidence, puzzle, nameCell, focus)

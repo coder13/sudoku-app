@@ -42,6 +42,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
         VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
+        VariantEvidence::RenbanSumHouse(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::CageSum {
             cells,
             domains,
@@ -69,6 +70,8 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         Renban | RegionSum => 28 + span + 2 * choices,
         // Compare each possible Renban interval's sum with the remainders on the ray.
         RenbanSum => 42 + span + 2 * choices,
+        // Match intervals in two lines and check the conflict in their house.
+        RenbanSumHouse => 54 + span + 2 * choices,
         CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
         Skyscrapers | Sandwich | XSum => 40 + span + 2 * choices,
         technique => panic!("no variant scoring model for {}", technique.id()),

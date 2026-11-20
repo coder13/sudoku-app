@@ -83,7 +83,7 @@ pub use variant::{
     MarkedPairs, Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
     VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEvidence, VariantExclusionPremise, VariantHouse, VariantHouseKind, VariantLineHouseProof,
     VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
-    VariantRenbanSumProof, VariantReplay, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]

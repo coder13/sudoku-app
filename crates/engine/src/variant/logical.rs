@@ -7,7 +7,6 @@ use std::{
 use super::{
     CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
     VariantPosition, VariantPositionError, cell_mask, cells_in, digit_sum,
-    lines::renban_sum::contained_joins,
 };
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
@@ -28,6 +27,7 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod renban_sum;
 
 macro_rules! catalog {
     (
@@ -149,6 +149,8 @@ catalog! {
     @explicit
     /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
     RenbanSum: "renban-sum", 66, Medium;
+    /// Fit a Renban and diagonal sum against another Renban in a shared house.
+    RenbanSumHouse: "renban-sum-house", 88, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -252,6 +254,8 @@ pub enum VariantEvidence {
     LineHouses(Box<VariantLineHouseProof>),
     /// Candidate support from a Little Killer ray and a Renban it contains.
     RenbanSum(Box<VariantRenbanSumProof>),
+    /// Candidate support from a Little Killer ray, two Renbans, and a house.
+    RenbanSumHouse(Box<VariantRenbanSumHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -330,6 +334,44 @@ pub struct VariantRenbanSumProof {
     pub supported: Vec<u16>,
     /// Digit mask for the smallest digits of supported Renban intervals.
     pub starts: u16,
+}
+
+/// Replayable support for two Renbans connected through a Little Killer ray and a house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanSumHouseProof {
+    /// Indices for the contained Renban, the Little Killer ray, and the other Renban.
+    pub rules: [usize; 3],
+    /// The ray in printed order, followed by the other Renban cells off the ray.
+    pub cells: Vec<usize>,
+    /// Candidate masks in the same order as the proof cells, including placed digits.
+    pub domains: Vec<u16>,
+    /// House that contains the second Renban and one other cell of the ray.
+    pub house: VariantHouseKind,
+    /// Shared cell of the ray and second Renban.
+    pub shared: usize,
+    /// The other ray cell in the house.
+    pub restricted: usize,
+    /// Surviving digit masks in the ray's printed order.
+    pub supported: Vec<u16>,
+    /// A short worked contradiction for the first action when one is available.
+    pub witness: Option<VariantRenbanSumHouseWitness>,
+}
+
+/// A short contradiction for a candidate removed by a Renban, sum, and house proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRenbanSumHouseWitness {
+    /// The assumed candidate.
+    pub candidate: Candidate,
+    /// Digit forced in the shared cell by the sum and its contained Renban.
+    pub shared_digit: u8,
+    /// Smallest digit of the contained Renban if only one interval fits.
+    pub contained_start: Option<u8>,
+    /// Smallest digit of the only interval on the other Renban.
+    pub other_start: u8,
+    /// Digits left for the restricted cell before applying the shared house.
+    pub restricted_digits: u16,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -537,6 +579,7 @@ impl VariantDeduction {
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::RenbanSum(proof) => proof.cells.len(),
+            VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1040,39 +1083,8 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
-            RenbanSum => {
-                for join in contained_joins(self) {
-                    let cells = join.cells();
-                    let mut domains = [0; 9];
-                    let domains = &mut domains[..cells.len()];
-                    for (mask, &cell) in domains.iter_mut().zip(cells) {
-                        *mask = position.domain(cell);
-                    }
-                    let joint = join.support(domains);
-                    if joint.starts == 0 {
-                        continue;
-                    }
-                    let individual = join.individual_support(domains);
-                    // This proof only removes candidates supported by each clue on its own.
-                    let actions = position.removals(
-                        cells,
-                        joint.masks.into_iter().zip(individual).map(|(both, each)| both | !each),
-                    );
-                    if !actions.is_empty() {
-                        proofs.push(VariantDeduction {
-                            technique,
-                            actions,
-                            evidence: VariantEvidence::RenbanSum(Box::new(VariantRenbanSumProof {
-                                rules: join.rules(),
-                                cells: cells.to_vec(),
-                                domains: domains.to_vec(),
-                                supported: joint.masks[..cells.len()].to_vec(),
-                                starts: joint.starts,
-                            })),
-                        });
-                    }
-                }
-            }
+            RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
+            RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

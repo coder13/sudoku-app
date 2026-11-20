@@ -100,6 +100,13 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(matches!(ray, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::RenbanSumHouse(proof) => {
+                    let [contained, sum, other] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(contained, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(sum, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    assert!(matches!(other, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::LockedDigit { clue, .. } => {
                     assert!(
                         clue.rules

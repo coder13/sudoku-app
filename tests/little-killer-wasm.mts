@@ -311,7 +311,7 @@ test('converted typed Coach controls and authored Jigsaw companions retain every
   }
 })
 
-test('Renban ModE opens with four combined proofs and shows an honest ten-step partial path', async () => {
+test('Renban ModE opens with six combined proofs and shows an honest ten-step partial path', async () => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8')) as {
     puzzle: VariantPuzzle; solution: string
   }
@@ -321,22 +321,42 @@ test('Renban ModE opens with four combined proofs and shows an honest ten-step p
   assert.equal(variant.solution, source.solution)
   assertVariantCompletion(source.puzzle, source.solution)
   const technique = 'renban-sum'
+  const sharedHouse = 'renban-sum-house'
   const position = variantPosition(variant, game.position)
   const baseOrder = await getVariantPlayOrder()
-  assert.ok(!baseOrder.includes(technique))
+  assert.ok(!baseOrder.includes(technique) && !baseOrder.includes(sharedHouse))
   assert.deepEqual(await getVariantPlayOrder(sources[0].puzzle), baseOrder)
-  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique), baseOrder)
+  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique && id !== sharedHouse), baseOrder)
 
   const catalog = await puzzleTechniqueCatalog(true)
   assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
     id: technique, cost: 66, difficulty: 'medium', requiresUniqueSolution: false, aliases: [],
   })
   const { choices, candidates } = await puzzleHints(game)
-  assert.equal(choices.length, 4)
+  assert.equal(choices.length, 6)
   const selected = await puzzleHints(game, 'all', technique)
   assert.equal(selected.choices.length, 4)
-  assert.deepEqual(new Set(choices), new Set(selected.choices))
-  for (const hint of choices) {
+  assert.deepEqual(choices.slice(0, 4), selected.choices)
+  const shared = await puzzleHints(game, 'all', sharedHouse)
+  assert.deepEqual(choices.slice(4), shared.choices)
+  assert.deepEqual(shared.choices.flatMap(hint => hint.actions), [
+    { eliminate: { cell: 36, digit: 8 } }, { eliminate: { cell: 76, digit: 8 } },
+  ])
+  assert.deepEqual(catalog.techniques.find(item => item.id === sharedHouse), {
+    id: sharedHouse, cost: 88, difficulty: 'hard', requiresUniqueSolution: false, aliases: [],
+  })
+  const atR9C5 = shared.choices[1]
+  assert.ok('variant' in atR9C5.evidence)
+  assert.match(atR9C5.evidence.variant.description, /box 4/)
+  assert.match(atR9C5.evidence.variant.reason, /If r9c5 is 8, the other cells of the diagonal must add to 7/i)
+  assert.match(atR9C5.evidence.variant.reason, /box 4 and leaves no candidate for r6c2/i)
+  const sharedProof = atR9C5.evidence.variant.source?.deduction
+  assert.ok(sharedProof?.evidence.type === 'renban-sum-house')
+  assert.deepEqual(sharedProof.evidence.rules, [13, 3, 10])
+  assert.deepEqual(sharedProof.evidence.witness, {
+    candidate: { cell: 76, digit: 8 }, sharedDigit: 1, containedStart: 1, otherStart: 1, restrictedDigits: 7,
+  })
+  for (const hint of selected.choices) {
     assert.equal(hint.technique, technique)
     assert.ok('variant' in hint.evidence)
     const proof = hint.evidence.variant.source?.deduction.evidence
@@ -350,9 +370,10 @@ test('Renban ModE opens with four combined proofs and shows an honest ten-step p
 
   const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, position)
   try {
-    const count = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action)))).size
+    const count = new Set(selected.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action)))).size
     assert.equal(count, 53)
     assert.equal(await scan.count(technique), count)
+    assert.equal(await scan.count(sharedHouse), 2)
   } finally {
     scan.close()
   }
@@ -372,11 +393,31 @@ test('Renban ModE opens with four combined proofs and shows an honest ten-step p
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
   try {
     saveDisabledHintTechniques([technique])
+    assert.deepEqual((await puzzleHints(game)).choices, shared.choices)
+    saveDisabledHintTechniques([technique, sharedHouse])
     assert.deepEqual((await puzzleHints(game)).choices, [])
     assert.equal((await puzzleHints(game, 'all', technique)).choices.length, 4)
+    assert.equal((await puzzleHints(game, 'all', sharedHouse)).choices.length, 2)
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
+  const request = { type: 'variant', position, techniqueOrder: [sharedHouse] } as const
+  const configured = await runEngine({ ...request, operation: 'trace' })
+  assert.equal(configured.rating.points, 88 * configured.steps.length)
+  assert.ok(configured.steps.length >= 2)
+  assert.ok(configured.steps.every(step => step.technique === sharedHouse))
+  for (const [stepIndex, step] of configured.steps.entries()) {
+    const replay = await runEngine({ ...request, operation: 'replay-step', stepIndex })
+    assert.deepEqual(replay?.deduction, step)
+    for (const action of step.actions) {
+      assert.ok('eliminate' in action)
+      assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+      const bit = 1 << (action.eliminate.digit - 1)
+      assert.equal(replay!.before.eliminations[action.eliminate.cell] & bit, 0)
+      assert.equal(replay!.after.eliminations[action.eliminate.cell] & bit, bit)
+    }
   }
 
   const path = await puzzleSolution(game)

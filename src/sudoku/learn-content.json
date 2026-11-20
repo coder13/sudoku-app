@@ -8069,6 +8069,49 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-sum-house",
+          "title": "Renban and Little Killer with a shared house",
+          "summary": "A second Renban can limit a Little Killer diagonal through a shared house. The digits on that Renban are unavailable in the other cells of the house. Use those exclusions to check which candidates fit the diagonal and its total.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Match the shared cell and rule out repeats"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a Little Killer diagonal with a Renban entirely on it. Then find a second Renban that meets the diagonal in just one cell. Look for a house containing the second Renban and one more cell from the diagonal.",
+                "List the consecutive sets that fit the second Renban. For each set, keep the digits that can go in its shared cell. Cross the set’s digits out of the other diagonal cell in the house. Test the new candidates against the first Renban and the printed total.",
+                "Remove a candidate if it fails in every case. The rest of the diagonal only follows the usual rule about repeats in any houses its cells share."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum-house",
+              "copy": {
+                "description": "The 19 diagonal starts at R9C5. Its first two cells share box 8 with the Renban across R9C4, R9C5, and R9C6. Test each set on that Renban and exclude its digits from R8C4."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum-house",
+                  "title": "Renban and Little Killer with a shared house"
+                }
+              ],
+              "guide": {
+                "start": "Find the second Renban and the house it shares with the two cells of the diagonal.",
+                "check": "Try a consecutive set on that Renban. Keep its possible digits at the intersection, and exclude all its digits from the other diagonal cell in the house.",
+                "reason": "Keep candidates that fit the printed total and the contained Renban in at least one case."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
+        },
+        {
           "id": "skyscrapers",
           "title": "Skyscrapers clues",
           "summary": "In a Skyscrapers clue, each digit is the height of a building. A taller building hides every shorter building behind it until the view reaches an even taller one. The outside clue counts the buildings you can see from that side.",

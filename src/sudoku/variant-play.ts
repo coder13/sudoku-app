@@ -18,15 +18,20 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
       playOrder = undefined
       throw error
     })
-  const rules = puzzle?.rules
-  if (!rules?.some(ray => ray.type === 'little-killer' && rules.some(rule =>
-    rule.type === 'renban' && rule.cells.length >= 2 && rule.cells.every(cell => ray.cells.includes(cell))
-  ))) return playOrder
+  const rules = puzzle?.rules ?? []
+  const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
+  if (!renbans.length) return playOrder
+  const rays = rules.filter(rule => rule.type === 'little-killer').filter(ray =>
+    renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
+  if (!rays.length) return playOrder
 
-  return playOrder.then(order => {
-    const afterLittleKiller = order.indexOf('little-killer') + 1
-    return [...order.slice(0, afterLittleKiller), 'renban-sum', ...order.slice(afterLittleKiller)]
-  })
+  const hasCompanion = rays.some(ray => renbans.some(renban =>
+    renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
+  return playOrder.then(order => order.flatMap(id => {
+    if (id === 'little-killer') return [id, 'renban-sum']
+    if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
+    return [id]
+  }))
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {

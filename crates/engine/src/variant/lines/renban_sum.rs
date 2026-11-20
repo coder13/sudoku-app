@@ -2,6 +2,7 @@ use super::{LineConstraint, LineKind, reachable, sum_support};
 use crate::variant::{CompiledVariant, search::record_support};
 
 /// The ordered sum clue and a consecutive set wholly contained in it.
+#[derive(Clone, Copy)]
 pub(in crate::variant) struct ContainedJoin<'a> {
     renban: &'a LineConstraint,
     ray: &'a LineConstraint,
@@ -151,3 +152,5 @@ fn contained_support(domains: &[u16], members: u16, total: u16) -> JointSupport 
 
 #[cfg(test)]
 mod tests;
+
+pub(in crate::variant) mod with_house;
