@@ -162,7 +162,7 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
 
 test('solution previews and walkthroughs distinguish a stalled path from a completed grid', () => {
   const cases = [
-    { status: 'stalled', title: 'Last position', text: 'The solver reached the end of its available moves.' },
+    { status: 'stalled', title: 'Last position', text: 'The solver stopped here. The puzzle is not fully solved.' },
     { status: { solved: 'easy' }, title: 'Final grid', text: 'The solution is complete. The final grid is shown.' },
   ] satisfies { status: PuzzleRating['status']; title: string; text: string }[]
   for (const { status, title, text } of cases) {
@@ -182,6 +182,48 @@ test('solution previews and walkthroughs distinguish a stalled path from a compl
       assert.ok(html.includes(title))
       assert.ok(html.includes(text))
       assert.ok(!html.includes(status === 'stalled' ? 'Final grid' : 'Last position'))
+    }
+  }
+})
+
+test('an incomplete walkthrough is identified before any step, including an empty path and embedded panels', () => {
+  const step = { technique: 'inequality', actions: [{ eliminate: { cell: 2, digit: 1 } }] }
+  const second = { technique: 'inequality', actions: [{ eliminate: { cell: 11, digit: 9 } }] }
+  for (const steps of [[], [step, second]]) for (const index of new Set([0, 1, steps.length])) {
+    if (index > steps.length) continue
+    const state = { status: 'ready', trace: { steps, rating: { status: 'stalled' } } }
+    const props = { state, index, onSelect() {}, onRetry() {}, onClose() {} }
+    const surfaces = [
+      renderToStaticMarkup(createElement(SolutionPath, props)),
+      renderToStaticMarkup(createElement(SolutionPath, { ...props, embedded: true })),
+      renderToStaticMarkup(createElement(SolutionDialog, { ...props, grid: null, explanation: null })),
+    ]
+    for (const html of surfaces) {
+      assert.ok(html.includes('aria-label="Partial solution"'))
+      assert.match(html, /role="status">The solver could not finish this puzzle\.<\/p>/)
+      assert.ok(html.indexOf('The solver could not finish') < html.indexOf('aria-label="Solving steps"'))
+      assert.ok(!html.includes('The solution is complete'))
+      assert.ok(!html.includes('Final grid'))
+    }
+    assert.match(surfaces[0], /<h2>Partial solution<\/h2>/)
+    assert.match(surfaces[2], /<h2[^>]*>Partial solution<\/h2>/)
+  }
+})
+
+test('completed, loading and unavailable walkthroughs do not claim a partial result', () => {
+  const step = { technique: 'naked-single', actions: [{ place: { cell: 2, digit: 4 } }] }
+  for (const state of [
+    { status: 'loading' },
+    { status: 'unavailable', message: 'Try again.' },
+    { status: 'ready', trace: { steps: [step], rating: { status: { solved: 'easy' } } } },
+    { status: 'ready', trace: { steps: [{ title: 'Place 4', text: 'Place 4 in R1C3.' }], status: 'solved' } },
+  ]) {
+    const props = { state, index: 0, onSelect() {}, onRetry() {}, onClose() {} }
+    for (const Component of [SolutionPath, SolutionDialog]) {
+      const html = renderToStaticMarkup(createElement(Component, { ...props, grid: null, explanation: null }))
+      assert.ok(!html.includes('Partial solution'))
+      assert.ok(!html.includes('could not finish'))
+      assert.match(html, /<h2[^>]*>Solution<\/h2>/)
     }
   }
 })

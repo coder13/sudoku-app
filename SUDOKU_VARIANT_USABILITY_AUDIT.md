@@ -70,8 +70,8 @@ For each control, check starting, correctly progressed and explicit-removal stat
 
 ## Browser review and approval
 
-The user authorized the built-in browser. Its runtime currently fails with `Trusted RPC service is not configured: browser`, including after a preview tab opened. Actual app screenshots have not been captured. Existing exported SVG figures and component markup are diagnostic evidence only.
+The user authorized the built-in browser. Its earlier connection failure is resolved. The [first actual review](uat/2026-11-19/variant-quality/README.md) covers the complete mixed FzzD source, hints, Finder, saved removals and a partial walkthrough. Actual mobile and desktop screenshots show the proposed incomplete-result notice. User approval remains pending. Earlier exported SVG figures and component markup remain diagnostic evidence only.
 
 Pending captures must show the actual app at narrow and desktop sizes, light and dark themes, and increased app/grid text sizes. Review empty/full candidates, overlaps, outside clues, Jigsaw borders, focus, menus, hint stages, selected Finder results and solution navigation. Include enough context to identify the puzzle and state. Share the screenshots for approval before merging broader visual changes.
 
-No browser review or screenshot approval is complete. Preserve the open checklist in [SUDOKU_ENGINE_TODO.md](SUDOKU_ENGINE_TODO.md) as each part is verified.
+The full browser review and screenshot approval remain open. Preserve the checklist in [SUDOKU_ENGINE_TODO.md](SUDOKU_ENGINE_TODO.md) as each part is verified.

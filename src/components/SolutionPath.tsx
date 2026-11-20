@@ -35,7 +35,7 @@ export function solutionStatus(trace: SolutionTrace) {
 
 export function solutionEndSummary(status: PuzzleRating['status'] | 'solved'): PuzzleHint {
   return status === 'stalled'
-    ? { title: 'Last position', text: 'The solver reached the end of its available moves.' }
+    ? { title: 'Last position', text: 'The solver stopped here. The puzzle is not fully solved.' }
     : { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
 }
 
@@ -43,7 +43,8 @@ export function solutionEndSummary(status: PuzzleRating['status'] | 'solved'): P
 export function SolutionDialog({ grid, explanation, detail, ...props }: Props & {
   grid: ReactNode; explanation: { title: string; text: string } | null; detail?: ReactNode
 }) {
-  return <Modal title="Solution" className="mobile-solution-dialog" onClose={props.onClose}>
+  const partial = props.state.status === 'ready' && solutionStatus(props.state.trace) === 'stalled'
+  return <Modal title={partial ? 'Partial solution' : 'Solution'} className="mobile-solution-dialog" onClose={props.onClose}>
     {grid}
     {explanation && <div className="mobile-solution-explanation">
       <h3>{explanation.title}</h3>{explanation.text && <p>{explanation.text}</p>}{detail}
@@ -64,6 +65,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const trace = state.status === 'ready' ? state.trace : undefined
   const count = trace?.steps.length ?? 0
   const status = trace && solutionStatus(trace)
+  const title = status === 'stalled' ? 'Partial solution' : 'Solution'
   const last = status && solutionEndSummary(status)
   const moveAvailability = trace && 'moveAvailability' in trace ? trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
@@ -98,18 +100,19 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   }
 
   return (
-    <section className="surface solution-path" aria-label="Solution" onKeyDown={(event) => {
+    <section className="surface solution-path" aria-label={title} onKeyDown={(event) => {
       if (event.key === 'Escape') {
         event.stopPropagation()
         onClose()
       }
     }}>
       {!embedded && <header className="solution-path-heading">
-        <h2>Solution</h2>
+        <h2>{title}</h2>
         <IconButton ref={close} type="button" variant="quiet" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
           <X size={18} aria-hidden="true" />
         </IconButton>
       </header>}
+      {status === 'stalled' && <p className="solution-path-message" role="status">The solver could not finish this puzzle.</p>}
       {state.status === 'loading' && <p className="solution-path-message" role="status">Finding the steps…</p>}
       {state.status === 'unavailable' && <div className="solution-path-message">
         <p role="status">{state.message}</p>
