@@ -208,6 +208,7 @@ pub(super) fn generate(
 pub(super) enum Operation {
     Analyze,
     Solve,
+    SolveUnique,
     Candidates,
     Rate,
     Bounds,
@@ -224,6 +225,13 @@ pub(super) enum Operation {
         rule: usize,
         eliminations: Option<Vec<u16>>,
     },
+}
+
+fn unique_reply(result: Result<impl Serialize, Analysis>) -> serde_json::Value {
+    match result {
+        Ok(solution) => json!({ "status": "unique", "solution": solution }),
+        Err(status) => json!({ "status": puzzle_error(status).0 }),
+    }
 }
 
 pub(super) fn execute(definition: Definition, operation: Operation) -> ResultValue<ResponseValue> {
@@ -277,6 +285,7 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             }))
         }
         Operation::Solve => ResponseValue::Json(json!(puzzle.solve(&digits, SEARCH_LIMIT))),
+        Operation::SolveUnique => ResponseValue::Json(unique_reply(puzzle.solve_unique(&digits, SEARCH_LIMIT))),
         Operation::Candidates => {
             return Err((
                 "unsupported-operation",
@@ -342,6 +351,8 @@ fn execute_constraints(
                 .solve(digits, SEARCH_LIMIT)
                 .map(|digits| json!({ "digits": digits, "variables": {} }))
         ),
+        Operation::SolveUnique => unique_reply(puzzle.solve_unique(digits, SEARCH_LIMIT)
+            .map(|digits| json!({ "digits": digits, "variables": {} }))),
         Operation::Candidates => json!(puzzle.candidates(digits)),
         Operation::Hints {
             eliminations,

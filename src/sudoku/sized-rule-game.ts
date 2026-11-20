@@ -85,12 +85,10 @@ export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame
 export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution }: SizedRuleDefinition): Promise<SizedRuleGame> {
   if (!isSizedRuleList(rules, grid)) throw new Error('This grid has invalid or unsupported rules.')
   const position = sizedRulePosition(grid, { rules }, givens)
-  const status = await runEngine({ type: 'sized-variant', operation: 'analyze', position })
-  if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
-  if (status !== 'unique') throw new Error(validation[status].text)
-  const answer = await runEngine({ type: 'sized-variant', operation: 'solve', position })
-  if (!answer) throw new Error('The engine could not verify this puzzle’s solution.')
-  const solution = answer.digits.join('')
+  const result = await runEngine({ type: 'sized-variant', operation: 'solve-unique', position })
+  if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
+  if (result.status !== 'unique') throw new Error(validation[result.status].text)
+  const solution = result.solution.digits.join('')
   if (authoredSolution !== undefined && solution !== authoredSolution) {
     throw new Error('The authored solution conflicts with the puzzle’s rules.')
   }

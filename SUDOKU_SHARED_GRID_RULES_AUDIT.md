@@ -150,3 +150,18 @@ Each timing below uses 100 warm app-profile calls and excludes network time. Val
 | Candidate masks | 20 / 37 | 19 / 25 |
 | Rule hints | 45 / 52 | 38 / 44 |
 | Full replay | 564 / 640 | 3,132 / 3,245 |
+
+### One exact verification request
+
+Sized puzzle verification returns the unique completion from the same search that establishes uniqueness. This avoids compiling the puzzle and searching again for the first completion. The algebraic path also returns the verified variable values from the unique completion.
+
+Paired app-profile measurements used 200 warm calls per control. Both paths returned identical solutions. The separate conflict, multiple, and unsolvable controls returned the same status without a solution. Values are median / p95 in microseconds.
+
+| Control | Separate verification and solve | One verification request |
+| --- | ---: | ---: |
+| Mini Region Sum | 31 / 79 | 20 / 48 |
+| Mini Algebraic Cages | 26 / 33 | 16 / 22 |
+| 6×6 Arrow | 470 / 508 | 281 / 311 |
+| 6×6 Region Sum | 1,410 / 1,506 | 790 / 842 |
+| 7×7 Jigsaw Thermometer | 5,887 / 6,018 | 3,112 / 3,194 |
+| 7×7 Jigsaw numbered dots | 396 / 430 | 215 / 245 |

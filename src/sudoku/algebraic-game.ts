@@ -18,12 +18,10 @@ export function rateAlgebraicPuzzle(givens: string, rules: AlgebraicDefinition['
 
 export async function verifyAlgebraicPuzzle({ givens, rules, source }: AlgebraicDefinition & { givens: string }): Promise<AlgebraicGame> {
   const position = algebraicPosition({ rules }, givens)
-  const status = await runEngine({ type: 'sized-variant', operation: 'analyze', position })
-  if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
-  if (status !== 'unique') throw new Error(validation[status].text)
-  const answer = await runEngine({ type: 'sized-variant', operation: 'solve', position })
-  if (!answer) throw new Error('The engine could not verify this puzzle’s solution.')
-  const solution = answer.digits.join('')
+  const result = await runEngine({ type: 'sized-variant', operation: 'solve-unique', position })
+  if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
+  if (result.status !== 'unique') throw new Error(validation[result.status].text)
+  const solution = result.solution.digits.join('')
   if (source?.solution && source.solution !== solution) throw new Error('The authored solution conflicts with the puzzle’s rules.')
   return { rules, ...(source && { source }), solution }
 }
