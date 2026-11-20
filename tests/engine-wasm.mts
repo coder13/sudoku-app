@@ -1545,6 +1545,8 @@ test('the browser client reports attempts and cancels one active search independ
   class TestWorker {
     onmessage?: (event: { data: EngineResponse }) => void
 
+    terminate() {}
+
     postMessage({ id, request }: { id: number; request: EngineRequest }) {
       sent.push(request)
       void raw(request).then(response => this.onmessage?.({ data: { ...response, id } }))

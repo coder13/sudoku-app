@@ -1,4 +1,4 @@
-import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRunner, type VariantPosition } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
@@ -21,7 +21,7 @@ export function getVariantPlayOrder() {
   return playOrder
 }
 
-export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
+export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
   const techniqueOrder = await getVariantPlayOrder()
@@ -38,7 +38,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     if (attempt === 0) request.maxNodes = 20_000
     if (excluded.length) request.exclude = excluded
     try {
-      return await runEngine(request)
+      return await run(request)
     } catch (error) {
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
     }
@@ -50,7 +50,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     request.maxAttempts = recipe.retryAttempts
     if (excluded.length) request.exclude = excluded
     try {
-      return await runEngine(request)
+      return await run(request)
     } catch (error) {
       if (!(error instanceof EngineError && error.code === 'search-limit')) throw error
     }
@@ -64,13 +64,13 @@ export function variantPosition(
   return { puzzle: variant.puzzle, entries: position?.entries, eliminations: position?.eliminations }
 }
 
-export async function playCandidates(game: Game) {
-  if (game.sized && game.grid) return sizedRuleCandidates(game.sized, game.grid, valuesOf(game), game.position.eliminations)
-  if (game.algebraic) return algebraicCandidates(game.algebraic, valuesOf(game), game.position.eliminations)
-  if (game.grid) return miniCandidates(valuesOf(game), game.position.eliminations)
-  if (!game.variant) return runEngine({ type: 'notes', values: valuesOf(game) })
+export async function playCandidates(game: Game, run: EngineRunner = runEngine) {
+  if (game.sized && game.grid) return sizedRuleCandidates(game.sized, game.grid, valuesOf(game), game.position.eliminations, run)
+  if (game.algebraic) return algebraicCandidates(game.algebraic, valuesOf(game), game.position.eliminations, run)
+  if (game.grid) return miniCandidates(valuesOf(game), game.position.eliminations, run)
+  if (!game.variant) return run({ type: 'notes', values: valuesOf(game) })
   try {
-    return await runEngine({ type: 'variant', operation: 'candidates', position: variantPosition(game.variant, game.position) })
+    return await run({ type: 'variant', operation: 'candidates', position: variantPosition(game.variant, game.position) })
   } catch (error) {
     if (error instanceof EngineError && (error.code === 'conflict' || error.code === 'unsolvable')) return null
     throw error

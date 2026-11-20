@@ -85,33 +85,62 @@ function createDomains(puzzle: KakuroPuzzle, values: readonly number[]): number[
   })
 }
 
+// The work arrays are reused across runs. Only the first run.cells.length
+// entries belong to the current run, and callers read them before the next run.
+type RunScratch = { allowed: number[]; order: number[]; support: number[]; memo: Int8Array }
+
 // A digit set can support a cell only if every digit in the set can be
 // assigned to a different cell. Memoize by the remaining digits, which
 // also gives the next position in the sorted cell order.
-function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array): number[] | null {
-  const allowed = run.cells.map(cell => domains[cell])
-  if (allowed.includes(0)) return null
-  const length = allowed.length
-  const combinations = totalsByLength[length][run.total]
-  if (allowed.every(mask => mask === allDigits)) {
-    return new Array<number>(length).fill(possibleDigits[length][run.total])
-  }
-  const union = allowed.reduce((mask, digits) => mask | digits, 0)
-  if (allowed.every(mask => digitCounts[mask] === 1)) {
-    return combinations.includes(union) ? allowed : null
+function runSupport(run: KakuroRun, domains: readonly number[], scratch: RunScratch): number[] | null {
+  const { allowed, order, support, memo } = scratch
+  const length = run.cells.length
+  const possible = possibleDigits[length][run.total]
+  let fixed = 0
+  let union = 0
+  let common = possible
+  for (let i = 0; i < length; i++) {
+    const mask = domains[run.cells[i]] & possible
+    if (!mask) return null
+    allowed[i] = mask
+    union |= mask
+    common &= mask
+    if (digitCounts[mask] === 1) {
+      if (fixed & mask) return null
+      fixed |= mask
+    }
   }
 
-  const order = allowed.map((_, i) => i).sort((a, b) => digitCounts[allowed[a]] - digitCounts[allowed[b]])
-  const support = allowed.map(() => 0)
+  const combinations = totalsByLength[length][run.total]
+  if (common === possible) return allowed
+  if (digitCounts[fixed] === length) {
+    return combinations.includes(fixed) ? allowed : null
+  }
+
+  for (let i = 0; i < length; i++) {
+    const count = digitCounts[allowed[i]]
+    support[i] = count === 1 ? allowed[i] : 0
+    let j = i
+    while (j > 0 && digitCounts[allowed[order[j - 1]]] > count) {
+      order[j] = order[j - 1]
+      j--
+    }
+    order[j] = i
+  }
   memo.fill(0)
   function collectSupport(remaining: number): boolean {
-    if (!remaining) return true
     if (memo[remaining]) return memo[remaining] > 0
-    const index = order[length - digitCounts[remaining]]
-    let supported = 0
-    for (let choices = remaining & allowed[index]; choices; choices &= choices - 1) {
-      const digit = choices & -choices
-      if (collectSupport(remaining ^ digit)) supported |= digit
+    const count = digitCounts[remaining]
+    const index = order[length - count]
+    let supported = remaining & allowed[index]
+    if (count > 1) {
+      let choices = supported
+      supported = 0
+      while (choices) {
+        const digit = choices & -choices
+        if (collectSupport(remaining ^ digit)) supported |= digit
+        choices ^= digit
+      }
     }
     // Each prefix uses digits from a valid sum combination. A matching
     // suffix completes that run, so it can contribute support here.
@@ -120,11 +149,20 @@ function runSupport(run: KakuroRun, domains: readonly number[], memo: Int8Array)
     return supported !== 0
   }
 
+  let found = false
+  // The sorted order starts with all fixed cells. Match only the remaining digits.
   for (const combination of combinations) {
-    if ((combination & union) === combination) collectSupport(combination)
-    if (support.every((mask, i) => mask === allowed[i])) break
+    if ((combination & union) !== combination || (combination & fixed) !== fixed) continue
+    if (collectSupport(combination ^ fixed)) found = true
+    let complete = true
+    for (let i = 0; i < length; i++) {
+      if (support[i] === allowed[i]) continue
+      complete = false
+      break
+    }
+    if (complete) break
   }
-  return support[0] ? support : null
+  return found ? support : null
 }
 
 function runFitsEntries(run: KakuroRun, values: readonly number[]): boolean {
@@ -167,7 +205,12 @@ function propagate(
   domains: number[],
   recordStep?: (run: KakuroRun, domains: readonly number[], support: readonly number[], depth: number) => void,
 ): boolean {
-  const memo = new Int8Array(allDigits + 1)
+  const scratch: RunScratch = {
+    allowed: Array<number>(9),
+    order: Array<number>(9),
+    support: Array<number>(9),
+    memo: new Int8Array(allDigits + 1),
+  }
   const narrowedAt = new Uint32Array(domains.length)
   const checkedAt = new Uint32Array(puzzle.runs.length)
   let revision = 0
@@ -181,7 +224,7 @@ function propagate(
       // assignment for that run. Check again only after another run
       // narrows one of its cells.
       if (depth > 1 && !run.cells.some(cell => narrowedAt[cell] > checkedAt[index])) continue
-      const support = runSupport(run, domains, memo)
+      const support = runSupport(run, domains, scratch)
       if (!support) return false
       const firstChange = run.cells.findIndex((cell, i) => support[i] !== domains[cell])
       if (firstChange !== -1) {

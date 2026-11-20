@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -7,7 +7,7 @@ import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
 import { xSumState } from './x-sum.ts'
 import { skyscrapersState } from './skyscrapers.ts'
-import { regionSumState } from './region-sum.ts'
+import { regionSumState, sizedRegionSumState } from './region-sum.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
@@ -210,13 +210,13 @@ export function valuesOf(game: Game): string {
   return [...game.givens].map((digit, i) => digit === '0' ? game.position.entries[i] : digit).join('')
 }
 
-function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values)]
+function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
+  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values), sizedArrowState(sizedRules, values, grid.size), sizedRegionSumState(sizedRules, values, grid)]
     .filter(state => state !== undefined)
   const result = states[0]
   if (!result) return
   for (const state of states.slice(1)) {
-    for (let cell = 0; cell < 81; cell++) result.allowed[cell] &= state.allowed[cell]
+    for (let cell = 0; cell < values.length; cell++) result.allowed[cell] &= state.allowed[cell]
     for (const cell of state.conflicts) result.conflicts.add(cell)
   }
   return result
@@ -237,7 +237,7 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGr
       }
     }
   }
-  for (const cell of placedRuleState(puzzle, values)?.conflicts ?? []) conflicts.add(cell)
+  for (const cell of placedRuleState(puzzle, values, grid, sizedRules)?.conflicts ?? []) conflicts.add(cell)
   return conflicts
 }
 
@@ -414,7 +414,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
           remaining & ~((peer(cell, i, game.variant?.puzzle, game.grid, game.sized?.rules) ? bit : 0) |
             variantDigitExclusions(game.variant?.puzzle, cell, i, value) | sizedDigitExclusions(game.sized?.rules, cell, i, value, game.grid?.size ?? 9)), mask)
         const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-        const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
+        const ruleMasks = placedRuleState(game.variant?.puzzle, values, game.grid ?? CLASSIC_GRID, game.sized?.rules)?.allowed
         center = center.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
         corner = corner.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
       } else {
@@ -527,8 +527,8 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
 
   if (changed && removeCandidates) {
     const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-    const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
-    if (ruleMasks) for (let cell = 0; cell < 81; cell++) {
+    const ruleMasks = placedRuleState(game.variant?.puzzle, values, game.grid ?? CLASSIC_GRID, game.sized?.rules)?.allowed
+    if (ruleMasks) for (let cell = 0; cell < values.length; cell++) {
       center[cell] &= ruleMasks[cell]
       corner[cell] &= ruleMasks[cell]
     }

@@ -10,7 +10,7 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
-import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
+import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
@@ -29,6 +29,7 @@ import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudo
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
 import { applyPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
@@ -95,15 +96,15 @@ function candidateToolMasks(notes: readonly number[] | null | undefined, values:
     ? mask & (displayed?.[cell] ?? mask) & ~(eliminations?.[cell] ?? 0) : 0) ?? null
 }
 
-async function solveSingleValues({ grid, variant, algebraic, sized }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
-  if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates)
+async function solveSingleValues({ grid, variant, algebraic, sized }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
+  if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates, run)
   if (grid?.size === 4) {
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
-    return miniSingles(values, eliminations, displayedCandidates)
+    return miniSingles(values, eliminations, displayedCandidates, run)
   }
-  if (!variant) return runEngine({ type: 'solve-singles', values, eliminations, displayedCandidates })
+  if (!variant) return run({ type: 'solve-singles', values, eliminations, displayedCandidates })
   const entries = [...values].map((digit, cell) => variant.puzzle.givens[cell] === '0' ? digit : '0').join('')
-  return runEngine({ type: 'variant', operation: 'solve-singles', displayedCandidates,
+  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates,
     position: { puzzle: variant.puzzle, entries, eliminations } })
 }
 
@@ -120,8 +121,7 @@ function useTimer(id: string, running: boolean) {
       if (seconds < 1) return
       started += seconds * 1000
       if (!puzzleTiming.getSnapshot().trackTime) return
-      roomStore.update(id, (current) => !current.started || current.paused || current.timeUntracked || isSolved(current)
-        ? current : { ...current, elapsed: current.elapsed + seconds })
+      roomStore.advanceElapsed(id, seconds)
     }
 
     function start() {
@@ -147,6 +147,7 @@ function useTimer(id: string, running: boolean) {
 
     function stop() {
       tick()
+      roomStore.flushElapsed(id)
       started = null
       lockRequest?.abort()
       lockRequest = undefined
@@ -179,6 +180,7 @@ function useTimer(id: string, running: boolean) {
 
 export type WorktableActions = { check: () => void }
 type SolvedGridSession = { current: Game }
+type PuzzleTask = { origin: Game; engine: EngineSession; hint: boolean }
 
 type HintPosition = Pick<Position, 'center' | 'corner' | 'eliminations'> & {
   gameId: string
@@ -399,10 +401,9 @@ export function Worktable({
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const techniqueHintRequest = useRef(0)
   const pageRequest = useRef(0)
-  const hintCollection = hintState?.page?.collection
-  useEffect(() => () => {
-    if (hintCollection !== undefined) void runEngine({ type: 'release-hints', collection: hintCollection }).catch(() => {})
-  }, [hintCollection])
+  const puzzleTask = useRef<PuzzleTask | null>(null)
+  const hintEngine = useRef<EngineSession | null>(null)
+  const candidateRefreshKey = useRef({})
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
   const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
   const { center, corner, eliminations } = game.position
@@ -689,6 +690,86 @@ export function Worktable({
     }
   }, [completed, id, session])
 
+  const cancelHintWork = useCallback(() => {
+    techniqueHintRequest.current++
+    pageRequest.current++
+    hintEngine.current?.close()
+    hintEngine.current = null
+    if (puzzleTask.current?.hint) {
+      puzzleTask.current.engine.close()
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }, [])
+
+  const cancelPendingPuzzleWork = useCallback(() => {
+    const task = puzzleTask.current
+    if (!task) return
+    if (task.hint) {
+      cancelHintWork()
+      setHintRevealed(false)
+    } else {
+      task.engine.close()
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }, [cancelHintWork])
+
+  const cancelPuzzleWork = useCallback(() => {
+    cancelPendingPuzzleWork()
+    cancelHintWork()
+  }, [cancelPendingPuzzleWork, cancelHintWork])
+
+  // Pending actions belong to the full board revision, including colors and
+  // undo history. Clock ticks and rating metadata do not invalidate them.
+  useLayoutEffect(() => cancelPendingPuzzleWork, [cancelPendingPuzzleWork, id, game.source, givens, variant, grid, algebraic, sized,
+    game.position, game.past, game.future, session])
+  // Completed hint pages remain valid after color-only edits. Their worker is
+  // retained only while the hint inputs, puzzle rules, and play session match.
+  useLayoutEffect(() => () => {
+    cancelHintWork()
+    setHint(null)
+    setHintRevealed(false)
+  }, [cancelHintWork, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session])
+  useLayoutEffect(() => {
+    if (!hintRevealed) cancelHintWork()
+  }, [hintRevealed, cancelHintWork])
+  useLayoutEffect(() => {
+    if (!disabled) return
+    cancelPuzzleWork()
+    setHintRevealed(false)
+  }, [disabled, cancelPuzzleWork])
+
+  function beginPuzzleTask(hint = false, isolated = true): PuzzleTask {
+    if (hint) cancelHintWork()
+    const abort = new AbortController()
+    const engine: EngineSession = isolated ? createEngineSession() : {
+      run: (request, options) => runEngine(request, { ...options, signal: abort.signal }),
+      close: () => abort.abort(),
+    }
+    const task = { origin: game, engine, hint }
+    puzzleTask.current = task
+    if (hint) hintEngine.current = engine
+    setBusy(true)
+    return task
+  }
+
+  function currentTaskGame(task: PuzzleTask) {
+    const current = readWorkingGame()
+    return puzzleTask.current === task && canApplyPuzzleResult(task.origin, current) ? current : undefined
+  }
+
+  function finishPuzzleTask(task: PuzzleTask, keepHintCollection = false) {
+    if (!keepHintCollection || puzzleTask.current !== task) {
+      task.engine.close()
+      if (hintEngine.current === task.engine) hintEngine.current = null
+    }
+    if (puzzleTask.current === task) {
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }
+
   function resumePuzzle() {
     if (pausedOnLaunch) onResumeLaunch?.()
     updateWorkingGame((current) => setGamePaused(current, false))
@@ -841,14 +922,15 @@ export function Worktable({
     }
   }, [actionsOpen, mobile])
 
-  const requestSolution = useEffectEvent(() => puzzleSolution(game))
+  const requestSolution = useEffectEvent((run: EngineRunner) => puzzleSolution(game, run))
   useEffect(() => {
     if (game.paused || !solutionPathRevealed || cachedSolution) return
     let current = true
+    const engine = createEngineSession()
     const finish = (path: SolutionPathState) => {
       if (current) setLoadedSolution({ id, identity: solutionIdentity, retry: solutionRetry, path })
     }
-    void requestSolution().then(result => {
+    void requestSolution(engine.run).then(result => {
       if (result.positions?.length !== result.steps.length + 1) throw new Error('Missing solution positions')
       finish({ status: 'ready', trace: result })
     }).catch((error: unknown) => finish({
@@ -856,53 +938,59 @@ export function Worktable({
       message: error instanceof EngineError && error.code === 'search-limit'
         ? 'The solver reached its search limit before finding a path.'
         : 'The solution couldn’t load.',
-    }))
-    return () => { current = false }
+    })).finally(() => engine.close())
+    return () => { current = false; engine.close() }
   }, [id, game.paused, solutionIdentity, solutionPathRevealed, solutionRetry, cachedSolution])
 
   useEffect(() => {
-    if (draft || !needsRating && !needsAttempt) return
+    if (draft || game.paused || !needsRating && !needsAttempt) return
     let current = true
-    void ratePuzzle(givens, variant).then((grade) => {
+    const engine = createEngineSession()
+    void ratePuzzle(givens, variant, engine.run).then((grade) => {
       if (!current) return
       roomStore.update(id, (latest) => latest.givens === givens && latest.variant === variant ? applyPuzzleGrade(latest, grade) : latest, { derived: true })
     }).catch(() => {
       if (current) setRatingFailed(true)
-    })
-    return () => { current = false }
-  }, [id, givens, draft, needsAttempt, needsRating, variant])
+    }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [id, givens, draft, game.paused, needsAttempt, needsRating, variant])
 
   useEffect(() => {
-    if (draft || solved || !needsSinglesCheck) return
+    if (draft || solved || game.paused || !needsSinglesCheck) return
     let current = true
+    const engine = createEngineSession()
     const check = variant
-      ? solveSingleValues({ variant }, givens).then((board) => board.includes('0'))
-      : runEngine({ type: 'rate', values: givens, techniqueOrder: SINGLE_TECHNIQUES }).then(({ status }) => status === 'stalled')
+      ? solveSingleValues({ variant }, givens, undefined, undefined, engine.run).then((board) => board.includes('0'))
+      : engine.run({ type: 'rate', values: givens, techniqueOrder: SINGLE_TECHNIQUES }).then(({ status }) => status === 'stalled')
     void check.then((needsMore) => {
       if (current) setSinglesCheck({ givens, variant, needsMore })
-    }).catch(() => { /* Leave the action hidden when the starting puzzle cannot be checked. */ })
-    return () => { current = false }
-  }, [draft, givens, needsSinglesCheck, solved, variant])
+    }).catch(() => { /* Leave the action hidden when the starting puzzle cannot be checked. */ }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [draft, game.paused, givens, needsSinglesCheck, solved, variant])
 
   useEffect(() => {
-    if (!autoGenerateCandidates || !masks) return
-    updateWorkingGame((current) => current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
+    if (!autoGenerateCandidates || !masks || disabled) return
+    updateWorkingGame((current) => !current.paused && current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
       ? replaceCandidates(current, masks, { recordHistory: false })
       : current)
-  }, [autoGenerateCandidates, givens, masks, updateWorkingGame, values])
+  }, [autoGenerateCandidates, disabled, givens, masks, updateWorkingGame, values])
 
   useEffect(() => {
     let current = true
-    if (draft || solved) return
+    if (draft || solved || game.paused) return
+    const abort = new AbortController()
+    const run: EngineRunner = (request, options) => runEngine(request, {
+      ...options, latestKey: candidateRefreshKey.current, signal: abort.signal,
+    })
 
-    void playCandidates(game).then((masks) => {
+    void playCandidates(game, run).then((masks) => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks })
     }).catch(() => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks: null, failed: true })
     })
 
-    return () => { current = false }
-  }, [id, draft, solved, values, variant, algebraic, sized, variantEliminations, grid])
+    return () => { current = false; abort.abort() }
+  }, [id, draft, solved, game.paused, values, variant, algebraic, sized, variantEliminations, grid])
 
   useLayoutEffect(() => {
     if (wasMobile.current && advancedWorkspace && openPuzzlePanels.length && !showRightPanel) onOpenRightPanel()
@@ -1082,14 +1170,15 @@ export function Worktable({
   const showSolutionErrors = errorMode === 'all' || errorMode === 'incorrect'
   useEffect(() => {
     let current = true
+    const engine = createEngineSession()
     setSolution(showSolutionErrors ? sized?.solution ?? algebraic?.solution ?? variant?.solution ?? null : null)
-    if (!draft && showSolutionErrors && !variant && !algebraic && !sized) {
-      void (grid ? solveMini(game.givens) : runEngine({ type: 'solve', values: game.givens }))
+    if (!draft && !game.paused && showSolutionErrors && !variant && !algebraic && !sized) {
+      void (grid ? solveMini(game.givens, engine.run) : engine.run({ type: 'solve', values: game.givens }))
         .then((result) => { if (current) setSolution(result) })
-        .catch(() => { /* Checking still works if the solution cannot be loaded. */ })
+        .catch(() => { /* Checking still works if the solution cannot be loaded. */ }).finally(() => engine.close())
     }
-    return () => { current = false }
-  }, [draft, game.givens, showSolutionErrors, variant, algebraic, sized, grid])
+    return () => { current = false; engine.close() }
+  }, [draft, game.givens, game.paused, showSolutionErrors, variant, algebraic, sized, grid])
 
   const errors = useMemo(() => {
     const result = new Set<number>()
@@ -1105,7 +1194,12 @@ export function Worktable({
   }, [conflicts, draft, errorMode, game.position.entries, showSolutionErrors, solution])
 
   const nakedSinglesRequest = useRef(0)
-  useEffect(() => () => { nakedSinglesRequest.current++ }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen])
+  const nakedSinglesAbort = useRef<AbortController | null>(null)
+  useLayoutEffect(() => () => {
+    nakedSinglesRequest.current++
+    nakedSinglesAbort.current?.abort()
+    nakedSinglesAbort.current = null
+  }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen, session])
 
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
@@ -1131,10 +1225,14 @@ export function Worktable({
 
   async function placeNakedSingles(origin: Game) {
     const request = ++nakedSinglesRequest.current
+    nakedSinglesAbort.current?.abort()
+    const abort = new AbortController()
+    nakedSinglesAbort.current = abort
     const entered = valuesOf(origin)
     if (isSolved(origin) || conflictsOf(entered, origin.variant?.puzzle, origin.grid, origin.sized?.rules).size) return
     try {
-      const available = await playCandidates(origin)
+      const run: EngineRunner = (request, options) => runEngine(request, { ...options, signal: abort.signal })
+      const available = await playCandidates(origin, run)
       if (request !== nakedSinglesRequest.current || !available || available.some((mask, cell) => entered[cell] === '0' && !mask)) return
       const placements = available.flatMap((mask, cell) => {
         const digit = entered[cell] === '0' ? onlyCandidate(mask) : null
@@ -1146,12 +1244,13 @@ export function Worktable({
       const filled = result.join('')
       if (conflictsOf(filled, origin.variant?.puzzle, origin.grid, origin.sized?.rules).size) return
       updateWorkingGame((current) => {
-        if (current.paused || current.position !== origin.position) return current
+        if (!canApplyPuzzleResult(origin, current)) return current
         const next = recordAction(current, fillEntries(current, filled, advancedModes.autoRemoveCandidates), 'singles')
         void observeTechniqueActions(current, placements, 'automated')
         return current.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(current.ratingAttempt, 'partial') } : next
       })
     } catch { /* The player's move remains saved if the engine cannot find candidates. */ }
+    finally { if (nakedSinglesAbort.current === abort) nakedSinglesAbort.current = null }
   }
 
   function setStrongLinkHighlights(mask: SetStateAction<number>) {
@@ -1744,22 +1843,22 @@ export function Worktable({
   })
 
   async function runCheck() {
-    if (busy) return
+    if (busy || puzzleTask.current || game.paused || placeholder) return
     if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask()
+    const run = task.engine.run
     setDialogResult(null)
     try {
       if (draftCages && !isAlgebraicCageList(draftCages)) throw new Error('Add at least one cage with a letter before checking.')
       const status = sizedRules?.length && grid
-        ? await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, { rules: sizedRules }, values), operation: 'analyze' })
-        : cages ? await analyzeAlgebraic({ rules: cages }, values) : grid
-        ? await runEngine({ type: 'sized-classic', position: sizedClassicPosition(grid, values), operation: 'analyze' }) : variant
-        ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
-        : await runEngine({ type: 'analyze', values })
-      const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages || current.position.draftSizedRules !== game.position.draftSizedRules) return
+        ? await run({ type: 'sized-variant', position: sizedRulePosition(grid, { rules: sizedRules }, values), operation: 'analyze' })
+        : cages ? await analyzeAlgebraic({ rules: cages }, values, run) : grid
+        ? await run({ type: 'sized-classic', position: sizedClassicPosition(grid, values), operation: 'analyze' }) : variant
+        ? await run({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
+        : await run({ type: 'analyze', values })
+      if (!currentTaskGame(task)) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
       } else if (!draft && status !== 'search-limit') {
@@ -1770,46 +1869,46 @@ export function Worktable({
         setDialogResult({ title: 'Puzzle check', ...validation[status] })
       }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       const conflict = error instanceof EngineError && (error.code === 'conflict' || error.code === 'unsolvable')
       setDialogResult({ title: 'Puzzle check', text: conflict ? 'This puzzle is not correct yet.' : (error as Error).message,
         tone: conflict ? 'error' : 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
   async function generateCandidates() {
-    if (busy) return
+    if (busy || puzzleTask.current || solved || disabled) return
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask(false, false)
     try {
-      const masks = await playCandidates(game)
-      const current = readWorkingGame()
-      if (!current || current.position !== game.position) return
+      const masks = await playCandidates(game, task.engine.run)
+      if (!currentTaskGame(task)) return
       if (!masks) {
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
         return
       }
-      updateWorkingGame((latest) => latest.position === current.position
+      updateWorkingGame((latest) => canApplyPuzzleResult(task.origin, latest)
         ? recordAction(latest, replaceCandidates(latest, masks), 'candidates') : latest)
     } catch (error) {
+      if (!currentTaskGame(task)) return
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
   async function solveAllSingles() {
-    if (busy || solved || draft || disabled || !hasSingles) return
+    if (busy || puzzleTask.current || solved || draft || disabled || !hasSingles) return
     if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask(false, false)
     try {
-      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined)
-      const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.eliminations !== eliminations) return
+      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined, task.engine.run)
+      if (!currentTaskGame(task)) return
       if (result === values) {
         setDialogResult({ title: 'Puzzle action', text: 'There are no singles to solve right now.', tone: 'neutral' })
         return
@@ -1818,7 +1917,7 @@ export function Worktable({
         values[cell] === '0' && (mask & ~displayedCandidates[cell]) !== 0))
       const assistance = values === givens && !removedCandidates && !result.includes('0') ? 'all' : 'partial'
       updateWorkingGame((latest) => {
-        if (valuesOf(latest) !== values || latest.position.eliminations !== eliminations) return latest
+        if (!canApplyPuzzleResult(task.origin, latest)) return latest
         const next = recordAction(latest, fillEntries(latest, result, advancedModes.autoRemoveCandidates), 'singles')
         if (completed) return next
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
@@ -1826,14 +1925,15 @@ export function Worktable({
         return latest.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(latest.ratingAttempt, assistance) } : next
       })
     } catch (error) {
+      if (!currentTaskGame(task)) return
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
   async function showHint(limit: 10 | 'all' = 10) {
-    if (busy || solved) return
+    if (busy || puzzleTask.current || solved || draft || disabled) return
     if (sketch.drawing) sketch.suspend()
     if (mobile) hintReturnFocus.current = actionsMenuButtonRef.current
     if (advancedWorkspace) {
@@ -1844,39 +1944,39 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setHintRevealed(true)
-    setBusy(true)
+    const task = beginPuzzleTask(true)
+    const run = task.engine.run
     const requestId = ++techniqueHintRequest.current
-    let result: HintState
+    let result: HintState | undefined
     const removals = hintEliminations(values, displayedCandidates, eliminations, gridSize)
     try {
       const collection = limit === 'all' && !grid ? ++nextHintCollection : undefined
-      const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection)
+      const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection, run)
       const page = collection === undefined ? undefined : { collection, offset: offset ?? 0, available }
       if (!candidates) throw new Error('Missing hint candidates')
       result = { position: hintPosition, choices, candidates, page, index: 0, stage: 'technique' }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       const incorrectCandidates = error instanceof EngineError && (error.code === 'invalid-eliminations' ||
         (error.code === 'unsolvable' && variant && [...values].every((digit, cell) => digit === '0' || digit === variant.solution[cell])))
       const copy = incorrectCandidates ? HINT_CANDIDATES_ERROR : HINT_ERROR
       result = { position: hintPosition, choices: [], index: 0, stage: 'technique', error: copy }
       if (incorrectCandidates && removals) {
         try {
-          const answer = sized?.solution ?? algebraic?.solution ?? (grid ? await solveMini(values) : variant ? await runEngine({
+          const answer = sized?.solution ?? algebraic?.solution ?? (grid ? await solveMini(values, run) : variant ? await run({
             type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle, entries: game.position.entries },
-          }) : await runEngine({ type: 'solve', values }))
+          }) : await run({ type: 'solve', values }))
           if (answer) result.recovery = findCandidateRecovery(game, answer, removals)
         } catch { /* Keep the general candidate warning if recovery cannot be verified. */ }
       }
     } finally {
-      setBusy(false)
+      if (result && requestId === techniqueHintRequest.current && currentTaskGame(task)) setHint(result)
+      finishPuzzleTask(task, Boolean(result?.page && currentTaskGame(task)))
     }
-    const current = readWorkingGame()
-    if (requestId === techniqueHintRequest.current && current && matchesHintPosition(current, hintPosition)) setHint(result)
-    else if (result.page) void runEngine({ type: 'release-hints', collection: result.page.collection }).catch(() => {})
   }
 
   async function showTechniqueHints(technique: string) {
-    if (game.paused || busy || solved || draft) return
+    if (disabled || busy || puzzleTask.current || solved || draft) return
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     if (sketch.drawing) sketch.suspend()
@@ -1885,30 +1985,30 @@ export function Worktable({
       if (!showBottomPanel) onOpenHintPanel()
       setFocusHintRequest((request) => request + 1)
     }
-    const request = ++techniqueHintRequest.current
     const position = hintPosition
     setHint(null)
     setHintRevealed(true)
-    setBusy(true)
-    let result: HintState
+    const task = beginPuzzleTask(true)
+    const request = ++techniqueHintRequest.current
+    let result: HintState | undefined
     try {
-      const { choices, candidates } = await puzzleHints(game, 'all', technique)
+      const { choices, candidates } = await puzzleHints(game, 'all', technique, undefined, task.engine.run)
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
       result = {
         position, choices, candidates, index: 0, stage: 'technique',
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
       }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       result = {
         position, choices: [], index: 0, stage: 'technique',
         error: error instanceof EngineError && error.code === 'invalid-eliminations'
           ? HINT_CANDIDATES_ERROR : HINT_ERROR,
       }
     } finally {
-      setBusy(false)
+      if (result && request === techniqueHintRequest.current && currentTaskGame(task)) setHint(result)
+      finishPuzzleTask(task)
     }
-    const latest = readWorkingGame()
-    if (request === techniqueHintRequest.current && latest && matchesHintPosition(latest, position)) setHint(result)
   }
 
   async function moveHint(offset: -1 | 1) {
@@ -1921,13 +2021,15 @@ export function Worktable({
       setHint(current => current === visibleHint ? { ...current, index, stage: 'technique' } : current)
       return
     }
+    const engine = hintEngine.current
+    if (!engine) return
     try {
-      const next = await puzzleHintPage(variant, page.collection, index)
-      if (request !== pageRequest.current) return
+      const next = await puzzleHintPage(variant, page.collection, index, engine.run)
+      if (request !== pageRequest.current || hintEngine.current !== engine) return
       setHint(current => current?.page?.collection === page.collection
         ? { ...current, choices: next.choices, page: { ...page, offset: next.offset }, index, stage: 'technique' } : current)
     } catch (error) {
-      if (request === pageRequest.current) setHint(current => current?.page?.collection === page.collection
+      if (request === pageRequest.current && hintEngine.current === engine) setHint(current => current?.page?.collection === page.collection
         ? { ...current, choices: [], page: undefined, index: 0, error: { title: 'Could not load hint', text: (error as Error).message } }
         : current)
     }

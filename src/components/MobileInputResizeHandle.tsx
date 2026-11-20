@@ -10,7 +10,15 @@ const TAP_MOVE_LIMIT = 6
 const DOUBLE_TAP_DISTANCE = 24
 
 type Split = { input: number; total: number; chrome: number; naturalPuzzle: number; minPuzzle: number; min: number; max: number }
-type BoardPreview = { viewport: HTMLElement; content: HTMLElement; width: number; height: number; maxWidth: number }
+type StyleSnapshot = { element: HTMLElement; properties: { name: string; value: string; priority: string }[] }
+type BoardPreview = {
+  viewport: HTMLElement
+  content: HTMLElement
+  width: number
+  height: number
+  maxWidth: number
+  styles: StyleSnapshot[]
+}
 type Tap = { time: number; x: number; y: number; pointerType: string }
 type Drag = {
   pointerId: number
@@ -87,24 +95,32 @@ function previewBoard(layout: HTMLElement): BoardPreview | null {
     ? column.clientWidth - parseFloat(columnStyle.paddingInlineStart) - parseFloat(columnStyle.paddingInlineEnd)
     : viewport.parentElement.clientWidth
   const maxWidth = Math.max(width, Math.min(columnWidth, inputPanel?.clientWidth ?? columnWidth))
+  const remember = (element: HTMLElement, names: string[]): StyleSnapshot => ({
+    element, properties: names.map(name => ({ name, value: element.style.getPropertyValue(name), priority: element.style.getPropertyPriority(name) })),
+  })
+  const styles = [
+    remember(viewport, ['height']), remember(content, ['width', 'height', 'scale']),
+  ]
   // Keep the grid's layout fixed while its viewport and both cards follow the pointer.
   viewport.style.height = `${height}px`
   content.style.width = `${width}px`
   content.style.height = `${height}px`
   viewport.setAttribute('data-resize-preview', '')
-  return { viewport, content, width, height, maxWidth }
+  return { viewport, content, width, height, maxWidth, styles }
 }
 
 function clearBoardPreview(board: BoardPreview | null) {
   if (!board) return
   board.viewport.removeAttribute('data-resize-preview')
-  board.viewport.style.removeProperty('height')
-  board.content.style.removeProperty('width')
-  board.content.style.removeProperty('height')
-  board.content.style.removeProperty('scale')
+  for (const { element, properties } of board.styles) for (const { name, value, priority } of properties) {
+    if (value) element.style.setProperty(name, value, priority)
+    else element.style.removeProperty(name)
+  }
 }
 
 function applySplit(layout: HTMLElement, split: Split, height: number, board?: BoardPreview | null) {
+  // Keep the outer cards current throughout the gesture. The content's CSS
+  // boundary stops these sizing values from invalidating every grid mark.
   layout.toggleAttribute('data-input-sized', true)
   layout.style.setProperty('--mobile-resized-input-height', `${height}px`)
   const puzzleHeight = mobileResizedPuzzleHeight(split.total, height, split.naturalPuzzle, split.minPuzzle)

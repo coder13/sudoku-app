@@ -1,4 +1,4 @@
-import { runEngine } from './engine.ts'
+import { runEngine, type EngineRunner } from './engine.ts'
 import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, MINI_GRID, sizedClassicPosition } from './grid.ts'
@@ -12,16 +12,16 @@ export function algebraicPosition({ rules }: Pick<AlgebraicGame, 'rules'>, value
   return { ...sizedClassicPosition(MINI_GRID, values), rules }
 }
 
-export function rateAlgebraicPuzzle(givens: string, rules: AlgebraicDefinition['rules']) {
-  return runEngine({ type: 'sized-variant', operation: 'rate', position: algebraicPosition({ rules }, givens) })
+export function rateAlgebraicPuzzle(givens: string, rules: AlgebraicDefinition['rules'], run: EngineRunner = runEngine) {
+  return run({ type: 'sized-variant', operation: 'rate', position: algebraicPosition({ rules }, givens) })
 }
 
-export async function verifyAlgebraicPuzzle({ givens, rules, source }: AlgebraicDefinition & { givens: string }): Promise<AlgebraicGame> {
+export async function verifyAlgebraicPuzzle({ givens, rules, source }: AlgebraicDefinition & { givens: string }, run: EngineRunner = runEngine): Promise<AlgebraicGame> {
   const position = algebraicPosition({ rules }, givens)
-  const status = await runEngine({ type: 'sized-variant', operation: 'analyze', position })
+  const status = await run({ type: 'sized-variant', operation: 'analyze', position })
   if (status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
   if (status !== 'unique') throw new Error(validation[status].text)
-  const answer = await runEngine({ type: 'sized-variant', operation: 'solve', position })
+  const answer = await run({ type: 'sized-variant', operation: 'solve', position })
   if (!answer) throw new Error('The engine could not verify this puzzle’s solution.')
   const solution = answer.digits.join('')
   if (source?.solution && source.solution !== solution) throw new Error('The authored solution conflicts with the puzzle’s rules.')

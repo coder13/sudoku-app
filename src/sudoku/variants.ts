@@ -574,7 +574,7 @@ export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
         } else descriptions.push(`Region Sum line ${number}: ${rule.groupByRegion
           ? 'combine all visits to the same region into one total; each visited region has the same total.'
           : 'each separate visit to a region has the same total.'}`)
-        if ((rule.segments ?? [rule.cells]).some(lineSkipsCells)) descriptions.push(
+        if ((rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))) descriptions.push(
           'A dashed Region Sum connector skips cells. Only cells with a small dot belong to that line.')
         break
       }

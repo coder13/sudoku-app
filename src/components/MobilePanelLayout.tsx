@@ -145,6 +145,9 @@ export function MobilePanelLayout(props: Props) {
 
     const blockSize = (element: HTMLElement) => parseFloat(getComputedStyle(element).blockSize)
     const fitBoard = () => {
+      // The resize preview owns the measured split until release. Avoid geometry
+      // reads from this observer while the pointer updates its wrapper sizes.
+      if (layout.hasAttribute('data-input-resizing')) return
       // The footer must remain as wide as the input card even after the grid shrinks.
       const inputWidth = input.getBoundingClientRect().width
       if (inputWidth) {

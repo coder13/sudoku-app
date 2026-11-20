@@ -2,7 +2,7 @@
 
 This harness compares the complete production `Board` before and after the React optimizations. It does not use a reduced board implementation.
 
-The baseline is commit `a2d91e72c15845d3a308effb84860e15973ddeea`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
+The baseline is commit `55067cc61d09e4e953f9d7fc6d599be4d8a01a5e`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
 
 Both versions use the same React runtime, production CSS, other app dependencies, input path, fixtures, and browser settings.
 
@@ -36,6 +36,24 @@ Fixtures cover every `VariantRule` type, combined rules, jigsaw regions, 4×4 an
 Interaction checks compare callback arguments, current targets, callback replacement, candidate focus and keyboard navigation, mouse and touch hover, painting priority, refs, link selection, and native element changes when callbacks appear or disappear.
 
 Separate normal-motion checks compare retained exit marks, inert semantics, cleanup, and multiple synchronous updates. Returning to the original value or candidate state in one turn must not leave ghost values.
+
+## Normal motion and app lifecycles
+
+Run these commands from the repository root after installing the harness dependency and Chromium:
+
+```sh
+node tools/react-board-performance/scripts/motion.mjs
+node scripts/check-mobile-resize.mjs --compare 7e8979c43f13c6238dc0a5c20a0ccbe3c85d4272 --rounds 3
+node --experimental-strip-types scripts/check-worktable-lifecycle.mjs
+```
+
+The motion comparison uses the same optimized Board with either the previous paint transitions or the current direct highlights. A pinned, hashed fixture contains the earlier transition declarations. It records Chromium paint, style, and layout events, frame intervals, and the full observation window. Bulk-removal runs compare the pinned old Board with the current Board under the same current CSS. They also count fallback timers and check exit cleanup, reduced motion, and rapid restore/remove sequences.
+
+The mobile resize comparison builds both resize implementations with the same current Board, controls, font, and unrelated CSS. It uses the old resize sizing rule with the old implementation. It records drag and release separately. The optional historical comparison needs the named Git commit; `--regression-only` tests current behavior without repository history.
+
+The lifecycle script runs the real development app, stores, router, and WASM. It holds selected native worker replies to check pause, note edits, hint closure, navigation, and generation cancellation. It is a functional check, not a performance measurement. Generate the normal app WASM assets before running it.
+
+CI runs the motion and resize scripts with `--regression-only`, plus the lifecycle script. Timing thresholds are not used as a CI gate. Final reports include source hashes; raw results go in the ignored `results` directory.
 
 ## Timing limits
 

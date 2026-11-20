@@ -141,6 +141,12 @@ export function scenarios(): Scenario[] {
       { ...basic, sizedRules: [{ type: 'diagonal', diagonal: 'main' }, { type: 'parity', cells: [0, 2], parity: 'even' },
         { type: 'thermometer', cells: [0, 1, grid.size + 1] }, { type: 'renban', cells: [grid.size, grid.size + 1] },
         { type: 'kropki', consecutive: { pairs: [[2, 3]] } }, { type: 'difference', cells: [0, 1], difference: 2 }] },
+      { ...basic, sizedRules: [
+        { type: 'arrow', circle: 0, cells: [1, grid.size + 1] },
+        { type: 'region-sum', cells: Array.from({ length: grid.size }, (_, cell) => cell) },
+      ] },
+      { ...basic, sizedRules: [{ type: 'region-sum', groupByRegion: true,
+        cells: [0, 1, 2, grid.size + 2, grid.size + 1] }] },
       { ...basic, algebraicCages: [
         { type: 'algebraic-cage', cells: [0, 1], total: { type: 'fixed', value: 5 }, label: '5' },
         { type: 'algebraic-cage', cells: [grid.size, grid.size + 1], total: { type: 'variable', name: 'A', offset: 1 }, label: 'A+1' },

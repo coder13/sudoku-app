@@ -1,10 +1,10 @@
 import type { VariantRule } from './engine.ts'
 
 /** Mark a connection that passes over cells absent from the logical path. */
-export function lineSkipsCells(cells: readonly number[]) {
+export function lineSkipsCells(cells: readonly number[], size = 9) {
   return cells.some((cell, i) => i > 0 && Math.max(
-    Math.abs(cell % 9 - cells[i - 1] % 9),
-    Math.abs(Math.floor(cell / 9) - Math.floor(cells[i - 1] / 9)),
+    Math.abs(cell % size - cells[i - 1] % size),
+    Math.abs(Math.floor(cell / size) - Math.floor(cells[i - 1] / size)),
   ) > 1)
 }
 

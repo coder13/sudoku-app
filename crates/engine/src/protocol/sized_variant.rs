@@ -82,25 +82,17 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
+            Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
                 Self::Kropki { consecutive, ratio_two }
             }
             Rule::Variant(PuzzleRule::Renban { cells, segments }) => {
-                if let Some(segments) = segments {
-                    if segments.is_empty()
-                        || segments.iter().any(Vec::is_empty)
-                        || segments.iter().flatten().any(|cell| !cells.contains(cell))
-                        || cells
-                            .iter()
-                            .any(|cell| !segments.iter().any(|part| part.contains(cell)))
-                    {
-                        return Err((
-                            "invalid-rules",
-                            "Renban drawing paths must cover the same cells as the line.",
-                        ));
-                    }
-                }
+                validate_drawing(&cells, segments, "Renban drawing paths must cover the same cells as the line.")?;
                 Self::Renban { cells }
+            }
+            Rule::Variant(PuzzleRule::RegionSum { cells, group_by_region, segments }) => {
+                validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
+                Self::RegionSum { cells, group_by_region }
             }
             Rule::Pair(PairRule::Difference { cells, difference }) => Self::Difference { cells, difference },
             Rule::Variant(_) => {
@@ -114,6 +106,18 @@ impl TryFrom<Rule> for SizedConstraint {
             }
         })
     }
+}
+
+fn validate_drawing(cells: &[usize], segments: Option<Vec<Vec<usize>>>, message: &'static str) -> ResultValue<()> {
+    if let Some(segments) = segments
+        && (segments.is_empty()
+            || segments.iter().any(Vec::is_empty)
+            || segments.iter().flatten().any(|cell| !cells.contains(cell))
+            || cells.iter().any(|cell| !segments.iter().any(|part| part.contains(cell))))
+    {
+        return Err(("invalid-rules", message));
+    }
+    Ok(())
 }
 
 #[cfg(feature = "generation")]

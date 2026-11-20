@@ -33,6 +33,9 @@ type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; sto
 const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
 const storedSnapshots = new WeakMap<Game, string>()
+const pendingElapsed = new Map<string, { raw: string | undefined }>()
+const CLOCK_CHECKPOINT_MS = 5000
+let clockCheckpoint: ReturnType<typeof setTimeout> | undefined
 const playListeners = new Set<(id: string | null) => void>()
 const editListeners = new Set<(id: string, handoff: boolean) => void>()
 const announceEdit = (id: string, handoff = false) => editListeners.forEach(listener => listener(id, handoff))
@@ -72,7 +75,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
     (draftSizedRules === undefined ? !(draft && grid.size === 6) :
-      draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid.size)) &&
+      draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
     (eliminations === undefined || validDigits(eliminations, mask)) &&
@@ -146,6 +149,54 @@ function writeGame(game: Game) {
   const raw = JSON.stringify(game)
   localStorage.setItem(GAME_PREFIX + game.id, raw)
   storedSnapshots.set(game, raw)
+  clearPendingElapsed(game.id)
+}
+
+function clearPendingElapsed(id: string) {
+  pendingElapsed.delete(id)
+  if (!pendingElapsed.size && clockCheckpoint !== undefined) {
+    clearTimeout(clockCheckpoint)
+    clockCheckpoint = undefined
+  }
+}
+
+function retainStoredSnapshot(previous: Game, next: Game) {
+  const raw = storedSnapshots.get(previous)
+  if (raw !== undefined && !storedSnapshots.has(next)) storedSnapshots.set(next, raw)
+}
+
+function scheduleClockCheckpoint() {
+  if (clockCheckpoint !== undefined || !pendingElapsed.size) return
+  clockCheckpoint = setTimeout(() => {
+    clockCheckpoint = undefined
+    flushElapsed()
+  }, CLOCK_CHECKPOINT_MS)
+  // Node storage tests do not need an outstanding browser checkpoint to keep the process open.
+  clockCheckpoint.unref?.()
+}
+
+function flushElapsed(id?: string) {
+  for (const key of id === undefined ? [...pendingElapsed.keys()] : [id]) {
+    const pending = pendingElapsed.get(key)
+    if (!pending) continue
+    const game = room.games.find(item => item.id === key)
+    if (!game) { clearPendingElapsed(key); continue }
+    let raw: string | null
+    try { raw = readSaved(localStorage, GAME_PREFIX + key) }
+    catch {
+      if (room.storageAvailable) publish({ ...room, storageAvailable: false })
+      continue
+    }
+    if (pending.raw === undefined ? raw !== null : raw !== pending.raw) {
+      // A remote move, reset, or deletion is authoritative. Never write a stale board or clock over it.
+      clearPendingElapsed(key)
+      onStorage({ storageArea: localStorage, key: GAME_PREFIX + key } as StorageEvent)
+      continue
+    }
+    const saved = persist(() => writeGame(game))
+    if (!saved && room.storageAvailable) publish({ ...room, storageAvailable: false })
+  }
+  scheduleClockCheckpoint()
 }
 
 function persist(write: () => void): boolean {
@@ -369,6 +420,7 @@ function hydrate() {
 function onStorage(event: StorageEvent) {
   if (event.storageArea !== localStorage) return
   if (event.key === null) {
+    for (const id of pendingElapsed.keys()) clearPendingElapsed(id)
     hydrate()
     return
   }
@@ -383,7 +435,11 @@ function onStorage(event: StorageEvent) {
   }
   if (!key.startsWith(GAME_PREFIX)) return
   const id = key.slice(GAME_PREFIX.length)
-  const incoming = readGame(id, readSaved(localStorage, key))
+  const raw = readSaved(localStorage, key)
+  const pending = pendingElapsed.get(id)
+  const current = room.games.find(game => game.id === id)
+  const incoming = pending && pending.raw === raw && current ? current : readGame(id, raw)
+  if (pending && pending.raw !== raw) clearPendingElapsed(id)
   const outcomeSaved = rememberOutcome(incoming?.ratingAttempt?.outcome)
   const games = room.games.filter((game) => game.id !== id)
   if (incoming) games.push(incoming)
@@ -413,17 +469,20 @@ function rememberActive(storage: Storage, id: string | null) {
 function withSavedForLater(state: Room, game: Game, savedForLater: true | undefined): Room {
   const key = GAME_PREFIX + game.id
   let current = game
-  if (state.storageAvailable) {
+  if (state.storageAvailable || pendingElapsed.has(game.id)) {
     // A move from another tab may have reached storage before its storage event.
     try {
       const stored = readSaved(localStorage, key)
-      if (stored === null) return state
-      current = readGame(game.id, stored) ?? game
+      const pending = pendingElapsed.get(game.id)
+      if (pending && (pending.raw === undefined ? stored !== null : pending.raw !== stored)) clearPendingElapsed(game.id)
+      if (stored === null && (state.storageAvailable || storedSnapshots.has(game))) return state
+      if (stored !== null) current = storedSnapshots.get(game) === stored ? game : readGame(game.id, stored) ?? game
     } catch { /* Keep the session's progress when storage is unavailable. */ }
   }
   if (savedForLater && (current.source === 'draft' || isSolved(current))) return state
   const updated = { ...current, savedForLater }
   const saved = persist(() => writeGame(updated))
+  if (!saved) retainStoredSnapshot(current, updated)
   return { ...state, games: state.games.map(item => item.id === game.id ? updated : item),
     storageAvailable: state.storageAvailable && saved }
 }
@@ -459,6 +518,7 @@ export const roomStore = {
     return () => { editListeners.delete(listener) }
   },
   view(id: string) {
+    if (room.active !== id) flushElapsed()
     const game = room.games.find(item => item.id === id)
     if (game && (room.active !== id || game.savedForLater)) {
       publishSelection(game.savedForLater ? withSavedForLater(room, game, undefined) : room, id)
@@ -517,11 +577,19 @@ export const roomStore = {
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
   connect() {
-    hydrate()
+    flushElapsed()
+    if (!pendingElapsed.size) hydrate()
+    const checkpoint = () => flushElapsed()
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener('pagehide', checkpoint)
+    return () => {
+      flushElapsed()
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('pagehide', checkpoint)
+    }
   },
   select(id: string) {
+    flushElapsed()
     const game = room.games.find((game) => game.id === id)
     if (game) playPuzzle(room, game)
   },
@@ -534,6 +602,7 @@ export const roomStore = {
     else publish(next)
   },
   stopPlaying(id: string) {
+    if (room.active === id) flushElapsed(id)
     if (room.active === id) { publishSelection(room, null); playListeners.forEach(listener => listener(null)) }
   },
   startFirstPuzzle() {
@@ -542,6 +611,7 @@ export const roomStore = {
       difficulty: 'medium', score: 888, paused: puzzleTiming.getSnapshot().pauseOnOpen })
   },
   add(game: Game) {
+    flushElapsed()
     firstVisit = false
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
@@ -556,13 +626,15 @@ export const roomStore = {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
     let merged = current
-    if (room.storageAvailable) {
+    if (room.storageAvailable || pendingElapsed.has(id)) {
       // Another tab may have just installed a remote save or tombstone. Use
       // the latest persisted board even before its storage event is delivered.
       try {
         const raw = readSaved(localStorage, GAME_PREFIX + id)
-        if (raw === null) { roomStore.refreshPuzzle(id); return }
-        if (storedSnapshots.get(current) !== raw) merged = readGame(id, raw) ?? current
+        const pending = pendingElapsed.get(id)
+        if (pending && (pending.raw === undefined ? raw !== null : pending.raw !== raw)) clearPendingElapsed(id)
+        if (raw === null && (room.storageAvailable || storedSnapshots.has(current))) { roomStore.refreshPuzzle(id); return }
+        if (raw !== null && storedSnapshots.get(current) !== raw) merged = readGame(id, raw) ?? current
       } catch { /* Continue in memory if browser storage changes availability. */ }
     } else {
       merged = mergeStoredMetadata(current)
@@ -583,6 +655,7 @@ export const roomStore = {
       writeGame(next)
       if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
     })
+    if (!saved) retainStoredSnapshot(merged, next)
     const pauseChanged = next.paused !== merged.paused
     if (saved && !derived && (played || pauseChanged || next.elapsed === merged.elapsed)) {
       const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
@@ -601,10 +674,24 @@ export const roomStore = {
       storageAvailable: room.storageAvailable && saved && outcomeSaved && seenSaved,
       playerRating: evidenceChanged ? playerRatingFor(games) : room.playerRating })
   },
+  /** Update the displayed clock without serializing its board and undo history on every tick. */
+  advanceElapsed(id: string, seconds: number) {
+    if (!Number.isSafeInteger(seconds) || seconds <= 0 || !puzzleTiming.getSnapshot().trackTime) return
+    const current = room.games.find(game => game.id === id)
+    if (!current || !current.started || current.paused || current.timeUntracked || isSolved(current) ||
+      !Number.isSafeInteger(current.elapsed + seconds)) return
+    if (!pendingElapsed.has(id)) pendingElapsed.set(id, { raw: storedSnapshots.get(current) })
+    const next = { ...current, elapsed: current.elapsed + seconds }
+    retainStoredSnapshot(current, next)
+    publish({ ...room, games: room.games.map(game => game.id === id ? next : game) })
+    scheduleClockCheckpoint()
+  },
+  flushElapsed,
   finishRatingAttempt(id: string, finish: Exclude<RatingFinish, 'solved'>) {
     roomStore.update(id, (game) => isSolved(game) ? game : finishAttempt(game, finish))
   },
   remove(id: string) {
+    clearPendingElapsed(id)
     const wasActive = room.active === id
     const removed = room.games.find((game) => game.id === id)
     const seenSaved = !removed || rememberPuzzle(removed)

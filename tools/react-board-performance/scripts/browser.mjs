@@ -34,6 +34,7 @@ for (const name of ['react', 'react-dom', 'vite', '@vitejs/plugin-react']) {
 }
 const sourceFiles = [
   'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
+  'src/components/board-mark-cleanup.ts',
   'src/components/VariantClues.tsx', 'src/components/OutsideClues.tsx', 'src/styles.css', 'package-lock.json',
   ...['game', 'highlighting', 'preferences', 'board-link-geometry', 'grid', 'variants', 'clone', 'outside-clues', 'engine', 'themes']
     .map(name => `src/sudoku/${name}.ts`),

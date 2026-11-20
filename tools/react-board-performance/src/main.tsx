@@ -2,6 +2,7 @@ import '@fontsource-variable/dm-sans'
 import '../../../src/styles.css'
 import './harness.css'
 import { createRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { Board as BaselineBoard } from '../baseline/Board'
 import { Board as OptimizedBoard } from '../../../src/components/Board'
@@ -285,9 +286,178 @@ async function runRegression(options: { motionOnly?: boolean; pressKey?: (key: s
     cases.push({ id: 'normal-motion-exits-and-bursts', checks: checked.length })
   }
   await api.reset('puzzle')
-  return { passed: true, baselineCommit: 'a2d91e72c15845d3a308effb84860e15973ddeea',
+  return { passed: true, baselineCommit: '55067cc61d09e4e953f9d7fc6d599be4d8a01a5e',
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, browserKeyboardActivation: Boolean(options.pressKey),
     checks: checked.length, cases, checked }
+}
+
+// These helpers are separate from the reduced-motion comparison above.
+let motionInitial: BoardProps | undefined
+function motionCounts() {
+  const candidates = [...root.querySelectorAll<HTMLElement>('.board-candidate')]
+  const exits = candidates.filter(mark => mark.dataset.boardFade === 'exit')
+  const live = candidates.filter(mark => mark.dataset.boardFade !== 'exit')
+  return {
+    candidates: candidates.length, exits: exits.length, live: live.length,
+    invalidExits: exits.filter(mark => !mark.inert || mark.getAttribute('aria-hidden') !== 'true').length,
+    invalidLive: live.filter(mark => mark.inert || mark.getAttribute('aria-hidden') === 'true').length,
+  }
+}
+async function motionWait(milliseconds: number) {
+  const until = performance.now() + milliseconds
+  while (performance.now() < until) await frame()
+}
+async function prepareMotion(next: Implementation) {
+  await api.ready
+  state = createFixture('dense')
+  motionInitial = propsFromState(state)
+  await mount(next, motionInitial)
+  await document.fonts.ready
+  await motionWait(350)
+  const counts = motionCounts()
+  if (counts.live !== 729 || counts.exits || counts.invalidLive) throw new Error(`Invalid dense fixture: ${JSON.stringify(counts)}`)
+  const bounds = root.querySelector('.sudoku-grid')!.getBoundingClientRect()
+  return { ...counts, width: bounds.width, height: bounds.height,
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    transitions: Object.fromEntries(['.cell', '.board-candidate'].map(selector => [selector, getComputedStyle(root.querySelector(selector)!).transition])) }
+}
+
+function instrumentMotionTimers() {
+  const nativeSet = window.setTimeout, nativeClear = window.clearTimeout
+  const pending = new Set<number>()
+  const delays: number[] = []
+  let fired = 0, cleared = 0, peak = 0
+  window.setTimeout = ((handler: TimerHandler, timeout = 0, ...args: unknown[]) => {
+    if (typeof handler !== 'function') return nativeSet(handler, timeout, ...args)
+    let timer: number
+    timer = nativeSet(() => { pending.delete(timer); fired++; handler(...args) }, timeout)
+    delays.push(Number(timeout))
+    pending.add(timer)
+    peak = Math.max(peak, pending.size)
+    return timer
+  }) as typeof window.setTimeout
+  window.clearTimeout = timer => {
+    if (typeof timer === 'number' && pending.delete(timer)) cleared++
+    nativeClear(timer)
+  }
+  const stop = () => {
+    window.setTimeout = nativeSet
+    window.clearTimeout = nativeClear
+    return { scheduled: delays.length, fired, cleared, peakActive: peak, remaining: pending.size, delaysMs: delays }
+  }
+  return Object.assign(stop, { pending: () => pending.size })
+}
+
+async function runMotionWorkload(options: {
+  id: string; workload: 'highlights' | 'bulk-removal' | 'bulk-fallback'; durationMs: number; highlightSteps?: number
+}) {
+  if (!motionInitial) throw new Error('Prepare a dense board before measuring motion.')
+  const initial = motionInitial
+  const stopTimers = instrumentMotionTimers()
+  const intervals: number[] = [], dispatches: { atMs: number; durationMs: number }[] = []
+  let previousFrame: number | undefined, firstFrameDelayMs: number | undefined, frameId = 0, measuring = true
+  const collectFrame = (timestamp: number) => {
+    if (!measuring) return
+    if (previousFrame !== undefined) intervals.push(timestamp - previousFrame)
+    else firstFrameDelayMs = performance.now() - started
+    previousFrame = timestamp
+    frameId = requestAnimationFrame(collectFrame)
+  }
+  frameId = requestAnimationFrame(collectFrame)
+  const blockTransition = (event: Event) => event.stopImmediatePropagation()
+  if (options.workload === 'bulk-fallback') window.addEventListener('transitionend', blockTransition, true)
+  const started = performance.now()
+  performance.mark(`board-motion-start:${options.id}`)
+  const dispatch = (next: BoardProps) => {
+    const at = performance.now()
+    dispatchProps(next)
+    dispatches.push({ atMs: at - started, durationMs: performance.now() - at })
+  }
+  let observedExits = 0, invalidExits = 0
+  let observe: MutationObserver | undefined
+  try {
+    if (options.workload === 'highlights') {
+      const steps = options.highlightSteps ?? 15
+      for (let index = 0; index < steps; index++) {
+        const actionStart = performance.now()
+        dispatch({ ...initial, highlightedDigitMask: index % 2 === 0 ? 511 : 0,
+          highlightedDigitMatch: 'any', highlightCandidateCells: true })
+        await motionWait(Math.max(0, options.durationMs / steps - (performance.now() - actionStart)))
+      }
+    } else {
+      observe = new MutationObserver(() => {
+        const counts = motionCounts()
+        observedExits = Math.max(observedExits, counts.exits)
+        invalidExits = Math.max(invalidExits, counts.invalidExits)
+        if (counts.exits === 729) observe?.disconnect()
+      })
+      observe.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-board-fade', 'inert', 'aria-hidden'] })
+      dispatch({ ...initial, position: { ...initial.position!, center: Array<number>(81).fill(0), corner: Array<number>(81).fill(0) } })
+      await motionWait(options.durationMs)
+    }
+    const observedFinal = motionCounts()
+    performance.mark(`board-motion-end:${options.id}`)
+    const durationMs = performance.now() - started
+    measuring = false
+    cancelAnimationFrame(frameId)
+    // Passive React cleanup can run after the final observation frame. Keep the
+    // timer probe installed until it runs, outside the marked measurement span.
+    const pendingTimersAtObservationEnd = stopTimers.pending()
+    const cleanupStart = performance.now()
+    while ((stopTimers.pending() || root.querySelector('[data-board-fade="exit"]')) && performance.now() - cleanupStart < 2000) await frame()
+    const final = motionCounts()
+    if (options.workload === 'highlights' && (final.live !== 729 || final.exits || final.invalidLive)) {
+      throw new Error(`Highlights changed mark presence: ${JSON.stringify(final)}`)
+    }
+    if (options.workload !== 'highlights' && (final.candidates || invalidExits)) {
+      throw new Error(`Bulk removal did not clean up safely: ${JSON.stringify({ final, invalidExits })}`)
+    }
+    return { id: options.id, workload: options.workload, durationMs,
+      dispatches, frameIntervalsMs: intervals, firstFrameDelayMs, observedExits, invalidExits, observedFinal, final,
+      pendingTimersAtObservationEnd, cleanupDrainMs: performance.now() - cleanupStart }
+  } finally {
+    observe?.disconnect()
+    window.removeEventListener('transitionend', blockTransition, true)
+    measuring = false
+    cancelAnimationFrame(frameId)
+    window.boardMotion.lastTimers = stopTimers()
+  }
+}
+
+async function restoreMotion() {
+  if (!motionInitial) throw new Error('No dense board to restore.')
+  dispatchProps(motionInitial)
+  await motionWait(350)
+  const counts = motionCounts()
+  if (counts.live !== 729 || counts.exits || counts.invalidLive) throw new Error(`Restored marks are not live: ${JSON.stringify(counts)}`)
+  return counts
+}
+
+async function checkMotionReversal(next: Implementation) {
+  await prepareMotion(next)
+  const initial = motionInitial!
+  // A long CSS fade keeps natural completion separate from this controlled event.
+  root.style.setProperty('--board-mark-motion', '1000ms linear')
+  const filled = { ...initial, values: `4${initial.values.slice(1)}` }
+  const freshExits = 9
+  try {
+    flushSync(() => dispatchProps(filled))
+    const before = motionCounts()
+    const oldExits = [...root.querySelectorAll('.board-candidate[data-board-fade="exit"]')]
+    for (const mark of oldExits) mark.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'opacity' }))
+    flushSync(() => dispatchProps(initial))
+    const restored = motionCounts()
+    flushSync(() => dispatchProps(filled))
+    const secondExit = motionCounts()
+    await settle()
+    const afterCompletionFrame = motionCounts()
+    const passed = before.exits === freshExits && restored.live === 729 && !restored.exits && !restored.invalidLive
+      && secondExit.exits === freshExits && afterCompletionFrame.exits === freshExits && !afterCompletionFrame.invalidExits
+    await motionWait(750)
+    const afterFallback = motionCounts()
+    await restoreMotion()
+    return { passed: passed && afterFallback.exits === 0, freshExits, before, restored, secondExit, afterCompletionFrame, afterFallback }
+  } finally { root.style.removeProperty('--board-mark-motion') }
 }
 
 declare global {
@@ -295,10 +465,17 @@ declare global {
     boardPerformance: BoardBenchmarkApi
     runBoardComparison: (options?: ComparisonOptions) => ReturnType<typeof runComparison>
     runBoardRegression: typeof runRegression
+    boardMotion: {
+      prepare: typeof prepareMotion; run: typeof runMotionWorkload; restore: typeof restoreMotion
+      checkReversal: typeof checkMotionReversal; counts: typeof motionCounts
+      lastTimers?: ReturnType<ReturnType<typeof instrumentMotionTimers>>
+    }
   }
 }
 window.boardPerformance = api
 window.runBoardComparison = options => runComparison(api, options)
 window.runBoardRegression = runRegression
+window.boardMotion = { prepare: prepareMotion, run: runMotionWorkload, restore: restoreMotion,
+  checkReversal: checkMotionReversal, counts: motionCounts }
 api.ready = mount('baseline')
 void api.ready.catch(error => { status.textContent = String(error); console.error(error) })

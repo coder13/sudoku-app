@@ -287,7 +287,7 @@ export async function runComparison(api: BoardBenchmarkApi, options: ComparisonO
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, initialFrameIntervalMs,
     },
     methodology: [
-      'One complete production Board is mounted at a time. The baseline is pinned to a2d91e72; the optimized Board is imported from the app. Fixtures and actions are identical.',
+      'One complete production Board is mounted at a time. The baseline is pinned to 55067cc6; the optimized Board is imported from the app. Fixtures and actions are identical.',
       'Each action uses the same host DOM click path. These are programmatic clicks, not trusted hardware input.',
       'Framework scheduling is unchanged. No flushSync, flush, or forced layout is used to complete an update.',
       'dispatchMs is synchronous DOM dispatch duration. It excludes deferred framework work.',

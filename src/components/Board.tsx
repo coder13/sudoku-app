@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
+import { cloneElement, memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
 import { CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
@@ -194,16 +194,38 @@ const BoardCell = memo(function BoardCell({
     error ? 'conflict' : '', selected ? 'selected' : '',
   ].join(' ')
 
+  // Dense digit highlights change often. Reuse each unchanged read-only glyph,
+  // including its style object, instead of rebuilding all nine marks per cell.
+  const readOnlyCandidates = useMemo(() => candidateAction ? null : [visibleGridCandidates, visibleCenterCandidates].map((digits, group) =>
+    new Map(digits.map(digit => {
+      const annotation = candidateAnnotations?.get(digit)
+      const color = candidateColors?.[digit]
+      const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
+      const style = {
+        gridArea: group === 0 ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
+        '--annotation-color': annotation?.color,
+      } as CSSProperties
+      const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
+      const normal = <span key={digit} className={className} style={style}
+        data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}>{digit}</span>
+      return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const
+    }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, boxColumns])
+
   const renderCandidate = useCallback((digit: number, slotted: boolean) => {
+    const previewEdit = digit === previewDigit && slotted === previewSlotted ? previewAction : undefined
+    const highlighted = !previewEdit && hasCandidate(candidateHighlightMask, digit)
+    if (readOnlyCandidates) {
+      const cached = readOnlyCandidates[slotted ? 0 : 1].get(digit)!
+      return previewEdit ? cloneElement(cached.normal, { 'data-candidate-preview': previewEdit })
+        : highlighted ? cached.highlighted : cached.normal
+    }
     const annotation = candidateAnnotations?.get(digit)
     const color = candidateColors?.[digit]
     const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
-    const previewEdit = digit === previewDigit && slotted === previewSlotted ? previewAction : undefined
     const style = {
       gridArea: slotted ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
       '--annotation-color': annotation?.color,
     } as CSSProperties
-    const highlighted = !previewEdit && hasCandidate(candidateHighlightMask, digit)
     const highlightClass = highlighted ? 'candidate-match' : undefined
     if (candidateAction) {
       const candidate = { cell: index, digit }
@@ -233,7 +255,7 @@ const BoardCell = memo(function BoardCell({
     return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
       style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
-  }, [candidateAnnotations, candidateColors, previewDigit, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
+  }, [readOnlyCandidates, candidateAnnotations, candidateColors, previewDigit, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
     candidateAction, index, row, col, selectedCandidateDigit, linkTargetMask, onPaintCandidate, onCandidate,
     tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus])
 
@@ -293,7 +315,7 @@ export function Board({
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
-  const sizedLabels = useMemo(() => sizedRules ? sizedRuleClueLabels(sizedRules, gridSize) : undefined, [sizedRules, gridSize])
+  const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
   const algebraicLabels = useMemo(() => {
@@ -500,7 +522,7 @@ export function Board({
           {gridRows}
         </div>
         <BoardMarks items={variantClues} />
-        {sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><MemoSizedRuleClues rules={sizedRules} size={gridSize} /></div>}
+        {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><MemoSizedRuleClues rules={sizedRules} size={gridSize} /></div>}
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />

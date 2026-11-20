@@ -5,17 +5,17 @@ import { readDisabledHintTechniques } from './hint-preferences.ts'
 
 export const MINI_TECHNIQUES = ['naked-single', 'hidden-single', 'pointing', 'claiming'] as const
 
-export function analyzeMini(values: string) {
-  return runEngine({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'analyze' })
+export function analyzeMini(values: string, run = runEngine) {
+  return run({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'analyze' })
 }
 
-export async function solveMini(values: string) {
-  const result = await runEngine({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'solve' })
+export async function solveMini(values: string, run = runEngine) {
+  const result = await run({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'solve' })
   return result?.join('') ?? null
 }
 
-export async function miniCandidates(values: string, eliminations?: readonly number[]) {
-  const candidates = await runEngine({
+export async function miniCandidates(values: string, eliminations?: readonly number[], run = runEngine) {
+  const candidates = await run({
     type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'candidates',
   })
   return candidates?.map((mask, cell) => mask & ~(eliminations?.[cell] ?? 0)) ?? null
@@ -41,17 +41,17 @@ export async function miniHintChoices(values: string, eliminations?: readonly nu
   return hints && { choices: hints.choices.map(miniHintChoice), candidates: hints.candidates }
 }
 
-export async function miniHints(game: Game, limit: 10 | 'all', technique?: string) {
+export async function miniHints(game: Game, limit: 10 | 'all', technique?: string, run = runEngine) {
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, MINI_GRID.size)
-  const solution = await solveMini(game.givens)
+  const solution = await solveMini(game.givens, run)
   if (!solution || [...values].some((digit, cell) => digit !== '0' && digit !== solution[cell])) {
     throw new EngineError('The placed digits conflict with this puzzle’s solution.', 'conflict')
   }
   if (eliminations?.some((mask, cell) => values[cell] === '0' && (mask & (1 << (Number(solution[cell]) - 1))))) {
     throw new EngineError('A required candidate is missing.', 'invalid-eliminations')
   }
-  const result = await miniHintChoices(values, eliminations)
+  const result = await miniHintChoices(values, eliminations, run)
   return visibleMiniHints(result, limit, technique)
 }
 
@@ -65,8 +65,8 @@ export function visibleMiniHints(result: { choices: HintChoice[]; candidates: nu
 
 export type MiniSolutionTrace = Omit<LogicalSolution, 'rating'> & { status: 'solved' | 'stalled' }
 
-export async function miniSolutionTrace(givens: string): Promise<MiniSolutionTrace> {
-  const trace = await runEngine({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, givens), operation: 'trace' })
+export async function miniSolutionTrace(givens: string, run = runEngine): Promise<MiniSolutionTrace> {
+  const trace = await run({ type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, givens), operation: 'trace' })
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
@@ -81,9 +81,9 @@ export async function miniSolutionTrace(givens: string): Promise<MiniSolutionTra
   return { board, steps, positions, status: board.includes('0') ? 'stalled' : 'solved' }
 }
 
-export async function miniSingles(values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
+export async function miniSingles(values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
   const removed = hintEliminations(values, displayedCandidates ?? null, eliminations, MINI_GRID.size)
-  const trace = await runEngine({
+  const trace = await run({
     type: 'sized-classic', position: sizedClassicPosition(MINI_GRID, values), operation: 'trace', eliminations: removed, singlesOnly: true,
   })
   return trace?.at(-1)?.digits.join('') ?? values
