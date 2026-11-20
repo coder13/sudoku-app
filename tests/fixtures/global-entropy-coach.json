@@ -401,7 +401,7 @@
       "published": "2026-07-29 14:00:16",
       "code": "SCv7_32_f2e8r56ddr130444rv2ueee4brvo8n5brpte6m3h930okb450giqc5a5nhtgqla1e7lmkruht8dqvf9rj6puh9lgbe3kubsq2l21fnntu0q0ssssr8oc8m9kltjh2tl2i4ak8f0t28iu5hvosjtnsves1e4ditrrvs1mskvpvaild83a0domh9rmtuhpuknh5jj28q6ssm10ei2sq1a30aom9389k0qq931u3km3kni81mm0m0t2m0pag291d943mgmd103n414uhglsufb1a73bs2r8cstcplc9hgm4uddjkk6d48ik2aeme9lehgjjubjc9ngeo7oqp9j1h5qq9kl00acvqe55gknj2lqu9rbdialogb6n7bp51samd7kj1qbeenr5k7vf3hn6j8pj31l1nfb6viir4r4nm9jlvnsddtmf8eecdgr9355ibcdqherijrvsuoc57tltgj0v7p3kit7mq333545ab0fqnml6uid3irhqlvuan03plnr4efsg53orrvog",
       "solution": "268349157934715682517268349751682493349157826682493571176824935493571268825936714",
-      "deferred": "The export includes an empty Consecutive Line layer. Confirm its empty-layer semantics before accepting the complete export.",
+      "description": "XIII = 13\nVII = 7\n\nNote global entropy!\n\nThis is my first little experiment with these constraints so it is fairly straightforward, I hope you like it!\n\nColouring is your friend!",
       "imageUrl": "https://sudoku.coach/open_graph_images/HqJ9.png",
       "imageSha256": "2538c1272fdc6156baa755369a16ce141b70c14821a427b0f05870c0926c822f"
     },

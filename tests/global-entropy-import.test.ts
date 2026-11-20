@@ -173,10 +173,38 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
   await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
   assert.match(ordered.deferred, /order digit groups.*169/)
-  for (const id of ['HqJ9', 'FLAb', '2j53']) {
+  for (const id of ['FLAb', '2j53']) {
     const source = deferred.find((source: { url: string }) => source.url.endsWith(id))
     await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|region/i)
   }
+})
+
+
+test('the published 7/13 sum export keeps all active rules beside its empty Consecutive Line layer', async () => {
+  const source = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('HqJ9'))
+  const { variant } = await detectPuzzle(source.code)
+  assert.equal(variant?.id, 'mixed')
+  const clues = [
+    [29, 30, 7], [39, 30, 7], [50, 59, 7], [53, 44, 7], [6, 15, 7], [10, 11, 7], [45, 54, 7],
+    [25, 34, 13], [7, 16, 13], [5, 4, 13], [31, 40, 13], [70, 79, 7], [68, 77, 7], [56, 55, 13],
+    [37, 38, 13], [13, 22, 7], [48, 49, 13], [33, 34, 13], [73, 74, 7], [64, 63, 13], [24, 33, 7],
+    [3, 4, 7], [78, 77, 13], [62, 71, 13], [51, 42, 13], [57, 66, 13], [26, 25, 13],
+  ]
+  assert.deepEqual(variant.puzzle.rules, [
+    ...clues.map(([first, second, sum]) => ({ type: 'adjacent-total', cells: [first, second], sum })),
+    { type: 'global-entropy' },
+    { type: 'kropki', ratioTwo: { pairs: [[15, 24], [58, 59]], negative: false } },
+  ])
+  assertVariantCompletion(variant.puzzle, source.solution)
+
+  const line = { type: 'consecutiveLine', segments: [{ cells: [0, 1, 2], parameters: {} }] }
+  await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [line] })), /not supported yet.*consecutiveLine/)
+  await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [
+    { ...line, segments: [], settings: { negativeConstraint: true } },
+  ] })), /unsupported settings.*consecutiveLine/)
+  await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [
+    { ...line, segments: [], wholeGrid: true },
+  ] })), /not supported yet.*consecutiveLine/)
 })
 
 

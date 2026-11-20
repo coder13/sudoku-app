@@ -63,8 +63,8 @@ const publicPuzzleSources = {
 }
 
 // Recognize a complete authored declaration, including the optional credit and rating.
-function declaresCoachXSums(description) {
-  const lines = description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
+function declaresCoachXSums(lines) {
+  lines = [...lines]
   if (/^Special request by [\w-]{1,32} :D$/i.test(lines[0])) lines.shift()
   if (/^(?:Normal|Standard) Sudoku rules apply\.$/i.test(lines[0])) lines.shift()
   if (/^SE \d{1,3}(?:\.\d{1,3})?$/i.test(lines.at(-1))) lines.pop()
@@ -72,6 +72,19 @@ function declaresCoachXSums(description) {
     /^Variant Rules \(X[ -]Sums\):$/i.test(lines[0]) &&
     /^- Clues outside the grid indicate the sum of the first X digits in the corresponding direction\.$/i.test(lines[1]) &&
     /^- X is the first digit in the corresponding direction\.$/i.test(lines[2])
+}
+
+// A published legend can refer to fully encoded rules. The app checks those
+// rules against the export before it accepts the publication.
+function coachTypedDeclaration(lines) {
+  const requirements = [
+    /^VII\s*=\s*7[.!]?$/i, /^XIII\s*=\s*13[.!]?$/i, /^Note global entropy[.!]?$/i,
+  ]
+  const commentary = /^(?:This is my first (?:little )?experiment with these constraints(?: so it is (?:fairly )?straightforward)?, I hope you like it|Colou?ring is your friend)[.!]$/i
+  const declared = lines.filter(line => !commentary.test(line))
+  if (declared.length === requirements.length && requirements.every(pattern => declared.some(line => pattern.test(line)))) {
+    return { globalEntropy: true, adjacentTotals: [7, 13] }
+  }
 }
 
 // Coach publishes the puzzle code and its author instructions separately.
@@ -87,9 +100,12 @@ function coachPublication(html, id, code) {
   if (puzzle?.sudoku_id !== id || puzzle.sudoku !== code || puzzle.blocked !== false ||
       typeof puzzle.custom_constraints !== 'boolean' || typeof puzzle.description !== 'string') return
   const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
+  const lines = puzzle.description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
+  const declaredRules = puzzle.custom_constraints ? undefined : coachTypedDeclaration(lines)
   return {
     hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
-    ...(declaresCoachXSums(puzzle.description) && { authoredRule: 'x-sum' }),
+    ...(declaresCoachXSums(lines) && { authoredRule: 'x-sum' }),
+    ...(declaredRules && { declaredRules }),
     ...(title && { title }),
   }
 }

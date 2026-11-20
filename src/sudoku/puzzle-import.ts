@@ -186,7 +186,19 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   return data
 }
 
-type CoachPublication = { hasAuthorInstructions: boolean; title?: string; authoredRule?: 'x-sum' }
+type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7, 13] }
+type CoachPublication = {
+  hasAuthorInstructions: boolean
+  title?: string
+  authoredRule?: 'x-sum'
+  declaredRules?: CoachTypedDeclaration
+}
+
+function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration {
+  return record(value) && Object.keys(value).length === 2 && value.globalEntropy === true &&
+    Array.isArray(value.adjacentTotals) && value.adjacentTotals.length === 2 &&
+    value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
+}
 
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
@@ -198,7 +210,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
   }
   if (publication === null) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
-  if (publication?.hasAuthorInstructions && !publication.authoredRule) {
+  if (publication?.hasAuthorInstructions && !publication.authoredRule && !publication.declaredRules) {
     throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
   }
   if (publication && COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
@@ -209,6 +221,12 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   const constraints = data.givenConstraints ?? []
   const regions = readRegions(data.regions)
   const rules = readCoachRules(constraints, { regions, authoredRule: publication?.authoredRule })
+  if (publication?.declaredRules && (
+    !rules.some(rule => rule.type === 'global-entropy') ||
+    !publication.declaredRules.adjacentTotals.every(sum => rules.some(rule => rule.type === 'adjacent-total' && rule.sum === sum))
+  )) {
+    throw new Error('The Sudoku Coach export is missing rules from the published description.')
+  }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
   return publication?.title ? { ...imported, title: publication.title } : imported
 }
@@ -281,6 +299,10 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
+    // Coach builds Consecutive Line rules from the placed paths and pairs.
+    if (constraint.type === 'consecutiveLine' && constraint.segments.length === 0 &&
+      (constraint.settings === undefined || record(constraint.settings) && Object.keys(constraint.settings).length === 0) &&
+      Object.keys(constraint).every(key => ['id', 'type', 'segments', 'settings'].includes(key))) continue
     if (constraint.type === 'cosmeticText' && authoredRule === 'x-sum') {
       rules.push(...readCoachXSums(constraint, constraint.segments))
       continue
@@ -828,6 +850,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...(coach.authoredRule === 'x-sum' && { authoredRule: 'x-sum' }),
+      ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
     : null
   return { code, publication }

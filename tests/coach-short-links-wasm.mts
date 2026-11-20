@@ -20,6 +20,10 @@ type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
 
+const entropySums: Omit<Fixture, 'puzzle'> & { description: string } =
+  JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8'))
+    .examples.find(({ url }: { url: string }) => url.endsWith('HqJ9'))
+
 const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8')) as {
   source: string
   metadata: { sudoku_id: string; sudoku: string; name: string; description: string; custom_constraints: boolean }
@@ -194,6 +198,61 @@ test('an X-Sums declaration rejects ambiguous totals, markings and unsupported c
       ['Unknown', /not supported yet.*globalModularity/],
     ] as const) {
       await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), error, id)
+    }
+  } finally { sqlite.close() }
+})
+
+test('a Global Entropy publication whose legend matches its sum clues preserves play, hints and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, description, solution } = entropySums
+  const entropy = { type: 'globalEntropy', segments: [] }
+  const sum = (total: number) => ({ type: 'twoCellSum', segments: [{ cells: [0, 1], parameters: { sum: total } }] })
+  const codes = {
+    HqJ9: code,
+    MissingEntropy: coachCode({ givenConstraints: [sum(7), sum(13)] }),
+    MissingSeven: coachCode({ givenConstraints: [entropy, sum(13)] }),
+    MissingThirteen: coachCode({ givenConstraints: [entropy, sum(7)] }),
+  }
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (!path.startsWith('https://sudoku.coach/')) return fetcher(path, init)
+    const id = path.split('/').at(-1)!
+    assert.ok(Object.hasOwn(codes, id))
+    return Promise.resolve(new Response(coachPage(id, codes[id as keyof typeof codes], title, { description })))
+  })
+  try {
+    const { game, format } = await prepareImportedPuzzle(url)
+    assert.equal(format, 'Sudoku Coach')
+    assert.equal(game.title, title)
+    assert.equal(game.variant?.id, 'mixed')
+    assert.deepEqual(game.variant.puzzle, (await detectPuzzle(code)).variant?.puzzle)
+    assert.equal(game.variant.solution, solution)
+    assert.equal((await puzzleHints(game)).choices.length, 10)
+
+    const selected = await puzzleHints(game, 'all', 'adjacent-total')
+    const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.equal(selected.choices.length, 27)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('adjacent-total'), targets.size) } finally { scan.close() }
+
+    const walkthrough = await puzzleSolution(game)
+    assert.equal(walkthrough.board, solution)
+    assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
+    assert.ok(walkthrough.rating.score.counts['global-entropy'] > 0)
+    let played = game
+    for (const [index, step] of walkthrough.steps.entries()) {
+      const next = applyDeduction(played, step.actions, walkthrough.positions[index].candidates)
+      assert.notEqual(next, played, `step ${index} must apply`)
+      played = next
+    }
+    assert.equal(valuesOf(played), solution)
+    const id = await publishSharedPuzzle(played)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.title, title)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.equal(valuesOf(shared.game), game.givens)
+
+    for (const source of ['MissingEntropy', 'MissingSeven', 'MissingThirteen']) {
+      await assert.rejects(detectPuzzle('sudoku.coach/s/' + source), /missing rules from the published description/, source)
     }
   } finally { sqlite.close() }
 })

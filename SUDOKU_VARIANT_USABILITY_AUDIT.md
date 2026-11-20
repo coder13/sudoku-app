@@ -62,6 +62,8 @@ The actual published Between the Dots response keeps all twelve Between Lines an
 
 The X sums #3 short link combines the verified publication’s X-Sums declaration with the sixteen numeric labels in its export. The imported rules match the independent transcription, give multiple ranked hints and matching X-Sums Finder counts, and retain a complete Hard walkthrough and title through sharing. Typed companion rules pass through the same importer. Raw codes with untyped text, extra authored rules and ambiguous clue geometry still reject. [X sums #3](https://sudoku.coach/en/s/AsnF) · [Short-link contracts](tests/coach-short-links-wasm.mts)
 
+Entropic 7 / 13 sums keeps all twenty-seven sums and both black dots alongside Global Entropy. The short link verifies that the encoded rules account for the publication’s legend and skips the empty Consecutive Line layer. The same raw code imports with all active rules. Tests replay the complete Medium walkthrough in Play and check the opening sum hints, Technique Finder and sharing. [Entropic 7 / 13 sums](https://sudoku.coach/en/s/HqJ9) · [Short-link contracts](tests/coach-short-links-wasm.mts)
+
 The placed-digit checks now include parity, Thermometers, Arrow sums, Killer totals and Quadruple circles in 9×9 Play. Tests cover both Pencil modes, manual and bulk entry, undo and redo, and every partial four-cell state for four representative Quadruple clue patterns in boxes and Jigsaw regions. The local feedback checks use the placed digits; the full engine continues to compute candidates and solutions. [Play tests](tests/variant-placed-rules.test.ts)
 
 ## Priority controls

@@ -91,3 +91,23 @@ test('the published X-Sums declaration must describe the complete rules', async 
     { ...expected, coach: { ...expected.coach, authoredRule: 'x-sum' } })
   while (codes.length) assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(), expected)
 })
+
+
+test('a Coach legend can declare already encoded rules without accepting extra instructions', async ({ mock }) => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8'))
+  const source = examples.find(({ url }: { url: string }) => url.endsWith('HqJ9'))
+  const publication = { sudoku_id: 'HqJ9', sudoku: source.code, name: source.title,
+    description: source.description, blocked: false, custom_constraints: false }
+  const examplesToCheck = [
+    publication,
+    { ...publication, description: publication.description + '\nAll black dots are given.' },
+    { ...publication, description: publication.description.replace('XIII = 13', 'XIII = 14') },
+    { ...publication, custom_constraints: true },
+  ]
+  mock.method(globalThis, 'fetch', async () => new Response(
+    '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: examplesToCheck.shift() }) + '</script>'))
+  const expected = { code: source.code, coach: { title: source.title, hasAuthorInstructions: true } }
+  assert.deepEqual(await (await request('sudoku-coach/HqJ9')).json(),
+    { ...expected, coach: { ...expected.coach, declaredRules: { globalEntropy: true, adjacentTotals: [7, 13] } } })
+  while (examplesToCheck.length) assert.deepEqual(await (await request('sudoku-coach/HqJ9')).json(), expected)
+})
