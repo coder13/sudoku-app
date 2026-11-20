@@ -23,6 +23,10 @@ pub enum SizedConstraint {
         circle: usize,
         cells: Vec<usize>,
     },
+    DoubleArrow {
+        ends: [usize; 2],
+        cells: Vec<usize>,
+    },
     RegionSum {
         cells: Vec<usize>,
         group_by_region: bool,
@@ -143,6 +147,7 @@ pub struct SizedConstraintGrid {
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
+    double_arrows: Vec<([usize; 2], Vec<usize>)>,
     region_sums: Vec<Option<RegionSum>>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
@@ -160,6 +165,7 @@ impl SizedConstraintGrid {
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
         let mut arrows = Vec::new();
+        let mut double_arrows = Vec::new();
         let mut region_sums = Vec::new();
         for (index, rule) in rules.iter().enumerate() {
             match rule {
@@ -205,6 +211,18 @@ impl SizedConstraintGrid {
                     }
                     arrows.push((*circle, cells.clone()));
                 }
+                SizedConstraint::DoubleArrow { ends, cells } => {
+                    if ends[0] == ends[1]
+                        || ends.iter().any(|&cell| cell >= layout.cell_count())
+                        || !(1..=2 * size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || ends.contains(&cell) || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    double_arrows.push((*ends, cells.clone()));
+                }
                 SizedConstraint::RegionSum { cells, group_by_region } => {
                     region_sums.resize_with(index + 1, || None);
                     region_sums[index] = Some(RegionSum::compile(&layout, cells, *group_by_region)?);
@@ -236,6 +254,7 @@ impl SizedConstraintGrid {
             thermometers,
             renbans,
             arrows,
+            double_arrows,
             region_sums,
             pair_links,
         })
@@ -312,6 +331,13 @@ impl SizedConstraintGrid {
                 changed |= candidates[*circle] != bulb;
                 candidates[*circle] = bulb;
                 for (&cell, mask) in cells.iter().zip(shaft) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for (ends, cells) in &self.double_arrows {
+                let (end_masks, line_masks) = double_arrow_masks(*ends, cells, candidates);
+                for (&cell, mask) in ends.iter().zip(end_masks).chain(cells.iter().zip(line_masks)) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -473,6 +499,15 @@ impl SizedConstraintGrid {
                             candidates[cell] & !support[cell],
                             &mut actions,
                         );
+                    }
+                }
+                SizedConstraint::DoubleArrow { ends, cells } => {
+                    let (end_masks, line_masks) = double_arrow_masks(*ends, cells, &domains);
+                    if end_masks.contains(&0) {
+                        return None;
+                    }
+                    for (&cell, mask) in ends.iter().zip(end_masks).chain(cells.iter().zip(line_masks)) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Arrow { circle, cells } => {
@@ -725,6 +760,9 @@ impl SizedConstraintGrid {
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
+                SizedConstraint::DoubleArrow { ends, cells } => {
+                    double_arrow_masks(*ends, cells, &domains).0.contains(&0)
+                }
                 SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
                 SizedConstraint::Renban { cells } => {
@@ -844,6 +882,12 @@ impl SizedConstraintGrid {
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
                 total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
             })
+            && self.double_arrows.iter().all(|(ends, cells)| {
+                let size = self.layout.size();
+                let (ends_min, ends_max) = sum_bounds(ends, digits, size);
+                let (line_min, line_max) = sum_bounds(cells, digits, size);
+                ends_min <= line_max && line_min <= ends_max
+            })
             && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
@@ -864,6 +908,35 @@ fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16
         &shaft[..cells.len()], [totals], &mut support[..cells.len()], &mut [[0]; MAX_SIZE + 1],
     );
     ((matching >> 1) as u16, support)
+}
+
+fn sum_bounds(cells: &[usize], digits: &[u8], size: usize) -> (usize, usize) {
+    cells.iter().fold((0, 0), |(min, max), &cell| {
+        let digit = usize::from(digits[cell]);
+        if digit == 0 { (min + 1, max + size) } else { (min + digit, max + digit) }
+    })
+}
+
+fn double_arrow_masks(
+    ends: [usize; 2],
+    cells: &[usize],
+    candidates: &[u16],
+) -> ([u16; 2], [u16; 2 * MAX_SIZE]) {
+    let end_domains = ends.map(|cell| candidates[cell]);
+    let mut line_domains = [0; 2 * MAX_SIZE];
+    let mut line_support = [0; 2 * MAX_SIZE];
+    let mut end_support = [0; 2];
+    for (&cell, domain) in cells.iter().zip(&mut line_domains) {
+        *domain = candidates[cell];
+    }
+
+    // Only the totals of two endpoint digits are relevant, even for long lines.
+    let end_totals = crate::variant::reachable_sums(&end_domains);
+    let matched = crate::variant::sum_support_with_prefix(
+        &line_domains[..cells.len()], end_totals, &mut line_support[..cells.len()], &mut [[0u128; 1]; 2 * MAX_SIZE + 1],
+    );
+    crate::variant::sum_support_with_prefix(&end_domains, matched, &mut end_support, &mut [[0]; 3]);
+    (end_support, line_support)
 }
 
 fn diagonal_cells(size: usize, direction: SizedDiagonal) -> impl Iterator<Item = usize> + Clone {
