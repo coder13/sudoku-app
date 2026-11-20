@@ -12,10 +12,12 @@ export function sixGridForBoxRows(boxRows?: SixGrid['boxRows']): SixGrid {
 }
 
 export type MiniGrid = typeof MINI_GRID
-export type SevenJigsawGrid = { size: 7; regions: readonly (readonly number[])[] }
+export type JigsawSize = 5 | 7
+export const isJigsawSize = (size: unknown): size is JigsawSize => size === 5 || size === 7
+export type JigsawGrid<Size extends JigsawSize = JigsawSize> = { size: Size; regions: readonly (readonly number[])[] }
 export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
-export type SizedGrid = MiniGrid | SixGrid | SevenJigsawGrid | typeof SEVEN_BOXLESS_GRID
-const sevenJigsawLayouts: readonly SevenJigsawGrid[] = [
+export type SizedGrid = MiniGrid | SixGrid | JigsawGrid | typeof SEVEN_BOXLESS_GRID
+const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
   ['0011111', '0211334', '0222334', '0223334', '0255644', '0556664', '5556664'],
@@ -25,13 +27,26 @@ const sevenJigsawLayouts: readonly SevenJigsawGrid[] = [
   regions: regionsFromMembership(Array.from(rows.join(''), Number), 7),
 }))
 
+const fiveJigsawLayouts: readonly JigsawGrid<5>[] = [
+  ['00001', '02231', '22331', '24331', '44441'],
+  ['00111', '00112', '03222', '33424', '33444'],
+  ['01111', '00001', '23333', '23444', '22244'],
+  ['01111', '02213', '02223', '00333', '44444'],
+  ['01112', '01312', '03322', '03424', '03444'],
+  ['01123', '01223', '01123', '00423', '44443'],
+].map(rows => ({ size: 5, regions: regionsFromMembership(Array.from(rows.join(''), Number), 5) }))
+
 export function regionsFromMembership(membership: readonly number[], size: number): number[][] {
   const regions: number[][] = Array.from({ length: size }, () => [])
   membership.forEach((region, cell) => regions[region].push(cell))
   return regions
 }
 
-export function sevenJigsawForSeed(seed = 0): SevenJigsawGrid {
+export function fiveJigsawForSeed(seed = 0): JigsawGrid<5> {
+  return fiveJigsawLayouts[seed % fiveJigsawLayouts.length]
+}
+
+export function sevenJigsawForSeed(seed = 0): JigsawGrid<7> {
   return sevenJigsawLayouts[seed % sevenJigsawLayouts.length]
 }
 
@@ -45,7 +60,7 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 }
 
 export function isSizedGrid(value: unknown): value is SizedGrid {
-  if (isMiniGrid(value) || isSevenJigsawGrid(value)) return true
+  if (isMiniGrid(value) || isJigsawGrid(value)) return true
   if (value === null || typeof value !== 'object') return false
   if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && value.size === 7 && value.noRegions === true
   const grid = value as Partial<SixGrid>
@@ -53,10 +68,10 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
     ((grid.boxRows === 2 && grid.boxColumns === 3) || (grid.boxRows === 3 && grid.boxColumns === 2))
 }
 
-export function isSevenJigsawGrid(value: unknown): value is SevenJigsawGrid {
+export function isJigsawGrid(value: unknown): value is JigsawGrid {
   if (!value || typeof value !== 'object' || Object.keys(value).length !== 2) return false
-  const grid = value as Partial<SevenJigsawGrid>
-  if (grid.size !== 7 || !Array.isArray(grid.regions) || grid.regions.length !== grid.size) return false
+  const grid = value as Partial<JigsawGrid>
+  if (!isJigsawSize(grid.size) || !Array.isArray(grid.regions) || grid.regions.length !== grid.size) return false
   const { size, regions } = grid
   const seen = new Set<number>()
   for (const part of regions) {
@@ -74,9 +89,9 @@ export function isSevenJigsawGrid(value: unknown): value is SevenJigsawGrid {
   return true
 }
 
-const jigsawMemberships = new WeakMap<SevenJigsawGrid, readonly number[]>()
+const jigsawMemberships = new WeakMap<JigsawGrid, readonly number[]>()
 
-export function jigsawMembership(grid: SevenJigsawGrid) {
+export function jigsawMembership(grid: JigsawGrid) {
   const cached = jigsawMemberships.get(grid)
   if (cached) return cached
   const regions = Array<number>(grid.size ** 2)

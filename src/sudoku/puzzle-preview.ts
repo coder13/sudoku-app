@@ -7,7 +7,7 @@ import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-
 import { findSharedAttempt } from './puzzle-sharing.ts'
 import { applyPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
-import { SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
+import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
 
 export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
@@ -41,6 +41,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle`
       : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
+        : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
         : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
   const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {

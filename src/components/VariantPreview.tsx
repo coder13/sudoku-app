@@ -3,7 +3,7 @@ import type { SixGrid, SizedVariantPosition, VariantRule } from '../sudoku/engin
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
-import { jigsawMembership, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
+import { fiveJigsawForSeed, jigsawMembership, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
 import { AlgebraicCages, VariantClues } from './VariantClues'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
@@ -49,7 +49,10 @@ function regionEdges(regions: readonly number[], size: number) {
 }
 
 const previewRegionEdges = regionEdges(previewRegions, 9)
-const sevenRegionEdges = regionEdges(jigsawMembership(sevenJigsawForSeed()), 7)
+const sizedJigsawEdges = {
+  'jigsaw-five': regionEdges(jigsawMembership(fiveJigsawForSeed()), 5),
+  'jigsaw-seven': regionEdges(jigsawMembership(sevenJigsawForSeed()), 7),
+}
 
 const algebraicPreview: SizedVariantPosition['rules'] = [
   { type: 'algebraic-cage', cells: [3], label: 'n−4', total: { type: 'variable', name: 'n', offset: -4 } },
@@ -66,9 +69,12 @@ export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzz
       <svg className="variant-clues" viewBox="0 0 6 6"><path className="variant-preview-regions" d={[...horizontal, ...vertical].join(' ')} /></svg>
     </span>
   }
-  if (variant === 'jigsaw-seven') return <span className="variant-preview" data-variant={variant} aria-hidden="true">
-    <svg className="variant-clues" viewBox="0 0 7 7"><path className="variant-preview-regions" d={sevenRegionEdges} /></svg>
-  </span>
+  if (variant === 'jigsaw-five' || variant === 'jigsaw-seven') {
+    const size = variant === 'jigsaw-five' ? 5 : 7
+    return <span className="variant-preview" data-variant={variant} aria-hidden="true">
+      <svg className="variant-clues" viewBox={`0 0 ${size} ${size}`}><path className="variant-preview-regions" d={sizedJigsawEdges[variant]} /></svg>
+    </span>
+  }
   if (variant === 'mini') return <span className="variant-preview" data-variant="mini" aria-hidden="true" />
   if (variant === 'algebraic-cages') return <span className="variant-preview" data-variant={variant} aria-hidden="true">
     <AlgebraicCages rules={algebraicPreview} captions />

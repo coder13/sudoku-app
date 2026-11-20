@@ -9,8 +9,8 @@ import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
-import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
-import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, SEVEN_JIGSAW_NAME, SIX_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { fiveJigsawForSeed, MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
+import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
@@ -50,16 +50,17 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      if (variant === 'six' || variant === 'jigsaw-seven') {
+      if (variant === 'six' || variant === 'jigsaw-five' || variant === 'jigsaw-seven') {
         const difficulty = miniDifficulty(preference)
-        const grid = variant === 'six' ? sixGridForBoxRows(options?.boxRows) : sevenJigsawForSeed(seed)
+        const grid = variant === 'six' ? sixGridForBoxRows(options?.boxRows)
+          : variant === 'jigsaw-five' ? fiveJigsawForSeed(seed) : sevenJigsawForSeed(seed)
         const exclude = roomStore.playedSizedGivens(grid).map(givens => Array.from(givens, Number))
         const givens = (await runEngine(grid.size === 6
           ? { type: 'generate-six', seed, difficulty, grid, exclude }
           : { type: 'generate-jigsaw', seed, difficulty, grid, exclude })).join('')
         const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] })
         if (!mounted.current) return
-        const game = makeGame(createGameId(), nextPuzzleTitle(`${grid.size === 6 ? SIX_NAME : SEVEN_JIGSAW_NAME} `), givens, 'generated', undefined, grid)
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${sizedGridName(grid)} `), givens, 'generated', undefined, grid)
         roomStore.add({ ...game, sized, difficulty, score: null })
         onGenerated?.()
         return

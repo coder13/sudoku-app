@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { move, valuesOf, type Game } from '../sudoku/game'
-import { isSevenJigsawGrid, jigsawMembership, regionsFromMembership, type SevenJigsawGrid } from '../sudoku/grid'
+import { isJigsawGrid, jigsawMembership, regionsFromMembership, type JigsawGrid } from '../sudoku/grid'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
 import { roomStore } from '../sudoku/storage'
 import { Board } from './Board'
@@ -11,13 +11,13 @@ import { SelectControl } from './SelectControl'
 const directions = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as const
 
 /** Edit a draft's region membership and commit the complete layout in one undo step. */
-export function EditJigsawRegions({ game, layout, close }: { game: Game; layout: SevenJigsawGrid; close: () => void }) {
+export function EditJigsawRegions({ game, layout, close }: { game: Game; layout: JigsawGrid; close: () => void }) {
   const { size } = layout
   const [membership, setMembership] = useState(() => jigsawMembership(layout))
   const [region, setRegion] = useState(0)
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
-  const preview: SevenJigsawGrid = { size, regions: regionsFromMembership(membership, size) }
+  const preview: JigsawGrid = { size, regions: regionsFromMembership(membership, size) }
 
   function assign(cell: number) {
     setActive(cell)
@@ -38,8 +38,8 @@ export function EditJigsawRegions({ game, layout, close }: { game: Game; layout:
   }
 
   function save() {
-    if (!isSevenJigsawGrid(preview)) {
-      setError('Each region needs seven cells connected along their edges.')
+    if (!isJigsawGrid(preview)) {
+      setError(`Each region needs ${size} cells connected along their edges.`)
       return
     }
     let failure = 'The draft changed. Reopen Edit regions to see the latest layout.'
