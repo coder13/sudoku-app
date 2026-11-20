@@ -32,14 +32,25 @@ test('published original Renban and Renban/Killer fixtures preserve unique compl
 
 test('three unmodified modern Coach sources import while unsupported complete exports reject explicitly', async () => {
   for (const source of load('coach').examples) {
+    if (source.url.endsWith('9uMo')) {
+      const imported = await detectPuzzle(source.code)
+      assert.equal(imported.grid?.size, 6)
+      assert.deepEqual(imported.sizedRules, [
+        { type: 'renban', cells: [9, 8, 14, 20, 26, 27] },
+        { type: 'renban', cells: [8, 9, 15, 21, 27, 26] },
+        { type: 'difference', cells: [26, 20], difference: 1 },
+        { type: 'difference', cells: [8, 9], difference: 3 },
+        { type: 'difference', cells: [20, 14], difference: 2 },
+      ])
+      continue
+    }
     if (source.deferred) {
       if (source.url.endsWith('Ksy3')) {
         const current = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples.find((s: { url: string }) => s.url === source.url)
         assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
         continue
       }
-      const reason = source.url.endsWith('9uMo') ? /6 × 6.*unsupported active rule/ : /format|version/i
-      await assert.rejects(detectPuzzle(source.code), reason)
+      await assert.rejects(detectPuzzle(source.code), /format|version/i)
       continue
     }
     const imported = (await detectPuzzle(source.code)).variant!
