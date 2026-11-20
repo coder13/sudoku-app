@@ -106,6 +106,38 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   return excluded
 }
 
+export function sizedArrowState(rules: readonly SizedConstraintRule[] | undefined, values: string, size: number) {
+  const arrows = rules?.filter(rule => rule.type === 'arrow')
+  if (!arrows?.length) return
+  const allowed = Array<number>(values.length).fill((1 << size) - 1)
+  const conflicts = new Set<number>()
+  const interval = (low: number, high: number) => {
+    const first = Math.max(1, low), last = Math.min(size, high)
+    return first <= last ? (1 << last) - (1 << (first - 1)) : 0
+  }
+  for (const { circle, cells } of arrows) {
+    const bulb = Number(values[circle])
+    let sum = 0, empty = 0
+    for (const cell of cells) {
+      const digit = Number(values[cell])
+      sum += digit
+      empty += Number(digit === 0)
+    }
+    const low = sum + empty, high = sum + empty * size
+    if (low > (bulb || size) || bulb > high) {
+      for (const cell of [circle, ...cells]) if (values[cell] !== '0') conflicts.add(cell)
+      continue
+    }
+    if (!bulb) allowed[circle] &= interval(low, high)
+    if (empty) {
+      const min = bulb ? bulb - sum - (empty - 1) * size : 1
+      const max = (bulb || size) - sum - (empty - 1)
+      for (const cell of cells) if (values[cell] === '0') allowed[cell] &= interval(min, max)
+    }
+  }
+  return { allowed, conflicts }
+}
+
 export function gridHouseCells(house: House, { size, boxRows, boxColumns }: PlayGrid = CLASSIC_GRID) {
   return Array.from({ length: size }, (_, index) => {
     if ('row' in house) return house.row * size + index

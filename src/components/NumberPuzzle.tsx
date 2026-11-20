@@ -49,8 +49,9 @@ export type NumberBoard = {
   height: number
   maxValue: number
   cells: readonly BoardCell[]
-  cellChoices?: readonly { label: string; key: string; state: string }[]
-  check: (values: readonly number[]) => { complete: boolean; marked: number[] }
+  cellChoices?: { labels: readonly string[]; off: number }
+  mirrorEdgeClues?: boolean
+  check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
   hints: (values: readonly number[], limit?: number) => readonly Hint[]
   solve: () => readonly number[] | null
 }
@@ -272,7 +273,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
-  const { width, height, maxValue, cellChoices } = board
+  const { width, height, maxValue, cellChoices, mirrorEdgeClues } = board
   const digits = useMemo(() => Array.from({ length: maxValue }, (_, i) => i + 1), [maxValue])
   const [progress, setProgress] = useState<NumberProgress>(() => ({
     position: emptyNumberPosition(board.cells.length), past: [], future: [],
@@ -416,10 +417,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
         col += dc
       }
     } else if (cellChoices) {
-      const choice = cellChoices.findIndex(choice => choice.key === event.key.toLowerCase())
-      if (choice === -1 && event.key !== 'Backspace' && event.key !== 'Delete') return
-      event.preventDefault()
-      enter(choice + 1)
+      return
     } else if (/^[1-9]$/.test(event.key) || event.key === 'Backspace' || event.key === 'Delete') {
       event.preventDefault()
       if (maxValue > 9 && /^[1-9]$/.test(event.key) && !locked && editable[selection]) {
@@ -504,8 +502,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function placement(hint: Hint) {
-    const choice = cellChoices?.[hint.value - 1]
-    return choice ? `${choice.label} ${board.cells[hint.cell].printed} in ${cellName(hint.cell)}`
+    const choice = cellChoices?.labels[hint.value - 1]
+    return choice ? `${choice} ${board.cells[hint.cell].printed} in ${cellName(hint.cell)}`
       : `Place ${hint.value} in ${cellName(hint.cell)}`
   }
 
@@ -516,39 +514,54 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   function renderGrid(preview?: { values: readonly number[]; hint: Hint | null }) {
     const shownHint = preview ? preview.hint : depth >= 2 ? hint : undefined
     const context = new Set(preview || depth >= 3 ? shownHint?.marked : [])
-    return (
-      <div className="number-puzzle-grid" data-game={game} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
-        style={{ '--number-puzzle-columns': width } as CSSProperties} onKeyDown={preview ? undefined : onGridKey}>
-        {board.cells.map(({ label, block, decoration, edges, given, endpoint, printed }, index) => {
-          if (block) {
-            return <div key={index} className="number-puzzle-block" data-clue={Boolean(label)}
-              data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)} role={label ? 'img' : undefined}
-              aria-label={label ? `${cellName(index)}: ${label}` : undefined} aria-hidden={label ? undefined : true}>
-              {decoration}
-            </div>
-          }
+    function renderBlock(index: number, copy?: 'top' | 'left' | 'corner') {
+      const { label, decoration } = board.cells[index]
+      const named = !copy && Boolean(label)
+      return <div key={copy ? `${copy}-${index}` : index} className="number-puzzle-block" data-clue={Boolean(label)}
+        data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)}
+        role={named ? 'img' : undefined} aria-label={named ? `${cellName(index)}: ${label}` : undefined}
+        aria-hidden={named ? undefined : true}>
+        {decoration}
+      </div>
+    }
 
-          const value = given || (preview?.values ?? position.values)[index]
-          const marks = preview ? [] : digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
-          const choice = cellChoices?.[value - 1]
-          const description = printed !== undefined ? `${printed}, ${choice?.state ?? 'undecided'}`
-            : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-          return <button key={index} type="button" className="number-puzzle-cell"
-            ref={preview ? undefined : button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
-            tabIndex={selection === index ? 0 : -1} aria-pressed={preview ? undefined : selection === index}
-            disabled={Boolean(preview)} data-entry={Boolean(value && !given)}
-            data-choice={cellChoices && value}
-            data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
-            data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
-            aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-            onFocus={() => selectCell(index)} onClick={() => selectCell(index)}>
-            {decoration}
-            {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
-              : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
-                : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-                  <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
-          </button>
-        })}
+    function renderCell({ label, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
+      if (block) return renderBlock(index)
+      const value = given || (preview?.values ?? position.values)[index]
+      const marks = preview ? [] : digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
+      const description = printed !== undefined ? String(printed)
+        : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
+      return <button key={index} type="button" className="number-puzzle-cell"
+        ref={preview ? undefined : button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
+        tabIndex={selection === index ? 0 : -1}
+        aria-pressed={cellChoices ? value !== cellChoices.off : preview ? undefined : selection === index}
+        disabled={Boolean(preview)} aria-disabled={cellChoices && !preview && locked ? true : undefined}
+        data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
+        data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
+        data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
+        aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
+        onFocus={() => selectCell(index)} onClick={() => {
+          selectCell(index)
+          if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
+        }}>
+        {decoration}
+        {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+          : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+            : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+      </button>
+    }
+
+    return (
+      <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
+        role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
+        style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
+        onKeyDown={preview ? undefined : onGridKey}>
+        {mirrorEdgeClues && renderBlock(board.cells.length - 1, 'corner')}
+        {mirrorEdgeClues && board.cells.slice(-width).map((_, column) => renderBlock((height - 1) * width + column, 'top'))}
+        {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
+          ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
+          : board.cells.map(renderCell)}
       </div>
     )
   }
@@ -588,7 +601,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   const hintStage = [cellChoices ? 'Show choice' : 'Show digits', 'Show location', 'Show explanation', 'Apply hint'][depth]
-  const hintChoice = hint && cellChoices?.[hint.value - 1]
+  const hintChoice = hint && cellChoices?.labels[hint.value - 1]
   const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
     <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
       detail={solutionStep && explanation(solutionStep)} />
@@ -596,7 +609,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     <HintCard hint={{
       title: depth >= 2 ? placement(hint) : hint.technique,
       text: hintChoice ? depth === 0 ? 'Use this technique to make a choice.'
-        : depth === 1 ? `Look for a number to ${hintChoice.label.toLowerCase()}.`
+        : depth === 1 ? `Look for a number to ${hintChoice.toLowerCase()}.`
           : depth === 3 ? 'The targets require this choice.' : ''
         : depth === 0 ? 'Use this technique to find a placement.'
         : depth === 1 ? `Look for a place for ${hint.value}.`
@@ -654,7 +667,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   </section>
 
   const inputPanel = <div className="workspace-controls number-puzzle-input-panel">
-    <section className={`surface controls number-puzzle-controls${mobile ? ' compact-controls' : ''}`} aria-label={`${name} controls`}>
+    <section className={`surface controls number-puzzle-controls${mobile ? ' compact-controls' : ''}`}
+      data-toggle-cells={Boolean(cellChoices) || undefined} aria-label={`${name} controls`}>
       <div className="controls-content">
         <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
           <IconButton className="history-button" aria-label="Undo" title="Undo" disabled={locked || !past.length} onClick={undo}><Undo2 size={18} /></IconButton>
@@ -670,15 +684,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
               }}>{actionItems}</div>}
           </div>
         </div>
-        <div className="keypad-stack">
-          {cellChoices ? <PuzzleKeypad label="Cell choices" variant="choices">
-            {cellChoices.map(({ label, key }, index) => {
-              const pressed = position.values[selection] === index + 1
-              return <button key={key} type="button" className={pressed ? 'key selected-key' : 'key'}
-                aria-keyshortcuts={key.toUpperCase()} aria-pressed={pressed}
-                disabled={locked || !editable[selection]} onClick={() => enter(index + 1)}>{label}</button>
-            })}
-          </PuzzleKeypad> : maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
+        {!cellChoices && <div className="keypad-stack">
+          {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
             event.preventDefault()
             const value = Number(numberInput)
             if (!value || value > maxValue) return
@@ -697,14 +704,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
               aria-label={`Enter ${digit}`} disabled={locked || !editable[selection]}
               onClick={() => enter(digit)}>{digit}</button>)}
           </PuzzleKeypad>}
-        </div>
-        <div className="side-actions right-actions" role="group" aria-label="Input modes">
-          {!cellChoices && <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
-            onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>}
-          <IconButton aria-label={cellChoices ? 'Clear choice' : 'Erase cell'} title={cellChoices ? 'Clear choice' : 'Erase cell'}
+        </div>}
+        {!cellChoices && <div className="side-actions right-actions" role="group" aria-label="Input modes">
+          <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
+            onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>
+          <IconButton aria-label="Erase cell" title="Erase cell"
             disabled={locked || !editable[selection]}
             onClick={() => enter(0)}><Delete size={18} /></IconButton>
-        </div>
+        </div>}
       </div>
     </section>
     <div className="number-puzzle-status" role="status" aria-live="polite">
@@ -726,7 +733,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     <PlayLayout desktop={!mobile} puzzle={puzzlePanel} input={inputPanel} hint={hintPanel}
       mobile={{
         puzzleId: key, rearranging, onRearrangingChange: setRearranging, withHint: Boolean(hintPanel),
-        blocked: overlayOpen, inputTitle: result.complete ? 'Next puzzle' : 'Keypad',
+        blocked: overlayOpen, inputTitle: result.complete ? 'Next puzzle' : cellChoices ? 'Controls' : 'Keypad',
         hintSwipe: hint ? { dismiss: closeHint, apply: depth === 3 ? { label: 'Apply hint', onClick: applyHint } : undefined } : undefined,
       }}
       insights={insights.active ? {
