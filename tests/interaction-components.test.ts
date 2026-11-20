@@ -7,6 +7,7 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
 let server: ViteDevServer
 let Board: (props: Record<string, unknown>) => ReactNode
+let ModeBadge: (props: Record<string, unknown>) => ReactNode
 let Controls: (props: Record<string, unknown>) => ReactNode
 let settings: Record<string, (props: Record<string, unknown>) => ReactNode>
 let preferences: Record<string, unknown>
@@ -19,6 +20,7 @@ before(async () => {
     optimizeDeps: { noDiscovery: true, include: [] },
   })
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
+  ;({ ModeBadge } = await server.ssrLoadModule('/src/components/ModeBadge.tsx'))
   ;({ Controls } = await server.ssrLoadModule('/src/components/Controls.tsx'))
   settings = await server.ssrLoadModule('/src/components/Settings.tsx')
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
@@ -112,6 +114,34 @@ test('mobile mode outline and badge attach to the Sudoku grid, not the card', ()
   const frame = tree.find(({ props }) => String(props.className).startsWith('board-frame'))
   assert.equal(frame?.props['data-input-mode'], undefined)
   assert.equal(boardTree({}).find(({ props }) => props.className === 'board-body')?.props['data-input-mode'], undefined)
+})
+
+test('showing and hiding the mode icon leaves the Sudoku grid structure unchanged', () => {
+  const withoutBadge = boardTree({ modeBorder: 'pen' })
+  const withBadge = boardTree({
+    modeBorder: 'pen',
+    modeBadge: createElement('button', { className: 'puzzle-mode-tab' }, 'Pen mode'),
+  })
+  const board = (tree: ReturnType<typeof boardTree>) =>
+    tree.find(({ props }) => props.role === 'grid')
+  assert.equal(withoutBadge.find(({ props }) => String(props.className) === 'board-body')?.props['data-input-mode'], 'pen')
+  assert.equal(withBadge.find(({ props }) => String(props.className) === 'board-body')?.props['data-input-mode'], 'pen')
+  assert.equal(board(withoutBadge)?.props.className, board(withBadge)?.props.className)
+  assert.deepEqual(
+    withoutBadge.filter(({ props }) => props.role === 'gridcell').map(({ props }) => props['data-cell']),
+    withBadge.filter(({ props }) => props.role === 'gridcell').map(({ props }) => props['data-cell']),
+  )
+})
+
+test('the floating badge shows the Color mode instead of disappearing', () => {
+  const html = renderToStaticMarkup(createElement(ModeBadge, {
+    mode: 'color', descriptionId: 'color-mode',
+    cardRef: { current: null }, position: { edge: 'bottom', offset: .6 },
+    onPosition() {}, onActivate() {},
+  }))
+  assert.match(html, /Color mode/)
+  assert.match(html, /puzzle-mode-tab/)
+  assert.match(html, /aria-label="Cycle input mode"/)
 })
 
 test('chain drawing exposes a keyboard tab stop and accepts keyboard candidate activation', () => {
