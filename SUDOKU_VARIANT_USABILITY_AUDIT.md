@@ -54,6 +54,12 @@ Ruleset review also covers Disjoint Groups through typed extra houses, custom ex
 
 Existing compatibility matrices and independently checked completion witnesses cover many combinations. They do not prove every clue arrangement is feasible, every rule is necessary or every imported puzzle has a complete human walkthrough.
 
+## Published Coach links
+
+The local app opens a 9×9 Coach short link when the resolver can match its publication record to the requested puzzle and the export contains supported rules. The publication title survives save and share. Links with author instructions or unsupported markings still require source-format work. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
+
+The actual published Between the Dots response keeps all twelve Between Lines and eleven black dots, several opening hints, matching Technique Finder counts and a 62-step partial walkthrough. A separate published Renban short link reaches its complete solution. Its short-link and pasted-code walkthroughs match. Diamond Sandwich remains rejected because its author instructions change how clues count digits. [Between the Dots](https://sudoku.coach/en/s/9KxH) · [Renban](https://sudoku.coach/en/s/Jh4o) · [Diamond Sandwich](https://sudoku.coach/en/s/D8HP)
+
 ## Priority controls
 
 Use complete source definitions, including every companion clue and parameter. Start browser review with these controls, then cover every table row:

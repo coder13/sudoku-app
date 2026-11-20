@@ -49,3 +49,29 @@ test('the worker bounds stream reads and rejects ambiguous or unavailable source
   assert.equal((await request('sudoku-coach/Dupe')).status, 422)
   assert.equal((await request('sudoku-coach/Lost')).status, 404)
 })
+
+test('Coach publication metadata belongs to the requested puzzle and preserves authored-rule boundaries', async ({ mock }) => {
+  const code = 'SCv7_32_102aa'
+  const publication = {
+    sudoku_id: 'Ab12', sudoku: code, name: '  Puzzle title  ',
+    description: '', blocked: false, custom_constraints: false,
+  }
+  const page = (specificSudoku: object) => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'
+  const pages = [
+    page(publication),
+    page({ ...publication, description: 'Digits in colored cells have different values.' }),
+    page({ ...publication, custom_constraints: true }),
+    page({ ...publication, sudoku_id: 'Other' }),
+    page({ ...publication, blocked: true }),
+    page({ ...publication, description: null }),
+    page(publication) + page(publication),
+  ]
+  mock.method(globalThis, 'fetch', async () => new Response(pages.shift()!))
+  assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(),
+    { code, coach: { title: 'Puzzle title', hasAuthorInstructions: false } })
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(),
+      { code, coach: { title: 'Puzzle title', hasAuthorInstructions: true } })
+  }
+  while (pages.length) assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(), { code })
+})

@@ -62,6 +62,25 @@ const publicPuzzleSources = {
   },
 }
 
+// Coach publishes the puzzle code and its author instructions separately.
+function coachPublication(html, id, code) {
+  const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
+  if (scripts.length !== 1) return
+  let puzzle
+  try {
+    puzzle = JSON.parse(scripts[0][1])?.specificSudoku
+  } catch {
+    return
+  }
+  if (puzzle?.sudoku_id !== id || puzzle.sudoku !== code || puzzle.blocked !== false ||
+      typeof puzzle.custom_constraints !== 'boolean' || typeof puzzle.description !== 'string') return
+  const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
+  return {
+    hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
+    ...(title && { title }),
+  }
+}
+
 async function loadPublicPuzzle(request, path) {
   const [, provider, id] = path.split('/')
   const source = Object.hasOwn(publicPuzzleSources, provider) ? publicPuzzleSources[provider] : undefined
@@ -98,11 +117,13 @@ async function loadPublicPuzzle(request, path) {
     if (error instanceof HttpError) throw error
     throw new HttpError(502, 'The puzzle source is unavailable.')
   }
-  const code = source.code(content + decoder.decode())
+  content += decoder.decode()
+  const code = source.code(content)
   if (!code || code.length > maximumPuzzleCodeLength) {
     throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   }
-  return json({ code })
+  const coach = provider === 'sudoku-coach' ? coachPublication(content, id, code) : undefined
+  return json({ code, ...(coach && { coach }) })
 }
 
 // The public API accepts a versioned puzzle definition. Check each nested field

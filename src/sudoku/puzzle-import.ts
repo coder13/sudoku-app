@@ -24,6 +24,7 @@ const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid', 'givenColours',
 ])
+const COACH_AUTHORED_MARKINGS = ['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours']
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
 const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'diagonal+', 'diagonal-'])
@@ -184,9 +185,10 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   return data
 }
 
-async function fromCoach(code: string, published = false): Promise<ImportedPuzzle> {
+type CoachPublication = { hasAuthorInstructions: boolean; title?: string }
+
+async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
-  if (published && data.gridSize === 9) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const { givens, grid, rules } = readCoachSized(data)
     return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}), format: 'Sudoku Coach' }
@@ -194,11 +196,19 @@ async function fromCoach(code: string, published = false): Promise<ImportedPuzzl
   if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
   }
+  if (publication === null) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
+  if (publication?.hasAuthorInstructions) {
+    throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
+  }
+  if (publication && COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
+    throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+  }
   const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
   const constraints = data.givenConstraints ?? []
   const regions = readRegions(data.regions)
-  return makeImportedPuzzle('Sudoku Coach', givens, readCoachRules(constraints, regions), regions)
+  const imported = makeImportedPuzzle('Sudoku Coach', givens, readCoachRules(constraints, regions), regions)
+  return publication?.title ? { ...imported, title: publication.title } : imported
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
@@ -484,7 +494,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const givenDigits = grid.size === 6 ? data.givenDigits ?? undefined : data.givenDigits
   const givens = givenDigits === undefined ? '0'.repeat(grid.size ** 2) : givenDigits
   if (!isGridText(givens, grid)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
-  if (['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours'].some(key => hasData(data[key]))) {
+  if (COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
     throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   }
   const constraints = grid.size === 6 ? data.givenConstraints ?? [] :
@@ -754,15 +764,20 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   throw new Error('This SudokuPad link does not contain the puzzle data. For Classic puzzles, copy the 81 givens.')
 }
 
-async function publishedPuzzleCode(source: 'sudoku-coach' | 'sudokupad', id: string) {
+async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string) {
   const response = await fetch(`/api/v1/import/${source}/${id}`, { signal: AbortSignal.timeout(20_000) })
   if (!response.ok) {
     const { error } = await response.json().catch(() => ({}))
     throw new Error(typeof error === 'string' ? error : 'Could not open this published puzzle.')
   }
-  const { code } = await response.json()
+  const data: unknown = await response.json()
+  const { code, coach } = record(data) ? data : {}
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
-  return code
+  const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
+    ? { hasAuthorInstructions: coach.hasAuthorInstructions,
+      title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
+    : null
+  return { code, publication }
 }
 
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
@@ -808,7 +823,10 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     const host = url.hostname.replace(/^www\./, '')
     if (host === 'sudoku.coach') {
       const id = url.pathname.match(/^\/(?:[a-z]{2}\/)?s\/([A-Za-z0-9]{1,16})\/?$/i)?.[1]
-      if (id) return fromCoach(await publishedPuzzleCode('sudoku-coach', id), true)
+      if (id) {
+        const { code, publication } = await publishedPuzzle('sudoku-coach', id)
+        return fromCoach(code, publication)
+      }
       const code = url.pathname.match(/^\/(?:[a-z]{2}\/)?(?:play|solver|construct)\/([^/]+)\/?$/i)?.[1] ?? ''
       if (code.toLowerCase().startsWith('scv')) return fromCoach(decodeURIComponent(code))
       if (/^[0-4.]{16}$/.test(code)) return { givens: code.replaceAll('.', '0'), format: 'Sudoku Coach', grid: MINI_GRID }
@@ -821,7 +839,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
       const pathCode = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
       const code = pathCode || url.searchParams.get('puzzleid') || ''
       if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
-        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPad(await publishedPuzzleCode('sudokupad', code))
+        !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPad((await publishedPuzzle('sudokupad', code)).code)
       return fromSudokuPad(code)
     }
     throw new Error('This link format is not supported. Try pasting the puzzle code or its 81 givens.')
