@@ -27,6 +27,7 @@ export type PlayPreferences = {
   colorTarget: ColorTarget
   colorBrush: number | null
   highlightCandidatePairs: boolean
+  experimentalMode: boolean | null
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
@@ -50,6 +51,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   colorTarget: 'cell',
   colorBrush: null,
   highlightCandidatePairs: false,
+  experimentalMode: null,
   multi: false,
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
@@ -114,6 +116,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     colorTarget: saved.colorTarget === 'candidate' ? 'candidate' : 'cell',
     colorBrush: inRange(saved.colorBrush, 0, COLORS.length) ? saved.colorBrush : null,
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
+    experimentalMode: typeof saved.experimentalMode === 'boolean' ? saved.experimentalMode : null,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',

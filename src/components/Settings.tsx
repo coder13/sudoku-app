@@ -19,6 +19,7 @@ import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
+import { useExperimentalMode } from './usePlayPreference'
 
 export type SettingsSection = 'appearance' | 'input' | 'highlighting' | 'solving' | 'hints'
 type Section = SettingsSection
@@ -311,6 +312,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
 }) {
   const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
+  const [experimentalMode, setExperimentalMode] = useExperimentalMode()
   if (section === 'input') {
     return (
       <div className="settings-section mobile-title-duplicate">
@@ -398,6 +400,11 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
             <Button onClick={onApplyPaperStyle} disabled={paperStyleApplied}
               aria-label={paperStyleApplied ? 'Paper style applied' : 'Apply Paper style'}>{paperStyleApplied ? 'Applied' : 'Apply'}</Button>
           </div>}
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={experimentalMode}
+              onChange={(event) => setExperimentalMode(event.target.checked)} />
+            <span><strong>Experimental mode</strong><small>Show tools in development, such as Subsets.</small></span>
+          </label>
         </div>
       </div>
     )

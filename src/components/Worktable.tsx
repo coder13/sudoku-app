@@ -67,7 +67,7 @@ import { PuzzleAnalysis, PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionDialog, SolutionPath, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
-import { usePlayPreference } from './usePlayPreference'
+import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 import { usePuzzleZoom } from './usePuzzleZoom'
 import { useTouchHold } from './useTouchHold'
@@ -294,6 +294,7 @@ export function Worktable({
   const [showStrongLinks, setShowStrongLinks] = useState(false)
   const [desktopViews, setDesktopViews] = usePlayPreference('desktopViews')
   const [closedAdvancedTools, setClosedAdvancedTools] = usePlayPreference('closedAdvancedTools')
+  const [experimentalMode] = useExperimentalMode()
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const startDrawingOnChainOpen = useCallback(() => setStartDrawingOnOpen(true), [])
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
@@ -448,10 +449,13 @@ export function Worktable({
   const needsAttempt = !grid && !completed && !game.ratingAttempt
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
+  const toolAvailable = (tool: DesktopPuzzleView) =>
+    (tool !== 'chains' || !grid) && (tool !== 'subsets' || experimentalMode)
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
   const openInsightTabs = desktop && !advancedWorkspace && !placeholder && !draft
-    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && (!grid || id !== 'chains') && (!solved || (id !== 'chains' && id !== 'colors' && id !== 'subsets')))
+    ? desktopInsightTabs.filter(({ id }) => desktopViews.open.includes(id) && toolAvailable(id) &&
+      (!solved || (id !== 'chains' && id !== 'colors' && id !== 'subsets')))
     : []
   const activeDesktopTab = openInsightTabs.find(({ id }) => id === desktopViews.active) ??
     openInsightTabs.find(({ id }) => id === 'techniques') ?? openInsightTabs[0]
@@ -462,16 +466,16 @@ export function Worktable({
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const puzzleToolsAvailable = !placeholder && !draft && !solved
   const mobileToolsAvailable = mobile && puzzleToolsAvailable
-  const { active: activeMobileInput, open: openMobileTools } = mobileToolsAvailable
-    ? grid ? { active: mobileInput.active === 'chains' ? 'digits' : mobileInput.active, open: mobileInput.open.filter(tab => tab !== 'chains') }
-      : mobileInput : defaultMobileInput
+  const openMobileTools = mobileToolsAvailable ? mobileInput.open.filter(toolAvailable) : defaultMobileInput.open
+  const activeMobileInput = mobileInput.active !== 'digits' && openMobileTools.includes(mobileInput.active)
+    ? mobileInput.active : 'digits'
   const openPuzzleTools = mobile ? openMobileTools : advancedWorkspace
-    ? puzzleTools.filter(({ id }) => showRightPanel && !closedAdvancedTools.includes(id) && (!grid || id !== 'chains')).map(({ id }) => id)
+    ? puzzleTools.filter(({ id }) => showRightPanel && !closedAdvancedTools.includes(id) && toolAvailable(id)).map(({ id }) => id)
     : openInsightTabs.map(({ id }) => id)
   const chainsVisible = !grid && (mobile ? activeMobileInput === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
-  const subsetsVisible = mobile ? activeMobileInput === 'subsets'
-    : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets'
+  const subsetsVisible = experimentalMode && (mobile ? activeMobileInput === 'subsets'
+    : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets')
   const colorsPanelOpen = openPuzzleTools.includes('colors')
   const chainsPanelOpen = openPuzzleTools.includes('chains')
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeMobileInput === 'digits'
@@ -2192,7 +2196,7 @@ export function Worktable({
       <div className="app-menu-separator" role="separator" />
       {solutionAction}
       {analysisAction}
-      {puzzleToolsAvailable && puzzleTools.filter(({ id }) => !grid || id !== 'chains').map(({ id, label, Icon }) => (
+      {puzzleToolsAvailable && puzzleTools.filter(({ id }) => toolAvailable(id)).map(({ id, label, Icon }) => (
         <button key={id} type="button" disabled={disabled} aria-pressed={openPuzzleTools.includes(id)}
           onClick={() => togglePuzzleTool(id)}>
           <Icon size={17} aria-hidden="true" /> {label}
@@ -2537,7 +2541,7 @@ export function Worktable({
         input={desktop ? inputPanel : <MobileInputTabs active={activeMobileInput} open={openMobileTools}
           panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, subsets: subsetsPanel }} activeTabRef={activeMobileInputTabRef}
           toolsDisabled={disabled} colorsOnly={Boolean(grid)} onOpenTools={mobileToolsAvailable ? opener => openMobileInput('colors', opener) : undefined}
-          onOpenSubsets={mobileToolsAvailable ? opener => openMobileInput('subsets', opener) : undefined}
+          onOpenSubsets={mobileToolsAvailable && experimentalMode ? opener => openMobileInput('subsets', opener) : undefined}
           onGenerateCandidates={mobileToolsAvailable ? () => { void generateCandidates() } : undefined} candidatesDisabled={busy}
           onSelect={selectMobileInput} onClose={closeMobileInput} />}
         insights={activeDesktopTab ? {
@@ -2566,7 +2570,7 @@ export function Worktable({
         }}
         advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel}
           chains={!grid && !closedAdvancedTools.includes('chains') ? chainsPanel : undefined}
-          subsets={!closedAdvancedTools.includes('subsets') ? subsetsPanel : undefined}
+          subsets={experimentalMode && !closedAdvancedTools.includes('subsets') ? subsetsPanel : undefined}
           cellColors={!closedAdvancedTools.includes('colors') ? cellColorsPanel : undefined}
           hint={advancedHintPanel} solutionPath={solutionPathPanel}
           techniques={!draft

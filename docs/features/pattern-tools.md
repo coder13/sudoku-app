@@ -1,5 +1,7 @@
 # Pattern tools in Play
 
+Enable **Experimental mode** in **Settings → Solving style** to use Subsets. The mode starts on in local development and pull request previews. It starts off in production. This browser saves your choice.
+
 In **Puzzle options**, select **Chains**, **Subsets**, or **Colors** to open or close that panel. The menu stays open so you can change several panels before you close it.
 
 You can also open **Subsets** from the mobile input tools.

@@ -75,6 +75,17 @@ test('older partial settings gain new defaults without losing saved choices', ()
   })
 })
 
+test('experimental mode saves explicit choices and older settings use the environment default', () => {
+  const storage = memoryStorage()
+  const store = createPlayPreferenceStore(storage)
+  assert.equal(store.getSnapshot().experimentalMode, null)
+  for (const enabled of [true, false]) {
+    store.set('experimentalMode', enabled)
+    assert.equal(createPlayPreferenceStore(storage).getSnapshot().experimentalMode, enabled)
+  }
+  assert.equal(parsePlayPreferences({ experimentalMode: 'true' }).experimentalMode, null)
+})
+
 test('open desktop views and the active view survive a fresh app instance', () => {
   const storage = memoryStorage()
   const store = createPlayPreferenceStore(storage)

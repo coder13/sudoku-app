@@ -5,6 +5,7 @@ import { Worktable, type WorktableActions } from '../../src/components/Worktable
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
 import { EMPTY, makeGame, paintCells, replaceCandidates } from '../../src/sudoku/game'
+import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { playSession } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
@@ -69,6 +70,11 @@ export const MobileInputTools: Story = {
 export const PuzzlePanelToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot().experimentalMode
+    playPreferenceStore.set('experimentalMode', true)
+    return () => playPreferenceStore.set('experimentalMode', saved)
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
     const options = canvas.getByRole('button', { name: 'Open puzzle options' })
