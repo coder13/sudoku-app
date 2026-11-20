@@ -89,6 +89,10 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::GroupOrderElimination(proof) => {
+                    assert!(proof.branches.iter().any(|branch| !branch.checks.is_empty()));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::GroupOrder(proof) => {
                     assert!(matches!(
                         position.puzzle.rules[proof.rule],

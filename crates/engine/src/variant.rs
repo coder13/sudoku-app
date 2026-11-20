@@ -30,7 +30,8 @@ pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
-    VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
+    VariantGroupOrderBranch, VariantGroupOrderCheck, VariantGroupOrderEliminationProof,
+    VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantLineHouseProof, VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, ParityClue};

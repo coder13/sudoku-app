@@ -100,6 +100,41 @@ fn entropic_order_practice(givens: &'static str, cell: usize, digit: u8) -> Exam
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        GroupOrderElimination => [
+            seed(
+                "307010048410000000000704000000048600630071050000000380903000007000507830070103200",
+                19, 6,
+                [
+                    PuzzleRule::AdjacentTotal { cells: [46, 37], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [22, 31], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [2, 3], sum: 13 },
+                    PuzzleRule::Modular { cells: vec![1, 10, 19, 28, 27] },
+                    PuzzleRule::Modular { cells: vec![14, 15, 16, 25, 34, 43] },
+                ],
+            ),
+            seed(
+                "350600000010000723000000060020008079030901000009200080003000500000000804000003290",
+                22, 2,
+                [
+                    PuzzleRule::AdjacentTotal { cells: [27, 36], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [22, 31], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [23, 22], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [72, 63], sum: 7 },
+                    PuzzleRule::AdjacentTotal { cells: [62, 71], sum: 11 },
+                    PuzzleRule::Modular { cells: vec![37, 46, 55, 56, 57, 48] },
+                    PuzzleRule::Modular { cells: vec![29, 30, 31, 32] },
+                ],
+            ),
+            seed(
+                "000090507050006000000050000500060204000000000000000605000040000000900806000027000",
+                17, 1,
+                [
+                    PuzzleRule::Entropic { cells: vec![59, 51, 52, 44, 35, 26, 17, 25, 24, 23, 31, 21, 20, 19, 9, 18, 27, 36, 46, 47, 57] },
+                    PuzzleRule::Kropki { consecutive: positive_pairs([[52, 43]]), ratio_two: MarkedPairs::default() },
+                    PuzzleRule::Xv { five: positive_pairs([[38, 29]]), ten: positive_pairs([[24, 15], [8, 7]]) },
+                ],
+            ),
+        ],
         GroupOrderContradiction => [
             seed(
                 "003007041000400056000106000000604500600000004004009068000045007006000400400061000",

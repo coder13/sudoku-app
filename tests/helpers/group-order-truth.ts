@@ -70,6 +70,39 @@ function lineChoices(rule: VariantRule, cells: number[], domains: number[]) {
   return choices
 }
 
+type Check = Extract<VariantDeduction['evidence'], { type: 'group-order' }>['rejected'][number]['conflict']
+
+function houseDomains(puzzle: VariantPuzzle, values: string, eliminations: readonly number[]) {
+  const rules = puzzle.rules!
+  const houses: VariantHouse[] = digits.flatMap((_, i) => [{ row: i }, { column: i }, { region: i }])
+  for (const [i, rule] of rules.entries()) {
+    if (rule.type === 'extra-house') houses.push({ extra: i })
+    if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
+  }
+  const before = [...values].map((value, cell) => value === '0' ? 511 & ~eliminations[cell] : bit(Number(value)))
+  for (const house of houses) {
+    const members = variantHouseCells(house, puzzle)
+    const used = members.reduce((mask, cell) => values[cell] === '0' ? mask : mask | bit(Number(values[cell])), 0)
+    for (const cell of members) if (values[cell] === '0') before[cell] &= ~used
+  }
+  return before
+}
+
+function supportCheck(puzzle: VariantPuzzle, check: Check, current: number[]) {
+  const rules = puzzle.rules!
+  const scope = check.scope
+  if (scope.type === 'house') {
+    assert.deepEqual([...check.cells].sort(), [...variantHouseCells(scope.house, puzzle)].sort())
+    return houseSupport(current)
+  }
+  if (scope.type === 'pair') return pairSupport(scope.rules.map(index => rules[index]), check.cells, current)
+  const target = rules[scope.rule]
+  assert.ok(target.type === 'entropic' || target.type === 'modular')
+  const choices = lineChoices(target, check.cells, current)
+  return check.cells.map((cell, i) => choices.reduce((mask, order) =>
+    mask | (current[i] & order[target.cells.indexOf(cell) % 3]), 0))
+}
+
 export function assertGroupOrderProof(
   puzzle: VariantPuzzle,
   values: string,
@@ -82,17 +115,7 @@ export function assertGroupOrderProof(
   const source = rules[evidence.rule]
   assert.ok(source.type === 'entropic' || source.type === 'modular')
   const { cells, domains, phases, rejected, remaining } = evidence
-  const houses: VariantHouse[] = digits.flatMap((_, i) => [{ row: i }, { column: i }, { region: i }])
-  for (const [i, rule] of rules.entries()) {
-    if (rule.type === 'extra-house') houses.push({ extra: i })
-    if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
-  }
-  const before = [...values].map((value, cell) => value === '0' ? 511 & ~eliminations[cell] : bit(Number(value)))
-  for (const house of houses) {
-    const members = variantHouseCells(house, puzzle)
-    const used = members.reduce((mask, cell) => values[cell] === '0' ? mask : mask | bit(Number(values[cell])), 0)
-    for (const cell of members) if (values[cell] === '0') before[cell] &= ~used
-  }
+  const before = houseDomains(puzzle, values, eliminations)
   assert.deepEqual(domains, cells.map(cell => before[cell]))
   assert.deepEqual(phases, cells.map(cell => source.cells.indexOf(cell) % 3))
   const orders = [...remaining, ...rejected.map(item => item.groups)].map(groups => groups.join()).sort()
@@ -102,22 +125,9 @@ export function assertGroupOrderProof(
     cells.forEach((cell, i) => { assumed[cell] &= groups[phases[i]] })
     assert.ok([...checks, conflict].some(step => step.scope.type === 'pair'))
     for (const check of [...checks, conflict]) {
-      const scope = check.scope
       const current = check.cells.map(cell => assumed[cell])
       assert.deepEqual(check.domains, current)
-      let supported: number[]
-      if (scope.type === 'house') {
-        assert.deepEqual([...check.cells].sort(), [...variantHouseCells(scope.house, puzzle)].sort())
-        supported = houseSupport(current)
-      } else if (scope.type === 'pair') {
-        supported = pairSupport(scope.rules.map(index => rules[index]), check.cells, current)
-      } else {
-        const target = rules[scope.rule]
-        assert.ok(target.type === 'entropic' || target.type === 'modular')
-        const choices = lineChoices(target, check.cells, current)
-        supported = check.cells.map((cell, i) => choices.reduce((mask, order) =>
-          mask | (current[i] & order[target.cells.indexOf(cell) % 3]), 0))
-      }
+      const supported = supportCheck(puzzle, check, current)
       assert.deepEqual(check.supported, supported)
       assert.notDeepEqual(check.supported, current)
       assert.ok(supported.every(mask => check === conflict ? mask === 0 : mask !== 0))
@@ -142,4 +152,47 @@ export function assertGroupOrderProof(
     assert.ok('eliminate' in action)
     return `${action.eliminate.cell}:${action.eliminate.digit}`
   }).sort(), expected.sort())
+}
+
+/** Independently enumerate both branch orders and every local assignment used. */
+export function assertGroupOrderElimination(
+  puzzle: VariantPuzzle,
+  values: string,
+  eliminations: readonly number[],
+  deduction: VariantDeduction,
+) {
+  const { evidence, actions } = deduction
+  assert.equal(evidence.type, 'group-order-elimination')
+  const { rule, cells, phases, branches, domains } = evidence
+  const source = puzzle.rules![rule]
+  assert.ok(source.type === 'entropic' || source.type === 'modular')
+  const before = houseDomains(puzzle, values, eliminations)
+  assert.deepEqual(domains, cells.map(cell => before[cell]))
+  assert.deepEqual(phases, cells.map(cell => source.cells.indexOf(cell) % 3))
+  assert.deepEqual(
+    branches.map(branch => branch.groups.join()).sort(),
+    lineChoices(source, cells, domains).map(order => order.join()).sort(),
+  )
+  assert.equal(branches.length, 2)
+  assert.equal(actions.length, 1)
+  const [action] = actions
+  assert.ok('eliminate' in action)
+  const target = action.eliminate
+  assert.equal(values[target.cell], '0')
+  assert.ok(before[target.cell] & bit(target.digit))
+  assert.ok(branches.some(branch => branch.checks.some(check => check.scope.type === 'pair')))
+  for (const { groups, checks } of branches) {
+    const assumed = [...before]
+    cells.forEach((cell, i) => { assumed[cell] &= groups[phases[i]] })
+    for (const check of checks) {
+      const current = check.cells.map(cell => assumed[cell])
+      assert.deepEqual(check.domains, current)
+      const supported = supportCheck(puzzle, check, current)
+      assert.deepEqual(check.supported, supported)
+      assert.notDeepEqual(current, supported)
+      assert.ok(supported.every(Boolean))
+      check.cells.forEach((cell, i) => { assumed[cell] = supported[i] })
+    }
+    assert.equal(assumed[target.cell] & bit(target.digit), 0)
+  }
 }

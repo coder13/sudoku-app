@@ -6,7 +6,7 @@ import { algebraicHintChoices, algebraicSolutionTrace } from './algebraic-play.t
 import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
 import { getVariantPlayOrder, variantHintOrder, variantPosition } from './variant-play.ts'
-import { variantHouseMasks } from './variants.ts'
+import { variantLogicalMasks } from './variants.ts'
 
 const catalogs = new Map<boolean, Promise<TechniqueCatalog>>()
 
@@ -63,7 +63,7 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
       limit: technique || limit === 'all' ? 0xffff_ffff : limit,
       preferProgress: !technique, difficulty: game.difficulty ?? 'medium',
     } as const
-    const candidates = variantHouseMasks(variant.puzzle, values, eliminations)
+    const candidates = variantLogicalMasks(variant.puzzle, values, eliminations)
     if (collection !== undefined) {
       const first = await runEngine({ ...request, collection })
       return { ...first, choices: first.choices.map((hint) => variantHintChoice(hint, variant.puzzle)), candidates }
