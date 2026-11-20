@@ -743,10 +743,9 @@ function closeConnection(connection: EngineConnection, error: Error) {
   connection.pending.clear()
 }
 
-type WorkerOptions = { interactive?: boolean; background?: boolean; generation?: boolean }
+type WorkerOptions = { interactive?: boolean; background?: boolean }
 
 function connectionFor(request: EngineRequest, options: WorkerOptions) {
-  if (options.generation) return generationEngine
   switch (request.type) {
     case 'generate':
     case 'generate-mini':
@@ -774,6 +773,40 @@ function connectionFor(request: EngineRequest, options: WorkerOptions) {
 
 export function runEngine<T extends EngineRequest>(request: T, options: WorkerOptions = {}): Promise<EngineResult<T>> {
   return sendRequest(connectionFor(request, options), request)
+}
+
+let idleGenerationConnection: EngineConnection | undefined
+
+/** Give a search exclusive use of a worker so cancellation can stop active Wasm. */
+export async function withGenerationWorker<Result>(
+  signal: AbortSignal,
+  search: (run: <T extends EngineRequest>(request: T) => Promise<EngineResult<T>>) => Promise<Result>,
+): Promise<Result> {
+  signal.throwIfAborted()
+  const connection: EngineConnection = idleGenerationConnection ?? { pending: new Map() }
+  idleGenerationConnection = undefined
+  let cancel!: () => void
+  const cancelled = new Promise<never>((_, reject) => {
+    cancel = () => {
+      closeConnection(connection, signal.reason)
+      reject(signal.reason)
+    }
+  })
+  signal.addEventListener('abort', cancel, { once: true })
+  try {
+    const result = await Promise.race([search(request => {
+      signal.throwIfAborted()
+      return sendRequest(connection, request)
+    }), cancelled])
+    signal.throwIfAborted()
+    return result
+  } finally {
+    signal.removeEventListener('abort', cancel)
+    if (connection.worker) {
+      if (!connection.pending.size && !idleGenerationConnection) idleGenerationConnection = connection
+      else closeConnection(connection, new DOMException('Generation worker closed.', 'AbortError'))
+    }
+  }
 }
 
 // Each visible board owns its synchronous Wasm work. Closing it interrupts even

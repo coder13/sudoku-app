@@ -48,8 +48,10 @@ export function usePuzzleGeneration() {
         const controller = new AbortController()
         customSearch.current = controller
         const { generateCustomSudoku } = await import('../sudoku/custom-generation')
-        const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, { signal: controller.signal, negativeMarkers: mode.negativeMarkers })
-        if (!mounted.current) return
+        const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, {
+          signal: controller.signal, negativeMarkers: mode.negativeMarkers,
+        })
+        if (!mounted.current || controller.signal.aborted) return
         const id = variantIdForPuzzle(result.puzzle)
         if (id === 'classic') throw new Error('The generated puzzle is missing its custom rules.')
         const game = makeGame(createGameId(), nextPuzzleTitle(`${mode.name} `), result.puzzle.givens, 'generated')
@@ -134,7 +136,7 @@ export function usePuzzleGeneration() {
       roomStore.add({ ...game, pendingSave: true, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
     } catch (reason) {
-      if (mounted.current) {
+      if (mounted.current && !customSearch.current?.signal.aborted) {
         setError(reason instanceof EngineError && reason.code === 'search-limit'
           ? options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
             : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.'
@@ -147,7 +149,7 @@ export function usePuzzleGeneration() {
     }
   }
 
-  return { busy, error, generate }
+  return { busy, error, generate, cancelGeneration: () => customSearch.current?.abort() }
 }
 
 

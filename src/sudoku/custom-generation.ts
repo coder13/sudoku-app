@@ -1,5 +1,5 @@
 import { customRuleIds, selectedMarkerRules, type CustomDifficulty, type CustomRule, type MarkerRule } from './custom-modes.ts'
-import { EngineError, runEngine, type VariantClueLayout, type VariantPuzzle, type VariantRule, type MarkedPairs } from './engine.ts'
+import { EngineError, withGenerationWorker, type VariantClueLayout, type VariantPuzzle, type VariantRule, type MarkedPairs } from './engine.ts'
 import { EMPTY, type Game } from './game.ts'
 import { regionIndex } from './region-sum.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from './variant-generation.ts'
@@ -179,37 +179,45 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
   const { signal } = options
   signal?.throwIfAborted()
   const chosen = new Set(customRuleIds.filter(rule => rules.includes(rule)))
+  if (!chosen.size) throw new EngineError('Choose at least one rule.', 'unsupported')
   const markers = selectedMarkerRules(rules)
   const negative = new Set(options.negativeMarkers?.filter(marker => markers.includes(marker)))
-  if (!chosen.size) throw new EngineError('Choose at least one rule.', 'unsupported')
-  const [only] = chosen
-  if (!negative.size && chosen.size === 1 && Object.hasOwn(variantSeeds, only) && only !== 'whispers') {
-    const family = only as keyof typeof variantSeeds
-    if (variantSeeds[family][difficulty]?.length) return generatePlayableVariant(family, difficulty, seed, games)
-  }
-  const random = randomFor(seed)
-  const techniqueOrder = await getVariantPlayOrder()
-  signal?.throwIfAborted()
-  const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
-  const deadline = performance.now() + 10_000
-  const maxLayouts = negative.size ? 36 : difficulty === 'hard' ? 24 : 12
-  for (let attempt = 0; attempt < maxLayouts && performance.now() < deadline; attempt++) {
+  const timeout = AbortSignal.timeout(10_000)
+  const searchSignal = signal ? AbortSignal.any([signal, timeout]) : timeout
+  const exhausted = () => new EngineError('No puzzle found for these rules at this difficulty.', 'search-limit')
+
+  try {
+    return await withGenerationWorker(searchSignal, async run => {
+      const [only] = chosen
+      if (!negative.size && chosen.size === 1 && Object.hasOwn(variantSeeds, only) && only !== 'whispers') {
+        const family = only as keyof typeof variantSeeds
+        if (variantSeeds[family][difficulty]?.length) return generatePlayableVariant(family, difficulty, seed, games, { generate: run })
+      }
+
+      const random = randomFor(seed)
+      const techniqueOrder = await getVariantPlayOrder()
+      const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
+      const maxLayouts = negative.size ? 36 : difficulty === 'hard' ? 24 : 12
+      for (let attempt = 0; attempt < maxLayouts; attempt++) {
+        searchSignal.throwIfAborted()
+        const template = modeTemplate(chosen, random)
+        const samplingSeed = Math.floor(random() * 0x1_0000_0000)
+        try {
+          const solution = await run({ type: 'variant', operation: 'solve', position: { puzzle: template }, seed: samplingSeed, maxNodes: 20_000 })
+          const clues = addClues(template, chosen, markers, negative, solution, random)
+          if (!clues) continue
+          return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
+            maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
+            givens: [0, 35], difficulty, techniqueOrder, exclude })
+        } catch (error) {
+          if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error
+        }
+      }
+      throw exhausted()
+    })
+  } catch (error) {
     signal?.throwIfAborted()
-    const template = modeTemplate(chosen, random)
-    const samplingSeed = Math.floor(random() * 0x1_0000_0000)
-    try {
-      const solution = await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: template }, seed: samplingSeed, maxNodes: 20_000 }, { generation: true })
-      signal?.throwIfAborted()
-      const clues = addClues(template, chosen, markers, negative, solution, random)
-      if (!clues) continue
-      const generated = await runEngine({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
-        maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
-        givens: [0, 35], difficulty, techniqueOrder, exclude })
-      signal?.throwIfAborted()
-      return generated
-    } catch (error) {
-      if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error
-    }
+    if (timeout.aborted) throw exhausted()
+    throw error
   }
-  throw new EngineError('No puzzle found for these rules at this difficulty.', 'search-limit')
 }

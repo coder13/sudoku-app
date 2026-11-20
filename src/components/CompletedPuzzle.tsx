@@ -43,7 +43,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   onChooseVariant: () => void
 }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const [collectionError, setCollectionError] = useState('')
@@ -150,6 +150,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
           {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
           {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
         </Button>}
+      {busy && game.customMode && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
       {inCollection && resumeAction}
       {collectionEntry ? <>
         <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>

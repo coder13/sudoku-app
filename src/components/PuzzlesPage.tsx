@@ -219,7 +219,7 @@ function CustomDifficultyField({ value, disabled, onChange }: { value: CustomDif
 }
 
 function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: readonly SudokuMode[]; onSave: (mode: SudokuMode) => void }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
   const [name, setName] = useState(mode?.name ?? '')
   const [rules, setRules] = useState<readonly CustomRule[]>(mode?.rules ?? [])
   const [negativeMarkers, setNegativeMarkers] = useState<readonly MarkerRule[]>(mode?.negativeMarkers ?? [])
@@ -309,16 +309,18 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
       <Button type="button" variant="primary" disabled={busy || !rules.length} onClick={() => void generate(level, undefined, 'classic', {
         customMode: definition,
       })}><Dices size={18} aria-hidden="true" />{busy ? 'Generating…' : 'Generate puzzle'}</Button>
+      {busy && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
     </form>
   </section>
 }
 
 function CustomModeDifficulty({ mode }: { mode: SudokuMode }) {
   const [level, setLevel] = useState<CustomDifficulty>('medium')
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
   return <PuzzleDifficultyStep name={mode.name} preview={<Grid3X3 size={28} aria-hidden="true" />} busy={busy} error={error}
     startLabel={`Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
-    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}>
+    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}
+    actions={busy && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}>
     <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
     {!!mode.negativeMarkers?.length && <p>{mode.negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
     <CustomDifficultyField value={level} disabled={busy} onChange={setLevel} />

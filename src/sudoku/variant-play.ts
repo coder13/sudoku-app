@@ -1,4 +1,4 @@
-import { EngineError, runEngine, type Difficulty, type VariantPosition } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type GeneratedVariant, type VariantGenerationRequest, type VariantPosition } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
@@ -21,7 +21,10 @@ export function getVariantPlayOrder() {
   return playOrder
 }
 
-export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
+type VariantGenerator = (request: VariantGenerationRequest) => Promise<GeneratedVariant>
+
+export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[],
+  options?: VariantGenerationOptions & { generate?: VariantGenerator }) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
   const techniqueOrder = await getVariantPlayOrder()
@@ -31,10 +34,11 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   // Equivalent clues can give an imported puzzle a different variant label.
   // Let the native logical key compare complete definitions across that history.
   const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
-  const tryGenerate = async (request: ReturnType<typeof variantGenerationRequest>) => {
+  const generate: VariantGenerator = options?.generate ?? runEngine
+  const tryGenerate = async (request: VariantGenerationRequest) => {
     if (excluded.length) request.exclude = excluded
     try {
-      const result = await runEngine(request)
+      const result = await generate(request)
       // A sampled positive marker layout can contain only one symbol.
       if (id === 'xv' && !result.puzzle.rules?.some(rule =>
         rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return
