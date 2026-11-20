@@ -1,6 +1,6 @@
 import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
-import type { SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
+import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
@@ -9,8 +9,8 @@ import { coachConnectedLines } from './coach-lines.ts'
 import { regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
-import { readSixSudokuPad } from './six-sudoku-pad.ts'
-import { isSixRuleList, type SixGame } from './six-game.ts'
+import { readSizedRuleSudokuPad } from './sized-rule-sudoku-pad.ts'
+import { isSizedRuleList, type SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
 
@@ -34,8 +34,8 @@ export type ImportedPuzzle = {
   format: ImportFormat
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   grid?: SizedGrid
-  sixRules?: SixGame['rules']
-  sixAuthor?: string
+  sizedRules?: SizedRuleGame['rules']
+  sizedAuthor?: string
   authoredSolution?: string
   algebraic?: AlgebraicDefinition
   title?: string
@@ -44,11 +44,11 @@ export type ImportedPuzzle = {
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
-  const { givens, variant, collection, title, grid, algebraic, sixRules, sixAuthor } = await downloadSharedPuzzle(id, signal)
+  const { givens, variant, collection, title, grid, algebraic, sizedRules, sizedAuthor } = await downloadSharedPuzzle(id, signal)
   const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
   if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
   const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
-  return { givens, variant, collection, title, grid, sixRules, sixAuthor, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
+  return { givens, variant, collection, title, grid, sizedRules, sizedAuthor, ...(cages && { algebraic: cages }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -178,26 +178,12 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
 async function fromCoach(code: string, published = false): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
   if (published && data.gridSize === 9) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
-  if (data.gridSize === 6) {
-    const { givens, grid, rules } = readCoachSix(data)
-    return { givens, grid, sixRules: rules, format: 'Sudoku Coach' }
+  if (data.gridSize === 4 || data.gridSize === 6) {
+    const { givens, grid, rules } = readCoachSized(data)
+    return { givens, grid, ...(grid.size === 6 || rules.length ? { sizedRules: rules } : {}), format: 'Sudoku Coach' }
   }
-  if (data.gridSize !== 4 && data.gridSize !== 9) {
+  if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 6 × 6, and 9 × 9 Sudoku Coach grids.')
-  }
-  if (data.gridSize === MINI_GRID.size) {
-    const givens = data.givenDigits === undefined ? '0'.repeat(MINI_GRID.size ** 2) : data.givenDigits
-    if (!isGridText(givens, MINI_GRID)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
-    if (data.regions !== undefined && !hasMiniBoxes(data.regions)) {
-      throw new Error('Mini Sudoku import requires four 2 × 2 boxes.')
-    }
-    if (data.givenConstraints !== undefined && (!Array.isArray(data.givenConstraints) || data.givenConstraints.length)) {
-      throw new Error('This 4 × 4 Sudoku Coach puzzle has rules that Mini Sudoku cannot import yet.')
-    }
-    if (['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours'].some(key => hasData(data[key]))) {
-      throw new Error('This 4 × 4 Sudoku Coach puzzle contains markings that Mini Sudoku cannot import yet.')
-    }
-    return { givens, format: 'Sudoku Coach', grid: MINI_GRID }
   }
   const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
@@ -463,41 +449,34 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
 
 /** Decode a six-by-six Coach export without dropping active rules. */
 export async function decodeCoachSix(code: string) {
-  return readCoachSix(await decodeCoach(code))
+  const data = await decodeCoach(code)
+  if (data.gridSize !== 6) throw new Error('This Sudoku Coach puzzle does not have a 6 × 6 grid.')
+  return readCoachSized(data)
 }
 
-function readCoachSix(data: Record<string, unknown>) {
-  if (data.gridSize !== 6) throw new Error('This Sudoku Coach puzzle does not have a 6 × 6 grid.')
-  const givens = data.givenDigits ?? '0'.repeat(36)
-  if (typeof givens !== 'string' || !/^[0-6]{36}$/.test(givens)) throw new Error('This 6 × 6 puzzle has invalid givens.')
+function readCoachSized(data: Record<string, unknown>) {
+  const { gridSize: size, regions } = data
+  const grid = size === 6 ? (Array.isArray(regions) && regions.every(label => Number.isInteger(label) && label >= 0)
+    ? sixGridFromRegions(regions) : undefined) : (regions === undefined || hasMiniBoxes(regions) ? MINI_GRID : undefined)
+  if (!grid) throw new Error(size === 4 ? 'Mini Sudoku import requires four 2 × 2 boxes.'
+    : 'Import requires six rectangular boxes of 2 × 3 or 3 × 2 cells.')
+  const givenDigits = grid.size === 6 ? data.givenDigits ?? undefined : data.givenDigits
+  const givens = givenDigits === undefined ? '0'.repeat(grid.size ** 2) : givenDigits
+  if (!isGridText(givens, grid)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
   if (['quickDrawLineSegments', 'quickDrawSymbols', 'givenColours', 'colours'].some(key => hasData(data[key]))) {
-    throw new Error('This 6 × 6 puzzle has unsupported authored markings.')
+    throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   }
-  const regions = data.regions
-  if (!Array.isArray(regions) || regions.some(label => !Number.isInteger(label) || label < 0)) {
-    throw new Error('Import requires a 6 × 6 Sudoku Coach grid with six rectangular boxes.')
-  }
-  const grid = sixGridFromRegions(regions)
-  if (!grid) throw new Error('Import requires six rectangular boxes of 2 × 3 or 3 × 2 cells.')
-
-  const constraints = data.givenConstraints ?? []
-  if (!Array.isArray(constraints)) throw new Error('This 6 × 6 puzzle has invalid rules.')
+  const constraints = grid.size === 6 ? data.givenConstraints ?? [] :
+    data.givenConstraints === undefined ? [] : data.givenConstraints
+  if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
   if (active.some(rule => !record(rule) || !['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban'].includes(String(rule.type)))) {
-    throw new Error('This 6 × 6 export includes an unsupported active rule.')
+    throw new Error('This Sudoku Coach export includes an unsupported active rule.')
   }
-  const rules = readCoachRules(active).map((rule): SizedConstraintRule => {
-    if (rule.type === 'diagonal' || rule.type === 'renban') return rule
-    if ((rule.type === 'parity' || rule.type === 'thermometer') &&
-      rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 36) &&
-      (rule.type !== 'thermometer' || rule.cells.length >= 2 && rule.cells.length <= 6 && new Set(rule.cells).size === rule.cells.length)) {
-      return rule.type === 'parity' ? rule : { type: 'thermometer', cells: rule.cells }
-    }
-    throw new Error('This 6 × 6 rule has an invalid cell or path.')
-  })
-  if (!isSixRuleList(rules)) throw new Error('This 6 × 6 export contains invalid rules.')
+  const rules = readCoachRules(active)
+  if (!isSizedRuleList(rules, grid.size)) throw new Error('This Sudoku Coach export contains invalid rules.')
   return { version: 2 as const, grid, givens, rules }
 }
 
@@ -596,7 +575,10 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
   if (/^(scl|ctc)/i.test(code)) {
     const data = decodeSudokuPadEnvelope(code)
-    if (record(data) && Array.isArray(data.cells) && data.cells.length === 6) return { ...readSixSudokuPad(data), format }
+    if (record(data) && Array.isArray(data.cells) && (data.cells.length === 6 ||
+      data.cells.length === 4 && ['lines', 'underlays', 'overlays'].some(field => Object.hasOwn(data, field)))) {
+      return { ...readSizedRuleSudokuPad(data), format }
+    }
     const { givens, grid, rules, source } = decodeSizedSudokuPad(code, data)
     return { givens, grid, algebraic: { rules, source }, format }
   }

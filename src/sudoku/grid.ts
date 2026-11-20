@@ -31,12 +31,15 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
 }
 
 export function sixGridFromRegions(regions: readonly number[]): SixGrid | undefined {
-  if (regions.length !== 36 || new Set(regions).size !== 6) return
-  return SIX_GRIDS.find(({ boxRows, boxColumns }) => regions.every((label, cell) => {
-    const firstRow = Math.floor(cell / 6 / boxRows) * boxRows
-    const firstColumn = Math.floor(cell % 6 / boxColumns) * boxColumns
-    return label === regions[firstRow * 6 + firstColumn]
-  }))
+  return SIX_GRIDS.find(grid => matchesRectangularRegions(grid, regions))
+}
+
+export function matchesRectangularRegions({ size, boxRows, boxColumns }: SizedGrid, regions: readonly number[]) {
+  return regions.length === size ** 2 && new Set(regions).size === size && regions.every((label, cell) => {
+    const firstRow = Math.floor(cell / size / boxRows) * boxRows
+    const firstColumn = Math.floor(cell % size / boxColumns) * boxColumns
+    return label === regions[firstRow * size + firstColumn]
+  })
 }
 
 export function isGridText(text: unknown, grid: PlayGrid): text is string {
@@ -52,12 +55,12 @@ export function gridDiagonalCells(size: number, diagonal: 'main' | 'anti') {
   return Array.from({ length: size }, (_, row) => row * size + (diagonal === 'main' ? row : size - row - 1))
 }
 
-export function sixDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number) {
+export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number, size: number) {
   if (!rules) return 0
   let excluded = 0
   for (const rule of rules) {
     if (rule.type === 'renban' && cell !== other && rule.cells.includes(cell) && rule.cells.includes(other)) {
-      for (let candidate = 1; candidate <= 6; candidate++) {
+      for (let candidate = 1; candidate <= size; candidate++) {
         if (candidate === digit || Math.abs(candidate - digit) >= rule.cells.length) excluded |= 1 << (candidate - 1)
       }
     }
@@ -66,8 +69,8 @@ export function sixDigitExclusions(rules: readonly SizedConstraintRule[] | undef
     const otherOffset = rule.cells.indexOf(other)
     if (offset === -1 || otherOffset === -1 || offset === otherOffset) continue
     const bound = digit + otherOffset - offset
-    if (otherOffset > offset) excluded |= (1 << Math.min(6, bound - 1)) - 1
-    else excluded |= 0x3f & ~((1 << Math.max(0, bound)) - 1)
+    if (otherOffset > offset) excluded |= (1 << Math.min(size, bound - 1)) - 1
+    else excluded |= ((1 << size) - 1) & ~((1 << Math.max(0, bound)) - 1)
   }
   return excluded
 }

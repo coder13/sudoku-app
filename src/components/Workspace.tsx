@@ -28,7 +28,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
-import { EditSixRules } from './EditSixRules'
+import { EditSizedRules } from './EditSizedRules'
 import { EditCages, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
 import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
@@ -40,7 +40,7 @@ import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'import' | 'share' | 'publish' | 'cages' | 'six-rules' | null
+type Panel = 'import' | 'share' | 'publish' | 'cages' | 'sized-rules' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
@@ -474,7 +474,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
     const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
     if (variant === 'algebraic-cages') draft.position.draftCages = []
-    if (variant === 'six') draft.position.draftSixRules = []
+    else if (grid) draft.position.draftSizedRules = []
     roomStore.add({ ...draft, returnId: active ?? undefined })
   }
 
@@ -482,7 +482,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (!game || game.source !== 'custom') return
     const draft = makeGame(createGameId(), game.title, '0'.repeat(game.givens.length), 'draft', undefined, game.grid)
     roomStore.add({ ...draft, editingId: game.id, returnId: game.id,
-      position: { ...draft.position, entries: game.givens, draftCages: game.algebraic?.rules, draftSixRules: game.six?.rules } })
+      position: { ...draft.position, entries: game.givens, draftCages: game.algebraic?.rules, draftSizedRules: game.sized?.rules } })
   }
 
   function cancelDraft() {
@@ -620,7 +620,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
                 onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
                 onEditCages={() => setPanel('cages')}
-                onEditSixRules={() => setPanel('six-rules')}
+                onEditSizedRules={() => setPanel('sized-rules')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
                   if (!game) return
@@ -661,7 +661,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
-      {panel === 'six-rules' && game?.grid?.size === 6 && game.position.draftSixRules && <EditSixRules
+      {panel === 'sized-rules' && game?.grid && game.source === 'draft' && !game.position.draftCages && <EditSizedRules
         key={game.id} game={game} layout={game.grid} close={close} />}
       {panel === 'cages' && game?.position.draftCages && <EditCages game={game} close={close} />}
     </DesktopPlayLayout>

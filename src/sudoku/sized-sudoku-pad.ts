@@ -2,6 +2,7 @@ import lzString from 'lz-string'
 import { parseAlgebraicTotal } from './algebraic-cages.ts'
 import { MINI_GRID, isGridText } from './grid.ts'
 import type { SizedVariantPosition } from './engine.ts'
+import { normalizeCompactSudokuPad, parseCompactSudokuPad } from './sudoku-pad-compact.ts'
 
 type ObjectValue = Record<string, unknown>
 type Cage = SizedVariantPosition['rules'][number]
@@ -55,7 +56,7 @@ export function isSizedSudokuPadCode(code: unknown): code is string {
   return typeof code === 'string' && code.length <= MAX_CODE && /^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code)
 }
 
-/** Decode the plain-JSON SCL envelope used by the supported sized exports. */
+/** Decode plain JSON and compact SCL envelopes before applying rule validation. */
 export function decodeSudokuPadEnvelope(code: string): unknown {
   if (!isSizedSudokuPadCode(code)) {
     return reject('This SudokuPad code is damaged or too large.')
@@ -63,7 +64,9 @@ export function decodeSudokuPadEnvelope(code: string): unknown {
   const decoded = lzString.decompressFromBase64(code.slice(3))
   if (!decoded || decoded.length > MAX_DECODED) return reject('This SudokuPad code is empty or too large.')
   try {
-    return JSON.parse(decoded)
+    let parsed: unknown
+    try { parsed = JSON.parse(decoded) } catch { parsed = parseCompactSudokuPad(decoded) }
+    return normalizeCompactSudokuPad(parsed)
   } catch {
     return reject('This SudokuPad code does not contain a supported puzzle export.')
   }

@@ -111,6 +111,26 @@ test('the sharing API requires full rule data for either rectangular 6 × 6 layo
   } finally { sqlite.close() }
 })
 
+test('the sharing API validates the common rule contract against a Mini layout', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const definition = { version: 1, title: 'Mini Renban', grid: MINI_GRID, givens: '0'.repeat(16),
+      sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1], [1, 5]] }], sizedAuthor: 'Test setter' }
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), definition)
+    for (const invalid of [
+      { ...definition, sizedRules: [] },
+      { ...definition, sizedRules: undefined },
+      { ...definition, sixRules: definition.sizedRules },
+      { ...definition, sizedRules: [{ type: 'renban', cells: [0, 16] }] },
+      { ...definition, sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1]] }] },
+      { ...definition, sizedRules: [{ type: 'thermometer', cells: [0, 1, 2, 3, 7] }] },
+      { ...definition, sizedRules: [{ ...definition.sizedRules[0], solution: '1234341221434321' }] },
+    ]) await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
+  } finally { sqlite.close() }
+})
+
 test('the sharing API rejects save state and malformed or oversized definitions', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { decodeSizedSudokuPad } from '../src/sudoku/sized-sudoku-pad.ts'
+import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
 
 const metadata = {
   title: 'Shared totals',
@@ -73,8 +73,8 @@ test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear c
     const imported = await detectPuzzle(encode(thermoExport(boxRows)))
     assert.equal(imported.givens, '1' + '0'.repeat(35))
     assert.deepEqual(imported.grid, { size: 6, boxRows, boxColumns: 6 / boxRows })
-    assert.deepEqual(imported.sixRules, [{ type: 'thermometer', cells: [0, 1, 2, 3] }])
-    assert.equal(imported.sixAuthor, 'Test author')
+    assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [0, 1, 2, 3] }])
+    assert.equal(imported.sizedAuthor, 'Test author')
   }
 })
 
@@ -100,11 +100,27 @@ test('6 × 6 SudokuPad lines combine Renban with a thermometer and expand skippe
   const clause = 'Digits along a pink line form a set of non-repeating consecutive digits in any order.'
   const imported = await detectPuzzle(encode({ ...source, lines: [pink, ...source.lines],
     metadata: { ...source.metadata, rules: source.metadata.rules + '\n\n' + clause } }))
-  assert.deepEqual(imported.sixRules, [
+  assert.deepEqual(imported.sizedRules, [
     { type: 'renban', cells: [6, 7, 8] },
     { type: 'thermometer', cells: [0, 1, 2, 3] },
   ])
   const pure = await detectPuzzle(encode({ ...source, lines: [pink], underlays: [],
     metadata: { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] + '\n\n' + clause } }))
-  assert.deepEqual(pure.sixRules, [{ type: 'renban', cells: [6, 7, 8] }])
+  assert.deepEqual(pure.sizedRules, [{ type: 'renban', cells: [6, 7, 8] }])
+})
+
+test('compact SudokuPad retains empty cells, escaped metadata, and drawing layers', () => {
+  const encoded = 'scl' + lzString.compressToBase64("{id:'compact',ca:[{v:'author: A\\'B'},{v:'rules: First\\nSecond'}],ce:[[,{v:3},,]],cs:50,u:[{ct:[0.5,0.5],r:t,c2:#0}],o:[{ct:[1,0.5],c1:#F,c2:001122}]}")
+  const decoded = decodeSudokuPadEnvelope(encoded) as Record<string, unknown>
+  assert.deepEqual(decoded.cells, [[{}, { value: 3 }, {}, {}]])
+  assert.deepEqual(decoded.metadata, { author: "A'B", rules: 'First\nSecond' })
+  assert.deepEqual(decoded.underlays, [{ center: [0.5, 0.5], rounded: true, backgroundColor: '#000000' }])
+  assert.deepEqual(decoded.overlays, [{ center: [1, 0.5], borderColor: '#ffffff', backgroundColor: '#001122' }])
+
+  for (const malformed of [
+    "{ce:[[,,,]],cells:[]}",
+    "{ce:[[,,,]],ca:[{v:'title: A'},{v:'title: B'}]}",
+    "{ce:[[,,,]],ce:[]}",
+    "{ce:[[,,,]]}junk",
+  ]) assert.throws(() => decodeSudokuPadEnvelope('scl' + lzString.compressToBase64(malformed)), /does not contain a supported puzzle export/)
 })

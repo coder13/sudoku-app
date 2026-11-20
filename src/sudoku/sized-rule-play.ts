@@ -1,12 +1,12 @@
-import { EngineError, runEngine, type HintChoice, type House, type SixGrid, type SizedConstraintStep } from './engine.ts'
+import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
-import { gridDiagonalCells } from './grid.ts'
-import { sixPosition, type SixGame } from './six-game.ts'
+import { gridDiagonalCells, type SizedGrid } from './grid.ts'
+import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIX_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-contradiction'] as const
 
-function sixHintChoice({ rules }: SixGame, step: SizedConstraintStep, size: number): HintChoice {
+function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, size: number): HintChoice {
   if (step.type === 'house') return miniHintChoice(step.proof)
   if (step.type === 'contradiction') return contradictionHint(rules, step, size)
   const { actions, rule: index } = step
@@ -38,7 +38,7 @@ function sixHintChoice({ rules }: SixGame, step: SizedConstraintStep, size: numb
   }
 }
 
-function contradictionHint(rules: SixGame['rules'], { assumption, placements, failure }: Extract<SizedConstraintStep, { type: 'contradiction' }>, size: number): HintChoice {
+function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placements, failure }: Extract<SizedConstraintStep, { type: 'contradiction' }>, size: number): HintChoice {
   const reference = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
   const houseName = (house: House) => 'row' in house ? `row ${house.row + 1}`
     : 'column' in house ? `column ${house.column + 1}`
@@ -78,7 +78,7 @@ function contradictionHint(rules: SixGame['rules'], { assumption, placements, fa
   }
 }
 
-function checkSixHintPosition({ solution }: SixGame, values: string, eliminations?: readonly number[]) {
+function checkSizedRuleHintPosition({ solution }: SizedRuleGame, values: string, eliminations?: readonly number[]) {
   if (Array.from(values).some((digit, cell) => digit !== '0' && digit !== solution[cell])) {
     throw new EngineError('The placed digits conflict with this puzzle’s solution.', 'conflict')
   }
@@ -87,23 +87,23 @@ function checkSixHintPosition({ solution }: SixGame, values: string, elimination
   }
 }
 
-export async function sixCandidates(game: SixGame, grid: SixGrid, values: string, eliminations?: readonly number[]) {
-  const candidates = await runEngine({ type: 'sized-variant', position: sixPosition(grid, game, values), operation: 'candidates' })
+export async function sizedRuleCandidates(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[]) {
+  const candidates = await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'candidates' })
   return candidates?.map((mask, cell) => mask & ~(eliminations?.[cell] ?? 0)) ?? null
 }
 
-export async function sixHintChoices(game: SixGame, grid: SixGrid, values: string, eliminations?: readonly number[], run = runEngine) {
-  checkSixHintPosition(game, values, eliminations)
-  const result = await run({ type: 'sized-variant', position: sixPosition(grid, game, values), operation: 'hints', eliminations, limit: 1024 })
-  return result && { choices: result.choices.map(step => sixHintChoice(game, step, grid.size)), candidates: result.candidates }
+export async function sizedRuleHintChoices(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], run = runEngine) {
+  checkSizedRuleHintPosition(game, values, eliminations)
+  const result = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'hints', eliminations, limit: 1024 })
+  return result && { choices: result.choices.map(step => sizedRuleHintChoice(game, step, grid.size)), candidates: result.candidates }
 }
 
-export async function sixSolutionTrace(game: SixGame, grid: SixGrid, givens: string): Promise<MiniSolutionTrace> {
-  const trace = await runEngine({ type: 'sized-variant', position: sixPosition(grid, game, givens), operation: 'trace' })
+export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGrid, givens: string): Promise<MiniSolutionTrace> {
+  const trace = await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, game, givens), operation: 'trace' })
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
-    const choice = deduction && sixHintChoice(game, deduction, grid.size)
+    const choice = deduction && sizedRuleHintChoice(game, deduction, grid.size)
     if (choice) steps.push(choice)
     return {
       givens, entries: digits.map((digit, cell) => givens[cell] === '0' ? digit : 0).join(''),
@@ -114,11 +114,11 @@ export async function sixSolutionTrace(game: SixGame, grid: SixGrid, givens: str
   return { board, steps, positions, status: board === game.solution ? 'solved' : 'stalled' }
 }
 
-export async function sixSingles(game: SixGame, grid: SixGrid, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
+export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
   const removed = hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size)
-  checkSixHintPosition(game, values, removed)
+  checkSizedRuleHintPosition(game, values, removed)
   const trace = await runEngine({
-    type: 'sized-variant', position: sixPosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
+    type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
   })
   return trace?.at(-1)?.digits.join('') ?? values
 }

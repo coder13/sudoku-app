@@ -6,7 +6,7 @@ import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
-import { isSixRuleList, restoreSixGame } from './six-game.ts'
+import { isSizedRuleList, restoreSizedRuleGame } from './sized-rule-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSharedPuzzleId } from './puzzle-sharing.ts'
@@ -56,15 +56,22 @@ function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
   })
 }
 
-function validPosition(value: unknown, grid: PlayGrid, cageDraft: boolean, sixDraft: boolean): value is Position {
+function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft: boolean): value is Position {
   if (!value || typeof value !== 'object') return false
-  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSixRules } = value as Position
+  const position = value as Position & { draftSixRules?: Position['draftSizedRules'] }
+  if (position.draftSixRules !== undefined) {
+    if (grid.size !== 6 || position.draftSizedRules !== undefined) return false
+    position.draftSizedRules = position.draftSixRules
+    delete position.draftSixRules
+  }
+  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules } = position
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
-    (sixDraft ? isSixRuleList(draftSixRules) : draftSixRules === undefined) &&
+    (draftSizedRules === undefined ? !(draft && grid.size === 6) :
+      draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid.size)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
     (eliminations === undefined || validDigits(eliminations, mask))
@@ -73,17 +80,23 @@ function validPosition(value: unknown, grid: PlayGrid, cageDraft: boolean, sixDr
 export function readGame(id: string, data: string | null): Game | undefined {
   if (!data) return
   try {
-    const value = JSON.parse(data) as Game
+    const value = JSON.parse(data) as Game & { six?: Game['sized'] }
     if (value.grid !== undefined && (!isSizedGrid(value.grid) || value.variant !== undefined)) return
     const grid = value.grid ?? CLASSIC_GRID
-    const sixDraft = grid.size === 6 && value.source === 'draft'
-    const cageDraft = Boolean(grid.size === 4 && value.source === 'draft' && value.position?.draftCages !== undefined)
+    const draft = value.source === 'draft'
+    const cageDraft = draft && grid.size === 4 && value.position?.draftCages !== undefined
+    if (value.six !== undefined) {
+      if (grid.size !== 6 || value.sized !== undefined) return
+      value.sized = value.six
+      delete value.six
+    }
     if (
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
-      validPosition(value.position, grid, cageDraft, sixDraft) && Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, cageDraft, sixDraft)) &&
-      Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, cageDraft, sixDraft)) &&
+      validPosition(value.position, grid, draft, cageDraft) &&
+      Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, draft, cageDraft)) &&
+      Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, draft, cageDraft)) &&
       Number.isSafeInteger(value.elapsed) && value.elapsed >= 0 && Number.isSafeInteger(value.created) &&
       typeof value.started === 'boolean' && typeof value.paused === 'boolean' &&
       (value.saved === undefined || typeof value.saved === 'boolean') &&
@@ -97,12 +110,12 @@ export function readGame(id: string, data: string | null): Game | undefined {
         if (!algebraic) return
         value.algebraic = algebraic
       }
-      if (grid.size === 6 && !sixDraft) {
-        if (!value.six) return
-        const six = restoreSixGame(value.six, grid, value.givens)
-        if (!six) return
-        value.six = six
-      } else if (value.six !== undefined) return
+      if (value.sized !== undefined) {
+        if (grid.size === 9 || draft || value.algebraic || !value.sized) return
+        const sized = restoreSizedRuleGame(value.sized, grid, value.givens)
+        if (!sized) return
+        value.sized = sized
+      } else if (grid.size === 6 && !draft) return
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
@@ -453,7 +466,8 @@ export const roomStore = {
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   playedMiniGivens() {
-    const result = new Set(room.games.filter(game => game.grid?.size === 4 && !game.algebraic && game.source !== 'draft').map(game => game.givens))
+    const result = new Set(room.games.filter(game =>
+      game.grid?.size === 4 && !game.algebraic && !game.sized && game.source !== 'draft').map(game => game.givens))
     try {
       for (const key of Object.keys(localStorage)) {
         if (!key.startsWith(SEEN_PREFIX)) continue
@@ -465,7 +479,7 @@ export const roomStore = {
   },
   playedSixGivens(boxRows: 2 | 3) {
     const result = new Set(room.games.filter(game => game.grid?.size === 6 && game.grid.boxRows === boxRows &&
-      game.six?.rules.length === 0 && game.source !== 'draft').map(game => game.givens))
+      game.sized?.rules.length === 0 && game.source !== 'draft').map(game => game.givens))
     const prefix = `${SEEN_PREFIX}six:${boxRows}:`
     try {
       for (const key of Object.keys(localStorage)) {

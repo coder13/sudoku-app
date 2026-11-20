@@ -8,7 +8,7 @@ import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
-import { verifySixPuzzle } from '../sudoku/six-game'
+import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
 import { MINI_GRID, sixGridForBoxRows } from '../sudoku/grid'
 import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, SIX_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
@@ -55,10 +55,10 @@ export function usePuzzleGeneration() {
         const grid = sixGridForBoxRows(options?.boxRows)
         const exclude = roomStore.playedSixGivens(grid.boxRows).map(givens => Array.from(givens, Number))
         const givens = (await runEngine({ type: 'generate-six', seed, difficulty, grid, exclude })).join('')
-        const six = await verifySixPuzzle({ grid, givens, rules: [] })
+        const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] })
         if (!mounted.current) return
         const game = makeGame(createGameId(), nextPuzzleTitle(`${SIX_NAME} `), givens, 'generated', undefined, grid)
-        roomStore.add({ ...game, six, difficulty, score: null })
+        roomStore.add({ ...game, sized, difficulty, score: null })
         onGenerated?.()
         return
       }

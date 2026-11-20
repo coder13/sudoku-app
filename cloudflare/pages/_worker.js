@@ -121,16 +121,18 @@ const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
-const sixCell = integer(0, 35)
-const sixRenban = value =>
-  fields(value, { type: oneOf('renban'), cells: list(sixCell, 1, 6) }, { segments: list(list(sixCell, 1, 128), 1, 128) }) &&
-  new Set(value.cells).size === value.cells.length &&
-  (value.segments === undefined || new Set(value.segments.flat()).size === value.cells.length &&
-    value.segments.every(part => part.every(cell => value.cells.includes(cell))))
-const sixRule = value => sixRenban(value) || fields(value, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
-  fields(value, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(integer(0, 35), 1, 36) }) ||
-  (fields(value, { type: oneOf('thermometer'), cells: list(integer(0, 35), 2, 6) }) && new Set(value.cells).size === value.cells.length)
-const sixRules = list(sixRule, 0, 128)
+function sizedRules(value, size) {
+  const cell = integer(0, size * size - 1)
+  const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+    fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
+    (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: list(list(cell, 1, 128), 1, 128) }) &&
+      new Set(rule.cells).size === rule.cells.length &&
+      (rule.segments === undefined || new Set(rule.segments.flat()).size === rule.cells.length &&
+        rule.segments.every(part => part.every(index => rule.cells.includes(index)))))
+  return list(valid, size === 4 ? 1 : 0, 128)(value)
+}
+const ruleAuthor = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 72
 const algebraicCage = value => {
   if (!fields(value, { type: oneOf('algebraic-cage'), cells: list(integer(0, 15), 1, 4), label: label => typeof label === 'string',
     total: total => fields(total, { type: oneOf('fixed'), value: integer(1, 10) }) ||
@@ -210,10 +212,13 @@ async function sharePuzzle(request, db, path) {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
       givens: value => givens(value, data.grid?.size),
     }, { grid: value => miniGrid(value) || sixGrid(value), algebraic: value => data.grid?.size === 4 && algebraic(value),
-      sixRules: value => data.grid?.size === 6 && sixRules(value),
-      sixAuthor: value => data.grid?.size === 6 && typeof value === 'string' && value.trim().length > 0 && value.length <= 72,
+      sixRules: value => data.grid?.size === 6 && sizedRules(value, 6) && !Object.hasOwn(data, 'sizedRules'),
+      sixAuthor: value => Object.hasOwn(data, 'sixRules') && ruleAuthor(value),
+      sizedRules: value => (data.grid?.size === 4 || data.grid?.size === 6) &&
+        !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid.size),
+      sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
-      (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules'))) {
+      (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }
     const id = crypto.randomUUID()

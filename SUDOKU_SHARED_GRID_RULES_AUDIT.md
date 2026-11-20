@@ -6,7 +6,8 @@
 
 - [TVDK’s published 6×6 Renban](https://sudokupad.app/f3ownh9dic) still imports with five paths and author credit. Chrome verified a hint, undo and redo, the complete solution, and a mobile share preview.
 - The same Wasm Renban request checked candidates, uniqueness, exact solution, and replay on 4×4, both 6×6 layouts, both 8×8 layouts, 10×10, 12×12 and 16×16. A 5×5 irregular control composes Renban and parity. Independent enumeration found one completion with both rules and multiple completions with either rule removed.
-- [Michael Lefkowitz’s published 4×4 Renban](https://sudokupad.app/g0b07xt4eu) reached its independently verified answer in 25 steps after research decoding. Chrome drew all four paths and exposed their cell descriptions in the shared Board at desktop and phone widths. The original short-link flow still needs compact SCL decoding under [#282](https://github.com/coder13/sudoku-app/issues/282) plus the shared import, editor, save, and share integration under [#224](https://github.com/coder13/sudoku-app/issues/224) and [#284](https://github.com/coder13/sudoku-app/issues/284).
+- Michael Lefkowitz’s published 4×4 Renban imports through the normal short-link flow. Chrome checked all four clues, author credit, Technique Finder, hint application, undo and redo, reload, the final grid, and a mobile share. A separate two-line draft verified editing, saved rules, and sharing. [Published 4×4 puzzle](https://sudokupad.app/g0b07xt4eu)
+- The compact SCL decoder preserves the Thermometer bulbs and Kropki overlays in the accompanying published samples. The authored rule checks stop imports when a puzzle has markings or semantics the sized solver cannot verify. [Beginner variant pack](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=000GOJ)
 - For 10–16 digits, each candidate interval uses perfect matching and alternating-cycle reachability. An independent enumerator checked sparse 4–7-cell lines, and a full 16-cell case checked an impossible set of three cells with only two digits.
 
 ## Wasm timings
@@ -26,3 +27,5 @@ Local app-profile Wasm builds, with paired alternating requests for the released
 | 16×16 full-length line walkthrough near completion | — | 348 µs | 381 µs |
 
 The first hint request on an empty 16×16 control with a full-length Renban fell from about 152 ms to 5.3 ms after sizing the assumption work budget to the digit and cell counts. Both prototype runs found zero hints. The 6×6 budget stayed at 2,048 assumption steps.
+
+On the published 4×4 Renban, 200 warm application calls measured 76 µs median for code decoding and 112 µs for decoding, uniqueness, solving, and building the preview. Candidates took 10 µs, Renban hints took 21 µs, and the 25-step walkthrough took 84 µs. The preview measurement starts with the fetched code and excludes HTTP latency.

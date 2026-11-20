@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { applyDeduction, fillEntries, isSolved, puzzleIdentity, restartGame, undo } from '../src/sudoku/game.ts'
+import { applyDeduction, fillEntries, isSolved, makeGame, puzzleIdentity, restartGame, undo } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
@@ -52,13 +52,13 @@ test('a Coach short link preserves 6 × 6 rules through Play, undo, reload and s
     return Response.json(shared)
   })
   const { game } = await prepareImportedPuzzle('https://sudoku.coach/en/s/Test6')
-  const { six, grid } = game
-  assert.ok(six && grid?.size === 6)
-  assert.equal(six.solution, expected)
+  const { sized, grid } = game
+  assert.ok(sized && grid?.size === 6)
+  assert.equal(sized.solution, expected)
   assert.equal(isSolved(fillEntries(game, expected)), true)
-  assert.deepEqual(restartGame(game).six, six)
+  assert.deepEqual(restartGame(game).sized, sized)
   assert.notEqual(puzzleIdentity(game), puzzleIdentity({ ...game, grid: { size: 6, boxRows: 3, boxColumns: 2 } }))
-  assert.notEqual(puzzleIdentity(game), puzzleIdentity({ ...game, six: { ...six, rules: [] } }))
+  assert.notEqual(puzzleIdentity(game), puzzleIdentity({ ...game, sized: { ...sized, rules: [] } }))
   const candidates = await playCandidates(game)
   assert.ok(candidates?.every((mask, cell) => game.givens[cell] !== '0' || mask & (1 << (Number(expected[cell]) - 1))))
   const hint = await puzzleHints(game, 'all', 'sized-parity')
@@ -66,12 +66,13 @@ test('a Coach short link preserves 6 × 6 rules through Play, undo, reload and s
   const moved = applyDeduction(game, hint.choices[0].actions, hint.candidates)
   assert.notDeepEqual(moved.position, game.position)
   assert.deepEqual(undo(moved).position, game.position)
-  assert.deepEqual(readGame(moved.id, JSON.stringify(moved))?.six, six)
-  assert.equal(readGame(game.id, JSON.stringify({ ...game, six: undefined })), undefined)
+  assert.deepEqual(readGame(moved.id, JSON.stringify(moved))?.sized, sized)
+  assert.deepEqual(readGame(moved.id, JSON.stringify({ ...moved, sized: undefined, six: sized }))?.sized, sized)
+  assert.equal(readGame(game.id, JSON.stringify({ ...game, sized: undefined })), undefined)
   assert.equal(await publishSharedPuzzle(moved), shareId)
-  assert.deepEqual(shared, { version: 1, title: game.title, givens: game.givens, grid, sixRules: six.rules })
+  assert.deepEqual(shared, { version: 1, title: game.title, givens: game.givens, grid, sixRules: sized.rules })
   const copy = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
-  assert.deepEqual(copy.game.six, six)
+  assert.deepEqual(copy.game.sized, sized)
   const replay = await puzzleSolution(game)
   assert.equal(replay.status, 'solved')
   assert.equal(replay.board, expected)
@@ -82,6 +83,20 @@ test('a Coach short link preserves 6 × 6 rules through Play, undo, reload and s
     if ('place' in action) assert.equal(action.place.digit, Number(expected[action.place.cell]))
     else assert.notEqual(action.eliminate.digit, Number(expected[action.eliminate.cell]))
   }
+})
+
+test('older 6 × 6 drafts migrate rule lists in current, undo and redo positions', () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 } as const
+  const game = makeGame('legacy-draft', 'Old draft', '0'.repeat(36), 'draft', undefined, grid)
+  const rules = [{ type: 'renban', cells: [0, 1, 2] }]
+  const restored = readGame(game.id, JSON.stringify({
+    ...game, position: { ...game.position, draftSixRules: rules },
+    past: [{ ...game.position, draftSixRules: [] }], future: [{ ...game.position, draftSixRules: rules }],
+  }))
+  assert.deepEqual(restored?.position.draftSizedRules, rules)
+  assert.deepEqual(restored?.past[0].draftSizedRules, [])
+  assert.deepEqual(restored?.future[0].draftSizedRules, rules)
+  assert.ok(!Object.hasOwn(restored!.position, 'draftSixRules'))
 })
 
 test('6 × 6 generation meets both difficulty recipes in both box orientations', async () => {
