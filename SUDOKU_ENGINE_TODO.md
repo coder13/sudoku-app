@@ -972,6 +972,8 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 ## Existing 9×9 variant usability review
 
 - [x] Finish the current Inequality integration and inventory all 28 existing 9×9 variants plus Classic, existing rule configurations and representative combined-rule controls for [281](https://github.com/coder13/sudoku-app/issues/281). Record current construction paths, existing automated evidence, known human-reasoning gaps and pending browser approval in the [review inventory](SUDOKU_VARIANT_USABILITY_AUDIT.md).
+- [x] Reproduce the complete FzzD source in the built-in browser. Check its seven opening hints, applied removals, undo/redo/reload, twelve Finder targets and six remaining comparison proofs. Prepare an explicit partial-result notice with 777 passing app tests and actual mobile/desktop captures. [Review and screenshots](uat/2026-11-19/variant-quality/README.md).
+- [ ] Approve the partial-result screenshots, pass final PR checks, merge the presentation fix and confirm production deployment starts.
 - [ ] Review actual rendering at narrow/desktop sizes, in light/dark themes and with larger text. Share screenshots for approval before merging broader visual changes.
 - [ ] Verify combined-rule import/play/input/candidates/conflicts, both Pencil modes, undo/redo, save/reload and sharing without losing any source constraint.
 - [ ] Verify several sound hints when available, selected techniques, proof provenance, pages and counts across existing variants and combined rules. Investigate actual coverage gaps.
