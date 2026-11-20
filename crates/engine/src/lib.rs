@@ -69,7 +69,7 @@ pub use sized::{
 #[cfg(feature = "variants")]
 pub use sized::{
     SizedConstraint, SizedConstraintFailure, SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep,
-    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity,
+    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity, SizedSumEnd,
 };
 #[cfg(feature = "generation")]
 pub use sized::{MiniDifficulty, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};

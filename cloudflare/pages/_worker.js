@@ -148,6 +148,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
       segments.every(part => part.every(index => cells.includes(index))))
   const region = cell => regions ? regions.findIndex(part => part.includes(cell)) : Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
+  const sumEnd = value => cell(value) || fields(value, { direction: oneOf('north', 'east', 'south', 'west'), index: integer(0, size - 1) })
   const occupiedCages = new Set()
   const validCage = cage => {
     if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
@@ -171,6 +172,10 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('linked-double-arrow'), ends: list(sumEnd, 2, 2), cells: list(cell, 1, size * size) }) &&
+      new Set(rule.cells).size === rule.cells.length && rule.ends.some(end => !cell(end)) &&
+      rule.ends.every(end => !cell(end) || !rule.cells.includes(end)) &&
+      (!rule.ends.every(end => !cell(end)) || rule.ends[0].direction !== rule.ends[1].direction || rule.ends[0].index !== rule.ends[1].index)) ||
     (fields(rule, { type: oneOf('double-arrow'), ends: list(cell, 2, 2), cells: list(cell, 1, 2 * size) }) &&
       new Set([...rule.ends, ...rule.cells]).size === rule.cells.length + 2) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||

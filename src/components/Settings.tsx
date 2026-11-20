@@ -228,6 +228,14 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
         </div>
       </div>
       <GuideSetting appearance={appearance} setAppearance={setAppearance} heading={false} />
+      <label className="settings-select settings-select-inline">
+        <span><strong>Puzzle controls position</strong><small>Place the difficulty, timer, pause button, and puzzle menu above or below the grid.</small></span>
+        <SelectControl aria-label="Puzzle controls position" value={appearance.puzzleControlsPosition}
+          onChange={(event) => setAppearance({ ...appearance, puzzleControlsPosition: event.target.value === 'bottom' ? 'bottom' : 'top' })}>
+          <option value="top">Top</option>
+          <option value="bottom">Bottom</option>
+        </SelectControl>
+      </label>
       <div className="setting-row-heading text-size-setting">
         <span><strong>Puzzle text size</strong><small>Adjust digits and candidates in the Sudoku grid.</small></span>
         <div className="size-stepper" role="group" aria-label="Puzzle text size">

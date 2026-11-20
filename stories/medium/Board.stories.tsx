@@ -75,6 +75,17 @@ export const SixDoubleArrows: Story = {
   },
   decorators: [(Story) => <Width width={350}><Story /></Width>],
 }
+export const LinkedDoubleArrowXSum: Story = {
+  args: {
+    grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: '0'.repeat(36), values: '0'.repeat(36),
+    sizedRules: [
+      { type: 'linked-double-arrow', ends: [{ direction: 'south', index: 1 }, { direction: 'east', index: 1 }], cells: [0] },
+      { type: 'linked-double-arrow', ends: [{ direction: 'west', index: 3 }, { direction: 'north', index: 2 }], cells: [29, 28, 33] },
+    ],
+    selected: [0],
+  },
+  decorators: [(Story) => <Width width={365}><Story /></Width>],
+}
 export const SevenBoxlessKiller: Story = {
   args: {
     grid: SEVEN_BOXLESS_GRID, givens: '0'.repeat(49), values: '0'.repeat(49),

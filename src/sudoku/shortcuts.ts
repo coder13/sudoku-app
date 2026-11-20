@@ -7,7 +7,6 @@ export type EditableShortcutId =
   | 'switchColorShade'
   | 'eraseMode'
   | 'chainDrawing'
-  | 'newChain'
   | 'applyEdits'
   | 'actions'
   | 'generateCandidates'
@@ -36,7 +35,6 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
   switchColorShade: 'z',
   eraseMode: 'e',
   chainDrawing: 'x',
-  newChain: 'b',
   applyEdits: 'f',
   actions: 'a',
   generateCandidates: 'g',
@@ -53,8 +51,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates.', category: 'Input modes' },
   { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
-  { id: 'chainDrawing', label: 'Draw links', description: 'Open Chains and start drawing links, or stop drawing.', category: 'Input modes' },
-  { id: 'newChain', label: 'New chain', description: 'Start a separate chain while the Chains panel is open.', category: 'Puzzle actions' },
+  { id: 'chainDrawing', label: 'Toggle draw links', description: 'Start drawing links in Chains or return to your previous input mode.', category: 'Input modes' },
   { id: 'applyEdits', label: 'Apply edits', description: 'Apply a fully revealed hint or available edits from Chains.', category: 'Puzzle actions' },
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
   { id: 'generateCandidates', label: 'Generate candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
@@ -129,7 +126,7 @@ export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
   }
   const next = { ...DEFAULT_SHORTCUTS }
   const savedKeys = ids.map((id) => saved[id])
-  for (const id of ['pencilMode', 'chainDrawing', 'newChain', 'switchColorShade', 'applyEdits'] as const) {
+  for (const id of ['pencilMode', 'chainDrawing', 'switchColorShade', 'applyEdits'] as const) {
     if (saved[id] !== undefined || !savedKeys.includes(next[id])) continue
     const reserved = new Set([...Object.values(next), ...savedKeys])
     const fallbackKeys = id === 'pencilMode' ? 'pabcdefghijklmnopqrstuvwxyz' : 'abcdefghijklmnopqrstuvwxyz'

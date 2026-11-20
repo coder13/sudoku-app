@@ -9,7 +9,7 @@ import { coachConnectedLines } from './coach-lines.ts'
 import { closedRegionSumCells, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
-import { readSizedRuleSudokuPad } from './sized-rule-sudoku-pad.ts'
+import { readLinkedDoubleArrowSudokuPad, readSizedRuleSudokuPad } from './sized-rule-sudoku-pad.ts'
 import { isSizedRuleList, type SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicDefinition } from './algebraic-game.ts'
 import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle, type VariantGame } from './variants.ts'
@@ -672,6 +672,10 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
   if (/^(scl|ctc)/i.test(code)) {
     const data = decodeSudokuPadEnvelope(code)
+    if (record(data) && Array.isArray(data.cells) && Array.isArray(data.regions) &&
+      (data.regions.length === 4 || data.regions.length === 6) && data.cells.length === data.regions.length + 2) {
+      return { ...readLinkedDoubleArrowSudokuPad(data), format }
+    }
     if (record(data) && Array.isArray(data.cells) && (data.cells.length === 6 ||
       data.cells.length === 4 && ['lines', 'underlays', 'overlays', 'arrows'].some(field => Object.hasOwn(data, field)))) {
       return { ...readSizedRuleSudokuPad(data), format }

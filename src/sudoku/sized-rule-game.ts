@@ -1,3 +1,4 @@
+import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
 import { runEngine, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, sizedClassicPosition, type SizedGrid } from './grid.ts'
@@ -57,6 +58,13 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= size &&
         Number.isInteger(rule.circle) && rule.circle >= 0 && rule.circle < size ** 2 &&
         !cells.includes(rule.circle) && new Set(cells).size === cells.length
+    }
+    if (rule.type === 'linked-double-arrow') {
+      const ends: unknown = rule.ends
+      return Object.keys(rule).length === 3 && cells.length >= 1 && new Set(cells).size === cells.length &&
+        Array.isArray(ends) && ends.length === 2 && ends.every(end => isSizedSumEnd(end, size)) &&
+        ends.some(end => typeof end !== 'number') && sizedSumEndKey(ends[0]) !== sizedSumEndKey(ends[1]) &&
+        ends.every(end => typeof end !== 'number' || !cells.includes(end))
     }
     if (rule.type === 'double-arrow') {
       return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= 2 * size &&
@@ -122,6 +130,8 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     } else if (rule.type === 'region-sum') {
       const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
       if (new Set(totals).size !== 1) return
+    } else if (rule.type === 'linked-double-arrow') {
+      if (linkedDoubleArrowConflicts(rule, solution, grid.size)) return
     } else if (rule.type === 'arrow' || rule.type === 'double-arrow') {
       const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
       const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + Number(solution[cell]), 0)
@@ -156,6 +166,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
       ? `The digits on a Region Sum line have the same total in each ${group}. All cells in the same ${group} count together.`
       : `${group === 'region' ? 'Region' : 'Box'} borders split a Region Sum line into segments with the same total. If the line returns to a ${group}, that visit is a separate segment.`)
+    else if (rule.type === 'linked-double-arrow') {
+      clues.add('The digits on each Double Arrow line add up to the two end-circle values.')
+      clues.add('An outside end circle is an X-Sum. The first digit tells how many cells to add from that end, including the first cell.')
+    }
     else if (rule.type === 'double-arrow') clues.add('The digits along each Double Arrow add up to the sum of the digits in its two end circles.')
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')

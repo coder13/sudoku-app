@@ -334,6 +334,7 @@ export function Worktable({
   const setShowStrongLinks = (value: SetStateAction<boolean>) => playSession.set(game.id, 'showStrongLinks', value)
   const [experimentalMode] = useExperimentalMode()
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
+  const drawingReturn = useRef<{ gameId: string; tab: ToolPanelTab; highlight: boolean } | null>(null)
   const [failedChainActions, setFailedChainActions] = useState<readonly DeductionAction[] | null>(null)
   const [chainColorsOpen, setChainColorsOpen] = useState(false)
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
@@ -382,6 +383,7 @@ export function Worktable({
   const [singlesCheck, setSinglesCheck] = useState<{ givens: string; variant: Game['variant']; needsMore: boolean }>()
   const boardRef = useRef<HTMLDivElement>(null)
   const puzzleStageRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
   const puzzleCardRef = useRef<HTMLElement>(null)
   const puzzleGridBorderRef = useRef<HTMLDivElement>(null)
@@ -517,6 +519,8 @@ export function Worktable({
   const showMobileResults = mobile && showResults && !previewing
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
+  const puzzleControlsBelow = appearance.puzzleControlsPosition === 'bottom' && !draft && !placeholder
+  const floatingPuzzleMenu = mobile || puzzleControlsBelow
   const chainsVisible = !grid && (mobile ? activeToolPanel === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
   const subsetsVisible = experimentalMode && (mobile ? activeToolPanel === 'subsets'
@@ -805,20 +809,23 @@ export function Worktable({
   useLayoutEffect(() => {
     const menu = puzzleMenuPopupRef.current
     const button = puzzleMenuButtonRef.current
-    if (!mobile || !puzzleMenuMounted || !menu || !button) return
+    if (!floatingPuzzleMenu || !puzzleMenuMounted || !menu || !button) return
 
     menu.showPopover?.()
     const position = () => {
       const anchor = button.getBoundingClientRect()
       const gap = 8
+      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
       const below = window.innerHeight - anchor.bottom - 2 * gap
       const above = anchor.top - 2 * gap
-      const opensAbove = menu.scrollHeight + 2 > below && above > below
-      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below)}px`
+      const menuHeight = (menu.scrollHeight + 2) * scale
+      const opensAbove = puzzleControlsBelow ? above > 0 && above >= Math.min(below, menuHeight) : menuHeight > below && above > below
+      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below) / scale}px`
       const right = Math.min(anchor.right, window.innerWidth - gap)
-      const top = opensAbove ? anchor.top - gap - menu.offsetHeight : anchor.bottom + gap
-      menu.style.left = `${Math.max(gap, right - menu.offsetWidth)}px`
-      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - menu.offsetHeight - gap))}px`
+      const height = menu.offsetHeight * scale
+      const top = opensAbove ? anchor.top - gap - height : anchor.bottom + gap
+      menu.style.left = `${Math.max(gap, right - menu.offsetWidth * scale) / scale}px`
+      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - height - gap)) / scale}px`
       menu.style.transformOrigin = opensAbove ? 'bottom right' : 'top right'
     }
     position()
@@ -829,7 +836,7 @@ export function Worktable({
       window.removeEventListener('scroll', position, true)
       menu.removeAttribute('style')
     }
-  }, [mobile, puzzleMenuMounted])
+  }, [floatingPuzzleMenu, puzzleControlsBelow, puzzleMenuMounted])
 
   useEffect(() => {
     if (!actionsOpen || mobile) return
@@ -1194,8 +1201,20 @@ export function Worktable({
     sketch.setHighlightedDigit(digit === 0 || chainHighlightDigit === digit ? null : digit)
   }
 
+  function rememberInputBeforeDrawing() {
+    drawingReturn.current = { gameId: id, tab: activeToolPanel, highlight: savedHighlightMode }
+    if (savedHighlightMode) setSavedHighlightMode(false)
+  }
+
   function stopDrawingAndFocusGrid() {
+    setStartDrawingOnOpen(false)
     sketch.stop()
+    const previous = drawingReturn.current
+    drawingReturn.current = null
+    if (previous?.gameId === id) {
+      if (previous.highlight) setSavedHighlightMode(true)
+      if (activeToolPanel === 'chains') selectToolPanel(previous.tab)
+    }
     requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
   }
 
@@ -1349,8 +1368,13 @@ export function Worktable({
   }
 
   function toggleChainDrawing() {
-    if (!sketch.drawing && savedHighlightMode) setHighlightMode(false)
-    sketch.toggle()
+    if (sketch.drawing || startDrawingOnOpen) {
+      stopDrawingAndFocusGrid()
+      return
+    }
+    rememberInputBeforeDrawing()
+    if (savedHighlightMode) setStartDrawingOnOpen(true)
+    else sketch.toggle()
   }
 
   function continueColorGroup() {
@@ -1591,16 +1615,22 @@ export function Worktable({
         if (!event.repeat) toggleHighlightMode()
         return
       }
+      const cancelTool = key === 'escape' && !variantRulesOpen &&
+        !(target instanceof HTMLElement && target.closest('dialog[open], [popover]:popover-open'))
+      if (cancelTool && (sketch.drawing || startDrawingOnOpen)) {
+        event.preventDefault()
+        if (!event.repeat) stopDrawingAndFocusGrid()
+        return
+      }
       if (drawLinksShortcut && !variantRulesOpen && panelAvailable('chains') && (!disabled || previewing)) {
         event.preventDefault()
         if (event.repeat) return
-        if (sketch.drawing) stopDrawingAndFocusGrid()
-        else if (!chainsVisible || previewing) {
-          if (savedHighlightMode) setHighlightMode(false)
+        if (sketch.drawing || startDrawingOnOpen) stopDrawingAndFocusGrid()
+        else if (!chainsVisible || previewing || !currentNotes) {
+          rememberInputBeforeDrawing()
           setStartDrawingOnOpen(true)
-          showChains()
+          if (!chainsVisible || previewing) showChains()
         } else if (chainGraph && canAnalyzeChains) toggleChainDrawing()
-        else if (!currentNotes) setStartDrawingOnOpen((open) => !open)
         return
       }
       if (previewing) return
@@ -1617,24 +1647,15 @@ export function Worktable({
         setActionsOpen(true)
         return
       }
-      if (chainsVisible && chainGraph && shortcutMatches(event, shortcuts, 'newChain')) {
-        event.preventDefault()
-        if (event.repeat) return
-        sketch.addSketch()
-        if (!sketch.drawing) toggleChainDrawing()
-        return
-      }
       if (event.key === 'Control' || event.key === 'Meta') {
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
       }
       const highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
       if (sketch.drawing || browsingStrongLinks) {
-        if (key === 'escape') {
+        if (cancelTool && browsingStrongLinks) {
           event.preventDefault()
-          if (browsingStrongLinks) setShowStrongLinks(false)
-          else if (sketch.pending === null) stopDrawingAndFocusGrid()
-          else sketch.endPath()
+          if (!event.repeat) setShowStrongLinks(false)
         } else if (shortcut && key === 'z' && !event.shiftKey) {
           event.preventDefault()
           if (sketch.canUndo) sketch.undo()
@@ -1654,7 +1675,9 @@ export function Worktable({
       if (inspectSubset && !shortcut && (/^[0-9]$/.test(key) || ['backspace', 'delete', 'escape'].includes(key))) {
         event.preventDefault()
         if (key === 'escape') setSelected([])
-      } else if (key === 'escape' && (brush !== null || paintingCandidates)) {
+      } else if (cancelTool && !cellColorsDisabled && (brush !== null || colorMode || mobile && colorsVisible)) {
+        event.preventDefault()
+        if (event.repeat) return
         const cell = target instanceof HTMLElement ? target.closest<HTMLElement>('.paint-candidate')?.closest<HTMLElement>('[data-cell]') : null
         if (cell) {
           const index = Number(cell.dataset.cell)
@@ -1662,7 +1685,12 @@ export function Worktable({
           setActive(index)
         }
         setColorBrush(null)
-        if (paintingCandidates && colorMode) setSelectedColor(null)
+        setColorMode(false)
+        if (colorMode) setSelectedColor(null)
+        if (mobile && colorsVisible) {
+          if (!cell) focusMobileInput.current = true
+          selectToolPanel('digits')
+        }
       } else if (!draft && !event.isComposing && shortcutMatches(event, shortcuts, 'switchColorShade')) {
         event.preventDefault()
         if (!event.repeat) switchColorShade()
@@ -2304,8 +2332,8 @@ export function Worktable({
     </div>
   )
   const puzzleMenu = puzzleMenuMounted && (
-    <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${mobile ? ' mobile-puzzle-menu' : ''}`} id="puzzle-menu"
-      popover={mobile ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
+    <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${floatingPuzzleMenu ? ' floating-puzzle-menu' : ''}`} id="puzzle-menu"
+      popover={floatingPuzzleMenu ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
       onClickCapture={event => {
         if (event.target instanceof Element && event.target.closest('button[aria-pressed]')) return
@@ -2361,7 +2389,8 @@ export function Worktable({
       highlightedDigit={strongLinksVisible ? null : chainHighlightDigit} highlightedDigitMask={strongLinksVisible ? strongLinkMask : 0}
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCells={!strongLinksVisible}
       highlightCandidateCount={!strongLinksVisible && highlightCandidatePairs ? 2 : null}
-      showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={strongLinksVisible ? selectStrongLinkCandidate : sketch.select}
+      showGuides={appearance.showGuides} boardRef={boardRef} linkDrawing={sketch.drawing}
+      onCandidate={strongLinksVisible ? selectStrongLinkCandidate : sketch.select}
       onLinkSelect={strongLinksVisible ? startStrongLinkChain : undefined}
       onCandidateHover={sketch.drawing ? sketch.hover : undefined}
       isLinkTarget={sketch.isLinkTarget}
@@ -2465,106 +2494,135 @@ export function Worktable({
     redo: { Icon: Redo2, run: () => edit(redo), disabled: !game.future.length },
   }
   const visiblePinnedActions = !placeholder && !draft && !completed ? pinnedActions : []
+  useLayoutEffect(() => {
+    const puzzle = puzzleCardRef.current
+    const puzzleStack = puzzle?.closest<HTMLElement>('.standard-puzzle-stack')
+    const inputStack = inputRef.current?.closest<HTMLElement>('.standard-input-stack')
+    const stage = puzzleStageRef.current
+    if (!desktop || advancedWorkspace || !puzzle || !puzzleStack || !inputStack || !stage) return
+    const gridBoundary = () => stage.querySelector(game.paused && !placeholder ? '.puzzle-paused' : '.board-body') ?? stage
+    const alignInput = () => {
+      const scale = Number(getComputedStyle(puzzleStack).getPropertyValue('--desktop-layout-scale')) || 1
+      const top = (gridBoundary().getBoundingClientRect().top - puzzleStack.getBoundingClientRect().top) / scale
+      inputStack.style.setProperty('--puzzle-grid-offset', `${top + puzzleStack.scrollTop}px`)
+    }
+    alignInput()
+    const observer = new ResizeObserver(alignInput)
+    observer.observe(puzzle, { box: 'border-box' })
+    observer.observe(stage, { box: 'border-box' })
+    observer.observe(gridBoundary(), { box: 'border-box' })
+    return () => { observer.disconnect(); inputStack.style.removeProperty('--puzzle-grid-offset') }
+  }, [desktop, advancedWorkspace, game.paused, placeholder, appearance.showGuides, puzzleControlsBelow,
+    previewing, showResults, sketch.drawing, browsingStrongLinks])
 
+  const puzzleMetadata = (!draft || placeholder) && <div key="metadata" className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
+    {difficulty && <span className="puzzle-difficulty">
+      <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
+    </span>}
+    {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
+    {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
+      {formatTime(game.elapsed)}
+    </span>}
+    {!placeholder && sharedOnOtherDevice && <span className="puzzle-peer-status" role="img"
+      aria-label="Open on another linked device" title="Open on another linked device">
+      <MonitorSmartphone size={16} aria-hidden="true" />
+    </span>}
+    {showPuzzleSync && (loadingPuzzle || syncStatus === 'saving') && (
+      <span className="puzzle-sync-loading" role="status" title="Syncing puzzle progress…">
+        <LoaderCircle size={15} className="loading-spinner" aria-hidden="true" />
+        <span className="sr-only">Syncing puzzle progress…</span>
+      </span>
+    )}
+    {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
+    {catchUpPuzzle && !placeholder && !draft && <Button variant="quiet" className="puzzle-catch-up"
+      style={showResults ? { visibility: 'hidden' } : undefined}
+      onClick={() => roomStore.select(catchUpPuzzle.id)} title={`Open ${catchUpPuzzle.title} from another linked device`}>
+      Catch up <ArrowRight size={14} aria-hidden="true" />
+    </Button>}
+  </div>
+  const puzzleUtilityActions = <>
+    {puzzleZoom.zoomed && <IconButton variant="quiet" className="puzzle-zoom-reset"
+      aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
+      <ZoomOut size={18} aria-hidden="true" />
+    </IconButton>}
+    {mixedVariant ? <IconButton ref={rulesButtonRef} variant="quiet" className="variant-rules-button"
+      aria-label="Puzzle rules" title="Puzzle rules" aria-haspopup={openPuzzlePanels.includes('rules') ? undefined : 'dialog'}
+      onClick={() => openPuzzlePanels.includes('rules') ? showRulesTab() : setVariantRulesOpen(true)}>
+      <Info size={16} aria-hidden="true" />
+    </IconButton> : (variant || grid) && <Button variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
+      aria-label={grid ? `${sizedName} rules` : `${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
+      <Info size={16} aria-hidden="true" />{grid ? sizedName : variantName(variant)}
+    </Button>}
+    {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
+      aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
+      {showSolvedGrid ? 'View results' : 'View grid'}
+    </Button>}
+  </>
+  const puzzleActions = <div key="actions" className="puzzle-actions">
+    {presentationDraft ? (
+      <>
+        <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+        {grid && 'regions' in grid && onEditRegions && <Button onClick={onEditRegions} aria-haspopup="dialog">Edit regions</Button>}
+        {grid && !draftCages && onEditSizedRules && <Button onClick={onEditSizedRules} aria-haspopup="dialog">Edit rules</Button>}
+        {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
+        <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>
+      </>
+    ) : (
+      <>
+        {!puzzleControlsBelow && puzzleUtilityActions}
+        {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+          aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
+          title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
+          aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
+          <span className="pause-toggle-icons" aria-hidden="true">
+            <Pause className="pause-toggle-pause" size={18} />
+            <Play className="pause-toggle-play" size={18} />
+          </span>
+        </IconButton>}
+        <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
+          <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
+            title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
+            onClick={(event) => {
+              if (mobile && !puzzleMenuOpen) mobileToolsOpener.current = event.currentTarget
+              if (mobile) event.currentTarget.focus({ preventScroll: true })
+              setActionsOpen(false)
+              setPuzzleMenuOpen((open) => !open)
+            }}>
+            <MoreHorizontal size={20} />
+          </IconButton>
+          {puzzleMenu}
+        </div>
+      </>
+    )}
+  </div>
+  const puzzleStage = <div key="grid" id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+    onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
+    onBlur={(event) => {
+      const cell = event.target.dataset.cell
+      if (cell !== undefined) setPointerFocusedCell((current) => current === Number(cell) ? null : current)
+    }}>
+    {placeholder ? <div className="puzzle-placeholder-stage">
+      <div className="puzzle-grid-reservation" aria-hidden="true" inert>
+        <Board grid={grid} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} showGuides={appearance.showGuides} />
+      </div>
+      <div className="puzzle-placeholder-message">{placeholder}</div>
+    </div> : !draft && !completed ? (
+      mobile ? <div className="puzzle-zoom" data-zoomed={puzzleZoom.zoomed || undefined} {...puzzleZoom.viewportProps}>
+        <div ref={puzzleZoom.content} className="puzzle-zoom-content">{puzzlePlayLayers}</div>
+      </div> : puzzlePlayLayers
+    ) : livePuzzleStage}
+  </div>
+  const puzzleTopActions = puzzleControlsBelow && (puzzleZoom.zoomed || variant || grid || completed && !previewing)
+    ? <div key="top-actions" className="puzzle-actions puzzle-top-actions">{puzzleUtilityActions}</div> : null
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
         <section ref={puzzleCardRef} className="puzzle puzzle-flat" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
+          data-puzzle-controls={puzzleControlsBelow ? 'bottom' : undefined}
           data-desktop-solved={desktop && completed && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale, '--candidate-font-scale': appearance.candidateTextSize / 100 } as CSSProperties}>
-        {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
-          {difficulty && <span className="puzzle-difficulty">
-            <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
-          </span>}
-          {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
-          {showElapsedTime && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(game.elapsed)}${game.paused ? ', paused' : ''}`}>
-            {formatTime(game.elapsed)}
-          </span>}
-          {!placeholder && sharedOnOtherDevice && <span className="puzzle-peer-status" role="img"
-            aria-label="Open on another linked device" title="Open on another linked device">
-            <MonitorSmartphone size={16} aria-hidden="true" />
-          </span>}
-          {showPuzzleSync && (loadingPuzzle || syncStatus === 'saving') && (
-            <span className="puzzle-sync-loading" role="status" title="Syncing puzzle progress…">
-              <LoaderCircle size={15} className="loading-spinner" aria-hidden="true" />
-              <span className="sr-only">Syncing puzzle progress…</span>
-            </span>
-          )}
-          {syncWarning && <span className="puzzle-sync-warning" role="status">{syncWarning}</span>}
-          {catchUpPuzzle && !placeholder && !draft && <Button variant="quiet" className="puzzle-catch-up"
-            style={showResults ? { visibility: 'hidden' } : undefined}
-            onClick={() => roomStore.select(catchUpPuzzle.id)} title={`Open ${catchUpPuzzle.title} from another linked device`}>
-            Catch up <ArrowRight size={14} aria-hidden="true" />
-          </Button>}
-        </div>}
-        <div className="puzzle-actions">
-          {presentationDraft ? (
-            <>
-              <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
-              {grid && 'regions' in grid && onEditRegions && <Button onClick={onEditRegions} aria-haspopup="dialog">Edit regions</Button>}
-              {grid && !draftCages && onEditSizedRules && <Button onClick={onEditSizedRules} aria-haspopup="dialog">Edit rules</Button>}
-              {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
-              <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>
-            </>
-          ) : (
-            <>
-              {puzzleZoom.zoomed && <IconButton variant="quiet" className="puzzle-zoom-reset"
-                aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
-                <ZoomOut size={18} aria-hidden="true" />
-              </IconButton>}
-              {mixedVariant ? <IconButton ref={rulesButtonRef} variant="quiet" className="variant-rules-button"
-                aria-label="Puzzle rules" title="Puzzle rules" aria-haspopup={openPuzzlePanels.includes('rules') ? undefined : 'dialog'}
-                onClick={() => openPuzzlePanels.includes('rules') ? showRulesTab() : setVariantRulesOpen(true)}>
-                <Info size={16} aria-hidden="true" />
-              </IconButton> : (variant || grid) && <Button variant="quiet" className="variant-rules-button" onClick={() => setVariantRulesOpen(true)}
-                aria-label={grid ? `${sizedName} rules` : `${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
-                <Info size={16} aria-hidden="true" />{grid ? sizedName : variantName(variant)}
-              </Button>}
-              {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
-                aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
-                {showSolvedGrid ? 'View results' : 'View grid'}
-              </Button>}
-              {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
-                aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
-                title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
-                aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
-                <span className="pause-toggle-icons" aria-hidden="true">
-                  <Pause className="pause-toggle-pause" size={18} />
-                  <Play className="pause-toggle-play" size={18} />
-                </span>
-              </IconButton>}
-              <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
-                <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
-                  title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
-                  onClick={(event) => {
-                    if (mobile && !puzzleMenuOpen) mobileToolsOpener.current = event.currentTarget
-                    if (mobile) event.currentTarget.focus({ preventScroll: true })
-                    setActionsOpen(false)
-                    setPuzzleMenuOpen((open) => !open)
-                  }}>
-                  <MoreHorizontal size={20} />
-                </IconButton>
-                {puzzleMenu}
-              </div>
-            </>
-          )}
-        </div>
-        <div id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
-          onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
-          onBlur={(event) => {
-            const cell = event.target.dataset.cell
-            if (cell !== undefined) setPointerFocusedCell((current) => current === Number(cell) ? null : current)
-          }}>
-          {placeholder ? <div className="puzzle-placeholder-stage">
-            <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-              <Board grid={grid} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} showGuides={appearance.showGuides} />
-            </div>
-            <div className="puzzle-placeholder-message">{placeholder}</div>
-          </div> : !draft && !completed ? (
-            mobile ? <div className="puzzle-zoom" data-zoomed={puzzleZoom.zoomed || undefined} {...puzzleZoom.viewportProps}>
-              <div ref={puzzleZoom.content} className="puzzle-zoom-content">{puzzlePlayLayers}</div>
-            </div> : puzzlePlayLayers
-          ) : livePuzzleStage}
-        </div>
+          {puzzleControlsBelow
+            ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
+            : [puzzleMetadata, puzzleActions, puzzleStage]}
         <PuzzleCollectionCredit game={game} />
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>
           {visiblePinnedActions.map(id => {
@@ -2582,7 +2640,7 @@ export function Worktable({
       </div>
   )
   const inputPanel = (
-      <div className="workspace-controls" data-show-completion={showMobileResults || undefined}>
+      <div ref={inputRef} className="workspace-controls" data-show-completion={showMobileResults || undefined}>
         <Controls gridSize={gridSize} mode={mode} pencil={pencilActive} togglePencil={() => switchPenPencil(!savedPencil)}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={mobile ? () => {

@@ -31,6 +31,7 @@ enum Rule {
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum SizedRule {
     DoubleArrow { ends: [usize; 2], cells: Vec<usize> },
+    LinkedDoubleArrow { ends: [crate::SizedSumEnd; 2], cells: Vec<usize> },
     Difference { cells: [usize; 2], difference: u8 },
     LabeledDots {
         relation: crate::sized::SizedDotRelation,
@@ -92,6 +93,7 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => Self::DoubleArrow { ends, cells },
+            Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => Self::LinkedDoubleArrow { ends, cells },
             Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
                 Self::Kropki { consecutive, ratio_two }
             }
