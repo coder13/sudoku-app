@@ -10,7 +10,7 @@ import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficu
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { fiveJigsawForSeed, MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows, type SizedGrid } from '../sudoku/grid'
 import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
-import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
+import { createGameId, EMPTY, makeGame, shouldOfferPuzzleSave, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
@@ -30,7 +30,7 @@ import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { EditJigsawRegions } from './EditJigsawRegions'
 import { EditSizedRules } from './EditSizedRules'
-import { EditCages, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
+import { EditCages, SavePuzzle, SaveUnstartedPuzzle, SharePuzzle, useUnstartedPuzzleDeparture } from './PuzzleDialogs'
 import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
@@ -122,6 +122,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const settingsReturnLocation = useRef<SettingsReturnLocation | null>(null)
+  const puzzleDeparture = useUnstartedPuzzleDeparture(settingsReturnLocation)
   const worktableActions = useRef<WorktableActions | null>(null)
   const resizeStartHeight = useRef(panelHeight)
   const resizeStartInputSize = useRef(inputSize)
@@ -291,7 +292,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const location = new URL(window.location.href)
     // The address can change before the router finishes updating the matched puzzle.
     if (location.pathname !== '/' || location.searchParams.get('puzzle') !== requested) return
-    roomStore.view(requested)
+    if (!puzzleDeparture.isLeaving(requested)) roomStore.view(requested)
     playSession.activate(requested)
     if (PUZZLE_LINK.test(location.hash.slice(1))) {
       void navigate({ to: '/', search: { puzzle: requested }, replace: true, viewTransition: false })
@@ -341,7 +342,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function openImport() {
     setMenuOpen(false)
-    if (mobile) {
+    if (mobile || playRoute && shouldOfferPuzzleSave(game)) {
       setPanel(null)
       void navigate({ to: '/import' })
       return
@@ -471,14 +472,17 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   }
 
   function createPuzzle(variant?: NewPuzzleId, boxRows?: 2 | 3, layout?: SizedGrid) {
-    setPanel(null)
-    const grid = layout ?? (variant === 'six' ? sixGridForBoxRows(boxRows)
-      : variant === 'jigsaw-five' ? fiveJigsawForSeed() : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined)
-    const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
-    const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
-    if (variant === 'algebraic-cages') draft.position.draftCages = []
-    else if (grid) draft.position.draftSizedRules = []
-    roomStore.add({ ...draft, returnId: active ?? undefined })
+    puzzleDeparture.requestDeparture(playRoute ? game?.id : undefined, leave => {
+      if (!leave) return
+      setPanel(null)
+      const grid = layout ?? (variant === 'six' ? sixGridForBoxRows(boxRows)
+        : variant === 'jigsaw-five' ? fiveJigsawForSeed() : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined)
+      const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
+      const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
+      if (variant === 'algebraic-cages') draft.position.draftCages = []
+      else if (grid) draft.position.draftSizedRules = []
+      roomStore.add({ ...draft, returnId: roomStore.getSnapshot().active ?? undefined })
+    })
   }
 
   function editPuzzle() {
@@ -604,7 +608,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           <PlayWorkspace resizable={desktopStandard}>
             {game || !mobile ? (
               <Worktable game={game ?? pendingWorkspaceGame} placeholder={game ? undefined : emptyPuzzleContent} games={games} storageAvailable={storageAvailable} preferredDifficulty={difficulty}
-                modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute}
+                modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute || puzzleDeparture.departure !== null}
                 advancedModes={advancedModes} appearance={appearance} highlighting={highlighting}
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
                 inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
@@ -630,9 +634,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}
                 onEditChainColors={() => openSettings('chain-colors')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
+                onSelectPuzzle={id => {
+                  if (id === game?.id) return
+                  puzzleDeparture.requestDeparture(game?.id, leave => { if (leave) roomStore.select(id) })
+                }}
                 onStopPlaying={() => {
                   if (!game) return
-                  roomStore.saveForLater(game.id)
+                  if (!shouldOfferPuzzleSave(game)) roomStore.saveForLater(game.id)
                   void navigate({ to: '/puzzles/browse' })
                 }} />
             ) : (
@@ -668,6 +676,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle}
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
+      {puzzleDeparture.departure && <SaveUnstartedPuzzle close={() => puzzleDeparture.finish()} resolve={puzzleDeparture.finish} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
       {panel === 'jigsaw-regions' && game?.grid && 'regions' in game.grid && game.source === 'draft' && <EditJigsawRegions
         game={game} layout={game.grid} close={close} />}
