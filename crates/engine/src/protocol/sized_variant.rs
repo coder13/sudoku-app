@@ -96,6 +96,7 @@ impl TryFrom<Rule> for SizedConstraint {
                 validate_drawing(&cells, segments, "Renban drawing paths must cover the same cells as the line.")?;
                 Self::Renban { cells }
             }
+            Rule::Variant(PuzzleRule::KillerCages { cages, cover_grid }) => Self::KillerCages { cages, cover_grid },
             Rule::Variant(PuzzleRule::RegionSum { cells, group_by_region, segments }) => {
                 validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
                 Self::RegionSum { cells, group_by_region }

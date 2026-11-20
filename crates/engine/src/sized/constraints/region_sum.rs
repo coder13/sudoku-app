@@ -13,6 +13,9 @@ pub(super) struct RegionSum {
 
 impl RegionSum {
     pub fn compile(layout: &SizedGrid, cells: &[usize], group_by_region: bool) -> Option<Self> {
+        if !layout.has_regions() {
+            return None;
+        }
         let mut seen = [false; MAX_SIZE * MAX_SIZE];
         for &cell in cells {
             if cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true) {

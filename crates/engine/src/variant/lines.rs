@@ -227,42 +227,46 @@ pub(crate) fn wide_renban_support(size: usize, domains: &[u16], support: &mut [u
     let full_interval = u16::MAX >> (u16::BITS as usize - length);
     for start in 0..=size - length {
         let interval = full_interval << start;
-        let mut owners = [usize::MAX; u16::BITS as usize];
-        if !(0..length).all(|cell| match_digit(domains, interval, cell, &mut owners, &mut 0)) {
-            continue;
-        }
-
-        let reachable = &mut [0u16; u16::BITS as usize][..length];
-        for (cell, (links, domain)) in reachable.iter_mut().zip(domains).enumerate() {
-            *links = 1 << cell;
-            for digit in start..start + length {
-                if domain & (1 << digit) != 0 {
-                    *links |= 1 << owners[digit];
-                }
-            }
-        }
-        for pivot in 0..length {
-            let through = reachable[pivot];
-            for links in reachable.iter_mut() {
-                if *links & (1 << pivot) != 0 {
-                    *links |= through;
-                }
-            }
-        }
-        for (cell, (mask, domain)) in support.iter_mut().zip(domains).enumerate() {
-            for digit in start..start + length {
-                // The edge from this cell to the digit's owner can be used
-                // exactly when an alternating path from the owner closes a cycle.
-                let bit = 1 << digit;
-                if domain & bit != 0 && reachable[owners[digit]] & (1 << cell) != 0 {
-                    *mask |= bit;
-                }
-            }
-        }
+        digit_set_support(interval, domains, support);
         if support == domains {
             break;
         }
     }
+}
+
+/// Add candidate edges that belong to a perfect matching with this digit set.
+pub(crate) fn digit_set_support(set: u16, domains: &[u16], support: &mut [u16]) -> bool {
+    let length = domains.len();
+    debug_assert_eq!(length, set.count_ones() as usize);
+    let mut owners = [usize::MAX; u16::BITS as usize];
+    if !(0..length).all(|cell| match_digit(domains, set, cell, &mut owners, &mut 0)) {
+        return false;
+    }
+
+    let reachable = &mut [0u16; u16::BITS as usize][..length];
+    for (cell, (links, domain)) in reachable.iter_mut().zip(domains).enumerate() {
+        *links = 1 << cell;
+        for digit in digits(domain & set) {
+            *links |= 1 << owners[usize::from(digit - 1)];
+        }
+    }
+    for pivot in 0..length {
+        let through = reachable[pivot];
+        for links in reachable.iter_mut() {
+            if *links & (1 << pivot) != 0 {
+                *links |= through;
+            }
+        }
+    }
+    for (cell, (mask, domain)) in support.iter_mut().zip(domains).enumerate() {
+        for digit in digits(domain & set) {
+            // This edge can appear when it closes an alternating cycle.
+            if reachable[owners[usize::from(digit - 1)]] & (1 << cell) != 0 {
+                *mask |= digit_bit(digit);
+            }
+        }
+    }
+    true
 }
 
 fn match_digit(

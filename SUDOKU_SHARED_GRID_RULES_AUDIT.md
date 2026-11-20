@@ -150,3 +150,11 @@ Each timing below uses 100 warm app-profile calls and excludes network time. Val
 | Candidate masks | 20 / 37 | 19 / 25 |
 | Rule hints | 45 / 52 | 38 / 44 |
 | Full replay | 564 / 640 | 3,132 / 3,245 |
+
+## Boxless 7×7 engine baseline
+
+The original Coach FWPZ code has an explicitly empty region list, no givens, and 18 distinct-digit Killer cages covering all 49 cells. An independent solver using only the rows, columns, and authored cages found one completion. Rows and columns alone admit multiple completions. The native prototype matches the independent answer and reaches it in 167 logical steps. [Published boxless Killer](https://sudoku.coach/en/s/FWpZ)
+
+The engine stores only row and column houses for this layout. Numbered cages reuse exact digit-set support and support the supplied digit range. Warm app-profile median and p95 were 2,593 / 2,711 µs for uniqueness, 379 / 397 µs for exact solving, 27 / 31 µs for candidates, 35 / 41 µs for eight hints, and 33,564 / 34,464 µs for the full replay. No HTTP request or browser rendering is included. The rectangular and irregular sized-rule controls still pass with the prototype engine.
+
+The paired parity run on the existing six sized controls returned identical classification and completion payloads. Median changes stayed within 9 µs across the 4×4, 6×6, 7×7 Jigsaw, and 16×16 controls.

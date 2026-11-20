@@ -9,6 +9,7 @@ use crate::{Analysis, GridSpec, SEARCH_LIMIT, SIZED_GRID_VERSION, SizedGrid};
 pub(super) enum Layout {
     Boxes(GridSpec),
     Regions(Regions),
+    Boxless(Boxless),
 }
 
 #[derive(Deserialize, Serialize)]
@@ -18,11 +19,20 @@ pub(super) struct Regions {
     regions: Vec<Vec<usize>>,
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct Boxless {
+    size: usize,
+    no_regions: bool,
+}
+
 impl Layout {
     pub(super) fn build(&self) -> ResultValue<SizedGrid> {
         match self {
             Self::Boxes(spec) => SizedGrid::new(*spec),
             Self::Regions(spec) => SizedGrid::with_regions(spec.size, &spec.regions),
+            Self::Boxless(spec) if spec.no_regions => SizedGrid::without_regions(spec.size),
+            Self::Boxless(_) => None,
         }.ok_or((
             "invalid-layout",
             "Choose boxes or connected regions with one cell for each digit.",
