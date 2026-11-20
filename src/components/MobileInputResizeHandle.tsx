@@ -1,5 +1,5 @@
 import { type PointerEvent, useLayoutEffect, useRef } from 'react'
-import { mobileInputResizeBudget, mobileResizedPuzzleHeight } from '../sudoku/mobile-input-sizing'
+import { mobileInputResizeBudget, mobilePreviewGridWidth, mobileResizedPuzzleHeight } from '../sudoku/mobile-input-sizing'
 
 const MIN_GRID_WIDTH = 180
 const MIN_GRID_WIDTH_WITH_HINT = 130
@@ -115,7 +115,7 @@ function applySplit(layout: HTMLElement, split: Split, height: number, board?: B
     layout.style.setProperty('--mobile-puzzle-chrome-height', chrome)
   }
   if (board) {
-    const width = Math.min(board.maxWidth, puzzleHeight - split.chrome)
+    const width = mobilePreviewGridWidth(board.maxWidth, puzzleHeight, split.chrome)
     const viewportHeight = board.height + width - board.width
     board.viewport.style.height = `${viewportHeight}px`
     board.content.style.scale = `${width / board.width} ${viewportHeight / board.height}`
