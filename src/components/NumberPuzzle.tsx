@@ -132,6 +132,31 @@ function progressStatus(board: NumberBoard, saved: SavedNumberProgress): Progres
   return board.check(position.values).complete ? 'solved' : 'started'
 }
 
+const resumeBatchSize = 24
+
+function NumberResumeList({ game, entries }: { game: NumberGame; entries: readonly NumberPuzzleEntry[] }) {
+  const [visible, setVisible] = useState(resumeBatchSize)
+  const rows = useMemo(() => entries.map(entry => <li key={entry.id}>
+    <Link className="game-row" {...puzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
+      <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
+        {entry.generated && <small>Generated puzzle</small>}</span>
+      <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+    </Link>
+  </li>), [entries, game])
+
+  useEffect(() => {
+    if (visible >= rows.length) return
+    // Add the next set of links after the browser can paint and handle input.
+    const frame = window.requestAnimationFrame(() => setVisible(visible + resumeBatchSize))
+    return () => window.cancelAnimationFrame(frame)
+  }, [visible, rows.length])
+
+  return <section className="number-puzzle-resume new-puzzle-step" aria-labelledby="number-puzzle-resume-title">
+    <h2 id="number-puzzle-resume-title">In progress</h2>
+    <ul className="game-list main-puzzle-list">{rows.slice(0, visible)}</ul>
+  </section>
+}
+
 /** Use for the difficulty and resume page of a standalone number puzzle. */
 export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }: { config: NumberGameConfig<Entry> }) {
   const { entries, game, name, generatedEntry } = config
@@ -197,7 +222,10 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   }, [config, entries, game, generatedEntry])
 
   const ready = catalogProgress !== null
-  const active = [...entries.filter(entry => catalogProgress?.get(entry.id) === 'started'), ...(generatedProgress?.active ?? [])]
+  const active = useMemo(() => [
+    ...entries.filter(entry => catalogProgress?.get(entry.id) === 'started'),
+    ...(generatedProgress?.active ?? []),
+  ], [entries, catalogProgress, generatedProgress])
   const statistics = generatedProgress && new Map<NumberPuzzleDifficulty, DifficultyStatistics>(levels.map(level => [
     level, {
       solved: entries.filter(entry => entry.difficulty === level && catalogProgress?.get(entry.id) === 'solved').length +
@@ -235,16 +263,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
             }}>Play a catalog puzzle</Link>}>
           <DifficultyOptions levels={levels} selected={difficulty} onChange={setDifficulty} disabled={busy || !ready} statistics={statistics} />
         </PuzzleDifficultyStep>
-        {active.length > 0 && <section className="number-puzzle-resume new-puzzle-step" aria-labelledby="number-puzzle-resume-title">
-          <h2 id="number-puzzle-resume-title">In progress</h2>
-          <ul className="game-list main-puzzle-list">
-            {active.map(entry => <li key={entry.id}><Link className="game-row" {...puzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
-              <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
-                {entry.generated && <small>Generated puzzle</small>}</span>
-              <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
-            </Link></li>)}
-          </ul>
-        </section>}
+        {active.length > 0 && <NumberResumeList game={game} entries={active} />}
       </div>
     </div>
   </main>
