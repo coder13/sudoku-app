@@ -245,7 +245,7 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
           labels[b].add(`${color} dot with ${at(a)}`)
         }
       }
-    } else {
+    } else if (rule.type === 'thermometer') {
       rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
     }
   }

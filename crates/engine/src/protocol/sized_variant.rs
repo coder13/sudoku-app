@@ -33,6 +33,7 @@ enum SizedRule {
     DoubleArrow { ends: [usize; 2], cells: Vec<usize> },
     LinkedDoubleArrow { ends: [crate::SizedSumEnd; 2], cells: Vec<usize> },
     Difference { cells: [usize; 2], difference: u8 },
+    AntiSum { sum: u8 },
     LabeledDots {
         relation: crate::sized::SizedDotRelation,
         marks: Vec<crate::sized::SizedLabeledDot>,
@@ -106,6 +107,7 @@ impl TryFrom<Rule> for SizedConstraint {
                 validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
                 Self::RegionSum { cells, group_by_region }
             }
+            Rule::Sized(SizedRule::AntiSum { sum }) => Self::AntiSum { sum },
             Rule::Sized(SizedRule::Difference { cells, difference }) => Self::Difference { cells, difference },
             Rule::Sized(SizedRule::LabeledDots { relation, marks, negative }) => Self::LabeledDots { relation, marks, negative },
             Rule::Variant(_) => {

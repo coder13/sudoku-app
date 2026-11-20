@@ -56,6 +56,7 @@ pub enum SizedConstraint {
         marks: Vec<SizedLabeledDot>,
         negative: bool,
     },
+    AntiSum { sum: u8 },
     Difference {
         cells: [usize; 2],
         difference: u8,
@@ -113,6 +114,11 @@ pub enum SizedConstraintStep {
         pair: SizedKropkiPair,
         actions: Vec<HintAction>,
     },
+    AntiSum {
+        rule: usize,
+        cells: [usize; 2],
+        actions: Vec<HintAction>,
+    },
     Contradiction {
         assumption: Candidate,
         placements: Vec<Candidate>,
@@ -133,6 +139,7 @@ pub enum SizedConstraintFailure {
     Rule { rule: usize },
     KillerCage { rule: usize, cage: usize },
     Kropki { rule: usize, pair: SizedKropkiPair },
+    AntiSum { rule: usize, cells: [usize; 2] },
 }
 
 #[derive(Debug)]
@@ -272,7 +279,8 @@ impl SizedConstraintGrid {
                     }
                     renbans.push(cells.clone());
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. } | SizedConstraint::LabeledDots { .. } => {}
+                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
+                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {}
             }
         }
         let parity = parity
@@ -646,7 +654,7 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } => {
+                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {
                     for link in &self.pair_links[rule] {
                         let support = link.supports(&domains);
                         if support.contains(&0) {
@@ -657,7 +665,12 @@ impl SizedConstraintGrid {
                             eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                         }
                         if !actions.is_empty() {
-                            choices.push(SizedConstraintStep::Kropki { rule, pair: link.kropki_proof()?, actions });
+                            let step = if let Some(pair) = link.kropki_proof() {
+                                SizedConstraintStep::Kropki { rule, pair, actions }
+                            } else {
+                                SizedConstraintStep::AntiSum { rule, cells: link.constraint.cells, actions }
+                            };
+                            choices.push(step);
                             if choices.len() == limit {
                                 break;
                             }
@@ -712,7 +725,8 @@ impl SizedConstraintGrid {
                     advance(&proof.actions, &mut digits, &mut eliminations)
                 }
                 SizedConstraintStep::Rule { actions, .. }
-                | SizedConstraintStep::Kropki { actions, .. } => {
+                | SizedConstraintStep::Kropki { actions, .. }
+                | SizedConstraintStep::AntiSum { actions, .. } => {
                     advance(actions, &mut digits, &mut eliminations)
                 }
             }
@@ -765,7 +779,8 @@ impl SizedConstraintGrid {
                     let actions = match hints.choices.pop() {
                         Some(SizedConstraintStep::House { proof }) => proof.actions,
                         Some(SizedConstraintStep::Rule { actions, .. })
-                        | Some(SizedConstraintStep::Kropki { actions, .. }) => actions,
+                        | Some(SizedConstraintStep::Kropki { actions, .. })
+                        | Some(SizedConstraintStep::AntiSum { actions, .. }) => actions,
                         _ => break,
                     };
                     placements.extend(actions.iter().filter_map(|action| match action {
@@ -882,11 +897,15 @@ impl SizedConstraintGrid {
                 SizedConstraint::Difference { .. } => {
                     self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } => {
+                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {
                     if let Some(link) = self.pair_links[rule].iter().find(|link| {
                         link.supports(&domains).contains(&0)
                     }) {
-                        return Some(SizedConstraintFailure::Kropki { rule, pair: link.kropki_proof()? });
+                        return Some(if let Some(pair) = link.kropki_proof() {
+                            SizedConstraintFailure::Kropki { rule, pair }
+                        } else {
+                            SizedConstraintFailure::AntiSum { rule, cells: link.constraint.cells }
+                        });
                     }
                     false
                 }

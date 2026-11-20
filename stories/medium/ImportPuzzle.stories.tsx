@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
+import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
 import { starter } from '../support/fixtures'
 import { DialogStory } from '../support/frames'
 
@@ -39,5 +40,17 @@ export const Preview: Story = {
     await expect(await canvas.findByRole('grid', { name: 'Puzzle preview' }, { timeout: 5000 })).toBeVisible()
     await expect(canvas.getByText('Difficulty', { exact: true })).toBeVisible()
     await expect(canvas.getByText('Score', { exact: true })).toBeVisible()
+  },
+}
+
+export const JigsawAntiSumPreview: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(antiSum.url)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
+    await expect(await canvas.findByRole('grid', { name: '5 × 5 puzzle preview' })).toBeVisible()
+    await expect(canvas.getByText('Digits in cells that share an edge cannot add to 9.')).toBeVisible()
+    await expect(canvas.getByText('Digits strictly increase from the bulb to the tip of each thermometer.')).toBeVisible()
   },
 }
