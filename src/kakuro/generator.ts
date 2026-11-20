@@ -62,16 +62,15 @@ function puzzleFromFill(layout: KakuroPuzzle, values: readonly number[]): Kakuro
   return { ...layout, cells, runs }
 }
 
-type SignatureLayout = {
-  size: string
-  runs: { index: number; prefix: string; complementBase: number }[]
-}
+type SignatureRun = { index: number; complementBase: number }
+type SignatureLayout = { topology: string; orders: SignatureRun[][] }
 
-const signatureLayouts = new Map<string, SignatureLayout[]>()
+const signatureLayouts = new Map<string, SignatureLayout>()
 
-function buildSignatureLayouts(puzzle: KakuroPuzzle): SignatureLayout[] {
+function buildSignatureLayouts(puzzle: KakuroPuzzle): SignatureLayout {
   const white = puzzle.cells.flatMap((cell, index) => cell === null ? [index] : [])
-  const layouts: SignatureLayout[] = []
+  let topology: string | undefined
+  const orders: SignatureRun[][] = []
   for (const transpose of [false, true]) {
     for (const flipRows of [1, -1]) {
       for (const flipColumns of [1, -1]) {
@@ -90,16 +89,22 @@ function buildSignatureLayouts(puzzle: KakuroPuzzle): SignatureLayout[] {
           [cell, (rows[i] - firstRow) * width + columns[i] - firstColumn]))
         const runs = puzzle.runs.map((run, runIndex) => ({
           index: runIndex,
-          prefix: run.cells.map(cell => index.get(cell)!).sort((a, b) => a - b).join(',') + '=',
+          cells: run.cells.map(cell => index.get(cell)!).sort((a, b) => a - b).join(','),
           complementBase: run.cells.length * 10,
         }))
         // Each run covers a different set of cells. Sort once, before adding its sum.
-        runs.sort((a, b) => a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0)
-        layouts.push({ size: `${width}x${height}`, runs })
+        runs.sort((a, b) => a.cells < b.cells ? -1 : a.cells > b.cells ? 1 : 0)
+        // Choose the grid shape before comparing any clue sums.
+        const shape = `${width}x${height}|${runs.map(run => run.cells).join('|')}`
+        if (topology === undefined || shape < topology) {
+          topology = shape
+          orders.length = 0
+        }
+        if (shape === topology) orders.push(runs)
       }
     }
   }
-  return layouts
+  return { topology: topology!, orders }
 }
 
 /** Give rotations, reflections, and digit complements the same signature. */
@@ -115,18 +120,20 @@ export function kakuroRecipeSignature(puzzle: KakuroPuzzle): string {
   }
 
   let signature: string | undefined
-  for (const { size, runs } of layouts) {
-    let original = size
-    let complement = size
-    for (const { index, prefix, complementBase } of runs) {
+  // Only orders with the same canonical shape can represent this puzzle.
+  for (const runs of layouts.orders) {
+    let original = ''
+    let complement = ''
+    for (const { index, complementBase } of runs) {
       const total = puzzle.runs[index].total
-      original += `|${prefix}${total}`
-      complement += `|${prefix}${complementBase - total}`
+      // Each sum fits in one code unit, so totals keep their boundaries.
+      original += String.fromCharCode(total)
+      complement += String.fromCharCode(complementBase - total)
     }
     const first = original < complement ? original : complement
     if (signature === undefined || first < signature) signature = first
   }
-  return signature!
+  return layouts.topology + '|' + signature!
 }
 
 function hintDifficulty(puzzle: KakuroPuzzle, whiteCount: number): NumberPuzzleDifficulty | null {
