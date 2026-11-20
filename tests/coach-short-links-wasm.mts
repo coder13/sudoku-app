@@ -2,14 +2,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
-import { applyDeduction, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, completeCandidateMasks, enter, hintEliminations, redo, replaceCandidates, restartGame, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
 import { kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
-import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { cachedTechniqueCounts, techniqueScanKey, watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
@@ -400,11 +400,55 @@ test('220V imports its complete published rules and centered paths through the s
 
     const ranked = await puzzleHints(game)
     assert.ok(ranked.choices.length > 1)
-    const selected = await puzzleHints(game, 'all', 'region-sum')
-    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
-    assert.equal(actions.size, 30)
-    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
-    try { assert.equal(await scan.count('region-sum'), actions.size) } finally { scan.close() }
+    async function regionSumChoices(current: Game) {
+      const values = valuesOf(current)
+      const masks = hintEliminations(values, completeCandidateMasks(current), current.position.eliminations)
+      assert.ok(current.variant)
+      const position = variantPosition(current.variant, current.position)
+      const key = techniqueScanKey(values, masks, position.puzzle)
+      const scan = watchTechniqueScan(values, masks, position)
+      try {
+        const [count, selected] = await Promise.all([scan.count('region-sum'), puzzleHints(current, 'all', 'region-sum')])
+        const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+        assert.equal(count, actions.size)
+        assert.deepEqual(cachedTechniqueCounts(key)['region-sum'], { count })
+        return { selected, actions }
+      } finally { scan.close() }
+    }
+
+    const initial = await regionSumChoices(game)
+    assert.equal(initial.actions.size, 30)
+    const applied = initial.selected.choices[0]
+    assert.ok(applied.actions.every(action => 'eliminate' in action &&
+      Number(solution[action.eliminate.cell]) !== action.eliminate.digit))
+    assert.ok(initial.selected.candidates)
+    const progressed = applyDeduction(game, applied.actions, initial.selected.candidates)
+    assert.notEqual(progressed, game)
+    assert.equal(valuesOf(progressed), valuesOf(game), 'Only candidate removals should affect the next scan')
+    const next = await regionSumChoices(progressed)
+    assert.ok(next.actions.size > 0)
+    const removed = new Set(applied.actions.map(action => JSON.stringify(action)))
+    const rankedAfter = await puzzleHints(progressed)
+    assert.ok(rankedAfter.choices.length > 0)
+    for (const hint of rankedAfter.choices) {
+      assert.ok(hint.actions.every(action => !removed.has(JSON.stringify(action))))
+    }
+    for (const action of removed) assert.ok(!next.actions.has(action))
+    assert.deepEqual((await regionSumChoices(undo(progressed))).actions, initial.actions)
+    assert.deepEqual((await regionSumChoices(redo(undo(progressed)))).actions, next.actions)
+
+    // A complete set of candidates can change the scan even when saved hint removals and placed digits stay the same.
+    const removal = next.selected.choices.flatMap(hint => hint.actions).find(action => 'eliminate' in action)
+    assert.ok(removal && 'eliminate' in removal)
+    assert.ok(next.selected.candidates)
+    const marked = replaceCandidates(progressed, next.selected.candidates)
+    const { cell, digit } = removal.eliminate
+    const pencilled = enter(marked, [cell], 'corner', digit, { candidateAction: 'remove' })
+    assert.ok(completeCandidateMasks(pencilled))
+    assert.equal(pencilled.position.eliminations, marked.position.eliminations)
+    assert.equal(valuesOf(pencilled), valuesOf(marked))
+    assert.ok(!(await regionSumChoices(pencilled)).actions.has(JSON.stringify(removal)))
+    assert.ok((await regionSumChoices(undo(pencilled))).actions.has(JSON.stringify(removal)))
 
     const path = await puzzleSolution(game)
     assert.equal(path.rating.status, 'stalled')

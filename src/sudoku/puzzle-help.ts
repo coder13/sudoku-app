@@ -1,5 +1,5 @@
 import { EngineError, runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
-import { completeCandidateMasks, hintEliminations, valuesOf, type Game } from './game.ts'
+import { completeCandidateMasks, hintEliminations, valuesOf, type Game, type Position } from './game.ts'
 import { miniHints, miniSolutionTrace, visibleMiniHints } from './mini-play.ts'
 import { sizedRuleHintChoices, sizedRuleSolutionTrace } from './sized-rule-play.ts'
 import { algebraicHintChoices, algebraicSolutionTrace } from './algebraic-play.ts'
@@ -7,6 +7,22 @@ import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
 import { getVariantPlayOrder, variantHintOrder, variantPosition } from './variant-play.ts'
 import { variantHouseMasks } from './variants.ts'
+
+export type HintPosition = Pick<Game, 'givens' | 'grid' | 'algebraic' | 'sized'> &
+  Pick<Position, 'center' | 'corner' | 'eliminations'> & {
+    gameId: string
+    values: string
+    puzzle?: NonNullable<Game['variant']>['puzzle']
+  }
+
+/** Proofs and removals are valid only for the puzzle definition and inputs used to find them. */
+export function matchesHintPosition(game: Game, position: HintPosition) {
+  const { center, corner, eliminations } = game.position
+  return game.id === position.gameId && game.givens === position.givens && game.variant?.puzzle === position.puzzle &&
+    game.grid === position.grid && game.algebraic === position.algebraic && game.sized === position.sized &&
+    center === position.center && corner === position.corner && eliminations === position.eliminations &&
+    valuesOf(game) === position.values
+}
 
 const catalogs = new Map<boolean, Promise<TechniqueCatalog>>()
 

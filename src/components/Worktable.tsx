@@ -14,7 +14,7 @@ import { EngineError, replayStep, runEngine, type Candidate, type Deduction, typ
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
-  type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
+  type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
 import { sizedRulePosition, sizedRuleDescriptions } from '../sudoku/sized-rule-game'
@@ -41,7 +41,7 @@ import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
-import { puzzleHintPage, puzzleHints, puzzleSolution } from '../sudoku/puzzle-help'
+import { matchesHintPosition, puzzleHintPage, puzzleHints, puzzleSolution, type HintPosition } from '../sudoku/puzzle-help'
 import { playCandidates } from '../sudoku/variant-play'
 import { variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
@@ -182,11 +182,6 @@ function useTimer(id: string, running: boolean) {
 export type WorktableActions = { check: () => void }
 type SolvedGridSession = { current: Game }
 
-type HintPosition = Pick<Position, 'center' | 'corner' | 'eliminations'> & {
-  gameId: string
-  values: string
-}
-
 let nextHintCollection = 0
 
 type HintState = {
@@ -225,12 +220,6 @@ type CandidatePress = {
 
 function isAltClick(event: Pick<MouseEvent, 'altKey' | 'shiftKey' | 'ctrlKey' | 'metaKey'>) {
   return event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey
-}
-
-function matchesHintPosition(game: Game, position: HintPosition) {
-  const { center, corner, eliminations } = game.position
-  return game.id === position.gameId && center === position.center && corner === position.corner &&
-    eliminations === position.eliminations && valuesOf(game) === position.values
 }
 
 function isChainStep(step?: Deduction) {
@@ -417,12 +406,14 @@ export function Worktable({
   const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
-  const hintPosition = useMemo(() => ({ gameId: game.id, values, center, corner, eliminations }),
-    [game.id, values, center, corner, eliminations])
+  const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto } = game
+  const puzzle = variant?.puzzle
+  const hintPosition = useMemo<HintPosition>(() => ({
+    gameId: id, givens, values, puzzle, grid, algebraic, sized, center, corner, eliminations,
+  }), [id, givens, values, puzzle, grid, algebraic, sized, center, corner, eliminations])
   useEffect(() => () => { techniqueHintRequest.current++ }, [hintPosition])
   const conflicts = useMemo(() => conflictsOf(values, game.variant?.puzzle, grid, game.sized?.rules), [values, game.variant, grid, game.sized])
   const draft = game.source === 'draft'
-  const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto } = game
   const mixedVariant = !grid && variant?.id === 'mixed'
   const ruleSections = useMemo(() => variant ? variantRuleSections(variant.puzzle) : [], [variant])
   const solutionIdentity = useMemo(() => puzzleIdentity({ givens, variant, algebraic, grid, sized }), [givens, variant, algebraic, grid, sized])
