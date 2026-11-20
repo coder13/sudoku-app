@@ -21,7 +21,7 @@ import { sizedRulePosition, sizedRuleDescriptions } from '../sudoku/sized-rule-g
 import { sizedRuleSingles } from '../sudoku/sized-rule-play'
 import { algebraicRules, analyzeAlgebraic, checkAlgebraicHintPosition } from '../sudoku/algebraic-play'
 import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
-import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, SIX_NAME } from '../sudoku/new-puzzle'
+import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, SEVEN_JIGSAW_NAME, SIX_NAME } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
 import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
@@ -248,7 +248,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditChainColors, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
+  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onCreatePuzzle, onEditPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, sharedOnOtherDevice, catchUpPuzzle,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -284,6 +284,7 @@ export function Worktable({
   onEditPuzzle: () => void
   onEditCages?: () => void
   onEditSizedRules?: () => void
+  onEditRegions?: () => void
   onEditChainColors?: () => void
   showLeftPanel: boolean
   showRightPanel: boolean
@@ -483,7 +484,7 @@ export function Worktable({
   const draftCages = game.position.draftCages
   const cages = algebraic?.rules ?? draftCages
   const sizedRules = sized?.rules ?? game.position.draftSizedRules
-  const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid?.size === 6 ? SIX_NAME : MINI_NAME
+  const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid?.size === 6 ? SIX_NAME : grid?.size === 7 ? SEVEN_JIGSAW_NAME : MINI_NAME
   const needsRating = !grid && (difficulty === undefined || score === undefined)
   const needsAttempt = !grid && !completed && !game.ratingAttempt
   const ratingPending = !draft && needsRating && !ratingFailed
@@ -2572,6 +2573,7 @@ export function Worktable({
           {presentationDraft ? (
             <>
               <Button onClick={() => setCancelDraftOpen(true)}><X size={17} /> Cancel</Button>
+              {grid?.size === 7 && onEditRegions && <Button onClick={onEditRegions} aria-haspopup="dialog">Edit regions</Button>}
               {grid && !draftCages && onEditSizedRules && <Button onClick={onEditSizedRules} aria-haspopup="dialog">Edit rules</Button>}
               {draftCages && onEditCages && <Button onClick={onEditCages} aria-haspopup="dialog">Edit cages</Button>}
               <Button variant="primary" className="publish-button" onClick={onPublish}><Check size={17} /> Save puzzle</Button>

@@ -132,3 +132,21 @@ Paired app-profile Wasm measurements use 40 warm calls per 7×7 operation and 15
 | 6×6 Arrow | 296 µs → 271 µs | 186 µs → 186 µs |
 | 6×6 Race track | 50 µs → 50 µs | 34 µs → 35 µs |
 | 16×16 empty Renban | 229 µs → 232 µs | 223 µs → 226 µs |
+
+## 7×7 Jigsaw authoring, generation, and numbered dots
+
+The two published f-puzzles exports use seven connected regions, with no given digits. The parser restores omitted region labels from their default rows. An independent solver counted one completion per authored puzzle. The Thermometer export has six lines. The Kropki export has six numbered differences and three numbered ratios, including 1:3. Chrome checked the exact boundary geometry, author credit, hints, final grids, reload, and phone sharing. A separate draft test swapped cells between regions, rejected an incomplete region, checked undo and redo after reload, added a numbered dot, and saved the result. [Published Jigsaw pack](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=0008KH)
+
+The native generator uses the verified layout to choose a finished grid and retains uniqueness while removing givens. Easy puzzles replay with naked singles. Medium requires a hidden single or locked candidate. The app checks previously played givens for the selected layout. Eighty generation runs across four layouts and both recipes completed. Median generation took 0.11 ms, with p95 at 8.69 ms and a maximum of 9.16 ms.
+
+Each timing below uses 100 warm app-profile calls and excludes network time. Values are median and p95 in microseconds.
+
+| Operation | Thermometer | Numbered dots |
+| --- | ---: | ---: |
+| Decode | 81 / 137 | 78 / 122 |
+| Verify uniqueness | 2,986 / 3,037 | 208 / 217 |
+| Exact solve | 2,695 / 2,723 | 186 / 195 |
+| Build preview | 5,761 / 5,879 | 481 / 564 |
+| Candidate masks | 20 / 37 | 19 / 25 |
+| Rule hints | 45 / 52 | 38 / 44 |
+| Full replay | 564 / 640 | 3,132 / 3,245 |

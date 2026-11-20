@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../../../src/sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../../../src/sudoku/game'
-import { CLASSIC_GRID, type SizedGrid } from '../../../src/sudoku/grid'
+import { jigsawMembership, CLASSIC_GRID, type SizedGrid } from '../../../src/sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../../../src/sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../../../src/sudoku/preferences'
 import type { PuzzleInputMode } from '../../../src/sudoku/puzzle-input-mode'
@@ -78,7 +78,10 @@ export function Board({
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
-  const { size: gridSize, boxRows, boxColumns } = grid
+  const gridSize = grid.size
+  const slotsAcross = Math.ceil(Math.sqrt(gridSize))
+  const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
+  const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
   const variantRules = variantPuzzle?.rules
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
   const hasOutside = Object.values(outside.depths).some(Boolean)
@@ -88,7 +91,8 @@ export function Board({
     && 'Global Entropy: every 2 × 2 area needs a low digit 1–3, a medium digit 4–6 and a high digit 7–9, including across box or region borders.',
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
-  const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
+  const regionsAt = useMemo(() => 'regions' in grid ? jigsawMembership(grid)
+    : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [grid, regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'

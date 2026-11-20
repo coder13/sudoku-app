@@ -8,7 +8,7 @@ import {
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
-import { MINI_GRID, sixGridForBoxRows } from '../sudoku/grid'
+import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
 import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -28,6 +28,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
+import { EditJigsawRegions } from './EditJigsawRegions'
 import { EditSizedRules } from './EditSizedRules'
 import { EditCages, SavePuzzle, SharePuzzle } from './PuzzleDialogs'
 import { SharedPuzzlePage } from './SharedPuzzlePage'
@@ -40,7 +41,7 @@ import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'import' | 'share' | 'publish' | 'cages' | 'sized-rules' | null
+type Panel = 'import' | 'share' | 'publish' | 'cages' | 'sized-rules' | 'jigsaw-regions' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
@@ -471,7 +472,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function createPuzzle(variant?: NewPuzzleId, boxRows?: 2 | 3) {
     setPanel(null)
-    const grid = variant === 'six' ? sixGridForBoxRows(boxRows) : isSizedPuzzleId(variant) ? MINI_GRID : undefined
+    const grid = variant === 'six' ? sixGridForBoxRows(boxRows) : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined
     const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
     const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
     if (variant === 'algebraic-cages') draft.position.draftCages = []
@@ -619,9 +620,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
                 onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
-                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
+                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
                 onEditCages={() => setPanel('cages')}
-                onEditSizedRules={() => setPanel('sized-rules')}
+                onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}
                 onEditChainColors={() => openSettings('chain-colors')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
@@ -663,6 +664,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
+      {panel === 'jigsaw-regions' && game?.grid?.size === 7 && game.source === 'draft' && <EditJigsawRegions
+        game={game} layout={game.grid} close={close} />}
       {panel === 'sized-rules' && game?.grid && game.source === 'draft' && !game.position.draftCages && <EditSizedRules
         key={game.id} game={game} layout={game.grid} close={close} />}
       {panel === 'cages' && game?.position.draftCages && <EditCages game={game} close={close} />}

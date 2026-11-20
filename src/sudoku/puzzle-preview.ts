@@ -38,9 +38,9 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
-    : variant ? `Imported ${variantName(variant)} puzzle` : grid?.size === 6 ? 'Imported 6 × 6 Sudoku' : grid ? 'Imported Mini Sudoku' : 'Imported puzzle'
+    : variant ? `Imported ${variantName(variant)} puzzle` : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
   const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
-  if (grid && (grid.size === 6 || sizedRules?.length)) {
+  if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
     game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })
     return { game: applyPuzzleGrade(game, null), format, grade: null }

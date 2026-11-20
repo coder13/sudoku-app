@@ -9,8 +9,8 @@ import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { generatePlayableVariant } from '../sudoku/variant-play'
 import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
-import { MINI_GRID, sixGridForBoxRows } from '../sudoku/grid'
-import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, SIX_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
+import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, SEVEN_JIGSAW_NAME, SIX_NAME, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { VARIANTS, variantDifficulty } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
@@ -59,14 +59,16 @@ export function usePuzzleGeneration() {
         onGenerated?.()
         return
       }
-      if (variant === 'six') {
+      if (variant === 'six' || variant === 'jigsaw-seven') {
         const difficulty = miniDifficulty(preference)
-        const grid = sixGridForBoxRows(options?.boxRows)
-        const exclude = roomStore.playedSixGivens(grid.boxRows).map(givens => Array.from(givens, Number))
-        const givens = (await run({ type: 'generate-six', seed, difficulty, grid, exclude })).join('')
+        const grid = variant === 'six' ? sixGridForBoxRows(options?.boxRows) : sevenJigsawForSeed(seed)
+        const exclude = roomStore.playedSizedGivens(grid).map(givens => Array.from(givens, Number))
+        const givens = (await run(grid.size === 6
+          ? { type: 'generate-six', seed, difficulty, grid, exclude }
+          : { type: 'generate-jigsaw', seed, difficulty, grid, exclude })).join('')
         const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] }, run)
         if (!active()) return
-        const game = makeGame(createGameId(), nextPuzzleTitle(`${SIX_NAME} `), givens, 'generated', undefined, grid)
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${grid.size === 6 ? SIX_NAME : SEVEN_JIGSAW_NAME} `), givens, 'generated', undefined, grid)
         roomStore.add({ ...game, sized, difficulty, score: null })
         onGenerated?.()
         return

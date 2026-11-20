@@ -1,0 +1,133 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { peer, enter, makeGame, move, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { runEngine } from '../src/sudoku/engine.ts'
+import { sevenJigsawForSeed } from '../src/sudoku/grid.ts'
+import { puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
+
+// The published Thermometer export omits any region equal to the cell's row.
+const labels = ['0000111', '0200111', '2223331', '2223434', '5553434', '5666444', '5556666']
+const paths = [
+  ['R2C2', 'R3C3', 'R4C4'], ['R3C1', 'R4C2', 'R5C3'], ['R3C7', 'R4C6', 'R5C6'],
+  ['R6C7', 'R7C7', 'R7C6'], ['R1C7', 'R2C6'], ['R7C1', 'R7C2'],
+]
+const exportData = {
+  size: 7, title: '7 × 7 Jigsaw Thermometer', author: 'Playmaker6174',
+  ruleset: 'Normal irregular 7x7 Sudoku rules apply.\n\nDigits along a thermometer must strictly increase from the bulb to the end.',
+  grid: labels.map((row, index) => Array.from(row, label => Number(label) === index ? {} : { region: Number(label) })),
+  thermometer: paths.map(path => ({ lines: [path] })),
+}
+const answer = '7135624632415747625132517346127346534562715641732'
+
+test('a 7 × 7 Jigsaw Thermometer keeps its authored houses through import, play, replay and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => fetcher(new URL(path, 'https://sudoku.test').href, init))
+    const { game } = await prepareImportedPuzzle(JSON.stringify(exportData))
+    assert.ok(game.grid?.size === 7 && game.sized)
+    const { grid, sized } = game
+    assert.deepEqual(grid.regions.map(cells => cells.length), Array(7).fill(7))
+    assert.equal(sized.solution, answer)
+    assert.equal(sized.rules.length, 6)
+    assert.ok(peer(8, 16, undefined, grid))
+    assert.equal(peer(1, 8, undefined, grid), true)
+    assert.equal(peer(0, 8, undefined, grid), false)
+    const moved = enter(game, [0], 'value', 7)
+    assert.equal(valuesOf(moved)[0], '7')
+    assert.deepEqual(readGame(moved.id, JSON.stringify(moved))?.grid, grid)
+    const replay = await puzzleSolution(game)
+    assert.equal(replay.status, 'solved')
+    assert.equal(replay.board, answer)
+
+    const share = await publishSharedPuzzle(moved)
+    const shared = await prepareSharedPuzzle(share, [], new AbortController().signal)
+    assert.deepEqual(shared.game.grid, grid)
+    assert.deepEqual(shared.game.sized, sized)
+    assert.equal(valuesOf(shared.game), '0'.repeat(49))
+    const disconnected = grid.regions.map(cells => [...cells])
+    const last = disconnected[6].length - 1
+    ;[disconnected[0][0], disconnected[6][last]] = [disconnected[6][last], disconnected[0][0]]
+    const request = await fetcher('https://sudoku.test/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...puzzleDefinitionForSharing(game), grid: { size: 7, regions: disconnected } }),
+    })
+    assert.equal(request.status, 400)
+  } finally {
+    sqlite.close()
+  }
+})
+
+test('Jigsaw generation verifies both recipes on every layout and excludes earlier givens', async () => {
+  for (const difficulty of ['easy', 'medium'] as const) {
+    for (let seed = 0; seed < 8; seed++) {
+      const grid = sevenJigsawForSeed(seed)
+      const request = { type: 'generate-jigsaw', seed, grid, difficulty } as const
+      const digits = await runEngine(request)
+      assert.equal(digits.length, 49)
+      const position = { version: 2 as const, grid, digits }
+      assert.equal(await runEngine({ type: 'sized-classic', operation: 'analyze', position }), 'unique')
+      const trace = await runEngine({ type: 'sized-classic', operation: 'trace', position })
+      assert.ok(trace?.at(-1)?.digits.every(Boolean))
+      assert.equal(trace.some(step => step.deduction && step.deduction.technique !== 'naked-single'), difficulty === 'medium')
+      assert.notDeepEqual(await runEngine({ ...request, exclude: [digits] }), digits)
+    }
+  }
+})
+
+test('a drafted irregular layout survives reload and both history directions with its clues', () => {
+  const first = sevenJigsawForSeed()
+  const second = sevenJigsawForSeed(1)
+  const original = makeGame('jigsaw-draft', 'Jigsaw draft', '0'.repeat(49), 'draft', 0, first)
+  const changed = move(original, { ...original.position, draftRegions: second.regions,
+    draftSizedRules: [{ type: 'thermometer', cells: [0, 1, 2] }] })
+  assert.deepEqual(changed.grid, second)
+  const loaded = readGame(changed.id, JSON.stringify(changed))
+  assert.ok(loaded)
+  const previous = undo(loaded)
+  assert.deepEqual(previous.grid, first)
+  assert.deepEqual(previous.position.draftSizedRules, [])
+  assert.deepEqual(redo(previous).grid, second)
+  assert.deepEqual(redo(previous).position.draftSizedRules, changed.position.draftSizedRules)
+  assert.equal(readGame(changed.id, JSON.stringify({ ...changed, grid: first })), undefined)
+})
+
+test('the published Jigsaw labeled dots preserve all nine clues and a complete logical replay', async () => {
+  const labels = ['0000111', '0222221', '0322331', '0333341', '5444441', '5546666', '5555666']
+  const dots = {
+    difference: [['R4C7', 'R4C6', 2], ['R2C2', 'R3C2', 3], ['R1C5', 'R1C4', 4],
+      ['R1C6', 'R1C5', 1], ['R6C4', 'R6C5', 2], ['R4C4', 'R4C5', 1]],
+    ratio: [['R1C2', 'R1C3', 3], ['R3C2', 'R4C2', 2], ['R4C5', 'R4C6', 2]],
+  }
+  const content = JSON.stringify({
+    size: 7, title: '7 × 7 Jigsaw with labeled dots', author: 'Playmaker6174',
+    ruleset: 'Normal irregular 7x7 Sudoku rules apply.\n\nA white dot with a number in it implies the difference between two cells. A black dot with a number in it implies the ratio relationship between two cells.',
+    grid: labels.map((row, index) => Array.from(row, label => Number(label) === index ? {} : { region: Number(label) })),
+    ...Object.fromEntries(Object.entries(dots).map(([relation, entries]) =>
+      [relation, entries.map(([a, b, value]) => ({ cells: [a, b], value: String(value) }))])),
+  })
+  const { game } = await prepareImportedPuzzle(content)
+  assert.ok(game.grid?.size === 7 && game.sized)
+  const rules = game.sized.rules
+  assert.deepEqual(rules.map(rule => rule.type === 'labeled-dots' && rule.marks.map(mark => mark.value)), [[2, 3, 4, 1, 2, 1], [3, 2, 2]])
+  const exact = '3621547513472674563124275631671245325631741347265'
+  assert.equal(game.sized.solution, exact)
+  const replay = await puzzleSolution(game)
+  assert.equal(replay.status, 'solved')
+  assert.equal(replay.board, exact)
+  assert.ok(replay.steps.some(step => step.technique === 'sized-labeled-dots'))
+  const invalid = enter(enter(game, [1], 'value', 6), [2], 'value', 3)
+  assert.equal(readGame(game.id, JSON.stringify(invalid))?.sized?.solution, exact)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const response = await fetcher('https://sudoku.test/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(puzzleDefinitionForSharing(game)),
+    })
+    assert.equal(response.status, 201)
+  } finally { sqlite.close() }
+})

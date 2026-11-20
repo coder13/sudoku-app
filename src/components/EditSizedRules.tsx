@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
-import type { MarkedPairs, SizedConstraintRule } from '../sudoku/engine'
-import { gridCellsShareEdge, type SizedGrid } from '../sudoku/grid'
+import type { MarkedPairs, SizedConstraintRule, SizedLabeledDotsRule } from '../sudoku/engine'
+import { gridCellsShareEdge, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
 import { move, valuesOf, type Game } from '../sudoku/game'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
 import { roomStore } from '../sudoku/storage'
@@ -17,6 +17,7 @@ const ruleNames = {
   thermometer: 'Thermometer',
   renban: 'Renban line',
   kropki: 'Kropki dots',
+  'labeled-dots': 'Labeled dots',
   difference: 'Difference marker',
   arrow: 'Arrow',
   'region-sum': 'Region Sum line',
@@ -29,7 +30,10 @@ const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rul
 type KropkiKind = 'consecutive' | 'ratioTwo'
 type KropkiMarks = Partial<Record<KropkiKind, MarkedPairs>>
 
-function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean): SizedConstraintRule {
+const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
+
+function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule): SizedConstraintRule {
+  if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
   if (kind === 'arrow') return { type: kind, circle: cells[0] ?? 0, cells: cells.slice(1) }
   if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
@@ -41,6 +45,7 @@ function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMark
 
 export function EditSizedRules({ game, layout, close }: { game: Game; layout: SizedGrid; close: () => void }) {
   const { size } = layout
+  const group = 'regions' in layout ? 'region' : 'box'
   const cellName = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
   const [rules] = useState(game.position.draftSizedRules ?? [])
   const [editing, setEditing] = useState(-1)
@@ -49,23 +54,26 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [marks, setMarks] = useState<KropkiMarks>({})
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
   const [difference, setDifference] = useState(1)
+  const [labeled, setLabeled] = useState(emptyDotLayer)
+  const [dotValue, setDotValue] = useState(1)
   const [groupByRegion, setGroupByRegion] = useState(false)
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
   const previous = rules[editing]
-  let rule = draftRule(kind, cells, marks, difference, groupByRegion)
+  let rule = draftRule(kind, cells, marks, difference, groupByRegion, labeled)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
     rule = groupByRegion === (previous.groupByRegion ?? false) ? previous : { ...previous, groupByRegion }
   }
   const preview = isSizedRuleList([rule], layout) ? [...otherRules, rule] : otherRules
-  const canSelectCells = 'cells' in rule || kind === 'kropki'
+  const canSelectCells = 'cells' in rule || (kind === 'kropki' || kind === 'labeled-dots')
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
   const markedEdge = selectedEdge && marks[dotKind]?.pairs?.some(matchesEdge)
+  const labeledEdge = selectedEdge && labeled.marks.find(mark => matchesEdge(mark.cells))
   const hasKropkiClues = Object.values(marks).some(mark => mark?.negative || mark?.pairs?.length)
 
 
@@ -76,6 +84,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setCells(previous?.type === 'arrow' ? [previous.circle, ...previous.cells] : previous && 'cells' in previous ? previous.cells : [])
     setMarks(previous?.type === 'kropki' ? { consecutive: previous.consecutive, ratioTwo: previous.ratioTwo } : {})
     setDotKind('consecutive')
+    setLabeled(previous?.type === 'labeled-dots' ? previous : emptyDotLayer)
+    setDotValue(previous?.type === 'labeled-dots' && previous.relation === 'ratio' ? 2 : 1)
     setDifference(previous?.type === 'difference' ? previous.difference : 1)
     setGroupByRegion(previous?.type === 'region-sum' && previous.groupByRegion === true)
     setActive(previous?.type === 'arrow' ? previous.circle : previous && 'cells' in previous ? previous.cells[0] : 0)
@@ -87,7 +97,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setError('')
     setCells(current => {
       if (current.includes(cell)) return current.filter(item => item !== cell)
-      if ((kind === 'kropki' || kind === 'difference') && current.length === 2) return [cell]
+      if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
       return [...current, cell]
@@ -125,7 +135,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   function update(next: readonly SizedConstraintRule[]) {
     let changed = false
     roomStore.update(game.id, current => {
-      if (current.source !== 'draft' || current.grid?.size !== size || current.grid.boxRows !== layout.boxRows ||
+      if (current.source !== 'draft' || !current.grid || sizedGridIdentity(current.grid) !== sizedGridIdentity(layout) ||
         current.position.draftCages !== undefined ||
         JSON.stringify(current.position.draftSizedRules ?? []) !== JSON.stringify(rules)) return current
       changed = true
@@ -140,7 +150,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     const next = [...rules]
     if (editing < 0) next.push(rule)
     else next[editing] = rule
-    if (kind === 'kropki' && !hasKropkiClues) {
+    if (kind === 'kropki' && !hasKropkiClues || kind === 'labeled-dots' && !labeled.marks.length && !labeled.negative) {
       setError('Add a dot or enable a negative rule.')
       return
     }
@@ -152,7 +162,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
           : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.`
-            : kind === 'region-sum' ? 'Select a path that crosses at least one box border.' : 'Select the cells for this rule.')
+            : kind === 'region-sum' ? `Select a path that crosses at least one ${group} border.` : 'Select the cells for this rule.')
       return
     }
     update(next)
@@ -174,6 +184,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setMarks({})
         setDotKind('consecutive')
         setDifference(1)
+        setLabeled(emptyDotLayer)
+        setDotValue(1)
         setGroupByRegion(false)
         setError('')
       }}>
@@ -187,7 +199,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               : 'Select the cells that should have a marker.'}</p>}
       {kind === 'region-sum' && <label>
         <input type="checkbox" checked={groupByRegion} onChange={event => setGroupByRegion(event.currentTarget.checked)} />
-        Count all visits to the same box together
+        Count all visits to the same {group} together
       </label>}
       {kind === 'difference' && <>
         <label htmlFor={`${id}-difference`}>Exact difference</label>
@@ -207,6 +219,25 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         </SelectControl>
         <p id={`${id}-instructions`}>Select two cells that share an edge, then add or remove the dot.</p>
       </>}
+      {kind === 'labeled-dots' && <>
+        <label>Dot relation
+          <SelectControl value={labeled.relation} disabled={labeled.marks.length > 0} onChange={event => {
+            const relation = event.currentTarget.value as SizedLabeledDotsRule['relation']
+            setLabeled({ ...labeled, relation })
+            setDotValue(relation === 'ratio' ? 2 : 1)
+          }}>
+            <option value="difference">White difference dot</option>
+            <option value="ratio">Black ratio dot</option>
+          </SelectControl>
+        </label>
+        <label>Dot number
+          <SelectControl value={dotValue} onChange={event => setDotValue(Number(event.currentTarget.value))}>
+            {Array.from({ length: size - 1 }, (_, index) => index + (labeled.relation === 'ratio' ? 2 : 1))
+              .map(value => <option key={value}>{value}</option>)}
+          </SelectControl>
+        </label>
+        <p id={`${id}-instructions`}>Select two cells that share an edge, then set the dot.</p>
+      </>}
       <Board grid={layout} sizedRules={preview} givens={game.givens} values={valuesOf(game)} showGuides
         label="Rule editor" selected={cells} active={active} onCell={canSelectCells ? selectCell : undefined}
         onGridKeyDown={canSelectCells ? moveFocus : undefined}
@@ -222,6 +253,23 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
           <input type="checkbox" checked={marks.ratioTwo?.negative ?? false}
             onChange={event => setNegative('ratioTwo', event.currentTarget.checked)} />
           No 1:2 ratios across unmarked edges
+        </label>
+      </>}
+      {kind === 'labeled-dots' && <>
+        <Button type="button" disabled={!selectedEdge} onClick={() => {
+          const cellsOfDot = [Math.min(...cells), Math.max(...cells)] as const
+          setLabeled({ ...labeled, marks: [...labeled.marks.filter(mark => !matchesEdge(mark.cells)), { cells: cellsOfDot, value: dotValue }] })
+          setCells([])
+          setError('')
+        }}>{labeledEdge ? 'Update dot' : 'Add labeled dot'}</Button>
+        {labeledEdge && <Button type="button" onClick={() => {
+          setLabeled({ ...labeled, marks: labeled.marks.filter(mark => !matchesEdge(mark.cells)) })
+          setCells([])
+        }}>Remove labeled dot</Button>}
+        <label>
+          <input type="checkbox" checked={labeled.negative ?? false}
+            onChange={event => setLabeled({ ...labeled, negative: event.currentTarget.checked })} />
+          {labeled.relation === 'ratio' ? 'No 1:2 ratios without a labeled black dot' : 'No consecutive digits without a labeled white dot'}
         </label>
       </>}
       {kind === 'arrow' && cells.length > 0 && <p aria-live="polite">Bulb {cellName(cells[0])}

@@ -2,7 +2,7 @@
 
 This harness compares the complete production `Board` before and after the React optimizations. It does not use a reduced board implementation.
 
-The baseline is commit `55067cc61d09e4e953f9d7fc6d599be4d8a01a5e`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
+The baseline is commit `d04f5cd6aaf6bc21c9d225764200d826fcf712d4`. The `baseline` directory contains that commit's `Board.tsx`, `BoardMarks.tsx`, and `BoardAnnotations.tsx`. Only relative imports change. The manifest records original and adjusted source hashes. The runner checks them before each comparison.
 
 Both versions use the same React runtime, production CSS, other app dependencies, input path, fixtures, and browser settings.
 

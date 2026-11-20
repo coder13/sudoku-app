@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Board } from '../../../src/components/Board'
-import type { VariantRule } from '../../../src/sudoku/engine'
-import { MINI_GRID, sixGridForBoxRows } from '../../../src/sudoku/grid'
+import type { SizedConstraintRule, VariantRule } from '../../../src/sudoku/engine'
+import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
 import { createFixture, type BoardState } from './model'
 
 export type BoardProps = ComponentProps<typeof Board>
@@ -151,7 +151,39 @@ export function scenarios(): Scenario[] {
         { type: 'algebraic-cage', cells: [0, 1], total: { type: 'fixed', value: 5 }, label: '5' },
         { type: 'algebraic-cage', cells: [grid.size, grid.size + 1], total: { type: 'variable', name: 'A', offset: 1 }, label: 'A+1' },
       ] },
+      { ...basic, sizedRules: [
+        { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 2 }, { cells: [grid.size, grid.size + 1], value: 1 }] },
+        { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 3 }, { cells: [grid.size + 2, grid.size + 3], value: 2 }] },
+      ] },
+      { ...basic, sizedRules: [
+        { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 1 }], negative: true },
+        { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 2 }], negative: true },
+      ] },
+      basic,
     ] })
   }
+
+  const firstJigsaw = sevenJigsawForSeed(0), secondJigsaw = sevenJigsawForSeed(1)
+  const jigsawCount = firstJigsaw.size ** 2
+  const smallJigsaw: BoardProps = {
+    givens: '0'.repeat(jigsawCount), values: '0'.repeat(jigsawCount), grid: firstJigsaw,
+    position: { center: Array(jigsawCount).fill(127), corner: Array(jigsawCount).fill(0), colors: Array(jigsawCount).fill(0) },
+    showGuides: true, onCell: noopCell, selected: [0], active: 0,
+  }
+  const jigsawClues: readonly SizedConstraintRule[] = [
+    { type: 'thermometer', cells: [0, 1, 8] },
+    { type: 'region-sum', groupByRegion: true, cells: [0, 1, 2, 9, 16] },
+    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [2, 3], value: 2 }, { cells: [7, 14], value: 4 }] },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [2, 3], value: 3 }, { cells: [21, 22], value: 2 }] },
+  ]
+  result.push({ id: 'sized-7-explicit-jigsaw-regions-and-dots', states: [smallJigsaw,
+    { ...smallJigsaw, sizedRules: jigsawClues, selected: [8], active: 8 },
+    { ...smallJigsaw, sizedRules: jigsawClues, selected: [8], active: 8, grid: secondJigsaw },
+    { ...smallJigsaw, sizedRules: jigsawClues, grid: secondJigsaw, selected: [], highlightedDigitMask: 65, highlightedDigitMatch: 'any' },
+    { ...smallJigsaw, grid: secondJigsaw, candidates: Array(jigsawCount).fill(65), onCandidate: () => {} },
+    { ...smallJigsaw, grid: secondJigsaw, candidatePreview: { cell: 8, digit: 7, mode: 'candidate' },
+      region: { row: 1, column: 1, rows: 4, columns: 4 } },
+    smallJigsaw,
+  ] })
   return result.map(scenario => ({ ...scenario, states: scenario.states.map(props => freezeInputs(props)) }))
 }

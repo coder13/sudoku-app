@@ -5,6 +5,7 @@ import { createRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { Board as BaselineBoard } from '../baseline/Board'
+import baselineManifest from '../baseline/manifest.json'
 import { Board as OptimizedBoard } from '../../../src/components/Board'
 import { applyTheme } from '../../../src/sudoku/themes'
 import { runComparison, type BoardBenchmarkApi, type ComparisonOptions } from './benchmark'
@@ -286,7 +287,7 @@ async function runRegression(options: { motionOnly?: boolean; pressKey?: (key: s
     cases.push({ id: 'normal-motion-exits-and-bursts', checks: checked.length })
   }
   await api.reset('puzzle')
-  return { passed: true, baselineCommit: '55067cc61d09e4e953f9d7fc6d599be4d8a01a5e',
+  return { passed: true, baselineCommit: baselineManifest.commit,
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, browserKeyboardActivation: Boolean(options.pressKey),
     checks: checked.length, cases, checked }
 }

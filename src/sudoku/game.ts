@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type SevenJigsawGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -33,6 +33,7 @@ export type Position = {
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
   draftSizedRules?: SizedRuleGame['rules']
+  draftRegions?: SevenJigsawGrid['regions']
 }
 
 export type HistoryPosition = Position & { chainSketch?: ChainSketchState | null }
@@ -102,7 +103,10 @@ export function makeGame(id: string, title: string, givens: string, source: Sour
   const cellCount = (grid ?? CLASSIC_GRID).size ** 2
   return {
     id, title, givens, source, created, ...(grid && { grid }),
-    position: { entries: '0'.repeat(cellCount), center: Array(cellCount).fill(0), corner: Array(cellCount).fill(0), colors: Array(cellCount).fill(0) },
+    position: {
+      entries: '0'.repeat(cellCount), center: Array(cellCount).fill(0), corner: Array(cellCount).fill(0), colors: Array(cellCount).fill(0),
+      ...(source === 'draft' && grid?.size === 7 && { draftRegions: grid.regions, draftSizedRules: [] }),
+    },
     past: [], future: [], elapsed: 0, started: false, paused: false,
   }
 }
@@ -142,13 +146,13 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   sized?: Pick<SizedRuleGame, 'rules'>
   sizedRules?: SizedRuleGame['rules']
 }): string {
-  if (game.grid && (game.grid.size === 6 || game.sized || game.sizedRules?.length)) {
+  if (game.grid && (game.grid.size !== 4 || game.sized || game.sizedRules?.length)) {
     const rules = game.sized?.rules ?? game.sizedRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
       rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
         : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
     ))))].sort()
-    const geometry = game.grid.size === 6 ? `six:${game.grid.boxRows}` : `sized:${game.grid.size}:${game.grid.boxRows}:${game.grid.boxColumns}`
+    const geometry = sizedGridIdentity(game.grid)
     return `${geometry}:${game.givens}:${keys.join(',')}`
   }
   if (game.algebraic) {
@@ -203,7 +207,7 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
-  return (Math.floor(ar / grid.boxRows) === Math.floor(br / grid.boxRows) && Math.floor(ac / grid.boxColumns) === Math.floor(bc / grid.boxColumns)) || variantPeers(puzzle, a, b)
+  return gridRegionIndex(grid, a) === gridRegionIndex(grid, b) || variantPeers(puzzle, a, b)
 }
 
 export function valuesOf(game: Game): string {
@@ -282,11 +286,19 @@ export function needsInitialCandidates(game: Game): boolean {
     !game.past.some(hasCandidates) && !game.future.some(hasCandidates)
 }
 
+function draftGridAt(game: Game, position: Position) {
+  const { grid } = game
+  const { draftRegions } = position
+  return game.source === 'draft' && grid?.size === 7 && draftRegions && draftRegions !== grid.regions
+    ? { ...grid, regions: draftRegions } : grid
+}
+
 export function move(game: Game, position: Position): Game {
   const { entries, center, corner } = game.position
   const candidatesInitialized = !needsInitialCandidates(game) || hasCandidates(position)
+  const grid = draftGridAt(game, position)
   return {
-    ...game,
+    ...game, ...(grid !== game.grid && { grid }),
     candidatesInitialized: candidatesInitialized || undefined,
     position: entries === position.entries && center === position.center && corner === position.corner
       ? position : retainVisibleCandidateColors(game.givens, position),
@@ -361,10 +373,12 @@ export function clearCandidateColors(game: Game): Game {
 }
 
 function swapHistoryPosition(game: Game, target: HistoryPosition) {
-  if (target.chainSketch === undefined) return { game: { ...game, position: target }, snapshot: game.position }
+  const grid = draftGridAt(game, target)
+  const restored = { ...game, ...(grid !== game.grid && { grid }) }
+  if (target.chainSketch === undefined) return { game: { ...restored, position: target }, snapshot: game.position }
   const { chainSketch, ...position } = target
   return {
-    game: { ...game, position, chainSketch: chainSketch ?? undefined },
+    game: { ...restored, position, chainSketch: chainSketch ?? undefined },
     snapshot: { ...game.position, chainSketch: game.chainSketch ?? null },
   }
 }

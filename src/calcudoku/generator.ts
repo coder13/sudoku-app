@@ -1,4 +1,4 @@
-import { createCalcudoku, type Cage } from './engine.ts'
+import { createCalcudoku, type Cage, type CalcudokuPuzzle } from './engine.ts'
 import { solveLatin } from '../latin/engine.ts'
 import type { NumberPuzzleDifficulty } from '../number-puzzles/catalog.ts'
 import { seededIndex, shuffled, type PickIndex } from '../number-puzzles/generation-random.ts'
@@ -60,8 +60,56 @@ function makeRecipe(size: number, pick: PickIndex): CalcudokuRecipe {
   return { size, cages }
 }
 
-export function calcudokuRecipeKey({ size, cages }: CalcudokuRecipe): string {
-  return size + '|' + cages.map(({ cells, operator, target }) => `${cells.join(',')}=${operator}${target}`).join('|')
+const symmetries = Array.from({ length: 10 }, (_, size) => {
+  const last = size - 1
+  const images = Array.from({ length: 8 }, () => [] as number[])
+  for (let cell = 0; cell < size * size; cell++) {
+    const row = Math.floor(cell / size)
+    const column = cell % size
+    images[0][cell] = cell
+    images[1][cell] = row * size + last - column
+    images[2][cell] = (last - row) * size + column
+    images[3][cell] = (last - row) * size + last - column
+    images[4][cell] = column * size + row
+    images[5][cell] = column * size + last - row
+    images[6][cell] = (last - column) * size + row
+    images[7][cell] = (last - column) * size + last - row
+  }
+  return images
+})
+
+function orientedCageKey(cages: readonly Cage[], cells: readonly number[]): string {
+  const membership = Array<number>(cells.length)
+  const clues: string[] = []
+  for (const cage of cages) {
+    let first = cells.length
+    for (const cell of cage.cells) first = Math.min(first, cells[cell])
+    // The first cell identifies its cage. Reserve zero for uncovered cells.
+    for (const cell of cage.cells) membership[cells[cell]] = first + 1
+    clues[first] = cage.operator + cage.target
+  }
+  return String.fromCharCode(...membership) + '|' + clues.join('|')
+}
+
+type CageLayout = Pick<CalcudokuPuzzle, 'size' | 'cages'>
+
+export function calcudokuRecipeKey({ size, cages }: CageLayout): string {
+  return size + '|' + orientedCageKey(cages, symmetries[size][0])
+}
+
+/** Identify equivalent cages after any rotation or reflection of the grid. */
+export function calcudokuRecipeSignature({ size, cages }: CageLayout): string {
+  let key: string | undefined
+  for (const cells of symmetries[size]) {
+    const transformed = orientedCageKey(cages, cells)
+    if (key === undefined || transformed < key) key = transformed
+  }
+  return size + '|' + key
+}
+
+type CalcudokuGenerationHistory = {
+  signatures: ReadonlySet<string>
+  recipes: ReadonlySet<string>
 }
 
 /** Select connected cages with a unique solution that requires no search guesses. */
@@ -69,15 +117,23 @@ export function generateCalcudoku(
   difficulty: NumberPuzzleDifficulty,
   seed: number,
   excluded: ReadonlySet<string> = new Set(),
+  history?: CalcudokuGenerationHistory,
 ): CalcudokuRecipe | null {
   const pick = seededIndex(seed)
   const size = sizes[difficulty]
+  let fallback: CalcudokuRecipe | null = null
   for (let attempt = 0; attempt < 128; attempt++) {
     const recipe = makeRecipe(size, pick)
-    if (recipe.cages.filter(cage => cage.operator === 'equal').length > Math.floor(size / 2) ||
-      excluded.has(calcudokuRecipeKey(recipe))) continue
+    if (recipe.cages.filter(cage => cage.operator === 'equal').length > Math.floor(size / 2)) continue
+    const signature = calcudokuRecipeSignature(recipe)
+    if (excluded.has(signature)) continue
+    const seen = history?.signatures.has(signature)
+    if (seen && (fallback || history?.recipes.has(calcudokuRecipeKey(recipe)))) continue
     const puzzle = createCalcudoku(size, recipe.cages)
-    if (solveLatin(puzzle, [], 1).status === 'unique') return recipe
+    if (solveLatin(puzzle, [], 1).status !== 'unique') continue
+    if (!seen) return recipe
+    fallback = recipe
   }
-  return null
+  // If the search finds no new layout, offer an older one in an unplayed orientation.
+  return fallback
 }

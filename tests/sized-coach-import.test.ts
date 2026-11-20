@@ -94,7 +94,9 @@ test('a labeled Coach Difference layer keeps the explicit 1 alongside larger lab
   await assert.rejects(detectPuzzle(code()), /between 1 and 3/)
   layer.segments[1].parameters.difference = 3
   layer.settings.negativeConstraint = true
-  await assert.rejects(detectPuzzle(code()), /unsupported negative rule/)
+  assert.deepEqual((await detectPuzzle(code())).sizedRules, [
+    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 1 }, { cells: [1, 2], value: 3 }], negative: true },
+  ])
 })
 
 test('sized Coach Arrow preserves the bulb, its ordered shaft and its companion rules', async () => {
@@ -125,4 +127,21 @@ test('Coach Region Sum preserves each box visit and coexists with other line clu
   })
   source.givenConstraints[0].segments[0].cells = [0, 1, 5]
   await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
+})
+
+test('a 7 × 7 Coach Jigsaw preserves explicit regions beside Thermometer and exact Ratio rules', async () => {
+  const labels = '0000111020011122233312223434555343456664445556666'
+  const original = { gridSize: 7, givenDigits: '0'.repeat(49), regions: Array.from(labels, label => Number(label) + 1),
+    givenConstraints: [
+      { type: 'thermometer', segments: [{ cells: [8, 16, 24] }] },
+      { type: 'ratio', settings: { negativeConstraint: true }, segments: [{ cells: [1, 2], parameters: { ratio: 3 } }] },
+    ] }
+  const puzzle = await detectPuzzle(coachCode(original))
+  assert.equal(puzzle.grid?.size, 7)
+  assert.deepEqual(puzzle.grid?.size === 7 && puzzle.grid.regions[0], [0, 1, 2, 3, 7, 9, 10])
+  assert.deepEqual(puzzle.sizedRules, [
+    { type: 'thermometer', cells: [8, 16, 24] },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [1, 2], value: 3 }], negative: true },
+  ])
+  await assert.rejects(detectPuzzle(coachCode({ ...original, regions: Array(49).fill(0) })), /seven connected regions/)
 })
