@@ -36,6 +36,17 @@ fn adjacent_edge([first, second]: [usize; 2], size: usize) -> Option<[usize; 2]>
     (b < size * size && (b - a == size || b - a == 1 && a / size == b / size)).then_some([a, b])
 }
 
+fn orthogonal_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
+    (0..size * size).flat_map(move |cell| {
+        [
+            (cell % size + 1 < size).then_some([cell, cell + 1]),
+            (cell / size + 1 < size).then_some([cell, cell + size]),
+        ]
+        .into_iter()
+        .flatten()
+    })
+}
+
 pub(super) fn compile_pairs(
     size: usize,
     rules: &[SizedConstraint],
@@ -43,7 +54,8 @@ pub(super) fn compile_pairs(
     if !rules.iter().any(|rule| {
         matches!(
             rule,
-            SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. } | SizedConstraint::LabeledDots { .. }
+            SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
+                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. }
         )
     }) {
         return Some(Vec::new());
@@ -57,6 +69,18 @@ pub(super) fn compile_pairs(
     let mut differences: [Option<PairConstraint<MAX_SIZE>>; MAX_SIZE] =
         std::array::from_fn(|_| None);
     for (index, rule) in rules.iter().enumerate() {
+        if let SizedConstraint::AntiSum { sum } = *rule {
+            if !(2..=2 * size as u8).contains(&sum) {
+                return None;
+            }
+            let constraint = PairConstraint::from_relation([0, 1], size, |x, y| x != y && x + y != sum);
+            groups[index].extend(orthogonal_edges(size).map(|cells| {
+                let mut constraint = constraint.clone();
+                constraint.cells = cells;
+                SizedPairLink { constraint, kropki: None }
+            }));
+            continue;
+        }
         if let SizedConstraint::Difference { cells, difference } = *rule {
             let cells = adjacent_edge(cells, size)?;
             if !(1..size as u8).contains(&difference) {
@@ -153,20 +177,12 @@ fn add_unmarked_links(
 ) {
     let forbidden =
         PairConstraint::from_relation([0, 1], size, |x, y| x != y && !KROPKI[kind](x, y));
-    for a in 0..size * size {
-        let neighbors = [
-            (a % size + 1 < size).then_some(a + 1),
-            (a / size + 1 < size).then_some(a + size),
-        ];
-        for b in neighbors.into_iter().flatten() {
-            if !marked.contains(&[a, b]) {
-                let mut constraint = forbidden.clone();
-                constraint.cells = [a, b];
-                links.push(SizedPairLink {
-                    constraint,
-                    kropki: Some((RELATIONS[kind], true, value)),
-                });
-            }
-        }
+    for cells in orthogonal_edges(size).filter(|cells| !marked.contains(cells)) {
+        let mut constraint = forbidden.clone();
+        constraint.cells = cells;
+        links.push(SizedPairLink {
+            constraint,
+            kropki: Some((RELATIONS[kind], true, value)),
+        });
     }
 }

@@ -189,6 +189,10 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   if (!rules) return 0
   let excluded = kropkiDigitExclusions(rules, cell, other, digit, size)
   for (const rule of rules) {
+    if (rule.type === 'anti-sum' && gridCellsShareEdge(cell, other, size)) {
+      const forbidden = rule.sum - digit
+      if (forbidden >= 1 && forbidden <= size) excluded |= 1 << (forbidden - 1)
+    }
     if (rule.type === 'renban' && cell !== other && rule.cells.includes(cell) && rule.cells.includes(other)) {
       for (let candidate = 1; candidate <= size; candidate++) {
         if (candidate === digit || Math.abs(candidate - digit) >= rule.cells.length) excluded |= 1 << (candidate - 1)

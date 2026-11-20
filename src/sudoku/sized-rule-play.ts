@@ -5,7 +5,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -32,7 +32,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   const rule = rules[index]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
-  const cells = cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
+  const cells = step.type === 'anti-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
@@ -74,6 +74,11 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
     reason = 'Remove candidates that cannot contribute to a shared total while keeping different digits in cells that share a house.'
+  } else if (rule.type === 'anti-sum') {
+    const [first, second] = cells
+    const shared = second - first === 1 ? `row ${Math.floor(first / size) + 1}` : `column ${first % size + 1}`
+    description = `These cells share ${shared}, so their digits must differ. Anti-Sum also rules out pairs that add to ${rule.sum}.`
+    reason = 'Remove each candidate that has no partner in the neighboring cell under both rules.'
   } else if (rule.type === 'difference') {
     description = `The digits across this numbered marker differ by exactly ${rule.difference}.`
     reason = 'Remove the candidates that have no partner at that difference in the neighboring cell.'
@@ -128,6 +133,12 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     if (cage) locations.push(...cage.cells)
     conflict = cage ? `The cage at ${reference(Math.min(...cage.cells))} cannot reach ${cage.sum} with different digits.`
       : 'A cage cannot reach its total with different digits.'
+  } else if (failure.type === 'anti-sum') {
+    const rule = rules[failure.rule]
+    locations.push(...failure.cells)
+    conflict = rule.type === 'anti-sum'
+      ? `No pair of different digits in ${reference(failure.cells[0])} and ${reference(failure.cells[1])} can avoid a sum of ${rule.sum}.`
+      : 'The neighboring cells have no pair of digits that fits the rule.'
   } else if (failure.type === 'kropki') {
     locations.push(...failure.pair.cells)
     conflict = `${kropkiPairRule(failure.pair)} The two cells have no candidates that fit the rule.`

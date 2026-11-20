@@ -26,10 +26,11 @@ const COACH_FIELDS = new Set([
 ])
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
-const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio'])
+const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
-const FP_JIGSAW_BASE = /^(?:normal|standard) irregular ([57])\s*[×x]\s*([57]) sudoku rules apply\.$/i
-const FP_JIGSAW_THERMOMETER = /^Digits along a thermometer must strictly increase from the bulb to the end\.$/i
+const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([57])\s*[×x]\s*\1)? sudoku rules apply(?:\.|: fill each row, column and region with the digits 1[-–]([57])\.)$/i
+const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
+const FP_ANTI_SUM = /^Anti-Sum(?: \((\d{1,2})\))?: Digits in orthogonally (?:adjacent|connected) cells may not sum to (\d{1,2})\.$/i
 const FP_JIGSAW_DOTS = /^A white dot with a number in it implies the difference between two cells\. A black dot with a number in it implies the ratio relationship between two cells\.$/i
 const PLAIN_MINI_RULES = /^\s*(?:normal|standard) 4\s*[×x]\s*4 sudoku rules apply[.!]?\s*$/i
 
@@ -533,6 +534,27 @@ function fpCellIndex(value: unknown, size = 9) {
   return (Number(match[1]) - 1) * size + Number(match[2]) - 1
 }
 
+function antiSumFromClause(clause: string, size: number) {
+  const match = FP_ANTI_SUM.exec(clause.trim())
+  if (!match) return
+  const sum = Number(match[2])
+  if (sum >= 2 && sum <= 2 * size && (match[1] === undefined || Number(match[1]) === sum)) return sum
+}
+
+function fpJigsawMetadata(data: Record<string, unknown>, hasAntiSum: boolean) {
+  if (data.highlightConflicts !== undefined && typeof data.highlightConflicts !== 'boolean') return false
+  if (hasData(data.xv)) return false
+  if (hasData(data.negative)) {
+    const flags = data.negative
+    if (!(hasAntiSum && Array.isArray(data.xv) && Array.isArray(flags) && flags.length === 1 && flags[0] === 'xv')) return false
+  }
+  if (!hasData(data.cage)) return true
+  return typeof data.successMessage === 'string' && Array.isArray(data.cage) && data.cage.every(cage =>
+    record(cage) && Object.keys(cage).length === 4 && cage.value === `msgcorrect: ${data.successMessage}` &&
+    cage.outlineC === '#ffffff00' && cage.fontC === '#ffffff00' &&
+    Array.isArray(cage.cells) && cage.cells.length === 1 && cage.cells[0] === 'R1C1')
+}
+
 function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: readonly unknown[], givens: string, format: ImportFormat): ImportedPuzzle {
   const regions: number[][] = Array.from({ length: size }, () => [])
   for (const [cell, label] of labels.entries()) {
@@ -570,7 +592,10 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: 
     })
     rules.push({ type: 'labeled-dots', relation, marks })
   }
-  const clauses = typeof data.ruleset === 'string' ? data.ruleset.trim().split(/\n\s*\n/).map(line => line.replace(/\s+/g, ' ')) : []
+  const [, ...clauses] = jigsawRuleClauses(data.ruleset)
+  const antiSums = clauses.map(clause => antiSumFromClause(clause, size)).filter(sum => sum !== undefined)
+  if (!fpJigsawMetadata(data, antiSums.length > 0)) throw new Error('This f-puzzles export includes unsupported XV rules or cages.')
+  for (const sum of new Set(antiSums)) rules.push({ type: 'anti-sum', sum })
   if (clauses.some(clause => FP_JIGSAW_THERMOMETER.test(clause)) && !rules.some(rule => rule.type === 'thermometer') ||
     clauses.some(clause => FP_JIGSAW_DOTS.test(clause)) && !rules.some(rule => rule.type === 'labeled-dots') ||
     !isSizedRuleList(rules, grid)) {
@@ -578,13 +603,22 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: 
   }
   const title = typeof data.title === 'string' ? data.title.trim().slice(0, 72) : ''
   const author = typeof data.author === 'string' ? data.author.trim().slice(0, 72) : ''
-  return { givens, grid, format, sizedRules: rules, ...(title && { title }), ...(author && { sizedAuthor: author }) }
+  const authoredSolution = Array.isArray(data.solution) && data.solution.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= size)
+    ? data.solution.join('') : undefined
+  return { givens, grid, format, sizedRules: rules, ...(title && { title }), ...(author && { sizedAuthor: author }),
+    ...(authoredSolution?.length === size ** 2 && { authoredSolution }) }
+}
+
+function jigsawRuleClauses(text: unknown) {
+  return typeof text === 'string' ? text.trim().split(/\n\s*\n/).map(line => line.trim().replace(/\s+/g, ' ')) : []
 }
 
 function knownJigsawRuleset(text: string, size: number) {
-  const [base, ...clauses] = text.trim().split(/\n\s*\n/).map(line => line.replace(/\s+/g, ' '))
-  const explicitSize = FP_JIGSAW_BASE.exec(base)
-  return Number(explicitSize?.[1]) === size && Number(explicitSize?.[2]) === size && clauses.every(clause => FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause))
+  const [base, ...clauses] = jigsawRuleClauses(text)
+  const match = FP_JIGSAW_BASE.exec(base)
+  const sizes = match?.slice(1).filter(value => value !== undefined)
+  return !!sizes?.length && sizes.every(value => Number(value) === size) && clauses.every(clause =>
+    FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || antiSumFromClause(clause, size) !== undefined)
 }
 
 function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportedPuzzle {
@@ -750,7 +784,8 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     if (host === 'sudokuexchange.com' && /^\/play\/?$/.test(url.pathname)) return digitRuns(url.searchParams.get('s') ?? '', 'Sudoku Exchange')
     if (host === 'f-puzzles.com') return fromFPuzzles(url.searchParams.get('load') ?? '', 'f-puzzles')
     if (['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'].includes(host)) {
-      const code = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
+      const pathCode = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
+      const code = pathCode || url.searchParams.get('puzzleid') || ''
       if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
         !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPad(await publishedPuzzleCode('sudokupad', code))
       return fromSudokuPad(code)

@@ -54,6 +54,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-extra-house': 'Extra Region',
   'sized-labeled-dots': 'Difference and Ratio dots',
   'sized-difference': 'Difference',
+  'sized-anti-sum': 'Anti-Sum',
   'sized-arrow': 'Arrow',
   'sized-double-arrow': 'Double Arrow',
   'sized-region-sum': 'Region Sum',

@@ -20,6 +20,7 @@ const ruleNames = {
   kropki: 'Kropki dots',
   'labeled-dots': 'Labeled dots',
   difference: 'Difference marker',
+  'anti-sum': 'Anti-Sum',
   arrow: 'Arrow',
   'double-arrow': 'Double Arrow',
   'linked-double-arrow': 'Double Arrow with X-Sum ends',
@@ -43,7 +44,7 @@ const defaultLinkedEnds: readonly [SizedSumEnd, SizedSumEnd] = [
 
 const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
 
-function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
+function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
   if (kind === 'killer-cages') return killer
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
@@ -71,6 +72,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [marks, setMarks] = useState<KropkiMarks>({})
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
   const [difference, setDifference] = useState(1)
+  const [forbiddenSum, setForbiddenSum] = useState(2 * size - 1)
   const [labeled, setLabeled] = useState(emptyDotLayer)
   const [dotValue, setDotValue] = useState(1)
   const [groupByRegion, setGroupByRegion] = useState(false)
@@ -93,7 +95,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const killer = killerLayer(nextCages)
   let rule: SizedConstraintRule = kind === 'linked-double-arrow'
     ? { type: kind, ends: linkedEnds, cells }
-    : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
+    : kind === 'anti-sum' ? { type: kind, sum: forbiddenSum }
+      : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
@@ -143,6 +146,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setLabeled(previous?.type === 'labeled-dots' ? previous : emptyDotLayer)
     setDotValue(previous?.type === 'labeled-dots' && previous.relation === 'ratio' ? 2 : 1)
     setDifference(previous?.type === 'difference' ? previous.difference : 1)
+    setForbiddenSum(previous?.type === 'anti-sum' ? previous.sum : 2 * size - 1)
     setGroupByRegion(previous?.type === 'region-sum' && previous.groupByRegion === true)
     setActive(selected[0] ?? 0)
     setError('')
@@ -243,7 +247,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
           {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
-          {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
+          {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{rule.type === 'anti-sum' ? ` (${rule.sum})` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
@@ -257,6 +261,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setMarks({})
         setDotKind('consecutive')
         setDifference(1)
+        setForbiddenSum(2 * size - 1)
         setLabeled(emptyDotLayer)
         setDotValue(1)
         setGroupByRegion(false)
@@ -314,6 +319,16 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         <input type="checkbox" checked={groupByRegion} onChange={event => setGroupByRegion(event.currentTarget.checked)} />
         Count all visits to the same {group} together
       </label>}
+      {kind === 'anti-sum' && <>
+        <label htmlFor={`${id}-forbidden-sum`}>Forbidden sum</label>
+        <SelectControl id={`${id}-forbidden-sum`} value={forbiddenSum} onChange={event => {
+          setForbiddenSum(Number(event.currentTarget.value))
+          setError('')
+        }}>
+          {Array.from({ length: 2 * size - 1 }, (_, index) => <option key={index + 2}>{index + 2}</option>)}
+        </SelectControl>
+        <p>Digits in cells that share an edge cannot add to {forbiddenSum}.</p>
+      </>}
       {kind === 'difference' && <>
         <label htmlFor={`${id}-difference`}>Exact difference</label>
         <SelectControl id={`${id}-difference`} value={difference} onChange={event => {
