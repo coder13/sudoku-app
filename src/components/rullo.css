@@ -21,7 +21,11 @@
   text-underline-offset: .18em;
 }
 
-.number-puzzle-grid[data-game="rullo"] [data-choice="2"] > span {
+.number-puzzle-grid[data-game="rullo"] .number-puzzle-cell[aria-pressed="false"] {
+  background: var(--surface-muted);
   color: var(--muted);
+}
+
+.number-puzzle-grid[data-game="rullo"] .number-puzzle-cell[aria-pressed="false"] > span {
   text-decoration: line-through;
 }
