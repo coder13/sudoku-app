@@ -256,6 +256,12 @@ impl SizedGrid {
         limit: usize,
         singles_only: bool,
     ) -> Option<SizedHints> {
+        let candidates = self.hint_candidates(digits, eliminations)?;
+        let choices = self.hint_choices(&candidates, limit, singles_only)?;
+        Some(SizedHints { candidates, choices })
+    }
+
+    fn hint_candidates(&self, digits: &[u8], eliminations: &[u16]) -> Option<Vec<u16>> {
         if eliminations.len() != self.cell_count()
             || eliminations.iter().any(|mask| mask & !self.full_mask != 0)
         {
@@ -287,6 +293,15 @@ impl SizedGrid {
         {
             return None;
         }
+        Some(masks)
+    }
+
+    fn hint_choices(
+        &self,
+        masks: &[u16],
+        limit: usize,
+        singles_only: bool,
+    ) -> Option<Vec<SizedDeduction>> {
         let mut choices = Vec::new();
         for (cell, &mask) in masks.iter().enumerate() {
             if choices.len() == limit {
@@ -323,12 +338,9 @@ impl SizedGrid {
             }
         }
         if !singles_only && choices.len() < limit {
-            self.locked_candidates(&masks, &mut choices, limit);
+            self.locked_candidates(masks, &mut choices, limit);
         }
-        Some(SizedHints {
-            candidates: masks,
-            choices,
-        })
+        Some(choices)
     }
 
     fn single(
@@ -442,6 +454,41 @@ impl SizedGrid {
         for house in self.memberships[cell] {
             used[house] ^= bit;
         }
+    }
+
+    // Exact search can discard a branch with a missing digit or force a
+    // hidden single before considering any guesses in that house.
+    #[cfg(feature = "variants")]
+    fn restrict_search_houses(&self, domains: &mut [u16]) -> Option<bool> {
+        let mut changed = false;
+        for house in &self.houses {
+            let mut seen = 0;
+            let mut repeated = 0;
+            for &cell in house {
+                let domain = domains[cell];
+                repeated |= seen & domain;
+                seen |= domain;
+            }
+            if seen != self.full_mask {
+                return None;
+            }
+            let singles = seen & !repeated;
+            if singles == 0 {
+                continue;
+            }
+            for &cell in house {
+                let domain = domains[cell];
+                let forced = domain & singles;
+                if forced.count_ones() > 1 {
+                    return None;
+                }
+                if forced != 0 && forced != domain {
+                    domains[cell] = forced;
+                    changed = true;
+                }
+            }
+        }
+        Some(changed)
     }
 
     fn search(&self, digits: &[u8], budget: u32, limit: u8) -> (Analysis, Option<Vec<u8>>) {

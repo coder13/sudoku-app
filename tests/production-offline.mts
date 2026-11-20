@@ -99,6 +99,6 @@ test('each Rullo puzzle precaches its numbers and line targets', async () => {
     const html = await readFile(new URL('.' + path, client), 'utf8')
     assert.ok(html.includes('aria-label="Rullo board"'), `${id} prerenders its grid`)
     assert.equal([...html.matchAll(/class="number-puzzle-cell"/g)].length, puzzle.numbers.length)
-    assert.equal([...html.matchAll(/class="rullo-target"/g)].length, puzzle.lines.length)
+    assert.equal([...html.matchAll(/class="rullo-target"/g)].length, 2 * puzzle.lines.length)
   }
 })

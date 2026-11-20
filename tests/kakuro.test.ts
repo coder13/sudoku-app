@@ -190,4 +190,10 @@ test('nine-cell runs permit all digits and handle bounded exact search', () => {
   assert.equal(checkKakuro(puzzle, values).complete, true)
   assert.equal(solveKakuro(puzzle, values).status, 'unique')
   assert.equal(solveKakuro(puzzle).status, 'multiple')
+
+  const partial = values.map((digit, cell) => [12, 17, 22, 27].includes(cell) ? 0 : digit)
+  const hint = findKakuroHint(puzzle, partial)
+  assert.ok(hint)
+  assert.equal(hint.digit, values[hint.cell])
+  assert.deepEqual(solveKakuro(puzzle, partial).solution, values)
 })

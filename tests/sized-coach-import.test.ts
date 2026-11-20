@@ -96,3 +96,33 @@ test('a labeled Coach Difference layer keeps the explicit 1 alongside larger lab
   layer.settings.negativeConstraint = true
   await assert.rejects(detectPuzzle(code()), /unsupported negative rule/)
 })
+
+test('sized Coach Arrow preserves the bulb, its ordered shaft and its companion rules', async () => {
+  const arrow = { type: 'arrow', segments: [{ cells: [0, 5, 10], parameters: {} }] }
+  const code = () => coachCode({ gridSize: 4, givenConstraints: [arrow,
+    { type: 'renban', segments: [{ cells: [0, 1] }] }] })
+  const result = await detectPuzzle(code())
+  assert.deepEqual(result.sizedRules, [
+    { type: 'arrow', circle: 0, cells: [5, 10] }, { type: 'renban', cells: [0, 1] },
+  ])
+  arrow.segments[0].cells = [0, 5, 0]
+  await assert.rejects(detectPuzzle(code()), /invalid rules/)
+})
+
+test('Coach Region Sum preserves each box visit and coexists with other line clues', async () => {
+  const path = [0, 4, 9, 13, 10, 5]
+  const source = { gridSize: 4, givenConstraints: [
+    { type: 'regionSumLine', segments: [{ cells: path }] },
+    { type: 'renban', segments: [{ cells: [4, 0] }] },
+  ] }
+  assert.deepEqual((await detectPuzzle(coachCode(source))).sizedRules, [
+    { type: 'region-sum', cells: path, groupByRegion: false },
+    { type: 'renban', cells: [4, 0] },
+  ])
+  source.givenConstraints[0].segments[0].cells = [0, 1, 6, 7, 2, 5, 0]
+  assert.deepEqual((await detectPuzzle(coachCode(source))).sizedRules?.[0], {
+    type: 'region-sum', cells: [6, 7, 2, 5, 0, 1], groupByRegion: false, segments: [[0, 1, 6, 7, 2, 5, 0]],
+  })
+  source.givenConstraints[0].segments[0].cells = [0, 1, 5]
+  await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
+})

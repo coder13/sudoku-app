@@ -180,3 +180,25 @@ test('Race track keeps both rule families through exact solving and replay in ei
     assert.ok(trace?.some(({ deduction }) => deduction?.type === 'rule' && rules[deduction.rule]?.type === 'difference'))
   }
 })
+
+test('imported Mini Region Sum and Renban lines jointly determine the same grid for play and replay', async () => {
+  const payload = coachCode({ gridSize: 4, givenDigits: '1000000000000000', givenConstraints: [
+    { type: 'regionSumLine', segments: [{ cells: [0, 4, 9, 13, 10, 5] }] },
+    { type: 'renban', segments: [{ cells: [4, 9, 14] }] },
+  ] })
+  const { game } = await prepareImportedPuzzle(payload)
+  assert.ok(game.sized && game.grid)
+  assert.deepEqual(game.sized.rules.map(rule => rule.type), ['region-sum', 'renban'])
+  const answer = '1234341221434321'
+  assert.equal(game.sized.solution, answer)
+  for (const rule of game.sized.rules) {
+    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+      version: 2, grid: game.grid, digits: Array.from(game.givens, Number), rules: [rule],
+    } }), 'multiple')
+  }
+  const replay = await puzzleSolution(game)
+  assert.equal(replay.status, 'solved')
+  assert.equal(replay.board, answer)
+  assert.ok(replay.steps.some(step => step.technique === 'sized-region-sum'))
+  assert.ok(replay.steps.some(step => step.technique === 'sized-renban'))
+})

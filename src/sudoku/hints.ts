@@ -51,6 +51,8 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-renban': 'Renban',
   'sized-kropki': 'Kropki',
   'sized-difference': 'Difference',
+  'sized-arrow': 'Arrow',
+  'sized-region-sum': 'Region Sum',
   'whispers-house-support': 'Whispers and shared houses',
   'renban-sum': 'Renban and Little Killer',
   '3d-medusa': '3D Medusa',

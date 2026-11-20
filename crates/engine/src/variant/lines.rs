@@ -92,20 +92,8 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 cell_mask(cells).ok_or(invalid)?;
-                let region = |cell: usize| puzzle.memberships[cell][2];
                 let mut cells = cells.clone();
-                if *group_by_region {
-                    cells.sort_by_key(|&cell| region(cell));
-                }
-                let mut start = 0;
-                let segments: Vec<_> = cells
-                    .chunk_by(|&a, &b| region(a) == region(b))
-                    .map(|run| {
-                        let range = start..start + run.len();
-                        start = range.end;
-                        range
-                    })
-                    .collect();
+                let segments = region_sum_ranges(&mut cells, |cell| puzzle.memberships[cell][2], *group_by_region);
                 if segments.len() < 2 {
                     return Err(invalid);
                 }
@@ -325,40 +313,93 @@ pub(super) fn valid_ray(cells: &[usize], direction: ClueDirection, diagonal: boo
     !in_grid(r, c)
 }
 
-fn add_digit(sums: u128, domain: u16) -> u128 {
-    digits(domain).fold(0, |next, digit| next | (sums << digit))
+/// Partition a line into consecutive region visits or one group per region.
+pub(crate) fn region_sum_ranges(
+    cells: &mut [usize],
+    region: impl Fn(usize) -> usize,
+    group_by_region: bool,
+) -> Vec<Range<usize>> {
+    if group_by_region {
+        cells.sort_by_key(|&cell| region(cell));
+    }
+    let mut start = 0;
+    cells
+        .chunk_by(|&a, &b| region(a) == region(b))
+        .map(|run| {
+            let range = start..start + run.len();
+            start = range.end;
+            range
+        })
+        .collect()
+}
+
+fn add_digit<const WORDS: usize>(sums: [u128; WORDS], domain: u16) -> [u128; WORDS] {
+    let mut next = [0; WORDS];
+    for digit in digits(domain) {
+        for word in 0..WORDS {
+            next[word] |= sums[word] << digit;
+            if word > 0 {
+                next[word] |= sums[word - 1] >> (128 - digit);
+            }
+        }
+    }
+    next
 }
 
 fn reachable(domains: &[u16]) -> u128 {
-    domains.iter().copied().fold(1, add_digit)
+    reachable_sums::<1>(domains)[0]
+}
+
+pub(crate) fn reachable_sums<const WORDS: usize>(domains: &[u16]) -> [u128; WORDS] {
+    let mut empty = [0; WORDS];
+    empty[0] = 1;
+    domains.iter().copied().fold(empty, add_digit)
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
-    let mut prefix = [0u128; 10];
-    prefix[0] = 1;
+    sum_support_with_prefix(domains, [totals], support, &mut [[0]; 10]);
+}
+
+pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
+    domains: &[u16],
+    totals: [u128; WORDS],
+    support: &mut [u16],
+    prefix: &mut [[u128; WORDS]],
+) -> [u128; WORDS] {
+    prefix[0] = [0; WORDS];
+    prefix[0][0] = 1;
     for (i, &domain) in domains.iter().enumerate() {
         prefix[i + 1] = add_digit(prefix[i], domain);
     }
-    if prefix[domains.len()] & totals == 0 {
-        return;
+    let matched: [u128; WORDS] = std::array::from_fn(|word| prefix[domains.len()][word] & totals[word]);
+    if matched.iter().all(|&word| word == 0) {
+        return matched;
     }
 
     // Move from the allowed totals back toward the empty prefix. A digit
     // has support if its shift matches a reachable sum before this cell.
     let mut allowed = totals;
     for (i, &domain) in domains.iter().enumerate().rev() {
-        let mut previous = 0;
+        let mut previous = [0; WORDS];
         let mut supported = 0;
         for digit in digits(domain) {
-            let shifted = allowed >> digit;
-            if prefix[i] & shifted != 0 {
+            let mut fits = false;
+            for word in 0..WORDS {
+                let mut shifted = allowed[word] >> digit;
+                if word + 1 < WORDS {
+                    shifted |= allowed[word + 1] << (128 - digit);
+                }
+                fits |= prefix[i][word] & shifted != 0;
+                previous[word] |= shifted;
+            }
+            if fits {
                 supported |= digit_bit(digit);
             }
-            previous |= shifted;
         }
         support[i] = supported;
         allowed = previous;
     }
+    matched
 }
 
 fn between_support(domains: &[u16], support: &mut [u16]) {
