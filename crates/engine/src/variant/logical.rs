@@ -28,6 +28,7 @@ mod exclusions;
 mod pruning;
 mod line_houses;
 mod ray_houses;
+mod renban_house_support;
 mod renban_locks;
 mod renban_sum;
 
@@ -155,6 +156,8 @@ catalog! {
     RenbanSumRayHouses: "renban-sum-ray-houses", 79, Hard;
     /// Lock a digit required by a Renban into a house.
     RenbanLockedDigit: "renban-locked-digit", 40, Medium;
+    /// Fit a Renban and the remaining digits of its containing house.
+    RenbanHouseSupport: "renban-house-support", 62, Medium;
     /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
     RenbanSum: "renban-sum", 66, Medium;
     /// Fit a Renban and diagonal sum against another Renban in a shared house.
@@ -262,6 +265,8 @@ pub enum VariantEvidence {
     LineHouses(Box<VariantLineHouseProof>),
     /// Candidate support from a diagonal sum and the houses shared by its cells.
     RayHouses(Box<VariantRayHouseProof>),
+    /// Candidate support from a Renban fully contained in one house.
+    RenbanHouseSupport(Box<VariantRenbanHouseProof>),
     /// Candidate support from a Little Killer ray and a Renban it contains.
     RenbanSum(Box<VariantRenbanSumProof>),
     /// Candidate support from a Little Killer ray, two Renbans, and a house.
@@ -344,6 +349,28 @@ pub struct VariantRayHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Digits supported by a complete assignment of the indicated cells.
     pub supported: Vec<u16>,
+}
+
+/// Replayable support for a Renban and all other cells of its containing house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRenbanHouseProof {
+    /// Index of the Renban in the ordered puzzle rules.
+    pub rule: usize,
+    /// The house containing the entire line.
+    pub house: VariantHouseKind,
+    /// Renban cells in printed order followed by the other cells of the house.
+    pub cells: Vec<usize>,
+    /// Number of cells on the Renban.
+    pub line_length: usize,
+    /// Input digit masks, including singleton masks for placements.
+    pub domains: [u16; 9],
+    /// Digits with a complete assignment satisfying both the Renban and house.
+    pub supported: [u16; 9],
+    /// Mask of the first digit of each consecutive set that fits the entire house.
+    pub starts: u16,
+    /// Outside cell that forms a two-digit contradiction with the first removal.
+    pub paired_cell: Option<usize>,
 }
 
 /// Replayable support for a Renban set inside a Little Killer ray.
@@ -605,6 +632,10 @@ impl VariantDeduction {
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::RenbanHouseSupport(proof) => match proof.paired_cell {
+                Some(_) => proof.line_length + 2,
+                None => proof.cells.len(),
+            },
             VariantEvidence::RenbanSum(proof) => proof.cells.len(),
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
@@ -1111,6 +1142,7 @@ impl CompiledVariant {
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             RenbanLockedDigit => self.renban_locks(position, &mut proofs),
+            RenbanHouseSupport => self.renban_house_support(position, &mut proofs),
             LittleKillerHouseSupport | RenbanSumRayHouses => {
                 self.ray_house_proofs(position, technique, &mut proofs);
             }

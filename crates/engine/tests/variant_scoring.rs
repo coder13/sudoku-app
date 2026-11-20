@@ -8,7 +8,7 @@ use sudoku_app_engine::{
 
 fn estimate(deduction: &VariantDeduction) -> u16 {
     use VariantTechnique::*;
-    let (cells, domains, supporting_rules) = match &deduction.evidence {
+    let (cells, domains, supporting_rules): (&[usize], &[u16], u16) = match &deduction.evidence {
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {
                 VariantExclusionPremise::Cell { cell, domain } => {
@@ -45,6 +45,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         VariantEvidence::RayHouses(proof) => {
             (&proof.cells, &proof.domains, proof.houses.len() as u16)
         }
+        VariantEvidence::RenbanHouseSupport(proof) => (&proof.cells, &proof.domains[..], 0),
         VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::RenbanSumHouse(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::CageSum {
@@ -73,6 +74,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
         RenbanLockedDigit => 24 + span + choices,
+        RenbanHouseSupport => 22 + span + 2 * choices,
         // Compare each possible Renban interval's sum with the remainders on the ray.
         RenbanSum => 42 + span + 2 * choices,
         LittleKillerHouseSupport => 32 + span + 2 * choices + 3 * supporting_rules,

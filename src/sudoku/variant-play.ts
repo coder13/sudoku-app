@@ -10,8 +10,12 @@ import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions
 
 let playOrder: Promise<string[]> | undefined
 
-function withRenbanLocks(order: readonly string[]) {
-  return order.flatMap(id => id === 'renban' ? [id, 'renban-locked-digit'] : [id])
+function withRenbanTechniques(order: readonly string[]) {
+  return order.flatMap(id => {
+    if (id === 'renban') return [id, 'renban-locked-digit']
+    if (id === 'little-killer') return [id, 'renban-house-support']
+    return [id]
+  })
 }
 
 function withLittleKillerHouses(order: readonly string[]) {
@@ -36,7 +40,7 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   const hasCompanion = joined.some(ray => renbans.some(renban =>
     renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
   return playOrder.then(order => {
-    const renbanOrder = renbans.length ? withRenbanLocks(order) : order
+    const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
     return rayOrder.flatMap(id => {
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
@@ -51,7 +55,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
   const order = await getVariantPlayOrder()
-  const techniqueOrder = id === 'renban' ? withRenbanLocks(order)
+  const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
     : id === 'little-killer' ? withLittleKillerHouses(order) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)

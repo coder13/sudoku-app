@@ -885,6 +885,26 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::Renban { cells: vec![32, 40, 48], segments: None }],
             ),
         ],
+        RenbanHouseSupport => [
+            seed(
+                "000800106001070040000401870098000657140760390005080020060298704410000500027510060",
+                18,
+                3,
+                [PuzzleRule::Renban { cells: vec![20, 21, 22], segments: None }],
+            ),
+            seed(
+                "408100700000050008039000502003005001000000007800307604070509806000600329940032075",
+                9,
+                1,
+                [PuzzleRule::Renban { cells: vec![18, 27, 36, 45], segments: None }],
+            ),
+            seed(
+                "008205000000836001320410080450000600000001040196000832563000020001040703004600090",
+                31,
+                9,
+                [PuzzleRule::Renban { cells: vec![40, 49, 58, 67, 76], segments: None }],
+            ),
+        ],
         RenbanSum => [
             seed(
                 "490081700000427068000900421300200094056009080800060010070000205001304806000000030",

@@ -62,7 +62,7 @@ Use complete source definitions, including every companion clue and parameter. S
 2. `inequality-palindrome14.json`: all signs, Palindromes and white dots; preserve its partial 98-point, nine-step human path.
 3. `renban-killer-clover.json` and `renban-coach.json`: set/cage intersections, overlapping clues and the original partial BSms path tracked in [158](https://github.com/coder13/sudoku-app/issues/158).
 4. `region-sum-coach.json`: explicit groupings, closed geometry and FaxQ's limited opening hints. Human coverage stays visible alongside [192](https://github.com/coder13/sudoku-app/issues/192).
-5. `little-killer-menace.json`: fourteen Renban sets and four outside sums. Its exact solution is separate from its zero-step human stall; joint reasoning is tracked in [202](https://github.com/coder13/sudoku-app/issues/202).
+5. `little-killer-menace.json`: fourteen Renban sets and four outside sums. The app profile opens with seven hints and completes the published grid in 154 steps. The first placement follows from the five-cell Renban and its row. Joint reasoning is tracked in [202](https://github.com/coder13/sudoku-app/issues/202).
 6. `skyscrapers-jigsaw-mixed.json`, `x-sum-jigsaw-mixed.json` and `sandwich-jigsaw-mixed.json`: outside gutters, region boundaries, labels and direction.
 7. `xv-quadruple-clover.json`, `adjacent-sum-coach.json` and `clone-mixed.json`: shared marker space, repeated printed digits and candidate insets.
 

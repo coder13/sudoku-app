@@ -7964,6 +7964,45 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-house-support",
+          "title": "Renban in one house",
+          "summary": "When an entire Renban lies in one house, its consecutive set leaves a specific set of digits for the rest of that house. Check both parts before choosing a set.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "split-the-house",
+              "title": "Check the cells off the line"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "List the consecutive sets that fit the line. For each set, cross its digits off your list of digits for the other cells in the house. Check whether those other cells can each use a different remaining digit.",
+                "Look for a cell off the line with just two candidates. If both of its digits were used off the line, any consecutive set that needs one of them would fail. When every set needs at least one, a second cell off the line cannot force the pair to use both digits."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-house-support"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-house-support",
+                  "title": "Renban in one house"
+                }
+              ],
+              "guide": {
+                "start": "Find a Renban entirely inside one row, column, or region.",
+                "check": "For each set that fits the line, try assigning the remaining digits to the other cells in the house.",
+                "reason": "A candidate must fit a complete assignment of the house using one consecutive set on the line."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
           "id": "region-sum",
           "title": "Region Sum lines",
           "summary": "A Region Sum line has the same total in each part defined by the region boundaries and the puzzle’s rules. A part with just one cell can set the total for all the others.",

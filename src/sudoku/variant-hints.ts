@@ -316,6 +316,27 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         : 'Fit the digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
       break
     }
+    case 'renban-house-support': {
+      cells = evidence.cells
+      const length = evidence.lineLength
+      const house = houseLabel(evidence.house)
+      const set = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+      const viable = set(evidence.starts).map(first => `${first}–${first + length - 1}`)
+      description = `All ${length} Renban cells lie in ${house}. They need a consecutive set. The other cells in the house must use the remaining digits.`
+      reason = `Check each consecutive set against the candidates on and off the line. The line can use ${alternatives.format(viable)}. The crossed-out candidates have no place in any complete assignment.`
+      const paired = evidence.pairedCell
+      if (paired !== null) {
+        const pair = set(evidence.domains[cells.indexOf(paired)])
+        const target = focus[0].cell
+        cells = [...cells.slice(0, length), paired, target]
+        candidates = [...focus, ...pair.map(digit => ({ cell: paired, digit }))]
+        description = `${nameCell(paired)} can contain only ${alternatives.format(pair.map(String))}. It shares ${house} with ${nameCell(target)} and the entire Renban.`
+        const assumptions = alternatives.format(focus.map(({ digit }) => String(digit)))
+        const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ digit }) => String(digit)))
+        reason = `If ${nameCell(target)} is ${assumptions}, these two cells use both ${pair[0]} and ${pair[1]}. Every consecutive set that fits the Renban needs at least one of those digits. Remove ${removals} from ${nameCell(target)}.`
+      }
+      break
+    }
     case 'renban-sum': {
       cells = evidence.cells
       const renban = puzzle.rules?.[evidence.rules[0]]

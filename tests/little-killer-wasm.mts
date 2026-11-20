@@ -14,7 +14,7 @@ import {
   variantPosition,
 } from '../src/sudoku/variant-play.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
-import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { variantHouseCells, variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { checkLittleKillerProof } from './helpers/little-killer-proof.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
@@ -347,7 +347,7 @@ test('converted typed Coach controls and authored Jigsaw companions retain every
   }
 })
 
-test('Renban ModE opens with seven proofs and shows an honest twelve-step partial path', async () => {
+test('Renban ModE opens with seven hints and completes a sound logical walkthrough', async () => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8')) as {
     puzzle: VariantPuzzle; solution: string
   }
@@ -359,6 +359,7 @@ test('Renban ModE opens with seven proofs and shows an honest twelve-step partia
   const technique = 'renban-sum'
   const sharedHouse = 'renban-sum-house'
   const lockedDigit = 'renban-locked-digit'
+  const houseSupport = 'renban-house-support'
   const rayHouses = 'renban-sum-ray-houses'
   const pureHouses = 'little-killer-house-support'
   const position = variantPosition(variant, game.position)
@@ -369,7 +370,8 @@ test('Renban ModE opens with seven proofs and shows an honest twelve-step partia
   assert.deepEqual(pureOrder.filter(id => id !== pureHouses), baseOrder)
   const modeOrder = await getVariantPlayOrder(source.puzzle)
   assert.ok(modeOrder.includes(rayHouses))
-  assert.deepEqual(modeOrder.filter(id => ![technique, sharedHouse, lockedDigit, pureHouses, rayHouses].includes(id)), baseOrder)
+  assert.ok(modeOrder.includes(houseSupport))
+  assert.deepEqual(modeOrder.filter(id => ![technique, sharedHouse, lockedDigit, houseSupport, pureHouses, rayHouses].includes(id)), baseOrder)
 
   const catalog = await puzzleTechniqueCatalog(true)
   assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
@@ -477,36 +479,116 @@ test('Renban ModE opens with seven proofs and shows an honest twelve-step partia
     }
   }
 
-  const path = await puzzleSolution(game)
-  assert.equal(path.rating.status, 'stalled')
-  assert.equal(path.steps.length, 12)
-  assert.equal(path.rating.score.counts[technique], 5)
-  assert.equal(path.rating.score.counts[lockedDigit], 1)
-  assert.equal(path.rating.score.counts[rayHouses], 1)
-  assert.equal(path.rating.score.points, 649)
-  const final = path.steps[11]
-  assert.equal(final.technique, rayHouses)
-  assert.deepEqual(final.actions, [{ eliminate: { cell: 56, digit: 4 } }])
-  assert.ok('variant' in final.evidence)
-  assert.match(final.evidence.variant.description, /add to 15.*box 4 and box 8.*Renban/)
-  const finalProof = final.evidence.variant.source?.deduction.evidence
-  assert.ok(finalProof?.type === 'ray-houses')
-  assert.deepEqual(finalProof.houses, [{ region: 3 }, { region: 7 }])
-  const replay = await runEngine({
-    type: 'variant', operation: 'replay-step', position, techniqueOrder: modeOrder, stepIndex: 11,
+  const previous = await runEngine({
+    type: 'variant', operation: 'trace', position, techniqueOrder: modeOrder.filter(id => id !== houseSupport),
   })
-  assert.deepEqual(replay?.deduction.actions, final.actions)
-  assert.equal(replay!.before.eliminations[56] & (1 << 3), 0)
-  assert.notEqual(replay!.after.eliminations[56] & (1 << 3), 0)
+  assert.equal(previous.rating.status, 'stalled')
+  assert.equal(previous.steps.length, 12)
+  assert.equal(previous.rating.points, 649)
+  assert.equal(previous.steps[11].technique, rayHouses)
+  assert.deepEqual(previous.steps[11].actions, [{ eliminate: { cell: 56, digit: 4 } }])
+
+  const path = await puzzleSolution(game)
+  assert.deepEqual(path.rating.status, { solved: 'medium' })
+  assert.equal(path.board, source.solution)
+  assert.equal(path.steps.length, 154)
+  assert.equal(path.rating.score.counts[houseSupport], 18)
+  assert.equal(path.rating.score.points, 4702)
   assert.equal(path.positions!.length, path.steps.length + 1)
-  assert.equal(path.board, source.puzzle.givens)
-  for (const step of path.steps) for (const action of step.actions) {
-    assert.ok('eliminate' in action)
-    assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+  assert.equal((await ratePuzzle(game.givens, variant))?.points, 4702)
+
+  const firstHouse = path.steps[11]
+  const pairRemovals = [3, 6].map(digit => ({ eliminate: { cell: 44, digit } }))
+  assert.equal(firstHouse.technique, houseSupport)
+  assert.deepEqual(firstHouse.actions, pairRemovals)
+  assert.ok('variant' in firstHouse.evidence)
+  assert.match(firstHouse.evidence.variant.description, /r5c1 can contain only 3 or 6.*row 5 with r5c9/i)
+  assert.match(firstHouse.evidence.variant.reason, /both 3 and 6.*Remove 3 and 6 from r5c9/i)
+  assert.deepEqual(path.steps[12].actions, [{ place: { cell: 44, digit: 9 } }])
+
+  let current = game
+  for (const [index, step] of path.steps.entries()) {
+    for (const action of step.actions) {
+      const candidate = 'place' in action ? action.place : action.eliminate
+      assert.equal(Number(source.solution[candidate.cell]) === candidate.digit, 'place' in action)
+    }
+    if (step.technique === houseSupport) {
+      assert.ok('variant' in step.evidence)
+      const deduction = step.evidence.variant.source!.deduction
+      const replay = await runEngine({
+        type: 'variant', operation: 'replay-step', position, techniqueOrder: modeOrder, stepIndex: index,
+      })
+      assert.deepEqual(replay?.deduction, deduction)
+      assertRenbanHouseProof(source.puzzle, valuesOf(current), current.position.eliminations, deduction)
+    }
+    if (index === 11) {
+      const selected = await puzzleHints(current, 'all', houseSupport)
+      const choice = selected.choices[0]
+      assert.deepEqual(choice.actions, firstHouse.actions)
+      assert.deepEqual(choice.pattern, firstHouse.pattern)
+      assert.ok('variant' in choice.evidence)
+      assert.deepEqual(choice.evidence.variant.source?.deduction, firstHouse.evidence.variant.source?.deduction)
+      const ordinary = await puzzleHints(current)
+      assert.ok(ordinary.choices.some(choice => JSON.stringify(choice.actions) === JSON.stringify(pairRemovals)))
+      const firstPage = await puzzleHints(current, 'all', houseSupport, 181)
+      const retained = await puzzleHintPage(variant, 181, 0)
+      assert.deepEqual(retained.choices, firstPage.choices)
+      const scan = watchTechniqueScan(valuesOf(current), current.position.eliminations, variantPosition(variant, current.position))
+      try {
+        assert.equal(await scan.count(houseSupport), new Set(selected.choices.flatMap(choice =>
+          choice.actions.map(action => JSON.stringify(action)))).size)
+      } finally {
+        scan.close()
+      }
+    }
+    current = applyDeduction(current, step.actions, variantHouseMasks(variant.puzzle, valuesOf(current)))
   }
-  assert.equal(await ratePuzzle(game.givens, variant), null)
+  assert.equal(isSolved(current), true)
+  assert.equal(valuesOf(current), source.solution)
+  assert.deepEqual(redo(undo(current)).position, current.position)
   assert.equal(
     await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 20_000 }),
     'search-limit',
   )
 })
+
+function assertRenbanHouseProof(puzzle: VariantPuzzle, values: string, eliminations: readonly number[], deduction: VariantDeduction) {
+  const { evidence, actions } = deduction
+  assert.ok(evidence.type === 'renban-house-support')
+  const line = puzzle.rules?.[evidence.rule]
+  assert.ok(line?.type === 'renban')
+  assert.deepEqual(evidence.cells.slice(0, evidence.lineLength), line.cells)
+  assert.deepEqual([...evidence.cells].sort((a, b) => a - b), [...variantHouseCells(evidence.house, puzzle)].sort((a, b) => a - b))
+  const rules = puzzle.rules?.filter(rule => rule.type === 'diagonal' || rule.type === 'extra-house')
+  const masks = variantHouseMasks({ ...puzzle, rules }, values, eliminations)
+  const domains = evidence.cells.map(cell => values[cell] === '0' ? masks[cell] : 1 << (Number(values[cell]) - 1))
+  assert.deepEqual(evidence.domains, domains)
+  const supported = Array<number>(9).fill(0)
+  let starts = 0
+  const visit = (digits: number[], used: number) => {
+    if (digits.length === 9) {
+      const line = digits.slice(0, evidence.lineLength)
+      const first = Math.min(...line)
+      if (Math.max(...line) - first + 1 === line.length) {
+        starts |= 1 << (first - 1)
+        digits.forEach((digit, index) => { supported[index] |= 1 << (digit - 1) })
+      }
+      return
+    }
+    for (let digit = 1; digit <= 9; digit++) {
+      const mask = 1 << (digit - 1)
+      if (domains[digits.length] & ~used & mask) visit([...digits, digit], used | mask)
+    }
+  }
+  visit([], 0)
+  assert.ok(starts)
+  assert.equal(evidence.starts, starts)
+  assert.deepEqual(evidence.supported, supported)
+  for (const action of actions) {
+    assert.ok('eliminate' in action)
+    const { cell, digit } = action.eliminate
+    const index = evidence.cells.indexOf(cell)
+    assert.ok(domains[index] & 1 << (digit - 1))
+    assert.equal(supported[index] & 1 << (digit - 1), 0)
+  }
+}
