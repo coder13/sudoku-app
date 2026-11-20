@@ -311,7 +311,7 @@ test('converted typed Coach controls and authored Jigsaw companions retain every
   }
 })
 
-test('Renban ModE opens with six combined proofs and shows an honest ten-step partial path', async () => {
+test('Renban ModE opens with seven proofs and shows an honest eleven-step partial path', async () => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/little-killer-menace.json', import.meta.url), 'utf8')) as {
     puzzle: VariantPuzzle; solution: string
   }
@@ -322,23 +322,35 @@ test('Renban ModE opens with six combined proofs and shows an honest ten-step pa
   assertVariantCompletion(source.puzzle, source.solution)
   const technique = 'renban-sum'
   const sharedHouse = 'renban-sum-house'
+  const lockedDigit = 'renban-locked-digit'
   const position = variantPosition(variant, game.position)
   const baseOrder = await getVariantPlayOrder()
   assert.ok(!baseOrder.includes(technique) && !baseOrder.includes(sharedHouse))
   assert.deepEqual(await getVariantPlayOrder(sources[0].puzzle), baseOrder)
-  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique && id !== sharedHouse), baseOrder)
+  assert.deepEqual((await getVariantPlayOrder(source.puzzle)).filter(id => id !== technique && id !== sharedHouse && id !== lockedDigit), baseOrder)
 
   const catalog = await puzzleTechniqueCatalog(true)
   assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
     id: technique, cost: 66, difficulty: 'medium', requiresUniqueSolution: false, aliases: [],
   })
   const { choices, candidates } = await puzzleHints(game)
-  assert.equal(choices.length, 6)
+  assert.equal(choices.length, 7)
+  const locked = await puzzleHints(game, 'all', lockedDigit)
+  assert.equal(locked.choices.length, 1)
+  const lock = locked.choices[0]
+  assert.deepEqual(choices[0], lock)
+  assert.deepEqual(lock.actions, [36, 37, 43, 44].map(cell => ({ eliminate: { cell, digit: 5 } })))
+  assert.ok('variant' in lock.evidence)
+  assert.match(lock.evidence.variant.description, /Every set of 5 consecutive digits includes 5.*row 5/)
+  assert.deepEqual(lock.pattern?.candidates.slice(-5), [38, 39, 40, 41, 42].map(cell => ({ cell, digit: 5 })))
+  const lockedGame = applyDeduction(game, lock.actions, candidates!)
+  assert.deepEqual(undo(lockedGame).position, game.position)
+  for (const cell of [36, 37, 43, 44]) assert.ok(lockedGame.position.eliminations[cell] & (1 << 4))
   const selected = await puzzleHints(game, 'all', technique)
   assert.equal(selected.choices.length, 4)
-  assert.deepEqual(choices.slice(0, 4), selected.choices)
+  assert.deepEqual(choices.slice(1, 5), selected.choices)
   const shared = await puzzleHints(game, 'all', sharedHouse)
-  assert.deepEqual(choices.slice(4), shared.choices)
+  assert.deepEqual(choices.slice(5), shared.choices)
   assert.deepEqual(shared.choices.flatMap(hint => hint.actions), [
     { eliminate: { cell: 36, digit: 8 } }, { eliminate: { cell: 76, digit: 8 } },
   ])
@@ -374,6 +386,7 @@ test('Renban ModE opens with six combined proofs and shows an honest ten-step pa
     assert.equal(count, 53)
     assert.equal(await scan.count(technique), count)
     assert.equal(await scan.count(sharedHouse), 2)
+    assert.equal(await scan.count(lockedDigit), 4)
   } finally {
     scan.close()
   }
@@ -392,9 +405,11 @@ test('Renban ModE opens with six combined proofs and shows an honest ten-step pa
   const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
   try {
-    saveDisabledHintTechniques([technique])
-    assert.deepEqual((await puzzleHints(game)).choices, shared.choices)
     saveDisabledHintTechniques([technique, sharedHouse])
+    assert.deepEqual((await puzzleHints(game)).choices, locked.choices)
+    saveDisabledHintTechniques([technique, lockedDigit])
+    assert.deepEqual((await puzzleHints(game)).choices, shared.choices)
+    saveDisabledHintTechniques([technique, sharedHouse, lockedDigit])
     assert.deepEqual((await puzzleHints(game)).choices, [])
     assert.equal((await puzzleHints(game, 'all', technique)).choices.length, 4)
     assert.equal((await puzzleHints(game, 'all', sharedHouse)).choices.length, 2)
@@ -422,9 +437,10 @@ test('Renban ModE opens with six combined proofs and shows an honest ten-step pa
 
   const path = await puzzleSolution(game)
   assert.equal(path.rating.status, 'stalled')
-  assert.equal(path.steps.length, 10)
+  assert.equal(path.steps.length, 11)
   assert.equal(path.rating.score.counts[technique], 5)
-  assert.equal(path.rating.score.points, 530)
+  assert.equal(path.rating.score.counts[lockedDigit], 1)
+  assert.equal(path.rating.score.points, 570)
   assert.equal(path.positions!.length, path.steps.length + 1)
   assert.equal(path.board, source.puzzle.givens)
   for (const step of path.steps) for (const action of step.actions) {

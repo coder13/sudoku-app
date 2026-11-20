@@ -10,6 +10,10 @@ import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions
 
 let playOrder: Promise<string[]> | undefined
 
+function withRenbanLocks(order: readonly string[]) {
+  return order.flatMap(id => id === 'renban' ? [id, 'renban-locked-digit'] : [id])
+}
+
 export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
     .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
@@ -23,12 +27,10 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   if (!renbans.length) return playOrder
   const rays = rules.filter(rule => rule.type === 'little-killer').filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
-  if (!rays.length) return playOrder
-
   const hasCompanion = rays.some(ray => renbans.some(renban =>
     renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
-  return playOrder.then(order => order.flatMap(id => {
-    if (id === 'little-killer') return [id, 'renban-sum']
+  return playOrder.then(order => withRenbanLocks(order).flatMap(id => {
+    if (id === 'little-killer' && rays.length) return [id, 'renban-sum']
     if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
     return [id]
   }))
@@ -37,7 +39,8 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
-  const techniqueOrder = await getVariantPlayOrder()
+  const order = await getVariantPlayOrder()
+  const techniqueOrder = id === 'renban' ? withRenbanLocks(order) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')

@@ -50,17 +50,26 @@ for (const [name, appPoints, nativePoints, steps] of [['clover',1260,940,77],['k
 }
 
 test('original modern Coach sources retain checked complete and partial profiles', async () => {
-  const expected = [[15870,122,484,16],[2744,69,308,8],[54,2,54,2]]
+  const expected = [
+    { app: [7470, 117, 16], original: [15870, 122], native: [484, 16] },
+    { app: [1404, 69, 1], original: [2744, 69], native: [308, 8] },
+    { app: [54, 2, 0], original: [54, 2], native: [54, 2] },
+  ] as const
   let index = 0
   for (const source of load('coach').examples.filter((source: { deferred?: string }) => !source.deferred)) {
     const { game } = await prepareImportedPuzzle(source.code), puzzle = game.variant!.puzzle
     assert.deepEqual(puzzle, source.puzzle); assert.equal(game.variant!.solution, source.solution)
     assertVariantCompletion(puzzle, source.solution)
-    const [appPoints, appSteps, nativePoints, nativeSteps] = expected[index]
-    const orders = [[await getVariantPlayOrder(),appPoints,appSteps,index < 2],[(await runEngine({ type: 'techniques', variant: true })).defaultOrder,nativePoints,nativeSteps,false]] as const
-    for (const [techniqueOrder, points, steps, complete] of orders) {
+    const { app: [appPoints, appSteps, locks], original, native } = expected[index]
+    const orders = [
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, index < 2, locks],
+      [await getVariantPlayOrder(), ...original, index < 2, 0],
+      [(await runEngine({ type: 'techniques', variant: true })).defaultOrder, ...native, false, 0],
+    ] as const
+    for (const [techniqueOrder, points, steps, complete, expectedLocks] of orders) {
       const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder })
       assert.equal(trace.steps.length, steps); assert.equal(trace.rating.points, points)
+      assert.equal(trace.rating.counts['renban-locked-digit'] ?? 0, expectedLocks)
       if (!complete) assert.equal(trace.rating.status, 'stalled')
       let played = game
       for (const step of trace.steps) {
@@ -76,6 +85,7 @@ test('original modern Coach sources retain checked complete and partial profiles
     }
     const path = await puzzleSolution(game)
     assert.equal(path.steps.length, appSteps)
+    assert.equal(path.rating.score.points, appPoints)
     if (index === 2) { assert.equal(path.rating.status, 'stalled'); assert.notEqual(path.board, source.solution) }
     else assert.equal(path.board, source.solution)
     assert.ok((await puzzleHints(game, 10)).choices.length >= 1)

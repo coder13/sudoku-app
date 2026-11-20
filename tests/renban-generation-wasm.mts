@@ -47,14 +47,22 @@ test('thirty checked Renban recipes retain complete source sets, both density ta
   assert.equal(technique.cost, 40); assert.equal(technique.difficulty, 'medium'); assert.equal(technique.requiresUniqueSolution, false)
   const recipes = variantSeeds.renban.medium!, seen = new Set<string>(), counts = new Map<string, number>()
   assert.equal(recipes.length, 30)
+  const legacyOrder = await getVariantPlayOrder()
+  const currentOrder = await getVariantPlayOrder(fixture.example.puzzle)
+  let affected = 0
   for (const recipe of recipes) {
     const source = fixture.sources.find(source => source.completionTemplate === recipe.layout && JSON.stringify(source.lines) === JSON.stringify(recipe.lines))!
     assert.ok(source); assert.ok([17, 20].includes(recipe.maxGivens)); assert.equal(recipe.minGivens, 14); assert.equal(recipe.retryAttempts, 12)
     const label = source.id + recipe.maxGivens; counts.set(label, (counts.get(label) ?? 0) + 1)
-    const value = await runEngine(variantGenerationRequest('renban', 'medium', recipe, await getVariantPlayOrder()))
+    const original = await runEngine(variantGenerationRequest('renban', 'medium', recipe, legacyOrder))
+    const value = await runEngine(variantGenerationRequest('renban', 'medium', recipe, currentOrder))
+    assert.deepEqual(value.puzzle, original.puzzle)
+    assert.equal(value.solution, original.solution)
+    if (value.rating.points !== original.rating.points) affected++
     verify(value); assert.equal(value.givens, recipe.maxGivens); seen.add(renbanKey(value.puzzle))
     if (recipe === recipes[0]) assert.deepEqual({ puzzle: value.puzzle, solution: value.solution }, fixture.example)
   }
+  assert.equal(affected, 5)
   assert.equal(seen.size, 30); assert.equal(counts.size, 6); assert.ok([...counts.values()].every(count => count === 5))
 })
 
@@ -69,7 +77,9 @@ test('sixty successive actual Renban puzzles are distinct and have several hints
       if ('place' in action) assert.equal(action.place.digit, Number(value.solution[action.place.cell]))
       else assert.notEqual(action.eliminate.digit, Number(value.solution[action.eliminate.cell]))
     }
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: value.puzzle }, techniqueOrder: await getVariantPlayOrder() })
+    const order = await getVariantPlayOrder(value.puzzle)
+    assert.ok(order.includes('renban-locked-digit'))
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: value.puzzle }, techniqueOrder: order })
     assert.equal(trace.rating.points, value.rating.points); assert.equal(trace.rating.hardest, value.rating.hardest)
     assert.deepEqual(trace.rating.counts, value.rating.counts); assert.deepEqual(trace.rating.status, value.rating.status)
     let played = game
@@ -132,13 +142,13 @@ test('actual app history preserves equivalent mixed imports, set reordering, squ
 })
 
 test('a bounded Renban fresh miss reaches its deterministic checked fallback and rejects unavailable levels', async () => {
-  const recipe = variantSeeds.renban.medium![11], order = await getVariantPlayOrder()
-  const fresh = variantGenerationRequest('renban', 'medium', recipe, order, 11)
+  const seed = 12, recipe = variantSeeds.renban.medium![seed], order = await getVariantPlayOrder(fixture.example.puzzle)
+  const fresh = variantGenerationRequest('renban', 'medium', recipe, order, seed)
   fresh.maxNodes = 20_000
   await assert.rejects(runEngine(fresh), error => error instanceof EngineError && error.code === 'search-limit')
-  const value = await generatePlayableVariant('renban', 'medium', 11, [])
+  const value = await generatePlayableVariant('renban', 'medium', seed, [])
   assert.deepEqual(value, await runEngine(variantGenerationRequest('renban', 'medium', recipe, order)))
-  assert.deepEqual(value, await generatePlayableVariant('renban', 'medium', 11, []))
+  assert.deepEqual(value, await generatePlayableVariant('renban', 'medium', seed, []))
   await assert.rejects(generatePlayableVariant('renban', 'easy', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
 })
 

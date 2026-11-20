@@ -27,6 +27,7 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod renban_locks;
 mod renban_sum;
 
 macro_rules! catalog {
@@ -147,6 +148,8 @@ catalog! {
     XSum: "x-sum", 80, Hard;
 
     @explicit
+    /// Lock a digit required by a Renban into a house.
+    RenbanLockedDigit: "renban-locked-digit", 40, Medium;
     /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
     RenbanSum: "renban-sum", 66, Medium;
     /// Fit a Renban and diagonal sum against another Renban in a shared house.
@@ -1083,6 +1086,7 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
+            RenbanLockedDigit => self.renban_locks(position, &mut proofs),
             RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {

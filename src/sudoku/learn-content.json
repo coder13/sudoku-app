@@ -7922,6 +7922,48 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-locked-digit",
+          "title": "Renban locked digit",
+          "summary": "Every possible set for a Renban can share a digit. If its possible positions for that digit all lie in one row, column, or region, remove the digit from the rest of that house.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a digit in every possible set"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "List the consecutive sets that fit the line and its candidates. A digit that appears in every set must go somewhere on the line. For instance, every set of five consecutive Sudoku digits includes 5.",
+                "Find every position where the required digit can go on the line. If those positions all share a house, the digit must be in one of them. Cross it out from the remaining cells in that house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-locked-digit",
+              "copy": {
+                "description": "The four-cell Renban in row 6 can use 4–7, 5–8, or 6–9. Every set contains 6, so the line must supply the 6 for row 6."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-locked-digit",
+                  "title": "Renban locked digit"
+                }
+              ],
+              "guide": {
+                "start": "Find a digit that appears in every set that fits the Renban.",
+                "check": "Check where that digit can go on the line. Look for a house shared by all those positions.",
+                "reason": "One of those positions must supply that house’s copy of the digit. Remove the digit from the other cells in the house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
           "id": "region-sum",
           "title": "Region Sum lines",
           "summary": "A Region Sum line has the same total in each part defined by the region boundaries and the puzzle’s rules. A part with just one cell can set the total for all the others.",

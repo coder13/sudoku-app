@@ -226,11 +226,22 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     }
     case 'locked-digit': {
       cells = evidence.clue.cells
+      const target = houseLabel(evidence.target)
+      if (technique === 'renban-locked-digit') {
+        const { digit } = evidence
+        const length = evidence.clue.cells.length
+        const commonToAll = digit >= 10 - length && digit <= length
+        description = commonToAll
+          ? `Every set of ${length} consecutive digits includes ${digit}. All positions for ${digit} on the Renban lie in ${target}.`
+          : `Every consecutive set that fits the Renban includes ${digit}. All positions for ${digit} on the line lie in ${target}.`
+        reason = `One of the highlighted positions must hold ${digit}. Remove ${digit} from the other cells in ${target}.`
+        candidates = [...focus, ...evidence.cells.map(cell => ({ cell, digit }))]
+        break
+      }
       const printed = evidence.clue.rules.flatMap(index => {
         const rule = puzzle.rules?.[index]
         return rule?.type === 'quadruple' ? rule.digits : []
       })
-      const target = houseLabel(evidence.target)
       description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
       reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
