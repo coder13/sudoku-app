@@ -6,6 +6,7 @@ import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIde
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
+import { whispersState } from './whispers.ts'
 import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
 import { xSumState } from './x-sum.ts'
@@ -235,7 +236,7 @@ export function valuesOf(game: Game): string {
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
   const rules = puzzle?.rules ?? sizedRules
   const states = [
-    globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values),
+    globalEntropyState(puzzle, values), betweenState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
     variantPlacedRuleState(puzzle, values), sizedArrowState(rules, values, grid.size),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),

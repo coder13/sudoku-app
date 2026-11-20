@@ -70,6 +70,8 @@ The legacy decoder reads 9×9 SCv4, SCv5 and SCv6 puzzle records and translates 
 
 The placed-digit checks now include parity, Thermometers, Arrow sums, Killer totals and Quadruple circles in 9×9 Play. Tests cover both Pencil modes, manual and bulk entry, undo and redo, and every partial four-cell state for four representative Quadruple clue patterns in boxes and Jigsaw regions. The local feedback checks use the placed digits; the full engine continues to compute candidates and solutions. [Play tests](tests/variant-placed-rules.test.ts)
 
+Whispers feedback now follows connected clues through empty cells, including touching German and Dutch lines. Play flags incompatible placements and clears unsupported candidates in either Pencil mode. The local calculation is exact for trees and a single loop. With several loops, it removes candidates only when the connected checks disprove support. Independent enumeration checks 110,000 partial positions. In the local JavaScript benchmark, the median added time for conflict checks was 0.003 ms on Brain Zaps and 0.007 ms on the encoded K95q rules. The median added time for entering a digit stayed below 0.003 ms on both. [Play tests](tests/variant-placed-rules.test.ts)
+
 ## Priority controls
 
 Use complete source definitions, including every companion clue and parameter. Start browser review with these controls, then cover every table row:

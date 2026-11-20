@@ -5,6 +5,7 @@ import { conflictsOf, enter, fillEntries, makeGame, redo, undo, valuesOf } from 
 import { regionIndex } from '../src/sudoku/region-sum.ts'
 import { jigsawLayout } from '../src/sudoku/variant-generation.ts'
 import { variantPlacedRuleState } from '../src/sudoku/variant-placed-rules.ts'
+import { whispersState } from '../src/sudoku/whispers.ts'
 
 const empty = '0'.repeat(81)
 const position = (cells: readonly number[], digits: readonly number[]) => {
@@ -133,4 +134,73 @@ test('Quadruple candidates match independent four-digit enumeration on legal and
       if (masks) for (let i = 0; i < 4; i++) if (!placed[i]) assert.equal(state.allowed[cells[i]], masks[i])
     }
   }
+})
+
+test('Whispers support matches direct assignments on paths and a single loop and stays sound on linked loops', () => {
+  const cells = [0, 10, 20, 30]
+  const line = (cells: number[], minDifference: number) => ({ type: 'whispers' as const, cells, minDifference })
+  const exactCases = [
+    ...Array.from({ length: 8 }, (_, i) => [line(cells, i + 1)]),
+    [line([0, 10, 0, 20], 4), line([10, 0], 5), line([20, 30], 2)],
+    [line([0, 10, 20, 0], 4), line([20, 30], 5)],
+  ]
+  const linkedLoops = [line([0, 10, 20, 0, 30, 20], 4)]
+  for (const rules of [...exactCases, linkedLoops]) {
+    const exact = rules !== linkedLoops
+    const puzzle: VariantPuzzle = { version: 1, givens: empty, rules }
+    const expected = new Map<string, number[]>()
+    const edges = rules.flatMap(rule => rule.cells.slice(1).map((cell, i) =>
+      [cells.indexOf(rule.cells[i]), cells.indexOf(cell), rule.minDifference]))
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) for (let d = 1; d <= 9; d++) {
+      const digits = [a, b, c, d]
+      if (edges.some(([first, second, minimum]) => Math.abs(digits[first] - digits[second]) < minimum)) continue
+      for (let present = 0; present < 16; present++) {
+        const key = digits.map((digit, i) => present & 1 << i ? digit : 0).join('')
+        const mask = expected.get(key) ?? [0, 0, 0, 0]
+        for (let i = 0; i < 4; i++) mask[i] |= 1 << (digits[i] - 1)
+        expected.set(key, mask)
+      }
+    }
+    for (let partial = 0; partial < 10_000; partial++) {
+      const key = String(partial).padStart(4, '0')
+      const placed = Array.from(key, Number)
+      const state = whispersState(puzzle, position(cells, placed))!
+      const supported = expected.get(key)
+      if (exact) assert.equal(state.conflicts.size > 0, !supported && placed.some(Boolean), key)
+      if (!supported) continue
+      assert.equal(state.conflicts.size, 0, key)
+      for (let i = 0; i < 4; i++) {
+        if (!placed[i]) assert.equal(exact ? state.allowed[cells[i]] : state.allowed[cells[i]] & supported[i], supported[i], key)
+      }
+    }
+  }
+})
+
+test('German Whispers flags distant placements and clears full-path candidates with mixed rules', () => {
+  const cells = [0, 10, 20, 30]
+  const solution = '125496783496783125783125496254967831967831254831254967549678312678312549312549678'
+  const puzzle: VariantPuzzle = { version: 1, givens: empty, rules: [
+    { type: 'whispers', cells: cells.slice(0, 3), minDifference: 5 },
+    { type: 'whispers', cells: cells.slice(2), minDifference: 4 },
+    { type: 'parity', parity: 'odd', cells: [30] },
+  ] }
+  assert.equal(conflictsOf(solution, puzzle).size, 0)
+  assert.deepEqual(conflictsOf(position(cells, [1, 0, 9, 0]), puzzle), new Set([0, 20]))
+  assert.deepEqual(conflictsOf(position(cells, [1, 0, 3, 0]), puzzle), new Set())
+
+  let game = { ...makeGame('whispers-feedback', 'Whispers with odd digits', empty, 'imported'),
+    variant: { id: 'mixed' as const, puzzle, solution } }
+  const targets = cells.slice(1)
+  for (const mode of ['center', 'corner'] as const) {
+    for (let digit = 1; digit <= 9; digit++) game = enter(game, targets, mode, digit) as typeof game
+  }
+  const entered = enter(game, [0], 'value', 1)
+  const filled = fillEntries(game, position([0], [1]))
+  for (const result of [entered, filled]) for (const mode of ['center', 'corner'] as const) {
+    assert.deepEqual(targets.map(cell => result.position[mode][cell]), [0b111100000, 0b000001110, 0b101010000])
+    assert.deepEqual(undo(result).position, game.position)
+    assert.deepEqual(redo(undo(result)).position, result.position)
+  }
+  assert.deepEqual(enter(game, [0], 'value', 1, { removeCandidates: false }).position.center, game.position.center)
+  assert.deepEqual(fillEntries(game, position([0], [1]), false).position.corner, game.position.corner)
 })
