@@ -66,6 +66,17 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     }), true)
     assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, saved)
     assert.deepEqual(storage.getItem(orphanKey), JSON.stringify(saved))
+
+    // A reload can interrupt the database write after the move becomes visible.
+    const pendingKey = `calcudoku.pending-position.v1.${next}`
+    const newest = { values: [0, 0, 2], notes: [0, 0, 0], past: [[2, 0, 4]], future: [] }
+    storage.setItem(pendingKey, JSON.stringify(newest))
+    assert.deepEqual((await generatedNumberHistory('calcudoku')).at(-1)?.progress, newest)
+    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, newest)
+    assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
+      position: newest, past: [[2, 0, 4]], future: [],
+    }), true)
+    assert.equal(storage.getItem(pendingKey), null)
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')

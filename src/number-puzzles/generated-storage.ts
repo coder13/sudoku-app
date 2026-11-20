@@ -13,6 +13,7 @@ const tokenIndex = 'token'
 const migrationBatchSize = 256
 let database: Promise<IDBDatabase> | undefined
 const migrations = new Map<GeneratedNumberGame, Promise<void>>()
+type LocalPosition = { raw: string; progress: SavedNumberProgress }
 
 export function numberPositionKey(game: string, id: string) {
   return `${game}.position.v1.${id}`
@@ -22,8 +23,23 @@ function legacyHistoryKey(game: GeneratedNumberGame) {
   return `${game}.generated.v1`
 }
 
+function pendingPositionKey(game: GeneratedNumberGame, id: string) {
+  return `${game}.pending-position.v1.${id}`
+}
+
+function localValue(key: string) {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+
+function removeLocalVersion(key: string, raw: string | null) {
+  try {
+    if (raw !== null && localStorage.getItem(key) === raw) localStorage.removeItem(key)
+  } catch { /* The database already holds the saved record. */ }
+}
+
 async function readLegacy(game: GeneratedNumberGame) {
-  const positions = new Map<string, { raw: string; progress: SavedNumberProgress }>()
+  const positions = new Map<string, LocalPosition>()
+  const pending = new Map<string, LocalPosition>()
   const ids = new Set<string>()
   let history: string | null = null
   try {
@@ -36,21 +52,24 @@ async function readLegacy(game: GeneratedNumberGame) {
     } catch { /* Individual positions can still be recovered. */ }
 
     const prefix = numberPositionKey(game, '')
+    const pendingPrefix = pendingPositionKey(game, '')
     const keys = Object.keys(localStorage)
     for (const [index, key] of keys.entries()) {
       if (index && index % migrationBatchSize === 0) await nextTask()
-      if (!key.startsWith(prefix)) continue
-      const id = generatedNumberToken(key.slice(prefix.length))
+      const current = key.startsWith(pendingPrefix)
+      if (!current && !key.startsWith(prefix)) continue
+      const id = generatedNumberToken(key.slice(current ? pendingPrefix.length : prefix.length))
       if (!id) continue
       const raw = localStorage.getItem(key)
       const progress = parseSavedNumberProgress(raw)
       if (progress && raw !== null) {
         ids.add(id)
-        positions.set(id, { raw, progress })
+        const destination = current ? pending : positions
+        destination.set(id, { raw, progress })
       }
     }
   } catch { /* The database can still work when local storage is unavailable. */ }
-  return { ids, history, positions }
+  return { ids, history, positions, pending }
 }
 
 function nextTask() {
@@ -106,8 +125,12 @@ function gameRange(game: GeneratedNumberGame) {
 async function migrateLegacy(game: GeneratedNumberGame) {
   const legacy = await readLegacy(game)
   if (legacy.ids.size === 0) return
+  if (legacy.history === null && legacy.positions.size === 0) {
+    for (const id of legacy.pending.keys()) await writeGeneratedRecord(game, id)
+    return
+  }
 
-  const copied = new Set<string>()
+  const copied = new Map<string, string>()
   await runTransaction('readwrite', async store => {
     const existing: GeneratedRecord[] = await readRequest(store.getAll(gameRange(game)))
     const known = new Map(existing.map(record => [record.id, record]))
@@ -115,10 +138,16 @@ async function migrateLegacy(game: GeneratedNumberGame) {
     let writes = 0
     for (const id of legacy.ids) {
       const saved = known.get(id)
-      const progress = legacy.positions.get(id)?.progress
-      if (saved?.progress && progress && JSON.stringify(saved.progress) === JSON.stringify(progress)) copied.add(id)
-      if (saved && (saved.progress || !progress)) continue
-      if (progress) copied.add(id)
+      const pendingKey = pendingPositionKey(game, id)
+      const pending = legacy.pending.get(id)
+      const current = pending && localValue(pendingKey) === pending.raw ? pending : undefined
+      const previous = legacy.positions.get(id)
+      const progress = current?.progress ?? previous?.progress
+      const same = previous && JSON.stringify(saved?.progress) === JSON.stringify(previous.progress)
+
+      if (previous && (current || !saved?.progress || same)) copied.set(numberPositionKey(game, id), previous.raw)
+      if (current) copied.set(pendingKey, current.raw)
+      if (saved && !current && (saved.progress || !progress)) continue
       store.put({ game, id, number: saved?.number ?? ++number, progress } satisfies GeneratedRecord)
       // Let the browser handle input between batches while this transaction stays open.
       if (++writes % migrationBatchSize === 0) await readRequest(store.get([game, 0]))
@@ -126,16 +155,12 @@ async function migrateLegacy(game: GeneratedNumberGame) {
   })
 
   // Remove only the versions that the transaction copied.
-  try {
-    let removals = 0
-    for (const id of copied) {
-      const key = numberPositionKey(game, id)
-      if (localStorage.getItem(key) === legacy.positions.get(id)?.raw) localStorage.removeItem(key)
-      if (++removals % migrationBatchSize === 0) await nextTask()
-    }
-    const key = legacyHistoryKey(game)
-    if (localStorage.getItem(key) === legacy.history) localStorage.removeItem(key)
-  } catch { /* The database now holds the migrated records. */ }
+  let removals = 0
+  for (const [key, raw] of copied) {
+    removeLocalVersion(key, raw)
+    if (++removals % migrationBatchSize === 0) await nextTask()
+  }
+  removeLocalVersion(legacyHistoryKey(game), legacy.history)
 }
 
 function prepareGame(game: GeneratedNumberGame) {
@@ -155,24 +180,32 @@ export async function generatedNumberHistory(game: GeneratedNumberGame): Promise
     await prepareGame(game)
     return await runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
   } catch {
-    const { ids, positions } = await readLegacy(game)
-    return Array.from(ids, (id, index) => ({ game, id, number: index + 1, progress: positions.get(id)?.progress }))
+    const { ids, positions, pending } = await readLegacy(game)
+    return Array.from(ids, (id, index) => ({
+      game, id, number: index + 1, progress: pending.get(id)?.progress ?? positions.get(id)?.progress,
+    }))
   }
 }
 
-async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progress?: SavedNumberProgress) {
-  return runTransaction('readwrite', async store => {
+async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progress?: SavedNumberProgress, staged?: string) {
+  const key = pendingPositionKey(game, id)
+  const { record, consumed } = await runTransaction('readwrite', async store => {
     const existing: GeneratedRecord | undefined = await readRequest(store.index(tokenIndex).get([game, id]))
-    if (existing && !progress) return existing
+    const pending = localValue(key)
+    const superseded = staged !== undefined && staged !== pending
+    const next = superseded ? undefined : progress ?? parseSavedNumberProgress(pending) ?? undefined
+    if (existing && !next) return { record: existing, consumed: null }
     let number = existing?.number
     if (number === undefined) {
       const last = await readRequest(store.openKeyCursor(gameRange(game), 'prev'))
       number = last ? (last.primaryKey as [GeneratedNumberGame, number])[1] + 1 : 1
     }
-    const record: GeneratedRecord = { game, id, number, progress }
+    const record: GeneratedRecord = { game, id, number, progress: next }
     store.put(record)
-    return record
+    return { record, consumed: next ? pending : null }
   })
+  removeLocalVersion(key, consumed)
+  return record
 }
 
 export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: string): Promise<GeneratedRecord> {
@@ -180,21 +213,33 @@ export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: s
     await prepareGame(game)
     return await writeGeneratedRecord(game, id)
   } catch {
-    const { ids, positions } = await readLegacy(game)
+    const { ids, positions, pending } = await readLegacy(game)
     if (!ids.has(id)) {
       ids.add(id)
       try { localStorage.setItem(legacyHistoryKey(game), JSON.stringify([...ids])) } catch { /* The board link still works. */ }
     }
-    return { game, id, number: [...ids].indexOf(id) + 1, progress: positions.get(id)?.progress }
+    return { game, id, number: [...ids].indexOf(id) + 1, progress: pending.get(id)?.progress ?? positions.get(id)?.progress }
   }
 }
 
 export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id: string, { position, past, future }: NumberProgress) {
+  const progress = { ...position, past, future }
+  const key = pendingPositionKey(game, id)
+  let staged: string | undefined
+  // Keep the move across a reload until IndexedDB commits it.
+  try {
+    const raw = JSON.stringify(progress)
+    localStorage.setItem(key, raw)
+    staged = raw
+  } catch { /* IndexedDB can still save if local storage is full. */ }
+
   try { await prepareGame(game) } catch {
-    return saveNumberProgress(numberPositionKey(game, id), { position, past, future })
+    const saved = saveNumberProgress(numberPositionKey(game, id), { position, past, future })
+    if (saved && staged !== undefined) removeLocalVersion(key, staged)
+    return saved || staged !== undefined
   }
   try {
-    await writeGeneratedRecord(game, id, { ...position, past, future })
+    await writeGeneratedRecord(game, id, progress, staged)
     return true
-  } catch { return false }
+  } catch { return staged !== undefined }
 }
