@@ -56,22 +56,72 @@ impl Cage {
         }
         let input = &input[..len];
         let mut support = [0; MAX_SIZE];
-        if self.size <= 9 {
-            let mut cache = [None; 512];
-            for &set in &self.sets {
-                record_support(set, input, &mut support, &mut cache);
-                if support[..len] == *input {
-                    break;
+        match *input {
+            [only] => support[0] = only & self.sets[0],
+            [left, right] => {
+                for &set in &self.sets {
+                    let low = set & set.wrapping_neg();
+                    let high = set ^ low;
+                    if left & low != 0 && right & high != 0 {
+                        support[0] |= low;
+                        support[1] |= high;
+                    }
+                    if left & high != 0 && right & low != 0 {
+                        support[0] |= high;
+                        support[1] |= low;
+                    }
                 }
             }
-        } else {
-            for &set in &self.sets {
-                digit_set_support(set, input, &mut support[..len]);
-                if support[..len] == *input {
-                    break;
+            _ if self.size <= 9 => {
+                let mut cache = [None; 512];
+                for &set in &self.sets {
+                    record_support(set, input, &mut support, &mut cache);
+                    if support[..len] == *input {
+                        break;
+                    }
+                }
+            }
+            _ => {
+                for &set in &self.sets {
+                    digit_set_support(set, input, &mut support[..len]);
+                    if support[..len] == *input {
+                        break;
+                    }
                 }
             }
         }
         support
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn two_cell_support_matches_independent_digit_pairs() {
+        let layout = SizedGrid::without_regions(7).unwrap();
+        for sum in 3..=13 {
+            let cage = Cage::compile(
+                &layout,
+                &KillerCage { cells: vec![0, 1], sum },
+                &mut [false; MAX_SIZE * MAX_SIZE],
+            )
+            .unwrap();
+            for left in 0..=layout.digit_mask() {
+                for right in 0..=layout.digit_mask() {
+                    let mut expected = [0; MAX_SIZE];
+                    for a in digits(left) {
+                        for b in digits(right) {
+                            if a != b && u16::from(a) + u16::from(b) == sum {
+                                expected[0] |= 1 << (a - 1);
+                                expected[1] |= 1 << (b - 1);
+                            }
+                        }
+                    }
+                    assert_eq!(cage.support(&[left, right]), expected);
+                }
+            }
+        }
     }
 }
