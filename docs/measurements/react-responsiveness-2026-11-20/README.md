@@ -2,7 +2,9 @@
 
 Measured on 20 November 2026 for [PR #327](https://github.com/coder13/sudoku-app/pull/327).
 
-Published application source: [`92f0b21`](https://github.com/coder13/sudoku-app/commit/92f0b21eb456077980c497e39f9fc898246ae730).
+Measured application source: [`92f0b21`](https://github.com/coder13/sudoku-app/commit/92f0b21eb456077980c497e39f9fc898246ae730).
+
+Later integration source: [`ab3f067`](https://github.com/coder13/sudoku-app/commit/ab3f06710b3ce0b266d07516f0966d932f9e9be5). Main received sized Jigsaw and labeled-dot support after these timings. The integration keeps the performance changes and owned generation sessions, and adds regression states for 7×7 region replacement, Jigsaw peers and candidates, and labeled dots on 4×4 and both 6×6 layouts. The current harness baseline is `d04f5cd6aaf6bc21c9d225764200d826fcf712d4`. CI checks the integrated source. The timing tables below remain pinned to `92f0b21`; they have not been relabeled as measurements of the later merge.
 
 The changes reduce ordinary board update work, dense highlight painting, and mobile drag style work. They also prevent slow solver jobs from blocking candidate requests and prevent late results from changing an outdated or paused puzzle. These measurements do not establish native-app smoothness on a physical phone. Resize release and large simultaneous removals still have long frame gaps in some runs.
 
@@ -77,7 +79,7 @@ An earlier implementation deferred more outer sizing work until release and incr
 
 Functional checks passed for portrait layout, reversed panel order, an open hint, an interrupted drag after a viewport change, and side, top, and diagonal outside clues. They check cancellation, keyboard reset, gradual expansion, committed width, centering, width limits, clue containment, and the reachable mode badge. With outside clues, the full frame remained 252 px wide at release. Fixed-size coordinate labels reflow inside that frame, as in the existing scaling approach.
 
-## Validation
+## Validation at the measured source
 
 - Repository type check and component catalog check passed. The catalog covers 184 named components.
 - All **848 repository tests** passed, with no failures, skips, or cancellations.
@@ -100,6 +102,6 @@ Storage tests cover no persistence reads or writes inside ordinary clock updates
 
 The local lifecycle run used the real app-profile WASM from the successful Pages build of `55067cc`. The Rust inputs and build scripts are unchanged in the published source. Its deployment URL and SHA-256 are in the manifest. CI builds WASM from source before running the repository and browser checks.
 
-See the [harness instructions](../../../tools/react-board-performance/README.md) for setup and commands. The browser scripts accept `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when Chromium is installed outside Playwright's cache. CI uses its installed Playwright browser and functional checks rather than timing thresholds.
+Use a separate checkout of `92f0b21` to reproduce the recorded comparisons with their original baseline and source. See the [harness instructions](../../../tools/react-board-performance/README.md) for setup and commands; the current harness follows the newer main baseline described above. The browser scripts accept `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when Chromium is installed outside Playwright's cache. CI uses its installed Playwright browser and functional checks rather than timing thresholds.
 
 These results come from one headless Linux browser environment. They do not measure a physical phone, startup, network delay, complete application latency, raster completion, or display latency. Ordinary moves remain immediately durable; elapsed time alone is checkpointed, so an abrupt process exit can lose time since the last checkpoint.
