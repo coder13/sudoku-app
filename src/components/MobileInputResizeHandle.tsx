@@ -1,4 +1,5 @@
 import { type PointerEvent, useLayoutEffect, useRef } from 'react'
+import { mobileInputResizeBudget, mobileResizedPuzzleHeight } from '../sudoku/mobile-input-sizing'
 
 const MIN_GRID_WIDTH = 180
 const MIN_GRID_WIDTH_WITH_HINT = 130
@@ -8,7 +9,7 @@ const DOUBLE_TAP_MS = 350
 const TAP_MOVE_LIMIT = 6
 const DOUBLE_TAP_DISTANCE = 24
 
-type Split = { input: number; total: number; chrome: number; minPuzzle: number; min: number; max: number }
+type Split = { input: number; total: number; chrome: number; naturalPuzzle: number; minPuzzle: number; min: number; max: number }
 type BoardPreview = { viewport: HTMLElement; content: HTMLElement; width: number; height: number; maxWidth: number }
 type Tap = { time: number; x: number; y: number; pointerType: string }
 type Drag = {
@@ -41,8 +42,19 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const chrome = parseFloat(layout.style.getPropertyValue('--mobile-puzzle-chrome-height')) ||
     blockSize(puzzle) - parseFloat(getComputedStyle(grid).inlineSize)
   const puzzleHeight = parseFloat(layout.style.getPropertyValue('--mobile-resized-puzzle-height')) || blockSize(puzzle)
+  // Retain the unsized grid height so shrinking the input can restore the original board.
+  const naturalPuzzle = parseFloat(layout.style.getPropertyValue('--mobile-natural-puzzle-height')) || blockSize(puzzle)
   const minGrid = withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH
-  const minPuzzle = Math.min(puzzleHeight, chrome + minGrid)
+  const minPuzzle = Math.min(naturalPuzzle, chrome + minGrid)
+  const workspace = layout.parentElement
+  // Only the portrait stack has flex spacers. The fixed middle gap and the
+  // puzzle's badge gutter must not count as available resize space.
+  const verticalStack = !withHint && workspace && getComputedStyle(workspace).display === 'flex' &&
+    getComputedStyle(workspace).flexDirection === 'column'
+  const unusedSpace = verticalStack
+    ? [...layout.querySelectorAll<HTMLElement>('.mobile-panel-space:not(.mobile-panel-gap)')]
+      .reduce((total, space) => total + Math.max(0, blockSize(space) || 0), 0) : 0
+  const total = mobileInputResizeBudget(height, puzzleHeight, unusedSpace)
   const keypadHeight = blockSize(keypad)
   const minBody = withHint ? Math.min(MIN_SCROLLABLE_INPUT_HEIGHT, keypadHeight) : keypadHeight
   const inputPanel = input.closest<HTMLElement>('[data-mobile-panel="input"]')
@@ -50,11 +62,12 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const min = Math.max(minPanel, height - blockSize(body) + minBody)
   return {
     input: height,
-    total: height + puzzleHeight,
+    total,
     chrome,
+    naturalPuzzle,
     minPuzzle,
     min,
-    max: Math.max(min, height + puzzleHeight - minPuzzle),
+    max: Math.max(min, total - minPuzzle),
   }
 }
 
@@ -86,7 +99,8 @@ function clearBoardPreview(board: BoardPreview | null) {
 function applySplit(layout: HTMLElement, split: Split, height: number, board?: BoardPreview | null) {
   layout.toggleAttribute('data-input-sized', true)
   layout.style.setProperty('--mobile-resized-input-height', `${height}px`)
-  const puzzleHeight = Math.max(split.minPuzzle, split.total - height)
+  const puzzleHeight = mobileResizedPuzzleHeight(split.total, height, split.naturalPuzzle, split.minPuzzle)
+  layout.style.setProperty('--mobile-natural-puzzle-height', `${split.naturalPuzzle}px`)
   layout.style.setProperty('--mobile-resized-puzzle-height', `${puzzleHeight}px`)
   const chrome = `${split.chrome}px`
   if (layout.style.getPropertyValue('--mobile-puzzle-chrome-height') !== chrome) {
@@ -104,6 +118,7 @@ function clearSplit(layout: HTMLElement) {
   layout.removeAttribute('data-input-sized')
   layout.style.removeProperty('--mobile-resized-input-height')
   layout.style.removeProperty('--mobile-resized-puzzle-height')
+  layout.style.removeProperty('--mobile-natural-puzzle-height')
   layout.style.removeProperty('--mobile-puzzle-chrome-height')
 }
 
