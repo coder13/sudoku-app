@@ -72,6 +72,7 @@ import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
+import { usePuzzleTimer } from './usePuzzleTimer'
 import { usePuzzleZoom } from './usePuzzleZoom'
 import { useTouchHold } from './useTouchHold'
 
@@ -108,76 +109,6 @@ async function solveSingleValues({ grid, variant, algebraic, sized }: Pick<Game,
   const entries = [...values].map((digit, cell) => variant.puzzle.givens[cell] === '0' ? digit : '0').join('')
   return run({ type: 'variant', operation: 'solve-singles', displayedCandidates,
     position: { puzzle: variant.puzzle, entries, eliminations } })
-}
-
-function useTimer(id: string, running: boolean) {
-  useEffect(() => {
-    if (!running) return
-    let started: number | null = null
-    let locks: LockManager | undefined = navigator.locks
-    let lockRequest: AbortController | undefined
-
-    function tick() {
-      if (started === null) return
-      const seconds = Math.floor((performance.now() - started) / 1000)
-      if (seconds < 1) return
-      started += seconds * 1000
-      if (!puzzleTiming.getSnapshot().trackTime) return
-      roomStore.advanceElapsed(id, seconds)
-    }
-
-    function start() {
-      if (started !== null || lockRequest) return
-      if (!locks) {
-        started = performance.now()
-        return
-      }
-      const request = new AbortController()
-      lockRequest = request
-      // One visible tab advances the saved clock. A second tab waits without counting.
-      void locks.request(`sudoku-puzzle-timer:${id}`, { signal: request.signal }, () => {
-        if (request.signal.aborted) return
-        started = performance.now()
-        return new Promise<void>(resolve => request.signal.addEventListener('abort', () => resolve(), { once: true }))
-      }).catch(() => {
-        if (request.signal.aborted) return
-        locks = undefined
-        lockRequest = undefined
-        updateVisibility()
-      })
-    }
-
-    function stop() {
-      tick()
-      roomStore.flushElapsed(id)
-      started = null
-      lockRequest?.abort()
-      lockRequest = undefined
-    }
-
-    function updateVisibility() {
-      // Use the focused tab when Web Locks are unavailable.
-      if (document.visibilityState === 'visible' && (locks || document.hasFocus())) start()
-      else stop()
-    }
-
-    const timer = window.setInterval(tick, 500)
-    document.addEventListener('visibilitychange', updateVisibility)
-    window.addEventListener('focus', updateVisibility)
-    window.addEventListener('blur', updateVisibility)
-    window.addEventListener('pageshow', updateVisibility)
-    window.addEventListener('pagehide', stop)
-    updateVisibility()
-    return () => {
-      stop()
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', updateVisibility)
-      window.removeEventListener('focus', updateVisibility)
-      window.removeEventListener('blur', updateVisibility)
-      window.removeEventListener('pageshow', updateVisibility)
-      window.removeEventListener('pagehide', stop)
-    }
-  }, [id, running])
 }
 
 export type WorktableActions = { check: () => void }
@@ -670,8 +601,10 @@ export function Worktable({
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || completed)
-  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
-    !resetOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen)
+  usePuzzleTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+    !resetOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen, (seconds, puzzleId) => {
+    roomStore.advanceElapsed(puzzleId, seconds)
+  }, puzzleId => roomStore.flushElapsed(puzzleId))
 
   function openSolvedGrid(position = savedGame) {
     const game = { ...position, paused: false }

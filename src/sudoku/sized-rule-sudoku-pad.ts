@@ -1,6 +1,6 @@
 import { closedRegionSumCells } from './region-sum.ts'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow } from './engine.ts'
-import { gridRegionIndex, isGridText, matchesRectangularRegions, MINI_GRID, sixGridFromRegions } from './grid.ts'
+import { gridRegionIndex, isGridText, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -119,11 +119,10 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const { cells, metadata, regions, cages, lines, underlays, overlays, arrows } = data
   if (Object.keys(data).some(key => !fields.includes(key)) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
-    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect'].includes(key)) ||
-    (cages !== undefined && (!Array.isArray(cages) || cages.length))) {
+    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect'].includes(key))) {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
-  if (!Array.isArray(cells) || (cells.length !== 4 && cells.length !== 6) ||
+  if (!Array.isArray(cells) || (cells.length !== 4 && !isRectangularSize(cells.length)) ||
     cells.some(row => !Array.isArray(row) || row.length !== cells.length)) {
     throw new Error('This SudokuPad export has an invalid grid.')
   }
@@ -146,26 +145,28 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       labels[cell] = index
     }
   }
-  const grid = size === 6 ? sixGridFromRegions(labels) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
+  const grid = isRectangularSize(size) ? rectangularGridFromRegions(size, labels) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
   if (!grid) throw new Error('This SudokuPad puzzle needs rectangular boxes.')
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
   // text identifies what they mean, and the bulb determines direction.
-  const rulesText = metadata.rules.trim().split(/\n\s*\n|(?<=\.)\s+(?=Double Arrows:)/i).map(part => part.replace(/\s+/g, ' '))
+  const rulesText = metadata.rules.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i).map(part => part.replace(/\s+/g, ' '))
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
   const shortBase = /^Normal (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
-  const thermometer = /^Digits along a thermometer strictly increase from bulb to tip\.$/i
+  const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip)\.$/i
   const compactThermometer = /^THERMOMETER - Digits increase in value along a thermometer, starting from the bulb end\.(?: They don't have to be adjacent, for example 1-3-4 or 2-4 would be just fine\.)?$/i
   const renban = /^Digits along a pink line form a set of non-repeating consecutive digits in any order\.$/i
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
   const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
-  const kropki = /^Digits separated by a white dot are consecutive\. Digits separated by a black dot have a 1:2 ratio\. Not all dots are given\.$/i
+  const kropki = /^(?:Digits separated by a white dot are consecutive\. Digits separated by a black dot have a 1:2 ratio\. Not all dots are given|Kropki: digits separated by a black dot are in an 1:2 ratio \(i\.e\. one digit is double the other\); digits separated by a white dot are consecutive)\.$/i
   const compactKropki = /^PARTIAL KROPKI - A white dot between two cells requires that the value in one cell is exactly 1 greater than the value of the other cell\. - A black dot between two cells requires that the value in one cell is exactly double the value of the other cell\.$/i
   const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause)
-  const arrow = /^Digits along an arrow sum to the digit in a bulb\. Digits may repeat if allowed by other rules\.$/i
+  const arrow = /^(?:Digits along an arrow sum to the digit in a bulb\. Digits may repeat if allowed by other rules|Arrows: the digits along the arrow must sum to the number in the circled cells)\.$/i
+  const killer = /^Killer cages: digits in a killer cage must sum to the number in the top left corner and cannot repeat\.$/i
+  const authoredKiller = clauses.some(clause => killer.test(clause))
   const doubleArrow = /^Double Arrows: (?:Digits along a grey line have the same sum as the sum of the two connected circles|the sum of the digits along a line (?:is|are) equal to the sum of the digits in the circles at either end of that line)\.?$/i
   const authoredArrows = clauses.some(clause => arrow.test(clause))
   const authoredDoubleArrows = clauses.some(clause => doubleArrow.test(clause))
@@ -178,12 +179,22 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
     (Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns ||
       authoredDoubleArrows && Number(base[4]) === grid.boxColumns && Number(base[5]) === grid.boxRows)
-    : Number(compactBase?.[1]) === size || authoredDoubleArrows && Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size
+    : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size
   if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) &&
-    !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause))) {
+    !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause))) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
+  if (authoredKiller) {
+    if (!Array.isArray(cages) || !cages.length || cages.length > size ** 2) throw new Error('The SudokuPad Killer cages are missing.')
+    rules.push({ type: 'killer-cages', cages: cages.map(cage => {
+      if (!record(cage) || Object.keys(cage).length !== 3 || !Array.isArray(cage.cells) ||
+        typeof cage.value !== 'number' || cage.unique !== true) throw new Error('This SudokuPad export has an unsupported Killer cage.')
+      return { cells: cage.cells.map(cell => boardCell(cell, size)), sum: cage.value }
+    }) })
+  } else if (cages !== undefined && (!Array.isArray(cages) || cages.length)) {
+    throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
+  }
   if (lines !== undefined && (!Array.isArray(lines) || lines.length > 128)) {
     throw new Error('This SudokuPad export has unsupported lines.')
   }
@@ -301,7 +312,7 @@ export function readLinkedDoubleArrowSudokuPad(data: Record<string, unknown>) {
     cages !== undefined && (!Array.isArray(cages) || cages.length !== 0)) {
     throw new Error('This SudokuPad export has unsupported rules or markings.')
   }
-  if (!Array.isArray(regions) || ![4, 6].includes(regions.length)) {
+  if (!Array.isArray(regions) || regions.length !== 4 && !isRectangularSize(regions.length)) {
     throw new Error('The outside circles need a supported rectangular Sudoku grid.')
   }
   const size = regions.length
@@ -338,7 +349,7 @@ export function readLinkedDoubleArrowSudokuPad(data: Record<string, unknown>) {
       membership[cell] = index
     }
   }
-  const grid = size === 6 ? sixGridFromRegions(membership) : matchesRectangularRegions(MINI_GRID, membership) ? MINI_GRID : undefined
+  const grid = isRectangularSize(size) ? rectangularGridFromRegions(size, membership) : matchesRectangularRegions(MINI_GRID, membership) ? MINI_GRID : undefined
   if (!grid) throw new Error('The outside circles need a supported rectangular Sudoku grid.')
 
   if (underlays !== undefined && (!Array.isArray(underlays) || underlays.length > 1 ||

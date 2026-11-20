@@ -2,10 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { expect, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
+import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
 import { KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
+import { futoshikiCatalog } from '../../src/futoshiki/catalog'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
+import { solveLatin } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
+import { numberPositionKey } from '../../src/number-puzzles/generated-storage'
 import { rulloCatalog } from '../../src/rullo/catalog'
 import { PreviewRouter } from '../support/frames'
 
@@ -35,6 +39,46 @@ export const LoadingDifficultyResults: Story = {
     await expect(canvas.getByRole('button', { name: 'Start medium puzzle' })).toBeEnabled()
     await userEvent.keyboard('{ArrowLeft}')
     await expect(canvas.getByRole('button', { name: 'Start easy puzzle' })).toBeEnabled()
+  },
+}
+
+export const SavedDifficultyResults: Story = {
+  render: () => <PreviewRouter shell><FutoshikiDifficultyPage /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const entries = futoshikiCatalog.filter(entry => entry.difficulty === 'easy')
+    const previous = new Map(entries.map((entry, index) => {
+      const key = numberPositionKey('futoshiki', entry.id)
+      const saved = localStorage.getItem(key)
+      if (index > 1) {
+        localStorage.removeItem(key)
+        return [key, saved]
+      }
+      const { puzzle } = entry
+      const values = solveLatin(puzzle).solution!.map((digit, cell) => puzzle.givens[cell] ? 0 : digit)
+      localStorage.setItem(key, JSON.stringify({
+        values, notes: values.map(() => 0), clock: index === 0 ? { elapsed: 42, finished: true } : undefined,
+      }))
+      return [key, saved]
+    }))
+    const difficultyKey = 'futoshiki.difficulty.v1'
+    previous.set(difficultyKey, localStorage.getItem(difficultyKey))
+    localStorage.setItem(difficultyKey, 'easy')
+    return () => {
+      for (const [key, saved] of previous) {
+        if (saved === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, saved)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const easy = within(await canvas.findByLabelText('Easy results'))
+    await expect(easy.getByText('2')).toBeVisible()
+    await expect(easy.getByText('00:42')).toBeVisible()
+    const increase = canvas.getByRole('button', { name: 'Increase difficulty' })
+    await userEvent.click(increase)
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByLabelText('Easy results')).toBeVisible()
   },
 }
 

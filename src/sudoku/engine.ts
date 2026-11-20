@@ -172,7 +172,7 @@ export type SizedVariantPosition = SizedClassicPosition & {
   }[]
 }
 
-export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
+export type SixGrid = Extract<import('./grid.ts').RectangularGrid, { size: 6 }>
 export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number, number]; difference: number }
 export type SizedLabeledDotsRule = {
   type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean
@@ -248,6 +248,7 @@ export type EngineRequest =
   | SizedVariantRequest
   | SizedConstraintRequest
   | { type: 'generate-jigsaw'; seed: number; difficulty: 'easy' | 'medium'; grid: { size: number; regions: readonly (readonly number[])[] }; exclude?: readonly (readonly number[])[] }
+  | { type: 'generate-rectangular'; seed: number; difficulty: 'easy' | 'medium'; grid: import('./grid.ts').RectangularGrid; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-six'; seed: number; difficulty: 'easy' | 'medium'; grid: SixGrid; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
   | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
@@ -643,7 +644,7 @@ export type EngineResult<T extends EngineRequest> =
     T['operation'] extends 'trace' ? AlgebraicTracePosition[] | null :
     AlgebraicCageProof | null
   ) :
-  T extends { type: 'generate-mini' | 'generate-six' | 'generate-jigsaw' } ? number[] :
+  T extends { type: 'generate-mini' | 'generate-six' | 'generate-rectangular' | 'generate-jigsaw' } ? number[] :
   T extends { type: 'generate-algebraic' } ? SizedVariantPosition :
   T extends { type: 'analyze' } ? Analysis :
   T extends { type: 'notes' } ? number[] | null :
@@ -789,6 +790,7 @@ function connectionFor(request: EngineRequest, options: EngineRunOptions) {
     case 'generate':
     case 'generate-mini':
     case 'generate-six':
+    case 'generate-rectangular':
     case 'generate-jigsaw':
     case 'generate-algebraic':
     case 'generate-constrained':

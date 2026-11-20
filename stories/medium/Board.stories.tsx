@@ -41,6 +41,14 @@ export const SixWithCombinedRules: Story = {
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
 }
+export const EightWithTallBoxes: Story = {
+  args: {
+    grid: { size: 8, boxRows: 4, boxColumns: 2 },
+    givens: '00000000'.repeat(8), values: '00000000'.repeat(8),
+    selected: [9], candidates: Array.from({ length: 64 }, (_, cell) => cell === 9 ? 0b11111111 : 0),
+  },
+  decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
 export const FiveJigsaw: Story = {
   args: {
     grid: fiveJigsawForSeed(),

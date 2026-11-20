@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  loadNumberProgress, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress, saveNumberProgress, type NumberProgress,
+  loadNumberProgress, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress,
+  saveNumberClock, saveNumberProgress, type NumberProgress,
 } from '../src/number-puzzles/progress.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
@@ -32,6 +33,12 @@ test('number game progress reads old saves and saves both history stacks with th
     assert.deepEqual(loadNumberProgress(key, editable, 4), {
       position: noted, past: past.slice(1), future: [],
     })
+    assert.equal(saveNumberProgress(key, { ...progress, clock: { elapsed: 0 } }), true)
+    assert.deepEqual(saveNumberClock(key, 8), { elapsed: 8 })
+    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...progress, clock: { elapsed: 8 } })
+    assert.equal(saveNumberProgress(key, { ...progress, clock: { elapsed: 6, finished: true } }), true)
+    assert.deepEqual(saveNumberClock(key, 2), { elapsed: 8, finished: true })
+    assert.deepEqual(loadNumberProgress(key, editable, 4), { ...progress, clock: { elapsed: 8, finished: true } })
     storage.setItem(key, '{"values": [], "notes": false}')
     assert.equal(readNumberProgress(key), null)
     storage.setItem(key, '{')
@@ -46,7 +53,7 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
   const storage = new MemoryStorage()
   const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true })
-  const { generatedNumberHistory, openGeneratedNumberPuzzle, saveGeneratedNumberProgress } =
+  const { generatedNumberHistory, openGeneratedNumberPuzzle, saveGeneratedNumberClock, saveGeneratedNumberProgress } =
     await import('../src/number-puzzles/generated-storage.ts')
   try {
     const history = 'calcudoku.generated.v1'
@@ -77,6 +84,15 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
       position: newest, past: [[2, 0, 4]], future: [],
     }), true)
     assert.equal(storage.getItem(pendingKey), null)
+    assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
+      position: newest, past: [[2, 0, 4]], future: [], clock: { elapsed: 0 },
+    }), true)
+    assert.deepEqual(await saveGeneratedNumberClock('calcudoku', next, 5), { elapsed: 5 })
+    assert.equal(await saveGeneratedNumberClock('calcudoku', next, 'untimed'), 'untimed')
+    assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
+      position: newest, past: [[2, 0, 4]], future: [], clock: { elapsed: 9, finished: true },
+    }), true)
+    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, { ...newest, clock: 'untimed' })
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')

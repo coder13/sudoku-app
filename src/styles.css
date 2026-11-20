@@ -3932,15 +3932,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     var(--board-bg);
 }
 .variant-algebraic-preview-label { fill: var(--board-ink); font-size: .33px; font-weight: 650; }
-.variant-preview[data-variant="six"] {
-  background:
-    repeating-linear-gradient(to right, transparent 0 calc(100% / 6 - 1px), var(--grid-line) calc(100% / 6 - 1px) calc(100% / 6)),
-    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 6 - 1px), var(--grid-line) calc(100% / 6 - 1px) calc(100% / 6)),
-    var(--board-bg);
-}
+.variant-preview[data-variant="six"] { --preview-cell-size: calc(100% / 6); }
+.variant-preview[data-variant="eight"] { --preview-cell-size: calc(100% / 8); }
 .variant-preview[data-variant="jigsaw-five"] { --preview-cell-size: 20%; }
 .variant-preview[data-variant="jigsaw-seven"] { --preview-cell-size: calc(100% / 7); }
-.variant-preview:is([data-variant="jigsaw-five"], [data-variant="jigsaw-seven"]) {
+.variant-preview:is([data-variant="six"], [data-variant="eight"], [data-variant="jigsaw-five"], [data-variant="jigsaw-seven"]) {
   --preview-grid-line: calc(var(--preview-cell-size) - 1px);
   background:
     repeating-linear-gradient(to right, transparent 0 var(--preview-grid-line), var(--grid-line) var(--preview-grid-line) var(--preview-cell-size)),

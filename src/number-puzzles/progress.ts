@@ -2,9 +2,36 @@ import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog
 
 export type NumberPosition = { values: number[]; notes: number[] }
 export type NumberMove = readonly [cell: number, value: number, notes: number]
-export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[] }
-export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown }
+export type NumberClock = { elapsed: number; finished?: true } | 'untimed'
+export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[]; clock?: NumberClock }
+export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown; clock?: unknown }
 export const NUMBER_HISTORY_SIZE = 64
+
+export function readNumberClock(value: unknown): NumberClock | undefined {
+  if (value === 'untimed') return value
+  if (!value || typeof value !== 'object') return
+  const { elapsed, finished } = value as Partial<Record<'elapsed' | 'finished', unknown>>
+  if (typeof elapsed !== 'number' || !Number.isSafeInteger(elapsed) || elapsed < 0) return
+  return finished === true ? { elapsed, finished } : { elapsed }
+}
+
+export function numberProgressWithClock(progress: SavedNumberProgress, previous?: SavedNumberProgress): SavedNumberProgress {
+  const saved = readNumberClock(previous?.clock)
+  if (saved === undefined) return progress
+  const incoming = readNumberClock(progress.clock)
+  if (saved === 'untimed' || saved.finished || incoming === undefined) return { ...progress, clock: saved }
+  if (incoming === 'untimed') return { ...progress, clock: incoming }
+  return { ...progress, clock: { ...incoming, elapsed: Math.max(saved.elapsed, incoming.elapsed) } }
+}
+
+export function advanceNumberClock(clock: NumberClock | undefined, change: number | 'untimed') {
+  if (clock === undefined || clock === 'untimed' || clock.finished) return clock
+  return change === 'untimed' ? change : { elapsed: Math.min(Number.MAX_SAFE_INTEGER, clock.elapsed + change) }
+}
+
+export function hasNumberMoves({ position, past, future }: NumberProgress) {
+  return Boolean(past.length || future.length || position.values.some(Boolean) || position.notes.some(Boolean))
+}
 
 export function emptyNumberPosition(cells: number): NumberPosition {
   return { values: Array(cells).fill(0), notes: Array(cells).fill(0) }
@@ -42,6 +69,7 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
     return history
   }
 
+  const clock = readNumberClock(saved.clock)
   return {
     position: {
       values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
@@ -49,6 +77,7 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
     },
     past: readHistory(past),
     future: readHistory(future),
+    ...(clock === undefined ? {} : { clock }),
   }
 }
 
@@ -57,13 +86,25 @@ export function loadNumberProgress(key: string, editable: readonly boolean[], ma
   return saved && parseNumberProgress(saved, editable, maxValue)
 }
 
-export function saveNumberProgress(key: string, { position, past, future }: NumberProgress): boolean {
+function writeNumberProgress(key: string, progress: SavedNumberProgress) {
   try {
-    localStorage.setItem(key, JSON.stringify({ ...position, past, future }))
+    localStorage.setItem(key, JSON.stringify(progress))
     return true
   } catch {
     return false
   }
+}
+
+export function saveNumberProgress(key: string, { position, past, future, clock }: NumberProgress): boolean {
+  return writeNumberProgress(key, numberProgressWithClock({ ...position, past, future, clock }, readNumberProgress(key) ?? undefined))
+}
+
+export function saveNumberClock(key: string, change: number | 'untimed') {
+  const progress = readNumberProgress(key)
+  if (!progress) return
+  const previous = readNumberClock(progress.clock)
+  const clock = advanceNumberClock(previous, change)
+  if (clock === previous || writeNumberProgress(key, { ...progress, clock })) return clock
 }
 
 export function loadNumberDifficulty(game: string): NumberPuzzleDifficulty | undefined {
