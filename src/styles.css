@@ -869,6 +869,32 @@ svg { flex-shrink: 0; }
   max-inline-size: max(240px, calc(var(--board-frame-width) + 2 * var(--puzzle-padding-inline) + 2px));
   margin-inline: auto;
 }
+
+/* The grid is the only bordered play surface on desktop and mobile. */
+.puzzle.puzzle-flat {
+  --puzzle-padding-inline: 0px;
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.standard-workspace-page [data-reserve-badge-space] > .puzzle.puzzle-flat {
+  max-inline-size: min(100%, var(--board-frame-limit));
+  margin-inline: auto;
+}
+.dock-puzzle-panel .puzzle.puzzle-flat { --puzzle-padding-inline: 0px; padding-inline: 0; }
+.puzzle.puzzle-flat .puzzle-quick-actions {
+  inline-size: 100%;
+  justify-content: stretch;
+  border-block-start: 0;
+}
+.puzzle.puzzle-flat .puzzle-quick-actions > .button {
+  flex: 1 0 max-content;
+  justify-content: center;
+}
+
 .desktop-play-resizable .standard-puzzle-stack {
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
 }
@@ -3221,12 +3247,24 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
       --board-frame-limit: 100%;
     }
+    /* Center the puzzle itself as well as its zoomed content at every size. */
+    .standard-workspace-page .mobile-panel[data-mobile-panel="puzzle"] .puzzle-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+    }
     .standard-workspace-page .mobile-panel .puzzle.puzzle-flat {
       box-sizing: border-box;
       inline-size: 100%;
       max-inline-size: min(100%, var(--board-frame-limit));
       margin-inline: auto;
       min-inline-size: 0;
+      justify-self: center;
+    }
+    .standard-workspace-page .puzzle.puzzle-flat .puzzle-zoom {
+      justify-self: center;
+      margin-inline: auto;
+      max-inline-size: 100%;
     }
     .standard-workspace-page .puzzle-flat:has(.board-frame:not(.has-outside-clues)) {
       --puzzle-grid-inset: 0px;
