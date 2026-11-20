@@ -3221,7 +3221,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
       --board-frame-limit: 100%;
     }
-    .standard-workspace-page .puzzle.puzzle-flat {
+    .standard-workspace-page .mobile-panel .puzzle.puzzle-flat {
       box-sizing: border-box;
       inline-size: 100%;
       max-inline-size: min(100%, var(--board-frame-limit));
