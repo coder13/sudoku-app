@@ -465,7 +465,7 @@ export const deviceSync = {
     function wake() {
       const target = currentDevice()
       socket.showPuzzle(viewedPuzzle)
-      socket.update(target?.device ?? null)
+      socket.update(connectivity.available() ? target?.device ?? null : null)
       if (target && !document.hidden && connectivity.available()) socket.check(Date.now())
       if (target && !connectivity.available()) {
         publishConnection({ mode: 'offline', checkFailed: false })
@@ -504,6 +504,10 @@ export const deviceSync = {
       socket.stop()
       flushHandoff()
     }
+    function focused() {
+      void connectivity.wake()
+      wake()
+    }
     const storageChanged = (event: StorageEvent) => { if (event.key === credentialsKey) wake() }
     onConnectivityChange = available => available ? online() : wake()
     connectivity.start()
@@ -522,9 +526,9 @@ export const deviceSync = {
       }
     }, 15_000)
     window.addEventListener(settingsEditedEvent, settingChanged)
-    window.addEventListener('focus', wake)
+    window.addEventListener('focus', focused)
     window.addEventListener('pagehide', pageHidden)
-    window.addEventListener('pageshow', wake)
+    window.addEventListener('pageshow', focused)
     window.addEventListener('storage', storageChanged)
     document.addEventListener('visibilitychange', visible)
     return () => {
@@ -538,9 +542,9 @@ export const deviceSync = {
       window.removeEventListener(settingsEditedEvent, settingChanged)
       connectivity.stop()
       onConnectivityChange = undefined
-      window.removeEventListener('focus', wake)
+      window.removeEventListener('focus', focused)
       window.removeEventListener('pagehide', pageHidden)
-      window.removeEventListener('pageshow', wake)
+      window.removeEventListener('pageshow', focused)
       window.removeEventListener('storage', storageChanged)
       document.removeEventListener('visibilitychange', visible)
     }
