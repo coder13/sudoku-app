@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test, type TestContext } from 'node:test'
 import { createSyncConnectivity } from '../src/sudoku/sync-connectivity.ts'
 
-function mockWindow(t: Parameters<Parameters<typeof test>[1]>[0]) {
+function mockWindow(t: TestContext) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window')
   const events = new EventTarget()
   Object.defineProperty(globalThis, 'window', { configurable: true, value: events })
