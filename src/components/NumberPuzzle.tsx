@@ -2,15 +2,17 @@ import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-rout
 import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
-import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
+import {
+  recordDifficultySolve, summarizeDifficultySolves, type DifficultyStatistics, type DifficultyTotals,
+} from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
 import {
-  generatedNumberHistory, numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberProgress,
+  generatedNumberHistory, numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberClock, saveGeneratedNumberProgress,
 } from '../number-puzzles/generated-storage'
 import {
-  emptyNumberPosition, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
-  parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberProgress,
-  type NumberMove, type NumberProgress, type SavedNumberProgress,
+  advanceNumberClock, emptyNumberPosition, hasNumberMoves, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
+  parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberClock, saveNumberProgress,
+  type NumberClock, type NumberMove, type NumberProgress, type SavedNumberProgress,
 } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
@@ -23,6 +25,9 @@ import { PuzzleCheckResult, type DialogResult } from './PuzzleCheckResult'
 import { SolutionDialog, SolutionPath, solutionEndSummary, type NumberSolutionTrace } from './SolutionPath'
 import { useMobileLayout } from './mobile-layout'
 import { numberSolution } from '../number-puzzles/solution'
+import { formatTime } from '../sudoku/game'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
+import { usePuzzleTimer } from './usePuzzleTimer'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { PuzzleKeypad } from './PuzzleKeypad'
@@ -118,17 +123,18 @@ function NumberGameHeading({ game, title, inPlay, children }: {
 }
 
 type ProgressStatus = 'started' | 'solved'
-type GeneratedProgress = {
+type NumberDifficultyResults = {
   active: NumberPuzzleEntry[]
-  solved: Map<NumberPuzzleDifficulty, number>
+  statistics: ReadonlyMap<NumberPuzzleDifficulty, DifficultyStatistics>
 }
 
-function progressStatus(board: NumberBoard, saved: SavedNumberProgress): ProgressStatus | null {
+function readDifficultyProgress(board: NumberBoard, saved: SavedNumberProgress, difficulty: NumberPuzzleDifficulty,
+  totals: DifficultyTotals<NumberPuzzleDifficulty>): ProgressStatus | null {
   const progress = parseNumberProgress(saved, editableCells(board), board.maxValue)
-  if (!progress) return null
-  const { position, past, future } = progress
-  if (!past.length && !future.length && !position.values.some(Boolean) && !position.notes.some(Boolean)) return null
-  return board.check(position.values).complete ? 'solved' : 'started'
+  if (!progress || !hasNumberMoves(progress)) return null
+  if (!board.check(progress.position.values).complete) return 'started'
+  recordDifficultySolve(totals, difficulty, progress.clock === 'untimed' ? undefined : progress.clock?.elapsed)
+  return 'solved'
 }
 
 const resumeBatchSize = 24
@@ -164,26 +170,28 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const [difficulty, setDifficulty] = useState<NumberPuzzleDifficulty>(levels[0])
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null)
   const [catalogProgress, setCatalogProgress] = useState<ReadonlyMap<string, ProgressStatus> | null>(null)
-  const [generatedProgress, setGeneratedProgress] = useState<GeneratedProgress | null>(null)
+  const [results, setResults] = useState<NumberDifficultyResults | null>(null)
 
   useEffect(() => {
     const catalog = new Map<string, ProgressStatus>()
+    const totals: DifficultyTotals<NumberPuzzleDifficulty> = new Map()
     for (const entry of entries) {
       const saved = readNumberProgress(numberPositionKey(game, entry.id))
-      const status = saved && progressStatus(config.board(entry), saved)
+      const status = saved && readDifficultyProgress(config.board(entry), saved, entry.difficulty, totals)
       if (status) catalog.set(entry.id, status)
     }
     const savedDifficulty = loadNumberDifficulty(game)
     if (savedDifficulty && entries.some(entry => entry.difficulty === savedDifficulty)) setDifficulty(savedDifficulty)
     setCatalogProgress(catalog)
 
-    const generated: GeneratedProgress = { active: [], solved: new Map() }
+    const generated: NumberPuzzleEntry[] = []
+    const finish = () => setResults({ active: generated, statistics: summarizeDifficultySolves(totals) })
     if (!generatedEntry) {
-      setGeneratedProgress(generated)
+      finish()
       return
     }
 
-    setGeneratedProgress(null)
+    setResults(null)
     let history: Awaited<ReturnType<typeof generatedNumberHistory>> = []
     let cursor = 0
     let active = true
@@ -199,16 +207,15 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
         if (!progress) continue
         const entry = generatedEntry(id, number)
         if (!entry) continue
-        const status = progressStatus(config.board(entry), progress)
         const { difficulty } = entry
-        if (status === 'solved') generated.solved.set(difficulty, (generated.solved.get(difficulty) ?? 0) + 1)
-        if (status === 'started') generated.active.push({ id, difficulty, number, generated: true })
+        const status = readDifficultyProgress(config.board(entry), progress, difficulty, totals)
+        if (status === 'started') generated.push({ id, difficulty, number, generated: true })
       } while (cursor < history.length && performance.now() < deadline)
 
       if (cursor < history.length) queue.port2.postMessage(null)
       else {
         closeQueue()
-        setGeneratedProgress(generated)
+        finish()
       }
     }
     // Allow the picker to paint before checking generated boards.
@@ -220,7 +227,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
         if (history.length) queue.port2.postMessage(null)
         else {
           closeQueue()
-          setGeneratedProgress(generated)
+          finish()
         }
       })
     })
@@ -234,15 +241,9 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const ready = catalogProgress !== null
   const active = useMemo(() => [
     ...entries.filter(entry => catalogProgress?.get(entry.id) === 'started'),
-    ...(generatedProgress?.active ?? []),
-  ], [entries, catalogProgress, generatedProgress])
-  const statistics = generatedProgress && new Map<NumberPuzzleDifficulty, DifficultyStatistics>(levels.map(level => [
-    level, {
-      solved: entries.filter(entry => entry.difficulty === level && catalogProgress?.get(entry.id) === 'solved').length +
-        (generatedProgress.solved.get(level) ?? 0),
-      averageSeconds: null,
-    },
-  ]))
+    ...(results?.active ?? []),
+  ], [entries, catalogProgress, results])
+  const statistics = results?.statistics ?? null
   const group = entries.filter(entry => entry.difficulty === difficulty)
   const next = group.find(entry => !catalogProgress?.has(entry.id))
     ?? group.find(entry => catalogProgress?.get(entry.id) === 'started') ?? group[0]
@@ -308,7 +309,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [progress, setProgress] = useState<NumberProgress>(() => ({
     position: emptyNumberPosition(board.cells.length), past: [], future: [],
   }))
-  const { position, past, future } = progress
+  const { position, past, future, clock } = progress
   const [ready, setReady] = useState(false)
   const [number, setNumber] = useState(entry.number)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
@@ -344,21 +345,56 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     [analysisOpen, board, position.values, result])
   const locked = !ready || result.complete || previewing
   const overlayOpen = actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  const timed = clock !== undefined && clock !== 'untimed'
+  const elapsed = timed ? clock.elapsed : 0
+  const showTimer = ready && clock !== 'untimed' && (result.complete ? timed : timing.showTimer && timing.trackTime)
+  const changeClock = useEffectEvent((change: number | 'untimed') => {
+    setProgress(current => {
+      const next = advanceNumberClock(current.clock, change)
+      return next === current.clock ? current : { ...current, clock: next }
+    })
+    function applySavedTime(saved: NumberClock | undefined) {
+      if (saved === undefined) return
+      setProgress(current => {
+        const previous = current.clock
+        if (previous === 'untimed') return current
+        if (saved === 'untimed') return { ...current, clock: saved }
+        if (saved.finished && !previous?.finished) return { ...current, clock: saved }
+        if (previous && previous.elapsed >= saved.elapsed) return current
+        return { ...current, clock: { ...previous, elapsed: saved.elapsed } }
+      })
+    }
+    if (generatedGame) void saveGeneratedNumberClock(generatedGame, entry.id, change).then(applySavedTime)
+    else applySavedTime(saveNumberClock(key, change))
+  })
+  usePuzzleTimer(key, ready && timed && timing.trackTime && !clock.finished &&
+    !result.complete && !overlayOpen && !previewing && !rearranging, seconds => {
+    if (!result.complete) changeClock(seconds)
+  })
+  useEffect(() => {
+    if (ready && timed && !timing.trackTime && !result.complete) changeClock('untimed')
+  }, [ready, result.complete, timed, timing.trackTime])
 
   useEffect(() => {
+    function restore(stored: NumberProgress | null | undefined) {
+      if (!stored) return
+      // Earlier moves have no elapsed time. Keep their solve count without a partial time.
+      setProgress(stored.clock === undefined && hasNumberMoves(stored) ? { ...stored, clock: 'untimed' } : stored)
+    }
+
     if (generatedGame) {
       let active = true
       void openGeneratedNumberPuzzle(generatedGame, entry.id).then(record => {
         if (!active) return
         const stored = record.progress && parseNumberProgress(record.progress, editable, maxValue)
-        if (stored) setProgress(stored)
+        restore(stored)
         setNumber(record.number)
         setReady(true)
       })
       return () => { active = false }
     }
-    const stored = load()
-    if (stored) setProgress(stored)
+    restore(load())
     setReady(true)
   }, [editable, entry.id, generatedGame, load, maxValue])
 
@@ -373,7 +409,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
   }
 
-  function update(next: NumberProgress) {
+  function update(move: NumberProgress) {
+    let nextClock: NumberClock = puzzleTiming.getSnapshot().trackTime ? clock ?? { elapsed: 0 } : 'untimed'
+    if (nextClock !== 'untimed' && board.check(move.position.values).complete) nextClock = { ...nextClock, finished: true }
+    const next = { ...move, clock: nextClock }
     setProgress(next)
     if (generatedGame) {
       const save = ++lastSave.current
@@ -709,7 +748,12 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   const puzzlePanel = <section className="surface number-puzzle-board-card">
     <NumberGameHeading game={game} title={name} inPlay>
-      <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
+      <div className="number-puzzle-metadata">
+        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
+        {showTimer && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(elapsed)}`}>
+          {formatTime(elapsed)}
+        </span>}
+      </div>
     </NumberGameHeading>
     {renderGrid(!mobile && previewing ? solutionPreview ?? undefined : undefined)}
   </section>
