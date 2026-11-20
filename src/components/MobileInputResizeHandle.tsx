@@ -78,7 +78,15 @@ function previewBoard(layout: HTMLElement): BoardPreview | null {
   const width = viewport.offsetWidth
   const height = viewport.offsetHeight
   if (!width || !height) return null
-  const maxWidth = viewport.parentElement.clientWidth
+  // The stage is already narrow after a previous resize. Measure the full puzzle
+  // column instead, or a collapsing input panel can never grow the board again.
+  const column = viewport.closest<HTMLElement>('.puzzle-column')
+  const inputPanel = layout.querySelector<HTMLElement>('[data-mobile-panel="input"]')
+  const columnStyle = column && getComputedStyle(column)
+  const columnWidth = column && columnStyle
+    ? column.clientWidth - parseFloat(columnStyle.paddingInlineStart) - parseFloat(columnStyle.paddingInlineEnd)
+    : viewport.parentElement.clientWidth
+  const maxWidth = Math.max(width, Math.min(columnWidth, inputPanel?.clientWidth ?? columnWidth))
   // Keep the grid's layout fixed while its viewport and both cards follow the pointer.
   viewport.style.height = `${height}px`
   content.style.width = `${width}px`
