@@ -60,6 +60,18 @@ pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
     }
 }
 
+// The three positions retain the source geometry from Coach puzzle BSms.
+fn renban_group_seed(givens: &'static str, cell: usize, digit: u8) -> ExampleSeed {
+    let lines: [&[usize]; 9] = [
+        &[42, 52, 62, 70], &[15, 23, 33, 43], &[16, 6, 14, 22],
+        &[11, 21, 31, 39], &[30, 38, 48, 58], &[67, 57, 47, 55],
+        &[79, 69, 59, 51], &[54, 46, 36], &[74, 66, 76],
+    ];
+    seed(givens, cell, digit, lines.map(|cells| PuzzleRule::Renban {
+        cells: cells.to_vec(), segments: None,
+    }))
+}
+
 fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     KillerCage {
         cells: cells.to_vec(),
@@ -883,6 +895,23 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 30,
                 7,
                 [PuzzleRule::Renban { cells: vec![32, 40, 48], segments: None }],
+            ),
+        ],
+        RenbanGroupCounts => [
+            renban_group_seed(
+                "570060003001000000000000050305000040000053000200000905023080590050030010108000000",
+                2,
+                2,
+            ),
+            renban_group_seed(
+                "500000003000000060400300058005920000090050000000000005703080500050000012100090000",
+                5,
+                6,
+            ),
+            renban_group_seed(
+                "009801003030000700000079150005908040600053000084007005723106500950004800108090006",
+                18,
+                8,
             ),
         ],
         RenbanHouseSupport => [

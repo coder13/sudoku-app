@@ -28,6 +28,7 @@ mod exclusions;
 mod pruning;
 mod line_houses;
 mod ray_houses;
+mod renban_group_counts;
 mod renban_house_support;
 mod renban_locks;
 mod renban_sum;
@@ -156,6 +157,8 @@ catalog! {
     RenbanSumRayHouses: "renban-sum-ray-houses", 79, Hard;
     /// Lock a digit required by a Renban into a house.
     RenbanLockedDigit: "renban-locked-digit", 40, Medium;
+    /// Rule out a candidate that would force five low or high digits into a house.
+    RenbanGroupCounts: "renban-group-counts", 89, Hard;
     /// Fit a Renban and the remaining digits of its containing house.
     RenbanHouseSupport: "renban-house-support", 62, Medium;
     /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
@@ -265,6 +268,8 @@ pub enum VariantEvidence {
     LineHouses(Box<VariantLineHouseProof>),
     /// Candidate support from a diagonal sum and the houses shared by its cells.
     RayHouses(Box<VariantRayHouseProof>),
+    /// An assumed candidate crowds five cells into four digits.
+    RenbanGroupCounts(Box<VariantRenbanGroupProof>),
     /// Candidate support from a Renban fully contained in one house.
     RenbanHouseSupport(Box<VariantRenbanHouseProof>),
     /// Candidate support from a Little Killer ray and a Renban it contains.
@@ -349,6 +354,60 @@ pub struct VariantRayHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Digits supported by a complete assignment of the indicated cells.
     pub supported: Vec<u16>,
+}
+
+/// Five cells of one house restricted to one four-digit group.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupConflict {
+    /// House where the five digits have to be distinct.
+    pub house: VariantHouseKind,
+    /// Five cells confined to the group, in grid order.
+    pub cells: [usize; 5],
+    /// Mask for digits 1–4 or 6–9.
+    pub digits: u16,
+}
+
+/// Supported candidates in one Renban under an assumption.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupProjection {
+    /// Source rule index.
+    pub rule: usize,
+    /// Renban cells in source order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before checking the line.
+    pub domains: Vec<u16>,
+    /// Supported masks after checking the line.
+    pub supported: Vec<u16>,
+}
+
+/// A Renban on which ruling out sets forces a digit.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupPlacement {
+    /// Scope and locally supported candidates after rejecting the listed intervals.
+    pub line: VariantRenbanGroupProjection,
+    /// Each rejected interval's smallest digit and the house conflict it creates.
+    pub rejected: Vec<(u8, VariantRenbanGroupConflict)>,
+    /// Digit forced by the remaining intervals.
+    pub candidate: Candidate,
+}
+
+/// A contradiction from one assumption, with at most one intermediate placement.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupProof {
+    /// Candidate whose placement is impossible.
+    pub assumption: Candidate,
+    /// Line deductions before the optional placement.
+    pub initial: Vec<VariantRenbanGroupProjection>,
+    /// An intermediate placement made necessary by the initial assumption.
+    pub placement: Option<VariantRenbanGroupPlacement>,
+    /// Line deductions after propagating the optional placement.
+    pub subsequent: Vec<VariantRenbanGroupProjection>,
+    /// The house that cannot fit all five cells.
+    pub conflict: VariantRenbanGroupConflict,
 }
 
 /// Replayable support for a Renban and all other cells of its containing house.
@@ -632,6 +691,9 @@ impl VariantDeduction {
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::RenbanGroupCounts(proof) => {
+                proof.conflict.cells.len() + usize::from(proof.placement.is_some())
+            }
             VariantEvidence::RenbanHouseSupport(proof) => match proof.paired_cell {
                 Some(_) => proof.line_length + 2,
                 None => proof.cells.len(),
@@ -1142,6 +1204,7 @@ impl CompiledVariant {
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             RenbanLockedDigit => self.renban_locks(position, &mut proofs),
+            RenbanGroupCounts => self.renban_group_counts(position, &mut proofs),
             RenbanHouseSupport => self.renban_house_support(position, &mut proofs),
             LittleKillerHouseSupport | RenbanSumRayHouses => {
                 self.ray_house_proofs(position, technique, &mut proofs);

@@ -8003,6 +8003,46 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-group-counts",
+          "title": "Renban and group counts",
+          "summary": "Use the possible Renban sets to count how many cells in a house need digits from 1–4 or 6–9. A house can use each of those four digits once.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Look for Renbans that need the same four digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A four-cell Renban without a place for 5 must use either 1–4 or 6–9. A three-cell Renban needs three consecutive digits. When its candidates rule out every set on one side of 5, look at where its remaining digits go.",
+                "Try a candidate that affects several Renbans. Check which sets can still fit each line. If that choice forces five cells in a house into the same group of four digits, remove the candidate you tried.",
+                "Sometimes the count first rules out a Renban set. If the remaining sets force a digit into one cell, check what that placement does to nearby lines and houses."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-group-counts"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-group-counts",
+                  "title": "Renban and group counts"
+                }
+              ],
+              "guide": {
+                "start": "Find several Renbans that share cells with one house.",
+                "check": "Try a candidate that limits the consecutive sets on those lines. Count how many cells in the house must use 1–4 or 6–9.",
+                "reason": "Five cells in one house cannot use just four distinct digits."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
+        },
+        {
           "id": "region-sum",
           "title": "Region Sum lines",
           "summary": "A Region Sum line has the same total in each part defined by the region boundaries and the puzzle’s rules. A part with just one cell can set the total for all the others.",

@@ -316,6 +316,33 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         : 'Fit the digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
       break
     }
+    case 'renban-group-counts': {
+      const { assumption, initial, placement, subsequent, conflict } = evidence
+      const list = new Intl.ListFormat('en', { type: 'conjunction' })
+      const groupName = (mask: number) => mask & 1 ? '1–4' : '6–9'
+      const placementConflicts = placement?.rejected.map(([, conflict]) => conflict) ?? []
+      const projections = [...initial, ...subsequent]
+      const showLine = (projection: (typeof projections)[number], group: typeof conflict) => {
+        const positions = projection.cells.filter((cell, index) =>
+          group.cells.includes(cell) && (projection.supported[index] & ~group.digits) === 0)
+        if (!positions.length) return ''
+        const names = list.format(positions.map(nameCell))
+        return `The Renban through ${nameCell(projection.cells[0])} confines ${names} to digits ${groupName(group.digits)}.`
+      }
+      cells = [...new Set([assumption.cell, ...projections.flatMap(line => line.cells), ...conflict.cells,
+        ...placementConflicts.flatMap(group => group.cells), ...(placement?.line.cells ?? [])])]
+      description = `Try ${assumption.digit} in ${nameCell(assumption.cell)}. Check which digits the Renban lines would use.`
+      const initialGroups = placementConflicts.length ? [...placementConflicts, conflict] : [conflict]
+      const first = [...new Set(initial.flatMap(line => initialGroups.map(group => showLine(line, group))))].filter(Boolean)
+      const bridge = placement ? placement.rejected.map(([start, group]) => {
+        const end = start + placement.line.cells.length - 1
+        return `If the Renban through ${nameCell(placement.line.cells[0])} were to use ${start}–${end}, five cells in ${houseLabel(group.house)} would have to use digits ${groupName(group.digits)}.`
+      }).join(' ') + ` The remaining sets force ${nameCell(placement.candidate.cell)} to be ${placement.candidate.digit}.` : ''
+      const last = subsequent.map(line => showLine(line, conflict)).filter(Boolean)
+      const outcome = `${list.format(conflict.cells.map(nameCell))} are all in ${houseLabel(conflict.house)} and would need five distinct digits from ${groupName(conflict.digits)}. Remove ${assumption.digit} from ${nameCell(assumption.cell)}.`
+      reason = [...first, bridge, ...last, outcome].filter(Boolean).join(' ')
+      break
+    }
     case 'renban-house-support': {
       cells = evidence.cells
       const length = evidence.lineLength

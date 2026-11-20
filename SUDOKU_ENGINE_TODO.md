@@ -899,7 +899,9 @@ The isolated worktree is `codex/sudoku-renban-integration`, based on main `69289
 - [x] Pass all native, feature, Wasm/app, strict documentation and deployment checks on `673523f` in [run 44348686818](https://github.com/coder13/sudoku-app/actions/runs/44348686818). Merge [PR 157](https://github.com/coder13/sudoku-app/pull/157) at `7ce7fcc` and verify both commits on remote main. The source worktree stays pinned to the reviewed head.
 - [x] Calibrate Medium New Puzzle and release thirty checked recipes through [PR 269](https://github.com/coder13/sudoku-app/pull/269). [Validation and measured limits](SUDOKU_RENBAN_GENERATION_AUDIT.md).
 - [ ] Complete live viewport interaction review. Static exports and component contracts are recorded separately.
-- [ ] Extend the stalled BSms logical path through [issue 158](https://github.com/coder13/sudoku-app/issues/158). Establish an independent human deduction before adding a named detector or changing scoring. Exact search already proves its unique completion.
+- [x] Independently verify that 3 can be removed from R9C4 and R6C5 in the published BSms two-step position. Both assumptions force five cells in box 8 to use digits 6–9. Removing column 4 from the longer argument or removing box 8 from either argument restores valid local assignments. [Proofs and controls](https://github.com/coder13/sudoku-app/issues/158#issuecomment-7046436502)
+- [x] Add an 89-point Hard group-count technique with a direct proof or one intermediate forced placement. Expose it in hints, Finder, walkthroughs, and practice. The app profile advances BSms to four steps at 232 points and retains the original path when the new technique is omitted.
+- [ ] Continue BSms logical coverage and release the reviewed app integration through [issue 158](https://github.com/coder13/sudoku-app/issues/158). Exact search already proves its unique completion.
 
 ## 18. Integrate Entropic Lines into the app
 

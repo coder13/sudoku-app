@@ -28,7 +28,8 @@ pub(crate) use lines::{reachable_sums, region_sum_ranges, sum_support_with_prefi
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
-    VariantLogicalError, VariantRating, VariantRayHouseProof, VariantRenbanHouseProof, VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay, VariantTechnique, VariantTrace,
+    VariantLogicalError, VariantRating, VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement, VariantRenbanGroupProjection,
+    VariantRenbanGroupProof, VariantRenbanHouseProof, VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, ParityClue};
 #[cfg(all(

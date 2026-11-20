@@ -99,6 +99,13 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(proof.rules.iter().all(|&index| index < position.puzzle.rules.len()));
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::RenbanGroupCounts(proof) => {
+                    assert!(proof.initial.iter().chain(&proof.subsequent).all(|projection| {
+                        matches!(&position.puzzle.rules[projection.rule], sudoku_app_engine::PuzzleRule::Renban { cells, .. }
+                            if *cells == projection.cells)
+                    }));
+                    scopes.insert(proof.conflict.cells.to_vec());
+                }
                 VariantEvidence::RenbanHouseSupport(proof) => {
                     let sudoku_app_engine::PuzzleRule::Renban { cells, .. } =
                         &position.puzzle.rules[proof.rule]

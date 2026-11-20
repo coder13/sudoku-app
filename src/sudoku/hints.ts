@@ -56,6 +56,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'whispers-house-support': 'Whispers and shared houses',
   'renban-locked-digit': 'Renban locked digit',
   'renban-house-support': 'Renban in one house',
+  'renban-group-counts': 'Renban and group counts',
   'renban-sum': 'Renban and Little Killer',
   'little-killer-house-support': 'Little Killer and shared houses',
   'renban-sum-ray-houses': 'Renban sum and shared houses',

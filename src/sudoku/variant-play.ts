@@ -1,3 +1,4 @@
+import { difficultyIndex } from './difficulty.ts'
 import { EngineError, runEngine, type Difficulty, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
@@ -8,7 +9,7 @@ import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '.
 import type { PlayableVariant, VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
-let playOrder: Promise<string[]> | undefined
+let playOrder: Promise<{ order: string[]; firstBeyondHard: string | undefined }> | undefined
 
 function withRenbanTechniques(order: readonly string[]) {
   return order.flatMap(id => {
@@ -24,8 +25,12 @@ function withLittleKillerHouses(order: readonly string[]) {
 
 export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
-    .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
-      Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
+    .then(([variant, classic]) => {
+      const tiers = Object.fromEntries([...classic.techniques, ...variant.techniques].map(t => [t.id, t.difficulty]))
+      const order = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, tiers)
+      const firstBeyondHard = order.find(id => difficultyIndex(tiers[id] ?? 'impossible') > difficultyIndex('hard'))
+      return { order, firstBeyondHard }
+    })
     .catch((error) => {
       playOrder = undefined
       throw error
@@ -33,21 +38,24 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
   const rules = puzzle?.rules ?? []
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
-  if (!renbans.length && !rays.length) return playOrder
+  if (!renbans.length && !rays.length) return playOrder.then(({ order }) => order)
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
+  const hasRenbanGroups = renbans.filter(rule => rule.cells.length === 3 || rule.cells.length === 4).length >= 3
   const hasCompanion = joined.some(ray => renbans.some(renban =>
     renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
-  return playOrder.then(order => {
+  return playOrder.then(({ order, firstBeyondHard }) => {
     const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
-    return rayOrder.flatMap(id => {
+    const scoped = rayOrder.flatMap(id => {
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
+      if (hasRenbanGroups && id === firstBeyondHard) return ['renban-group-counts', id]
       return [id]
     })
+    return hasRenbanGroups && !firstBeyondHard ? [...scoped, 'renban-group-counts'] : scoped
   })
 }
 

@@ -371,7 +371,7 @@ test('Renban ModE opens with seven hints and completes a sound logical walkthrou
   const modeOrder = await getVariantPlayOrder(source.puzzle)
   assert.ok(modeOrder.includes(rayHouses))
   assert.ok(modeOrder.includes(houseSupport))
-  assert.deepEqual(modeOrder.filter(id => ![technique, sharedHouse, lockedDigit, houseSupport, pureHouses, rayHouses].includes(id)), baseOrder)
+  assert.deepEqual(modeOrder.filter(id => ![technique, sharedHouse, lockedDigit, houseSupport, pureHouses, rayHouses, 'renban-group-counts'].includes(id)), baseOrder)
 
   const catalog = await puzzleTechniqueCatalog(true)
   assert.deepEqual(catalog.techniques.find(item => item.id === technique), {
@@ -480,7 +480,7 @@ test('Renban ModE opens with seven hints and completes a sound logical walkthrou
   }
 
   const previous = await runEngine({
-    type: 'variant', operation: 'trace', position, techniqueOrder: modeOrder.filter(id => id !== houseSupport),
+    type: 'variant', operation: 'trace', position, techniqueOrder: modeOrder.filter(id => id !== houseSupport && id !== 'renban-group-counts'),
   })
   assert.equal(previous.rating.status, 'stalled')
   assert.equal(previous.steps.length, 12)

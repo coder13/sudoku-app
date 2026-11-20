@@ -45,6 +45,12 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         VariantEvidence::RayHouses(proof) => {
             (&proof.cells, &proof.domains, proof.houses.len() as u16)
         }
+        VariantEvidence::RenbanGroupCounts(proof) => {
+            // Read each affected line, count five cells, then re-check the
+            // forced placement when one additional Renban set must be ruled out.
+            return 74 + 5 * (proof.initial.len() + proof.subsequent.len()) as u16
+                + proof.placement.as_ref().map_or(0, |step| 15 + 3 * step.rejected.len() as u16);
+        }
         VariantEvidence::RenbanHouseSupport(proof) => (&proof.cells, &proof.domains[..], 0),
         VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::RenbanSumHouse(proof) => (&proof.cells, &proof.domains, 0),

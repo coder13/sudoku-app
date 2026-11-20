@@ -559,6 +559,9 @@ export type VariantHouse = { row: number } | { column: number } | { region: numb
 export type VariantExclusionPremise =
   | { type: 'cell'; cell: number; domain: number }
   | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
+type VariantRenbanGroupConflict = { house: VariantHouse; cells: number[]; digits: number }
+type VariantRenbanGroupProjection = { rule: number; cells: number[]; domains: number[]; supported: number[] }
+
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -567,6 +570,9 @@ export type VariantDeduction = {
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'ray-houses'; rules: number[]; cells: number[]; domains: number[]; houses: VariantHouse[]; supported: number[] }
+    | { type: 'renban-group-counts'; assumption: Candidate; initial: VariantRenbanGroupProjection[];
+      placement: { line: VariantRenbanGroupProjection; rejected: [number, VariantRenbanGroupConflict][]; candidate: Candidate } | null;
+      subsequent: VariantRenbanGroupProjection[]; conflict: VariantRenbanGroupConflict }
     | { type: 'renban-house-support'; rule: number; lineLength: number; house: VariantHouse; cells: number[]; domains: number[];
       supported: number[]; starts: number; pairedCell: number | null }
     | { type: 'renban-sum'; rules: [number, number]; cells: number[]; domains: number[]; supported: number[]; starts: number }
