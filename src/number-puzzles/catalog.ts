@@ -1,6 +1,11 @@
-import type { GeneratedNumberGame } from './generated.ts'
+export const numberGameNames = {
+  kakuro: 'Kakuro', calcudoku: 'Calcudoku', futoshiki: 'Futoshiki', hidato: 'Hidato', rullo: 'Rullo',
+} as const
+export type NumberGame = keyof typeof numberGameNames
 
-export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato' | 'rullo'
+export function isNumberGame(value: unknown): value is NumberGame {
+  return typeof value === 'string' && Object.hasOwn(numberGameNames, value)
+}
 
 export const numberPuzzleDifficulties = ['easy', 'medium', 'hard'] as const
 export type NumberPuzzleDifficulty = typeof numberPuzzleDifficulties[number]

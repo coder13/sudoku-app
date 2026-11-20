@@ -6,9 +6,10 @@ import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle, kakuroFromRecipe, typ
 import type { GeneratedRecord } from './generated-storage.ts'
 import { hasNumberMoves, parseNumberProgress, readNumberClock, readNumberLastPlayed, type SavedNumberProgress } from './progress.ts'
 
-export type ActiveNumberEntry = NumberPuzzleEntry & { lastPlayed?: number; elapsed?: number }
+export type NumberResultStatus = 'started' | 'solved'
+export type NumberHistoryEntry = NumberPuzzleEntry & { lastPlayed?: number; elapsed?: number }
 
-export function activeNumberEntry(entry: NumberPuzzleEntry, saved: SavedNumberProgress): ActiveNumberEntry {
+export function numberHistoryEntry(entry: NumberPuzzleEntry, saved: SavedNumberProgress): NumberHistoryEntry {
   const lastPlayed = readNumberLastPlayed(saved.lastPlayed)
   const clock = readNumberClock(saved.clock)
   return {
@@ -20,7 +21,7 @@ export function activeNumberEntry(entry: NumberPuzzleEntry, saved: SavedNumberPr
 }
 
 export type GeneratedNumberResults = {
-  active: ActiveNumberEntry[]
+  entries: NumberHistoryEntry[]
   totals: DifficultyTotals<NumberPuzzleDifficulty>
 }
 
@@ -33,7 +34,7 @@ type ProgressRules = {
 export function recordNumberResult(
   totals: DifficultyTotals<NumberPuzzleDifficulty>, difficulty: NumberPuzzleDifficulty,
   saved: SavedNumberProgress, { editable, maxValue, complete }: ProgressRules,
-) {
+): NumberResultStatus | null {
   if (!Array.isArray(saved.values) || !Array.isArray(saved.notes)) return null
   const progress = parseNumberProgress(saved, editable, maxValue)
   if (!progress || !hasNumberMoves(progress)) return null
@@ -65,9 +66,13 @@ function generatedProgressRules(game: GeneratedNumberGame, id: string): (Progres
   }
 }
 
-export function addGeneratedNumberResult(result: GeneratedNumberResults, game: GeneratedNumberGame, { id, number, progress }: GeneratedRecord) {
+export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus }
+
+export function addGeneratedNumberResult(
+  result: GeneratedNumberResults, request: NumberHistoryRequest, { id, number, progress }: GeneratedRecord,
+) {
   if (!progress) return
-  const rules = generatedProgressRules(game, id)
+  const rules = generatedProgressRules(request.game, id)
   if (!rules) return
   const { difficulty, complete, editable } = rules
   const status = recordNumberResult(result.totals, difficulty, progress, {
@@ -75,5 +80,5 @@ export function addGeneratedNumberResult(result: GeneratedNumberResults, game: G
     // Only a full grid can contribute to solve statistics.
     complete: values => editable.every((canEnter, cell) => !canEnter || values[cell] > 0) && complete(values),
   })
-  if (status === 'started') result.active.push(activeNumberEntry({ id, number, difficulty, generated: true }, progress))
+  if (status === request.status) result.entries.push(numberHistoryEntry({ id, number, difficulty, generated: true }, progress))
 }

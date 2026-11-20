@@ -7,7 +7,7 @@ import {
 } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
 import { requestGeneratedNumberResults } from '../number-puzzles/difficulty-history'
-import { activeNumberEntry, recordNumberResult, type ActiveNumberEntry } from '../number-puzzles/generated-results'
+import { numberHistoryEntry, recordNumberResult, type NumberHistoryEntry, type NumberResultStatus } from '../number-puzzles/generated-results'
 import {
   numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberClock, saveGeneratedNumberProgress,
 } from '../number-puzzles/generated-storage'
@@ -94,14 +94,15 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   const canGoBack = useCanGoBack()
   const state = useLocation({ select: location => location.state })
   const fromLibrary = inPlay && state.fromNumberPuzzleLibrary
+  const fromSolved = fromLibrary === 'solved'
   const fromParent = inPlay ? fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
     : state.fromPuzzleGameTypes
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [title])
 
   return <header className="puzzles-page-heading number-puzzle-heading">
-    <Link to={fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
-      aria-label={fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
+    <Link to={fromSolved ? '/puzzles/solved' : fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
+      aria-label={fromSolved ? 'Back to solved puzzles' : fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
       onClick={event => {
         if (fromParent && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
           event.preventDefault()
@@ -115,16 +116,15 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   </header>
 }
 
-type ProgressStatus = 'started' | 'solved'
 type NumberDifficultyResults = {
   active: NumberPuzzleEntry[]
   statistics: ReadonlyMap<NumberPuzzleDifficulty, DifficultyStatistics>
 }
 
-export function readCatalogNumberResults<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>) {
-  const status = new Map<string, ProgressStatus>()
+export function readCatalogNumberResults<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>, include: NumberResultStatus = 'started') {
+  const status = new Map<string, NumberResultStatus>()
   const totals: DifficultyTotals<NumberPuzzleDifficulty> = new Map()
-  const active: ActiveNumberEntry[] = []
+  const entries: NumberHistoryEntry[] = []
   for (const entry of config.entries) {
     const saved = readNumberProgress(numberPositionKey(config.game, entry.id))
     if (!saved) continue
@@ -133,9 +133,9 @@ export function readCatalogNumberResults<Entry extends NumberPuzzleEntry>(config
       editable: editableCells(board), maxValue: board.maxValue, complete: values => board.check(values).complete,
     })
     if (result) status.set(entry.id, result)
-    if (result === 'started') active.push(activeNumberEntry(entry, saved))
+    if (result === include) entries.push(numberHistoryEntry(entry, saved))
   }
-  return { status, totals, active }
+  return { status, totals, entries }
 }
 
 const resumeBatchSize = 24
@@ -171,7 +171,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   const levels = numberPuzzleDifficulties.filter(level => entries.some(entry => entry.difficulty === level))
   const [difficulty, setDifficulty] = useState<NumberPuzzleDifficulty>(levels[0])
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null)
-  const [catalogProgress, setCatalogProgress] = useState<ReadonlyMap<string, ProgressStatus> | null>(null)
+  const [catalogProgress, setCatalogProgress] = useState<ReadonlyMap<string, NumberResultStatus> | null>(null)
   const [results, setResults] = useState<NumberDifficultyResults | null>(null)
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     }
 
     setResults(null)
-    return requestGeneratedNumberResults(game, ({ active, totals: generated }) => {
+    return requestGeneratedNumberResults({ game, status: 'started' }, ({ entries: active, totals: generated }) => {
       for (const [level, result] of generated) {
         const catalog = totals.get(level)
         totals.set(level, {
@@ -771,7 +771,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     </div>
     {result.complete && (next
       ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination(game, next)}
-        state={previous => previous.fromNumberPuzzleLibrary ? { fromNumberPuzzleLibrary: true } : { fromNumberDifficulty: game }}
+        state={previous => previous.fromNumberPuzzleLibrary ? { fromNumberPuzzleLibrary: previous.fromNumberPuzzleLibrary } : { fromNumberDifficulty: game }}
         replace>Next puzzle</Link>
       : config.generatedEntry
         ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>

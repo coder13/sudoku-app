@@ -73,6 +73,6 @@ declare module '@tanstack/history' {
     fromPuzzleGameTypes?: boolean
     fromKakuroDifficulty?: boolean
     fromNumberDifficulty?: NumberGame
-    fromNumberPuzzleLibrary?: boolean
+    fromNumberPuzzleLibrary?: true | 'solved'
   }
 }

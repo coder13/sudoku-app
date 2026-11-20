@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { EMPTY, enter, makeGame } from '../src/sudoku/game.ts'
-import { activityPrefix, inProgress, matchesSolvedFilters, solveDate, solvedHistory } from '../src/sudoku/puzzle-activity.ts'
+import { activityPrefix, inProgress, matchesSolvedFilters, matchesSolvedNumberFilters, solveDate, solvedHistory } from '../src/sudoku/puzzle-activity.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 test('Home lists active puzzles before their first move and keeps last-played order', () => {
@@ -65,4 +65,22 @@ test('solve history orders by completion, preserves older records, and combines 
   assert.equal(matchesSolvedFilters(history[0], { from: '2026-11-18', difficulty: 'medium' }), true)
   assert.equal(matchesSolvedFilters(history[0], { from: '2026-11-18', variant: 'mixed' }), false)
   assert.equal(matchesSolvedFilters(history[0], { to: '2026-11-17' }), false)
+})
+
+test('solved filters support all game types and handle number puzzles with no date', () => {
+  const timestamp = new Date(2026, 10, 20, 12).getTime()
+  const from = solveDate(timestamp)
+  const rullo = { game: 'rullo', difficulty: 'hard', lastPlayed: timestamp } as const
+  const legacy = { game: 'rullo', difficulty: 'hard' } as const
+  const classic = makeGame('classic', 'Classic', EMPTY, 'imported', timestamp)
+  assert.equal(matchesSolvedNumberFilters(rullo, { game: 'rullo', difficulty: 'hard', from, to: from }), true)
+  assert.equal(matchesSolvedNumberFilters(rullo, { game: 'sudoku' }), false)
+  assert.equal(matchesSolvedNumberFilters(rullo, { game: 'kakuro' }), false)
+  assert.equal(matchesSolvedNumberFilters(rullo, { variant: 'classic' }), false)
+  assert.equal(matchesSolvedNumberFilters(rullo, { difficulty: 'medium' }), false)
+  assert.equal(matchesSolvedNumberFilters(rullo, { from: solveDate(timestamp + 86_400_000) }), false)
+  assert.equal(matchesSolvedNumberFilters(legacy, { game: 'rullo' }), true)
+  assert.equal(matchesSolvedNumberFilters(legacy, { to: from }), false)
+  assert.equal(matchesSolvedFilters({ game: classic, solvedAt: timestamp }, { game: 'rullo' }), false)
+  assert.equal(matchesSolvedFilters({ game: classic, solvedAt: timestamp }, { game: 'sudoku', from }), true)
 })

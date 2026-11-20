@@ -1,8 +1,8 @@
-import { addGeneratedNumberResult, type GeneratedNumberResults } from './generated-results.ts'
-import type { GeneratedNumberGame } from './generated.ts'
+import { addGeneratedNumberResult, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
 import { generatedNumberHistory, prepareGeneratedHistory } from './generated-storage.ts'
 
-export function requestGeneratedNumberResults(game: GeneratedNumberGame, publish: (result: GeneratedNumberResults) => void) {
+export function requestGeneratedNumberResults(request: NumberHistoryRequest, publish: (result: GeneratedNumberResults) => void) {
+  const { game } = request
   let cancelled = false
   let worker: Worker | undefined
   let queue: MessageChannel | undefined
@@ -13,7 +13,7 @@ export function requestGeneratedNumberResults(game: GeneratedNumberGame, publish
     worker = undefined
     void generatedNumberHistory(game).then(records => {
       if (cancelled) return
-      const result: GeneratedNumberResults = { active: [], totals: new Map() }
+      const result: GeneratedNumberResults = { entries: [], totals: new Map() }
       if (!records.length) {
         publish(result)
         return
@@ -24,7 +24,7 @@ export function requestGeneratedNumberResults(game: GeneratedNumberGame, publish
       channel.port1.onmessage = () => {
         const deadline = performance.now() + 6
         do {
-          addGeneratedNumberResult(result, game, records[cursor++])
+          addGeneratedNumberResult(result, request, records[cursor++])
         } while (cursor < records.length && performance.now() < deadline)
         if (cursor < records.length) channel.port2.postMessage(null)
         else {
@@ -48,7 +48,7 @@ export function requestGeneratedNumberResults(game: GeneratedNumberGame, publish
           else fallback()
         }
         worker.onerror = worker.onmessageerror = fallback
-        worker.postMessage(game)
+        worker.postMessage(request)
       } catch {
         fallback()
       }
