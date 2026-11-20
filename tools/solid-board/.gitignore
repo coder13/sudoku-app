@@ -1,3 +1,7 @@
 results/smoke.json
 results/latest.json
 results/ci.json
+results/baseline-*.json
+results/desktop.png
+results/mobile-emulated-cpu4x.png
+results/normal-motion.png

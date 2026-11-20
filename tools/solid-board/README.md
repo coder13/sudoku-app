@@ -2,6 +2,8 @@
 
 This isolated tool compares the current Sudoku board with two focused classic-board implementations. The production app does not import it.
 
+The [first measured results](RESULTS.md) favor improving the React board before a framework migration. Solid improved selection in this run, while memoized React matched or beat it for candidate and digit edits. The dense highlight stress test was slower with this Solid implementation.
+
 | Implementation | What it runs |
 | --- | --- |
 | Current React | The actual `src/components/Board.tsx`, with its production mark transitions. |
@@ -82,6 +84,8 @@ The comparison stops on a mismatch. It checks cell structure, candidate and valu
 The two prototypes support fewer features than the current Board. Their comparison with the current board measures a focused rewrite as well as changes to rendering. The comparison between memoized React and Solid is the closer framework comparison, but their state and transition implementations still differ.
 
 These results do not measure physical input delay, GPU composition, actual paint completion, battery use, startup size, solver speed, or full-app responsiveness. Both frameworks are present in the lab bundle, so its download size is not a migration size estimate. Shared DOM zoom and resize controls cannot establish that Solid improves those paths.
+
+The next-frame metric also includes readiness-probe work before the frame callback. Use DOM update times for this comparison; do not interpret the next-frame metric as an animation frame-rate measurement.
 
 Use the browser profiler and a physical phone before a migration decision. A lower DOM update time provides more time for other work in a frame. It does not guarantee a visible animation improvement.
 

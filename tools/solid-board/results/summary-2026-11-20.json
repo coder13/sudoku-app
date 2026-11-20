@@ -1,0 +1,1442 @@
+{
+  "schema": "sudoku-board-browser-run-v1",
+  "startedAt": "2026-11-20T16:11:00.154Z",
+  "url": "http://127.0.0.1:8775",
+  "options": {
+    "samples": 60,
+    "rounds": 3,
+    "warmup": 20
+  },
+  "provenance": {
+    "commit": "d18f188464b6177b17d7f6711e15f9ad434f2b3f",
+    "workingTree": "",
+    "versions": {
+      "react": "19.3.1",
+      "react-dom": "19.3.1",
+      "solid-js": "2.0.3",
+      "@solidjs/web": "2.0.3",
+      "vite": "8.3.8",
+      "playwright": "1.62.1"
+    },
+    "sha256": {
+      "package.json": "1b7dabf81c9bdb3fb1d897a0bc277f547a320a8e26c08dc7bf20329b76a07f09",
+      "package-lock.json": "0be81b72473a9f3cfb374226abc17cc7f8300a3ee95580fd51b74ac8e43bc0a6",
+      "vite.config.ts": "16b983b5b449810461fb692665b5438be53a4b6c00eaa2fe1168ea066f703c26",
+      "index.html": "48e727bfffe092054808b332758d08e0993468e4d591a7a08a3917a0f23355a7",
+      "src/lab.css": "80fdbdcb15d970620aec1aaac778033e12f15174070935856b9ace9beb86e23f",
+      "scripts/run.mjs": "ae0c75f1f7be71e54693379664bfc2bf49988f0b7423f9e6ac4b00acc1e60a0e",
+      "scripts/benchmark.mjs": "bcfdc83ff10fccdbfa000fbcbc0c0e0d84c3e444e9c0da5ef1ab1e0ca839456e",
+      "../../package-lock.json": "6e7b4e5d3a721271654c0c9c5312e115aa5d7f79cf45778e5c56a0f4d1dd2449",
+      "../../src/components/Board.tsx": "da98e372ef17b36e0540874b8fc8305c6530ddfaf55a0a41f285390e5580218e",
+      "../../src/components/BoardMarks.tsx": "9463d2a7afbbf87f429ff069a1cff160959e9bb71a8b0ad9169917e416e6b6c3",
+      "../../src/styles.css": "7a00fadea70da90cbb1cb5c854976521d5e6d440e9428e1c5738d41433b8f135",
+      "../../src/sudoku/game.ts": "3c2cfc5143fbfa476305f55bf008b4d1d28a851b1183f00e79c15e8edbb0db55",
+      "../../src/sudoku/highlighting.ts": "58c93318a4f1153915817ddc37561e59d27d00cfe0380f4c64141064be65e6dc",
+      "../../src/sudoku/preferences.ts": "b8b751d9608e40b75fa4b59f23b401f1a7893bc54f64b143085a54dc88a91426",
+      "src/benchmark.ts": "d3890cbc42c0cb8331bf46c87d0992e6f1f5f03ffe4d1c426cc48d4e27c65cd0",
+      "src/board.react.tsx": "4f114b055c51e8be18ae17f72468cce1a0e96476620b96747231de497aef0e9a",
+      "src/board.solid.tsx": "f43d9ee7e0c7eb570697f50a20cc41526154d1a3599f1c8c3ae3ea4ac97e57ba",
+      "src/main.ts": "eb38ad23acafabb74a9ef58f65861d8c639d0a1cc93b1f7a053abbf50fb0ef1e",
+      "src/model.ts": "8750f96233c1f0466a5946c9ea0bf76eb9d20d8617f789f57981ba0f1be58a75"
+    }
+  },
+  "profiles": [
+    {
+      "id": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "cpuRate": 1,
+      "isMobile": false,
+      "hasTouch": false,
+      "result": {
+        "schema": "sudoku-board-comparison-v1",
+        "startedAt": "2026-11-20T16:11:01.417Z",
+        "finishedAt": "2026-11-20T16:12:43.156Z",
+        "seed": "classic-board-sequence-v1",
+        "settings": {
+          "samples": 60,
+          "rounds": 3,
+          "warmup": 20
+        },
+        "environment": {
+          "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+          "viewport": {
+            "width": 1440,
+            "height": 1000,
+            "devicePixelRatio": 1
+          },
+          "board": {
+            "width": 480,
+            "height": 480
+          },
+          "reducedMotion": true,
+          "initialFrameIntervalMs": 16.700000000186265
+        },
+        "methodology": [
+          "One production-built board is mounted at a time. The four fixed action sequences and fixtures are identical.",
+          "Each action uses the same host DOM click path. These are programmatic clicks, not trusted hardware input.",
+          "Framework scheduling is unchanged. No flushSync, flush, or forced layout is used to complete an update.",
+          "dispatchMs is synchronous DOM dispatch duration. It excludes deferred framework work.",
+          "commitMs is dispatch start to a MutationObserver callback that sees the expected live DOM. It includes scheduling delay.",
+          "nextFrameMs is dispatch start to a requestAnimationFrame callback after DOM readiness. It is not paint latency or INP.",
+          "Full normalized DOM comparisons and fixture generation are outside the timed interval. Exiting marks are excluded.",
+          "Warmup actions are discarded. Implementation order rotates between rounds. Another frame separates timed actions.",
+          "These measurements cover classic board updates. They do not measure startup, the solver, navigation, or complete app responsiveness."
+        ],
+        "parity": {
+          "passed": true,
+          "snapshotsChecked": 2916
+        },
+        "summaries": [
+          {
+            "implementation": "current-react",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3000000002793968,
+              "max": 3.1999999997206032,
+              "mean": 0.18888888890441094,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 1,
+              "median": 1.3999999999068677,
+              "p95": 2.2000000001862645,
+              "max": 14.100000000093132,
+              "mean": 1.5566666666832236,
+              "q1": 1.2000000001862645,
+              "q3": 1.5249999999068677
+            },
+            "nextFrameMs": {
+              "min": 11.200000000186265,
+              "median": 17,
+              "p95": 17.60500000009779,
+              "max": 56.799999999813735,
+              "mean": 17.246111111112665,
+              "q1": 16.899999999906868,
+              "q3": 17.199999999720603
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1.5,
+                "nextFrameMedianMs": 17
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 1.3000000002793968,
+                "nextFrameMedianMs": 17
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.3000000002793968,
+                "nextFrameMedianMs": 17.100000000093132
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3000000002793968,
+              "max": 0.39999999990686774,
+              "mean": 0.17055555555659035,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.599999999627471,
+              "median": 1.2999999998137355,
+              "p95": 2.505000000004655,
+              "max": 3.900000000372529,
+              "mean": 1.3727777777705341,
+              "q1": 1,
+              "q3": 1.5
+            },
+            "nextFrameMs": {
+              "min": 16.700000000186265,
+              "median": 17,
+              "p95": 17.399999999906868,
+              "max": 52.89999999990687,
+              "mean": 17.266111111110593,
+              "q1": 16.899999999906868,
+              "q3": 17.100000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1.3000000000465661,
+                "nextFrameMedianMs": 17.049999999813735
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 1.1999999997206032,
+                "nextFrameMedianMs": 17.0999999998603
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.3999999999068677,
+                "nextFrameMedianMs": 17
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3000000002793968,
+              "max": 1.8999999999068677,
+              "mean": 0.17944444447704072,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.40000000037252903,
+              "median": 1,
+              "p95": 1.5,
+              "max": 5.7000000001862645,
+              "mean": 1.0327777777953695,
+              "q1": 0.7000000001862645,
+              "q3": 1.1999999997206032
+            },
+            "nextFrameMs": {
+              "min": 13,
+              "median": 17,
+              "p95": 17.399999999930152,
+              "max": 64.09999999962747,
+              "mean": 17.260555555560213,
+              "q1": 16.899999999906868,
+              "q3": 17.100000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1,
+                "nextFrameMedianMs": 17
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 0.8999999999068677,
+                "nextFrameMedianMs": 17.0999999998603
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.0999999998603016,
+                "nextFrameMedianMs": 17
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3050000002607686,
+              "max": 2.2999999998137355,
+              "mean": 0.19444444445479248,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 1.099999999627471,
+              "median": 1.400000000372529,
+              "p95": 2.105000000074504,
+              "max": 4.7999999998137355,
+              "mean": 1.5550000000098305,
+              "q1": 1.3000000002793968,
+              "q3": 1.6000000000931323
+            },
+            "nextFrameMs": {
+              "min": 13.099999999627471,
+              "median": 17.200000000186265,
+              "p95": 18.110000000079157,
+              "max": 24,
+              "mean": 17.295555555569525,
+              "q1": 17,
+              "q3": 17.400000000023283
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1.3999999999068677,
+                "nextFrameMedianMs": 17
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 1.400000000372529,
+                "nextFrameMedianMs": 17.199999999953434
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.5,
+                "nextFrameMedianMs": 17.399999999906868
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3000000002793968,
+              "max": 0.5,
+              "mean": 0.16777777775811653,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.20000000018626451,
+              "median": 0.5,
+              "p95": 0.7000000001862645,
+              "max": 0.7999999998137355,
+              "mean": 0.5088888888816453,
+              "q1": 0.40000000037252903,
+              "q3": 0.6000000000931323
+            },
+            "nextFrameMs": {
+              "min": 14.199999999720603,
+              "median": 17.149999999906868,
+              "p95": 17.80500000026077,
+              "max": 20.5,
+              "mean": 17.226666666670805,
+              "q1": 17.09999999962747,
+              "q3": 17.300000000279397
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.199999999720603
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 0.40000000037252903,
+                "nextFrameMedianMs": 17.100000000093132
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.200000000186265
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.10000000009313226,
+              "p95": 0.2999999998370185,
+              "max": 1.7000000001862645,
+              "mean": 0.16277777776898195,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.2999999998137355,
+              "median": 0.5,
+              "p95": 0.8999999999068677,
+              "max": 2.2000000001862645,
+              "mean": 0.5616666666645971,
+              "q1": 0.5,
+              "q3": 0.6000000000931323
+            },
+            "nextFrameMs": {
+              "min": 12.300000000279397,
+              "median": 17.100000000093132,
+              "p95": 17.4050000003539,
+              "max": 21.699999999720603,
+              "mean": 17.1038888888951,
+              "q1": 17,
+              "q3": 17.200000000186265
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.0999999998603
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.200000000186265
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.10000000009313226,
+              "p95": 0.3000000002793968,
+              "max": 1.2000000001862645,
+              "mean": 0.16777777776587754,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.8999999999068677,
+              "median": 1.3999999999068677,
+              "p95": 1.8999999999068677,
+              "max": 5.300000000279397,
+              "mean": 1.4394444444216787,
+              "q1": 1.2999999998137355,
+              "q3": 1.5
+            },
+            "nextFrameMs": {
+              "min": 7.899999999906868,
+              "median": 17.300000000279397,
+              "p95": 18,
+              "max": 25.59999999962747,
+              "mean": 17.28888888886043,
+              "q1": 17.099999999976717,
+              "q3": 17.600000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1.400000000372529,
+                "nextFrameMedianMs": 17.399999999906868
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 1.2999999998137355,
+                "nextFrameMedianMs": 17.299999999813735
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.3999999999068677,
+                "nextFrameMedianMs": 17.300000000046566
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.3000000002793968,
+              "max": 1.7000000001862645,
+              "mean": 0.17500000001034802,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.39999999990686774,
+              "median": 0.5,
+              "p95": 0.7999999998137355,
+              "max": 7.399999999906868,
+              "mean": 0.6033333333183287,
+              "q1": 0.5,
+              "q3": 0.6000000000931323
+            },
+            "nextFrameMs": {
+              "min": 4.7999999998137355,
+              "median": 17.300000000279397,
+              "p95": 17.899999999930152,
+              "max": 78.5,
+              "mean": 17.706666666665114,
+              "q1": 17.09999999962747,
+              "q3": 17.600000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.399999999906868
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 0.599999999627471,
+                "nextFrameMedianMs": 17.3499999998603
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 0.5,
+                "nextFrameMedianMs": 17.199999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.19999999972060323,
+              "p95": 0.2999999998137355,
+              "max": 0.599999999627471,
+              "mean": 0.16388888889923692,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 0.39999999990686774,
+              "median": 0.6000000000931323,
+              "p95": 0.8050000002607686,
+              "max": 12,
+              "mean": 0.6988888888982021,
+              "q1": 0.599999999627471,
+              "q3": 0.7000000001862645
+            },
+            "nextFrameMs": {
+              "min": 13.399999999906868,
+              "median": 17.100000000093132,
+              "p95": 17.5,
+              "max": 27,
+              "mean": 17.157222222226363,
+              "q1": 17,
+              "q3": 17.200000000186265
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 0.6000000000931323,
+                "nextFrameMedianMs": 17.149999999906868
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 0.6000000000931323,
+                "nextFrameMedianMs": 17.100000000093132
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 0.6000000000931323,
+                "nextFrameMedianMs": 17.0999999998603
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.10000000009313226,
+              "p95": 0.3000000002793968,
+              "max": 3.1000000000931323,
+              "mean": 0.19055555556228176,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 1.6999999997206032,
+              "median": 2.2999999998137355,
+              "p95": 4.199999999743886,
+              "max": 9.5,
+              "mean": 2.562777777776743,
+              "q1": 2.0749999997206032,
+              "q3": 2.6000000000931323
+            },
+            "nextFrameMs": {
+              "min": 16.600000000093132,
+              "median": 20.899999999906868,
+              "p95": 30.605000000074504,
+              "max": 41.200000000186265,
+              "mean": 21.954444444445997,
+              "q1": 18.699999999720603,
+              "q3": 23.37500000023283
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2.2999999998137355,
+                "nextFrameMedianMs": 20.800000000046566
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2.2999999998137355,
+                "nextFrameMedianMs": 20.74999999976717
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2.1499999999068677,
+                "nextFrameMedianMs": 20.949999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.10000000009313226,
+              "p95": 0.2999999998137355,
+              "max": 0.7000000001862645,
+              "mean": 0.15111111110438488,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 1.5,
+              "median": 2.099999999627471,
+              "p95": 2.9050000003539007,
+              "max": 5.300000000279397,
+              "mean": 2.161111111108524,
+              "q1": 1.8999999999068677,
+              "q3": 2.2999999998137355
+            },
+            "nextFrameMs": {
+              "min": 17.399999999906868,
+              "median": 20.300000000279397,
+              "p95": 32.13500000010244,
+              "max": 36,
+              "mean": 21.728888888889923,
+              "q1": 18.674999999813735,
+              "q3": 22.8499999998603
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2.1000000000931323,
+                "nextFrameMedianMs": 21.5999999998603
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2.1000000000931323,
+                "nextFrameMedianMs": 20.25
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 1.8999999999068677,
+                "nextFrameMedianMs": 19.199999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.10000000009313226,
+              "p95": 0.2999999998137355,
+              "max": 1.8999999999068677,
+              "mean": 0.15277777777519078,
+              "q1": 0.10000000009313226,
+              "q3": 0.20000000018626451
+            },
+            "commitMs": {
+              "min": 1.7999999998137355,
+              "median": 2.6000000000931323,
+              "p95": 4.404999999911523,
+              "max": 16.600000000093132,
+              "mean": 2.9055555555426205,
+              "q1": 2.3999999999068677,
+              "q3": 2.8000000002793968
+            },
+            "nextFrameMs": {
+              "min": 16.5,
+              "median": 20.049999999813735,
+              "p95": 28.01000000000931,
+              "max": 41.200000000186265,
+              "mean": 20.94555555554883,
+              "q1": 18.600000000093132,
+              "q3": 21.725000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2.6999999997206032,
+                "nextFrameMedianMs": 20.199999999953434
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2.6000000000931323,
+                "nextFrameMedianMs": 18.600000000093132
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2.3999999999068677,
+                "nextFrameMedianMs": 21.199999999720603
+              }
+            ]
+          }
+        ],
+        "rawSampleCount": 2160
+      },
+      "screenshot": "results/desktop.png"
+    },
+    {
+      "id": "mobile-emulated-cpu4x",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "cpuRate": 4,
+      "isMobile": true,
+      "hasTouch": true,
+      "result": {
+        "schema": "sudoku-board-comparison-v1",
+        "startedAt": "2026-11-20T16:12:44.621Z",
+        "finishedAt": "2026-11-20T16:16:10.297Z",
+        "seed": "classic-board-sequence-v1",
+        "settings": {
+          "samples": 60,
+          "rounds": 3,
+          "warmup": 20
+        },
+        "environment": {
+          "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+          "viewport": {
+            "width": 390,
+            "height": 844,
+            "devicePixelRatio": 1
+          },
+          "board": {
+            "width": 338,
+            "height": 338
+          },
+          "reducedMotion": true,
+          "initialFrameIntervalMs": 16.5999999998603
+        },
+        "methodology": [
+          "One production-built board is mounted at a time. The four fixed action sequences and fixtures are identical.",
+          "Each action uses the same host DOM click path. These are programmatic clicks, not trusted hardware input.",
+          "Framework scheduling is unchanged. No flushSync, flush, or forced layout is used to complete an update.",
+          "dispatchMs is synchronous DOM dispatch duration. It excludes deferred framework work.",
+          "commitMs is dispatch start to a MutationObserver callback that sees the expected live DOM. It includes scheduling delay.",
+          "nextFrameMs is dispatch start to a requestAnimationFrame callback after DOM readiness. It is not paint latency or INP.",
+          "Full normalized DOM comparisons and fixture generation are outside the timed interval. Exiting marks are excluded.",
+          "Warmup actions are discarded. Implementation order rotates between rounds. Another frame separates timed actions.",
+          "These measurements cover classic board updates. They do not measure startup, the solver, navigation, or complete app responsiveness."
+        ],
+        "parity": {
+          "passed": true,
+          "snapshotsChecked": 2916
+        },
+        "summaries": [
+          {
+            "implementation": "current-react",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.6999999999534339,
+              "p95": 1.3000000002793968,
+              "max": 3.3999999999068677,
+              "mean": 0.6694444444392704,
+              "q1": 0.20000000018626451,
+              "q3": 0.9000000000232831
+            },
+            "commitMs": {
+              "min": 3.7999999998137355,
+              "median": 6.100000000093132,
+              "p95": 12.799999999837018,
+              "max": 24,
+              "mean": 7.156111111114216,
+              "q1": 5.2000000001862645,
+              "q3": 7.7999999998137355
+            },
+            "nextFrameMs": {
+              "min": 21.799999999813735,
+              "median": 37.449999999953434,
+              "p95": 62.429999999911516,
+              "max": 270.8000000002794,
+              "mean": 40.72722222223205,
+              "q1": 31.7750000001397,
+              "q3": 43.8000000002794
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 6.75,
+                "nextFrameMedianMs": 41.25
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 5.399999999906868,
+                "nextFrameMedianMs": 32.549999999813735
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 6.099999999860302,
+                "nextFrameMedianMs": 39.14999999990687
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5999999998603016,
+              "p95": 1.1999999997438864,
+              "max": 15.299999999813735,
+              "mean": 0.6588888888609492,
+              "q1": 0.19999999972060323,
+              "q3": 0.8999999999068677
+            },
+            "commitMs": {
+              "min": 1.8999999999068677,
+              "median": 5.2000000001862645,
+              "p95": 8.819999999809072,
+              "max": 80.60000000009313,
+              "mean": 5.718888888878023,
+              "q1": 3.7000000001862645,
+              "q3": 6.2999999998137355
+            },
+            "nextFrameMs": {
+              "min": 21,
+              "median": 36.64999999967404,
+              "p95": 52.62000000008847,
+              "max": 163.70000000018626,
+              "mean": 38.38055555555555,
+              "q1": 31.675000000279397,
+              "q3": 41.42499999993015
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 6.249999999767169,
+                "nextFrameMedianMs": 38.5999999998603
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 5.199999999953434,
+                "nextFrameMedianMs": 36.74999999976717
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 4.800000000046566,
+                "nextFrameMedianMs": 34.699999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "selection",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.1000000000931323,
+              "max": 2.6999999997206032,
+              "mean": 0.5061111111349116,
+              "q1": 0.10000000009313226,
+              "q3": 0.7999999998137355
+            },
+            "commitMs": {
+              "min": 1.5,
+              "median": 4.100000000093132,
+              "p95": 6.199999999743886,
+              "max": 20.40000000037253,
+              "mean": 4.0722222222532665,
+              "q1": 2.9000000002561137,
+              "q3": 4.799999999930151
+            },
+            "nextFrameMs": {
+              "min": 20.600000000093132,
+              "median": 32.10000000009313,
+              "p95": 45.310000000265426,
+              "max": 77.20000000018626,
+              "mean": 33.36555555557522,
+              "q1": 27.799999999813735,
+              "q3": 37.874999999883585
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 4.4500000001862645,
+                "nextFrameMedianMs": 34.5
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 3.8000000002793968,
+                "nextFrameMedianMs": 31.199999999953434
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 4.099999999860302,
+                "nextFrameMedianMs": 31.25
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.0999999996507541,
+              "max": 1.3999999999068677,
+              "mean": 0.5144444444268528,
+              "q1": 0.10000000009313226,
+              "q3": 0.7999999998137355
+            },
+            "commitMs": {
+              "min": 2.2000000001862645,
+              "median": 6,
+              "p95": 9.009999999986027,
+              "max": 21.100000000093132,
+              "mean": 6.398888888877506,
+              "q1": 5.5,
+              "q3": 6.899999999906868
+            },
+            "nextFrameMs": {
+              "min": 14.600000000093132,
+              "median": 20.8499999998603,
+              "p95": 28.02000000001862,
+              "max": 46.5,
+              "mean": 21.656666666665114,
+              "q1": 18.899999999906868,
+              "q3": 23.225000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 6,
+                "nextFrameMedianMs": 20.1500000001397
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 7,
+                "nextFrameMedianMs": 22.850000000093132
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 5.650000000139698,
+                "nextFrameMedianMs": 19.699999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.2000000001862645,
+              "max": 3.3000000002793968,
+              "mean": 0.5544444444537576,
+              "q1": 0.10000000009313226,
+              "q3": 0.8000000002793968
+            },
+            "commitMs": {
+              "min": 1,
+              "median": 2,
+              "p95": 3.3999999999068677,
+              "max": 10.100000000093132,
+              "mean": 2.126666666670806,
+              "q1": 1.6749999998137355,
+              "q3": 2.3999999999068677
+            },
+            "nextFrameMs": {
+              "min": 13.599999999627471,
+              "median": 18.40000000037253,
+              "p95": 22.21499999973457,
+              "max": 48,
+              "mean": 18.978333333331264,
+              "q1": 17.800000000279397,
+              "q3": 19.5
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2,
+                "nextFrameMedianMs": 18.350000000093132
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2,
+                "nextFrameMedianMs": 18.550000000046566
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2,
+                "nextFrameMedianMs": 18.449999999953434
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "candidate-toggle",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.2999999998137355,
+              "max": 7.899999999906868,
+              "mean": 0.5894444444190918,
+              "q1": 0.10000000009313226,
+              "q3": 0.7999999999301508
+            },
+            "commitMs": {
+              "min": 1.1999999997206032,
+              "median": 2.2000000001862645,
+              "p95": 4.30499999981839,
+              "max": 16.699999999720603,
+              "mean": 2.4833333333333334,
+              "q1": 1.900000000372529,
+              "q3": 2.599999999627471
+            },
+            "nextFrameMs": {
+              "min": 13.699999999720603,
+              "median": 18.200000000186265,
+              "p95": 23.304999999818392,
+              "max": 34.6999999997206,
+              "mean": 18.707777777761738,
+              "q1": 17.599999999976717,
+              "q3": 19.200000000186265
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2.3999999999068677,
+                "nextFrameMedianMs": 18.25
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2.2999999998137355,
+                "nextFrameMedianMs": 18.3499999998603
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2,
+                "nextFrameMedianMs": 18.200000000186265
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.2999999998137355,
+              "max": 18.700000000186265,
+              "mean": 0.6222222222196352,
+              "q1": 0.10000000009313226,
+              "q3": 0.7999999998137355
+            },
+            "commitMs": {
+              "min": 3.400000000372529,
+              "median": 5.850000000093132,
+              "p95": 9.91499999989755,
+              "max": 52.89999999990687,
+              "mean": 6.511666666656836,
+              "q1": 5.1749999998137355,
+              "q3": 6.8250000001862645
+            },
+            "nextFrameMs": {
+              "min": 16,
+              "median": 21.25,
+              "p95": 31.399999999906868,
+              "max": 100.70000000018626,
+              "mean": 22.99944444444134,
+              "q1": 19.17500000016298,
+              "q3": 24.600000000093132
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 5.699999999953434,
+                "nextFrameMedianMs": 20.850000000325963
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 5.75,
+                "nextFrameMedianMs": 20.200000000186265
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 6.199999999953434,
+                "nextFrameMedianMs": 23.549999999813735
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.5,
+              "p95": 1.2050000001676364,
+              "max": 2.5,
+              "mean": 0.5472222222273962,
+              "q1": 0.10000000009313226,
+              "q3": 0.8000000002793968
+            },
+            "commitMs": {
+              "min": 0.5,
+              "median": 1.8999999999068677,
+              "p95": 2.8999999999068677,
+              "max": 4.300000000279397,
+              "mean": 1.9544444444408227,
+              "q1": 1.6000000000931323,
+              "q3": 2.2250000000931323
+            },
+            "nextFrameMs": {
+              "min": 14,
+              "median": 18.75,
+              "p95": 25.76500000017693,
+              "max": 39.39999999990687,
+              "mean": 19.182777777790196,
+              "q1": 17.274999999906868,
+              "q3": 20.19999999983702
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 1.6999999999534339,
+                "nextFrameMedianMs": 18.899999999906868
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 1.9000000001396984,
+                "nextFrameMedianMs": 18.600000000093132
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2.1000000000931323,
+                "nextFrameMedianMs": 18.550000000046566
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "value-entry",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.39999999990686774,
+              "p95": 1.1000000000931323,
+              "max": 6.5,
+              "mean": 0.4738888888930281,
+              "q1": 0.10000000009313226,
+              "q3": 0.7000000001862645
+            },
+            "commitMs": {
+              "min": 1.2000000001862645,
+              "median": 2.3000000002793968,
+              "p95": 3.605000000074504,
+              "max": 7.7999999998137355,
+              "mean": 2.465000000003622,
+              "q1": 2,
+              "q3": 2.8000000002793968
+            },
+            "nextFrameMs": {
+              "min": 12.299999999813735,
+              "median": 18.0999999998603,
+              "p95": 22.404999999911524,
+              "max": 45.60000000009313,
+              "mean": 18.6077777777695,
+              "q1": 17.5,
+              "q3": 18.899999999906868
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 2.699999999953434,
+                "nextFrameMedianMs": 18.100000000093132
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 2.300000000046566,
+                "nextFrameMedianMs": 18
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 2.1499999999068677,
+                "nextFrameMedianMs": 18.0999999998603
+              }
+            ]
+          },
+          {
+            "implementation": "current-react",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0.09999999962747097,
+              "median": 0.7999999998137355,
+              "p95": 1.3000000002793968,
+              "max": 4.5,
+              "mean": 0.75,
+              "q1": 0.4000000002561137,
+              "q3": 1
+            },
+            "commitMs": {
+              "min": 7.899999999906868,
+              "median": 10.75,
+              "p95": 14.425000000349238,
+              "max": 148.79999999981374,
+              "mean": 12.007777777774674,
+              "q1": 9.600000000093132,
+              "q3": 12.099999999743886
+            },
+            "nextFrameMs": {
+              "min": 65,
+              "median": 105.19999999995343,
+              "p95": 171.32999999984168,
+              "max": 352.89999999990687,
+              "mean": 112.76499999999845,
+              "q1": 95.49999999965075,
+              "q3": 121.625
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 11.300000000279397,
+                "nextFrameMedianMs": 111.1500000001397
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 9.949999999953434,
+                "nextFrameMedianMs": 102.94999999995343
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 10.650000000139698,
+                "nextFrameMedianMs": 100.6999999997206
+              }
+            ]
+          },
+          {
+            "implementation": "memo-react",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.7999999998137355,
+              "p95": 1.3999999999068677,
+              "max": 4.800000000279397,
+              "mean": 0.7405555555545208,
+              "q1": 0.5,
+              "q3": 1
+            },
+            "commitMs": {
+              "min": 7,
+              "median": 10.900000000139698,
+              "p95": 15.210000000172291,
+              "max": 45.89999999990687,
+              "mean": 11.592777777778812,
+              "q1": 9.700000000186265,
+              "q3": 12.125
+            },
+            "nextFrameMs": {
+              "min": 63.700000000186265,
+              "median": 108.3499999998603,
+              "p95": 151.24499999999526,
+              "max": 253.79999999981374,
+              "mean": 111.53722222222326,
+              "q1": 95.75,
+              "q3": 123.72500000009313
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 11.399999999906868,
+                "nextFrameMedianMs": 112.74999999976717
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 11.349999999860302,
+                "nextFrameMedianMs": 118.64999999990687
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 10.300000000046566,
+                "nextFrameMedianMs": 95.19999999995343
+              }
+            ]
+          },
+          {
+            "implementation": "solid",
+            "workload": "dense-highlight",
+            "sampleCount": 180,
+            "dispatchMs": {
+              "min": 0,
+              "median": 0.7000000001862645,
+              "p95": 1.5099999999860267,
+              "max": 5.399999999906868,
+              "mean": 0.7066666666651145,
+              "q1": 0.20000000018626451,
+              "q3": 0.9250000002793968
+            },
+            "commitMs": {
+              "min": 6.699999999720603,
+              "median": 14.050000000046566,
+              "p95": 20.61999999964609,
+              "max": 50.700000000186265,
+              "mean": 14.902777777757082,
+              "q1": 12.600000000093132,
+              "q3": 16.125
+            },
+            "nextFrameMs": {
+              "min": 73.8000000002794,
+              "median": 115.30000000004657,
+              "p95": 191.2550000001909,
+              "max": 398,
+              "mean": 123.71222222221033,
+              "q1": 99.97499999997672,
+              "q3": 132.375
+            },
+            "rounds": [
+              {
+                "round": 1,
+                "commitMedianMs": 13.599999999860302,
+                "nextFrameMedianMs": 107.5999999998603
+              },
+              {
+                "round": 2,
+                "commitMedianMs": 15.599999999860302,
+                "nextFrameMedianMs": 137.69999999995343
+              },
+              {
+                "round": 3,
+                "commitMedianMs": 13.649999999906868,
+                "nextFrameMedianMs": 105.39999999990687
+              }
+            ]
+          }
+        ],
+        "rawSampleCount": 2160
+      },
+      "screenshot": "results/mobile-emulated-cpu4x.png"
+    }
+  ],
+  "motionCorrectness": {
+    "passed": true,
+    "snapshotsChecked": 147,
+    "actions": [
+      {
+        "type": "select",
+        "cell": 3
+      },
+      {
+        "type": "candidate",
+        "cell": 2,
+        "digit": 1
+      },
+      {
+        "type": "candidate",
+        "cell": 2,
+        "digit": 1
+      },
+      {
+        "type": "value",
+        "cell": 2,
+        "digit": 4
+      },
+      {
+        "type": "value",
+        "cell": 2,
+        "digit": 0
+      },
+      {
+        "type": "color",
+        "cell": 2,
+        "color": 2
+      },
+      {
+        "type": "candidate-color",
+        "cell": 2,
+        "digit": 1,
+        "color": 3
+      },
+      {
+        "type": "highlight",
+        "digit": 1
+      },
+      {
+        "type": "select",
+        "cell": 2,
+        "extend": true
+      },
+      {
+        "type": "highlight",
+        "digit": null
+      }
+    ],
+    "bursts": [
+      {
+        "id": "reverted-value",
+        "actions": [
+          {
+            "type": "value",
+            "cell": 2,
+            "digit": 4
+          },
+          {
+            "type": "value",
+            "cell": 2,
+            "digit": 0
+          }
+        ]
+      },
+      {
+        "id": "reverted-candidate",
+        "actions": [
+          {
+            "type": "candidate",
+            "cell": 2,
+            "digit": 1
+          },
+          {
+            "type": "candidate",
+            "cell": 2,
+            "digit": 1
+          }
+        ]
+      }
+    ],
+    "implementations": [
+      "current-react",
+      "memo-react",
+      "solid"
+    ],
+    "reducedMotion": false,
+    "screenshot": "results/normal-motion.png"
+  },
+  "limitations": [
+    "The page must come from the production build. This script does not build or start the server.",
+    "Mobile emulation uses desktop Chromium at 390 \u00d7 844 with fourfold CPU throttling. It is not a physical-phone test.",
+    "The update benchmark requests reduced motion. A separate normal-motion check compares visible and settled DOM states.",
+    "Programmatic DOM clicks do not measure hardware input delay, paint latency, or INP."
+  ],
+  "browserVersion": "153.0.8010.0",
+  "finishedAt": "2026-11-20T16:16:27.783Z",
+  "archive": {
+    "fullReport": "baseline-2026-11-20.json.gz",
+    "fullReportSha256": "69e282a2af9bac91dfb469c738a3af7b4209d5a4e430a09e2d0ab1ac2a330d33",
+    "publishedSourceCommit": "f0bca2865c3de6147f8c634262c688d355445b7e",
+    "sourceTree": "4605b3339fd9a3eefece9364f35d300f0e040d49",
+    "note": "The measured local commit and published source commit contain the same Git tree. The full report is preserved without changes.",
+    "screenshots": {
+      "desktop": "baseline-2026-11-20-desktop.png",
+      "mobile-emulated-cpu4x": "baseline-2026-11-20-mobile.png",
+      "normal-motion": "baseline-2026-11-20-motion.png"
+    }
+  }
+}
