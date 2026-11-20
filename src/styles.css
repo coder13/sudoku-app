@@ -867,6 +867,33 @@ svg { flex-shrink: 0; }
 .puzzle:has(.draft-tip) { grid-template: ". actions" auto "grid grid" auto "draft draft" auto / minmax(0, 1fr) auto; }
 .puzzle-actions { grid-area: actions; justify-content: flex-end; margin: 0; }
 .puzzle-stage { grid-area: grid; }
+.puzzle-quick-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-block: var(--space-6) var(--space-2);
+  border-top: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.puzzle-quick-actions .button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 34px;
+  padding-inline: var(--space-8);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.puzzle-quick-actions .button[aria-pressed="true"] {
+  border-color: var(--selected-border);
+  background: var(--selected-bg);
+  color: var(--dark-purple);
+}
 .draft-tip { grid-area: draft; }
 .puzzle-menu-wrap { position: relative; }
 .puzzle-menu { width: 235px; }
@@ -1709,6 +1736,22 @@ svg { flex-shrink: 0; }
 .advanced-options strong { font-size: 0.875rem; }
 .advanced-options small { margin-top: var(--space-2); color: var(--muted); line-height: 1.4; }
 .input-control-options > .advanced-toggle { padding-block: var(--space-10); }
+.pinned-action-settings { display: grid; gap: 0; }
+.pinned-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding-block: var(--space-10);
+  border-top: 1px solid var(--border);
+}
+.pinned-action-row .advanced-toggle { display: flex; flex: 1; align-items: flex-start; gap: var(--space-10); min-width: 0; cursor: pointer; }
+.pinned-action-row input { flex: none; margin-top: 3px; accent-color: var(--purple); }
+.pinned-action-row strong, .pinned-action-row small { display: block; }
+.pinned-action-row strong { font-size: 0.875rem; }
+.pinned-action-row small { margin-top: var(--space-2); color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
+.pinned-action-reorder { display: flex; flex: none; align-items: center; gap: var(--space-2); }
+.pinned-action-order { width: 16px; color: var(--muted); font-size: 0.75rem; text-align: center; }
+.pinned-action-reorder .icon-button { width: 32px; min-height: 32px; }
 .advanced-options .advanced-select { display: grid; cursor: default; }
 .chain-pair-settings fieldset { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-12); }
 .chain-pair-settings legend .chain-swatches { margin-inline-start: var(--space-4); }

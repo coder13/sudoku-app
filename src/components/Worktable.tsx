@@ -2,9 +2,10 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, RotateCcw, ScanSearch, Share2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
+import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
 import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
@@ -309,6 +310,7 @@ export function Worktable({
   const modeBadgeId = useId()
   const puzzleStageId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
+  const [pinnedActions] = usePlayPreference('pinnedActions')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [preferredDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
@@ -513,7 +515,8 @@ export function Worktable({
     : advancedWorkspace && desktopInputVisible)
   const drawingIntent = savedPlayState?.drawingIntent ?? null
   const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
-  const chainsActive = chainsVisible || (chainKeypadVisible && (showStrongLinks || chainDrawingRequested))
+  // Strong-link highlighting also works directly from the puzzle footer, without opening Chains.
+  const chainsActive = !grid && (chainsVisible || (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -746,7 +749,7 @@ export function Worktable({
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
     target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel, .subsets-panel')
       || target.closest('.puzzle-menu-wrap, .desktop-dock .dv-tab')
-      || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu')
+      || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu, .puzzle-quick-actions')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -1794,7 +1797,7 @@ export function Worktable({
   }
 
   async function solveAllSingles() {
-    if (busy || !offerSingles) return
+    if (busy || solved || draft || disabled || !hasSingles) return
     if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -2361,6 +2364,49 @@ export function Worktable({
       </div>
     </div>
   )
+
+  const quickActions: Record<PinnedAction, {
+    Icon: typeof PencilLine; run: () => void; disabled?: boolean; pressed?: boolean
+  }> = {
+    candidates: { Icon: PencilLine, run: () => { void generateCandidates() }, disabled: busy },
+    singles: { Icon: CheckCheck, run: () => { void solveAllSingles() }, disabled: busy || !hasSingles },
+    chain: {
+      Icon: Link2,
+      run: () => {
+        if (sketch.drawing && chainsVisible) sketch.addSketch()
+        else if (chainsVisible && chainGraph && canAnalyzeChains) toggleChainDrawing()
+        else {
+          setStartDrawingOnOpen(true)
+          showChains()
+        }
+      },
+      disabled: !panelAvailable('chains'),
+      pressed: sketch.drawing,
+    },
+    colors: { Icon: Palette, run: () => showColors(), disabled: !panelAvailable('colors'), pressed: colorsVisible },
+    'strong-links': {
+      Icon: Link2,
+      run: () => {
+        if (!showStrongLinks) {
+          if (savedHighlightMode) setHighlightMode(false)
+          changeHintVisuals('player')
+        }
+        setStartDrawingOnOpen(false)
+        if (sketch.drawing) sketch.suspend()
+        setShowStrongLinks(current => !current)
+      },
+      disabled: !panelAvailable('chains'),
+      pressed: showStrongLinks,
+    },
+    techniques: { Icon: ListFilter, run: () => showPuzzleTool('techniques'),
+      disabled: !panelAvailable('techniques'), pressed: activeToolPanel === 'techniques' },
+    hint: { Icon: Lightbulb, run: () => { void showHint() }, disabled: busy },
+    check: { Icon: Check, run: () => { void runCheck() }, disabled: busy },
+    undo: { Icon: Undo2, run: () => edit(undo), disabled: !game.past.length },
+    redo: { Icon: Redo2, run: () => edit(redo), disabled: !game.future.length },
+  }
+  const visiblePinnedActions = !placeholder && !draft && !completed ? pinnedActions : []
+
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
         <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
@@ -2457,6 +2503,17 @@ export function Worktable({
           ) : livePuzzleStage}
         </div>
         <PuzzleCollectionCredit game={game} />
+        {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>
+          {visiblePinnedActions.map(id => {
+            const action = quickActions[id]
+            const label = PINNABLE_ACTIONS.find(item => item.id === id)!
+            const Icon = action.Icon
+            return <Button key={id} variant="quiet" disabled={disabled || action.disabled}
+              aria-pressed={action.pressed} title={label.label} onClick={action.run}>
+              <Icon size={16} aria-hidden="true" /><span>{label.shortLabel}</span>
+            </Button>
+          })}
+        </nav>}
         {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
           position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
             if (badgeMode === 'chain') {

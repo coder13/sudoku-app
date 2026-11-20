@@ -18,6 +18,8 @@ export function createSyncConnectivity({
   let timer: ReturnType<typeof setTimeout> | undefined
   let checking: Promise<void> | undefined
   let version = 0
+  // Keep the original target so teardown still works if the browser context changes.
+  let browserWindow: Window | undefined
 
   const available = () => isOnline() && !unreachable
 
@@ -89,16 +91,18 @@ export function createSyncConnectivity({
     start() {
       if (started) return
       started = true
-      window.addEventListener('online', browserChanged)
-      window.addEventListener('offline', browserChanged)
+      browserWindow = typeof window === 'undefined' ? undefined : window
+      browserWindow?.addEventListener('online', browserChanged)
+      browserWindow?.addEventListener('offline', browserChanged)
       armProbe()
     },
     stop() {
       started = false
       version++
       clearProbe()
-      window.removeEventListener('online', browserChanged)
-      window.removeEventListener('offline', browserChanged)
+      browserWindow?.removeEventListener('online', browserChanged)
+      browserWindow?.removeEventListener('offline', browserChanged)
+      browserWindow = undefined
     },
   }
 }
