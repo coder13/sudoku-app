@@ -57,6 +57,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-arrow': 'Arrow',
   'sized-region-sum': 'Region Sum',
   'group-line-house-support': 'Repeating groups and houses',
+  'group-order-contradiction': 'Group order contradiction',
   'whispers-house-support': 'Whispers and shared houses',
   '3d-medusa': '3D Medusa',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',

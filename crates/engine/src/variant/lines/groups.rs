@@ -94,7 +94,7 @@ impl GroupLine {
             })
     }
 
-    pub(super) fn support(&self, domains: &[u16], support: &mut [u16]) {
+    pub(in crate::variant) fn support(&self, domains: &[u16], support: &mut [u16]) {
         let mut supported = [0; 3];
         for order in self.possible_orders(domains) {
             for (slot, group) in supported.iter_mut().zip(order) {

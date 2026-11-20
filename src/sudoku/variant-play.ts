@@ -8,22 +8,30 @@ import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '.
 import type { PlayableVariant, VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
-let playOrder: Promise<string[]> | undefined
+let playOrders: Promise<{ standard: string[]; groupLines: string[]; mixedGroupLines: string[] }> | undefined
 
 function withGroupLineHouses(order: readonly string[]) {
   return order.flatMap(id => id === 'skyscrapers' ? ['group-line-house-support', id] : [id])
 }
 
 export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
-  playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
-    .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
-      Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
+  playOrders ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
+    .then(([variant, classic]) => {
+      const difficulties = Object.fromEntries([...classic.techniques, ...variant.techniques].map(t => [t.id, t.difficulty]))
+      const standard = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, difficulties)
+      const mixed = variantTechniqueOrder([...variant.defaultOrder, 'group-order-contradiction'], classic.difficultyOrder, difficulties)
+      return { standard, groupLines: withGroupLineHouses(standard), mixedGroupLines: withGroupLineHouses(mixed) }
+    })
     .catch((error) => {
-      playOrder = undefined
+      playOrders = undefined
       throw error
     })
-  return puzzle?.rules?.some(rule => rule.type === 'entropic' || rule.type === 'modular')
-    ? playOrder.then(withGroupLineHouses) : playOrder
+  return playOrders.then(orders => {
+    if (!puzzle?.rules?.some(rule => rule.type === 'entropic' || rule.type === 'modular')) return orders.standard
+    const hasPairClue = puzzle.rules.some(rule =>
+      rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
+    return hasPairClue ? orders.mixedGroupLines : orders.groupLines
+  })
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions) {

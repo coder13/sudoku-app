@@ -7880,6 +7880,50 @@
           "difficulty": "medium"
         },
         {
+          "id": "group-order-contradiction",
+          "title": "Group order contradiction",
+          "summary": "Try an order for the groups on an Entropic or Modular line. Follow its effect on nearby clues until a rule makes that order impossible.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Look for a pair clue near the line"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Pick one possible order for the first three groups. Apply that order to the line and keep track of which candidates remain.",
+                "Check a dot, sum mark, or inequality near the line. Use those restrictions in the houses or other repeating lines they touch.",
+                "One rule can make the order fail. For example, a white dot needs consecutive digits. If no pair of candidates differs by one across the dot, rule out the order you tried.",
+                "Remove a candidate if its group is missing from that position in every remaining order."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "group-order-contradiction"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "group-order-contradiction",
+                  "title": "Group order contradiction"
+                }
+              ],
+              "guide": {
+                "start": "Choose an order for the first three groups.",
+                "check": "Use each nearby clue to narrow candidates, one rule at a time.",
+                "reason": "A group order fails if it leaves a clue, house, or line with no valid assignment."
+              }
+            }
+          ],
+          "references": [
+            { "label": "Entropic lines", "href": "/learn/entropic" },
+            { "label": "Modular lines", "href": "/learn/modular" }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "group-line-house-support",
           "title": "Repeating groups and houses",
           "summary": "Check which repeating groups on an Entropic or Modular line fit the candidates in a shared house. Each digit in the house needs its own cell.",

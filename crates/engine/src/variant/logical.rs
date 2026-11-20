@@ -20,15 +20,16 @@ mod tests;
 
 /// Baseline scoring version for structured paths using the default catalog.
 pub const VARIANT_SCORING_VERSION: u32 = 8;
-const GROUP_LINE_HOUSE_SCORING_VERSION: u32 = 9;
+const GROUP_LINE_SCORING_VERSION: u32 = 9;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
-mod pruning;
-mod line_houses;
 mod group_line_houses;
+mod group_order;
+mod line_houses;
+mod pruning;
 
 macro_rules! catalog {
     (
@@ -150,6 +151,8 @@ catalog! {
     @explicit
     /// Fit the repeated phases of an Entropic or Modular line inside one house.
     GroupLineHouseSupport: "group-line-house-support", 64, Medium;
+    /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
+    GroupOrderContradiction: "group-order-contradiction", 89, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -253,6 +256,8 @@ pub enum VariantEvidence {
     LineHouses(Box<VariantLineHouseProof>),
     /// Repeating groups and an all-different house.
     GroupLineHouse(Box<VariantGroupLineHouseProof>),
+    /// One or more repeating orders contradict the surrounding clues and houses.
+    GroupOrder(Box<VariantGroupOrderProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -359,6 +364,86 @@ pub struct VariantGroupLineHouseConflict {
     pub cells: Vec<usize>,
     /// Digits involved in the count.
     pub digits: u16,
+}
+
+/// The rules or house whose support is recorded for a hypothetical group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
+pub enum VariantGroupOrderScope {
+    /// All-different candidates in a single house.
+    House {
+        /// The house used here.
+        house: VariantHouseKind,
+    },
+    /// A binary clue, including an edge governed by a negative mark rule.
+    Pair {
+        /// Indices of the rules that define the relationship.
+        rules: Vec<usize>,
+    },
+    /// Another Entropic or Modular line.
+    Line {
+        /// Index of the repeating group rule.
+        rule: usize,
+    },
+}
+
+/// The candidates supported by a scope under an assumed group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderCheck {
+    /// Scope responsible for this restriction.
+    pub scope: VariantGroupOrderScope,
+    /// Cells in scope order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before the check.
+    pub domains: Vec<u16>,
+    /// Candidate masks supported by the scope. All zero at a contradiction.
+    pub supported: Vec<u16>,
+}
+
+/// A repeating order that ends in a contradiction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderRefutation {
+    /// Group masks for the three repeating positions.
+    pub groups: [u16; 3],
+    /// Candidate restrictions in the order they occur.
+    pub checks: Vec<VariantGroupOrderCheck>,
+    /// The scope with no valid assignment under the assumption.
+    pub conflict: VariantGroupOrderCheck,
+    /// A minimal set of cells or digits that cannot fit in a house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house_conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A complete explanation for rejecting some of the available group orders.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderProof {
+    /// Index of the source Entropic or Modular rule.
+    pub rule: usize,
+    /// Distinct source cells in first-visit order.
+    pub cells: Vec<usize>,
+    /// Candidate masks in those cells before testing any order.
+    pub domains: Vec<u16>,
+    /// The repeating position, from zero to two, of each cell.
+    pub phases: Vec<usize>,
+    /// The orders that survive the bounded checks.
+    pub remaining: Vec<[u16; 3]>,
+    /// Contradictions for the orders that have no support.
+    pub rejected: Vec<VariantGroupOrderRefutation>,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -536,8 +621,11 @@ impl VariantPosition {
             let technique = step.technique;
             *rating.counts.entry(technique).or_default() += 1;
             rating.points += u32::from(technique.cost());
-            if technique == VariantTechnique::GroupLineHouseSupport {
-                rating.scoring_version = GROUP_LINE_HOUSE_SCORING_VERSION;
+            if matches!(
+                technique,
+                VariantTechnique::GroupLineHouseSupport | VariantTechnique::GroupOrderContradiction
+            ) {
+                rating.scoring_version = GROUP_LINE_SCORING_VERSION;
             }
             let rank =
                 |technique: VariantTechnique| (technique.difficulty(), technique.cost(), technique);
@@ -561,7 +649,15 @@ impl VariantPosition {
 }
 
 impl VariantDeduction {
-    fn rank(&self) -> (Difficulty, u16, usize, VariantTechnique, HintAction) {
+    fn rank(&self) -> (Difficulty, u16, usize, usize, VariantTechnique, HintAction) {
+        let checks = match &self.evidence {
+            VariantEvidence::GroupOrder(proof) => proof
+                .rejected
+                .iter()
+                .map(|order| order.checks.len() + 1)
+                .sum(),
+            _ => 0,
+        };
         let cells = match &self.evidence {
             VariantEvidence::Single { .. } => 1,
             VariantEvidence::CageSum { cells, .. }
@@ -569,6 +665,7 @@ impl VariantDeduction {
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::GroupLineHouse(proof) => proof.cells.len(),
+            VariantEvidence::GroupOrder(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -585,6 +682,7 @@ impl VariantDeduction {
         (
             self.technique.difficulty(),
             self.technique.cost(),
+            checks,
             cells,
             self.technique,
             self.actions[0],
@@ -1073,6 +1171,7 @@ impl CompiledVariant {
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
+            GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

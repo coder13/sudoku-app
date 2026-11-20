@@ -10,6 +10,7 @@ import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { assertGroupOrderProof } from './helpers/group-order-truth.ts'
 import { assertModularProof } from './helpers/modular-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -24,7 +25,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 420, 21, 2192, 28, false, false, 'medium'],
+  ['HCHW', 420, 21, 4731, 74, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -84,6 +85,12 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
+      if (id === 'HCHW' && techniqueOrder.includes('group-order-contradiction')) {
+        const first = trace.steps.find(step => step.technique === 'group-order-contradiction')?.evidence
+        assert.ok(first?.type === 'group-order')
+        assert.equal(first.rejected.length, 4)
+        assert.ok(first.rejected.every(order => order.checks.length === 0 && order.conflict.scope.type === 'pair'))
+      }
       const hasGroupProof = trace.steps.some(proof => proof.technique === 'group-line-house-support')
       assert.equal(trace.rating.scoringVersion, hasGroupProof ? 9 : 8)
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
@@ -95,6 +102,8 @@ for (const [
           assert.equal(Number(source.solution[c.cell]) === c.digit, 'place' in action)
         }
         if (proof.technique === 'modular') assertModularProof(puzzle, proof)
+        if (proof.technique === 'group-order-contradiction')
+          assertGroupOrderProof(puzzle, valuesOf(played), played.position.eliminations, proof)
         played = applyDeduction(played, proof.actions, variantHouseMasks(puzzle, valuesOf(played)))
       }
       assert.equal(isSolved(played), complete)

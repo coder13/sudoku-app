@@ -68,7 +68,7 @@ Use complete source definitions, including every companion clue and parameter. S
 
 For each control, check starting, correctly progressed and explicit-removal states. Check both Pencil modes, placement cleanup, conflicts, undo/redo, reload and sharing. Compare ordinary hints, selected hints, paged hints and Finder against that same current position. Confirm stale results cannot apply after an edit. A genuine zero-hint state stays visible; exact completion must not become an invented logical explanation.
 
-The repeating-groups and house proof advances Hyk5 from 12 to 35 steps, Hafj from 5 to 23, and HCHW from 25 to 28. Each remains partial. Use these source puzzles to check group-order explanations, house highlights, and the separation between exact solution and logical replay. [Issue 162](https://github.com/coder13/sudoku-app/issues/162)
+Hyk5 and Hafj now have complete logical walkthroughs on the group-order branch. Their deductions use the original mixed rules and reach the published solutions in 142 and 156 steps. HCHW has a 74-step partial walkthrough. Capture a hint on each source, including the rows and white dot in Hyk5, the clue and house sequence in Hafj, and the direct pair conflicts in HCHW. Check that placements, removals, and the rule explanation remain readable alongside the original clue overlays. [Issue 162](https://github.com/coder13/sudoku-app/issues/162)
 
 ## Browser review and approval
 

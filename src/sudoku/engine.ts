@@ -564,6 +564,12 @@ export type VariantHouse = { row: number } | { column: number } | { region: numb
 export type VariantExclusionPremise =
   | { type: 'cell'; cell: number; domain: number }
   | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
+type VariantGroupOrderCheck = {
+  scope: { type: 'house'; house: VariantHouse } | { type: 'pair'; rules: number[] } | { type: 'line'; rule: number }
+  cells: number[]
+  domains: number[]
+  supported: number[]
+}
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -573,6 +579,10 @@ export type VariantDeduction = {
     | { type: 'group-line-house'; rule: number; lineCells: number[]; lineDomains: number[]; phases: number[];
       house: VariantHouse; cells: number[]; domains: number[]; supported: number[];
       cases: { groups: number[]; conflict: { cells: number[]; digits: number } | null }[] }
+    | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
+      remaining: number[][];
+      rejected: { groups: number[]; checks: VariantGroupOrderCheck[]; conflict: VariantGroupOrderCheck;
+        houseConflict?: { cells: number[]; digits: number } }[] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }

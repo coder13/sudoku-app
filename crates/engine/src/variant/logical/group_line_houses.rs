@@ -112,7 +112,7 @@ impl CompiledVariant {
     }
 }
 
-fn count_conflict(cells: &[usize; 9], domains: &[u16; 9]) -> VariantGroupLineHouseConflict {
+pub(super) fn count_conflict(cells: &[usize; 9], domains: &[u16; 9]) -> VariantGroupLineHouseConflict {
     let digit_locations: [u16; 9] = std::array::from_fn(|i| {
         let digit = digit_bit(i as u8 + 1);
         domains.iter().enumerate().fold(0, |mask, (slot, &domain)| {

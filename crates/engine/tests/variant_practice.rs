@@ -89,6 +89,15 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::GroupOrder(proof) => {
+                    assert!(matches!(
+                        position.puzzle.rules[proof.rule],
+                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                    ));
+                    for order in proof.rejected {
+                        scopes.insert(order.conflict.cells);
+                    }
+                }
                 VariantEvidence::LineHouses(proof) => {
                     if position.puzzle.rules.len() > 1 {
                         overlaps.insert(technique);
