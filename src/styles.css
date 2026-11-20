@@ -3315,6 +3315,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     padding-block: var(--space-6) 0;
     border-block-start: 0;
   }
+  /* Both Pause and Play states stay as transparent toolbar icons. */
+  .standard-workspace-page .puzzle.puzzle-flat .puzzle-pause-trigger {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
   /* The button extends beyond the bottom grid border, so leave its click area clear. */
   .standard-workspace-page .puzzle-flat:has(.puzzle-quick-actions) .puzzle-stage:has(.puzzle-mode-tab[data-edge="bottom"]) {
     margin-block-end: var(--space-10);
