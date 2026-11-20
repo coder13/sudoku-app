@@ -23,7 +23,7 @@ pub use generation::{
     VariantGenerationOptions, start_variant_generation,
 };
 use lines::LineConstraint;
-pub(crate) use lines::renban_support;
+pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
     VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
@@ -97,9 +97,9 @@ pub enum RegionLayout {
     serde(rename_all = "kebab-case")
 )]
 pub enum Parity {
-    /// The digits 1, 3, 5, 7, and 9.
+    /// The odd digits in the layout.
     Odd,
-    /// The digits 2, 4, 6, and 8.
+    /// The even digits in the layout.
     Even,
 }
 
@@ -312,7 +312,7 @@ rules! {
     }
     /// Require a set of consecutive digits in any order without repetition.
     Renban => "renban" {
-        /// One through nine distinct cells in logical order.
+        /// Distinct cells in logical order, up to the grid's digit count.
         cells: Vec<usize>,
         /// Optional visible paths whose union equals `cells`.
         /// Drawing paths may revisit cells without repeating their digits.

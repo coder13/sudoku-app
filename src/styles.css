@@ -2662,7 +2662,7 @@ svg { flex-shrink: 0; }
   max-width: 100%;
 }
 .dialog-form textarea { font-family: ui-monospace, monospace; font-size: 0.8125rem; resize: vertical; }
-.six-rule-editor .board-frame { width: min(100%, 340px); margin-inline: auto; }
+.sized-rule-editor .board-frame { width: min(100%, 340px); margin-inline: auto; }
 .cage-editor-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); min-width: 0; border: 0; padding: 0; margin: 0; }
 .cage-editor-cells legend { padding: 0 0 var(--space-4); font-size: 0.8125rem; font-weight: 760; }
 .cage-editor-cells .button { min-width: 0; padding-inline: var(--space-4); }
@@ -3785,7 +3785,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer { color: var(--board-ink); opacity: .28; }
 .variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
 .variant-thermometer circle { fill: currentColor; }
-[data-six-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
+[data-sized-rule-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
 .variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
   fill: none;
   stroke: var(--board-ink);

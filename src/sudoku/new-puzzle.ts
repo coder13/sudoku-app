@@ -32,9 +32,10 @@ export function gameVariantId(game: Pick<Game, 'grid' | 'variant' | 'algebraic'>
   return game.algebraic ? 'algebraic-cages' : game.grid?.size === 6 ? 'six' : game.grid ? 'mini' : game.variant?.id ?? 'classic'
 }
 
-export function gameGenerationVariant(game?: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'six'>): NewPuzzleId | undefined {
+export function gameGenerationVariant(game?: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>): NewPuzzleId | undefined {
   if (game?.algebraic) return 'algebraic-cages'
-  if (game?.grid?.size === 6) return game.six?.rules.length ? undefined : 'six'
+  if (game?.sized?.rules.length) return
+  if (game?.grid?.size === 6) return 'six'
   return game?.grid ? 'mini' : game?.variant ? generationVariant(game.variant) : 'classic'
 }
 

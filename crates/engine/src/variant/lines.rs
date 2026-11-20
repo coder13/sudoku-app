@@ -232,6 +232,73 @@ pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16]
     }
 }
 
+/// Record all edges of perfect matchings for each possible consecutive interval.
+/// Wider grids use matching and reachability to avoid exponential digit caches.
+pub(crate) fn wide_renban_support(size: usize, domains: &[u16], support: &mut [u16]) {
+    let length = domains.len();
+    let full_interval = u16::MAX >> (u16::BITS as usize - length);
+    for start in 0..=size - length {
+        let interval = full_interval << start;
+        let mut owners = [usize::MAX; u16::BITS as usize];
+        if !(0..length).all(|cell| match_digit(domains, interval, cell, &mut owners, &mut 0)) {
+            continue;
+        }
+
+        let reachable = &mut [0u16; u16::BITS as usize][..length];
+        for (cell, (links, domain)) in reachable.iter_mut().zip(domains).enumerate() {
+            *links = 1 << cell;
+            for digit in start..start + length {
+                if domain & (1 << digit) != 0 {
+                    *links |= 1 << owners[digit];
+                }
+            }
+        }
+        for pivot in 0..length {
+            let through = reachable[pivot];
+            for links in reachable.iter_mut() {
+                if *links & (1 << pivot) != 0 {
+                    *links |= through;
+                }
+            }
+        }
+        for (cell, (mask, domain)) in support.iter_mut().zip(domains).enumerate() {
+            for digit in start..start + length {
+                // The edge from this cell to the digit's owner can be used
+                // exactly when an alternating path from the owner closes a cycle.
+                let bit = 1 << digit;
+                if domain & bit != 0 && reachable[owners[digit]] & (1 << cell) != 0 {
+                    *mask |= bit;
+                }
+            }
+        }
+        if support == domains {
+            break;
+        }
+    }
+}
+
+fn match_digit(
+    domains: &[u16],
+    interval: u16,
+    cell: usize,
+    owners: &mut [usize; u16::BITS as usize],
+    visited: &mut u16,
+) -> bool {
+    let mut available = domains[cell] & interval;
+    while available & !*visited != 0 {
+        let digit = (available & !*visited).trailing_zeros() as usize;
+        let bit = 1 << digit;
+        *visited |= bit;
+        available &= !bit;
+        if owners[digit] == usize::MAX || match_digit(domains, interval, owners[digit], owners, visited)
+        {
+            owners[digit] = cell;
+            return true;
+        }
+    }
+    false
+}
+
 // A ray must start on the edge, follow the declared direction and run to the
 // opposite edge. This also bounds the length of each sum passed to the bitset.
 pub(super) fn valid_ray(cells: &[usize], direction: ClueDirection, diagonal: bool) -> bool {
@@ -442,8 +509,8 @@ mod renban_support_tests {
 
     // Independent digit enumeration. A valid completed set has no repeats and
     // max − min = length − 1, regardless of the order in which cells are drawn.
-    fn enumerate(domains: &[u16]) -> Vec<u16> {
-        fn visit(domains: &[u16], chosen: &mut Vec<u8>, support: &mut [u16]) {
+    fn enumerate(size: u8, domains: &[u16]) -> Vec<u16> {
+        fn visit(size: u8, domains: &[u16], chosen: &mut Vec<u8>, support: &mut [u16]) {
             if chosen.len() == domains.len() {
                 if chosen.iter().max().unwrap() - chosen.iter().min().unwrap()
                     == domains.len() as u8 - 1
@@ -454,17 +521,17 @@ mod renban_support_tests {
                 }
                 return;
             }
-            for digit in 1..=9 {
+            for digit in 1..=size {
                 if domains[chosen.len()] & (1 << (digit - 1)) == 0 || chosen.contains(&digit) {
                     continue;
                 }
                 chosen.push(digit);
-                visit(domains, chosen, support);
+                visit(size, domains, chosen, support);
                 chosen.pop();
             }
         }
         let mut support = vec![0; domains.len()];
-        visit(domains, &mut vec![], &mut support);
+        visit(size, domains, &mut vec![], &mut support);
         support
     }
 
@@ -477,7 +544,7 @@ mod renban_support_tests {
         };
         let mut support = vec![0; domains.len()];
         constraint.support(domains, &mut support);
-        assert_eq!(support, enumerate(domains), "{domains:?}");
+        assert_eq!(support, enumerate(9, domains), "{domains:?}");
     }
 
     #[test]
@@ -525,5 +592,39 @@ mod renban_support_tests {
         ] {
             check(&domains)
         }
+    }
+
+    #[test]
+    fn wide_renban_support_matches_independent_assignments() {
+        let mut seed = 71u32;
+        for size in [10, 12, 16] {
+            let all = u16::MAX >> (16 - size);
+            for length in 4..=7 {
+                for _ in 0..80 {
+                    let domains: Vec<_> = (0..length).map(|_| {
+                        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                        ((seed >> 16) as u16) & ((seed >> 5) as u16) & all
+                    }).collect();
+                    let mut support = vec![0; length];
+                    wide_renban_support(size, &domains, &mut support);
+                    assert_eq!(support, enumerate(size as u8, &domains), "{domains:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_full_sixteen_digit_line_filters_unmatchable_edges() {
+        let mut domains = [u16::MAX; 16];
+        domains[..2].fill(3);
+        let mut support = [0; 16];
+        wide_renban_support(16, &domains, &mut support);
+        assert_eq!(support[..2], [3, 3]);
+        assert_eq!(support[2..], [u16::MAX ^ 3; 14]);
+
+        domains[2] = 3;
+        support.fill(0);
+        wide_renban_support(16, &domains, &mut support);
+        assert_eq!(support, [0; 16]);
     }
 }

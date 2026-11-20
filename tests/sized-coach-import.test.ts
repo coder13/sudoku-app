@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { decodeCoachSix } from '../src/sudoku/puzzle-import.ts'
+import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 const six = { gridSize: 6, givenDigits: '000000000000000000000000000030000400' }
@@ -26,8 +26,23 @@ test('six-by-six Coach decoding preserves the box orientation, clue order and bo
 test('six-by-six Coach decoding reports unsupported rules instead of importing a partial puzzle', async () => {
   const puzzle = { ...six, regions: rectangularRegions(2, 3) }
   await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'globalEntropy', segments: [] }] })), /unsupported active rule/)
-  await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'thermometer', segments: [{ cells: [1, 1] }] }] })), /invalid cell or path/)
+  await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenConstraints: [{ type: 'thermometer', segments: [{ cells: [1, 1] }] }] })), /invalid rules/)
   await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, regions: Array(36).fill(0) })), /rectangular boxes/)
+})
+
+test('the 4 × 4 Coach path uses the same rule objects and preserves companion clues', async () => {
+  const source = { gridSize: 4, givenDigits: '0000032000000010', givenConstraints: [
+    { type: 'renban', segments: [{ cells: [0, 5] }, { cells: [5, 6] }] },
+    { type: 'odd', segments: [{ cells: [9] }] },
+  ] }
+  const imported = await detectPuzzle(coachCode(source))
+  assert.deepEqual(imported.grid, { size: 4, boxRows: 2, boxColumns: 2 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'renban', cells: [0, 5, 6], segments: [[0, 5], [5, 6]] },
+    { type: 'parity', parity: 'odd', cells: [9] },
+  ])
+  source.givenConstraints[0].segments[1].cells[1] = 16
+  await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
 })
 
 test('six-by-six Coach keeps intersecting Renban segments as one set alongside other rules', async () => {

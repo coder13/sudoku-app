@@ -1,7 +1,7 @@
 import { EngineError, runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
 import { completeCandidateMasks, hintEliminations, valuesOf, type Game } from './game.ts'
 import { miniHints, miniSolutionTrace, visibleMiniHints } from './mini-play.ts'
-import { sixHintChoices, sixSolutionTrace } from './six-play.ts'
+import { sizedRuleHintChoices, sizedRuleSolutionTrace } from './sized-rule-play.ts'
 import { algebraicHintChoices, algebraicSolutionTrace } from './algebraic-play.ts'
 import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
@@ -39,10 +39,10 @@ export function puzzleTechniqueCatalog(variant: boolean) {
 
 /** Use the player's current digits and removals, retaining the full rule set. */
 export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number): Promise<HintChoices & { offset?: number }> {
-  if (game.six && game.grid?.size === 6) {
+  if (game.sized && game.grid) {
     const values = valuesOf(game)
     const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, game.grid.size)
-    return visibleMiniHints(await sixHintChoices(game.six, game.grid, values, eliminations), limit, technique)
+    return visibleMiniHints(await sizedRuleHintChoices(game.sized, game.grid, values, eliminations), limit, technique)
   }
   if (game.algebraic && game.grid) {
     const values = valuesOf(game)
@@ -91,7 +91,7 @@ export async function puzzleHintPage(variant: Game['variant'], collection: numbe
 
 /** Solution walkthroughs start at the givens, without changing the saved game. */
 export async function puzzleSolution(game: Game) {
-  if (game.six && game.grid?.size === 6) return sixSolutionTrace(game.six, game.grid, game.givens)
+  if (game.sized && game.grid) return sizedRuleSolutionTrace(game.sized, game.grid, game.givens)
   if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens)
   if (game.grid) return miniSolutionTrace(game.givens)
   return game.variant ? variantSolutionPath(await runEngine({

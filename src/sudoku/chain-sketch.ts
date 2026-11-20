@@ -155,7 +155,7 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
       values[cell] = String(digit)
     }
     const filled = values.join('')
-    if (conflictsOf(filled, game.variant?.puzzle, game.grid, game.six?.rules).size) return game
+    if (conflictsOf(filled, game.variant?.puzzle, game.grid, game.sized?.rules).size) return game
     position = fillEntries(eliminated, filled, removeCandidates).position
   }
 
