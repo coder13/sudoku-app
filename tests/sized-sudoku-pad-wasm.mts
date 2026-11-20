@@ -98,10 +98,8 @@ test('published Double Arrows keep distinct paths and shared circles through Pla
       assert.deepEqual(readGame(game.id, JSON.stringify(moved))?.sized, sized)
       assert.ok(conflictsOf(source.answer, undefined, grid, sized.rules).size === 0)
       const replay = await puzzleSolution(game)
-      if (source.id === 'y176p34zew') {
-        assert.equal(replay.status, 'solved')
-        assert.equal(replay.board, source.answer)
-      }
+      assert.equal(replay.status, 'solved')
+      assert.equal(replay.board, source.answer)
       assert.ok(replay.steps.some(step => step.technique === 'sized-double-arrow'))
       for (const step of replay.steps) for (const action of step.actions) {
         if ('place' in action) assert.equal(action.place.digit, Number(source.answer[action.place.cell]))

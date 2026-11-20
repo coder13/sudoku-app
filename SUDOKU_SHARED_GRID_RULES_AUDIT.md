@@ -188,3 +188,16 @@ The published boxless Killer was benchmarked with 100 warm calls per measurement
 | Full logical replay | 32,866 / 33,876 | 27,481 / 28,174 |
 
 An earlier singleton prefilter reproduced the proofs but increased verification and replay time on this control, so the direct support calculation is used for the shorter cages.
+
+### Double Arrow deductions through shared houses
+
+For short Double Arrows, logical deductions can match the two sums while checking that cells in the same row, column, or region contain distinct digits. Exact solving and automatic candidate computation keep their sum-propagation path.
+
+Two published 6×6 SudokuPad controls returned identical complete exact-solve payloads and candidate masks in the paired Wasm benchmark. Choose Your Fighter completed in 64 replay positions, down from 78. Hamburger previously stopped after 11 positions. The new path reaches the independently verified completion in 79 positions, and each elimination preserves the solution digit.
+
+| Control | Verification before / after | Opening hints before / after | Replay before / after |
+| --- | ---: | ---: | ---: |
+| Choose Your Fighter | 799 / 800 µs | 67 / 309 µs | 3,844 / 1,503 µs |
+| Hamburger | 5,663 / 5,594 µs | 21 / 66 µs | 7,440 / 1,761 µs |
+
+Values are medians for 50 warm calls to each build, alternating their order. Hamburger’s earlier timing is for its partial replay. The house-aware hints spend additional time checking for legal assignments. Candidate-mask medians stayed within 1 µs on both controls.
