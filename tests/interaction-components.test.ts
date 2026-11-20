@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { after, before, test } from 'node:test'
 import { createElement, Fragment, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -114,6 +115,17 @@ test('mobile mode outline and badge attach to the Sudoku grid, not the card', ()
   const frame = tree.find(({ props }) => String(props.className).startsWith('board-frame'))
   assert.equal(frame?.props['data-input-mode'], undefined)
   assert.equal(boardTree({}).find(({ props }) => props.className === 'board-body')?.props['data-input-mode'], undefined)
+})
+
+test('resizing the mobile grid does not clip its border-mounted mode icon', () => {
+  const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
+  const viewport = css.match(/\\.puzzle-zoom\\[data-resize-preview\\]\\s*\\{([^}]*)\\}/)?.[1]
+  const content = css.match(/\\.puzzle-zoom\\[data-resize-preview\\]\\s+\\.puzzle-zoom-content\\s*\\{([^}]*)\\}/)?.[1]
+  assert.ok(viewport, 'resize preview needs a viewport style')
+  assert.ok(content, 'resize preview needs a content style')
+  assert.match(viewport, /overflow:\\s*visible/, 'allow the icon to extend beyond the grid border')
+  assert.doesNotMatch(content, /\\bpaint\\b/, 'paint containment clips the mode icon')
+  assert.match(content, /contain:\\s*size layout/, 'keep layout containment during resizing')
 })
 
 test('showing and hiding the mode icon leaves the Sudoku grid structure unchanged', () => {
