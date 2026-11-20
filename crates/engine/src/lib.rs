@@ -72,7 +72,7 @@ pub use sized::{
     SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity, SizedSumEnd,
 };
 #[cfg(feature = "generation")]
-pub use sized::{MiniDifficulty, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
+pub use sized::{MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use sized::{GeneratedAlgebraic, generate_algebraic};
 pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHints, SizedTechnique, SizedTracePosition};

@@ -1,14 +1,15 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { isNewPuzzleId, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
+import { isNewPuzzleId, isSizedPuzzleId, rectangularBoxRows, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { isGenerationRulesetId, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
-type NewPuzzleSearch = { step?: 'difficulty'; variant?: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: 2 | 3 }
+type NewPuzzleSearch = { step?: 'difficulty'; variant?: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: import('../sudoku/grid').RectangularBoxRows }
 
 export const Route = createFileRoute('/puzzles/new')({
   validateSearch: (search): NewPuzzleSearch => {
     if (!isNewPuzzleId(search.variant)) return {}
+    const boxRows = rectangularBoxRows(search.variant, search.boxRows)
     const choice: NewPuzzleSearch = { variant: search.variant,
-      ...(search.variant === 'six' && (search.boxRows === 2 || search.boxRows === 3) ? { boxRows: search.boxRows } : {}),
+      ...(boxRows && { boxRows }),
       ...(!isSizedPuzzleId(search.variant) && isGenerationRulesetId(search.variant, search.ruleset) ? { ruleset: search.ruleset } : {}) }
     return search.step === 'difficulty' ? { step: 'difficulty', ...choice } : choice
   },

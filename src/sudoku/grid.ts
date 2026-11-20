@@ -1,14 +1,28 @@
-import type { House, SixGrid, SizedClassicPosition, SizedConstraintRule } from './engine.ts'
+import type { House, SizedClassicPosition, SizedConstraintRule } from './engine.ts'
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
-const SIX_GRIDS = [
-  { size: 6, boxRows: 2, boxColumns: 3 },
-  { size: 6, boxRows: 3, boxColumns: 2 },
-] as const
+const RECTANGULAR_LAYOUTS = {
+  6: [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }],
+  8: [{ size: 8, boxRows: 2, boxColumns: 4 }, { size: 8, boxRows: 4, boxColumns: 2 }],
+} as const
 
-export function sixGridForBoxRows(boxRows?: SixGrid['boxRows']): SixGrid {
-  return SIX_GRIDS[boxRows === 3 ? 1 : 0]
+export type RectangularSize = keyof typeof RECTANGULAR_LAYOUTS
+export type RectangularGrid = typeof RECTANGULAR_LAYOUTS[RectangularSize][number]
+export type RectangularBoxRows = RectangularGrid['boxRows']
+export const isRectangularSize = (size: unknown): size is RectangularSize => size === 6 || size === 8
+
+export function rectangularLayouts(size: RectangularSize): readonly RectangularGrid[] {
+  return RECTANGULAR_LAYOUTS[size]
+}
+
+export function rectangularGridForBoxRows(size: RectangularSize, boxRows?: RectangularBoxRows): RectangularGrid {
+  const layouts = rectangularLayouts(size)
+  return layouts.find(layout => layout.boxRows === boxRows) ?? layouts[0]
+}
+
+export function sixGridForBoxRows(boxRows?: 2 | 3) {
+  return RECTANGULAR_LAYOUTS[6][boxRows === 3 ? 1 : 0]
 }
 
 export type MiniGrid = typeof MINI_GRID
@@ -16,7 +30,7 @@ export type JigsawSize = 5 | 7
 export const isJigsawSize = (size: unknown): size is JigsawSize => size === 5 || size === 7
 export type JigsawGrid<Size extends JigsawSize = JigsawSize> = { size: Size; regions: readonly (readonly number[])[] }
 export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
-export type SizedGrid = MiniGrid | SixGrid | JigsawGrid | typeof SEVEN_BOXLESS_GRID
+export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | typeof SEVEN_BOXLESS_GRID
 const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -63,9 +77,9 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
   if (isMiniGrid(value) || isJigsawGrid(value)) return true
   if (value === null || typeof value !== 'object') return false
   if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && value.size === 7 && value.noRegions === true
-  const grid = value as Partial<SixGrid>
-  return Object.keys(grid).length === 3 && grid.size === 6 &&
-    ((grid.boxRows === 2 && grid.boxColumns === 3) || (grid.boxRows === 3 && grid.boxColumns === 2))
+  const grid = value as Partial<RectangularGrid>
+  return Object.keys(grid).length === 3 && isRectangularSize(grid.size) &&
+    rectangularLayouts(grid.size).some(layout => layout.boxRows === grid.boxRows && layout.boxColumns === grid.boxColumns)
 }
 
 export function isJigsawGrid(value: unknown): value is JigsawGrid {
@@ -116,11 +130,11 @@ export function sizedGridIdentity(grid: SizedGrid) {
   return grid.size === 6 ? `six:${grid.boxRows}` : `sized:${grid.size}:${grid.boxRows}:${grid.boxColumns}`
 }
 
-export function sixGridFromRegions(regions: readonly number[]): SixGrid | undefined {
-  return SIX_GRIDS.find(grid => matchesRectangularRegions(grid, regions))
+export function rectangularGridFromRegions(size: RectangularSize, regions: readonly number[]) {
+  return rectangularLayouts(size).find(grid => matchesRectangularRegions(grid, regions))
 }
 
-export function matchesRectangularRegions({ size, boxRows, boxColumns }: MiniGrid | SixGrid, regions: readonly number[]) {
+export function matchesRectangularRegions({ size, boxRows, boxColumns }: MiniGrid | RectangularGrid, regions: readonly number[]) {
   return regions.length === size ** 2 && new Set(regions).size === size && regions.every((label, cell) => {
     const firstRow = Math.floor(cell / size / boxRows) * boxRows
     const firstColumn = Math.floor(cell % size / boxColumns) * boxColumns

@@ -5,7 +5,7 @@ import type { CandidateLayout, ErrorMode } from './game.ts'
 import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale.ts'
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints.ts'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes.ts'
-import { isNewPuzzleId, isSizedPuzzleId, miniDifficulty, type NewPuzzleId } from './new-puzzle.ts'
+import { isNewPuzzleId, isSizedPuzzleId, miniDifficulty, rectangularBoxRows, type NewPuzzleId } from './new-puzzle.ts'
 import { variantDifficulty } from './variants.ts'
 import { generationRuleset, type GenerationRulesetId } from './variant-rulesets.ts'
 
@@ -176,14 +176,16 @@ export function saveDifficulty(value: DifficultyPreference) {
   catch { /* The setting remains active for this session. */ }
 }
 
-export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId; boxRows?: 2 | 3 }
+export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId; boxRows?: import('./grid.ts').RectangularBoxRows }
 
 export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
     const value = JSON.parse((storage ?? localStorage).getItem(NEW_PUZZLE_KEY) ?? 'null') as Partial<NewPuzzlePreference> | null
     if (isNewPuzzleId(value?.variant) && isDifficultyPreference(value.difficulty)) {
-      if (isSizedPuzzleId(value.variant)) return { variant: value.variant, difficulty: miniDifficulty(value.difficulty),
-        ...(value.variant === 'six' && (value.boxRows === 2 || value.boxRows === 3) ? { boxRows: value.boxRows } : {}) }
+      if (isSizedPuzzleId(value.variant)) {
+        const boxRows = rectangularBoxRows(value.variant, value.boxRows)
+        return { variant: value.variant, difficulty: miniDifficulty(value.difficulty), ...(boxRows && { boxRows }) }
+      }
       const ruleset = generationRuleset(value.variant, value.ruleset)
       return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty),
         ...(ruleset ? { ruleset: ruleset.id } : {}) }

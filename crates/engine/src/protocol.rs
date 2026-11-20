@@ -66,6 +66,14 @@ enum Request {
         exclude: Vec<Vec<u8>>,
     },
     #[cfg(feature = "generation")]
+    GenerateRectangular {
+        seed: u32,
+        difficulty: crate::MiniDifficulty,
+        grid: crate::GridSpec,
+        #[serde(default)]
+        exclude: Vec<Vec<u8>>,
+    },
+    #[cfg(feature = "generation")]
     GenerateJigsaw {
         seed: u32,
         difficulty: crate::MiniDifficulty,
@@ -1024,6 +1032,22 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(feature = "generation")]
+        Request::GenerateRectangular { seed, difficulty, grid, exclude } => {
+            if !matches!((grid.size, grid.box_rows, grid.box_columns), (6, 2, 3) | (6, 3, 2) | (8, 2, 4) | (8, 4, 2)) {
+                return Err(("invalid-layout", "Use a supported grid size and rectangular box layout."));
+            }
+            if exclude.iter().any(|puzzle| puzzle.len() != grid.size * grid.size ||
+                puzzle.iter().any(|digit| usize::from(*digit) > grid.size)) {
+                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            }
+            let puzzle = if grid.size == 6 {
+                crate::generate_six(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+            } else {
+                crate::generate_eight(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+            };
+            puzzle.ok_or_else(|| puzzle_error(Analysis::SearchLimit))
+        }
+        #[cfg(feature = "generation")]
         Request::GenerateJigsaw { seed, difficulty, grid, exclude } => {
             let layout = sized::Layout::Regions(grid).build()?;
             let size = layout.size();
@@ -1663,6 +1687,7 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
                 | "generate-targeted"
                 | "generate-mini"
                 | "generate-six"
+                | "generate-rectangular"
                 | "generate-jigsaw"
                 | "generate-algebraic"
                 | "generate-constrained"

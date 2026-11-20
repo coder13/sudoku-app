@@ -1,9 +1,9 @@
-import type { NewPuzzleId } from '../sudoku/new-puzzle'
-import type { SixGrid, SizedVariantPosition, VariantRule } from '../sudoku/engine'
+import { rectangularPuzzleSize, type NewPuzzleId } from '../sudoku/new-puzzle'
+import type { SizedVariantPosition, VariantRule } from '../sudoku/engine'
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
 import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
-import { fiveJigsawForSeed, jigsawMembership, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
+import { fiveJigsawForSeed, jigsawMembership, rectangularGridForBoxRows, sevenJigsawForSeed, type RectangularBoxRows } from '../sudoku/grid'
 import { AlgebraicCages, VariantClues } from './VariantClues'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
@@ -66,13 +66,14 @@ const algebraicPreview: SizedVariantPosition['rules'] = [
 ]
 
 /** Show a compact example of a generatable variant's grid markings alongside its name. */
-export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: SixGrid['boxRows'] }) {
-  if (variant === 'six') {
-    const layout = sixGridForBoxRows(boxRows)
-    const horizontal = Array.from({ length: 6 / layout.boxRows - 1 }, (_, index) => `M0,${(index + 1) * layout.boxRows}h6`)
-    const vertical = Array.from({ length: 6 / layout.boxColumns - 1 }, (_, index) => `M${(index + 1) * layout.boxColumns},0v6`)
-    return <span className="variant-preview" data-variant="six" aria-hidden="true">
-      <svg className="variant-clues" viewBox="0 0 6 6"><path className="variant-preview-regions" d={[...horizontal, ...vertical].join(' ')} /></svg>
+export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: RectangularBoxRows }) {
+  if (variant === 'six' || variant === 'eight') {
+    const size = rectangularPuzzleSize(variant)!
+    const layout = rectangularGridForBoxRows(size, boxRows)
+    const horizontal = Array.from({ length: size / layout.boxRows - 1 }, (_, index) => `M0,${(index + 1) * layout.boxRows}h${size}`)
+    const vertical = Array.from({ length: size / layout.boxColumns - 1 }, (_, index) => `M${(index + 1) * layout.boxColumns},0v${size}`)
+    return <span className="variant-preview" data-variant={variant} aria-hidden="true">
+      <svg className="variant-clues" viewBox={`0 0 ${size} ${size}`}><path className="variant-preview-regions" d={[...horizontal, ...vertical].join(' ')} /></svg>
     </span>
   }
   if (variant === 'jigsaw-five' || variant === 'jigsaw-seven') {
