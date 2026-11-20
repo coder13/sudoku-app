@@ -18,6 +18,17 @@ test('Rullo distinguishes multiple, unique, contradictory, and limited searches'
   assert.throws(() => createRullo([1, 1, 1, 20], [1, 1], [1, 1]))
 })
 
+test('Rullo toggle play counts unmarked numbers while replay requires explicit choices', () => {
+  const puzzle = createRullo([1, 1, 1, 1], [1, 1], [1, 1])
+  const keepUnmarked = { keepUnmarked: true }
+  assert.equal(checkRullo(puzzle, [], keepUnmarked).complete, false)
+  const removed = [0, REMOVE, REMOVE, 0]
+  assert.equal(checkRullo(puzzle, removed, keepUnmarked).complete, true)
+  assert.equal(checkRullo(puzzle, removed).complete, false)
+  const invalid = checkRullo(puzzle, [REMOVE, REMOVE, 0, 0], keepUnmarked)
+  assert.deepEqual(invalid.conflicts.map(({ axis, index }) => [axis, index]), [['row', 0]])
+})
+
 test('every Rullo catalog puzzle has one solution and a complete line-sum walkthrough', () => {
   for (const { id, puzzle } of rulloCatalog) {
     const result = solveRullo(puzzle)
@@ -44,7 +55,7 @@ test('every Rullo catalog puzzle has one solution and a complete line-sum walkth
       assert.equal(fixed[hint.cell], hint.value, id)
     }
     const walkthrough = numberSolution({
-      check: values => checkRullo(puzzle, values),
+      check: (values, mode) => checkRullo(puzzle, values, { keepUnmarked: mode !== 'solution' }),
       hints: (values, limit) => findRulloHints(puzzle, values, limit),
       solve: () => assert.fail(`${id} needs search to finish`),
     }, puzzle.numbers.map(() => true))

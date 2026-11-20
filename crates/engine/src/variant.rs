@@ -24,6 +24,7 @@ pub use generation::{
     VariantGenerationOptions, start_variant_generation,
 };
 use lines::LineConstraint;
+pub(crate) use lines::{reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,

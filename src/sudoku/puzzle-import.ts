@@ -6,7 +6,7 @@ import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid }
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
-import { regionIndex } from './region-sum.ts'
+import { closedRegionSumCells, rectangularRegionIndex, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
 import { readSizedRuleSudokuPad } from './sized-rule-sudoku-pad.ts'
@@ -211,7 +211,7 @@ function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'differ
   return { markers, negative: record(settings) && settings.negativeConstraint === true }
 }
 
-function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']): VariantRule[] {
+function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions'], grid?: SizedGrid): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
   for (const constraint of constraints) {
@@ -365,18 +365,11 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
           rules.push({ type: constraint.type === 'renban' ? 'renban' : 'palindrome', ...line })
           continue
         }
-        const cells = [...line.cells], drawing = line.segments ?? [line.cells]
-        const first = cells[0], last = cells.at(-1)!
-        const closed = cells.length > 2 && drawing.some(path => path.some((cell, i) => i > 0 &&
-          (cell === first && path[i - 1] === last || cell === last && path[i - 1] === first)))
-        // Coach rotates a closed component so its first/last cells lie in
-        // different regions. Otherwise one visit would be split at the cut.
-        if (closed) for (let i = 0; i <= cells.length; i++) {
-          if (regionIndex(cells[0], regions) !== regionIndex(cells.at(-1)!, regions)) break
-          cells.push(cells.shift()!)
-        }
+        const drawing = line.segments ?? [line.cells]
+        const cells = closedRegionSumCells(line.cells, drawing, cell => grid
+          ? rectangularRegionIndex(cell, grid) : regionIndex(cell, regions))
         rules.push({ type: 'region-sum', cells, groupByRegion: false,
-          ...(line.segments || cells[0] !== first ? { segments: drawing } : {}) })
+          ...(line.segments || cells !== line.cells ? { segments: drawing } : {}) })
       }
     } else if (constraint.type === 'entropicLine' || constraint.type === 'modularLine') {
       const name = constraint.type === 'entropicLine' ? 'Entropic' : 'Modular'
@@ -479,12 +472,12 @@ function readCoachSized(data: Record<string, unknown>) {
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio']
+  const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine']
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
   const rules = active.flatMap((constraint): (VariantRule | SizedDifferenceRule)[] => {
-    if (!record(constraint) || constraint.type !== 'difference') return readCoachRules([constraint])
+    if (!record(constraint) || constraint.type !== 'difference') return readCoachRules([constraint], undefined, grid)
     const { markers, negative } = readCoachPairMarkers(constraint, 'difference')
     if (markers.every(({ amount }) => amount === 1)) {
       return [{ type: 'kropki', consecutive: { pairs: markers.map(({ cells }) => cells), negative } }]
@@ -497,7 +490,7 @@ function readCoachSized(data: Record<string, unknown>) {
       return { type: 'difference', cells, difference: amount }
     })
   })
-  if (!isSizedRuleList(rules, grid.size)) throw new Error('This Sudoku Coach export contains invalid rules.')
+  if (!isSizedRuleList(rules, grid)) throw new Error('This Sudoku Coach export contains invalid rules.')
   return { version: 2 as const, grid, givens, rules }
 }
 
@@ -597,7 +590,7 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   if (/^(scl|ctc)/i.test(code)) {
     const data = decodeSudokuPadEnvelope(code)
     if (record(data) && Array.isArray(data.cells) && (data.cells.length === 6 ||
-      data.cells.length === 4 && ['lines', 'underlays', 'overlays'].some(field => Object.hasOwn(data, field)))) {
+      data.cells.length === 4 && ['lines', 'underlays', 'overlays', 'arrows'].some(field => Object.hasOwn(data, field)))) {
       return { ...readSizedRuleSudokuPad(data), format }
     }
     const { givens, grid, rules, source } = decodeSizedSudokuPad(code, data)

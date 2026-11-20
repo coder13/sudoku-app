@@ -80,6 +80,21 @@ test('connected cages permit equal values across different rows and columns', ()
   assert.ok(checkLatin(puzzle, rowDuplicate).conflicts.some(rule => rule.label === 'Row 1'))
 })
 
+test('cages with the same sum keep the row and column restrictions for their cell order', () => {
+  function sumCage(cells: number[]) {
+    const otherCages: Cage[] = Array.from({ length: 9 }, (_, cell) => cell)
+      .filter(cell => !cells.includes(cell))
+      .map(cell => ({ cells: [cell], operator: 'equal', target: 3 }))
+    return createCalcudoku(3, [{ cells, operator: 'add', target: 4 }, ...otherCages]).rules[0]
+  }
+
+  const domains = Array(9).fill(7)
+  assert.deepEqual(sumCage([0, 1, 3]).support(domains), [2, 1, 1])
+  assert.throws(() => sumCage([0, 1, 2]), /no valid arithmetic/)
+  assert.deepEqual(sumCage([4, 7, 5]).support(domains), [2, 1, 1])
+  assert.deepEqual(sumCage([1, 0, 3]).support(domains), [1, 2, 1])
+})
+
 test('division and subtraction accept either operand order and reject non-integer quotients', () => {
   const { puzzle: easy } = calcudokuCatalog[0]
   const divider = easy.rules.find(rule => rule.label.startsWith('2÷'))!

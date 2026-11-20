@@ -66,7 +66,7 @@ test('the sized dispatcher rejects a whole variant position when a companion rul
     type: 'sized-variant', operation: 'analyze',
     position: {
       version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: Array(16).fill(0),
-      rules: [{ type: 'renban', cells: [0, 1, 2] }, { type: 'arrow', circle: 5, cells: [6, 7] }],
+      rules: [{ type: 'renban', cells: [0, 1, 2] }, { type: 'between', cells: [5, 6, 7] }],
     },
   } as EngineRequest
   await assert.rejects(runEngine(request), error => error instanceof EngineError && error.code === 'unsupported-rule')
@@ -126,4 +126,75 @@ test('Difference markers can use the largest valid gap at each supplied size', a
       ...position, rules: [{ type: 'difference', cells: [1, 0], difference: size }],
     } }), error => error instanceof EngineError && error.code === 'invalid-rules')
   }
+})
+
+test('an Arrow permits repeated shaft digits when the houses also permit them', async () => {
+  const digits = Array<number>(16).fill(0)
+  digits[0] = digits[6] = 1
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits,
+    rules: [{ type: 'arrow', circle: 1, cells: [0, 6] }],
+  }
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(masks?.[1], 1 << 1)
+  const response = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 1 })
+  assert.deepEqual(response?.choices, [{ type: 'rule', rule: 0,
+    actions: [{ eliminate: { cell: 1, digit: 3 } }, { eliminate: { cell: 1, digit: 4 } }] }])
+  const completed = Array.from('1234341221434321', Number)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, digits: completed } }), 'unique')
+})
+
+test('a full-length Arrow uses the digit range and scratch space of a 16 × 16 layout', async () => {
+  const size = 16
+  const digits = Array<number>(size ** 2).fill(0)
+  const cells = Array.from({ length: size }, (_, row) => row * size + ((size - (row * 4 + Math.floor(row / 4)) % size) % size))
+  digits[15] = size
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size, boxRows: 4, boxColumns: 4 }, digits,
+    rules: [{ type: 'arrow', circle: 15, cells }],
+  }
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  for (const cell of cells) assert.equal(masks?.[cell], 1)
+  await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze',
+    position: { ...position, rules: [{ type: 'arrow', circle: cells[0], cells }] },
+  }), error => error instanceof EngineError && error.code === 'invalid-rules')
+})
+
+test('Region Sum distinguishes consecutive visits from totals grouped by box', async () => {
+  const digits = Array.from('0030000000000001', Number)
+  const answer = Array.from('1234341221434321', Number)
+  const cells = [0, 4, 9, 13, 10, 5]
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits,
+    rules: [{ type: 'region-sum', cells }],
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: [{ type: 'region-sum', cells, groupByRegion: true }],
+  } }), 'unsolvable')
+  assert.equal(await runEngine({ type: 'sized-classic', operation: 'analyze', position: {
+    version: 2, grid: position.grid, digits,
+  } }), 'multiple')
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 1 })
+  assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0))
+  const trace = await runEngine({ type: 'sized-variant', operation: 'trace', position })
+  assert.deepEqual(trace?.at(-1)?.digits, answer)
+})
+
+test('Region Sum supports a total of 136 across two complete 16 × 16 boxes', async () => {
+  const size = 16
+  const answer = Array.from({ length: size ** 2 }, (_, cell) => {
+    const row = Math.floor(cell / size)
+    return (row * 4 + Math.floor(row / 4) + cell % size) % size + 1
+  })
+  const digits = answer.map((digit, cell) => cell === 19 || cell === 39 ? 0 : digit)
+  const firstBox = Array.from({ length: size }, (_, cell) => Math.floor(cell / 4) * size + cell % 4)
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size, boxRows: 4, boxColumns: 4 }, digits,
+    rules: [{ type: 'region-sum', cells: [...firstBox, ...firstBox.map(cell => cell + 4)] }],
+  }
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  for (const cell of [19, 39]) assert.equal(masks?.[cell], 1 << (answer[cell] - 1))
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.deepEqual((await runEngine({ type: 'sized-variant', operation: 'solve', position }))?.digits, answer)
 })

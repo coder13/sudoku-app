@@ -1,10 +1,12 @@
 mod pairs;
+mod region_sum;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 
 use self::pairs::{SizedPairLink, compile_pairs};
+use self::region_sum::RegionSum;
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,6 +18,14 @@ pub enum SizedConstraint {
     },
     Thermometer {
         cells: Vec<usize>,
+    },
+    Arrow {
+        circle: usize,
+        cells: Vec<usize>,
+    },
+    RegionSum {
+        cells: Vec<usize>,
+        group_by_region: bool,
     },
     Renban {
         cells: Vec<usize>,
@@ -111,6 +121,8 @@ pub struct SizedConstraintGrid {
     diagonals: Vec<Vec<usize>>,
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
+    arrows: Vec<(usize, Vec<usize>)>,
+    region_sums: Vec<Option<RegionSum>>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
 
@@ -126,7 +138,9 @@ impl SizedConstraintGrid {
         let mut diagonals = Vec::new();
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
-        for rule in rules {
+        let mut arrows = Vec::new();
+        let mut region_sums = Vec::new();
+        for (index, rule) in rules.iter().enumerate() {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
                     let diagonal = diagonal_cells(size, *direction).collect();
@@ -159,6 +173,21 @@ impl SizedConstraintGrid {
                     }
                     thermometers.push(cells.clone());
                 }
+                SizedConstraint::Arrow { circle, cells } => {
+                    if *circle >= layout.cell_count()
+                        || !(1..=size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || cell == *circle || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    arrows.push((*circle, cells.clone()));
+                }
+                SizedConstraint::RegionSum { cells, group_by_region } => {
+                    region_sums.resize_with(index + 1, || None);
+                    region_sums[index] = Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
@@ -185,6 +214,8 @@ impl SizedConstraintGrid {
             diagonals,
             thermometers,
             renbans,
+            arrows,
+            region_sums,
             pair_links,
         })
     }
@@ -243,6 +274,23 @@ impl SizedConstraintGrid {
                 for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
+                }
+            }
+            for (circle, cells) in &self.arrows {
+                let (bulb, shaft) = arrow_masks(*circle, cells, candidates);
+                changed |= candidates[*circle] != bulb;
+                candidates[*circle] = bulb;
+                for (&cell, mask) in cells.iter().zip(shaft) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for line in self.region_sums.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                line.support(candidates, &mut supported);
+                for cell in line.cells() {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
                 }
             }
             for link in self.pair_links.iter().flatten() {
@@ -325,14 +373,12 @@ impl SizedConstraintGrid {
         limit: usize,
         singles_only: bool,
     ) -> Option<SizedConstraintHints> {
-        let house = self
-            .layout
-            .find_hints(digits, eliminations, limit, singles_only)?;
+        let candidates = self.layout.hint_candidates(digits, eliminations)?;
         if !self.permits(digits) {
             return None;
         }
         let mut choices = Vec::new();
-        let mut domains = house.candidates.clone();
+        let mut domains = candidates.clone();
         for (cell, &digit) in digits.iter().enumerate() {
             if digit != 0 {
                 domains[cell] = 1 << (digit - 1);
@@ -379,7 +425,7 @@ impl SizedConstraintGrid {
                         SizedParity::Even => 0x5555,
                     };
                     for &cell in cells {
-                        eliminations_for(cell, house.candidates[cell] & excluded, &mut actions);
+                        eliminations_for(cell, candidates[cell] & excluded, &mut actions);
                     }
                     actions.sort_unstable();
                     actions.dedup();
@@ -393,9 +439,29 @@ impl SizedConstraintGrid {
                     for &cell in cells {
                         eliminations_for(
                             cell,
-                            house.candidates[cell] & !support[cell],
+                            candidates[cell] & !support[cell],
                             &mut actions,
                         );
+                    }
+                }
+                SizedConstraint::Arrow { circle, cells } => {
+                    let (bulb, shaft) = arrow_masks(*circle, cells, &domains);
+                    if bulb == 0 {
+                        return None;
+                    }
+                    eliminations_for(*circle, candidates[*circle] & !bulb, &mut actions);
+                    for (&cell, mask) in cells.iter().zip(shaft) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::RegionSum { cells, .. } => {
+                    let line = self.region_sums[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !line.support(&domains, &mut supported) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
                 SizedConstraint::Renban { cells } => {
@@ -404,7 +470,7 @@ impl SizedConstraintGrid {
                         if mask == 0 {
                             return None;
                         }
-                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Difference { .. } => {
@@ -414,7 +480,7 @@ impl SizedConstraintGrid {
                         return None;
                     }
                     for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
-                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Kropki { .. } => {
@@ -425,7 +491,7 @@ impl SizedConstraintGrid {
                         }
                         let mut actions = Vec::new();
                         for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
-                            eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                            eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                         }
                         if !actions.is_empty() {
                             choices.push(SizedConstraintStep::Kropki { rule, pair: link.kropki_proof()?, actions });
@@ -441,17 +507,15 @@ impl SizedConstraintGrid {
             }
         }
         let remaining = limit - choices.len();
-        choices.extend(
-            house
-                .choices
-                .into_iter()
-                .take(remaining)
-                .map(|proof| SizedConstraintStep::House { proof }),
-        );
-        Some(SizedConstraintHints {
-            candidates: house.candidates,
-            choices,
-        })
+        if remaining != 0 {
+            choices.extend(
+                self.layout
+                    .hint_choices(&candidates, remaining, singles_only)?
+                    .into_iter()
+                    .map(|proof| SizedConstraintStep::House { proof }),
+            );
+        }
+        Some(SizedConstraintHints { candidates, choices })
     }
 
     pub fn trace(
@@ -627,6 +691,11 @@ impl SizedConstraintGrid {
                     self.restrict_thermometer(cells, &mut support);
                     support.contains(&0)
                 }
+                SizedConstraint::Arrow { circle, cells } => {
+                    arrow_masks(*circle, cells, &domains).0 == 0
+                }
+                SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
+                    .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
@@ -653,6 +722,9 @@ impl SizedConstraintGrid {
         if self.layout.used_digits(digits).is_none() || !self.permits(digits) {
             return (Analysis::Conflict, None);
         }
+        // Fast puzzles often finish with local rule propagation alone.
+        // Scan every house once the search has expanded several gridfuls of nodes.
+        let mut local_nodes_left = (4 * digits.len()).max(256);
         self.layout
             .search_filtered::<true>(digits, budget, limit, |digits, used, domains| {
                 for (cell, &digit) in digits.iter().enumerate() {
@@ -662,8 +734,22 @@ impl SizedConstraintGrid {
                         1 << (digit - 1)
                     };
                 }
-                self.apply_rules(digits, domains);
-                !domains.contains(&0)
+                if local_nodes_left > 0 {
+                    local_nodes_left -= 1;
+                    self.apply_rules(digits, domains);
+                    return !domains.contains(&0);
+                }
+                loop {
+                    self.apply_rules(digits, domains);
+                    if domains.contains(&0) {
+                        return false;
+                    }
+                    match self.layout.restrict_search_houses(domains) {
+                        Some(true) => {}
+                        Some(false) => return true,
+                        None => return false,
+                    }
+                }
             })
     }
 
@@ -719,11 +805,34 @@ impl SizedConstraintGrid {
                     || (u16::BITS - used.leading_zeros() - used.trailing_zeros()) as usize
                         <= cells.len()
             })
+            && self.arrows.iter().all(|(circle, cells)| {
+                let (total, empty) = cells.iter().fold((0, 0), |(total, empty), &cell| {
+                    (total + usize::from(digits[cell]), empty + usize::from(digits[cell] == 0))
+                });
+                let bulb = usize::from(digits[*circle]);
+                let max = if bulb == 0 { self.layout.size() } else { bulb };
+                total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
+            })
+            && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
                 left == 0 || right == 0 || link.constraint.permits(left, right)
             })
     }
+}
+
+fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16; MAX_SIZE]) {
+    let mut shaft = [0; MAX_SIZE];
+    let mut support = [0; MAX_SIZE];
+    for (mask, &cell) in shaft.iter_mut().zip(cells) {
+        *mask = candidates[cell];
+    }
+    // A bulb is a single digit, so sums that exceed the bitset cannot qualify.
+    let totals = u128::from(candidates[circle]) << 1;
+    let [matching] = crate::variant::sum_support_with_prefix(
+        &shaft[..cells.len()], [totals], &mut support[..cells.len()], &mut [[0]; MAX_SIZE + 1],
+    );
+    ((matching >> 1) as u16, support)
 }
 
 fn diagonal_cells(size: usize, direction: SizedDiagonal) -> impl Iterator<Item = usize> + Clone {

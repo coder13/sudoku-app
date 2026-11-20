@@ -72,7 +72,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
   return isGridText(entries, grid) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
     (draftSizedRules === undefined ? !(draft && grid.size === 6) :
-      draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid.size)) &&
+      draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
     (eliminations === undefined || validDigits(eliminations, mask)) &&

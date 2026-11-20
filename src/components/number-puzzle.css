@@ -97,7 +97,7 @@
   cursor: pointer;
 }
 
-.number-puzzle-cell[aria-pressed="true"] {
+.number-puzzle-grid:not([data-toggle-cells]) .number-puzzle-cell[aria-pressed="true"] {
   background: var(--surface-active);
   box-shadow: inset 0 0 0 2px var(--selected-border);
 }
@@ -158,21 +158,18 @@
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
-.number-puzzle-controls .keypad:not(.mini-keypad, .choice-keypad):not(:has(> :nth-child(4))) {
+.number-puzzle-controls .keypad:not(.mini-keypad):not(:has(> :nth-child(4))) {
   min-height: 0;
   aspect-ratio: 3 / 1;
   grid-template-rows: minmax(0, 1fr);
 }
 
-.controls.number-puzzle-controls .keypad-stack > .choice-keypad {
-  grid-template: minmax(44px, auto) / repeat(2, minmax(0, 1fr));
-  min-height: 0;
-  aspect-ratio: auto;
-  align-self: center;
+.number-puzzle-play .number-puzzle-controls[data-toggle-cells] .controls-content {
+  display: flex;
 }
 
-.number-puzzle-controls .choice-keypad .key {
-  font-size: .875rem;
+.number-puzzle-controls[data-toggle-cells] .side-actions {
+  display: flex;
 }
 
 .number-puzzle-status:empty { display: none; }

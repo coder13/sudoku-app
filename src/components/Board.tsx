@@ -90,7 +90,7 @@ export function Board({
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [regions])
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
-  const sizedLabels = useMemo(() => sizedRules ? sizedRuleClueLabels(sizedRules, gridSize) : undefined, [sizedRules, gridSize])
+  const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
   const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
     ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
   const algebraicLabels = useMemo(() => {
@@ -365,7 +365,7 @@ export function Board({
           ))}
         </div>
         <BoardMarks items={variantClues} />
-        {sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><SizedRuleClues rules={sizedRules} size={gridSize} /></div>}
+        {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><SizedRuleClues rules={sizedRules} size={gridSize} /></div>}
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><AlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect} />
