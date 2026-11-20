@@ -41,6 +41,19 @@ export const SixWithCombinedRules: Story = {
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
 }
+export const SevenJigsawThermometer: Story = {
+  args: {
+    grid: {
+      size: 7,
+      regions: Array.from({ length: 7 }, (_, region) => [...'0000111020011122233312223434555343456664445556666']
+        .flatMap((label, cell) => Number(label) === region ? [cell] : [])),
+    },
+    givens: '0'.repeat(49), values: '0'.repeat(49),
+    sizedRules: [{ type: 'thermometer', cells: [8, 16, 24] }],
+    selected: [24], candidates: Array.from({ length: 49 }, (_, cell) => cell === 24 ? 0b1100000 : 0),
+  },
+  decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
 export const MiniRenbanLine: Story = {
   args: {
     grid: MINI_GRID, givens: '1000000000000000', values: '1000000000000000',

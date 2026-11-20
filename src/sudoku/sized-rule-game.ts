@@ -119,14 +119,15 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
 }
 
 export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rules']) {
+  const group = 'regions' in grid ? 'region' : 'box'
   const clues = new Set<string>()
   for (const rule of rules) {
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
-      ? 'The digits on a Region Sum line have the same total in each box. All cells in the same box count together.'
-      : 'Box borders split a Region Sum line into segments with the same total. If the line returns to a box, that visit is a separate segment.')
+      ? `The digits on a Region Sum line have the same total in each ${group}. All cells in the same ${group} count together.`
+      : `${group === 'region' ? 'Region' : 'Box'} borders split a Region Sum line into segments with the same total. If the line returns to a ${group}, that visit is a separate segment.`)
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
@@ -137,5 +138,6 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
       if (rule.ratioTwo?.negative) clues.add('An unmarked edge cannot have one digit double the other.')
     }
   }
-  return [`Place each digit from 1 to ${grid.size} once in every row, column, and ${grid.boxRows} × ${grid.boxColumns} box.`, ...clues]
+  const region = 'regions' in grid ? 'region' : `${grid.boxRows} × ${grid.boxColumns} box`
+  return [`Place each digit from 1 to ${grid.size} once in every row, column, and ${region}.`, ...clues]
 }

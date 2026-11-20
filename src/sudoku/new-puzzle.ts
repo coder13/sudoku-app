@@ -4,6 +4,7 @@ import { generationVariant, isPuzzleVariantId, isVariantId, VARIANTS, type Puzzl
 
 export const MINI_NAME = 'Mini Sudoku'
 export const SIX_NAME = '6 × 6 Sudoku'
+export const SEVEN_JIGSAW_NAME = '7 × 7 Jigsaw Sudoku'
 export const SIX_RULE = 'Place each digit from 1 to 6 once in every row, column, and box.'
 export const ALGEBRAIC_CAGES_NAME = 'Algebraic Cages'
 export const ALGEBRAIC_CAGES_RULE = 'Digits in each cage are distinct and add to its total. Each letter has the same positive integer value in all its cages.'
@@ -29,12 +30,12 @@ export function isGameVariantId(value: unknown): value is GameVariantId {
 }
 
 export function gameVariantId(game: Pick<Game, 'grid' | 'variant' | 'algebraic'>): GameVariantId {
-  return game.algebraic ? 'algebraic-cages' : game.grid?.size === 6 ? 'six' : game.grid ? 'mini' : game.variant?.id ?? 'classic'
+  return game.algebraic ? 'algebraic-cages' : game.grid?.size === 6 ? 'six' : game.grid?.size === 7 ? 'jigsaw' : game.grid ? 'mini' : game.variant?.id ?? 'classic'
 }
 
 export function gameGenerationVariant(game?: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>): NewPuzzleId | undefined {
   if (game?.algebraic) return 'algebraic-cages'
-  if (game?.sized?.rules.length) return
+  if (game?.grid?.size === 7 || game?.sized?.rules.length) return
   if (game?.grid?.size === 6) return 'six'
   return game?.grid ? 'mini' : game?.variant ? generationVariant(game.variant) : 'classic'
 }

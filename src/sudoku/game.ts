@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -142,13 +142,13 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   sized?: Pick<SizedRuleGame, 'rules'>
   sizedRules?: SizedRuleGame['rules']
 }): string {
-  if (game.grid && (game.grid.size === 6 || game.sized || game.sizedRules?.length)) {
+  if (game.grid && (game.grid.size !== 4 || game.sized || game.sizedRules?.length)) {
     const rules = game.sized?.rules ?? game.sizedRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
       rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
         : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
     ))))].sort()
-    const geometry = game.grid.size === 6 ? `six:${game.grid.boxRows}` : `sized:${game.grid.size}:${game.grid.boxRows}:${game.grid.boxColumns}`
+    const geometry = sizedGridIdentity(game.grid)
     return `${geometry}:${game.givens}:${keys.join(',')}`
   }
   if (game.algebraic) {
@@ -203,7 +203,7 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
-  return (Math.floor(ar / grid.boxRows) === Math.floor(br / grid.boxRows) && Math.floor(ac / grid.boxColumns) === Math.floor(bc / grid.boxColumns)) || variantPeers(puzzle, a, b)
+  return gridRegionIndex(grid, a) === gridRegionIndex(grid, b) || variantPeers(puzzle, a, b)
 }
 
 export function valuesOf(game: Game): string {

@@ -14,7 +14,8 @@ function kropkiPairRule({ relation, negative }: SizedKropkiPair) {
     : 'Across a black dot, one digit is double the other.'
 }
 
-function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, size: number): HintChoice {
+function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, grid: SizedGrid): HintChoice {
+  const { size } = grid
   if (step.type === 'house') return miniHintChoice(step.proof)
   if (step.type === 'contradiction') return contradictionHint(rules, step, size)
   if (step.type === 'kropki') return {
@@ -45,9 +46,10 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
   } else if (rule.type === 'region-sum') {
+    const irregular = 'regions' in grid
     description = rule.groupByRegion
-      ? 'The cells on this line have the same total in each box.'
-      : 'Box borders split this line into segments with the same total.'
+      ? `The cells on this line have the same total in each ${irregular ? 'region' : 'box'}.`
+      : `${irregular ? 'Region' : 'Box'} borders split this line into segments with the same total.`
     reason = 'Remove the candidates that cannot contribute to a total shared by every part of the line.'
   } else if (rule.type === 'arrow') {
     description = 'The digits along this arrow add up to the digit in its bulb.'
@@ -130,7 +132,7 @@ export async function sizedRuleCandidates(game: SizedRuleGame, grid: SizedGrid, 
 export async function sizedRuleHintChoices(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], run = runEngine) {
   checkSizedRuleHintPosition(game, values, eliminations)
   const result = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'hints', eliminations, limit: 1024 })
-  return result && { choices: result.choices.map(step => sizedRuleHintChoice(game, step, grid.size)), candidates: result.candidates }
+  return result && { choices: result.choices.map(step => sizedRuleHintChoice(game, step, grid)), candidates: result.candidates }
 }
 
 export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGrid, givens: string): Promise<MiniSolutionTrace> {
@@ -138,7 +140,7 @@ export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGri
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
-    const choice = deduction && sizedRuleHintChoice(game, deduction, grid.size)
+    const choice = deduction && sizedRuleHintChoice(game, deduction, grid)
     if (choice) steps.push(choice)
     return {
       givens, entries: digits.map((digit, cell) => givens[cell] === '0' ? digit : 0).join(''),

@@ -8,7 +8,7 @@ import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
+import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulty, MINI_NAME, SEVEN_JIGSAW_NAME, SIX_NAME } from '../sudoku/new-puzzle'
 import { variantDifficulty, variantName } from '../sudoku/variants'
 import { usePlayerRating, usePuzzleGeneration } from './usePuzzleGeneration'
 import { ActionHistoryPanel } from './ActionHistoryPanel'
@@ -20,7 +20,7 @@ import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
-  const name = game.grid?.size === 6 ? SIX_NAME : game.grid && !game.algebraic ? MINI_NAME
+  const name = game.grid?.size === 6 ? SIX_NAME : game.grid?.size === 7 ? SEVEN_JIGSAW_NAME : game.grid && !game.algebraic ? MINI_NAME
     : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')

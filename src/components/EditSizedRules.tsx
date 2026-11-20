@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { MarkedPairs, SizedConstraintRule } from '../sudoku/engine'
-import { gridCellsShareEdge, type SizedGrid } from '../sudoku/grid'
+import { gridCellsShareEdge, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
 import { move, valuesOf, type Game } from '../sudoku/game'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
 import { roomStore } from '../sudoku/storage'
@@ -41,6 +41,7 @@ function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMark
 
 export function EditSizedRules({ game, layout, close }: { game: Game; layout: SizedGrid; close: () => void }) {
   const { size } = layout
+  const group = 'regions' in layout ? 'region' : 'box'
   const cellName = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
   const [rules] = useState(game.position.draftSizedRules ?? [])
   const [editing, setEditing] = useState(-1)
@@ -125,7 +126,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   function update(next: readonly SizedConstraintRule[]) {
     let changed = false
     roomStore.update(game.id, current => {
-      if (current.source !== 'draft' || current.grid?.size !== size || current.grid.boxRows !== layout.boxRows ||
+      if (current.source !== 'draft' || !current.grid || sizedGridIdentity(current.grid) !== sizedGridIdentity(layout) ||
         current.position.draftCages !== undefined ||
         JSON.stringify(current.position.draftSizedRules ?? []) !== JSON.stringify(rules)) return current
       changed = true
@@ -152,7 +153,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
           : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.`
-            : kind === 'region-sum' ? 'Select a path that crosses at least one box border.' : 'Select the cells for this rule.')
+            : kind === 'region-sum' ? `Select a path that crosses at least one ${group} border.` : 'Select the cells for this rule.')
       return
     }
     update(next)
@@ -187,7 +188,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               : 'Select the cells that should have a marker.'}</p>}
       {kind === 'region-sum' && <label>
         <input type="checkbox" checked={groupByRegion} onChange={event => setGroupByRegion(event.currentTarget.checked)} />
-        Count all visits to the same box together
+        Count all visits to the same {group} together
       </label>}
       {kind === 'difference' && <>
         <label htmlFor={`${id}-difference`}>Exact difference</label>

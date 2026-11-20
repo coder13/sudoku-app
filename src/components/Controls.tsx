@@ -1,3 +1,4 @@
+import type { PlayGrid } from '../sudoku/grid'
 import { PlayActionsButton } from './PlayLayout'
 import { Button, IconButton } from './Button'
 import {
@@ -39,7 +40,7 @@ type Props = {
   onDigitHighlightMatchChange?: (match: DigitHighlightMatch) => void
   hasCellSelection: boolean
   values: string
-  gridSize?: 4 | 6 | 9
+  gridSize?: PlayGrid['size']
   input: (digit: number) => void
   undo: () => void
   redo: () => void

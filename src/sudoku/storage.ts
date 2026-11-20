@@ -117,7 +117,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
         const sized = restoreSizedRuleGame(value.sized, grid, value.givens)
         if (!sized) return
         value.sized = sized
-      } else if (grid.size === 6 && !draft) return
+      } else if (value.grid && grid.size !== 4 && !draft) return
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized

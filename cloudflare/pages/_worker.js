@@ -115,22 +115,36 @@ function fields(value, required, optional = {}) {
 
 const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max
 const list = (valid, min, max = Infinity) => value => Array.isArray(value) && value.length >= min && value.length <= max && value.every(valid)
-const givens = (value, size = 9) => typeof value === 'string' && (size === 4 ? /^[0-4]{16}$/ : size === 6 ? /^[0-6]{36}$/ : /^[0-9]{81}$/).test(value)
+const givens = (value, size = 9) => typeof value === 'string' && (size === 4 ? /^[0-4]{16}$/ : size === 6 ? /^[0-6]{36}$/ : size === 7 ? /^[0-7]{49}$/ : /^[0-9]{81}$/).test(value)
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxColumns: oneOf(3) }) ||
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
-function sizedRules(value, { size, boxRows, boxColumns }) {
+const sharesGridEdge = (a, b, size) =>
+  Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
+function sevenJigsawGrid(value) {
+  const size = 7
+  if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
+    new Set(value.regions.flat()).size !== size ** 2) return false
+  return value.regions.every(part => {
+    const connected = new Set([part[0]])
+    for (const cell of connected) {
+      for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
+    }
+    return connected.size === size
+  })
+}
+const sizedGrid = value => miniGrid(value) || sixGrid(value) || sevenJigsawGrid(value)
+function sizedRules(value, { size, boxRows, boxColumns, regions }) {
   const cell = integer(0, size * size - 1)
-  const pair = value => list(cell, 2, 2)(value) &&
-    Math.abs(Math.floor(value[0] / size) - Math.floor(value[1] / size)) + Math.abs(value[0] % size - value[1] % size) === 1
+  const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
   const drawing = list(list(cell, 1, 128), 1, 128)
   const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
       segments.every(part => part.every(index => cells.includes(index))))
-  const region = cell => Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
+  const region = cell => regions ? regions.findIndex(part => part.includes(cell)) : Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
@@ -222,14 +236,14 @@ async function sharePuzzle(request, db, path) {
     if (!fields(data, {
       version: oneOf(1), title: title => typeof title === 'string' && title.trim().length > 0 && title.length <= 72,
       givens: value => givens(value, data.grid?.size),
-    }, { grid: value => miniGrid(value) || sixGrid(value), algebraic: value => data.grid?.size === 4 && algebraic(value),
-      sixRules: value => data.grid?.size === 6 && sizedRules(value, data.grid) && !Object.hasOwn(data, 'sizedRules'),
+    }, { grid: sizedGrid, algebraic: value => data.grid?.size === 4 && algebraic(value),
+      sixRules: value => sixGrid(data.grid) && sizedRules(value, data.grid) && !Object.hasOwn(data, 'sizedRules'),
       sixAuthor: value => Object.hasOwn(data, 'sixRules') && ruleAuthor(value),
-      sizedRules: value => (data.grid?.size === 4 || data.grid?.size === 6) &&
+      sizedRules: value => sizedGrid(data.grid) &&
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
-      (data.grid?.size === 6 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
+      (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }
     const id = crypto.randomUUID()

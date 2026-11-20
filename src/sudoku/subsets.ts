@@ -1,12 +1,12 @@
 import type { VariantPuzzle } from './engine.ts'
 import { candidateCount, marksOf } from './game.ts'
-import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, type PlayGrid } from './grid.ts'
 
 function containingHouses(cell: number, grid: PlayGrid, puzzle?: VariantPuzzle) {
-  const { size, boxRows, boxColumns } = grid
+  const { size } = grid
   const row = Math.floor(cell / size)
   const column = cell % size
-  const box = Math.floor(row / boxRows) * (size / boxColumns) + Math.floor(column / boxColumns)
+  const box = gridRegionIndex(grid, cell)
   const region = puzzle?.regions?.type === 'jigsaw'
     ? puzzle.regions.regions.find((region) => region.includes(cell)) ?? []
     : gridHouseCells({ box }, grid)

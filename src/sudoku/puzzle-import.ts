@@ -1,12 +1,12 @@
 import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
-import type { SizedDifferenceRule, VariantPuzzle, VariantRule } from './engine.ts'
+import type { SizedConstraintRule, SizedDifferenceRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
-import { isGridText, isMiniGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
+import { gridRegionIndex, isGridText, isMiniGrid, isSevenJigsawGrid, MINI_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
-import { closedRegionSumCells, rectangularRegionIndex, regionIndex } from './region-sum.ts'
+import { closedRegionSumCells, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
 import { readSizedRuleSudokuPad } from './sized-rule-sudoku-pad.ts'
@@ -24,8 +24,11 @@ const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid', 'givenColours',
 ])
-const FPUZZLES_FIELDS = new Set(['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage', 'killercage', 'clone', 'diagonal+', 'diagonal-'])
+const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
+const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
+const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
+const FP_JIGSAW_RULES = /^\s*(?:normal|standard) irregular 7\s*[×x]\s*7 sudoku rules apply\.\s*(?:Digits along a thermometer must strictly increase from the bulb to the end\.\s*)?$/i
 const PLAIN_MINI_RULES = /^\s*(?:normal|standard) 4\s*[×x]\s*4 sudoku rules apply[.!]?\s*$/i
 
 export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f-puzzles' | 'Puzzle link' | 'HoDoKu' | 'Text grid'
@@ -367,7 +370,7 @@ function readCoachRules(constraints: unknown, regions?: VariantPuzzle['regions']
         }
         const drawing = line.segments ?? [line.cells]
         const cells = closedRegionSumCells(line.cells, drawing, cell => grid
-          ? rectangularRegionIndex(cell, grid) : regionIndex(cell, regions))
+          ? gridRegionIndex(grid, cell) : regionIndex(cell, regions))
         rules.push({ type: 'region-sum', cells, groupByRegion: false,
           ...(line.segments || cells !== line.cells ? { segments: drawing } : {}) })
       }
@@ -504,10 +507,44 @@ function digitRuns(code: string, format: ImportFormat): ImportedPuzzle {
   return { givens: parsePuzzle(givens), format }
 }
 
-function fpCellIndex(value: unknown) {
+function fpCellIndex(value: unknown, size = 9) {
   const match = typeof value === 'string' ? /^R([1-9])C([1-9])$/i.exec(value) : null
-  if (!match) throw new Error('This f-puzzles export contains an invalid cell reference.')
-  return (Number(match[1]) - 1) * 9 + Number(match[2]) - 1
+  if (!match || Number(match[1]) > size || Number(match[2]) > size) {
+    throw new Error('This f-puzzles export contains an invalid cell reference.')
+  }
+  return (Number(match[1]) - 1) * size + Number(match[2]) - 1
+}
+
+function fromFPuzzlesJigsaw(data: Record<string, unknown>, labels: readonly unknown[], givens: string, format: ImportFormat): ImportedPuzzle {
+  const size = 7
+  const regions: number[][] = Array.from({ length: size }, () => [])
+  for (const [cell, label] of labels.entries()) {
+    if (typeof label !== 'number' || !Number.isInteger(label) || label < 0 || label >= size) {
+      throw new Error('This f-puzzles export has invalid region labels.')
+    }
+    regions[label].push(cell)
+  }
+  const grid = { size, regions }
+  if (!isSevenJigsawGrid(grid)) throw new Error('A 7 × 7 Jigsaw grid needs seven connected regions of seven cells.')
+  const rules: SizedConstraintRule[] = []
+  if (hasData(data.thermometer)) {
+    if (!Array.isArray(data.thermometer)) throw new Error('This f-puzzles export has invalid thermometers.')
+    for (const clue of data.thermometer) {
+      if (!record(clue) || Object.keys(clue).some(key => key !== 'lines') || !Array.isArray(clue.lines) || !clue.lines.length) {
+        throw new Error('This f-puzzles export has invalid thermometers.')
+      }
+      for (const path of clue.lines) {
+        if (!Array.isArray(path)) throw new Error('This f-puzzles export has an invalid thermometer path.')
+        rules.push({ type: 'thermometer', cells: path.map(cell => fpCellIndex(cell, size)) })
+      }
+    }
+  }
+  if (!isSizedRuleList(rules, grid) || (!rules.length && typeof data.ruleset === 'string' && /thermometer/i.test(data.ruleset))) {
+    throw new Error('This f-puzzles export has missing or invalid thermometers.')
+  }
+  const title = typeof data.title === 'string' ? data.title.trim().slice(0, 72) : ''
+  const author = typeof data.author === 'string' ? data.author.trim().slice(0, 72) : ''
+  return { givens, grid, format, sizedRules: rules, ...(title && { title }), ...(author && { sizedAuthor: author }) }
 }
 
 function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportedPuzzle {
@@ -515,16 +552,19 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   // f-puzzles uses LZ-String Base64. Limit compressed input before decoding it.
   const data = parseJSON(input.startsWith('{') ? input :
     /^[A-Za-z0-9+/=]{1,10000}$/.test(code) ? lzString.decompressFromBase64(code) : '', format)
-  if (!record(data) || data.size !== 4 && data.size !== 9 || !Array.isArray(data.grid) || data.grid.length !== data.size) {
-    throw new Error('Import supports 4 × 4 and 9 × 9 f-puzzles grids.')
+  if (!record(data) || data.size !== 4 && data.size !== 7 && data.size !== 9 || !Array.isArray(data.grid) || data.grid.length !== data.size) {
+    throw new Error('Import supports 4 × 4, 7 × 7 Jigsaw, and 9 × 9 f-puzzles grids.')
   }
   const size = data.size
   const mini = size === MINI_GRID.size
+  const jigsaw = size === 7
+  const fields = jigsaw ? FPUZZLES_JIGSAW_FIELDS : FPUZZLES_FIELDS
   for (const [key, value] of Object.entries(data)) {
-    if (!FPUZZLES_FIELDS.has(key) && hasData(value)) throw new Error(`This f-puzzles rule is not supported yet (${key}).`)
+    if (!fields.has(key) && hasData(value)) throw new Error(`This f-puzzles rule is not supported yet (${key}).`)
   }
   if (hasData(data.ruleset) && (typeof data.ruleset !== 'string' ||
-    !PLAIN_RULES.test(data.ruleset) && !(mini && PLAIN_MINI_RULES.test(data.ruleset)))) {
+    !PLAIN_RULES.test(data.ruleset) && !(mini && PLAIN_MINI_RULES.test(data.ruleset)) &&
+    !(jigsaw && FP_JIGSAW_RULES.test(data.ruleset)))) {
     throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
   }
   const labels: unknown[] = []
@@ -532,7 +572,7 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
   for (const row of data.grid) {
     if (!Array.isArray(row) || row.length !== size) throw new Error('This f-puzzles export has an invalid grid.')
     for (const cell of row) {
-      if (!record(cell) || (cell.given && !(mini ? /^[1-4]$/ : /^[1-9]$/).test(String(cell.value)))) {
+      if (!record(cell) || cell.given && (!/^[1-9]$/.test(String(cell.value)) || Number(cell.value) > size)) {
         throw new Error('This f-puzzles export has invalid givens.')
       }
       for (const [key, value] of Object.entries(cell)) {
@@ -541,11 +581,14 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
         }
       }
       const index = digits.length
-      const region = mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2) : standardRegion(index)
+      // On a seven-cell grid, f-puzzles omits labels for the default row regions.
+      const region = jigsaw ? Math.floor(index / size)
+        : mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2) : standardRegion(index)
       labels.push(cell.region === undefined ? region : cell.region)
       digits.push(cell.given ? String(cell.value) : '0')
     }
   }
+  if (jigsaw) return fromFPuzzlesJigsaw(data, labels, digits.join(''), format)
   if (mini) {
     if (!hasMiniBoxes(labels)) throw new Error('Mini Sudoku import requires four 2 × 2 boxes.')
     if (['killercage', 'clone', 'diagonal+', 'diagonal-'].some(key => hasData(data[key]))) {
@@ -566,8 +609,8 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
         !Array.isArray(clue.cells) || !clue.cells.length || !Array.isArray(clue.cloneCells) || clue.cells.length !== clue.cloneCells.length) {
         throw new Error('This f-puzzles export has invalid Clone clues.')
       }
-      const copies = clue.cloneCells.map(fpCellIndex)
-      const original = clue.cells.map(fpCellIndex)
+      const copies = clue.cloneCells.map(cell => fpCellIndex(cell))
+      const original = clue.cells.map(cell => fpCellIndex(cell))
       if (new Set(original).size !== original.length || new Set(copies).size !== copies.length) throw new Error('This f-puzzles export has invalid Clone clues.')
       rules.push({ type: 'clone', groups: original.map((cell, i) => [cell, copies[i]]) })
     }
@@ -578,7 +621,7 @@ function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): Importe
       if (!record(cage) || !Array.isArray(cage.cells) || !/^[0-9]{1,2}$/.test(String(cage.value))) {
         throw new Error('This f-puzzles export has a Killer cage without a valid sum.')
       }
-      return { cells: cage.cells.map(fpCellIndex), sum: Number(cage.value) }
+      return { cells: cage.cells.map(cell => fpCellIndex(cell)), sum: Number(cage.value) }
     }) })
   }
   return makeImportedPuzzle(format, digits.join(''), rules, readRegions(labels))

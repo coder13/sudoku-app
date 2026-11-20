@@ -142,7 +142,7 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
     } else if (rule.type === 'region-sum') {
       regionSumNumber++
       for (const [part, cells] of sizedRegionSumParts(rule, grid).entries()) for (const cell of cells) {
-        labels[cell].add(`Region Sum line ${regionSumNumber}, ${rule.groupByRegion ? 'box group' : 'segment'} ${part + 1}`)
+        labels[cell].add(`Region Sum line ${regionSumNumber}, ${rule.groupByRegion ? ('regions' in grid ? 'region group' : 'box group') : 'segment'} ${part + 1}`)
       }
     } else if (rule.type === 'arrow') {
       labels[rule.circle].add(`arrow bulb for ${rule.cells.map(at).join('; ')}`)
