@@ -147,6 +147,11 @@ export function gridCellsShareEdge(first: number, second: number, size: number) 
   return Math.abs(Math.floor(first / size) - Math.floor(second / size)) + Math.abs(first % size - second % size) === 1
 }
 
+export function rowColumnSumTotal([first, second]: readonly [number, number], size: number) {
+  const row = Math.floor(first / size)
+  return (row === Math.floor(second / size) ? row : first % size) + 1
+}
+
 export function kropkiDigitExclusions(rules: readonly SizedConstraintRule[], cell: number, other: number, digit: number, size: number) {
   if (!gridCellsShareEdge(cell, other, size)) return 0
   let white = false, black = false, negativeWhite = false, negativeBlack = false
@@ -192,6 +197,11 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
     if (rule.type === 'anti-sum' && gridCellsShareEdge(cell, other, size)) {
       const forbidden = rule.sum - digit
       if (forbidden >= 1 && forbidden <= size) excluded |= 1 << (forbidden - 1)
+    }
+    if (rule.type === 'row-column-sum' && rule.pairs.some(([a, b]) => a === cell && b === other || a === other && b === cell)) {
+      const partner = rowColumnSumTotal([cell, other], size) - digit
+      const allowed = partner >= 1 && partner <= size ? 1 << (partner - 1) : 0
+      excluded |= ((1 << size) - 1) & ~allowed
     }
     if (rule.type === 'renban' && cell !== other && rule.cells.includes(cell) && rule.cells.includes(other)) {
       for (let candidate = 1; candidate <= size; candidate++) {

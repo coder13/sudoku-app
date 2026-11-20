@@ -55,6 +55,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-labeled-dots': 'Difference and Ratio dots',
   'sized-difference': 'Difference',
   'sized-anti-sum': 'Anti-Sum',
+  'sized-row-column-sum': 'Row and Column Sum Diamonds',
   'sized-arrow': 'Arrow',
   'sized-double-arrow': 'Double Arrow',
   'sized-region-sum': 'Region Sum',

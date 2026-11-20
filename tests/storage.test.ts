@@ -528,6 +528,58 @@ test('switching keeps both puzzles active and explicitly filing preserves undo a
   }
 })
 
+test('leaving a newly generated puzzle can save or discard it without triggering another navigation', async () => {
+  const local = new MemoryStorage()
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?pending-save')
+    const generated = { ...makeGame('new', 'New puzzle', EMPTY, 'generated'), pendingSave: true as const }
+    roomStore.add(generated)
+    const { roomStore: reopened } = await import('../src/sudoku/storage.ts?pending-save-reload')
+    const selected: Array<string | null> = []
+    reopened.onPlay(id => selected.push(id))
+    assert.equal(reopened.getSnapshot().games.find(game => game.id === 'new')?.pendingSave, true)
+
+    reopened.resolvePendingSave('new', true)
+    const stored = JSON.parse(local.getItem('sudoku-app:v1:game:new')!)
+    assert.equal(stored.savedForLater, true)
+    assert.equal(stored.pendingSave, undefined)
+    assert.equal(reopened.getSnapshot().active, null)
+    assert.deepEqual(selected, [])
+
+    reopened.select('new')
+    reopened.resolvePendingSave('new', false)
+    assert.ok(local.getItem('sudoku-app:v1:game:new'), 'an already saved puzzle never becomes disposable again')
+
+    const second = { ...generated, id: 'second' }
+    reopened.add(second)
+    reopened.resolvePendingSave('second', false)
+    assert.equal(local.getItem('sudoku-app:v1:game:second'), null)
+    assert.deepEqual(selected, ['new', 'second'])
+
+    const third = { ...generated, id: 'third' }
+    reopened.add(third)
+    local.setItem('sudoku-app:v1:game:third', JSON.stringify(enter(third, [0], 'value', 1)))
+    reopened.resolvePendingSave('third', false)
+    assert.ok(local.getItem('sudoku-app:v1:game:third'), 'a move made in another tab protects the puzzle')
+
+    const bookmarked = { ...generated, id: 'bookmarked' }
+    reopened.add(bookmarked)
+    reopened.update(bookmarked.id, game => ({ ...game, saved: true }))
+    reopened.resolvePendingSave(bookmarked.id, false)
+    assert.ok(local.getItem('sudoku-app:v1:game:bookmarked'), 'an explicit save protects the puzzle')
+    assert.equal(reopened.getSnapshot().games.find(game => game.id === bookmarked.id)?.pendingSave, undefined)
+  } finally {
+    delete (globalThis as { window?: unknown }).window
+    delete (globalThis as { localStorage?: unknown }).localStorage
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('an untimed solve stays untimed in the library and counts toward player rating', async () => {
   const local = new MemoryStorage()
   Object.defineProperties(globalThis, {

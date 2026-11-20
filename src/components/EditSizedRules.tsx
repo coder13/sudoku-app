@@ -1,7 +1,7 @@
 import { sizedSumEndKey, sizedSumEndLabel, sizedXSumDirections } from '../sudoku/sized-linked-double-arrow'
 import { Fragment, useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { MarkedPairs, SizedConstraintRule, SizedLabeledDotsRule, SizedSumEnd } from '../sudoku/engine'
-import { gridCellsShareEdge, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
+import { gridCellsShareEdge, rowColumnSumTotal, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
 import { move, valuesOf, type Game } from '../sudoku/game'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
 import { roomStore } from '../sudoku/storage'
@@ -21,6 +21,7 @@ const ruleNames = {
   'labeled-dots': 'Labeled dots',
   difference: 'Difference marker',
   'anti-sum': 'Anti-Sum',
+  'row-column-sum': 'Row and column sum diamonds',
   arrow: 'Arrow',
   'double-arrow': 'Double Arrow',
   'linked-double-arrow': 'Double Arrow with X-Sum ends',
@@ -33,6 +34,7 @@ type RuleChoice = keyof typeof ruleNames
 const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rule.diagonal
   : rule.type === 'parity' ? rule.parity : rule.type
 
+type DiamondRule = Extract<SizedConstraintRule, { type: 'row-column-sum' }>
 type KillerRule = Extract<SizedConstraintRule, { type: 'killer-cages' }>
 
 type KropkiKind = 'consecutive' | 'ratioTwo'
@@ -42,9 +44,10 @@ const defaultLinkedEnds: readonly [SizedSumEnd, SizedSumEnd] = [
   { direction: 'south', index: 0 }, { direction: 'north', index: 0 },
 ]
 
+const emptyDiamondRule: DiamondRule = { type: 'row-column-sum', pairs: [] }
 const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
 
-function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
+function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
   if (kind === 'killer-cages') return killer
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
@@ -73,6 +76,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
   const [difference, setDifference] = useState(1)
   const [forbiddenSum, setForbiddenSum] = useState(2 * size - 1)
+  const [diamonds, setDiamonds] = useState(emptyDiamondRule)
   const [labeled, setLabeled] = useState(emptyDotLayer)
   const [dotValue, setDotValue] = useState(1)
   const [groupByRegion, setGroupByRegion] = useState(false)
@@ -96,7 +100,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   let rule: SizedConstraintRule = kind === 'linked-double-arrow'
     ? { type: kind, ends: linkedEnds, cells }
     : kind === 'anti-sum' ? { type: kind, sum: forbiddenSum }
-      : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
+      : kind === 'row-column-sum' ? diamonds
+        : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
@@ -104,12 +109,21 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   }
   const previewRule = kind === 'killer-cages' && !isSizedRuleList([...otherRules, rule], layout) ? killerLayer(cages) : rule
   const preview = isSizedRuleList([...otherRules, previewRule], layout) ? [...otherRules, previewRule] : otherRules
-  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages'
+  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum'
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
+  const markedDiamond = selectedEdge && diamonds.pairs.some(matchesEdge)
   const markedEdge = selectedEdge && marks[dotKind]?.pairs?.some(matchesEdge)
   const labeledEdge = selectedEdge && labeled.marks.find(mark => matchesEdge(mark.cells))
   const hasKropkiClues = Object.values(marks).some(mark => mark?.negative || mark?.pairs?.length)
+
+  function toggleDiamond() {
+    if (!selectedEdge) return
+    const pair = [cells[0], cells[1]] as const
+    setDiamonds({ ...diamonds, pairs: markedDiamond ? diamonds.pairs.filter(edge => !matchesEdge(edge)) : [...diamonds.pairs, pair] })
+    setCells([])
+    setError('')
+  }
 
   function selectCage(index: number) {
     const cage = cages[index]
@@ -147,6 +161,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setDotValue(previous?.type === 'labeled-dots' && previous.relation === 'ratio' ? 2 : 1)
     setDifference(previous?.type === 'difference' ? previous.difference : 1)
     setForbiddenSum(previous?.type === 'anti-sum' ? previous.sum : 2 * size - 1)
+    setDiamonds(previous?.type === 'row-column-sum' ? previous : emptyDiamondRule)
     setGroupByRegion(previous?.type === 'region-sum' && previous.groupByRegion === true)
     setActive(selected[0] ?? 0)
     setError('')
@@ -157,7 +172,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setError('')
     setCells(current => {
       if (current.includes(cell)) return current.filter(item => item !== cell)
-      if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots') && current.length === 2) return [cell]
+      if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots' || kind === 'row-column-sum') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
       if (kind === 'double-arrow' && current.length === 2 * size + 2) return current
@@ -220,6 +235,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       return
     }
     if (!isSizedRuleList(next, layout)) {
+      if (kind === 'row-column-sum') {
+        setError('Add a diamond or require an unmarked edge.')
+        return
+      }
       if (kind === 'linked-double-arrow') {
         setError('Choose two different end circles, including an outside X-Sum, and select the line cells.')
         return
@@ -247,7 +266,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
           {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
-          {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{rule.type === 'anti-sum' ? ` (${rule.sum})` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
+          {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{rule.type === 'anti-sum' ? ` (${rule.sum})` : ''}{rule.type === 'row-column-sum' && rule.pairs.length ? ` · ${rule.pairs.length}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
@@ -262,6 +281,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setDotKind('consecutive')
         setDifference(1)
         setForbiddenSum(2 * size - 1)
+        setDiamonds(emptyDiamondRule)
         setLabeled(emptyDotLayer)
         setDotValue(1)
         setGroupByRegion(false)
@@ -319,6 +339,20 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         <input type="checkbox" checked={groupByRegion} onChange={event => setGroupByRegion(event.currentTarget.checked)} />
         Count all visits to the same {group} together
       </label>}
+      {kind === 'row-column-sum' && <>
+        <p id={`${id}-instructions`}>Select two cells that share an edge. The diamond total is their row number across or their column number down.</p>
+        <Button type="button" disabled={!selectedEdge} onClick={toggleDiamond}>
+          {markedDiamond ? 'Remove diamond' : 'Add diamond'}
+        </Button>
+        {selectedEdge && <p aria-live="polite">Diamond total {rowColumnSumTotal([cells[0], cells[1]], size)}</p>}
+        <label>
+          <input type="checkbox" checked={diamonds.requireUnmarked ?? false} onChange={event => {
+            setDiamonds({ ...diamonds, requireUnmarked: event.currentTarget.checked })
+            setError('')
+          }} />
+          At least one unmarked edge must also meet its row or column sum
+        </label>
+      </>}
       {kind === 'anti-sum' && <>
         <label htmlFor={`${id}-forbidden-sum`}>Forbidden sum</label>
         <SelectControl id={`${id}-forbidden-sum`} value={forbiddenSum} onChange={event => {

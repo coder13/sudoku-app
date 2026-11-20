@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
-import { generateCalcudoku, calcudokuRecipeKey, calcudokuRecipeSignature } from '../src/calcudoku/generator.ts'
+import {
+  calcudokuCandidateSignatures, generateCalcudoku, calcudokuRecipeKey, calcudokuRecipeSignature,
+} from '../src/calcudoku/generator.ts'
 import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 import { findKakuroRecipes, generateKakuro, kakuroLayouts, kakuroRecipeFromPuzzle, kakuroRecipeSignature } from '../src/kakuro/generator.ts'
 import { checkKakuro, findKakuroHint, solveKakuro } from '../src/kakuro/engine.ts'
@@ -11,7 +13,7 @@ import {
   calcudokuFromRecipe, decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, generatedNumberToken,
   kakuroFromRecipe, RECENT_GENERATED_PUZZLE_LIMIT,
 } from '../src/number-puzzles/generated.ts'
-import { generateNumberPuzzle } from '../src/number-puzzles/generation.ts'
+import { generateNumberPuzzle, selectCalcudokuPlay } from '../src/number-puzzles/generation.ts'
 import { seededIndex, shuffled } from '../src/number-puzzles/generation-random.ts'
 
 test('Kakuro generation avoids previous recipes and rates the full hint replay', () => {
@@ -234,6 +236,26 @@ test('Calcudoku retries and gives exact replays fresh links outside the recent l
     assert.equal(previous.includes(legacy), replay)
 
     const request = { game, difficulty, seed, previous } as const
+    const candidates = new Set([
+      ...calcudokuCandidateSignatures(difficulty, seed),
+      ...calcudokuCandidateSignatures(difficulty, retrySeed),
+    ])
+    const recent = new Map<string, number>()
+    const indexedSignatures = new Set<string>()
+    const indexedRecipes = new Set<string>()
+    for (const [index, token] of previous.entries()) {
+      const board = decodeGeneratedNumberPuzzle(token, game)
+      assert.ok(board)
+      const signature = calcudokuRecipeSignature(board.recipe)
+      if (index >= previous.length - RECENT_GENERATED_PUZZLE_LIMIT) recent.set(signature, index)
+      if (!candidates.has(signature)) continue
+      indexedSignatures.add(signature)
+      indexedRecipes.add(calcudokuRecipeKey(board.recipe))
+    }
+    assert.deepEqual(selectCalcudokuPlay(request, recent, {
+      signatures: indexedSignatures, recipes: indexedRecipes,
+    }).recipe, expected)
+
     const token = generateNumberPuzzle(request)
     assert.ok(token && generatedNumberToken(token))
     assert.ok(!previous.includes(token))

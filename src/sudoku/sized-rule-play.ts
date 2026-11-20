@@ -2,10 +2,10 @@ import { linkedDoubleArrowCells } from './sized-linked-double-arrow.ts'
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
-import { gridDiagonalCells, type SizedGrid } from './grid.ts'
+import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -32,7 +32,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   const rule = rules[index]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
-  const cells = step.type === 'anti-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
+  const cells = step.type === 'anti-sum' || step.type === 'row-column-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
@@ -74,6 +74,14 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
     reason = 'Remove candidates that cannot contribute to a shared total while keeping different digits in cells that share a house.'
+  } else if (step.type === 'row-column-sum') {
+    const [a, b] = step.cells
+    const unit = b - a === 1 ? 'row' : 'column'
+    const total = rowColumnSumTotal(step.cells, size)
+    description = step.unmarked
+      ? `This is the only edge without a diamond that can still meet the required ${unit} sum of ${total}.`
+      : `Across this diamond, the two digits add to ${unit} number ${total}.`
+    reason = 'Remove each candidate that has no different partner with that sum.'
   } else if (rule.type === 'anti-sum') {
     const [first, second] = cells
     const shared = second - first === 1 ? `row ${Math.floor(first / size) + 1}` : `column ${first % size + 1}`
@@ -133,6 +141,14 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     if (cage) locations.push(...cage.cells)
     conflict = cage ? `The cage at ${reference(Math.min(...cage.cells))} cannot reach ${cage.sum} with different digits.`
       : 'A cage cannot reach its total with different digits.'
+  } else if (failure.type === 'row-column-sum') {
+    if (failure.cells) {
+      locations.push(...failure.cells)
+      const total = rowColumnSumTotal(failure.cells, size)
+      conflict = `No pair of different digits across the diamond at ${reference(failure.cells[0])} and ${reference(failure.cells[1])} can add to ${total}.`
+    } else {
+      conflict = 'No unmarked edge can reach its row or column sum.'
+    }
   } else if (failure.type === 'anti-sum') {
     const rule = rules[failure.rule]
     locations.push(...failure.cells)
