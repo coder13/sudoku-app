@@ -17,6 +17,7 @@ import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
 import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
+import type { SudokuMode } from './custom-modes.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
@@ -52,6 +53,7 @@ export type Game = {
   grid?: SizedGrid
   algebraic?: AlgebraicGame
   sized?: SizedRuleGame
+  customMode?: Pick<SudokuMode, 'name' | 'rules'>
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
@@ -124,6 +126,7 @@ export function restartGame(game: Game): Game {
     variant: game.variant,
     algebraic: game.algebraic,
     sized: game.sized,
+    customMode: game.customMode,
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {

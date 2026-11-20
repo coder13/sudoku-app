@@ -1,3 +1,4 @@
+import { readCustomModeDefinition } from './custom-modes.ts'
 import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
@@ -138,6 +139,11 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.pendingSave !== true || !shouldOfferPuzzleSave(value)) delete value.pendingSave
+      if (value.customMode !== undefined) {
+        const definition = value.source === 'generated' && value.variant ? readCustomModeDefinition(value.customMode) : undefined
+        if (definition) value.customMode = definition
+        else delete value.customMode
+      }
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||

@@ -2004,6 +2004,42 @@ svg { flex-shrink: 0; }
 .main-menu-section > header { display: grid; gap: 3px; }
 .new-puzzle-step { width: min(100%, 520px); }
 .new-puzzle-step .button { min-height: 44px; }
+.sudoku-mode-list { display: grid; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
+.sudoku-mode-list li { display: flex; align-items: center; gap: var(--space-8); }
+.sudoku-mode-list li > a:first-child {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: inherit;
+  text-decoration: none;
+  font-weight: 650;
+}
+.sudoku-mode-list li > a:first-child > span:not(.variant-preview) { flex: 1; overflow-wrap: anywhere; }
+.sudoku-mode-list li > a:first-child > svg:last-child { flex: none; }
+.sudoku-mode-list li > a:first-child:hover { background: var(--selected-bg); }
+.sudoku-sized-modes > summary { cursor: pointer; padding-block: var(--space-8); font-weight: 650; }
+.sudoku-mode-form, .sudoku-saved-modes { display: grid; gap: var(--space-12); }
+.sudoku-selected-rules, .sudoku-mode-note { color: var(--muted); }
+.sudoku-custom-rule-list { display: grid; margin: 0; padding: 0; border: 0; }
+.sudoku-custom-rule-list legend { font-weight: 700; margin-bottom: var(--space-6); }
+.sudoku-custom-rule-list label, .sudoku-pin-mode {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-8) 0;
+  cursor: pointer;
+}
+.sudoku-custom-rule-list label { border-bottom: 1px solid var(--border); }
+.sudoku-custom-rule-list input, .sudoku-pin-mode input { flex: none; margin-top: .3em; }
+.sudoku-custom-rule-list span { display: grid; gap: var(--space-4); }
+.sudoku-custom-rule-list small { color: var(--muted); }
 .new-puzzle-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));

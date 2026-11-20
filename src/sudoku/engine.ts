@@ -743,9 +743,10 @@ function closeConnection(connection: EngineConnection, error: Error) {
   connection.pending.clear()
 }
 
-type WorkerOptions = { interactive?: boolean; background?: boolean }
+type WorkerOptions = { interactive?: boolean; background?: boolean; generation?: boolean }
 
 function connectionFor(request: EngineRequest, options: WorkerOptions) {
+  if (options.generation) return generationEngine
   switch (request.type) {
     case 'generate':
     case 'generate-mini':

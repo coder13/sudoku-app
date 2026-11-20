@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { Link } from '@tanstack/react-router'
 import { createPortal } from 'react-dom'
 import { ArrowRight, CircleCheck } from 'lucide-react'
+import { customDifficulties } from '../sudoku/custom-modes'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import type { CellReferenceStyle } from '../sudoku/hints'
@@ -62,7 +63,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
   const boxRows = game.grid?.size === 6 || game.grid?.size === 8 ? game.grid.boxRows : undefined
-  const needsChoice = !inCollection && !recipe
+  const needsChoice = !inCollection && !recipe && !game.customMode
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
@@ -70,7 +71,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const pairedActions = Boolean(nextActive && !inCollection)
   const sizedRecipe = isSizedPuzzleId(recipe)
   const difficultyPreference = game.difficulty ?? preferredDifficulty
-  const nextDifficulty = sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
+  const nextDifficulty = game.customMode ? customDifficulties.find(level => level === difficultyPreference) ?? 'medium'
+    : sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
   const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
   const nextLabel = needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
   const result = results.get(game.id)
@@ -101,8 +103,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows })
-  }, [canPlayNext, inCollection, needsChoice, game.id, recipe, ruleset, boxRows, generate, onChooseVariant, online, nextDifficulty])
+    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows, customMode: game.customMode })
+  }, [canPlayNext, inCollection, needsChoice, game.id, game.customMode, recipe, ruleset, boxRows, generate, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

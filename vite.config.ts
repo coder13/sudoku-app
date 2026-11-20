@@ -67,6 +67,7 @@ function prerenderPages() {
     '/shortcuts',
     '/puzzles/browse',
     '/puzzles/new',
+    '/puzzles/new/custom',
     '/puzzles/new/difficulty',
     '/puzzles/games',
     '/puzzles/calcudoku',

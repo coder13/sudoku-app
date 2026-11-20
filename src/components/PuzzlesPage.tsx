@@ -6,8 +6,12 @@ import { ArrowRight, BarChart3, CalendarRange, Check, ChevronLeft, ChevronRight,
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
-import { formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
+import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
+import {
+  coreModeLimit, coreSudokuModes, customDifficulties, customRuleIds, customRules, readSudokuModes, writeSudokuModes,
+  type CustomDifficulty, type CustomRule, type SudokuMode,
+} from '../sudoku/custom-modes'
 import { techniqueLabel } from '../sudoku/hints'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
@@ -164,6 +168,141 @@ function PuzzleLibrary({ games, active, manage, loading }: {
   </div>
 }
 
+function CoreSudokuChooser({ modes, onCreate }: { modes: readonly SudokuMode[]; onCreate: () => void }) {
+  const sizedModes = [
+    ['mini', MINI_NAME], ['jigsaw-five', FIVE_JIGSAW_NAME], ['six', SIX_NAME],
+    ['jigsaw-seven', SEVEN_JIGSAW_NAME], ['eight', EIGHT_NAME], ['algebraic-cages', ALGEBRAIC_CAGES_NAME],
+  ] as const
+  return <section className="main-menu-section new-puzzle-step sudoku-mode-chooser" aria-labelledby="puzzles-page-title">
+    <ul className="sudoku-mode-list">
+      {coreSudokuModes.map(variant => <li key={variant}>
+        <Link to="/puzzles/new/difficulty" search={{ variant }} state={{ fromPuzzleVariantPicker: true }}>
+          <VariantPreview variant={variant} />
+          <span>{variant === 'diagonal' ? 'X Sudoku' : VARIANTS[variant].name}</span>
+          <ChevronRight size={18} aria-hidden="true" />
+        </Link>
+      </li>)}
+      {modes.filter(mode => mode.pinned).map(mode => <li key={mode.id}>
+        <Link to="/puzzles/new/difficulty" search={{ mode: mode.id }} state={{ fromPuzzleVariantPicker: true }}>
+          <Grid3X3 size={20} aria-hidden="true" /><span>{mode.name}</span><ChevronRight size={18} aria-hidden="true" />
+        </Link>
+      </li>)}
+    </ul>
+    <Link className={buttonClassName('primary')} to="/puzzles/new/custom" state={{ fromPuzzleVariantPicker: true }}>
+      <PencilLine size={18} aria-hidden="true" />Custom Sudoku
+    </Link>
+    <details className="sudoku-sized-modes">
+      <summary>Other grid sizes</summary>
+      <ul className="sudoku-mode-list">
+        {sizedModes.map(([variant, name]) => <li key={variant}>
+          <Link to="/puzzles/new" search={{ variant }}><VariantPreview variant={variant} /><span>{name}</span><ChevronRight size={18} aria-hidden="true" /></Link>
+        </li>)}
+      </ul>
+    </details>
+    <div className="new-puzzle-actions">
+      <Button onClick={onCreate}><PencilLine size={18} aria-hidden="true" />Create puzzle</Button>
+      <Link className={buttonClassName()} to="/import"><FileUp size={18} aria-hidden="true" />Import puzzle</Link>
+    </div>
+    <Link to="/puzzles/games" state={{ fromSudokuVariant: true }} className={buttonClassName('quiet')}>Change game type</Link>
+  </section>
+}
+
+function CustomDifficultyField({ value, disabled, onChange }: { value: CustomDifficulty; disabled: boolean; onChange: (value: CustomDifficulty) => void }) {
+  return <label className="dialog-form">Difficulty
+    <SelectControl value={value} disabled={disabled} onChange={event => {
+      const level = customDifficulties.find(item => item === event.currentTarget.value)
+      if (level) onChange(level)
+    }}>
+      {customDifficulties.map(level => <option key={level} value={level}>{DIFFICULTY_LABELS[level]}</option>)}
+    </SelectControl>
+  </label>
+}
+
+function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: readonly SudokuMode[]; onSave: (mode: SudokuMode) => void }) {
+  const { busy, error, generate } = usePuzzleGeneration()
+  const [name, setName] = useState(mode?.name ?? '')
+  const [rules, setRules] = useState<readonly CustomRule[]>(mode?.rules ?? [])
+  const [filter, setFilter] = useState('')
+  const [level, setLevel] = useState<CustomDifficulty>('medium')
+  const modeId = useRef(mode?.id)
+  const canPin = modes.filter(saved => saved.pinned && saved.id !== modeId.current).length < coreModeLimit - coreSudokuModes.length
+  const [pinned, setPinned] = useState(mode?.pinned ?? canPin)
+  const [savedMessage, setSavedMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const query = filter.trim().toLowerCase()
+  const visible = customRuleIds.filter(rule => customRules[rule].name.toLowerCase().includes(query))
+
+  function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!name.trim() || !rules.length) return
+    try {
+      modeId.current ??= createGameId()
+      onSave({ id: modeId.current, name: name.trim(), rules, pinned: pinned && canPin })
+      setSavedMessage(pinned && canPin ? 'Mode saved to core modes.' : 'Mode saved.')
+      setSaveError('')
+    } catch {
+      setSaveError('Could not save this mode on this device.')
+      setSavedMessage('')
+    }
+  }
+  return <section className="main-menu-section new-puzzle-step sudoku-mode-builder" aria-labelledby="puzzles-page-title">
+    {modes.length > 0 && <section className="sudoku-saved-modes">
+      <h2>Saved modes</h2>
+      <ul className="sudoku-mode-list">
+        {modes.map(saved => <li key={saved.id}>
+          <Link to="/puzzles/new/difficulty" search={{ mode: saved.id }} state={{ fromPuzzleVariantPicker: true }}><span>{saved.name}</span><ChevronRight size={18} aria-hidden="true" /></Link>
+          <Link to="/puzzles/new/custom" search={{ mode: saved.id }} state={{ fromPuzzleVariantPicker: true }} className={buttonClassName('quiet')} aria-label={`Edit ${saved.name}`}>Edit</Link>
+        </li>)}
+      </ul>
+    </section>}
+    <form className="sudoku-mode-form" onSubmit={save}>
+      <label className="dialog-form">Mode name
+        <input value={name} maxLength={48} onChange={event => { setName(event.currentTarget.value); setSavedMessage('') }} />
+      </label>
+      <div className="sudoku-selected-rules" aria-live="polite">{rules.length
+        ? rules.map(rule => customRules[rule].name).join(' · ') : 'Choose rules for your puzzle.'}</div>
+      <label className="dialog-form">Find a rule
+        <input type="search" value={filter} onChange={event => setFilter(event.currentTarget.value)} />
+      </label>
+      <fieldset className="sudoku-custom-rule-list" disabled={busy}>
+        <legend>Rules</legend>
+        {visible.length ? visible.map(rule => <label key={rule}>
+          <input type="checkbox" checked={rules.includes(rule)} onChange={event => {
+            setRules(event.currentTarget.checked ? [...rules, rule] : rules.filter(item => item !== rule))
+            setSavedMessage('')
+          }} />
+          <span><strong>{customRules[rule].name}</strong><small>{customRules[rule].rule}</small></span>
+        </label>) : <p>No rules match your search.</p>}
+      </fieldset>
+      <label className="sudoku-pin-mode">
+        <input type="checkbox" checked={pinned && canPin} disabled={busy || !canPin}
+          onChange={event => { setPinned(event.currentTarget.checked); setSavedMessage('') }} />
+        Show in core modes
+      </label>
+      {!canPin && <p className="sudoku-mode-note">Core modes are full. Unpin a saved mode to make room.</p>}
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
+      {savedMessage && <p role="status">{savedMessage}</p>}
+      <Button type="submit" disabled={busy || !name.trim() || !rules.length}>Save mode</Button>
+      <CustomDifficultyField value={level} disabled={busy} onChange={setLevel} />
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <Button type="button" variant="primary" disabled={busy || !rules.length} onClick={() => void generate(level, undefined, 'classic', {
+        customMode: { name: name.trim() || 'Custom Sudoku', rules },
+      })}><Dices size={18} aria-hidden="true" />{busy ? 'Generating…' : 'Generate puzzle'}</Button>
+    </form>
+  </section>
+}
+
+function CustomModeDifficulty({ mode }: { mode: SudokuMode }) {
+  const [level, setLevel] = useState<CustomDifficulty>('medium')
+  const { busy, error, generate } = usePuzzleGeneration()
+  return <PuzzleDifficultyStep name={mode.name} preview={<Grid3X3 size={28} aria-hidden="true" />} busy={busy} error={error}
+    startLabel={`Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
+    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules } })}>
+    <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
+    <CustomDifficultyField value={level} disabled={busy} onChange={setLevel} />
+  </PuzzleDifficultyStep>
+}
+
 function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
@@ -171,7 +310,9 @@ function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
   onCreate: (variant: NewPuzzleId, boxRows?: RectangularBoxRows) => void
 }) {
   const navigate = useNavigate()
-  const index = newPuzzleVariants.indexOf(variant)
+  const choices: readonly NewPuzzleId[] = isSizedPuzzleId(variant) ? newPuzzleVariants.filter(isSizedPuzzleId)
+    : coreSudokuModes.some(mode => mode === variant) ? coreSudokuModes : [...coreSudokuModes, variant]
+  const index = choices.indexOf(variant)
   const rectangularSize = rectangularPuzzleSize(variant)
   const { name, rule } = variant === 'mini' ? { name: MINI_NAME, rule: MINI_RULE }
     : variant === 'six' ? { name: SIX_NAME, rule: SIX_RULE }
@@ -181,8 +322,8 @@ function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
     : variant === 'algebraic-cages' ? { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE } : VARIANTS[variant]
 
   function browse(direction: number) {
-    const count = newPuzzleVariants.length
-    const next = newPuzzleVariants[(index + direction + count) % count]
+    const count = choices.length
+    const next = choices[(index + direction + count) % count]
     void navigate({ to: '/puzzles/new', search: { variant: next }, replace: true, resetScroll: false, viewTransition: false })
   }
 
@@ -201,7 +342,7 @@ function NewPuzzleVariant({ variant, ruleset, boxRows, onCreate }: {
         <ChevronRight size={22} aria-hidden="true" />
       </IconButton>
       <div className="new-puzzle-variant-copy" aria-live="polite" aria-atomic="true">
-        <div><h2>{name}</h2><small>{index + 1} of {newPuzzleVariants.length}</small></div>
+        <div><h2>{name}</h2><small>{index + 1} of {choices.length}</small></div>
         <p>{rule}</p>
       </div>
     </div>
@@ -252,7 +393,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
     void generate(selected, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
-  const name = preset?.name ?? (variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'eight' ? EIGHT_NAME : variant === 'jigsaw-five' ? FIVE_JIGSAW_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
+  const name = preset?.name ?? (variant === 'diagonal' ? 'X Sudoku' : variant === 'mini' ? MINI_NAME : variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME : variant === 'six' ? SIX_NAME : variant === 'eight' ? EIGHT_NAME : variant === 'jigsaw-five' ? FIVE_JIGSAW_NAME : variant === 'jigsaw-seven' ? SEVEN_JIGSAW_NAME : VARIANTS[variant].name)
   const rectangularSize = rectangularPuzzleSize(variant)
   const layout = rectangularSize ? rectangularGridForBoxRows(rectangularSize, boxRows) : undefined
   return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
@@ -333,7 +474,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const managing = games.find((game) => game.id === managingId)
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
   const difficultyScreen = routeId === '/puzzles/new/difficulty'
-  const section = difficultyScreen ? 'new'
+  const customScreen = routeId === '/puzzles/new/custom'
+  const section = difficultyScreen || customScreen ? 'new'
     : (Object.keys(puzzleSections) as PuzzleSection[]).find((id) => puzzleSections[id].to === routeId) ?? 'puzzles'
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
@@ -341,13 +483,25 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
-  const screen = section === 'new' ? difficultyScreen ? 'difficulty' : 'variant' : undefined
+  const [modes, setModes] = useState<readonly SudokuMode[]>([])
+  useEffect(() => { setModes(readSudokuModes()) }, [])
+  const mode = modes.find(item => item.id === newPuzzleSearch?.mode)
+  const screen = section === 'new' ? difficultyScreen ? 'difficulty' : customScreen ? 'custom' : 'variant' : undefined
+  function saveMode(saved: SudokuMode) {
+    const current = readSudokuModes()
+    const pinCount = current.filter(item => item.pinned && item.id !== saved.id).length
+    const mode = { ...saved, pinned: saved.pinned && pinCount < coreModeLimit - coreSudokuModes.length }
+    const next = current.some(item => item.id === mode.id) ? current.map(item => item.id === mode.id ? mode : item) : [...current, mode]
+    writeSudokuModes(next)
+    setModes(next)
+  }
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const ruleset = isSizedPuzzleId(variant) ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? newPuzzlePreference.ruleset)?.id
   const boxRows = rectangularBoxRows(variant, newPuzzleSearch?.boxRows ?? newPuzzlePreference.boxRows)
     ?? (rectangularPuzzleSize(variant) ? 2 : undefined)
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
-    : screen === 'variant' ? 'Choose a variant'
+    : screen === 'custom' ? 'Custom Sudoku'
+      : screen === 'variant' ? newPuzzleSearch?.variant ? 'Choose a variant' : 'Choose a Sudoku mode'
       : section === 'puzzles' ? 'Puzzles'
         : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? puzzleSections[section].label
 
@@ -367,6 +521,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
       games={games} />
     if (current === 'new') {
       if (!preferencesReady) return <p className="main-menu-empty" role="status">Loading…</p>
+      if (customScreen) return <CustomModeBuilder key={mode?.id ?? 'new'} mode={mode} modes={modes} onSave={saveMode} />
+      if (difficultyScreen && newPuzzleSearch?.mode) return mode
+        ? <CustomModeDifficulty key={mode.id} mode={mode} />
+        : <Link to="/puzzles/new/custom" className={buttonClassName('primary')}>Open saved modes</Link>
+      if (!difficultyScreen && !newPuzzleSearch?.variant) return <CoreSudokuChooser modes={modes} onCreate={() => onCreatePuzzle('classic')} />
       return difficultyScreen
         ? <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} boxRows={boxRows} difficulty={newPuzzlePreference.difficulty} save={savePuzzlePreference} />
         : <NewPuzzleVariant variant={variant} ruleset={ruleset} boxRows={boxRows} onCreate={onCreatePuzzle} />
@@ -382,10 +541,10 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
           className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
             : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
-          : difficultyScreen ? (fromVariantPicker && canGoBack
-            ? <IconButton className="puzzles-back" aria-label="Back to variant" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
-            : <Link to="/puzzles/new" search={{ variant, ruleset, boxRows }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
-              aria-label="Back to variant"><ChevronLeft size={21} /></Link>)
+          : difficultyScreen || customScreen ? (fromVariantPicker && canGoBack
+            ? <IconButton className="puzzles-back" aria-label="Back to Sudoku modes" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
+            : <Link to="/puzzles/new" search={customScreen || newPuzzleSearch?.mode ? {} : { variant, ruleset, boxRows }} replace className={iconButtonClassName('secondary', 'puzzles-back')}
+              aria-label="Back to Sudoku modes"><ChevronLeft size={21} /></Link>)
             : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
       </header>
