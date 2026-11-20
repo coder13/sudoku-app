@@ -11,23 +11,27 @@ type GeneratedKakuro = { game: 'kakuro'; difficulty: NumberPuzzleDifficulty; rec
 type GeneratedCalcudoku = { game: 'calcudoku'; difficulty: NumberPuzzleDifficulty; recipe: CalcudokuRecipe }
 export type GeneratedNumberPuzzle = GeneratedKakuro | GeneratedCalcudoku
 
-const tokenPattern = /^v1\.[A-Za-z0-9_-]{1,1800}$/
+const tokenPattern = /^(?:v1\.[A-Za-z0-9_-]{1,1800}|v2\.[A-Za-z0-9_-]{1,1800}\.[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/
 
 export function generatedNumberToken(value: unknown): string | undefined {
   return typeof value === 'string' && tokenPattern.test(value) ? value : undefined
 }
 
-export function encodeGeneratedNumberPuzzle(puzzle: GeneratedNumberPuzzle): string {
+export function encodeGeneratedNumberPuzzle(puzzle: GeneratedNumberPuzzle, playId?: string): string {
   const { game, difficulty, recipe } = puzzle
-  return 'v1.' + btoa(JSON.stringify([game, difficulty, recipe])).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  const payload = btoa(JSON.stringify([game, difficulty, recipe])).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  if (game === 'calcudoku' && playId) return `v2.${payload}.${playId}`
+  return `v1.${payload}`
 }
 
 export function decodeGeneratedNumberPuzzle(token: string, game: 'kakuro'): GeneratedKakuro | null
 export function decodeGeneratedNumberPuzzle(token: string, game: 'calcudoku'): GeneratedCalcudoku | null
 export function decodeGeneratedNumberPuzzle(token: string, game: GeneratedNumberGame): GeneratedNumberPuzzle | null {
   if (!generatedNumberToken(token)) return null
+  const [version, encoded] = token.split('.', 2)
+  if (version === 'v2' && game !== 'calcudoku') return null
   try {
-    const payload: unknown = JSON.parse(atob(token.slice(3).replaceAll('-', '+').replaceAll('_', '/')))
+    const payload: unknown = JSON.parse(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')))
     if (!Array.isArray(payload) || payload.length !== 3 || payload[0] !== game) return null
     const difficulty = numberPuzzleDifficulties.find(value => value === payload[1])
     if (!difficulty) return null

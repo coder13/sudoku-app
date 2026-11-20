@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { calcudokuCatalog } from '../src/calcudoku/catalog.ts'
 import { generateCalcudoku, calcudokuRecipeKey, calcudokuRecipeSignature } from '../src/calcudoku/generator.ts'
 import { generateKakuro, kakuroRecipeSignature } from '../src/kakuro/generator.ts'
 import { checkKakuro, findKakuroHint, solveKakuro } from '../src/kakuro/engine.ts'
 import { checkLatin, findLatinHint, solveLatin } from '../src/latin/engine.ts'
 import { numberPuzzleDifficulties } from '../src/number-puzzles/catalog.ts'
-import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, kakuroFromRecipe } from '../src/number-puzzles/generated.ts'
+import {
+  calcudokuFromRecipe, decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, generatedNumberToken,
+  kakuroFromRecipe, RECENT_GENERATED_PUZZLE_LIMIT,
+} from '../src/number-puzzles/generated.ts'
+import { generateNumberPuzzle } from '../src/number-puzzles/generation.ts'
 
 test('Kakuro generation avoids previous recipes and rates the full hint replay', () => {
   for (const difficulty of numberPuzzleDifficulties) {
@@ -137,8 +142,96 @@ test('Calcudoku prefers unseen boards and can reuse older boards after the searc
   assert.equal(generateCalcudoku('easy', seed, signatures, history), null)
 })
 
+test('Calcudoku retries and gives exact replays fresh links outside the recent layouts', () => {
+  const game = 'calcudoku'
+  const difficulty = 'easy'
+  const seed = 7499330
+  const catalog = new Set(calcudokuCatalog.filter(entry => entry.difficulty === difficulty)
+    .map(({ puzzle }) => calcudokuRecipeSignature(puzzle)))
+  const retrySeed = (seed ^ 0x9e3779b1) >>> 0
+
+  for (const replay of [false, true]) {
+    const signatures = new Set<string>()
+    const recipes = new Set<string>()
+    const history = { signatures, recipes }
+    const previous: string[] = []
+    const remember = (recipe: NonNullable<ReturnType<typeof generateCalcudoku>>) => {
+      const signature = calcudokuRecipeSignature(recipe)
+      signatures.add(signature)
+      recipes.add(calcudokuRecipeKey(recipe))
+      previous.push(encodeGeneratedNumberPuzzle({ game, difficulty, recipe }))
+      return signature
+    }
+    for (const blockedSeed of replay ? [seed, retrySeed] : [seed]) {
+      while (true) {
+        const recipe = generateCalcudoku(difficulty, blockedSeed, catalog, history)
+        if (!recipe) break
+        remember(recipe)
+      }
+    }
+
+    const excluded = new Set(catalog)
+    for (let i = 0; i < RECENT_GENERATED_PUZZLE_LIMIT; i++) {
+      const filler = generateCalcudoku(difficulty, Math.imul(i + 1, 0x45d9f3b), new Set([...catalog, ...signatures]))
+      assert.ok(filler)
+      excluded.add(remember(filler))
+    }
+    assert.equal(generateCalcudoku(difficulty, seed, excluded, history), null)
+    const retry = generateCalcudoku(difficulty, retrySeed, excluded, history)
+    if (replay) assert.equal(retry, null)
+    const expected = replay ? generateCalcudoku(difficulty, seed, excluded) : retry
+    assert.ok(expected)
+    const legacy = encodeGeneratedNumberPuzzle({ game, difficulty, recipe: expected })
+    assert.equal(previous.includes(legacy), replay)
+
+    const request = { game, difficulty, seed, previous } as const
+    const token = generateNumberPuzzle(request)
+    assert.ok(token && generatedNumberToken(token))
+    assert.ok(!previous.includes(token))
+    assert.notEqual(generateNumberPuzzle(request), token)
+    assert.equal(decodeGeneratedNumberPuzzle(token, 'kakuro'), null)
+    assert.deepEqual(decodeGeneratedNumberPuzzle(token, game), { game, difficulty, recipe: expected })
+    assert.ok(!excluded.has(calcudokuRecipeSignature(expected)))
+    assert.equal(solveLatin(calcudokuFromRecipe(expected), [], 1).status, 'unique')
+  }
+})
+
+test('Calcudoku can use an older saved board or the catalog when all search attempts miss', () => {
+  const game = 'calcudoku'
+  const difficulty = 'easy'
+  const seed = 7499330
+  const catalog = calcudokuCatalog.filter(entry => entry.difficulty === difficulty)
+  const recent = new Set(catalog.map(({ puzzle }) => calcudokuRecipeSignature(puzzle)))
+  const previous = catalog.map(({ puzzle: { size, cages } }) =>
+    encodeGeneratedNumberPuzzle({ game, difficulty, recipe: { size, cages: [...cages] } }))
+  for (const blockedSeed of [seed, (seed ^ 0x9e3779b1) >>> 0]) {
+    while (true) {
+      const recipe = generateCalcudoku(difficulty, blockedSeed, recent)
+      if (!recipe) break
+      recent.add(calcudokuRecipeSignature(recipe))
+      previous.push(encodeGeneratedNumberPuzzle({ game, difficulty, recipe }))
+    }
+  }
+  const older = generateCalcudoku(difficulty, 123, recent)
+  assert.ok(older)
+  while (recent.size < RECENT_GENERATED_PUZZLE_LIMIT) {
+    const filler = generateCalcudoku(difficulty, recent.size, new Set([...recent, calcudokuRecipeSignature(older)]))
+    assert.ok(filler)
+    recent.add(calcudokuRecipeSignature(filler))
+    previous.push(encodeGeneratedNumberPuzzle({ game, difficulty, recipe: filler }))
+  }
+  const request = { game, difficulty, seed, previous } as const
+  const fallback = generateNumberPuzzle(request)
+  assert.ok(fallback)
+  assert.deepEqual(decodeGeneratedNumberPuzzle(fallback, game), decodeGeneratedNumberPuzzle(previous[0], game))
+  const olderToken = encodeGeneratedNumberPuzzle({ game, difficulty, recipe: older })
+  const olderReplay = generateNumberPuzzle({ ...request, previous: [olderToken, ...previous] })
+  assert.ok(olderReplay)
+  assert.deepEqual(decodeGeneratedNumberPuzzle(olderReplay, game), { game, difficulty, recipe: older })
+})
+
 test('generated puzzle links reject unknown versions and malformed payloads', () => {
-  for (const token of ['v2.YQ', 'v1.YQ', 'v1.' + 'a'.repeat(1801), 'v1.🧩']) {
+  for (const token of ['v3.YQ', 'v2.YQ', 'v2.YQ.invalid', 'v1.YQ', 'v1.' + 'a'.repeat(1801), 'v1.🧩']) {
     assert.equal(decodeGeneratedNumberPuzzle(token, 'kakuro'), null)
     assert.equal(decodeGeneratedNumberPuzzle(token, 'calcudoku'), null)
   }

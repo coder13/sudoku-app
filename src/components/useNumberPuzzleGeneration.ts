@@ -2,7 +2,7 @@ import { useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { NumberPuzzleDifficulty } from '../number-puzzles/catalog'
 import { generatedNumberToken, type GeneratedNumberGame } from '../number-puzzles/generated'
-import type { GenerationRequest } from '../number-puzzles/generation.worker'
+import type { GenerationRequest } from '../number-puzzles/generation'
 import { generatedNumberHistory, openGeneratedNumberPuzzle } from '../number-puzzles/generated-storage'
 import { rememberNumberDifficulty } from '../number-puzzles/progress'
 
