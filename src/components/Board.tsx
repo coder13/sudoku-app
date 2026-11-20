@@ -1,3 +1,4 @@
+import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
@@ -9,7 +10,7 @@ import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, type 
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
-import { AlgebraicCages, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
+import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
@@ -86,7 +87,15 @@ export function Board({
   const variantRules = variantPuzzle?.rules
   const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
     ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
-  const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
+  const linkedDoubleArrows = useMemo(() => sizedRules?.filter(rule => rule.type === 'linked-double-arrow') ?? [], [sizedRules])
+  const outside = useMemo(() => {
+    const layout = outsideClueLayout(variantRules)
+    for (const rule of linkedDoubleArrows) for (const end of rule.ends) if (typeof end !== 'number') {
+      const side = sizedXSumSide(end.direction)
+      layout.depths[side] = Math.max(layout.depths[side], 1)
+    }
+    return layout
+  }, [variantRules, linkedDoubleArrows])
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = cloneLayout(variantRules)
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
@@ -141,7 +150,7 @@ export function Board({
   const size = { ...((visibleRegion || sizedGrid) && { '--board-rows': rows.length, '--board-columns': columns.length }),
     ...(sizedGrid && { '--candidate-rows': boxRows, '--candidate-columns': boxColumns }),
     ...(hasOutside && Object.fromEntries(Object.entries(outside.depths).map(([side, depth]) => ['--outside-' + side, depth]))),
-    ...(hasOutside && { '--outside-left-track': `${outside.depths.left}fr`, '--outside-right-track': `${outside.depths.right}fr` }),
+    ...(hasOutside && { '--outside-left-track': `${outside.depths.left}fr`, '--outside-right-track': `${outside.depths.right}fr`, '--board-outside-grid-track': `${gridSize}fr` }),
   } as CSSProperties
   const playableCell = (cell: number) => values[cell] === '0' &&
     rows.includes(Math.floor(cell / gridSize) + 1) && columns.includes(cell % gridSize + 1)
@@ -377,6 +386,7 @@ export function Board({
         {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><SizedRuleClues rules={sizedRules} size={gridSize} /></div>}
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><AlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <OutsideClues layout={outside} hidden={overlay?.visible} />}
+        {linkedDoubleArrows.length > 0 && <LinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}

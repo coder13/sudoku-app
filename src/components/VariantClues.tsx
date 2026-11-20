@@ -1,5 +1,6 @@
+import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import { useId, useMemo } from 'react'
-import type { SizedConstraintRule, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
+import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
@@ -155,6 +156,36 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
   </svg>
 }
 
+/** Draw Double Arrow paths that can continue to X-Sum circles outside the grid. */
+export function LinkedDoubleArrowClues({ rules, size, hidden }: {
+  rules: readonly SizedLinkedDoubleArrow[]; size: number; hidden?: boolean
+}) {
+  const endCenter = (end: SizedSumEnd): readonly [number, number] => {
+    if (typeof end === 'number') return center(end, size)
+    const side = sizedXSumSide(end.direction)
+    const at = end.index + .5
+    if (side === 'top') return [at, -.5]
+    if (side === 'bottom') return [at, size + .5]
+    if (side === 'left') return [-.5, at]
+    return [size + .5, at]
+  }
+  const ends = new Map(rules.flatMap(rule => rule.ends.map(end => [sizedSumEndKey(end), end] as const)))
+  const label = rules.map(({ ends: [a, b] }) =>
+    `Double Arrow connects ${sizedSumEndLabel(a, size)} with ${sizedSumEndLabel(b, size)}.`).join(' ')
+  return <svg className="board-outside-clues linked-double-arrow-clues" viewBox={`0 0 ${size} ${size}`}
+    role="img" aria-label={label} aria-hidden={hidden || undefined} focusable="false">
+    {rules.map(({ ends: [a, b], cells }, i) => <g className="variant-between" data-linked-double-arrow key={i}>
+      <EndpointPath path={[endCenter(a), ...cells.map(cell => center(cell, size)), endCenter(b)]} />
+    </g>)}
+    <g className="variant-between-endpoints">
+      {[...ends].map(([key, end]) => {
+        const [cx, cy] = endCenter(end)
+        return <circle data-linked-sum-end={key} key={key} cx={cx} cy={cy} r=".32" />
+      })}
+    </g>
+  </svg>
+}
+
 export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid: SizedGrid) {
   const { size } = grid
   const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
@@ -184,6 +215,13 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
     } else if (rule.type === 'arrow') {
       labels[rule.circle].add(`arrow bulb for ${rule.cells.map(at).join('; ')}`)
       for (const cell of rule.cells) labels[cell].add(`arrow shaft from the bulb at ${at(rule.circle)}`)
+    } else if (rule.type === 'linked-double-arrow') {
+      doubleArrowNumber++
+      for (const cell of rule.cells) labels[cell].add(`Double Arrow ${doubleArrowNumber} line`)
+      for (const end of rule.ends) {
+        if (typeof end === 'number') labels[end].add(`Double Arrow ${doubleArrowNumber} end circle`)
+        else labels[sizedSumEndCells(end, size)[0]].add(`First cell of ${sizedSumEndLabel(end, size)}`)
+      }
     } else if (rule.type === 'double-arrow') {
       doubleArrowNumber++
       const [a, b] = rule.ends
@@ -324,16 +362,23 @@ function ArrowClue({ circle, cells, marker, size = 9 }: { circle: number; cells:
   </>
 }
 
+function EndpointPath({ path }: { path: readonly (readonly [number, number])[] }) {
+  const gap = ([x1, y1]: readonly [number, number], [x2, y2]: readonly [number, number]) =>
+    Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) > 1
+  if (!path.slice(1).some((point, index) => gap(path[index], point))) {
+    return <polyline points={path.map(point => point.join(',')).join(' ')} />
+  }
+  return <>
+    {path.slice(1).map(([x2, y2], index) => {
+      const [x1, y1] = path[index]
+      return <line key={index} className={gap([x1, y1], [x2, y2]) ? 'variant-between-jump' : undefined} {...{ x1, y1, x2, y2 }} />
+    })}
+    {path.slice(1, -1).map(([cx, cy], index) => <circle key={index} className="variant-between-node" {...{ cx, cy }} r=".11" />)}
+  </>
+}
+
 function EndpointLine({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
-  const separated = lineSkipsCells(cells, size)
-  return <g className="variant-between">
-    {separated ? <>
-      {cells.slice(1).map((cell, i) => <line key={i} className={
-        lineSkipsCells([cells[i], cell], size) ? 'variant-between-jump' : undefined}
-        x1={center(cells[i], size)[0]} y1={center(cells[i], size)[1]} x2={center(cell, size)[0]} y2={center(cell, size)[1]} />)}
-      {cells.slice(1, -1).map(cell => <circle key={cell} className="variant-between-node" cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".11" />)}
-    </> : <polyline points={points(cells, size)} />}
-  </g>
+  return <g className="variant-between"><EndpointPath path={cells.map(cell => center(cell, size))} /></g>
 }
 
 function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; endpoints?: boolean }) {

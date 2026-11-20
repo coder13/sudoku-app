@@ -16,7 +16,7 @@ mod constraints;
 #[cfg(feature = "variants")]
 pub use constraints::{
     SizedConstraint, SizedConstraintFailure, SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep,
-    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity,
+    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity, SizedSumEnd,
 };
 
 #[cfg(feature = "generation")]
