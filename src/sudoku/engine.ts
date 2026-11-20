@@ -182,6 +182,7 @@ export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readon
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
   | { type: 'anti-sum'; sum: number }
+  | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
   | { type: 'double-arrow'; ends: readonly [number, number]; cells: readonly number[] }
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
@@ -196,6 +197,7 @@ export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction 
   | { type: 'rule'; rule: number; actions: DeductionAction[] }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair; actions: DeductionAction[] }
   | { type: 'anti-sum'; rule: number; cells: [number, number]; actions: DeductionAction[] }
+  | { type: 'row-column-sum'; rule: number; cells: [number, number]; unmarked: boolean; actions: DeductionAction[] }
   | { type: 'contradiction'; assumption: Candidate; placements: Candidate[]; failure: SizedConstraintFailure }
 
 type SizedConstraintFailure = { type: 'cell'; cell: number }
@@ -204,6 +206,7 @@ type SizedConstraintFailure = { type: 'cell'; cell: number }
   | { type: 'killer-cage'; rule: number; cage: number }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair }
   | { type: 'anti-sum'; rule: number; cells: [number, number] }
+  | { type: 'row-column-sum'; rule: number; cells: [number, number] | null }
 
 type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
 
