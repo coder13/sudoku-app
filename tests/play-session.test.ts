@@ -32,6 +32,16 @@ test('the open input tabs, drawing mode, and pause state survive a reload in thi
   })
 })
 
+test('pinned Rules survives a reload in the shared puzzle tool layout', () => {
+  const storage = new MemoryStorage()
+  const persistent = new MemoryStorage()
+  const layout = { open: ['chains', 'rules'] as const, active: 'rules' as const }
+  createPlaySession(storage, persistent).set('mixed-puzzle', 'toolPanels', { ...layout, open: [...layout.open] })
+  const reloaded = createPlaySession(new MemoryStorage(), persistent)
+  reloaded.activate('mixed-puzzle')
+  assert.deepEqual(reloaded.getSnapshot().toolPanels, layout)
+})
+
 test('a saved mobile tab must be one of the open tools', () => {
   const storage = new MemoryStorage()
   storage.setItem('sudoku-app:v1:play-session', JSON.stringify({

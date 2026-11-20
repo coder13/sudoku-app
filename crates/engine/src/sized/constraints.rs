@@ -1,3 +1,4 @@
+mod double_arrow;
 mod killer;
 mod linked_double_arrow;
 mod pairs;
@@ -7,6 +8,7 @@ use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 
+use self::double_arrow::DoubleArrow;
 use self::killer::Cage;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
@@ -160,7 +162,7 @@ pub struct SizedConstraintGrid {
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
-    double_arrows: Vec<([usize; 2], Vec<usize>)>,
+    double_arrows: Vec<Option<DoubleArrow>>,
     region_sums: Vec<Option<RegionSum>>,
     cages: Vec<Vec<Cage>>,
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
@@ -240,16 +242,8 @@ impl SizedConstraintGrid {
                     arrows.push((*circle, cells.clone()));
                 }
                 SizedConstraint::DoubleArrow { ends, cells } => {
-                    if ends[0] == ends[1]
-                        || ends.iter().any(|&cell| cell >= layout.cell_count())
-                        || !(1..=2 * size).contains(&cells.len())
-                        || cells.iter().enumerate().any(|(index, &cell)| {
-                            cell >= layout.cell_count() || ends.contains(&cell) || cells[..index].contains(&cell)
-                        })
-                    {
-                        return None;
-                    }
-                    double_arrows.push((*ends, cells.clone()));
+                    double_arrows.resize_with(index + 1, || None);
+                    double_arrows[index] = Some(DoubleArrow::compile(&layout, *ends, cells)?);
                 }
                 SizedConstraint::LinkedDoubleArrow { ends, cells } => {
                     linked_double_arrows.resize_with(index + 1, || None);
@@ -386,9 +380,9 @@ impl SizedConstraintGrid {
                     candidates[cell] = mask;
                 }
             }
-            for (ends, cells) in &self.double_arrows {
-                let (end_masks, line_masks) = double_arrow_masks(*ends, cells, candidates);
-                for (&cell, mask) in ends.iter().zip(end_masks).chain(cells.iter().zip(line_masks)) {
+            for arrow in self.double_arrows.iter().flatten() {
+                let (end_masks, line_masks) = arrow.support(candidates);
+                for (&cell, mask) in arrow.ends.iter().zip(end_masks).chain(arrow.cells.iter().zip(line_masks)) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -568,7 +562,7 @@ impl SizedConstraintGrid {
                     }
                 }
                 SizedConstraint::DoubleArrow { ends, cells } => {
-                    let (end_masks, line_masks) = double_arrow_masks(*ends, cells, &domains);
+                    let (end_masks, line_masks) = self.double_arrows[rule].as_ref()?.hint_support(&domains);
                     if end_masks.contains(&0) {
                         return None;
                     }
@@ -863,8 +857,8 @@ impl SizedConstraintGrid {
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
-                SizedConstraint::DoubleArrow { ends, cells } => {
-                    double_arrow_masks(*ends, cells, &domains).0.contains(&0)
+                SizedConstraint::DoubleArrow { .. } => {
+                    self.double_arrows[rule].as_ref()?.hint_support(&domains).0.contains(&0)
                 }
                 SizedConstraint::ExtraHouse { cells } => {
                     extra_house_support(cells, &domains, self.layout.full_mask)[..cells.len()].contains(&0)
@@ -999,10 +993,10 @@ impl SizedConstraintGrid {
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
                 total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
             })
-            && self.double_arrows.iter().all(|(ends, cells)| {
+            && self.double_arrows.iter().flatten().all(|arrow| {
                 let size = self.layout.size();
-                let (ends_min, ends_max) = sum_bounds(ends, digits, size);
-                let (line_min, line_max) = sum_bounds(cells, digits, size);
+                let (ends_min, ends_max) = sum_bounds(&arrow.ends, digits, size);
+                let (line_min, line_max) = sum_bounds(&arrow.cells, digits, size);
                 ends_min <= line_max && line_min <= ends_max
             })
             && self.linked_double_arrows.iter().flatten().all(|arrow| arrow.permits(digits))
@@ -1034,28 +1028,6 @@ fn sum_bounds(cells: &[usize], digits: &[u8], size: usize) -> (usize, usize) {
         let digit = usize::from(digits[cell]);
         if digit == 0 { (min + 1, max + size) } else { (min + digit, max + digit) }
     })
-}
-
-fn double_arrow_masks(
-    ends: [usize; 2],
-    cells: &[usize],
-    candidates: &[u16],
-) -> ([u16; 2], [u16; 2 * MAX_SIZE]) {
-    let end_domains = ends.map(|cell| candidates[cell]);
-    let mut line_domains = [0; 2 * MAX_SIZE];
-    let mut line_support = [0; 2 * MAX_SIZE];
-    let mut end_support = [0; 2];
-    for (&cell, domain) in cells.iter().zip(&mut line_domains) {
-        *domain = candidates[cell];
-    }
-
-    // Only the totals of two endpoint digits are relevant, even for long lines.
-    let end_totals = crate::variant::reachable_sums(&end_domains);
-    let matched = crate::variant::sum_support_with_prefix(
-        &line_domains[..cells.len()], end_totals, &mut line_support[..cells.len()], &mut [[0u128; 1]; 2 * MAX_SIZE + 1],
-    );
-    crate::variant::sum_support_with_prefix(&end_domains, matched, &mut end_support, &mut [[0]; 3]);
-    (end_support, line_support)
 }
 
 fn diagonal_cells(size: usize, direction: SizedDiagonal) -> impl Iterator<Item = usize> + Clone {

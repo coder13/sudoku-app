@@ -3952,6 +3952,85 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-preview .variant-arrow-line, .variant-preview .variant-arrow-circle { stroke-width: .13; }
 .variant-rules-button { margin-right: auto; }
 .variant-rules-copy { display: grid; gap: var(--space-10); line-height: 1.55; }
+.dialog.variant-rules-dialog { width: min(760px, calc(100vw - 28px)); }
+.variant-rules-layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr); gap: var(--space-16); }
+.variant-rules-preview {
+  --board-frame-width: min(100%, 300px);
+  position: sticky;
+  inset-block-start: 0;
+  align-self: start;
+  z-index: 1;
+  container-type: inline-size;
+  background: var(--surface);
+}
+.variant-rule-list { gap: 0; }
+.variant-rule-section {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-10);
+}
+.variant-rule-section h3 { margin: 0; font-size: 0.9375rem; }
+.variant-rule-section[data-rule-active] { background: var(--selected-bg); }
+.variant-rule-section:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.variant-rules-dialog .dialog-actions { margin-block-start: var(--space-16); }
+@media (max-width: 620px) {
+  .variant-rules-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
+  .variant-rules-preview { --board-frame-width: min(100%, 42vw, 192px); padding-block: var(--space-6); }
+}
+.variant-rules-panel { padding-block: var(--space-12); font-size: 0.875rem; }
+.variant-rules-panel:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.variant-rules-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--space-4);
+  padding-inline: var(--space-12);
+}
+.variant-rules-panel-actions .icon-button { min-height: 32px; width: 32px; }
+
+.board-body[data-highlighted-rule] { --rule-accent: var(--board-selected-border); }
+.board-body:is([data-highlighted-rule="classic"], [data-highlighted-rule="anti-king"],
+  [data-highlighted-rule="anti-knight"], [data-highlighted-rule="non-consecutive"], [data-highlighted-rule="global-entropy"]) > .sudoku-grid {
+  outline: 3px solid var(--rule-accent);
+  outline-offset: -3px;
+}
+.board-body[data-highlighted-rule="jigsaw"] [data-region-right] { border-right-color: var(--rule-accent); }
+.board-body[data-highlighted-rule="jigsaw"] [data-region-bottom] { border-bottom-color: var(--rule-accent); }
+.board-body[data-highlighted-rule="diagonal"] .variant-diagonal { stroke: var(--rule-accent); stroke-width: .055; opacity: .85; }
+.board-body .cell[data-rule-highlighted] { background-color: color-mix(in srgb, var(--rule-accent) 28%, var(--board-bg)); }
+.board-body[data-highlighted-rule="killer-cages"] .variant-cage-edge { stroke: var(--rule-accent); stroke-width: .04; opacity: 1; }
+.board-body[data-highlighted-rule="killer-cages"] .cell > .variant-cage-total { color: var(--rule-accent); font-weight: 800; }
+.board-body[data-highlighted-rule="quadruple"] .variant-quadruple circle {
+  fill: color-mix(in srgb, var(--rule-accent) 20%, var(--board-bg));
+  stroke: var(--rule-accent);
+  stroke-width: .05;
+}
+.board-body[data-highlighted-rule="quadruple"] .variant-quadruple text { font-weight: 800; }
+.board-body[data-highlighted-rule="parity"] .variant-parity { fill: var(--rule-accent); fill-opacity: .2; stroke: var(--rule-accent); stroke-opacity: 1; }
+.board-body[data-highlighted-rule="kropki"] .variant-dot { stroke: var(--rule-accent); stroke-width: .055; }
+.board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head) { stroke: var(--rule-accent); opacity: 1; }
+.board-body[data-highlighted-rule="thermometer"] .variant-thermometer { color: var(--rule-accent); opacity: .85; }
+.board-body[data-highlighted-rule="extra-house"] .variant-extra-region rect { fill: var(--rule-accent); opacity: .25; }
+.board-body[data-highlighted-rule="extra-house"] .variant-extra-region path { stroke: var(--rule-accent); stroke-opacity: 1; }
+.board-body[data-highlighted-rule="sandwich"] [data-outside-clue="sandwich"],
+.board-body[data-highlighted-rule="x-sum"] [data-outside-clue="x-sum"],
+.board-body[data-highlighted-rule="little-killer"] [data-outside-clue="little-killer"],
+.board-body[data-highlighted-rule="skyscrapers"] [data-outside-clue="skyscrapers"] { color: var(--rule-accent); }
+.board-body[data-highlighted-rule="clone"] .variant-clone rect { fill: var(--rule-accent); fill-opacity: .25; }
+.board-body[data-highlighted-rule="clone"] .variant-clone path { stroke: var(--rule-accent); stroke-opacity: 1; }
+.board-body[data-highlighted-rule="inequality"] :is(.variant-inequality-sign, .variant-inequality-connector),
+.board-body[data-highlighted-rule="palindrome"] :is(.variant-palindrome, .variant-palindrome-overlap) polyline,
+.board-body[data-highlighted-rule="whispers"] .variant-whispers polyline,
+.board-body[data-highlighted-rule="renban"] :is(.variant-renban, .variant-renban-overlap) :is(polyline, line),
+.board-body[data-highlighted-rule="between"] :is(.variant-between, .variant-between-overlap) :is(polyline, line, circle),
+.board-body[data-highlighted-rule="region-sum"] :is(.variant-region-sum, .variant-region-sum-overlap) :is(polyline, line, circle),
+.board-body[data-highlighted-rule="entropic"] :is(.variant-entropic, .variant-entropic-overlap) :is(polyline, line, circle),
+.board-body[data-highlighted-rule="modular"] :is(.variant-modular, .variant-modular-overlap) :is(polyline, line, circle) {
+  stroke: var(--rule-accent);
+  opacity: 1;
+}
+.board-body[data-highlighted-rule="xv"] .variant-xv-mark,
+.board-body[data-highlighted-rule="adjacent-total"] .variant-total-mark { fill: var(--rule-accent); font-weight: 900; }
+
 .new-puzzle-difficulty-label { margin-bottom: 5px; padding: 0; font-size: 0.875rem; font-weight: 730; }
 
 /* One shared difficulty control for desktop, mobile, and the completion screen. */

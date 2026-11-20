@@ -73,7 +73,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     reason = 'Remove candidates that cannot fit both totals with the correct X-Sum lengths.'
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
-    reason = 'Remove candidates that cannot contribute to a total shared by the line and the two end circles.'
+    reason = 'Remove candidates that cannot contribute to a shared total while keeping different digits in cells that share a house.'
   } else if (rule.type === 'difference') {
     description = `The digits across this numbered marker differ by exactly ${rule.difference}.`
     reason = 'Remove the candidates that have no partner at that difference in the neighboring cell.'
@@ -110,7 +110,7 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       conflict = 'No total fits the Double Arrow line and its two end circles with the correct X-Sum lengths.'
     } else if (rule.type === 'double-arrow') {
       locations.push(rule.ends[0], ...rule.cells, rule.ends[1])
-      conflict = 'No total fits both the Double Arrow line and its two end circles.'
+      conflict = 'No total fits the Double Arrow line and its two end circles with different digits in each shared house.'
     } else if (rule.type === 'killer-cages') {
       conflict = 'A cage cannot reach its total with different digits.'
     } else if ('cells' in rule) {
