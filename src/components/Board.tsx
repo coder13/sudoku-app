@@ -52,6 +52,7 @@ type Props = {
   onCell?: (index: number, event: MouseEvent) => void
   onGridKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
+  linkDrawing?: boolean
   onCandidate?: (candidate: Candidate) => void
   onLinkSelect?: (candidate: Candidate) => void
   onPaintCandidate?: (candidate: Candidate) => void
@@ -75,7 +76,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 export function Board({
   variantPuzzle, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
+  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
@@ -257,6 +258,8 @@ export function Board({
                 const highlightsCell = highlightCandidateCells && (matchesFilter || highlightsFocusDigit)
                 const linkTargets = isLinkTarget && !value
                   ? [...visibleGridCandidates, ...visibleCenterCandidates].filter(digit => isLinkTarget({ cell: index, digit })) : undefined
+                const canSelectLinkCandidate = linkDrawing && onCandidate && !value && Boolean(visibleGridCandidates.length || visibleCenterCandidates.length)
+                const highlightedLinkDigit = canSelectLinkCandidate && highlightsFocusDigit ? focusDigit : null
                 const highlightsLinkTargetCell = highlightCandidateCells && Boolean(linkTargets?.length)
                 const candidateCountMatches = !value && !filterCandidates && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
                 const cellStyle = cellAnnotation && {
@@ -294,6 +297,7 @@ export function Board({
                 ].filter(Boolean).join(', ')
                 const classes = [
                   'cell',
+                  canSelectLinkCandidate ? 'chain-cell-target' : '',
                   fixed ? 'given' : 'entry',
                   !filterCandidates && highlighting.relatedCells && selected.some((cell) => peer(index, cell, variantPuzzle, grid, sizedRules)) ? 'peer' : '',
                   highlighting.matchingDigits && value === focusDigit ? 'matching' : '',
@@ -304,6 +308,11 @@ export function Board({
                   error ? 'conflict' : '',
                   inSelection ? 'selected' : '',
                 ].join(' ')
+
+                function selectCandidate(digit: number, slotted: boolean) {
+                  setCandidateFocus({ cell: index, digit, slotted })
+                  candidateAction?.({ cell: index, digit })
+                }
 
                 function renderCandidate(digit: number, slotted: boolean) {
                   const annotation = candidateAnnotations?.get(digit)
@@ -336,10 +345,7 @@ export function Board({
                       onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
                       onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
                       onFocus={() => setCandidateFocus({ ...candidate, slotted })}
-                      onClick={() => {
-                        setCandidateFocus({ ...candidate, slotted })
-                        candidateAction(candidate)
-                      }}>
+                      onClick={() => selectCandidate(digit, slotted)}>
                       <span className={['candidate-glyph', colorClass, !annotation && (highlighted || linkTarget) && 'candidate-match'].filter(Boolean).join(' ')}>{digit}</span>
                     </button>
                   }
@@ -368,7 +374,10 @@ export function Board({
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
-                    onClick={onCell && ((event) => onCell(index, event))}
+                    onClick={onCell ? event => onCell(index, event) : highlightedLinkDigit != null ? event => {
+                      if (event.target instanceof Element && event.target.closest('.candidate-button')) return
+                      selectCandidate(highlightedLinkDigit, visibleGridCandidates.includes(highlightedLinkDigit))
+                    } : undefined}
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     <BoardMarks items={gridItems} group={<span className="candidate-marks" aria-hidden={candidateAction ? undefined : true} />} />
                     <BoardMarks items={cageTotal === undefined ? cellItems : [

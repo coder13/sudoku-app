@@ -20,7 +20,7 @@ type Props = {
   applyFailed: boolean
   onToggleDrawing: () => void
   onChooseColors: () => void
-  shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain' | 'applyEdits'>
+  shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'applyEdits'>
   compact?: boolean
   strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
   unavailable?: string
@@ -237,7 +237,6 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   const { active } = sketch
   const drawLabel = sketch.drawing ? 'Done drawing' : 'Draw links'
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
-  const newKey = shortcutLabel(shortcuts.newChain)
   const applyKey = shortcutLabel(shortcuts.applyEdits)
   const strongLinkStatus = strongLinks?.hasHighlights && !strongLinks.count ? 'No strong links between the highlighted candidates.' : ''
   const showStrongLinkInstructions = !sketch.drawing || (sketch.pending === null && !sketch.hasLinks)
@@ -247,11 +246,12 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   const editorControls = <div className="chain-toolbar chain-draw-tools">
     <div className="chain-path-actions">
       <Button variant={sketch.drawing ? 'secondary' : 'primary'}
-        title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={onToggleDrawing}>
+        title={sketch.drawing ? `${drawLabel} (${drawKey} or Esc)` : `${drawLabel} (${drawKey})`}
+        aria-keyshortcuts={sketch.drawing ? `${drawKey} Escape` : drawKey} onClick={onToggleDrawing}>
         {!sketch.drawing && <Link2 size={15} aria-hidden="true" />} {drawLabel}
       </Button>
       <Button variant="quiet" disabled={!sketch.drawing || sketch.pending === null}
-        title="Deselect the current endpoint and keep drawing (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</Button>
+        title="Deselect the current endpoint and keep drawing" onClick={sketch.endPath}>End path</Button>
     </div>
     <div className="chain-edit-actions">
       <IconButton variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
@@ -274,8 +274,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-panel-tools">
-        <Button title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
-          disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
+        <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
           <Plus size={15} aria-hidden="true" /> New chain
         </Button>
         <div className="chain-panel-end-actions">
