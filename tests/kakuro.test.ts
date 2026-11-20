@@ -111,6 +111,10 @@ test('Kakuro signatures identify rotated, reflected, and complemented clues on r
   assert.equal(kakuroRecipeSignature(rectangle([15, 9], [6, 8, 10])), original)
   assert.equal(kakuroRecipeSignature(rectangle([14, 12, 10], [21, 15])), original)
   assert.notEqual(kakuroRecipeSignature(rectangle([6, 8, 10], [10, 14])), original)
+
+  const square = rectangle([6, 8, 10], [9, 15, 18])
+  assert.notEqual(kakuroRecipeSignature(square), original)
+  assert.equal(kakuroRecipeSignature(rectangle([9, 15, 18], [6, 8, 10])), kakuroRecipeSignature(square))
 })
 
 test('each clue step can be replayed from placed digits and earlier steps', () => {

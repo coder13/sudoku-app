@@ -169,6 +169,15 @@ test('Region Sum distinguishes consecutive visits from totals grouped by box', a
     rules: [{ type: 'region-sum', cells }],
   }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.deepEqual(await runEngine({ type: 'sized-variant', operation: 'solve-unique', position }), {
+    status: 'unique', solution: { digits: answer, variables: {} },
+  })
+  assert.deepEqual(await runEngine({ type: 'sized-variant', operation: 'solve-unique', position: {
+    ...position, rules: [{ type: 'region-sum', cells, groupByRegion: true }],
+  } }), { status: 'unsolvable' })
+  assert.deepEqual(await runEngine({ type: 'sized-variant', operation: 'solve-unique', position: {
+    ...position, rules: [{ type: 'parity', parity: 'odd', cells: [0] }],
+  } }), { status: 'multiple' })
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     ...position, rules: [{ type: 'region-sum', cells, groupByRegion: true }],
   } }), 'unsolvable')

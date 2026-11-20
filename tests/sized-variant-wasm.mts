@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import lzString from 'lz-string'
+import { algebraicPosition } from '../src/sudoku/algebraic-game.ts'
 import { analyzeAlgebraic } from '../src/sudoku/algebraic-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { foundationVisuals } from '../src/sudoku/foundation-visuals.ts'
@@ -58,6 +59,10 @@ test('a SudokuPad short link retains the rules through solve, hints, replay, sha
   assert.equal(algebraic.solution, expected)
   assert.equal(await analyzeMini(givens), 'multiple')
   assert.equal(await analyzeAlgebraic(algebraic, givens), 'unique')
+  assert.deepEqual(await runEngine({ type: 'sized-variant', operation: 'solve-unique',
+    position: algebraicPosition(algebraic, givens) }), {
+    status: 'unique', solution: { digits: Array.from(expected, Number), variables: { n: 1 } },
+  })
   assert.equal(isSolved(fillEntries(game, '1234341221434321')), false)
   assert.equal(isSolved(fillEntries(game, expected)), true)
   assert.deepEqual(restartGame(game).algebraic, algebraic)

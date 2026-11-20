@@ -53,14 +53,14 @@ test('generation and verification never retry an abandoned request', async t => 
     assert.equal(calls.length, 2)
   })
 
-  await t.test('small-grid verification does not start a solve after canceled analysis', async () => {
+  await t.test('small-grid verification does not retry a canceled unique-solution request', async () => {
     calls = []
     await assert.rejects(verifyAlgebraicPuzzle({ givens: '0'.repeat(16), rules: [] }, stop), { name: 'AbortError' })
     assert.equal(calls.length, 1)
-    assert.ok('operation' in calls[0] && calls[0].operation === 'analyze')
+    assert.ok('operation' in calls[0] && calls[0].operation === 'solve-unique')
     calls = []
     await assert.rejects(verifySizedRulePuzzle({ grid: sixGridForBoxRows(), givens: '0'.repeat(36), rules: [] }, stop), { name: 'AbortError' })
     assert.equal(calls.length, 1)
-    assert.ok('operation' in calls[0] && calls[0].operation === 'analyze')
+    assert.ok('operation' in calls[0] && calls[0].operation === 'solve-unique')
   })
 })

@@ -181,7 +181,7 @@ export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'par
   | SizedDifferenceRule | SizedLabeledDotsRule
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
-  | { operation: 'analyze' | 'solve' | 'candidates' }
+  | { operation: 'analyze' | 'solve' | 'solve-unique' | 'candidates' }
   | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
   | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
 )
@@ -225,7 +225,7 @@ export type AlgebraicTracePosition = {
 
 type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
   | { operation: 'analyze' }
-  | { operation: 'solve' }
+  | { operation: 'solve' | 'solve-unique' }
   | { operation: 'rate' }
   | { operation: 'bounds' }
   | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
@@ -602,6 +602,9 @@ export type VariantPracticeExercise = {
   deduction: VariantDeduction
 }
 
+type SizedCompletion = { digits: number[]; variables: Record<string, number> }
+type SizedUniqueSolution = { status: 'unique'; solution: SizedCompletion } | { status: Exclude<Analysis, 'unique'> }
+
 export type EngineResult<T extends EngineRequest> =
   T extends { type: 'capabilities' } ? EngineCapabilities :
   T extends VariantRequest ? VariantResult<T> :
@@ -614,14 +617,16 @@ export type EngineResult<T extends EngineRequest> =
   ) :
   T extends SizedConstraintRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
-    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'solve' ? SizedCompletion | null :
+    T['operation'] extends 'solve-unique' ? SizedUniqueSolution :
     T['operation'] extends 'hints' ? { candidates: number[]; choices: SizedConstraintStep[] } | null :
     T['operation'] extends 'trace' ? SizedConstraintTracePosition[] | null :
     number[] | null
   ) :
   T extends SizedVariantRequest ? (
     T['operation'] extends 'analyze' ? Analysis :
-    T['operation'] extends 'solve' ? { digits: number[]; variables: Record<string, number> } | null :
+    T['operation'] extends 'solve' ? SizedCompletion | null :
+    T['operation'] extends 'solve-unique' ? SizedUniqueSolution :
     T['operation'] extends 'rate' ? AlgebraicRating | null :
     T['operation'] extends 'bounds' ? AlgebraicBounds | null :
     T['operation'] extends 'hints' ? { candidates: number[]; choices: AlgebraicStep[] } | null :
