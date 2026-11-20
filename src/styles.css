@@ -919,11 +919,6 @@ svg { flex-shrink: 0; }
 .draft-tip { grid-area: draft; }
 .puzzle-menu-wrap { position: relative; }
 .puzzle-menu { width: 235px; }
-.puzzle[data-puzzle-controls="bottom"] .puzzle-menu-wrap > .puzzle-menu:not(.mobile-puzzle-menu) {
-  top: auto;
-  bottom: calc(100% + 8px);
-  transform-origin: bottom right;
-}
 .puzzle-menu button { min-height: 38px; font-size: 0.8125rem; }
 .puzzle-sync-menu-status { margin: 0 var(--space-10) var(--space-6) 36px; color: var(--muted); font-size: 0.75rem; }
 .puzzle-sync-loading { display: inline-flex; color: var(--muted); }
@@ -1665,7 +1660,7 @@ svg { flex-shrink: 0; }
 .input-tools-menu:not(:popover-open) { display: none; }
 .input-tools-menu:not([style]) { visibility: hidden; }
 .input-tools-menu button { min-height: 44px; }
-.desktop-actions-menu, .mobile-puzzle-menu {
+.desktop-actions-menu, .floating-puzzle-menu {
   position: fixed;
   inset: auto;
   margin: 0;
@@ -1674,6 +1669,9 @@ svg { flex-shrink: 0; }
   color: inherit;
 }
 .desktop-actions-menu { max-height: calc((100dvh - 16px) / var(--desktop-layout-scale, 1)); }
+.floating-puzzle-menu { max-width: calc((100vw - 16px) / var(--desktop-layout-scale, 1)); overscroll-behavior: contain; }
+.floating-puzzle-menu button:focus-visible { outline-offset: -2px; }
+
 .resize-handle {
   position: absolute;
   z-index: 24;
@@ -3441,7 +3439,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     --puzzle-badge-gutter-block: var(--space-16);
   }
   .standard-workspace-page .puzzle-actions { grid-area: actions; margin: 0; }
-  .standard-workspace-page .puzzle[data-puzzle-controls="bottom"] > .puzzle-stage { margin-block-end: var(--space-10); }
   .standard-workspace-page .puzzle-mode-tab[data-edge="top"] { --mode-tab-depth: var(--space-18); }
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] {
     --mode-tab-length: var(--space-32);
@@ -3449,9 +3446,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] svg { width: 13px; height: 13px; }
   .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset) { width: 44px; min-height: 44px; }
-  .mobile-puzzle-menu { max-width: calc(100vw - 16px); overscroll-behavior: contain; }
-  .mobile-puzzle-menu button { min-height: 44px; }
-  .mobile-puzzle-menu button:focus-visible { outline-offset: -2px; }
+  .floating-puzzle-menu button { min-height: 44px; }
   .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint:not([data-fit-hint])) .puzzle {
     --board-frame-limit: max(130px, min(var(--mobile-fit-board-height, 100dvh), calc(100dvh - var(--topbar-height) - 540px)));
   }

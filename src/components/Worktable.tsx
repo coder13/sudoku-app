@@ -519,6 +519,8 @@ export function Worktable({
   const showMobileResults = mobile && showResults && !previewing
   const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
+  const puzzleControlsBelow = appearance.puzzleControlsPosition === 'bottom' && !draft && !placeholder
+  const floatingPuzzleMenu = mobile || puzzleControlsBelow
   const chainsVisible = !grid && (mobile ? activeToolPanel === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
   const subsetsVisible = experimentalMode && (mobile ? activeToolPanel === 'subsets'
@@ -807,20 +809,23 @@ export function Worktable({
   useLayoutEffect(() => {
     const menu = puzzleMenuPopupRef.current
     const button = puzzleMenuButtonRef.current
-    if (!mobile || !puzzleMenuMounted || !menu || !button) return
+    if (!floatingPuzzleMenu || !puzzleMenuMounted || !menu || !button) return
 
     menu.showPopover?.()
     const position = () => {
       const anchor = button.getBoundingClientRect()
       const gap = 8
+      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
       const below = window.innerHeight - anchor.bottom - 2 * gap
       const above = anchor.top - 2 * gap
-      const opensAbove = menu.scrollHeight + 2 > below && above > below
-      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below)}px`
+      const menuHeight = (menu.scrollHeight + 2) * scale
+      const opensAbove = puzzleControlsBelow ? above > 0 && above >= Math.min(below, menuHeight) : menuHeight > below && above > below
+      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below) / scale}px`
       const right = Math.min(anchor.right, window.innerWidth - gap)
-      const top = opensAbove ? anchor.top - gap - menu.offsetHeight : anchor.bottom + gap
-      menu.style.left = `${Math.max(gap, right - menu.offsetWidth)}px`
-      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - menu.offsetHeight - gap))}px`
+      const height = menu.offsetHeight * scale
+      const top = opensAbove ? anchor.top - gap - height : anchor.bottom + gap
+      menu.style.left = `${Math.max(gap, right - menu.offsetWidth * scale) / scale}px`
+      menu.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - height - gap)) / scale}px`
       menu.style.transformOrigin = opensAbove ? 'bottom right' : 'top right'
     }
     position()
@@ -831,7 +836,7 @@ export function Worktable({
       window.removeEventListener('scroll', position, true)
       menu.removeAttribute('style')
     }
-  }, [mobile, puzzleMenuMounted])
+  }, [floatingPuzzleMenu, puzzleControlsBelow, puzzleMenuMounted])
 
   useEffect(() => {
     if (!actionsOpen || mobile) return
@@ -2327,8 +2332,8 @@ export function Worktable({
     </div>
   )
   const puzzleMenu = puzzleMenuMounted && (
-    <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${mobile ? ' mobile-puzzle-menu' : ''}`} id="puzzle-menu"
-      popover={mobile ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
+    <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${floatingPuzzleMenu ? ' floating-puzzle-menu' : ''}`} id="puzzle-menu"
+      popover={floatingPuzzleMenu ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
       onClickCapture={event => {
         if (event.target instanceof Element && event.target.closest('button[aria-pressed]')) return
@@ -2489,7 +2494,6 @@ export function Worktable({
     redo: { Icon: Redo2, run: () => edit(redo), disabled: !game.future.length },
   }
   const visiblePinnedActions = !placeholder && !draft && !completed ? pinnedActions : []
-  const puzzleControlsBelow = appearance.puzzleControlsPosition === 'bottom' && !draft && !placeholder
   useLayoutEffect(() => {
     const puzzle = puzzleCardRef.current
     const puzzleStack = puzzle?.closest<HTMLElement>('.standard-puzzle-stack')
