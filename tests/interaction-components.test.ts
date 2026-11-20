@@ -7,6 +7,7 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
 let server: ViteDevServer
 let Board: (props: Record<string, unknown>) => ReactNode
+let Controls: (props: Record<string, unknown>) => ReactNode
 let settings: Record<string, (props: Record<string, unknown>) => ReactNode>
 let preferences: Record<string, unknown>
 
@@ -18,6 +19,7 @@ before(async () => {
     optimizeDeps: { noDiscovery: true, include: [] },
   })
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
+  ;({ Controls } = await server.ssrLoadModule('/src/components/Controls.tsx'))
   settings = await server.ssrLoadModule('/src/components/Settings.tsx')
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
 })
@@ -214,4 +216,31 @@ test('desktop and mobile workspace-mode controls use independent radio groups', 
     appearance: preferences.DEFAULT_APPEARANCE, setAppearance() {}, inputSize: 210, setInputSize() {},
     workspaceMode: 'standard', setWorkspaceMode() {},
   }), 2)
+})
+
+test('puzzle Undo and Redo stay enabled during chain drawing when history exists', () => {
+  const defaults = {
+    mode: 'value', pencil: false, togglePencil() {},
+    candidateKind: 'center', setCandidateKind() {}, advancedModes: preferences.DEFAULT_ADVANCED_MODES,
+    colorMode: false, colorTarget: 'cell', setColorTarget() {}, onSwitchShade() {},
+    eraseMode: false, toggleEraseMode() {}, highlightMode: false, toggleHighlightMode() {},
+    selectedDigit: null, hasCellSelection: false, values: '0'.repeat(81),
+    input() {}, undo() {}, redo() {}, disabled: false, draft: false,
+    inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {},
+    multi: false, toggleMulti() {}, compact: true, chainDrawing: true,
+  }
+  const buttonTag = (html: string, label: string) => [...html.matchAll(/<button\\b[^>]*>/g)]
+    .map(([tag]) => tag).find(tag => tag.includes(`aria-label="${label}"`)) ?? ''
+
+  const available = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true }))
+  assert.doesNotMatch(buttonTag(available, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.doesNotMatch(buttonTag(available, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+
+  const noHistory = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: false, canRedo: false }))
+  assert.match(buttonTag(noHistory, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.match(buttonTag(noHistory, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+
+  const locked = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true, disabled: true }))
+  assert.match(buttonTag(locked, 'Undo'), /\\bdisabled(?:=|\\s|>|\\/)/)
+  assert.match(buttonTag(locked, 'Redo'), /\\bdisabled(?:=|\\s|>|\\/)/)
 })
