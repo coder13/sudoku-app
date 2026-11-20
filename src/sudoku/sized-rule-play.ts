@@ -1,17 +1,32 @@
-import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep } from './engine.ts'
+import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-contradiction'] as const
+
+function kropkiPairRule({ relation, negative }: SizedKropkiPair) {
+  const white = relation === 'consecutive'
+  if (negative) return white ? 'The digits on this unmarked edge cannot be consecutive.'
+    : 'The digits on this unmarked edge cannot have a 1:2 ratio.'
+  return white ? 'Digits separated by a white dot are consecutive.'
+    : 'Across a black dot, one digit is double the other.'
+}
 
 function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, size: number): HintChoice {
   if (step.type === 'house') return miniHintChoice(step.proof)
   if (step.type === 'contradiction') return contradictionHint(rules, step, size)
+  if (step.type === 'kropki') return {
+    actions: step.actions, technique: 'sized-kropki',
+    evidence: { variant: { description: kropkiPairRule(step.pair),
+      reason: 'Remove the candidates that cannot be paired with a digit in the neighboring cell under this rule.' } },
+    pattern: { houses: [], cells: [...step.pair.cells],
+      candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
+  }
   const { actions, rule: index } = step
   const rule = rules[index]
-  const cells = rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal) : [...rule.cells]
+  const cells = rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal) : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
   let description: string
   let reason: string
@@ -53,12 +68,15 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     if (rule.type === 'diagonal') {
       locations.push(...gridDiagonalCells(size, rule.diagonal))
       conflict = `The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal cannot contain every digit once.`
-    } else {
+    } else if ('cells' in rule) {
       locations.push(...rule.cells)
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
         : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
           : 'The thermometer has no strictly increasing sequence from bulb to tip.'
-    }
+    } else conflict = 'A Kropki clue has no valid pair of digits.'
+  } else if (failure.type === 'kropki') {
+    locations.push(...failure.pair.cells)
+    conflict = `${kropkiPairRule(failure.pair)} The two cells have no candidates that fit the rule.`
   } else {
     const house = houseName(failure.house)
     conflict = failure.type === 'missing-digit' ? `There is nowhere for ${failure.digit} in ${house}.`

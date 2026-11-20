@@ -123,8 +123,12 @@ const sixGrid = value => fields(value, { size: oneOf(6), boxRows: oneOf(2), boxC
   fields(value, { size: oneOf(6), boxRows: oneOf(3), boxColumns: oneOf(2) })
 function sizedRules(value, size) {
   const cell = integer(0, size * size - 1)
+  const pair = value => list(cell, 2, 2)(value) &&
+    Math.abs(Math.floor(value[0] / size) - Math.floor(value[1] / size)) + Math.abs(value[0] % size - value[1] % size) === 1
+  const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
+    fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: list(list(cell, 1, 128), 1, 128) }) &&
       new Set(rule.cells).size === rule.cells.length &&
