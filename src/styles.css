@@ -3149,33 +3149,21 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-panel-space { flex: 1 0 0; }
   .mobile-panel-gap { flex-basis: 8px; }
   @media (orientation: portrait) {
-    /* Keep the puzzle and input card near the viewport edges, not spread apart by flex spacers. */
+    /* Keep equal outer gaps while making the space between cards independent. */
     .standard-workspace-page { padding-block: var(--space-4); }
-    .mobile-panel-space { flex: 0 0 0; }
-    .mobile-panel-gap { flex-basis: var(--space-4); }
+    .mobile-panel-space { flex: 1 1 0; }
+    .mobile-panel-gap { flex: 0 0 var(--space-8); }
 
-    /* Give unused viewport height to the input card instead of adding space between cards. */
-    .mobile-panel-layout:not(.with-hint) > .mobile-panel[data-mobile-panel="input"]:not([data-first]) {
-      display: flex;
-      flex: 1 1 auto;
-      flex-direction: column;
-      min-height: 0;
+    /* The puzzle card is inset by its badge gutter; align the input card to it. */
+    .standard-workspace-page .workspace:has(.puzzle-column[data-reserve-badge-space])
+      .mobile-panel[data-mobile-panel="input"] {
+      margin-inline: var(--space-16);
     }
-    .mobile-panel-layout:not(.with-hint) > .mobile-panel[data-mobile-panel="input"]:not([data-first]) > .mobile-panel-content {
-      display: flex;
-      flex: 1 1 auto;
-      flex-direction: column;
-      min-height: 0;
-    }
-    .mobile-panel-layout:not(.with-hint) > .mobile-panel[data-mobile-panel="input"]:not([data-first]) .mobile-input-tabs {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-    .mobile-panel-layout:not(.with-hint) > .mobile-panel[data-mobile-panel="input"]:not([data-first]) .mobile-input-panels {
-      flex: 1 1 auto;
-      min-height: 0;
-      grid-template-rows: minmax(0, 1fr);
-      align-items: start;
+
+    /* Let the input card grow only when the user explicitly resizes it. */
+    .mobile-panel-layout:not([data-input-sized], [data-fit-hint])
+      > .mobile-panel[data-mobile-panel="input"] {
+      flex: none;
     }
   }
   .mobile-panel-layout[data-fit-hint] > .mobile-panel[data-mobile-panel="input"] {
