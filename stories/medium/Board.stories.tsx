@@ -30,6 +30,7 @@ export const SixWithCombinedRules: Story = {
       { type: 'parity', parity: 'even', cells: [3, 15] },
       { type: 'parity', parity: 'odd', cells: [25] },
       { type: 'renban', cells: [20, 13, 19] },
+      { type: 'arrow', circle: 30, cells: [24, 25] },
       { type: 'thermometer', cells: [12, 13, 20, 27] },
       { type: 'difference', cells: [13, 19], difference: 2 },
       { type: 'difference', cells: [8, 9], difference: 1 },

@@ -18,6 +18,7 @@ const ruleNames = {
   renban: 'Renban line',
   kropki: 'Kropki dots',
   difference: 'Difference marker',
+  arrow: 'Arrow',
 }
 
 type RuleChoice = keyof typeof ruleNames
@@ -28,6 +29,7 @@ type KropkiKind = 'consecutive' | 'ratioTwo'
 type KropkiMarks = Partial<Record<KropkiKind, MarkedPairs>>
 
 function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number): SizedConstraintRule {
+  if (kind === 'arrow') return { type: kind, circle: cells[0] ?? 0, cells: cells.slice(1) }
   if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
   if (kind === 'kropki') return { type: kind, ...marks }
   if (kind === 'main' || kind === 'anti') return { type: 'diagonal', diagonal: kind }
@@ -64,11 +66,11 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     const previous = rules[index]
     setEditing(index)
     setKind(previous ? ruleChoice(previous) : 'thermometer')
-    setCells(previous && 'cells' in previous ? previous.cells : [])
+    setCells(previous?.type === 'arrow' ? [previous.circle, ...previous.cells] : previous && 'cells' in previous ? previous.cells : [])
     setMarks(previous?.type === 'kropki' ? { consecutive: previous.consecutive, ratioTwo: previous.ratioTwo } : {})
     setDotKind('consecutive')
     setDifference(previous?.type === 'difference' ? previous.difference : 1)
-    setActive(previous && 'cells' in previous ? previous.cells[0] : 0)
+    setActive(previous?.type === 'arrow' ? previous.circle : previous && 'cells' in previous ? previous.cells[0] : 0)
     setError('')
   }
 
@@ -79,6 +81,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       if (current.includes(cell)) return current.filter(item => item !== cell)
       if ((kind === 'kropki' || kind === 'difference') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban') && current.length === size) return current
+      if (kind === 'arrow' && current.length === size + 1) return current
       return [...current, cell]
     })
   }
@@ -139,7 +142,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     }
     if (!isSizedRuleList(next, size)) {
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
-        : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.` : 'Select the cells for this rule.')
+        : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
+          : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.` : 'Select the cells for this rule.')
       return
     }
     update(next)
@@ -151,7 +155,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       <SelectControl id={`${id}-clue`} value={editing} onChange={event => selectRule(Number(event.currentTarget.value))}>
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
-          {ruleNames[ruleChoice(rule)]}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
+          {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
@@ -169,7 +173,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' ? 'Select the cells in the order you want to draw the line.'
           : kind === 'difference' ? 'Select two cells that share an edge.'
-            : 'Select the cells that should have a marker.'}</p>}
+            : kind === 'arrow' ? 'Select the bulb first, then select the cells along the arrow in order.'
+              : 'Select the cells that should have a marker.'}</p>}
       {kind === 'difference' && <>
         <label htmlFor={`${id}-difference`}>Exact difference</label>
         <SelectControl id={`${id}-difference`} value={difference} onChange={event => {
@@ -205,6 +210,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
           No 1:2 ratios across unmarked edges
         </label>
       </>}
+      {kind === 'arrow' && cells.length > 0 && <p aria-live="polite">Bulb {cellName(cells[0])}
+        {cells.length > 1 && ` · Arrow through ${cells.slice(1).map(cellName).join(' → ')}`}</p>}
       {kind === 'thermometer' && cells.length > 0 && <p aria-live="polite">Path from bulb to tip · {cells.map(cellName).join(' → ')}</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
       <div className="dialog-actions spread">
