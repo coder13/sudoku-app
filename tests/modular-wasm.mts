@@ -6,11 +6,11 @@ import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/su
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { variantHouseMasks, variantLogicalMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
-import { assertGroupOrderProof } from './helpers/group-order-truth.ts'
+import { assertGroupOrderElimination, assertGroupOrderProof } from './helpers/group-order-truth.ts'
 import { assertModularProof } from './helpers/modular-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -25,7 +25,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 420, 21, 4731, 74, false, false, 'medium'],
+  ['HCHW', 420, 21, 9058, 230, false, true, 'hard'],
 ] as const
 for (const [
   id,
@@ -104,7 +104,9 @@ for (const [
         if (proof.technique === 'modular') assertModularProof(puzzle, proof)
         if (proof.technique === 'group-order-contradiction')
           assertGroupOrderProof(puzzle, valuesOf(played), played.position.eliminations, proof)
-        played = applyDeduction(played, proof.actions, variantHouseMasks(puzzle, valuesOf(played)))
+        if (proof.technique === 'group-order-elimination')
+          assertGroupOrderElimination(puzzle, valuesOf(played), played.position.eliminations, proof)
+        played = applyDeduction(played, proof.actions, variantLogicalMasks(puzzle, valuesOf(played)))
       }
       assert.equal(isSolved(played), complete)
       if (complete) assert.equal(valuesOf(played), source.solution)
@@ -130,6 +132,108 @@ for (const [
     }
   })
 }
+
+test('both Modular group orders exclude the same move in hints, Finder and replay', async () => {
+  const technique = 'group-order-elimination'
+  const source = load('coach').examples.find((item: { url: string }) => item.url.endsWith('HCHW'))
+  const { game } = await prepareImportedPuzzle(source.code)
+  const variant = game.variant!, { puzzle } = variant
+  const position = variantPosition(variant)
+  const techniqueOrder = await getVariantPlayOrder(puzzle)
+
+  const previous = await runEngine({
+    type: 'variant', operation: 'trace', position,
+    techniqueOrder: techniqueOrder.filter(id => id !== technique),
+  })
+  assert.equal(previous.rating.status, 'stalled')
+  assert.equal(previous.steps.length, 74)
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
+  assert.equal(trace.rating.counts[technique], 30)
+  const stepIndex = trace.steps.findIndex(step => step.technique === technique)
+  assert.equal(stepIndex, 64)
+  let played = game
+  for (const [i, step] of trace.steps.slice(0, stepIndex).entries()) {
+    const values = valuesOf(played)
+    let masks = variantLogicalMasks(puzzle, values, played.position.eliminations)
+    if (i === 49) {
+      const presentation = variantHouseMasks(puzzle, values, played.position.eliminations)
+      const shown = await puzzleHints(played, 'all', step.technique)
+      assert.ok(shown.choices.some(hint => JSON.stringify(hint.actions) === JSON.stringify(step.actions)))
+      assert.ok(step.actions.some(action => 'eliminate' in action &&
+        !(presentation[action.eliminate.cell] & 1 << (action.eliminate.digit - 1))))
+      masks = shown.candidates
+    }
+    const next = applyDeduction(played, step.actions, masks)
+    assert.notEqual(next, played)
+    played = next
+  }
+  const deduction = trace.steps[stepIndex]
+  assert.equal(deduction.evidence.type, 'group-order-elimination')
+  assert.deepEqual(deduction.actions, [{ eliminate: { cell: 6, digit: 4 } }])
+  assert.deepEqual(deduction.evidence.branches.map(branch => branch.checks.map(check => check.scope.type)),
+    [[], ['pair', 'house']])
+  const replay = (await runEngine({
+    type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex,
+  }))!
+  assert.deepEqual(replay.deduction, deduction)
+  assert.deepEqual(replay.before.eliminations, played.position.eliminations)
+
+  const collection = 2151
+  const selected = await puzzleHints(played, 'all', technique, collection)
+  assert.ok(selected.available > 1)
+  const choices = [...selected.choices]
+  while (choices.length < selected.available) {
+    const page = await puzzleHintPage(variant, collection, choices.length)
+    assert.ok(page.choices.length)
+    choices.push(...page.choices)
+  }
+  const choice = choices.find(hint => JSON.stringify(hint.actions) === JSON.stringify(deduction.actions))
+  assert.ok(choice && 'variant' in choice.evidence)
+  assert.deepEqual(choice.evidence.variant.source?.deduction, deduction)
+  assert.match(choice.evidence.variant.description, /Modular line.*two possible group orders/)
+  assert.match(choice.evidence.variant.reason, /total of 7.*row 1.*Both orders rule out 4/)
+  const ordinary = await puzzleHints(played)
+  assert.ok(ordinary.choices.length > 1)
+  assert.ok(ordinary.choices.some(hint => hint.technique === technique))
+  const scan = watchTechniqueScan(valuesOf(played), played.position.eliminations, variantPosition(variant, played.position))
+  try {
+    assert.equal(await scan.count(technique),
+      new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action)))).size)
+    for (const hint of choices) {
+      assert.ok('variant' in hint.evidence)
+      assertGroupOrderElimination(puzzle, valuesOf(played), played.position.eliminations, hint.evidence.variant.source!.deduction)
+    }
+  } finally {
+    scan.close()
+    await runEngine({ type: 'release-hints', collection })
+  }
+  const next = applyDeduction(played, choice.actions, selected.candidates)
+  assert.notEqual(next, played)
+  assert.deepEqual(replay.after.eliminations, next.position.eliminations)
+  assert.deepEqual(redo(undo(next)).position, next.position)
+})
+
+test('both-order practice has checked proofs and requires its pair clues', async () => {
+  const technique = 'group-order-elimination'
+  const catalog = await runEngine({ type: 'techniques', variant: true })
+  const entry = catalog.techniques.find(item => item.id === technique)!
+  assert.equal(entry.cost, 76)
+  assert.equal(entry.difficulty, 'hard')
+  assert.equal(entry.requiresUniqueSolution, false)
+  const examples = await runEngine({ type: 'practice-examples', variant: true, technique })
+  assert.equal(examples.length, 3)
+  for (const { position, deduction, suggestion } of examples) {
+    assertGroupOrderElimination(position.puzzle, position.puzzle.givens, position.eliminations, deduction)
+    assert.deepEqual(await runEngine({
+      type: 'variant', operation: 'check-practice-move', technique, action: suggestion, position,
+    }), deduction)
+    const pure = { ...position.puzzle,
+      rules: position.puzzle.rules!.filter(rule => rule.type === 'modular' || rule.type === 'entropic') }
+    assert.deepEqual(await runEngine({
+      type: 'variant', operation: 'hints', position: { ...position, puzzle: pure }, techniqueOrder: [technique],
+    }), [])
+  }
+})
 
 test('selected Modular proofs survive every page and Finder without changing exact validation', async () => {
   const rules = [...newman.puzzle.rules!]

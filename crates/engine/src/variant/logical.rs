@@ -153,6 +153,8 @@ catalog! {
     GroupLineHouseSupport: "group-line-house-support", 64, Medium;
     /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
     GroupOrderContradiction: "group-order-contradiction", 89, Hard;
+    /// Remove a candidate excluded by both possible repeating group orders.
+    GroupOrderElimination: "group-order-elimination", 76, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -258,6 +260,8 @@ pub enum VariantEvidence {
     GroupLineHouse(Box<VariantGroupLineHouseProof>),
     /// One or more repeating orders contradict the surrounding clues and houses.
     GroupOrder(Box<VariantGroupOrderProof>),
+    /// Both possible group orders exclude the same candidate.
+    GroupOrderElimination(Box<VariantGroupOrderEliminationProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -446,6 +450,32 @@ pub struct VariantGroupOrderProof {
     pub rejected: Vec<VariantGroupOrderRefutation>,
 }
 
+/// The restrictions proved within one possible group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderBranch {
+    /// Group masks for the three positions in the repeating pattern.
+    pub groups: [u16; 3],
+    /// Restrictions that exclude the candidate, in replay order.
+    pub checks: Vec<VariantGroupOrderCheck>,
+}
+
+/// A candidate excluded under both possible orders of a repeating line.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderEliminationProof {
+    /// Index of the source Entropic or Modular rule.
+    pub rule: usize,
+    /// Distinct source cells in the original order of first visits.
+    pub cells: Vec<usize>,
+    /// Candidate masks in the source cells before considering either order.
+    pub domains: Vec<u16>,
+    /// The repeating position of each source cell.
+    pub phases: Vec<usize>,
+    /// Both orders and their restrictions.
+    pub branches: [VariantGroupOrderBranch; 2],
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -623,7 +653,9 @@ impl VariantPosition {
             rating.points += u32::from(technique.cost());
             if matches!(
                 technique,
-                VariantTechnique::GroupLineHouseSupport | VariantTechnique::GroupOrderContradiction
+                VariantTechnique::GroupLineHouseSupport
+                    | VariantTechnique::GroupOrderContradiction
+                    | VariantTechnique::GroupOrderElimination
             ) {
                 rating.scoring_version = GROUP_LINE_SCORING_VERSION;
             }
@@ -656,6 +688,8 @@ impl VariantDeduction {
                 .iter()
                 .map(|order| order.checks.len() + 1)
                 .sum(),
+            VariantEvidence::GroupOrderElimination(proof) =>
+                proof.branches.iter().map(|branch| branch.checks.len()).sum(),
             _ => 0,
         };
         let cells = match &self.evidence {
@@ -666,6 +700,7 @@ impl VariantDeduction {
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::GroupLineHouse(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
+            VariantEvidence::GroupOrderElimination(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1172,6 +1207,10 @@ impl CompiledVariant {
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
+            GroupOrderElimination => {
+                self.group_order_eliminations(position, &mut proofs);
+                proofs.sort_by_cached_key(VariantDeduction::rank);
+            }
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 for line in self
                     .lines

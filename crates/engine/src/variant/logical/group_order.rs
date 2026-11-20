@@ -8,6 +8,8 @@ use crate::{CELLS, DIGITS, variant::digit_set_support};
 const MAX_PASSES: usize = 4;
 const MAX_EXPLANATION_CHECKS: usize = 8;
 const MAX_SCOPES_TO_MINIMIZE: usize = 40;
+mod common;
+
 type Domains = [u16; CELLS];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -23,18 +25,7 @@ impl CompiledVariant {
         position: &ProofPosition<'_>,
         proofs: &mut Vec<VariantDeduction>,
     ) {
-        let pairs = self
-            .pair_clues
-            .iter()
-            .enumerate()
-            .filter_map(|(index, clue)| {
-                (matches!(
-                    clue.source.id,
-                    "kropki" | "xv" | "adjacent-total" | "inequality"
-                ) && clue.binary_relation().is_some())
-                .then_some(Scope::Pair(index))
-            })
-            .collect::<Vec<_>>();
+        let pairs = self.group_order_pairs();
         if pairs.is_empty() {
             return;
         }
@@ -57,14 +48,7 @@ impl CompiledVariant {
                 continue;
             }
 
-            let scopes = pairs
-                .iter()
-                .copied()
-                .chain((0..self.houses.len()).map(Scope::House))
-                .chain(self.lines.iter().enumerate().filter_map(|(i, clue)| {
-                    (i != index && clue.group_line().is_some()).then_some(Scope::Line(i))
-                }))
-                .collect::<Vec<_>>();
+            let scopes = self.group_order_scopes(&pairs, index);
             let mut remaining = Vec::new();
             let mut rejected = Vec::new();
             for order in orders {
@@ -141,24 +125,7 @@ impl CompiledVariant {
 
         let mut checks = Vec::new();
         self.check_order(&used, assumed, |scope, before, after| {
-            let cells = self.order_scope_cells(scope).to_vec();
-            let scope = match scope {
-                Scope::Pair(i) => VariantGroupOrderScope::Pair {
-                    rules: self.pair_clues[i].source.indices.clone(),
-                },
-                Scope::House(i) => VariantGroupOrderScope::House {
-                    house: self.houses[i].kind,
-                },
-                Scope::Line(i) => VariantGroupOrderScope::Line {
-                    rule: self.lines[i].rule_index,
-                },
-            };
-            checks.push(VariantGroupOrderCheck {
-                scope,
-                cells,
-                domains: before.to_vec(),
-                supported: after.to_vec(),
-            });
+            checks.push(self.order_check(scope, before, after));
         })?;
         let conflict = checks.pop()?;
         let house_conflict =
@@ -184,6 +151,52 @@ impl CompiledVariant {
         })
     }
 
+    fn group_order_pairs(&self) -> Vec<Scope> {
+        self.pair_clues
+            .iter()
+            .enumerate()
+            .filter_map(|(index, clue)| {
+                (matches!(
+                    clue.source.id,
+                    "kropki" | "xv" | "adjacent-total" | "inequality"
+                ) && clue.binary_relation().is_some())
+                .then_some(Scope::Pair(index))
+            })
+            .collect()
+    }
+
+    fn group_order_scopes(&self, pairs: &[Scope], source: usize) -> Vec<Scope> {
+        pairs
+            .iter()
+            .copied()
+            .chain((0..self.houses.len()).map(Scope::House))
+            .chain(self.lines.iter().enumerate().filter_map(|(i, clue)| {
+                (i != source && clue.group_line().is_some()).then_some(Scope::Line(i))
+            }))
+            .collect()
+    }
+
+    fn order_check(&self, scope: Scope, before: &[u16], after: &[u16]) -> VariantGroupOrderCheck {
+        let cells = self.order_scope_cells(scope).to_vec();
+        let scope = match scope {
+            Scope::Pair(i) => VariantGroupOrderScope::Pair {
+                rules: self.pair_clues[i].source.indices.clone(),
+            },
+            Scope::House(i) => VariantGroupOrderScope::House {
+                house: self.houses[i].kind,
+            },
+            Scope::Line(i) => VariantGroupOrderScope::Line {
+                rule: self.lines[i].rule_index,
+            },
+        };
+        VariantGroupOrderCheck {
+            scope,
+            cells,
+            domains: before.to_vec(),
+            supported: after.to_vec(),
+        }
+    }
+
     fn order_scope_cells(&self, scope: Scope) -> &[usize] {
         match scope {
             Scope::Pair(i) => {
@@ -206,41 +219,10 @@ impl CompiledVariant {
         for _ in 0..MAX_PASSES {
             let mut changed = false;
             for &scope in scopes {
-                let cells = self.order_scope_cells(scope);
-                let mut before = [0; CELLS];
-                let before = &mut before[..cells.len()];
-                for (mask, &cell) in before.iter_mut().zip(cells) {
-                    *mask = domains[cell];
-                }
-                let mut after = [0; CELLS];
-                let after = &mut after[..cells.len()];
-                match scope {
-                    Scope::Pair(i) => after.copy_from_slice(
-                        &self.pair_clues[i]
-                            .binary_relation()
-                            .expect("a selected binary clue")
-                            .restrict([before[0], before[1]]),
-                    ),
-                    Scope::House(_) => {
-                        if before.iter().all(|&mask| mask == DIGITS) {
-                            continue;
-                        }
-                        digit_set_support(DIGITS, before, after);
-                    }
-                    Scope::Line(i) => self.lines[i]
-                        .group_line()
-                        .expect("a selected repeating line")
-                        .support(before, after),
-                }
-                if before != after {
-                    report(scope, before, after);
-                    if after.contains(&0) {
-                        return Some(());
-                    }
-                    for (&cell, &mask) in cells.iter().zip(after.iter()) {
-                        domains[cell] = mask;
-                    }
-                    changed = true;
+                match self.apply_order_scope(scope, &mut domains, &mut report) {
+                    ScopeResult::Conflict => return Some(()),
+                    ScopeResult::Restricted => changed = true,
+                    ScopeResult::Unchanged => {}
                 }
             }
             if !changed {
@@ -249,6 +231,73 @@ impl CompiledVariant {
         }
         None
     }
+
+    fn apply_order_scope(
+        &self,
+        scope: Scope,
+        domains: &mut Domains,
+        report: impl FnMut(Scope, &[u16], &[u16]),
+    ) -> ScopeResult {
+        self.apply_order_scope_with(scope, domains, report, |before, after| {
+            digit_set_support(DIGITS, before, after);
+        })
+    }
+
+    fn apply_order_scope_with(
+        &self,
+        scope: Scope,
+        domains: &mut Domains,
+        mut report: impl FnMut(Scope, &[u16], &[u16]),
+        house_support: impl FnOnce(&[u16; 9], &mut [u16]),
+    ) -> ScopeResult {
+        let cells = self.order_scope_cells(scope);
+        let mut before = [0; CELLS];
+        let before = &mut before[..cells.len()];
+        for (mask, &cell) in before.iter_mut().zip(cells) {
+            *mask = domains[cell];
+        }
+        let mut after = [0; CELLS];
+        let after = &mut after[..cells.len()];
+        match scope {
+            Scope::Pair(i) => after.copy_from_slice(
+                &self.pair_clues[i]
+                    .binary_relation()
+                    .expect("a selected binary clue")
+                    .restrict([before[0], before[1]]),
+            ),
+            Scope::House(_) => {
+                if before.iter().all(|&mask| mask == DIGITS) {
+                    return ScopeResult::Unchanged;
+                }
+                house_support(
+                    (&*before).try_into().expect("a house has nine cells"),
+                    after,
+                );
+            }
+            Scope::Line(i) => self.lines[i]
+                .group_line()
+                .expect("a selected repeating line")
+                .support(before, after),
+        }
+        if before == after {
+            return ScopeResult::Unchanged;
+        }
+        report(scope, before, after);
+        if after.contains(&0) {
+            return ScopeResult::Conflict;
+        }
+        for (&cell, &mask) in cells.iter().zip(after.iter()) {
+            domains[cell] = mask;
+        }
+        ScopeResult::Restricted
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ScopeResult {
+    Unchanged,
+    Restricted,
+    Conflict,
 }
 
 #[cfg(test)]

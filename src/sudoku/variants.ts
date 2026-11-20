@@ -232,12 +232,28 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
   return extraRegionName(puzzle.rules ?? [], house.extra)
 }
 
-export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
+/** Candidate masks for logical proofs before applying repeat-line or Renban rules. */
+export function variantLogicalMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
   const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
+  }
+  for (const house of houses) {
+    const indices = variantHouseCells(house, puzzle)
+    let used = 0
+    for (const cell of indices) {
+      if (values[cell] !== '0') used |= 1 << (Number(values[cell]) - 1)
+    }
+    for (const cell of indices) masks[cell] &= ~used
+  }
+  return masks
+}
+
+export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
+  const masks = variantLogicalMasks(puzzle, values, eliminations)
+  for (const rule of puzzle.rules ?? []) {
     if (rule.type === 'entropic' || rule.type === 'modular') {
       for (const [i, from] of rule.cells.entries()) if (values[from] !== '0') {
         for (const [j, to] of rule.cells.entries()) if (i % 3 !== j % 3) masks[to] &= ~(1 << (Number(values[from]) - 1))
@@ -247,14 +263,6 @@ export function variantHouseMasks(puzzle: VariantPuzzle, values: string, elimina
       const used = rule.cells.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
       for (const cell of rule.cells) masks[cell] &= ~used
     }
-  }
-  for (const house of houses) {
-    const indices = variantHouseCells(house, puzzle)
-    let used = 0
-    for (const cell of indices) {
-      if (values[cell] !== '0') used |= 1 << (Number(values[cell]) - 1)
-    }
-    for (const cell of indices) masks[cell] &= ~used
   }
   return masks
 }

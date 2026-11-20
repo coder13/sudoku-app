@@ -13,6 +13,7 @@ import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-ex
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { assertGroupOrderElimination } from './helpers/group-order-truth.ts'
 import { assertModularProof } from './helpers/modular-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
@@ -205,6 +206,29 @@ test('the real lesson and hint/solution components explain an independently chec
   assert.throws(() => assertModularProof(source.position.puzzle, wrong))
 })
 
+
+test('both group orders are explained in the Modular lesson and hint card', () => {
+  const corpus = JSON.parse(
+    readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8')
+  ) as Record<string, EngineLessonExample>
+  const source = corpus['group-order-elimination']
+  assert.ok('position' in source)
+  assertGroupOrderElimination(source.position.puzzle, source.position.puzzle.givens, source.position.eliminations, source.deduction)
+  const view = lessonExample(source)
+  const options = { cellReferenceStyle: 'verbose' as const, difficulty: 'hard' as const }
+  const diagram = lessonDiagram(view, view.pattern, options)
+  const html = renderToStaticMarkup(createElement(HintCard, {
+    hint: describeHint(view.deduction, options),
+    explanation: [diagram.description, diagram.reason],
+    lesson: { id: 'group-order-elimination', title: 'Eliminations in both group orders' },
+    onClose() {},
+  }))
+  assert.match(html, /learn\/group-order-elimination/)
+  assert.match(html, /two possible group orders/)
+  assert.match(html, /total of 7/)
+  assert.match(html, /Both orders rule out/)
+  assert.equal((html.match(/Try \{/g) ?? []).length, 2)
+})
 
 test('New Puzzle offers Medium Modular Lines with complete geometry, valid remainder digits and actual navigation', async () => {
   assert.ok(isVariantId('modular'))

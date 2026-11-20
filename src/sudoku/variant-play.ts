@@ -19,7 +19,7 @@ export function getVariantPlayOrder(puzzle?: VariantPuzzle) {
     .then(([variant, classic]) => {
       const difficulties = Object.fromEntries([...classic.techniques, ...variant.techniques].map(t => [t.id, t.difficulty]))
       const standard = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, difficulties)
-      const mixed = variantTechniqueOrder([...variant.defaultOrder, 'group-order-contradiction'], classic.difficultyOrder, difficulties)
+      const mixed = variantTechniqueOrder([...variant.defaultOrder, 'group-order-contradiction', 'group-order-elimination'], classic.difficultyOrder, difficulties)
       return { standard, groupLines: withGroupLineHouses(standard), mixedGroupLines: withGroupLineHouses(mixed) }
     })
     .catch((error) => {
