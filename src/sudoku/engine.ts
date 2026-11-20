@@ -179,6 +179,7 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
   | SizedDifferenceRule | SizedLabeledDotsRule
+  | { type: 'double-arrow'; ends: readonly [number, number]; cells: readonly number[] }
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'solve-unique' | 'candidates' }

@@ -54,6 +54,18 @@ export const SevenJigsawThermometer: Story = {
   },
   decorators: [(Story) => <Width width={385}><Story /></Width>],
 }
+export const SixDoubleArrows: Story = {
+  args: {
+    grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: '0'.repeat(36), values: '0'.repeat(36),
+    sizedRules: [
+      { type: 'double-arrow', ends: [0, 4], cells: [1, 2, 3] },
+      { type: 'double-arrow', ends: [4, 22], cells: [10, 16] },
+      { type: 'parity', parity: 'even', cells: [14] },
+    ],
+    selected: [4],
+  },
+  decorators: [(Story) => <Width width={350}><Story /></Width>],
+}
 export const SevenBoxlessKiller: Story = {
   args: {
     grid: SEVEN_BOXLESS_GRID, givens: '0'.repeat(49), values: '0'.repeat(49),

@@ -197,7 +197,7 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
 }
 
 export function sizedArrowState(rules: readonly SizedConstraintRule[] | undefined, values: string, size: number) {
-  const arrows = rules?.filter(rule => rule.type === 'arrow')
+  const arrows = rules?.filter(rule => rule.type === 'arrow' || rule.type === 'double-arrow')
   if (!arrows?.length) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)
   const conflicts = new Set<number>()
@@ -205,25 +205,29 @@ export function sizedArrowState(rules: readonly SizedConstraintRule[] | undefine
     const first = Math.max(1, low), last = Math.min(size, high)
     return first <= last ? (1 << last) - (1 << (first - 1)) : 0
   }
-  for (const { circle, cells } of arrows) {
-    const bulb = Number(values[circle])
-    let sum = 0, empty = 0
+  const bounds = (cells: readonly number[]) => {
+    let low = 0, high = 0
     for (const cell of cells) {
       const digit = Number(values[cell])
-      sum += digit
-      empty += Number(digit === 0)
+      low += digit || 1
+      high += digit || size
     }
-    const low = sum + empty, high = sum + empty * size
-    if (low > (bulb || size) || bulb > high) {
-      for (const cell of [circle, ...cells]) if (values[cell] !== '0') conflicts.add(cell)
+    return [low, high] as const
+  }
+  const restrict = (cells: readonly number[], low: number, high: number) => {
+    const mask = interval(low, high)
+    for (const cell of cells) if (values[cell] === '0') allowed[cell] &= mask
+  }
+  for (const rule of arrows) {
+    const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
+    const [endLow, endHigh] = bounds(ends)
+    const [lineLow, lineHigh] = bounds(rule.cells)
+    if (lineLow > endHigh || endLow > lineHigh) {
+      for (const cell of [...ends, ...rule.cells]) if (values[cell] !== '0') conflicts.add(cell)
       continue
     }
-    if (!bulb) allowed[circle] &= interval(low, high)
-    if (empty) {
-      const min = bulb ? bulb - sum - (empty - 1) * size : 1
-      const max = (bulb || size) - sum - (empty - 1)
-      for (const cell of cells) if (values[cell] === '0') allowed[cell] &= interval(min, max)
-    }
+    restrict(ends, lineLow - (endHigh - size), lineHigh - (endLow - 1))
+    restrict(rule.cells, endLow - (lineHigh - size), endHigh - (lineLow - 1))
   }
   return { allowed, conflicts }
 }

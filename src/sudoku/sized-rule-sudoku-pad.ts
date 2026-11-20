@@ -68,11 +68,8 @@ function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
 const isPoint = (value: unknown): value is [number, number] =>
   Array.isArray(value) && value.length === 2 && value.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
 
-function readArrows(arrows: unknown, overlays: unknown[], size: number) {
-  if (!Array.isArray(arrows) || arrows.length === 0 || arrows.length > 128) {
-    throw new Error('This SudokuPad export has invalid arrows.')
-  }
-  const bulbs = overlays.flatMap((overlay, index) => {
+function readArrowCircles(overlays: unknown[]) {
+  return overlays.flatMap((overlay, index) => {
     if (!record(overlay) || Object.keys(overlay).some(key =>
       !['center', 'width', 'height', 'thickness', 'angle', 'rounded', 'backgroundColor', 'borderColor'].includes(key)) ||
       !isPoint(overlay.center) || !overlay.center.every(coordinate => Number.isInteger(coordinate - .5)) ||
@@ -81,6 +78,13 @@ function readArrows(arrows: unknown, overlays: unknown[], size: number) {
       typeof overlay.backgroundColor !== 'string' || !/^#(?:fff|ffffff|ffffffff)$/i.test(overlay.backgroundColor)) return []
     return [{ center: overlay.center, radius: overlay.width / 2, color: overlay.borderColor.toLowerCase(), index }]
   })
+}
+
+function readArrows(arrows: unknown, overlays: unknown[], size: number) {
+  if (!Array.isArray(arrows) || arrows.length === 0 || arrows.length > 128) {
+    throw new Error('This SudokuPad export has invalid arrows.')
+  }
+  const bulbs = readArrowCircles(overlays)
   const used = new Set<number>()
   const rules = arrows.map((arrow: unknown): SizedConstraintRule => {
     if (!record(arrow) || Object.keys(arrow).some(key => !['wayPoints', 'headLength', 'color', 'thickness'].includes(key)) ||
@@ -115,7 +119,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const { cells, metadata, regions, cages, lines, underlays, overlays, arrows } = data
   if (Object.keys(data).some(key => !fields.includes(key)) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
-    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution'].includes(key)) ||
+    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect'].includes(key)) ||
     (cages !== undefined && (!Array.isArray(cages) || cages.length))) {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
@@ -147,8 +151,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
   // text identifies what they mean, and the bulb determines direction.
-  const rulesText = metadata.rules.trim().split(/\n\s*\n/).map(part => part.replace(/\s+/g, ' '))
-  const base = /^Normal (\d+)[x×](\d+) sudoku rules apply\. Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+) in every row, column and (\d+)[x×](\d+) box\.$/i.exec(rulesText[0])
+  const rulesText = metadata.rules.trim().split(/\n\s*\n|(?<=\.)\s+(?=Double Arrows:)/i).map(part => part.replace(/\s+/g, ' '))
+  const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
+  const shortBase = /^Normal (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
   const thermometer = /^Digits along a thermometer strictly increase from bulb to tip\.$/i
@@ -161,7 +166,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactKropki = /^PARTIAL KROPKI - A white dot between two cells requires that the value in one cell is exactly 1 greater than the value of the other cell\. - A black dot between two cells requires that the value in one cell is exactly double the value of the other cell\.$/i
   const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause)
   const arrow = /^Digits along an arrow sum to the digit in a bulb\. Digits may repeat if allowed by other rules\.$/i
+  const doubleArrow = /^Double Arrows: (?:Digits along a grey line have the same sum as the sum of the two connected circles|the sum of the digits along a line (?:is|are) equal to the sum of the digits in the circles at either end of that line)\.?$/i
   const authoredArrows = clauses.some(clause => arrow.test(clause))
+  const authoredDoubleArrows = clauses.some(clause => doubleArrow.test(clause))
   const authoredKropki = clauses.some(isKropki)
   const authoredThermometers = clauses.some(isThermometer)
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause))
@@ -169,8 +176,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const regionSum = /^Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums\.$/i
   const authoredRegionSum = clauses.some(clause => regionSum.test(clause))
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
-    Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns : Number(compactBase?.[1]) === size
-  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) && !arrow.test(clause) && !regionSum.test(clause))) {
+    (Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns ||
+      authoredDoubleArrows && Number(base[4]) === grid.boxColumns && Number(base[5]) === grid.boxRows)
+    : Number(compactBase?.[1]) === size || authoredDoubleArrows && Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size
+  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) &&
+    !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause))) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
@@ -189,16 +199,51 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     }
     return { cell: boardCell(bulb.center, size, 0.5), color: bulb.backgroundColor }
   })
+  let remainingOverlays = overlays
+  let singleArrows: SizedConstraintRule[] = []
+  if (authoredArrows) {
+    if (!Array.isArray(overlays) || overlays.length > 256) throw new Error('This SudokuPad export has invalid arrow bulbs.')
+    const parsed = readArrows(arrows, overlays, size)
+    singleArrows = parsed.rules
+    remainingOverlays = parsed.unused.length ? parsed.unused : undefined
+  } else if (arrows !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
+  const doubleCircles = new Map<string, number>()
+  const usedDoubleCircles = new Set<number>()
+  if (authoredDoubleArrows && Array.isArray(remainingOverlays) && remainingOverlays.length <= 256) {
+    for (const { center, color, index, radius } of readArrowCircles(remainingOverlays)) {
+      if (radius <= .25) continue
+      const key = `${color}:${boardCell(center, size, .5)}`
+      if (doubleCircles.has(key)) throw new Error('Two Double Arrow circles share a cell and color.')
+      doubleCircles.set(key, index)
+    }
+  }
   for (const line of lines ?? []) {
     if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
       typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0) {
       throw new Error('This SudokuPad export has an unsupported line.')
     }
     const mayBeRegionSum = authoredRegionSum &&
-      ((!authoredThermometers && !authoredRenban) || /^#2ecbff(?:ff)?$/i.test(line.color))
+      ((!authoredThermometers && !authoredRenban && !authoredDoubleArrows) || /^#2ecbff(?:ff)?$/i.test(line.color))
     const mayBeRenban = authoredRenban &&
-      ((!authoredThermometers && !authoredRegionSum) || /^#f067f0(?:ff)?$/i.test(line.color))
-    const path = readPath(line.wayPoints, size, mayBeRegionSum ? size ** 2 + 1 : size)
+      ((!authoredThermometers && !authoredRegionSum && !authoredDoubleArrows) || /^#f067f0(?:ff)?$/i.test(line.color))
+    const path = readPath(line.wayPoints, size, mayBeRegionSum || authoredDoubleArrows ? size ** 2 + 1 : size)
+    if (doubleCircles.size) {
+      const color = line.color.toLowerCase()
+      const circle = (cell: number) => doubleCircles.get(`${color}:${cell}`)
+      const first = circle(path[0])
+      if (first !== undefined && circle(path[path.length - 1]) !== undefined) {
+        let start = 0
+        usedDoubleCircles.add(first)
+        for (let index = 1; index < path.length; index++) {
+          const endpoint = circle(path[index])
+          if (endpoint === undefined) continue
+          usedDoubleCircles.add(endpoint)
+          rules.push({ type: 'double-arrow', ends: [path[start], path[index]], cells: path.slice(start + 1, index) })
+          start = index
+        }
+        continue
+      }
+    }
     // This compact export convention uses a darker, unbordered bulb.
     const compactShaft = compactBulbs && /^#(?:ccc|cccccc(?:ff)?)$/i.test(line.color)
     const matching = bulbs.flatMap((bulb, index) => {
@@ -219,17 +264,16 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
         : 'This SudokuPad puzzle has markings without supported rules.')
     }
   }
-  let remainingOverlays = overlays
-  if (authoredArrows) {
-    if (!Array.isArray(overlays) || overlays.length > 256) throw new Error('This SudokuPad export has invalid arrow bulbs.')
-    const parsed = readArrows(arrows, overlays, size)
-    rules.push(...parsed.rules)
-    remainingOverlays = parsed.unused.length ? parsed.unused : undefined
-  } else if (arrows !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
+  rules.push(...singleArrows)
+  if (usedDoubleCircles.size && Array.isArray(remainingOverlays)) {
+    const unused = remainingOverlays.filter((_, index) => !usedDoubleCircles.has(index))
+    remainingOverlays = unused.length ? unused : undefined
+  }
   if (authoredKropki) rules.push(readKropkiDots(remainingOverlays, size))
   else if (remainingOverlays !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   if (bulbs.length || authoredThermometers !== rules.some(rule => rule.type === 'thermometer') ||
     authoredRenban !== rules.some(rule => rule.type === 'renban') ||
+    authoredDoubleArrows !== rules.some(rule => rule.type === 'double-arrow') ||
     authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') || !isSizedRuleList(rules, grid) ||
     (size === 4 && !rules.length)) {
     throw new Error('This SudokuPad export has incomplete or invalid lines.')
