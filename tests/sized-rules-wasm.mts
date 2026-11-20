@@ -111,3 +111,19 @@ test('Kropki negative rules exempt any marked edge across authored rule records'
   assert.equal(masks?.[1], 1 << 1)
   assert.equal((masks?.[6] ?? 0) & (1 << 1), 0)
 })
+
+test('Difference markers can use the largest valid gap at each supplied size', async () => {
+  for (const [size, boxRows, boxColumns] of [[4, 2, 2], [8, 2, 4], [16, 4, 4]]) {
+    const digits = Array<number>(size * size).fill(0)
+    digits[0] = 1
+    const position: SizedConstraintPosition = {
+      version: 2, grid: { size, boxRows, boxColumns }, digits,
+      rules: [{ type: 'difference', cells: [1, 0], difference: size - 1 }],
+    }
+    const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+    assert.equal(masks?.[1], 1 << (size - 1))
+    await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+      ...position, rules: [{ type: 'difference', cells: [1, 0], difference: size }],
+    } }), error => error instanceof EngineError && error.code === 'invalid-rules')
+  }
+})

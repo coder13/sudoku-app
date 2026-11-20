@@ -23,7 +23,14 @@ pub(super) struct Definition {
 #[serde(untagged)]
 enum Rule {
     Variant(PuzzleRule),
+    Pair(PairRule),
     Algebraic(AlgebraicRule),
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
+enum PairRule {
+    Difference { cells: [usize; 2], difference: u8 },
 }
 
 #[derive(Deserialize, Serialize)]
@@ -95,6 +102,7 @@ impl TryFrom<Rule> for SizedConstraint {
                 }
                 Self::Renban { cells }
             }
+            Rule::Pair(PairRule::Difference { cells, difference }) => Self::Difference { cells, difference },
             Rule::Variant(_) => {
                 return Err(("unsupported-rule", "This rule is unavailable on the sized grid."));
             }
