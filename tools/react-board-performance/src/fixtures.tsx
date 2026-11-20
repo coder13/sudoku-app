@@ -131,6 +131,22 @@ export function scenarios(): Scenario[] {
     { ...dense, variantPuzzle: { version: 1, givens: dense.givens, regions: { type: 'boxes' }, rules: [rules[0]] } }] })
   result.push({ id: 'stacked-outside-clues-ignore-region', states: [{ ...dense,
     variantPuzzle: { version: 1, givens: dense.givens, rules: rules.slice(23) }, region: { row: 2, column: 2, rows: 3, columns: 3 } }] })
+  const ruleFocus: BoardProps = { ...dense, variantPuzzle: { version: 1, givens: dense.givens,
+    rules: [rules[0], { type: 'diagonal', diagonal: 'anti' }, rules[2], rules[10], rules[13], rules[23]] } }
+  result.push({ id: 'focused-rule-replacement-and-diagonal-geometry', states: [ruleFocus,
+    { ...ruleFocus, highlightedRule: 'diagonal' },
+    { ...ruleFocus, highlightedRule: 'thermometer' },
+    { ...ruleFocus, highlightedRule: 'killer-cages' },
+    { ...ruleFocus, highlightedRule: 'kropki' },
+    { ...ruleFocus, highlightedRule: 'sandwich' },
+    { ...ruleFocus, highlightedRule: 'diagonal', variantPuzzle: { version: 1, givens: dense.givens, rules: [rules[0]] } },
+    { ...ruleFocus, highlightedRule: 'diagonal', variantPuzzle: { version: 1, givens: dense.givens, rules: [{ type: 'diagonal', diagonal: 'anti' }] } },
+    { ...ruleFocus, highlightedRule: 'diagonal', variantPuzzle: { version: 1, givens: dense.givens, rules: [rules[13]] } },
+    { ...ruleFocus, highlightedRule: 'classic' },
+    { ...ruleFocus, highlightedRule: 'jigsaw', variantPuzzle: jigsaw },
+    { ...ruleFocus, highlightedRule: 'diagonal', onCell: undefined },
+    { ...ruleFocus, highlightedRule: null },
+  ] })
 
   for (const grid of [MINI_GRID, sixGridForBoxRows(2), sixGridForBoxRows(3)]) {
     const count = grid.size ** 2

@@ -46,7 +46,8 @@ function makeRecipe(size: number, pick: PickIndex): CalcudokuRecipe {
   for (const start of available) {
     const cells = [start]
     available.delete(start)
-    const length = 2 + pick(size === 5 ? 3 : 2)
+    // Easy boards can also use four-cell cages, as in the starter catalog.
+    const length = 2 + pick(size === sizes.medium ? 2 : 3)
     while (cells.length < length) {
       const nearby = [...new Set(cells.flatMap(cell => neighbors(cell, size)).filter(cell => available.has(cell)))]
       if (!nearby.length) break

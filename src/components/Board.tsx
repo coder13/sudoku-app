@@ -5,7 +5,7 @@ import { jigsawMembership, CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
-import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership } from '../sudoku/variants'
+import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
@@ -16,6 +16,7 @@ import { BoardMarks, type BoardMark } from './BoardMarks'
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
   sizedRules?: readonly SizedConstraintRule[]
@@ -127,6 +128,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   error: boolean
   related: boolean
   matching: boolean
+  ruleHighlighted: boolean
   cellHighlight: '' | 'candidate-highlight-cell' | 'candidate-highlight-light'
   countHighlighted: boolean
   candidateHighlightMask: number
@@ -145,7 +147,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
 const BoardCell = memo(function BoardCell({
   geometry, value, fixed, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
   preview, candidateColors, color, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
-  error, related, matching, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
+  error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
   linkTargetMask, highlightsLinkTargetCell, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted,
   onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
 }: CellProps) {
@@ -279,6 +281,7 @@ const BoardCell = memo(function BoardCell({
     data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
+    data-rule-highlighted={ruleHighlighted || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
     data-cage-total={cageTotal !== undefined || undefined}
     type={onCell && 'button'} tabIndex={onCell ? (active ? 0 : -1) : undefined} aria-selected={onCell ? selected : undefined}
@@ -296,7 +299,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
@@ -308,6 +311,8 @@ export function Board({
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
   const variantRules = variantPuzzle?.rules
+  const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
+    ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
   const outside = useMemo(() => outsideClueLayout(variantRules), [variantRules])
   const hasOutside = Object.values(outside.depths).some(Boolean)
   const clones = useMemo(() => cloneLayout(variantRules), [variantRules])
@@ -457,6 +462,7 @@ export function Board({
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
+          ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
           cellHighlight={highlightsLinkTargetCell || (highlightsCell && !matchesWithExtras) ? 'candidate-highlight-cell'
             : highlightsCell ? 'candidate-highlight-light' : ''}
           countHighlighted={highlightCandidateCells && candidateCountMatches} candidateHighlightMask={candidateHighlightMask}
@@ -473,7 +479,7 @@ export function Board({
   )), [
     rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.colors, candidates, candidatePreview,
-    isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, matchAnyDigit, highlighting.matchingCandidates,
+    isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
     highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidate?.cell, selectedCandidate?.digit, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
@@ -517,7 +523,7 @@ export function Board({
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}
-        data-input-mode={modeBorder} ref={modeBoundaryRef}>
+        data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={modeBoundaryRef}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}

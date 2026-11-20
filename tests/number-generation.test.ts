@@ -67,6 +67,14 @@ test('Calcudoku generation gives a distinct cage set and complete hints at each 
   }
 })
 
+test('Easy Calcudoku can generate a solvable board with a four-cell cage', () => {
+  const recipe = generateCalcudoku('easy', 0)
+  assert.ok(recipe)
+  assert.equal(recipe.size, 3)
+  assert.ok(recipe.cages.some(({ cells }) => cells.length === 4))
+  assert.equal(solveLatin(calcudokuFromRecipe(recipe), [], 1).status, 'unique')
+})
+
 test('Calcudoku recipe keys match rotations and reflections independent of cage order', () => {
   const recipe = generateCalcudoku('easy', 0xc6be72a2)
   assert.ok(recipe)
