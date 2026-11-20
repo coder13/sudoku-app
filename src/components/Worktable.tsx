@@ -36,6 +36,7 @@ import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { puzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
@@ -517,7 +518,8 @@ export function Worktable({
   const drawingIntent = savedPlayState?.drawingIntent ?? null
   const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
   // Strong-link highlighting also works directly from the puzzle footer, without opening Chains.
-  const chainsActive = !grid && (chainsVisible || (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
+  const chainsActive = !grid && (chainsVisible || drawingIntent === true ||
+    (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -2284,16 +2286,24 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset || browsingStrongLinks || (sketch.drawing && !chainsVisible)
-    ? undefined
-    : sketch.drawing && chainMasks ? 'chain' : eraseMode ? 'erase' : colorMode || brush !== null ? 'color'
-      : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
-  const badgeMode = game.paused || rearranging || gridInputMode === 'color' ? undefined : gridInputMode
+  // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
+  // Paused/preview/finished puzzles retain their mode without showing editable controls.
+  const gridInputMode = puzzleInputMode({
+    drawingLinks: sketch.drawing, browsingStrongLinks, inspectingSubsets: inspectSubset,
+    erasing: eraseMode, coloring: colorMode || brush !== null,
+    highlighting: highlightMode, penciling: pencilActive,
+  })
+  const badgeMode = !puzzleToolsAvailable || disabled || showResults ? undefined : gridInputMode
   const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleGridBorderRef} boundaryLabel="puzzle grid border"
           position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
             if (badgeMode === 'chain') {
-              stopDrawingAndFocusGrid()
+              if (sketch.drawing) stopDrawingAndFocusGrid()
+              else if (browsingStrongLinks) setShowStrongLinks(false)
               return
+            }
+            if (inspectSubset) {
+              setSelected([])
+              selectToolPanel('digits')
             }
             if (colorsVisible) setColorBrush(null)
             setEraseMode(false)
@@ -2316,7 +2326,7 @@ export function Worktable({
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
-      modeBorder={gridInputMode} modeBoundaryRef={puzzleGridBorderRef}
+      modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
       modeBadge={modeBadge}
       highlightedDigit={strongLinksVisible ? null : chainHighlightDigit} highlightedDigitMask={strongLinksVisible ? strongLinkMask : 0}
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCells={!strongLinksVisible}
@@ -2334,7 +2344,7 @@ export function Worktable({
       candidatePreview={!inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
-      modeBorder={gridInputMode} modeBoundaryRef={puzzleGridBorderRef}
+      modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
       modeBadge={modeBadge}
       label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
