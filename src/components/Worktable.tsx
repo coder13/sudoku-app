@@ -696,7 +696,7 @@ export function Worktable({
     setActionsOpen(false)
     setPuzzleMenuOpen(false)
     if (game.paused) resumePuzzle()
-    else updateWorkingGame((current) => setGamePaused(current, true))
+    else updateWorkingGame((current) => setGamePaused(current, true, { onOpen: mobile }))
   }
 
   useEffect(() => {
@@ -1560,7 +1560,7 @@ export function Worktable({
       if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
       if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
-      if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started || game.paused) &&
+      if (!draft && !placeholder && !previewing && !variantRulesOpen && (mobile || completed || game.started || game.paused) &&
         !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
         if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
           (event.key === ' ' && target.closest('button, summary, [role="button"]') && !target.matches('[role="gridcell"][data-cell]')))) return
@@ -2479,7 +2479,7 @@ export function Worktable({
                 aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
                 {showSolvedGrid ? 'View results' : 'View grid'}
               </Button>}
-              {timing.showPause && !draft && !completed && (game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+              {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
                 aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
