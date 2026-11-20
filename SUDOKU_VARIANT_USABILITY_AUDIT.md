@@ -6,7 +6,7 @@ Agent A owns [issue 281](https://github.com/coder13/sudoku-app/issues/281). This
 
 The named inventory comes from `PUZZLE_VARIANTS` in [variants.ts](src/sudoku/variants.ts): 28 variants plus Classic. These represent all 27 native rule types and Jigsaw layouts. A named variant, a native rule type and a combination of rules are different counts.
 
-New Puzzle has 25 released variants plus Classic at review base `bb2458a`, including Inequality through [PR 306](https://github.com/coder13/sudoku-app/pull/306). The XV and Two-cell sums drafts add Easy and Medium generation. Both chooser and difficulty previews need live viewport review. Quadruple generation remains in [189](https://github.com/coder13/sudoku-app/issues/189).
+New Puzzle has 25 released variants plus Classic at review base `49b016b`, including Inequality through [PR 306](https://github.com/coder13/sudoku-app/pull/306). The XV and Two-cell sums drafts add Easy and Medium generation, and the Quadruple draft adds Medium. Their chooser and difficulty previews need live viewport review. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
 
 The table records available construction paths and review targets. It does not mark browser rendering, interactions or screenshot approval as passed.
 
@@ -40,13 +40,13 @@ The table records available construction paths and review targets. It does not m
 | Kropki | Yes | White/black dots and each negative rule |
 | XV | Easy and Medium draft | V/X distinction and each negative rule |
 | Two-cell sums | Easy and Medium draft | Roman totals, shared markers and distinction from XV |
-| Quadruple | Import | Repeated digits, cage-caption spacing and corner placement |
+| Quadruple | Medium draft | Repeated digits, cage-caption spacing and corner placement |
 
 Ruleset review also covers Disjoint Groups through typed extra houses, custom extra houses, single diagonals, positive/negative Kropki and XV, Non-Consecutive exceptions, Whispers parameters, Region Sum grouping modes, Jigsaw companions and complete mixed definitions. German and Dutch Whispers are separate generation presets in [variant-rulesets.ts](src/sudoku/variant-rulesets.ts). These are existing rule configurations, not additional named variants.
 
 ## Existing automated evidence
 
-[puzzle-help-wasm.mts](tests/puzzle-help-wasm.mts) exercises the first recipe at each offered variant difficulty: starting/progressed positions, invalid candidates, complete generated walkthroughs, sound actions, selected-technique results and Finder target counts. It also checks disabled ordinary hints, explicit technique inspection, Jigsaw catalog rows, hint collections and the preserved mixed fixtures. Import-only families have their own XV, adjacent-total and Quadruple Wasm contracts. This is not a check of every possible generated puzzle.
+[puzzle-help-wasm.mts](tests/puzzle-help-wasm.mts) exercises the first recipe at each offered variant difficulty: starting/progressed positions, invalid candidates, complete generated walkthroughs, sound actions, selected-technique results and Finder target counts. It also checks disabled ordinary hints, explicit technique inspection, Jigsaw catalog rows, hint collections and the preserved mixed fixtures. XV, Two-cell sums and Quadruple have dedicated Wasm contracts for imports and generation. This is not a check of every possible generated puzzle.
 
 [variant-help-components.test.ts](tests/variant-help-components.test.ts) checks hint, solution and Finder affordances for every named puzzle in standard and advanced workspaces. Its component trees and server-rendered markup do not establish working pointer/keyboard interactions, layout, contrast or readable clue placement in a browser.
 

@@ -15,6 +15,7 @@ export type VariantSeed = {
   dotCount?: number
   markCount?: number
   markedCells?: number[]
+  quadruples?: { topLeft: number; clueSize: number }[]
   minDifference?: number
   layout?: string
   lines?: number[][]
@@ -65,6 +66,9 @@ export function variantGenerationRequest(
       break
     case 'xv':
       derivedClues.push({ type: 'markers', family: 'xv', count: recipe.markCount })
+      break
+    case 'quadruple':
+      for (const clue of recipe.quadruples!) derivedClues.push({ type: 'quadruple', ...clue })
       break
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })

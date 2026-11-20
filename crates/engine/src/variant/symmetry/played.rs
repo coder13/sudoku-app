@@ -4,6 +4,7 @@ use super::{PuzzleRule, VariantPuzzle, digit_invariant, key_impl};
 use crate::CELLS;
 
 mod comparisons;
+mod quadruples;
 mod renban;
 mod totals;
 
@@ -14,6 +15,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     normalize_equalities(&mut logical);
     normalize_group_lines(&mut logical);
     renban::normalize(&mut logical);
+    let rename_quadruples = quadruples::normalize(&mut logical);
     let complement_totals = totals::normalize(&mut logical);
     let complement_comparisons = comparisons::normalize(&mut logical);
     // Whispers constrains neighboring pairs, independently of path direction,
@@ -72,6 +74,8 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
             comparisons::rename(copy);
         } else if complement_totals {
             totals::rename(copy);
+        } else if rename_quadruples {
+            quadruples::rename(copy);
         }
     })
 }

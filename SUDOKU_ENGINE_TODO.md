@@ -32,7 +32,7 @@ See the [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) for priorities, integration s
 
 ## App integration
 
-All seven formerly missing engine families now have app UI. Twenty-five 9×9 variants plus Classic have New Puzzle generation. The current priority is quality across existing variants: rendering, combined rules, hints, Technique Finder and complete player flows in [281](https://github.com/coder13/sudoku-app/issues/281). XV and Two-cell sums have checked generation drafts. Quadruple generation is pending. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
+All seven formerly missing engine families now have app UI. Twenty-five 9×9 variants plus Classic have released New Puzzle generation. The current priority is rendering, combined rules, hints, Technique Finder and complete player flows across existing variants in [281](https://github.com/coder13/sudoku-app/issues/281). The XV, Two-cell sums and Quadruple generation drafts together offer all twenty-eight named variants plus Classic. [Parity inventory and acceptance](SUDOKU_ENGINE_UI_PARITY.md)
 
 - [x] Integrate Between Lines with complete import, visible/accessibly labelled clues, input/candidates, history, persistence, sharing, hints, Finder/pages and solutions. [PR 190](https://github.com/coder13/sudoku-app/pull/190)
 - [x] Preserve the complete published Newman grid/solution and Raumplaner’s original zero-given Between/black-dot export. Independently verify both unique completions, original path order and all companion rules.
@@ -46,7 +46,8 @@ All seven formerly missing engine families now have app UI. Twenty-five 9×9 var
 - [x] Pass exact-head release gates and merge Between Lines. Head `f459103` passed 366 native, 547 app and 330 Wasm tests, sixteen capability combinations, four profiles, strict Cargo docs and deployment in [CI 44447946113](https://github.com/coder13/sudoku-app/actions/runs/44447946113). [PR 190](https://github.com/coder13/sudoku-app/pull/190) reached main at `30bbd85`; fetched main contains the reviewed head and merge, with identical shipping sources.
 - [x] Prepare Easy and Medium positive XV generation with sixty checked recipes, both printed marks, and history exclusions for split XV and equivalent Two-cell sums. Verify independent uniqueness, rule dependence, rating, and complete Play replays. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
 - [x] Prepare Easy and Medium Two-cell sums generation with sixty checked recipes across four pair layouts. Verify independent uniqueness, sum dependence, hint and walkthrough replay, and complemented and duplicate-edge history exclusions. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
-- [ ] Review the XV and Two-cell sums New Puzzle screens and ship the checked recipes. Add generation for Quadruple. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
+- [x] Prepare Medium Quadruple generation with thirty checked recipes across two circle layouts. Verify independent uniqueness and rule dependence, repeated printed digits, hints and Finder, complete Play replay, fresh fallback, played-puzzle exclusions, saved progress and sharing. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
+- [ ] Review the XV, Two-cell sums and Quadruple New Puzzle screens and ship the checked recipes. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
 - [x] Integrate Region Sum Lines, including Medium New Puzzle. [PR 193](https://github.com/coder13/sudoku-app/pull/193)
 - [x] Preserve Symmetease and four complete Coach Region Sum controls, including every thermometer, dot and global rule. Independently verify all five printed completions and test separate/combined visits and Jigsaw boundaries. The isolated source worktree `codex/sudoku-ui-parity-region-sum` remains pinned to the reviewed head; validation and release are recorded below.
 - [x] Add Region Sum import/validation, closed/connected drawing geometry, visible/accessibly labelled desktop/mobile paths, both grouping modes, Jigsaw parts, conflicts, both Pencil modes and reversible bulk/individual entry. Verify every partial four-cell equal-sum assignment in two layouts.
@@ -385,7 +386,7 @@ This stage reached main at `fc4142f` through [PR 104](https://github.com/coder13
 - [x] Use a bounded completion witness to prune variant Nested Forcing Net assumptions. Preserve every per-technique proof on the Quadruple fixture and all twelve AI Escargot nested proofs. Keep the original search when the 512-node probe finds no completion.
 - [x] Record the paired performance baseline on the final integration artifact. Retained responses match on seven legacy fixtures; the witness comparison also checks Quadruple. Exhaustive app hints fall from about 2.51 s to 1.61 s with the same proofs. The added app Wasm costs 20.3 KiB gzip. [Method, timings, and limits](tests/fixtures/README.md#profiling-exhaustive-variant-hints)
 - [x] Merge the complete app flow in [PR 104](https://github.com/coder13/sudoku-app/pull/104).
-- [ ] Calibrate difficulty recipes before offering Quadruple in New puzzle. Native generation is available; app presets remain unavailable.
+- [x] Calibrate thirty Medium Quadruple recipes and wire them into New Puzzle. The draft awaits viewport review and release. [Issue 189](https://github.com/coder13/sudoku-app/issues/189)
 - [ ] Review Quadruple in a live mobile viewport when browser tooling is available. Rendered component coverage does not establish live viewport fidelity.
 
 ### Odd/Even integration merged

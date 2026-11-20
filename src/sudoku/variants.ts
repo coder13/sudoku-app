@@ -120,16 +120,13 @@ export const VARIANTS = {
     name: 'Two-cell sums',
     rule: 'Digits joined by a Roman numeral have that total. For example, XV means 15. Unmarked pairs can have any total unless a negative V or X rule is stated.',
   },
-} as const
-
-// Playable imported variants can be released before generation recipes exist.
-export const PUZZLE_VARIANTS = {
-  ...VARIANTS,
   quadruple: {
     name: 'Quadruple',
     rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
   },
 } as const
+
+export const PUZZLE_VARIANTS = VARIANTS
 
 export function quadrupleCells(topLeft: number): readonly number[] {
   return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]

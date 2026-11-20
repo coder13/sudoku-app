@@ -11,7 +11,8 @@ const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.jso
 let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, VariantClues: Component, SharePuzzle: Component, CompletedPuzzle: Component
+let Board: Component, MobilePanelLayout: Component, VariantClues: Component, SharePuzzle: Component, CompletedPuzzle: Component, VariantPreview: Component
+let renderNewPuzzle: (path: string) => Promise<string>
 
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
@@ -23,6 +24,8 @@ before(async () => {
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
 
@@ -133,16 +136,25 @@ test('the real share dialog posts the starting definition only after Create link
   }
 })
 
-test('a completed imported Quadruple chooses another puzzle without calling an uncalibrated generator', () => {
+test('New Puzzle shows the repeated circle and offers the calibrated Medium level', async () => {
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'quadruple' }))
+  assert.match(preview, /data-variant="quadruple" aria-hidden="true"/)
+  assert.deepEqual([...preview.matchAll(/<text[^>]*>(\d)<\/text>/g)].map(match => match[1]), ['2', '2', '6'])
+  const choice = await renderNewPuzzle('/puzzles/new?variant=quadruple')
+  assert.match(choice, /\/puzzles\/new\/difficulty\?variant=quadruple/)
+  assert.match(choice, /A repeated printed digit needs that many separate cells/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=quadruple')
+  assert.match(difficulty, /Start medium puzzle/)
+  assert.doesNotMatch(difficulty, />Easy<|>Hard</)
+})
+
+test('a completed imported Quadruple offers another Medium puzzle', () => {
   const current = game()
   current.position.entries = [...fixture.solution].map((digit, cell) => current.givens[cell] === '0' ? digit : '0').join('')
-  let chosen = 0
   const tree = capture(CompletedPuzzle, { game: current, games: [current], preferredDifficulty: 'medium',
-    ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() { chosen++ } })
+    ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} })
   const next = tree.find(({ type, props }) => type === 'button' && String(props.className).includes('completion-next'))!
   assert.ok(next)
   assert.equal(next.props.disabled, false)
-  assert.match(renderToStaticMarkup(createElement('span', null, next.props.children as ReactNode)), /Choose another puzzle/)
-  ;(next.props.onClick as () => void)()
-  assert.equal(chosen, 1)
+  assert.match(renderToStaticMarkup(createElement('span', null, next.props.children as ReactNode)), /Next medium puzzle/)
 })
