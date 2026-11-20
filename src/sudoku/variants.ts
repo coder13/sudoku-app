@@ -595,8 +595,8 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       case 'xv':
         descriptions.push(PUZZLE_VARIANTS.xv.rule)
-        if (rule.five?.negative) descriptions.push('All V clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 5.')
-        if (rule.ten?.negative) descriptions.push('All X clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 10.')
+        if (rule.five?.negative) descriptions.push('Digits in cells sharing an edge without a V or X cannot sum to 5.')
+        if (rule.ten?.negative) descriptions.push('Digits in cells sharing an edge without a V or X cannot sum to 10.')
         break
       case 'non-consecutive':
         descriptions.push(nonConsecutiveDescription(puzzle, rule))
@@ -633,8 +633,8 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       case 'kropki':
         descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')
-        if (rule.consecutive?.negative) descriptions.push('Every adjacent pair of consecutive digits has a white dot.')
-        if (rule.ratioTwo?.negative) descriptions.push('Every adjacent pair with one digit double the other has a black dot.')
+        if (rule.consecutive?.negative) descriptions.push('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.')
+        if (rule.ratioTwo?.negative) descriptions.push('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.')
         break
       default:
         if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)

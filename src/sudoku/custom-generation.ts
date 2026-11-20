@@ -1,5 +1,5 @@
-import { customRuleIds, type CustomDifficulty, type CustomRule } from './custom-modes.ts'
-import { EngineError, runEngine, type VariantClueLayout, type VariantPuzzle, type VariantRule } from './engine.ts'
+import { customRuleIds, selectedMarkerRules, type CustomDifficulty, type CustomRule, type MarkerRule } from './custom-modes.ts'
+import { EngineError, runEngine, type VariantClueLayout, type VariantPuzzle, type VariantRule, type MarkedPairs } from './engine.ts'
 import { EMPTY, type Game } from './game.ts'
 import { regionIndex } from './region-sum.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from './variant-generation.ts'
@@ -65,30 +65,35 @@ function modeTemplate(selected: ReadonlySet<CustomRule>, random: () => number) {
   return { version: 1, givens: EMPTY, rules, ...(regions && { regions }) } satisfies VariantPuzzle
 }
 
-function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, solution: string, random: () => number) {
+function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, markers: readonly MarkerRule[],
+  negative: ReadonlySet<MarkerRule>, solution: string, random: () => number) {
   const rules = [...template.rules ?? []]
   const layouts: VariantClueLayout[] = []
   const digits = Array.from(solution, Number)
-  const white = chosen.has('kropki') || chosen.has('kropki-white')
-  const black = chosen.has('kropki') || chosen.has('kropki-black')
-  const five = chosen.has('xv') || chosen.has('xv-five')
-  const ten = chosen.has('xv') || chosen.has('xv-ten')
-  const dotEdges = (matches: (a: number, b: number) => boolean) => edges.filter(([a, b]) => matches(digits[a], digits[b]))
-  if (white || black) {
-    const consecutive = white ? dotEdges((a, b) => Math.abs(a - b) === 1) : []
-    const ratioTwo = black ? sample(dotEdges((a, b) => a === 2 * b || b === 2 * a), 4, random) : []
-    if (white && !consecutive.length || black && !ratioTwo.length) return
-    const pairs = chosen.has('non-consecutive') ? consecutive : sample(consecutive, 5, random)
-    const index = rules.findIndex(rule => rule.type === 'non-consecutive')
-    if (index >= 0 && pairs.length) rules[index] = { type: 'non-consecutive', except: pairs }
-    rules.push({ type: 'kropki', ...(white && { consecutive: { pairs } }), ...(black && { ratioTwo: { pairs: ratioTwo } }) })
+
+  function marks(rule: MarkerRule, matches: (a: number, b: number) => boolean, count: number, complete = false): MarkedPairs | undefined {
+    if (!markers.includes(rule)) return
+    const matching = edges.filter(([a, b]) => matches(digits[a], digits[b]))
+    const all = negative.has(rule)
+    return { pairs: all || complete ? matching : sample(matching, count, random), ...(all && { negative: true }) }
   }
-  if (five || ten) {
-    const fives = five ? sample(dotEdges((a, b) => a + b === 5), 4, random) : []
-    const tens = ten ? sample(dotEdges((a, b) => a + b === 10), 4, random) : []
-    if (five && !fives.length || ten && !tens.length) return
-    rules.push({ type: 'xv', ...(five && { five: { pairs: fives } }), ...(ten && { ten: { pairs: tens } }) })
+
+  const nonConsecutive = chosen.has('non-consecutive')
+  const ratioTwo = marks('kropki-black', (a, b) => a === 2 * b || b === 2 * a, 4)
+  const consecutive = marks('kropki-white', (a, b) => Math.abs(a - b) === 1, 5, nonConsecutive)
+  const five = marks('xv-five', (a, b) => a + b === 5, 4)
+  const ten = marks('xv-ten', (a, b) => a + b === 10, 4)
+  if ([consecutive, ratioTwo, five, ten].some(layer => layer && !layer.negative && !layer.pairs?.length)) return
+  if (consecutive || ratioTwo) {
+    if (nonConsecutive && consecutive) {
+      const index = rules.findIndex(rule => rule.type === 'non-consecutive')
+      // The construction template allowed extra edges. Keep precisely the
+      // edges whose white dots actually permit consecutive digits.
+      rules[index] = { type: 'non-consecutive', except: consecutive.pairs }
+    }
+    rules.push({ type: 'kropki', ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }) })
   }
+  if (five || ten) rules.push({ type: 'xv', ...(five && { five }), ...(ten && { ten }) })
   if (chosen.has('adjacent-total')) {
     const totals = sample(edges.filter(([a, b]) => ![5, 10].includes(digits[a] + digits[b])), 5, random)
     if (!totals.length) return
@@ -169,12 +174,16 @@ function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, solu
 }
 
 /** Generate a uniquely solvable puzzle at the requested grade with every selected rule. */
-export async function generateCustomSudoku(rules: readonly CustomRule[], difficulty: CustomDifficulty, seed: number, games: readonly Game[], signal?: AbortSignal) {
+export async function generateCustomSudoku(rules: readonly CustomRule[], difficulty: CustomDifficulty, seed: number,
+  games: readonly Game[], options: { negativeMarkers?: readonly MarkerRule[]; signal?: AbortSignal } = {}) {
+  const { signal } = options
   signal?.throwIfAborted()
   const chosen = new Set(customRuleIds.filter(rule => rules.includes(rule)))
+  const markers = selectedMarkerRules(rules)
+  const negative = new Set(options.negativeMarkers?.filter(marker => markers.includes(marker)))
   if (!chosen.size) throw new EngineError('Choose at least one rule.', 'unsupported')
   const [only] = chosen
-  if (chosen.size === 1 && Object.hasOwn(variantSeeds, only) && only !== 'whispers') {
+  if (!negative.size && chosen.size === 1 && Object.hasOwn(variantSeeds, only) && only !== 'whispers') {
     const family = only as keyof typeof variantSeeds
     if (variantSeeds[family][difficulty]?.length) return generatePlayableVariant(family, difficulty, seed, games)
   }
@@ -183,14 +192,15 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
   signal?.throwIfAborted()
   const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
   const deadline = performance.now() + 10_000
-  const maxLayouts = difficulty === 'hard' ? 24 : 12
+  const maxLayouts = negative.size ? 36 : difficulty === 'hard' ? 24 : 12
   for (let attempt = 0; attempt < maxLayouts && performance.now() < deadline; attempt++) {
+    signal?.throwIfAborted()
     const template = modeTemplate(chosen, random)
     const samplingSeed = Math.floor(random() * 0x1_0000_0000)
     try {
       const solution = await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: template }, seed: samplingSeed, maxNodes: 20_000 }, { generation: true })
       signal?.throwIfAborted()
-      const clues = addClues(template, chosen, solution, random)
+      const clues = addClues(template, chosen, markers, negative, solution, random)
       if (!clues) continue
       const generated = await runEngine({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
         maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,

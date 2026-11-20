@@ -9,8 +9,8 @@ import {
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
-  coreModeLimit, coreSudokuModes, customDifficulties, customRuleIds, customRules, readSudokuModes, writeSudokuModes,
-  type CustomDifficulty, type CustomRule, type SudokuMode,
+  coreModeLimit, coreSudokuModes, customDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
+  selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
 import { techniqueLabel } from '../sudoku/hints'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
@@ -222,6 +222,7 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
   const { busy, error, generate } = usePuzzleGeneration()
   const [name, setName] = useState(mode?.name ?? '')
   const [rules, setRules] = useState<readonly CustomRule[]>(mode?.rules ?? [])
+  const [negativeMarkers, setNegativeMarkers] = useState<readonly MarkerRule[]>(mode?.negativeMarkers ?? [])
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<CustomDifficulty>('medium')
   const modeId = useRef(mode?.id)
@@ -231,13 +232,24 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
   const [saveError, setSaveError] = useState('')
   const query = filter.trim().toLowerCase()
   const visible = customRuleIds.filter(rule => customRules[rule].name.toLowerCase().includes(query))
+  const markerRules = selectedMarkerRules(rules)
+  const definition = { name: name.trim() || 'Custom Sudoku', rules, ...(negativeMarkers.length && { negativeMarkers }) }
+
+  function changeRule(rule: CustomRule, enabled: boolean) {
+    const next = enabled ? [...rules, rule] : rules.filter(item => item !== rule)
+    setRules(next)
+    const nextMarkers = selectedMarkerRules(next)
+    setNegativeMarkers(current => current.filter(marker => nextMarkers.includes(marker)))
+    setSavedMessage('')
+  }
+
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!name.trim() || !rules.length) return
     try {
       modeId.current ??= createGameId()
-      onSave({ id: modeId.current, name: name.trim(), rules, pinned: pinned && canPin })
+      onSave({ id: modeId.current, ...definition, pinned: pinned && canPin })
       setSavedMessage(pinned && canPin ? 'Mode saved to core modes.' : 'Mode saved.')
       setSaveError('')
     } catch {
@@ -267,13 +279,22 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
       <fieldset className="sudoku-custom-rule-list" disabled={busy}>
         <legend>Rules</legend>
         {visible.length ? visible.map(rule => <label key={rule}>
-          <input type="checkbox" checked={rules.includes(rule)} onChange={event => {
-            setRules(event.currentTarget.checked ? [...rules, rule] : rules.filter(item => item !== rule))
-            setSavedMessage('')
-          }} />
+          <input type="checkbox" checked={rules.includes(rule)} onChange={event => changeRule(rule, event.currentTarget.checked)} />
           <span><strong>{customRules[rule].name}</strong><small>{customRules[rule].rule}</small></span>
         </label>) : <p>No rules match your search.</p>}
       </fieldset>
+      {markerRules.length > 0 && <fieldset className="sudoku-custom-rule-list" disabled={busy}>
+        <legend>Unmarked edges</legend>
+        <p className="sudoku-mode-note">These settings apply to cells sharing an edge.</p>
+        {markerRules.map(marker => <label key={marker}>
+          <input type="checkbox" checked={negativeMarkers.includes(marker)} onChange={event => {
+            const enabled = event.currentTarget.checked
+            setNegativeMarkers(current => enabled ? [...current, marker] : current.filter(item => item !== marker))
+            setSavedMessage('')
+          }} />
+          {markerOptions[marker].label}
+        </label>)}
+      </fieldset>}
       <label className="sudoku-pin-mode">
         <input type="checkbox" checked={pinned && canPin} disabled={busy || !canPin}
           onChange={event => { setPinned(event.currentTarget.checked); setSavedMessage('') }} />
@@ -286,7 +307,7 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
       <CustomDifficultyField value={level} disabled={busy} onChange={setLevel} />
       {error && <p className="form-error" role="alert">{error}</p>}
       <Button type="button" variant="primary" disabled={busy || !rules.length} onClick={() => void generate(level, undefined, 'classic', {
-        customMode: { name: name.trim() || 'Custom Sudoku', rules },
+        customMode: definition,
       })}><Dices size={18} aria-hidden="true" />{busy ? 'Generating…' : 'Generate puzzle'}</Button>
     </form>
   </section>
@@ -297,8 +318,9 @@ function CustomModeDifficulty({ mode }: { mode: SudokuMode }) {
   const { busy, error, generate } = usePuzzleGeneration()
   return <PuzzleDifficultyStep name={mode.name} preview={<Grid3X3 size={28} aria-hidden="true" />} busy={busy} error={error}
     startLabel={`Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
-    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules } })}>
+    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}>
     <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
+    {!!mode.negativeMarkers?.length && <p>{mode.negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
     <CustomDifficultyField value={level} disabled={busy} onChange={setLevel} />
   </PuzzleDifficultyStep>
 }

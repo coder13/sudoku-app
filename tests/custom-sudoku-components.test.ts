@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createServer, type ViteDevServer } from 'vite'
-import { coreModeLimit, coreSudokuModes, readSudokuModes, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
+import { coreModeLimit, coreSudokuModes, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 let server: ViteDevServer
@@ -42,4 +42,14 @@ test('saved mode definitions and rule choices round-trip, with nine core slots i
   assert.equal(coreSudokuModes.length + saved.filter(mode => mode.pinned).length, coreModeLimit)
   assert.deepEqual(saved[5].rules, ['windoku', 'arrow'])
   assert.equal(saved[5].pinned, false)
+})
+
+test('saved sets retain complete markings only for symbols the mode uses', () => {
+  const storage = new MemoryStorage()
+  const id = '00000000-0000-4000-8000-000000000000'
+  assert.deepEqual(selectedMarkerRules(['kropki', 'xv', 'kropki-black']), ['kropki-white', 'kropki-black', 'xv-five', 'xv-ten'])
+  writeSudokuModes([{ id, name: 'Dots and V', rules: ['kropki-black', 'xv-five'],
+    negativeMarkers: ['kropki-white', 'kropki-black', 'xv-five', 'xv-five', 'xv-ten'], pinned: true }], storage)
+  assert.deepEqual(readSudokuModes(storage), [{ id, name: 'Dots and V', rules: ['kropki-black', 'xv-five'],
+    negativeMarkers: ['kropki-black', 'xv-five'], pinned: true }])
 })

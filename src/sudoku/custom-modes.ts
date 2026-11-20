@@ -16,12 +16,26 @@ const additionalRules = {
 } as const
 
 export type CustomRule = PlayableVariant | keyof typeof additionalRules
-export type SudokuMode = {
-  id: string
+export const markerOptions = {
+  'kropki-white': { family: 'kropki', label: 'No consecutive digits without a Kropki dot' },
+  'kropki-black': { family: 'kropki', label: 'No doubling without a Kropki dot' },
+  'xv-five': { family: 'xv', label: 'No sum of 5 without a V or X' },
+  'xv-ten': { family: 'xv', label: 'No sum of 10 without a V or X' },
+} as const
+export type MarkerRule = keyof typeof markerOptions
+
+export function selectedMarkerRules(rules: readonly CustomRule[]): MarkerRule[] {
+  return (Object.keys(markerOptions) as MarkerRule[]).filter(rule =>
+    rules.includes(rule) || rules.includes(markerOptions[rule].family))
+}
+
+export type CustomModeDefinition = {
   name: string
   rules: readonly CustomRule[]
-  pinned: boolean
+  negativeMarkers?: readonly MarkerRule[]
 }
+
+export type SudokuMode = CustomModeDefinition & { id: string; pinned: boolean }
 
 const { classic: _classic, ...variantRules } = VARIANTS
 export const customRules: Record<CustomRule, { name: string; rule: string }> = {
@@ -36,12 +50,15 @@ const modePattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-
 export const isSudokuModeId = (value: unknown): value is string => typeof value === 'string' && modePattern.test(value)
 export const isCustomRule = (value: unknown): value is CustomRule => typeof value === 'string' && Object.hasOwn(customRules, value)
 
-export function readCustomModeDefinition(value: unknown): Pick<SudokuMode, 'name' | 'rules'> | undefined {
+export function readCustomModeDefinition(value: unknown): CustomModeDefinition | undefined {
   if (!value || typeof value !== 'object') return
-  const { name, rules } = value as { name?: unknown; rules?: unknown }
+  const { name, rules, negativeMarkers } = value as { name?: unknown; rules?: unknown; negativeMarkers?: unknown }
   if (typeof name !== 'string' || !name.trim() || name.length > 48 || !Array.isArray(rules) ||
       !rules.length || !rules.every(isCustomRule)) return
-  return { name: name.trim(), rules: [...new Set<CustomRule>(rules)] }
+  if (negativeMarkers !== undefined && (!Array.isArray(negativeMarkers) ||
+      negativeMarkers.some(marker => typeof marker !== 'string' || !Object.hasOwn(markerOptions, marker)))) return
+  const selected = Array.isArray(negativeMarkers) ? selectedMarkerRules(rules).filter(marker => negativeMarkers.includes(marker)) : []
+  return { name: name.trim(), rules: [...new Set<CustomRule>(rules)], ...(selected.length && { negativeMarkers: selected }) }
 }
 
 export function readSudokuModes(storage?: Pick<Storage, 'getItem'>): SudokuMode[] {

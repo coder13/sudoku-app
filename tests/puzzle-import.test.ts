@@ -271,8 +271,9 @@ test('Coach white and black dot layers keep independent negative flags and share
     { type: 'kropki', consecutive: { pairs: [[7, 8]], negative: true } },
     { type: 'kropki', ratioTwo: { pairs: [[8, 7]], negative: false } },
   ])
-  assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair of consecutive digits')))
-  assert.ok(!variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair with one digit double')))
+  const rules = variantRuleDescriptions(imported.variant.puzzle)
+  assert.ok(rules.includes('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.'))
+  assert.ok(!rules.includes('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.'))
   for (const constraint of [
     { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },

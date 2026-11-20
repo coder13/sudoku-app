@@ -3,7 +3,7 @@ import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { EngineError, runEngine } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
-import { customDifficulties, type SudokuMode } from '../sudoku/custom-modes'
+import { customDifficulties, type CustomModeDefinition } from '../sudoku/custom-modes'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -35,7 +35,7 @@ export function usePuzzleGeneration() {
     }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows; customMode?: Pick<SudokuMode, 'name' | 'rules'> }) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows; customMode?: CustomModeDefinition }) {
     if (pending.current) return
     pending.current = true
     setBusy(true)
@@ -48,7 +48,7 @@ export function usePuzzleGeneration() {
         const controller = new AbortController()
         customSearch.current = controller
         const { generateCustomSudoku } = await import('../sudoku/custom-generation')
-        const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, controller.signal)
+        const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, { signal: controller.signal, negativeMarkers: mode.negativeMarkers })
         if (!mounted.current) return
         const id = variantIdForPuzzle(result.puzzle)
         if (id === 'classic') throw new Error('The generated puzzle is missing its custom rules.')
