@@ -5,7 +5,7 @@ import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
-type HintAction = { label: string; onClick: () => void }
+type HintAction = { label: string; onClick: () => void; shortcut?: string }
 
 type ExplanationProps = {
   explanation?: string | readonly string[]
@@ -71,7 +71,8 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
           {action && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
             {lessDetail && <Button type="button" disabled={lessDetail.disabled}
               onClick={lessDetail.onClick}>Less detail</Button>}
-            <Button type="button" variant="primary" onClick={action.onClick}>{action.label}</Button>
+            <Button type="button" variant="primary" onClick={action.onClick}
+              aria-keyshortcuts={action.shortcut} title={action.shortcut ? `${action.label} (${action.shortcut})` : undefined}>{action.label}</Button>
           </div>}
         </div>}
       </div>

@@ -75,6 +75,22 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
 
 export type ChainGraph = ReturnType<typeof makeChainGraph>
 
+export function highlightedStrongLinks(graph: ChainGraph, digitMask: number): ChainEdge[] {
+  if (!digitMask) return []
+  const seen = new Set<string>()
+  const links: ChainEdge[] = []
+  for (const group of graph.constraints) {
+    if (group.length !== 2) continue
+    const [from, to] = group
+    if (!hasCandidate(digitMask, chainCandidate(from).digit) || !hasCandidate(digitMask, chainCandidate(to).digit)) continue
+    const key = [Math.min(from, to), Math.max(from, to)].join(':')
+    if (seen.has(key)) continue
+    seen.add(key)
+    links.push([from, to])
+  }
+  return links
+}
+
 function alternate(links: readonly LinkStrength[], first: LinkStrength) {
   const roles = links.map((_, i) => i % 2 === 0 ? first : opposite(first))
   return roles.every((role, i) => role === 'weak' || links[i] === 'strong') ? roles : undefined
@@ -173,7 +189,7 @@ function analyzePath(graph: ChainGraph, nodes: number[]): ChainAnalysis {
   return { nodes, strengths: links, title: 'Non-alternating loop', actions: [], canComplete: false }
 }
 
-function chainComponents(edges: readonly ChainEdge[]) {
+export function chainComponents(edges: readonly ChainEdge[]) {
   const neighbors = new Map<number, number[]>()
   for (const [a, b] of edges) {
     for (const [from, to] of [[a, b], [b, a]]) {
@@ -199,6 +215,19 @@ function chainComponents(edges: readonly ChainEdge[]) {
     components.push(component)
   }
   return { neighbors, components }
+}
+
+/** Check for a three-link weak path or loop that contains the proposed edge. */
+export function weakLinkRun(graph: ChainGraph, edges: readonly ChainEdge[]) {
+  const { neighbors } = chainComponents(edges.filter(edge => graph.strength(...edge) === 'weak'))
+  return ([from, to]: ChainEdge) => {
+    if (graph.strength(from, to) !== 'weak') return false
+    const before = neighbors.get(from)?.filter(node => node !== to) ?? []
+    const after = neighbors.get(to)?.filter(node => node !== from) ?? []
+    return (before.length > 0 && after.length > 0) ||
+      before.some(node => neighbors.get(node)!.some(other => other !== from)) ||
+      after.some(node => neighbors.get(node)!.some(other => other !== to))
+  }
 }
 
 export function analyzeChains(graph: ChainGraph, edges: readonly ChainEdge[]) {
@@ -284,68 +313,48 @@ export function analyzeChainPaths(graph: ChainGraph, edges: readonly ChainEdge[]
   })
 }
 
-export function chainColors(graph: ChainGraph, edges: readonly ChainEdge[]) {
-  const parents = new Map<number, number>()
-  function root(node: number): number {
-    const parent = parents.get(node)
-    if (parent === undefined) return node
-    const result = root(parent)
-    parents.set(node, result)
-    return result
-  }
-
-  // Keep strong-link colors aligned for Medusa. Skip cycles when assigning the
-  // colors so an odd loop can mark its break without recoloring the whole loop.
-  const forest: ChainEdge[] = []
-  const strong = edges.filter(edge => graph.strength(...edge) === 'strong')
-  const weak = edges.filter(edge => graph.strength(...edge) === 'weak')
-  for (const [from, to] of [...strong, ...weak]) {
-    const first = root(from)
-    const second = root(to)
-    if (first === second) continue
-    parents.set(second, first)
-    forest.push([from, to])
-  }
-
-  const { neighbors, components } = chainComponents(forest)
-  const colors = new Map<number, 0 | 1>()
-  for (const nodes of components) {
-    colors.set(nodes[0], 0)
-    for (const from of nodes) {
-      for (const to of neighbors.get(from)!) {
-        if (!colors.has(to)) colors.set(to, colors.get(from) === 0 ? 1 : 0)
-      }
-    }
-  }
-  return colors
-}
-
-export function analyzeMedusa(graph: ChainGraph, edges: readonly ChainEdge[], sketchColors?: ReadonlyMap<number, 0 | 1>) {
-  const { neighbors, components } = chainComponents(edges.filter(([a, b]) => graph.strength(a, b) === 'strong'))
+/** Only strong links carry the two-color relationship between candidates. */
+export function colorStrongLinks(graph: ChainGraph, edges: readonly ChainEdge[]) {
+  const { neighbors, components } = chainComponents(edges.filter(edge => graph.strength(...edge) === 'strong'))
   return components.map((nodes) => {
-    const sides = new Map<number, 0 | 1>([[nodes[0], sketchColors?.get(nodes[0]) ?? 0]])
+    const sides = new Map<number, 0 | 1>([[nodes[0], 0]])
     for (const from of nodes) {
       const opposite = sides.get(from) === 0 ? 1 : 0
       for (const to of neighbors.get(from)!) {
-        if (sides.has(to) && sides.get(to) !== opposite) {
-          return { nodes, sides: new Map<number, 0 | 1>(), actions: [],
-            explanation: 'This loop cannot alternate two colors. Remove a link to color it.' }
-        }
+        if (sides.has(to) && sides.get(to) !== opposite) return { nodes, sides: new Map<number, 0 | 1>() }
         sides.set(to, opposite)
       }
+    }
+    return { nodes, sides }
+  })
+}
+
+type MedusaAnalysis = {
+  nodes: number[]
+  sides: ReadonlyMap<number, 0 | 1>
+  actions: { eliminate: Candidate }[]
+  explanation?: string
+  contradictionCell?: number
+}
+
+export function analyzeMedusa(graph: ChainGraph, edges: readonly ChainEdge[]): MedusaAnalysis[] {
+  return colorStrongLinks(graph, edges).map(({ nodes, sides }) => {
+    if (!sides.size) {
+      return { nodes, sides, actions: [],
+        explanation: 'This loop cannot alternate two colors. Remove a link to color it.' }
     }
 
     const colors = [nodes.filter((node) => sides.get(node) === 0), nodes.filter((node) => sides.get(node) === 1)]
     const excluded = colors.map((members) =>
       new Set(graph.candidates.filter((target) => members.some((node) => graph.conflicts(target, node)))))
-    const contradictions = colors.map((members, side) => {
+    const contradictions = colors.map<{ explanation: string; cell?: number } | undefined>((members, side) => {
       const color = side === 0 ? 'A' : 'B'
-      const conflict = `Color ${color} leads to a conflict, so remove its candidates.`
+      const conflict = { explanation: `Color ${color} leads to a conflict, so remove its candidates.` }
       const isExcluded = (node: number) => excluded[side].has(node)
       if (members.some(isExcluded)) return conflict
       const cell = graph.cellCandidates.findIndex((group) => group.length > 1 && group.every(isExcluded))
       if (cell !== -1) {
-        return `Placing the candidates of color ${color} leaves ${cellReference(cell, 'concise')} with no digit. Remove that color throughout this connected set.`
+        return { cell, explanation: `Placing the candidates of color ${color} leaves ${cellReference(cell, 'concise')} with no digit. Remove that color throughout this connected set.` }
       }
       if (graph.constraints.some((group) => group.every(isExcluded))) return conflict
     })
@@ -356,9 +365,10 @@ export function analyzeMedusa(graph: ChainGraph, edges: readonly ChainEdge[], sk
     const removals = falseSide === -1
       ? graph.candidates.filter((node) => !sides.has(node) && excluded.every((group) => group.has(node)))
       : colors[falseSide]
-    const explanation = falseSide !== -1 ? contradictions[falseSide]
-      : removals.length ? 'Remove candidates that conflict with both colors.' : undefined
-    return { nodes, sides, actions: removals.map((node) => ({ eliminate: chainCandidate(node) })), explanation }
+    const contradiction = contradictions[falseSide]
+    const explanation = contradiction?.explanation ?? (removals.length ? 'Remove candidates that conflict with both colors.' : undefined)
+    return { nodes, sides, actions: removals.map((node) => ({ eliminate: chainCandidate(node) })),
+      explanation, contradictionCell: contradiction?.cell }
   })
 }
 

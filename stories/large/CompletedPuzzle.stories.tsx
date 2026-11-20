@@ -1,23 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState, type ComponentProps } from 'react'
 import { fn, userEvent, within } from 'storybook/test'
 import { CompletedPuzzle } from '../../src/components/CompletedPuzzle'
 import { ActionHistoryPanel } from '../../src/components/ActionHistoryPanel'
-import { Board } from '../../src/components/Board'
-import { Button } from '../../src/components/Button'
-import { formatPuzzleRating } from '../../src/sudoku/difficulty'
-import { makeGame, valuesOf, type Game } from '../../src/sudoku/game'
+import { fillEntries, makeGame, type Game } from '../../src/sudoku/game'
+import { MINI_GRID } from '../../src/sudoku/grid'
 import { calculatePlayerRating, initialPlayerRating } from '../../src/sudoku/player-rating'
 import { inProgress, quicker, solved } from '../support/fixtures'
 import { PreviewRouter, Width } from '../support/frames'
-import { seedPlayerRating } from '../support/story-room'
+import { seedPlayerRating, seedRoom } from '../support/story-room'
 
 const meta = {
   title: 'Large/Play/Completion results',
   component: CompletedPuzzle,
   args: { game: solved, games: [solved, quicker], preferredDifficulty: 'easy', ratingPending: false, shortcutEnabled: false,
     showGuides: true, onResumePuzzle: fn(), onChooseDifficulty: fn(), onChooseVariant: fn() },
-  decorators: [(Story) => <Width stage width={540}><Story /></Width>],
+  decorators: [(Story, { parameters }) => parameters.layout === 'fullscreen' ? <Story /> : <Width stage width={540}><Story /></Width>],
 } satisfies Meta<typeof CompletedPuzzle>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -32,12 +29,19 @@ export const RatedWithHints: Story = {
   },
 }
 export const FirstSolve: Story = { args: { games: [solved], preferredDifficulty: 'medium' } }
+const miniSolved: Game = {
+  ...fillEntries(makeGame('mini-solved', 'Mini Sudoku', '0234341221434321', 'generated', 0, MINI_GRID), '1234341221434321'),
+  elapsed: 94, difficulty: 'easy',
+}
 export const NextActivePuzzle: Story = {
-  render: (args) => <ActivePlaylistPreview {...args} />,
+  parameters: { layout: 'fullscreen' },
+  beforeEach: ({ args }) => seedRoom([...args.games, ...activePlaylist], args.game.id),
+  render: ({ game }) => <div className="story-app"><PreviewRouter shell path={`/?puzzle=${encodeURIComponent(game.id)}`} /></div>,
 }
 export const NextActivePuzzleOnMobile: Story = {
+  ...NextActivePuzzle,
+  args: { game: miniSolved, games: [miniSolved] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  render: (args) => <div className="mobile-completion"><ActivePlaylistPreview {...args} /></div>,
 }
 export const RatingPending: Story = { args: { ratingPending: true, game: { ...solved, difficulty: undefined } } }
 export const Unrated: Story = { args: { showGuides: false, game: { ...solved, difficulty: null } } }
@@ -45,22 +49,6 @@ export const Unrated: Story = { args: { showGuides: false, game: { ...solved, di
 const recentActive: Game = { ...inProgress, id: 'playlist-medium', title: 'Medium puzzle', source: 'generated', difficulty: 'medium', score: 428, created: 2 }
 const olderActive: Game = { ...makeGame('playlist-easy', 'Easy puzzle', quicker.givens, 'generated', 1), difficulty: 'easy' }
 const activePlaylist = [olderActive, recentActive]
-
-function ActivePlaylistPreview(args: ComponentProps<typeof CompletedPuzzle>) {
-  const [opened, setOpened] = useState<Game | 'new' | null>(null)
-  if (opened === 'new') return <div className="story-app"><PreviewRouter shell path="/puzzles/new" /></div>
-  if (opened) {
-    const title = opened.difficulty ? formatPuzzleRating(opened.difficulty, opened.score) : opened.title
-    return <>
-      <h1 tabIndex={-1} ref={heading => heading?.focus({ preventScroll: true })}>{title}</h1>
-      <Board givens={opened.givens} values={valuesOf(opened)} position={opened.position} showGuides={args.showGuides} />
-      <Button onClick={() => setOpened(null)}>Back to results</Button>
-    </>
-  }
-  const games = [...args.games, ...activePlaylist]
-  return <CompletedPuzzle {...args} games={games} onChooseVariant={() => setOpened('new')}
-    onResumePuzzle={id => setOpened(games.find(game => game.id === id) ?? null)} />
-}
 
 export const ActionHistory: Story = {
   render: () => <section className="board-frame completion-frame guides-hidden"><div className="completion">

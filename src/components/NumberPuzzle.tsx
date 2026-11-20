@@ -1,6 +1,6 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
-import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
@@ -21,6 +21,7 @@ import { SolutionDialog, SolutionPath, solutionEndSummary, type NumberSolutionTr
 import { useMobileLayout } from './mobile-layout'
 import { numberSolution } from '../number-puzzles/solution'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
+import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { PuzzleKeypad } from './PuzzleKeypad'
 import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
@@ -260,8 +261,8 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
 }
 
 const insightTabs = [
-  { id: 'solution', label: 'Solution' },
-  { id: 'techniques', label: TECHNIQUE_FINDER_TITLE },
+  { id: 'solution', label: 'Solution', Icon: ListOrdered },
+  { id: 'techniques', label: TECHNIQUE_FINDER_TITLE, Icon: ListFilter },
 ] as const
 type Insight = typeof insightTabs[number]['id']
 type HintSelection = { choices: readonly Hint[]; index: number; depth: number }
@@ -303,6 +304,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const conflictCells = new Set(showCheck ? result.marked : [])
   const hint = hintSelection?.choices[hintSelection.index]
   const depth = hintSelection?.depth ?? 0
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const previewing = mobile ? mobileInsight === 'solution' : insights.active === 'solution'
   const analysisOpen = mobile ? mobileInsight === 'techniques' : insights.active === 'techniques'
   const found = useMemo(() => analysisOpen && !result.complete && !result.marked.length ? board.hints(position.values) : [],
@@ -368,11 +370,16 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), readCell(next[0])], future.slice(0, -1))
   }
 
-  const onHistoryKey = useEffectEvent((event: KeyboardEvent) => {
-    if (locked || overlayOpen || rearranging || event.defaultPrevented || event.isComposing ||
-      event.altKey || !(event.ctrlKey || event.metaKey)) return
+  const onPlayKey = useEffectEvent((event: KeyboardEvent) => {
+    if (locked || overlayOpen || rearranging || event.defaultPrevented || event.isComposing || event.altKey) return
     const target = event.target
     if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, a, dialog[open]'))) return
+    if (hint && depth === 3 && shortcutMatches(event, shortcuts, 'applyEdits')) {
+      event.preventDefault()
+      if (!event.repeat) applyHint()
+      return
+    }
+    if (!(event.ctrlKey || event.metaKey)) return
     const key = event.key.toLowerCase()
     if (key !== 'z' && key !== 'y') return
     event.preventDefault()
@@ -381,7 +388,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   })
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => onHistoryKey(event)
+    const onKeyDown = (event: KeyboardEvent) => onPlayKey(event)
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
@@ -457,17 +464,17 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     setSelection(index)
   }
 
-  function closeInsight(id: Insight) {
+  function closeInsight(id: Insight, fromMenu = false) {
     if (mobile) setMobileInsight(null)
     else setInsights(current => {
       const open = current.open.filter(tab => tab !== id)
-      return { open, active: open.at(-1) ?? null }
+      return { open, active: current.active === id ? open.at(-1) ?? null : current.active }
     })
-    actionsButton.current?.focus({ preventScroll: true })
+    if (!fromMenu) actionsButton.current?.focus({ preventScroll: true })
   }
 
-  function openInsight(id: Insight) {
-    closeActions()
+  function openInsight(id: Insight, fromMenu = false) {
+    if (!fromMenu) closeActions()
     if (id === 'solution') {
       if (!solution) setSolution(numberSolution(board, editable))
       setSolutionIndex(0)
@@ -603,21 +610,26 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
         }),
       } : undefined}
       lessDetail={{ disabled: depth === 0, onClick: () => setHint(current => current && { ...current, depth: current.depth - 1 }) }}
-      action={{ label: hintStage, onClick: depth === 3 ? applyHint
-        : () => setHint(current => current && { ...current, depth: current.depth + 1 }) }} />
+      action={depth === 3 ? { label: hintStage, onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) }
+        : { label: hintStage, onClick: () => setHint(current => current && { ...current, depth: current.depth + 1 }) }} />
   </PlayHint> : null
 
   const actionItems = <>
     <button type="button" disabled={locked} onClick={requestHint}><Lightbulb size={17} /> View hint</button>
     <button type="button" disabled={locked} onClick={() => { closeActions(); checkPuzzle() }}><Check size={17} /> Check puzzle</button>
     <div className="app-menu-separator" role="separator" />
-    {previewing ? <button type="button" onClick={() => { closeActions(); closeInsight('solution') }}>
-      <ListOrdered size={17} /> Return to puzzle
-    </button> : <button type="button" disabled={!ready || result.complete} aria-label="Open solution panel"
-      onClick={() => openInsight('solution')}><ListOrdered size={17} /> Solution</button>}
-    <button type="button" disabled={!ready || result.complete} onClick={() => openInsight('techniques')}>
-      <ListFilter size={17} /> {TECHNIQUE_FINDER_TITLE}
-    </button>
+    {insightTabs.map(({ id, label, Icon }) => {
+      const open = insights.open.includes(id)
+      const returnToPuzzle = mobile && previewing && id === 'solution'
+      return <button key={id} type="button" disabled={!ready || (result.complete && !returnToPuzzle)}
+        aria-pressed={mobile ? undefined : open} aria-label={mobile && id === 'solution' && !returnToPuzzle ? 'Open solution panel' : undefined}
+        onClick={() => {
+          if (returnToPuzzle) { closeActions(); closeInsight(id) }
+          else if (mobile) openInsight(id)
+          else if (open) closeInsight(id, true)
+          else openInsight(id, true)
+        }}><Icon size={17} aria-hidden="true" /> {returnToPuzzle ? 'Return to puzzle' : label}</button>
+    })}
     <button type="button" onClick={() => { closeActions(); setRulesOpen(true) }}><Info size={17} /> How to play</button>
   </>
 

@@ -177,10 +177,36 @@ test('desktop and mobile candidate-layout controls use independent radio groups'
   }), 2)
 })
 
-test('desktop and mobile candidate-highlight controls use independent radio groups', () => {
-  assertIndependentGroups(radioGroups('HighlightSettings', {
+test('Highlighting settings only offer automatic highlight toggles', () => {
+  const html = renderToStaticMarkup(createElement(settings.HighlightSettings, {
     highlighting: preferences.DEFAULT_HIGHLIGHT_PREFERENCES, setHighlighting() {},
-  }), 4)
+  }))
+  assert.equal(html.match(/type="checkbox"/g)?.length, 3)
+  assert.doesNotMatch(html, /type="radio"/)
+})
+
+test('candidate tools highlight individual candidates and preserve their annotations', () => {
+  const tree = boardTree({ highlightedDigitMask: 1, highlightedDigitMatch: 'any',
+    annotations: { candidates: new Map([[0, new Map([[1, { color: 'red', mark: 'strike', label: 'can be removed' }]])]]) },
+  })
+  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-highlight-light')))
+  const matches = tree.filter(({ props }) => String(props.className).includes('candidate-match'))
+  assert.deepEqual(matches.map(({ props }) => props.children), [1, 1])
+  assert.equal(matches[0].props['data-mark'], 'strike')
+})
+
+test('the play grid can fill cells that contain a candidate matching the selected digit', () => {
+  const highlight = (matchingCandidates: boolean) => boardTree({
+    candidates: [3, 2, ...Array(79).fill(0)], highlightedDigit: 1, highlightCandidateCells: true,
+    highlighting: { ...(preferences.DEFAULT_HIGHLIGHT_PREFERENCES as object), matchingCandidates },
+  })
+  const tree = highlight(true)
+  const [match, other] = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(match.props.className), /\bcandidate-highlight-cell\b/)
+  assert.match(String(match.props['aria-label']), /cell highlighted for candidate 1/)
+  assert.doesNotMatch(String(other.props.className), /\bcandidate-highlight-cell\b/)
+  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-match')))
+  assert.ok(!highlight(false).some(({ props }) => String(props.className).includes('candidate-highlight-cell')))
 })
 
 test('desktop and mobile workspace-mode controls use independent radio groups', () => {

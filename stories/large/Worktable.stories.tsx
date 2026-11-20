@@ -2,15 +2,19 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
+import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
+import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, makeGame, paintCells, replaceCandidates } from '../../src/sudoku/game'
-import { playSession } from '../../src/sudoku/play-session'
+import { EMPTY, makeGame, paintCells, puzzleIdentity, replaceCandidates } from '../../src/sudoku/game'
+import { playPreferenceStore } from '../../src/sudoku/play-preferences'
+import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
 import {
   DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE,
   DEFAULT_WORKSPACE_MODE, MAX_GRID_TEXT_SCALE,
 } from '../../src/sudoku/preferences'
+import { medusaRemovalGame } from '../support/chain-fixtures'
 import { inProgress, namedDraft, solved, starter } from '../support/fixtures'
 import { roomStore, seedRoom } from '../support/story-room'
 
@@ -31,7 +35,9 @@ const meta = {
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },
   beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', defaultToolPanels)
     playSession.activate(null)
+    localStorage.removeItem(puzzleTabsKey(args.game.id))
     seedRoom([args.game, ...args.games.filter(({ id }) => id !== args.game.id)])
   },
   render: (args) => <WorktableExample {...args} />,
@@ -40,44 +46,183 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Starter: Story = {}
+export const DesktopModeBadge: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot().cardModeBadgePosition
+    playPreferenceStore.set('cardModeBadgePosition', { edge: 'left', offset: 0.5 })
+    return () => playPreferenceStore.set('cardModeBadgePosition', saved)
+  },
+  render: (args) => <WorktableExample {...args} withTopbar resizable />,
+}
 export const MobileInputTools: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot().experimentalMode
+    playPreferenceStore.set('experimentalMode', true)
+    return () => playPreferenceStore.set('experimentalMode', saved)
+  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
-    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const trigger = canvas.getByRole('button', { name: 'Input tools' })
+    await userEvent.click(trigger)
     const inputTools = await canvas.findByRole('group', { name: 'Input tools' })
-    await userEvent.click(within(inputTools).getByRole('button', { name: 'Colors & Chains' }))
+    const menuPosition = inputTools.getBoundingClientRect()
+    const anchorGap = trigger.getBoundingClientRect().bottom - menuPosition.bottom
+    expect(Math.abs(anchorGap)).toBeLessThan(1)
+    const menu = within(inputTools)
+    expect(menu.queryByRole('button', { name: 'Generate candidates' })).not.toBeInTheDocument()
+    expect(menu.getAllByRole('button', { pressed: false }).map(button => button.textContent?.trim()))
+      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains', 'Subsets'])
+    for (const name of ['Solution', 'Techniques', 'Subsets']) {
+      const toggle = menu.getByRole('button', { name })
+      toggle.focus()
+      await userEvent.keyboard('{Enter}')
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      await expect(toggle).toHaveFocus()
+      await expect(canvas.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true')
+      const inputCard = canvasElement.querySelector('[data-mobile-panel="input"] > .mobile-panel-content')
+      await Promise.allSettled(inputCard?.getAnimations().map(animation => animation.finished) ?? [])
+      const currentPosition = inputTools.getBoundingClientRect()
+      expect(currentPosition.top).toBeCloseTo(menuPosition.top, 1)
+      expect(currentPosition.left).toBeCloseTo(menuPosition.left, 1)
+      await userEvent.click(toggle)
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    }
+    await userEvent.click(menu.getByRole('button', { name: 'Chains' }))
+    await userEvent.click(menu.getByRole('button', { name: 'Colors' }))
+    await userEvent.keyboard('{Escape}')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(trigger).toHaveFocus()
     const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
     await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
     await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
     const colors = within(tabs).getByRole('tab', { name: 'Colors' })
     const digits = within(tabs).getByRole('tab', { name: 'Digits' })
-    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
+    const cell = () => canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
     await userEvent.click(canvas.getByRole('button', { name: 'Light mint' }))
-    await userEvent.click(cell)
-    await expect(cell).toHaveClass('color-4')
+    await userEvent.click(cell())
+    await expect(cell()).toHaveClass('color-4')
     await userEvent.click(digits)
-    await expect(cell).toHaveClass('color-4')
+    await expect(cell()).toHaveClass('color-4')
     await userEvent.click(colors)
     await userEvent.click(canvas.getByRole('button', { name: 'Close colors panel' }))
     await expect(digits).toHaveAttribute('aria-selected', 'true')
-    await expect(cell).not.toHaveClass('color-4')
+    await expect(cell()).not.toHaveClass('color-4')
     await userEvent.keyboard('{Enter}')
     await expect(tabs).not.toBeInTheDocument()
   },
 }
-export const PuzzleCardTools: Story = {
+export const PuzzlePanelToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  play: async ({ canvas, userEvent }) => {
-    const shortcut = canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' })
-    await expect(shortcut).toBeVisible()
-    await expect(shortcut).toHaveAttribute('data-edge', 'bottom')
-    await expect(shortcut.closest('.puzzle-actions')).toBeNull()
-    shortcut.focus()
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot().experimentalMode
+    playPreferenceStore.set('experimentalMode', true)
+    return () => playPreferenceStore.set('experimentalMode', saved)
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    const options = canvas.getByRole('button', { name: 'Open puzzle options' })
+    await userEvent.click(options)
+    const toolButtons = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!).getAllByRole('button', {
+      name: /^(Colors|Chains|Subsets)$/,
+    })
+    expect(toolButtons.map(button => button.textContent?.trim())).toEqual(['Colors', 'Chains', 'Subsets'])
+    const chains = canvas.getByRole('button', { name: 'Chains', pressed: false })
+    await userEvent.click(chains)
+    const colors = canvas.getByRole('button', { name: 'Colors', pressed: false })
+    colors.focus()
     await userEvent.keyboard('{Enter}')
+    await expect(colors).toHaveAttribute('aria-pressed', 'true')
+    await expect(colors).toHaveFocus()
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
-    await expect(canvas.getByRole('tab', { name: 'Chains' })).toBeVisible()
+    const subsets = canvas.getByRole('button', { name: 'Subsets', pressed: false })
+    await userEvent.click(subsets)
+    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    const tabs = within(canvas.getByRole('tablist', { name: 'Sudoku input' })).getAllByRole('tab')
+    expect(tabs.map(tab => tab.textContent)).toEqual(['Digits', 'Colors', 'Chains', 'Subsets'])
+    await userEvent.click(canvas.getByRole('button', { name: 'Colors', pressed: true }))
+    await expect(canvas.queryByRole('tab', { name: 'Colors' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    await expect(options).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(options).toHaveAttribute('aria-expanded', 'false')
+    await expect(options).toHaveFocus()
+  },
+}
+export const DesktopInsightToggles: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (canvasElement.querySelector('.mobile-panel-layout')) return
+    const options = canvas.getByRole('button', { name: 'Open puzzle options' })
+    await userEvent.click(options)
+    const menu = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!)
+    const solution = menu.getByRole('button', { name: 'Solution' })
+    const techniques = menu.getByRole('button', { name: 'Techniques' })
+    solution.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(solution).toHaveAttribute('aria-pressed', 'true')
+    await expect(solution).toHaveFocus()
+    await expect(canvas.getByRole('button', { name: 'Reveal solution' })).toBeInTheDocument()
+    await userEvent.click(techniques)
+    await expect(techniques).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(solution)
+    await expect(canvas.queryByRole('tab', { name: 'Solution' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(techniques)
+    await expect(canvas.queryByRole('tablist', { name: 'Puzzle insight tabs' })).not.toBeInTheDocument()
+    await expect(options).toHaveAttribute('aria-expanded', 'true')
+  },
+}
+export const MobileInsightTabs: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    if (!canvasElement.querySelector('.mobile-panel-layout')) return
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    const menu = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!)
+    await userEvent.click(menu.getByRole('button', { name: 'Solution' }))
+    await expect(canvas.getByRole('tab', { name: 'Solution' })).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('button', { name: 'Reveal solution' })).toBeInTheDocument()
+    await userEvent.click(menu.getByRole('button', { name: 'Techniques' }))
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('{Escape}')
+    const input = canvasElement.querySelector<HTMLElement>('.mobile-input-tabs')!
+    await expect(canvasElement.querySelector('.mobile-panel-layout')).not.toHaveAttribute('data-input-sized')
+    const tabbedHeight = input.offsetHeight
+    await userEvent.click(canvas.getByRole('tab', { name: 'Digits' }))
+    expect(input.offsetHeight).toBe(tabbedHeight)
+    const divider = canvas.getByRole('separator', { name: 'Resize puzzle and input panels' })
+    divider.focus()
+    await userEvent.keyboard('{ArrowUp}')
+    const resized = input.offsetHeight
+    expect(resized).toBeGreaterThan(tabbedHeight)
+    await userEvent.click(canvas.getByRole('tab', { name: 'Solution' }))
+    expect(input.offsetHeight).toBe(resized)
+    await userEvent.click(canvas.getByRole('button', { name: 'Reveal solution' }))
+    await expect(await canvas.findByRole('list', { name: 'Solving steps' })).toBeVisible()
+    await expect(canvas.getByRole('grid', { name: 'Solution preview' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('tab', { name: 'Digits' }))
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('tab', { name: 'Solution' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Close solution panel' }))
+    await expect(canvas.queryByRole('tab', { name: 'Solution' })).not.toBeInTheDocument()
+    expect(input.offsetHeight).toBe(resized)
+    await userEvent.click(canvas.getByRole('button', { name: 'Close techniques panel' }))
+    await expect(canvas.queryByRole('tab', { name: 'Techniques' })).not.toBeInTheDocument()
+    await expect(canvasElement.querySelector('.mobile-panel-layout')).not.toHaveAttribute('data-input-sized')
+  },
+}
+
+export const RestoredMobileSolution: Story = {
+  args: { game: { ...starter, id: 'restored-mobile-solution' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['solution', 'techniques'], active: 'solution', height: 308 })
+    playSession.set(args.game.id, 'solutionView', { identity: puzzleIdentity(args.game), step: 3, hintOpen: true })
   },
 }
 const branchRoot = candidateId({ cell: 50, digit: 4 })
@@ -92,12 +237,19 @@ const branchedGame = {
   ...starter,
   chainSketch: { sketches: [{ ...newChainSketch(1), history: [[], branchedLinks] }], activeId: 1, pending: null },
 }
+export const ChainShortcuts: Story = {
+  args: { game: branchedGame, games: [branchedGame] },
+}
+export const MedusaRemoval: Story = {
+  args: { game: medusaRemovalGame, games: [medusaRemovalGame] },
+}
 export const RemoveBranchTip: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open Colors & Chains from puzzle card' }))
-    await userEvent.click(canvas.getByRole('tab', { name: 'Chains' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Chains', pressed: false }))
+    await userEvent.keyboard('{Escape}')
     const grid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
     const chain = canvas.getByRole('button', { name: /^Chain 1$/ })
     const branchNotation = /, 4r6c6 = 1r6c6/
@@ -225,6 +377,11 @@ export const ClickAwayClearsCell: Story = {
     await expect(cell).toHaveAttribute('aria-selected', 'true')
     await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
     await expect(cell).toHaveAttribute('aria-selected', 'true')
+    const menu = canvas.getByRole('button', { name: 'Open puzzle options' })
+    await userEvent.click(menu)
+    await expect(cell).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(cell).toHaveAttribute('aria-selected', 'true')
     await userEvent.click(canvasElement.querySelector('.puzzle-actions')!)
     await expect(cell).toHaveAttribute('aria-selected', 'false')
     await userEvent.click(cell)
@@ -251,7 +408,13 @@ export const GridModeCue: Story = {
     await userEvent.click(highlight)
     await expect(grid).toHaveAccessibleDescription('Highlight mode')
     await userEvent.click(highlight)
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
+    await userEvent.keyboard('q')
+    await expect(grid).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('p')
     await expect(grid).toHaveAccessibleDescription('Pen mode')
+    await userEvent.keyboard('q')
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
   },
 }
 export const Paused: Story = {
@@ -356,15 +519,21 @@ export const SolvedMobile: Story = {
 export const CandidateShortcut: Story = {
   play: async ({ canvas, userEvent }) => {
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })
-    cell.focus()
-    await expect(cell).toHaveAttribute('aria-selected', 'false')
-    await userEvent.keyboard('{Meta>}4{/Meta}')
-    await expect(cell).toHaveAccessibleName('Row 1, column 3, empty, candidates 4')
-    await userEvent.click(cell)
-    await userEvent.keyboard('{Control>}4{/Control}')
+    const given = canvas.getAllByRole('gridcell', { name: /given (?!4)[1-9]/ })[0]
+    await userEvent.keyboard('d')
+    await userEvent.click(given)
+    await expect(given).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('4')
+    await expect(given).toHaveAttribute('aria-selected', 'false')
+    await expect(canvas.getByRole('button', { name: 'Deselect 4' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('{Meta>}5{/Meta}')
     await expect(cell).toHaveAccessibleName('Row 1, column 3, empty')
+    await userEvent.click(cell)
+    await expect(cell).toHaveAttribute('aria-selected', 'true')
+    await userEvent.keyboard('{Control>}4{/Control}')
+    await expect(cell).toHaveAccessibleName(/^Row 1, column 3, empty, candidates 4/)
     fireEvent.keyDown(cell, { key: "'", code: 'Digit4', metaKey: true })
-    await expect(cell).toHaveAccessibleName('Row 1, column 3, empty, candidates 4')
+    await expect(cell).toHaveAccessibleName('Row 1, column 3, empty')
   },
 }
 export const HintWithGrid: Story = {
@@ -415,6 +584,112 @@ export const HintWithGrid: Story = {
   },
 }
 
+const hintLayoutGame = { ...starter, id: 'hint-viewport' }
+const hintViewports = {
+  shortPhone: { name: 'Short phone', styles: { width: '320px', height: '480px' } },
+  tallTablet: { name: 'Tall tablet', styles: { width: '590px', height: '1090px' } },
+  landscapePhone: { name: 'Landscape phone', styles: { width: '740px', height: '360px' } },
+}
+
+function hintViewportStory(viewport: keyof typeof hintViewports): Story {
+  return {
+    args: { game: hintLayoutGame, games: [hintLayoutGame] },
+    parameters: { viewport: { options: hintViewports } },
+    globals: { viewport: { value: viewport, isRotated: false } },
+    beforeEach: () => {
+      const saved = playPreferenceStore.getSnapshot().experimentalMode
+      const rootStyle = document.documentElement.style
+      const durations = ['--motion-standard-duration', '--motion-panel-duration']
+        .map(property => [property, rootStyle.getPropertyValue(property)] as const)
+      durations.forEach(([property]) => rootStyle.setProperty(property, '0ms'))
+      playPreferenceStore.set('experimentalMode', true)
+      playSession.set(hintLayoutGame.id, 'toolPanels', defaultToolPanels)
+      return () => {
+        playSession.activate(null)
+        playPreferenceStore.set('experimentalMode', saved)
+        durations.forEach(([property, previous]) => {
+          if (previous) rootStyle.setProperty(property, previous)
+          else rootStyle.removeProperty(property)
+        })
+      }
+    },
+    render: (args) => <WorktableExample {...args} withTopbar />,
+    play: async ({ canvas, canvasElement, userEvent }) => {
+      const page = canvasElement.querySelector<HTMLElement>('.standard-workspace-page')!
+      const layout = page.querySelector<HTMLElement>('.mobile-panel-layout')!
+      expect(layout).toBeInTheDocument()
+      await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+      await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+      await canvas.findByRole('button', { name: 'Show digits' }, { timeout: 5000 })
+      const cards = Array.from(layout.querySelectorAll<HTMLElement>('[data-mobile-panel]'))
+      const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+      const puzzle = layout.querySelector<HTMLElement>('[data-mobile-panel="puzzle"]')!
+      const doc = page.ownerDocument.documentElement
+      const tools = TOOL_PANEL_ORDER
+      expect(cards.map(card => card.dataset.mobilePanel).sort()).toEqual(['hint', 'input', 'puzzle'])
+
+      const fitsInside = (rect: DOMRect, container: DOMRect) => rect.width > 0 && rect.height > 0 &&
+        rect.top >= container.top - 1 && rect.bottom <= container.bottom + 1 &&
+        rect.left >= container.left - 1 && rect.right <= container.right + 1
+      const expectLayoutToFit = async (combination: string) => {
+        const transitions = layout.getAnimations({ subtree: true })
+          .filter(animation => animation.effect?.getComputedTiming().endTime !== Infinity)
+        await Promise.allSettled(transitions.map(animation => animation.finished))
+        await waitFor(() => {
+          const pageBounds = page.getBoundingClientRect()
+          expect({
+            combination,
+            hasHint: layout.hasAttribute('data-fit-hint'),
+            pageOverflow: [page.scrollWidth - page.clientWidth > 1, page.scrollHeight - page.clientHeight > 1],
+            pageScrollTop: page.scrollTop,
+            documentOverflow: [doc.scrollWidth - doc.clientWidth > 1, doc.scrollHeight - doc.clientHeight > 1],
+            clippedCards: cards.filter(card => !fitsInside(card.getBoundingClientRect(), pageBounds))
+              .map(card => card.dataset.mobilePanel),
+            gridFits: fitsInside(grid.getBoundingClientRect(), puzzle.getBoundingClientRect()),
+          }).toEqual({
+            combination, hasHint: true, pageOverflow: [false, false], pageScrollTop: 0,
+            documentOverflow: [false, false], clippedCards: [], gridFits: true,
+          })
+        }, { interval: 8 })
+      }
+
+      for (let mask = 0; mask < 2 ** tools.length; mask++) {
+        const open = tools.filter((_, index) => mask & (1 << index))
+        for (const active of ['digits', ...open] as const) {
+          playSession.set(hintLayoutGame.id, 'toolPanels', { open, active })
+          await waitFor(() => {
+            expect({
+              tabs: Array.from(layout.querySelectorAll('[role="tab"]'), tab => tab.textContent?.toLowerCase()),
+              active: layout.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.toLowerCase(),
+              hasTabBody: Boolean(layout.querySelector('[role="tabpanel"]:not([inert], [hidden])')?.getClientRects().length),
+            }).toEqual(open.length ? { tabs: ['digits', ...open], active, hasTabBody: true }
+              : { tabs: [], active: undefined, hasTabBody: false })
+          }, { interval: 8 })
+          await expectLayoutToFit(`${viewport}: ${open.join(', ')} (${active})`)
+        }
+      }
+
+      if (viewport === 'shortPhone') {
+        await userEvent.click(canvas.getByRole('tab', { name: 'Digits' }))
+        const digits = canvas.getByRole('tabpanel', { name: 'Digits' })
+        expect(digits.scrollHeight).toBeGreaterThan(digits.clientHeight)
+        digits.scrollTop = digits.scrollHeight
+        expect(digits.scrollTop).toBeGreaterThan(0)
+        expect(page.scrollTop).toBe(0)
+      }
+
+      await userEvent.click(canvas.getByRole('tab', { name: 'Digits' }))
+      canvas.getByRole('separator', { name: 'Resize puzzle and input panels' }).focus()
+      await userEvent.keyboard('{End}')
+      await expectLayoutToFit(`${viewport}: resized Digits with all tools open`)
+    },
+  }
+}
+
+export const HintTabsShortPhone = hintViewportStory('shortPhone')
+export const HintTabsTallTablet = hintViewportStory('tallTablet')
+export const HintTabsLandscapePhone = hintViewportStory('landscapePhone')
+
 export const AnalyzeMoves: Story = {
   args: { workspaceMode: 'advanced' },
   play: async ({ canvas, userEvent }) => {
@@ -427,17 +702,20 @@ export const AnalyzeMoves: Story = {
   },
 }
 
-function WorktableExample(args: ComponentProps<typeof Worktable>) {
+function WorktableExample({ withTopbar, resizable, ...args }: ComponentProps<typeof Worktable> & { withTopbar?: boolean; resizable?: boolean }) {
   const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
   const [height, setHeight] = useState(args.panelHeight)
   const [multi, setMulti] = useState(args.multi)
   const actionsRef = useRef<WorktableActions | null>(null)
   const game = room.games.find(({ id }) => id === room.active) ?? args.game
-  return <div className="story-app worktable-story">
-    <main className="page standard-workspace-page" aria-label="Sudoku workspace"><div className="workspace">
+  const mobile = useMobileLayout()
+  const desktopResize = Boolean(resizable && !mobile)
+  return <DesktopPlayLayout enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
+    {withTopbar && <header className="topbar"><div className="topbar-inner"><span className="wordmark">Sudoku</span></div></header>}
+    <main id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
       <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games}
         actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
         toggleMulti={() => setMulti((value) => !value)} />
-    </div></main>
-  </div>
+    </PlayWorkspace></main>
+  </DesktopPlayLayout>
 }

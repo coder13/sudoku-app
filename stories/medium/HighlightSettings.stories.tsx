@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { expect } from 'storybook/test'
 import { HighlightSettings } from '../../src/components/Settings'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
@@ -17,5 +18,13 @@ const meta = {
 } satisfies Meta<typeof HighlightSettings>
 export default meta
 type Story = StoryObj<typeof meta>
-export const CandidateStyles: Story = {}
-export const CandidateHighlightingDisabled: Story = { args: { highlighting: { ...highlighting, matchingCandidates: false } } }
+export const AutomaticHighlights: Story = {}
+export const CandidateHighlightingDisabled: Story = {
+  args: { highlighting: { ...highlighting, matchingCandidates: false } },
+  play: async ({ canvas, userEvent }) => {
+    const matchingCandidates = canvas.getByRole('checkbox', { name: /^Matching candidates/ })
+    await expect(matchingCandidates).not.toBeChecked()
+    await userEvent.click(matchingCandidates)
+    await expect(matchingCandidates).toBeChecked()
+  },
+}

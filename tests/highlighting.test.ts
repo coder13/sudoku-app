@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../src/sudoku/highlighting.ts'
+import { HIGHLIGHT_KEY, readPreferences } from '../src/sudoku/preferences.ts'
 
 test('a selected placed digit drives matching candidate highlights', () => {
   assert.equal(activeHighlightDigit(`000005${'0'.repeat(75)}`, [5], 5, null), 5)
@@ -36,4 +37,13 @@ test('digit input can distinguish a given-only selection from an editable select
   assert.equal(onlyGivensSelected(givens, [0, 1]), true)
   assert.equal(onlyGivensSelected(givens, [0, 2]), false)
   assert.equal(onlyGivensSelected(givens, []), false)
+})
+
+test('older highlight preferences keep the automatic toggles and discard the candidate style', () => {
+  const read = (saved: Record<string, unknown>) => readPreferences({
+    getItem: key => key === HIGHLIGHT_KEY ? JSON.stringify(saved) : null,
+  }).highlighting
+  assert.deepEqual(read({ defaultsVersion: 2, candidateStyle: 'text', matchingCandidates: false }), {
+    relatedCells: true, matchingDigits: true, matchingCandidates: false,
+  })
 })

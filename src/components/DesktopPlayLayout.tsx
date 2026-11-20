@@ -5,7 +5,7 @@ import {
 } from '../sudoku/play-preferences'
 import { usePlayPreference } from './usePlayPreference'
 
-const EDGE_GUTTER = 12
+const HANDLE_CARD_GAP = 6
 const KEYBOARD_STEP = 24
 
 type WidthDrag = { pointerId: number; startX: number; startWidth: number; multiplier: number }
@@ -86,8 +86,11 @@ function PlayResizeHandle({ edge, width, min, max, onPreview, onSave, onReset }:
 }
 
 export function DesktopPlayLayout({ enabled, className, children }: { enabled: boolean; className: string; children: ReactNode }) {
+  const root = useRef<HTMLDivElement>(null)
+  const resizeBounds = useRef<HTMLDivElement>(null)
   const [savedWidth, saveWidth] = usePlayPreference('desktopLayoutWidth')
-  const [viewportWidth, setViewportWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH + 2 * EDGE_GUTTER)
+  const [availableWidth, setAvailableWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH)
+  const [contentWidth, setContentWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH)
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null)
 
   useLayoutEffect(() => {
@@ -95,24 +98,33 @@ export function DesktopPlayLayout({ enabled, className, children }: { enabled: b
       setDraggedWidth(null)
       return
     }
-    function measureViewport() { setViewportWidth(window.innerWidth) }
-    measureViewport()
-    window.addEventListener('resize', measureViewport)
-    return () => window.removeEventListener('resize', measureViewport)
+    const page = root.current?.querySelector<HTMLElement>('.standard-workspace-page')
+    const bounds = resizeBounds.current
+    if (!bounds) return
+    const measure = () => {
+      setAvailableWidth(bounds.getBoundingClientRect().width)
+      if (page?.offsetWidth) setContentWidth(page.offsetWidth)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(bounds, { box: 'border-box' })
+    if (page) observer.observe(page, { box: 'border-box' })
+    return () => observer.disconnect()
   }, [enabled])
 
-  const maxWidth = Math.max(MIN_DESKTOP_LAYOUT_WIDTH, viewportWidth - 2 * EDGE_GUTTER)
+  const maxScale = availableWidth / contentWidth
+  const maxWidth = Math.max(MIN_DESKTOP_LAYOUT_WIDTH, Math.floor(maxScale * DEFAULT_DESKTOP_LAYOUT_WIDTH))
   const width = clampWidth(draggedWidth ?? savedWidth, MIN_DESKTOP_LAYOUT_WIDTH, maxWidth)
   const layoutStyle = enabled ? {
     '--desktop-layout-base-width': `${DEFAULT_DESKTOP_LAYOUT_WIDTH}px`,
-    '--desktop-layout-width': `${width}px`,
-    '--desktop-layout-scale': width / DEFAULT_DESKTOP_LAYOUT_WIDTH,
+    '--desktop-layout-content-width': `${contentWidth}px`,
+    '--desktop-layout-scale': width === maxWidth ? maxScale : width / DEFAULT_DESKTOP_LAYOUT_WIDTH,
   } as CSSProperties : undefined
 
-  return <div className={`${className}${enabled ? ' desktop-play-resizable' : ''}`} style={layoutStyle}
+  return <div ref={root} className={`${className}${enabled ? ' desktop-play-resizable' : ''}`} style={layoutStyle}
     data-layout-resizing={enabled && draggedWidth !== null ? '' : undefined}>
     {children}
-    {enabled && <div className="desktop-layout-edges">
+    {enabled && <div ref={resizeBounds} className="desktop-layout-edges">
       {(['left', 'right'] as const).map((edge) => <PlayResizeHandle key={edge} edge={edge} width={width}
         min={MIN_DESKTOP_LAYOUT_WIDTH} max={maxWidth} onPreview={setDraggedWidth} onSave={saveWidth}
         onReset={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)} />)}
@@ -136,16 +148,21 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const puzzle = workspace.querySelector('.standard-puzzle-stack .puzzle')
     const inputStack = workspace.querySelector('.standard-input-stack')
     const input = inputStack?.querySelector('.controls')
+    const page = workspace.closest<HTMLElement>('.standard-workspace-page')
+    const layout = page?.closest<HTMLElement>('.desktop-play-resizable')
     const measure = () => {
-      const page = workspace.closest<HTMLElement>('.standard-workspace-page')
-      const layout = page?.closest<HTMLElement>('.desktop-play-resizable')
-      if (page && layout) layout.style.setProperty('--desktop-layout-content-width', `${page.offsetWidth}px`)
       setMaxWidth(Math.max(MIN_DESKTOP_INPUT_WIDTH, workspace.clientWidth - gap - MIN_DESKTOP_PUZZLE_WIDTH))
       if (puzzle && input && inputStack) {
         const scale = Number(getComputedStyle(workspace).getPropertyValue('--desktop-layout-scale')) || 1
-        const midpoint = (puzzle.getBoundingClientRect().right + input.getBoundingClientRect().left) / 2
-        const offset = (midpoint - inputStack.getBoundingClientRect().left) / scale
+        const puzzleBounds = puzzle.getBoundingClientRect()
+        const inputBounds = input.getBoundingClientRect()
+        const offset = (inputBounds.left - inputStack.getBoundingClientRect().left) / scale - HANDLE_CARD_GAP
         workspace.style.setProperty('--play-divider-offset', `${offset}px`)
+        if (layout && page) {
+          const pageBounds = page.getBoundingClientRect()
+          layout.style.setProperty('--play-left-edge-offset', `${(puzzleBounds.left - pageBounds.left) / scale - HANDLE_CARD_GAP}px`)
+          layout.style.setProperty('--play-right-edge-offset', `${(pageBounds.right - inputBounds.right) / scale - HANDLE_CARD_GAP}px`)
+        }
       }
     }
     measure()
@@ -153,7 +170,11 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     observer.observe(workspace)
     if (puzzle) observer.observe(puzzle, { box: 'border-box' })
     if (input) observer.observe(input, { box: 'border-box' })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      layout?.style.removeProperty('--play-left-edge-offset')
+      layout?.style.removeProperty('--play-right-edge-offset')
+    }
   }, [resizable])
 
   const width = clampWidth(draggedWidth ?? savedWidths.input, MIN_DESKTOP_INPUT_WIDTH, maxWidth)

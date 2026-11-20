@@ -1,8 +1,8 @@
-import { type ComponentProps, type ReactNode, type Ref } from 'react'
+import { type ComponentProps, type ReactNode, type Ref, useLayoutEffect, useRef } from 'react'
 import { ListChecks, X } from 'lucide-react'
 import { IconButton } from './Button'
 import { MobilePanelLayout } from './MobilePanelLayout'
-import { MotionSurface } from './Presence'
+import { animatePanelLayout, MotionSurface, motionDuration } from './Presence'
 
 type InsightTab<Id extends string> = { id: Id; label: string }
 type Insights<Id extends string> = {
@@ -52,11 +52,50 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   </>
 }
 
+export function scrollActiveTabIntoView(list: HTMLElement | null) {
+  const tab = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+  if (!tab || !list) return
+  const { left, right } = tab.getBoundingClientRect()
+  const viewport = list.getBoundingClientRect()
+  if (left < viewport.left) list.scrollLeft += left - viewport.left
+  else if (right > viewport.right) list.scrollLeft += right - viewport.right
+}
+
 function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onClose, tabListRef, className, ...props }:
   Insights<Id> & Omit<ComponentProps<'section'>, keyof Insights<Id>>) {
   const selected = tabs.find(tab => tab.id === active)
   const classes = ['desktop-insight-panel', className].filter(Boolean).join(' ')
-  return <section {...props} className={classes} aria-label="Puzzle insights">
+  const panel = useRef<HTMLElement>(null)
+  const previousSize = useRef<{ width: number; height: number } | null>(null)
+  useLayoutEffect(() => {
+    const element = panel.current
+    if (!element) return
+    const size = () => ({ width: element.offsetWidth, height: element.offsetHeight })
+    const before = previousSize.current
+    const after = size()
+    const duration = motionDuration('panel')
+    let animation: Animation | undefined
+    if (before && duration && before.width && before.height && after.width && after.height &&
+      (before.width !== after.width || before.height !== after.height)) {
+      const bounds = element.getBoundingClientRect()
+      animation = animatePanelLayout(element, {
+        left: bounds.left, top: bounds.top,
+        width: bounds.width * before.width / after.width,
+        height: bounds.height * before.height / after.height,
+      }, duration)
+    }
+    previousSize.current = after
+    const observer = new ResizeObserver(() => { previousSize.current = size() })
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      animation?.cancel()
+    }
+  }, [tabs.length])
+  useLayoutEffect(() => {
+    scrollActiveTabIntoView(panel.current?.querySelector<HTMLElement>('[role="tablist"]') ?? null)
+  }, [active, tabs.length])
+  return <section {...props} ref={panel} className={classes} aria-label="Puzzle insights">
     <div className="desktop-insight-toolbar">
       <div ref={tabListRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
         onKeyDown={event => {

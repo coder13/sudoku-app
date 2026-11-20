@@ -6,10 +6,10 @@ import {
   useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
 import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { alternateColorShade, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, type ColorTarget, type Mode } from '../sudoku/game'
+import { alternateColorShade, candidateCount, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, type ColorTarget, type Mode } from '../sudoku/game'
 import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
-import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
+import { penPencilShortcutKeys, shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
 import { PuzzleKeypad } from './PuzzleKeypad'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
@@ -23,8 +23,7 @@ type Props = {
   setCandidateKind: (kind: 'center' | 'corner') => void
   advancedModes: AdvancedModes
   colorMode: boolean
-  toggleColorMode: () => void
-  onOpenColorTools?: () => void
+  toggleColorMode?: () => void
   colorsActive?: boolean
   colorTarget: ColorTarget
   setColorTarget: (target: ColorTarget) => void
@@ -59,19 +58,23 @@ type Props = {
   panelHeight: number
   setPanelHeight: Dispatch<SetStateAction<number>>
   beginResize: () => void
+  showMultiSelectButton?: boolean
   multi: boolean
   toggleMulti: () => void
 }
 
 export function Controls(props: Props) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
+  const penPencilKeys = penPencilShortcutKeys(shortcuts).map(shortcutLabel)
   const [mobile, setMobile] = useState(false)
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
   const editsDisabled = props.disabled || props.chainDrawing
   const colors = !props.chainDrawing && props.mode === 'color'
-  const toggleDigitHighlight = !editsDisabled && !colors ? props.onToggleDigitHighlight : undefined
+  const toggleDigitHighlight = !props.disabled && !colors ? props.onToggleDigitHighlight : undefined
   const canHighlightDigits = Boolean(toggleDigitHighlight)
+  const changeDigitHighlightMatch = props.onDigitHighlightMatchChange
+  const highlightedDigitMask = props.highlightedDigitMask ?? 0
   const digitHighlightMatch = props.digitHighlightMatch ?? 'all'
   const matchLabel = digitHighlightMatch === 'all' ? 'All' : 'Any'
   const nextMatch = digitHighlightMatch === 'all' ? 'any' : 'all'
@@ -79,7 +82,6 @@ export function Controls(props: Props) {
   const candidateColors = colors && props.colorTarget === 'candidate'
   const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
   const gridSize = props.gridSize ?? 9
-  const colorToolsLabel = gridSize === 9 ? 'Colors & Chains' : 'Colors'
   const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS.slice(0, gridSize)
   const alternate = props.selectedDigit === null ? null : alternateColorShade(props.selectedDigit)
   const counts = Array(10).fill(0) as number[]
@@ -201,9 +203,10 @@ export function Controls(props: Props) {
             <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined}
               label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
-                const singleHighlight = props.highlightedDigitMask === (1 << (digit - 1))
-                const armed = props.selectedDigit === digit || (canHighlightDigits && singleHighlight)
-                const pressed = armed || (canHighlightDigits && hasCandidate(props.highlightedDigitMask ?? 0, digit))
+                const highlighted = hasCandidate(highlightedDigitMask, digit)
+                const singleHighlight = highlightedDigitMask === (1 << (digit - 1))
+                const armed = props.selectedDigit === digit || (props.chainDrawing ? highlighted : canHighlightDigits && singleHighlight)
+                const pressed = armed || (canHighlightDigits && highlighted)
                 const progress = props.draft || colors ? 'off' : props.advancedModes.keypadProgress
                 const remaining = Math.max(0, gridSize - counts[digit])
                 const digitLabel = props.chainDrawing ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
@@ -212,7 +215,10 @@ export function Controls(props: Props) {
                   <button type="button" key={digit}
                     className={`key ${colors ? `tone-key color-${digit}` : ''} ${progress === 'dim' && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
                     aria-label={colors ? COLORS[digit - 1] : progress === 'count' ? `${digitLabel}, ${remaining} remaining` : digitLabel}
-                    aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : `${props.chainDrawing ? `${digit} ` : ''}Shift+${digit} F${digit}`}
+                    aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : [
+                      props.chainDrawing && digit, `Shift+${digit}`, `F${digit}`,
+                      canHighlightDigits && !props.eraseMode && `Control+${digit} Meta+${digit}`,
+                    ].filter(Boolean).join(' ')}
                     aria-pressed={pressed} disabled={props.disabled} data-no-panel-hold={canHighlightDigits || undefined}
                     onPointerDown={(event) => digitHold.start(event, toggleDigitHighlight && (() => toggleDigitHighlight(digit, props.compact ? digitHighlightMatch : 'all')))}
                     onPointerMove={digitHold.move}
@@ -236,37 +242,36 @@ export function Controls(props: Props) {
 
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
-              <IconButton className="pencil-button" title={`Pencil mode (${shortcutLabel(shortcuts.pencilMode)}) · Drag with a mouse and a chosen digit to add or remove candidates · Cmd+1–${gridSize} or Ctrl+1–${gridSize} toggles candidates in selected cells`} aria-label="Pencil mode"
-                aria-pressed={props.pencil && !props.colorMode} aria-keyshortcuts={shortcutLabel(shortcuts.pencilMode)} onClick={props.togglePencil} disabled={editsDisabled}>
+              <IconButton className="pencil-button" title={`Pencil mode · Use ${penPencilKeys.join(' / ')} to cycle Pen, Pencil, and Highlight · Drag with a mouse and a chosen digit to add or remove candidates`} aria-label="Pencil mode"
+                aria-pressed={props.pencil && !props.colorMode} onClick={props.togglePencil} disabled={editsDisabled}>
                 <Pencil size={18} />
               </IconButton>
             )}
             {!props.draft && (
-              <div className="highlight-controls">
+              <div className="highlight-controls" data-match-control={Boolean(changeDigitHighlightMatch) || undefined}>
                 <IconButton className="highlight-mode-button"
-                  title={props.chainDrawing ? `Clear digit highlight (${shortcutLabel(shortcuts.highlightMode)})` : `Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
-                  aria-label={props.chainDrawing ? 'Clear digit highlight' : 'Highlight mode'}
-                  aria-pressed={props.chainDrawing ? undefined : props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
-                  onClick={props.chainDrawing ? () => props.input(0) : props.toggleHighlightMode}
-                  disabled={props.disabled || (props.chainDrawing && props.selectedDigit === null)}>
+                  title={`Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
+                  aria-label="Highlight mode"
+                  aria-pressed={!props.chainDrawing && props.highlightMode} aria-keyshortcuts={shortcutLabel(shortcuts.highlightMode)}
+                  onClick={props.toggleHighlightMode} disabled={props.disabled}>
                   <Highlighter size={18} />
                 </IconButton>
-                {props.compact && props.highlightMode && !props.chainDrawing && props.onDigitHighlightMatchChange && (
+                {candidateCount(highlightedDigitMask) > 1 && !props.chainDrawing && changeDigitHighlightMatch && (
                   <Button className="candidate-match-button" data-no-panel-hold disabled={editsDisabled}
                     aria-label={`${matchLabel} selected candidates. Switch to ${nextMatch}.`}
-                    onClick={() => props.onDigitHighlightMatchChange?.(nextMatch)}>{matchLabel}</Button>
+                    onClick={() => changeDigitHighlightMatch(nextMatch)}>{matchLabel}</Button>
                 )}
               </div>
             )}
-            {!props.draft && !(props.compact && props.onActions) && (props.advancedModes.colorsEnabled || props.onOpenColorTools) && (
-              <IconButton className="color-mode-button" title={`${props.onOpenColorTools ? colorToolsLabel : 'Color mode'} (${shortcutLabel(shortcuts.colorMode)})`}
-                aria-label={props.onOpenColorTools ? `Open ${colorToolsLabel}` : 'Color mode'}
+            {!props.draft && !(props.compact && props.onActions) && props.advancedModes.colorsEnabled && props.toggleColorMode && (
+              <IconButton className="color-mode-button" title={`Color mode (${shortcutLabel(shortcuts.colorMode)})`}
+                aria-label="Color mode"
                 aria-pressed={props.colorMode || props.colorsActive || false} aria-keyshortcuts={shortcutLabel(shortcuts.colorMode)}
-                onClick={props.onOpenColorTools ?? props.toggleColorMode} disabled={props.onOpenColorTools ? props.disabled : editsDisabled}>
+                onClick={props.toggleColorMode} disabled={editsDisabled}>
                 <Palette size={18} />
               </IconButton>
             )}
-            {!props.draft && (props.compact || mobile || props.advancedModes.multiSelectButton) && (
+            {!props.draft && (props.showMultiSelectButton || props.compact || mobile || props.advancedModes.multiSelectButton) && (
               <IconButton className="multi-select-button" onClick={props.toggleMulti} disabled={editsDisabled}
                 aria-label="Multi-select" title="Multi-select" aria-pressed={props.multi}>
                 <Layers2 size={18} />

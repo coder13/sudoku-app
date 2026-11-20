@@ -1,6 +1,6 @@
 import type { Candidate, DeductionAction, DeductionMatch, HintChoice, ProofPattern } from './engine'
 
-export const TECHNIQUE_FINDER_TITLE = 'Technique finder'
+export const TECHNIQUE_FINDER_TITLE = 'Techniques'
 
 // Keep each technique in one family. New engine techniques automatically appear
 // in "Other techniques" until a more specific category is added.

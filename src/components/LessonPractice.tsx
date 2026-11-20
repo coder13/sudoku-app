@@ -104,7 +104,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
   const annotations: BoardAnnotations | undefined = result ? {
     cells: new Map(result.actions.map((action) => {
       const { cell } = 'place' in action ? action.place : action.eliminate
-      return [cell, { outline: 'var(--lesson-result)', label: actionText(action) }]
+      return [cell, { fill: 'var(--lesson-result-fill)', label: actionText(action) }]
     })),
   } : solutionDiagram?.annotations ?? clue?.annotations
 
