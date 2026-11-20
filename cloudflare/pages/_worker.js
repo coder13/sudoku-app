@@ -107,7 +107,11 @@ async function coachPublication(html, id, code) {
   const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
   const lines = puzzle.description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
   const declaredRules = puzzle.custom_constraints ? undefined : coachTypedDeclaration(lines)
-  const authoredRule = coachAuthoredRule(lines)
+  // 220V uses offsets to separate drawn lines. The reconstruction applies to this verified export.
+  const colouredLines = !puzzle.custom_constraints && id === '7rs9' && lines.length === 1 &&
+    /^Orange = entropy, brown = modular, blue = regional sum \(including the cosmetic lines\)\.?$/i.test(lines[0]) &&
+    await digest(code) === 'a454bc2435d4d69950db865205e3cd117bd3ab325bd6c528a8d6944007f357d4'
+  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'

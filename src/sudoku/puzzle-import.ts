@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
+import { readCoachColouredLines } from './coach-coloured-lines.ts'
 import { isCoachWhispersGuide } from './coach-whispers-guide.ts'
 import { decodeLegacyCoach } from './legacy-coach.ts'
 import type { OutsideSide } from './outside-clues.ts'
@@ -199,7 +200,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -376,6 +377,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
 } = {}): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
+  const drawnLines: Record<string, unknown>[] = []
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
@@ -386,6 +388,10 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       Object.keys(constraint).every(key => ['id', 'type', 'segments', 'settings'].includes(key))) continue
     if (constraint.type === 'cosmeticText' && authoredRule === 'x-sum') {
       rules.push(...readCoachXSums(constraint, constraint.segments))
+      continue
+    }
+    if (constraint.type === 'cosmeticLine' && authoredRule === 'line-colours') {
+      drawnLines.push(constraint)
       continue
     }
     if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
@@ -607,7 +613,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       throw new Error(`This Sudoku Coach rule is not supported yet (${constraint.type}).`)
     }
   }
-  if (authoredRule === 'x-sum') {
+  if (authoredRule === 'line-colours') {
+    if (!(['entropic', 'modular', 'region-sum'] as const).every(type => rules.some(rule => rule.type === type))) {
+      throw new Error('This Sudoku Coach export is missing a rule from its published line legend.')
+    }
+    rules.push(...readCoachColouredLines(drawnLines, regions))
+  } else if (authoredRule === 'x-sum') {
     const clues = rules.filter(rule => rule.type === 'x-sum')
     if (!clues.length) throw new Error('This Sudoku Coach X-Sums puzzle has no outside totals.')
     if (new Set(clues.map(rule => `${rule.direction}:${rule.cells[0]}`)).size !== clues.length) {
@@ -936,7 +947,8 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', id: string)
   if (typeof code !== 'string' || code.length > MAX_IMPORT_LENGTH) throw new Error('This link does not contain a supported puzzle export.')
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
-      ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots') && { authoredRule: coach.authoredRule }),
+      ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' || coach.authoredRule === 'line-colours') &&
+        { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }

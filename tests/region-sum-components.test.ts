@@ -12,6 +12,8 @@ import { variantDifficulties, variantIdForPuzzle, variantRuleDescriptions } from
 
 const published = JSON.parse(readFileSync(new URL('./fixtures/region-sum-newman.json', import.meta.url), 'utf8'))
 const coach = JSON.parse(readFileSync(new URL('./fixtures/region-sum-coach.json', import.meta.url), 'utf8')).examples
+const source220V = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
+  .find((source: { url: string }) => source.url.endsWith('/7rs9')) as { publishedPuzzle: VariantPuzzle }
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
 let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, VariantPreview: Component
@@ -55,6 +57,24 @@ test('cell part descriptions follow Jigsaw borders and explicit combined visits'
   const combined: VariantPuzzle = { ...puzzle, regions: undefined, rules: [{ type: 'region-sum', cells: [1, 21, 2], groupByRegion: true }] }
   assert.match(cellLabel(combined, 2), /line 1, part 1.*visits to each region are combined/)
   assert.match(variantRuleDescriptions(combined).join(' '), /combine all visits/)
+})
+
+test('220V renders each recovered blue line and the repeated orange center in both layouts', () => {
+  const grid = board(source220V.publishedPuzzle)
+  const mobile = createElement(MobilePanelLayout, { puzzleId: '220V', rearranging: false, onRearrangingChange() {}, blocked: false,
+    withHint: false, panels: { puzzle: { title: 'Puzzle', content: grid } } })
+  for (const node of [grid, mobile]) {
+    const html = renderToStaticMarkup(node)
+    assert.equal(html.split('class="variant-region-sum"').length - 1, 9)
+    assert.equal(html.split('class="variant-entropic"').length - 1, 4)
+    assert.equal(html.split('class="variant-modular"').length - 1, 2)
+    assert.match(html, /points="6\.5,4\.5 5\.5,3\.5 4\.5,2\.5 5\.5,1\.5"/)
+    assert.match(html, /points="4\.5,4\.5 4\.5,3\.5 5\.5,4\.5 4\.5,4\.5 3\.5,4\.5 4\.5,5\.5 4\.5,4\.5"/)
+    const label = html.match(/data-cell="14"[^>]*aria-label="([^"]+)"/)![1]
+    for (const line of [2, 5, 6]) assert.match(label, new RegExp(`Region Sum line ${line}, part`))
+    const clipped = html.match(/data-cell="23"[^>]*aria-label="([^"]+)"/)![1]
+    assert.doesNotMatch(clipped, /Region Sum/)
+  }
 })
 
 test('closed paths, separated logical cells and overlapping families remain visible in all orientations', () => {

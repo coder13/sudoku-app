@@ -14,6 +14,7 @@ import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+import { countLineSolutions } from './helpers/line-oracle.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -26,6 +27,9 @@ const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach
 const whispersSources = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as Omit<Fixture, 'puzzle'>[]
 const mixedWhispers = whispersSources.find(source => source.url.endsWith('/Cmdt'))!
 const whispersLesson = whispersSources.find(source => source.url.endsWith('/B5mt'))!
+const modularSources: (Omit<Fixture, 'puzzle'> & { description: string; publishedPuzzle: VariantPuzzle })[] =
+  JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
+const published220V = modularSources.find(source => source.url.endsWith('/7rs9'))!
 
 const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
   JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')).examples
@@ -372,6 +376,63 @@ test('a published legacy Coach code retains its Global Entropy rule through help
     const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
     assert.deepEqual(shared.game.variant, game.variant)
     assert.equal(shared.game.title, game.title)
+  } finally { sqlite.close() }
+})
+
+test('220V imports its complete published rules and centered paths through the short-link resolver', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, description, solution, publishedPuzzle } = published220V
+  let sourceCode = code
+  let sourceDescription = description
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('7rs9', sourceCode, title, { description: sourceDescription })))
+    : fetcher(path, init))
+  try {
+    const { game, grade } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, title)
+    assert.equal(game.variant?.id, 'mixed')
+    assert.deepEqual(game.variant.puzzle, publishedPuzzle)
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    const counted = countLineSolutions(game.variant.puzzle)
+    assert.deepEqual(counted.solutions, [solution])
+    assert.equal(grade, null)
+
+    const ranked = await puzzleHints(game)
+    assert.ok(ranked.choices.length > 1)
+    const selected = await puzzleHints(game, 'all', 'region-sum')
+    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.equal(actions.size, 30)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count('region-sum'), actions.size) } finally { scan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.rating.status, 'stalled')
+    assert.ok(path.steps.length > 0)
+    let played = game
+    for (const step of path.steps) {
+      for (const action of step.actions) {
+        const candidate = 'place' in action ? action.place : action.eliminate
+        assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
+      }
+      played = applyDeduction(played, step.actions, variantHouseMasks(game.variant.puzzle, valuesOf(played)))
+    }
+    assert.equal(valuesOf(played), path.board)
+    assert.notEqual(path.board, solution)
+    const restored = readGame(played.id, JSON.stringify(played))
+    assert.deepEqual(restored?.variant, game.variant)
+    assert.deepEqual(restored?.position, played.position)
+    const share = await publishSharedPuzzle(played)
+    const shared = await prepareSharedPuzzle(share, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.equal(shared.game.title, title)
+
+    await assert.rejects(detectPuzzle(code), /unsupported settings for cosmeticLine/)
+    sourceDescription += '\nOther blue cells may repeat digits.'
+    await assert.rejects(detectPuzzle(url), /has author instructions/)
+    sourceDescription = description
+    sourceCode = coachCode({ givenConstraints: [{ type: 'nonconsecutive', segments: [] }] })
+    await assert.rejects(detectPuzzle(url), /has author instructions/)
   } finally { sqlite.close() }
 })
 

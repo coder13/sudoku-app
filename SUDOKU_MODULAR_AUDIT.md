@@ -28,10 +28,10 @@ The [Coach corpus](tests/fixtures/modular-coach.json) preserves eight original e
 | [Entropic Runaround](https://sudoku.coach/en/s/Cmki), FatPhil | A 6 × 6 puzzle with replacement regions, two Whispers paths with minimum difference three, a sum and four Modular paths. Grid-size support remains open. |
 | [kicking modular lines…](https://sudoku.coach/en/s/7hzU), vajrajames | A 5 × 5 Latin-square puzzle with Anti-King, two Modular and four Entropic paths. Preserve its grid and region semantics. |
 | [Modular Colouring](https://sudoku.coach/en/s/GYTv), cyboogie | Six Modular paths, eight Consecutive Lines, seven difference-three circles and a printed XI total. Requires [Consecutive Lines](https://github.com/coder13/sudoku-app/issues/89) and [General Difference](https://github.com/coder13/sudoku-app/issues/85). |
-| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | Non-Consecutive, three Entropic paths, two Modular paths and Region Sum paths. The author explicitly includes blue cosmetic lines in the mathematical rule. Preserve the source and description until [Region Sum](https://github.com/coder13/sudoku-app/issues/67) and authored-context import are complete. |
+| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | The verified short link imports Non-Consecutive, four Entropic paths, two Modular paths, and nine Region Sum lines. The authored legend accounts for the drawn orange and blue paths. An independent counter verifies the unique published answer. [Verification](SUDOKU_VARIANT_USABILITY_AUDIT.md#published-coach-links) |
 | [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. Preserve the complete export pending [Fog app support](https://github.com/coder13/sudoku-app/issues/91). |
 
-Six incomplete sources still reject as whole imports. A supported Modular path does not justify discarding a companion rule or changing the grid. Original short URLs still require Copy → Puzzle; this change does not add a network link resolver.
+Six raw exports remain deferred. The 220V short link supplies the author legend required to recover its drawn paths. The other deferred sources still need the rules or grid layouts listed above.
 
 ## Engine and app contract
 
