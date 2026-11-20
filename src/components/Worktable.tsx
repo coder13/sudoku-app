@@ -2302,6 +2302,7 @@ export function Worktable({
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCells={!strongLinksVisible}
       highlightCandidateCount={!strongLinksVisible && highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} onCandidate={strongLinksVisible ? selectStrongLinkCandidate : sketch.select}
+      onGivenClick={strongLinksVisible ? (digit) => setStrongLinkHighlights(1 << (digit - 1)) : undefined}
       onLinkSelect={strongLinksVisible ? startStrongLinkChain : undefined}
       onCandidateHover={sketch.drawing ? sketch.hover : undefined}
       isLinkTarget={sketch.isLinkTarget}

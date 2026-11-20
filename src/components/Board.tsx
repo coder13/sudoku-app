@@ -43,6 +43,7 @@ type Props = {
   pointerFocusedCell?: number | null
   boardRef?: RefObject<HTMLDivElement | null>
   onCell?: (index: number, event: MouseEvent) => void
+  onGivenClick?: (digit: number) => void
   onGridKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   onCandidate?: (candidate: Candidate) => void
@@ -68,7 +69,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 export function Board({
   variantPuzzle, grid: sizedGrid, algebraicCages, sixRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
+  selected = [], active = 0, pointerFocusedCell, boardRef, onCell, onGivenClick, onGridKeyDown, onCellDoubleClick, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
@@ -115,7 +116,6 @@ export function Board({
   const filterCandidates = matchAnyDigit || highlightedDigits.length > 1
   const focusDigit = filterCandidates ? null : activeHighlightDigit(values, selected, active, highlightedDigits[0] ?? highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
-  const Cell = onCell && !candidateAction ? 'button' : 'div'
   const layout = candidates ? 'grid' : candidateLayout
   const annotationSlots = showAnnotatedCandidates ? annotations?.candidates : undefined
   const usesDigitSlots = (cell: number) => layout === 'grid' || annotationSlots?.has(cell)
@@ -200,6 +200,8 @@ export function Board({
                 const alternateBox = (Math.floor((row - 1) / boxRows) + Math.floor((col - 1) / boxColumns)) % 2 === 1
                 const value = Number(values[index])
                 const fixed = givens[index] !== '0'
+                // In strong-link mode only givens get a cell-level action; candidates keep their own buttons.
+                const Cell = (onCell && !candidateAction) || (fixed && onGivenClick) ? 'button' : 'div'
                 const center = position?.center[index] ?? 0
                 const corner = position?.corner[index] ?? 0
                 const centerMarks = centerMask(index)
@@ -335,15 +337,15 @@ export function Board({
                 return (
                   <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
-                    aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
+                    aria-description={fixed && onGivenClick ? 'Highlight strong links for this digit' : preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
                     data-box-edge={!regionsAt && col % boxColumns === 0 || undefined}
                     data-region-right={regionsAt && col < gridSize && regionAtCell !== regionsAt[index + 1] || undefined}
                     data-region-bottom={regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize] || undefined}
                     data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
-                    type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
+                    type={Cell === 'button' ? 'button' : undefined} tabIndex={onCell ? (active === index ? 0 : -1) : fixed && onGivenClick ? 0 : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
-                    onClick={onCell && ((event) => onCell(index, event))}
+                    onClick={fixed && onGivenClick ? () => onGivenClick(value) : onCell && ((event) => onCell(index, event))}
                     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
                     <BoardMarks items={gridItems} group={<span className="candidate-marks" aria-hidden={candidateAction ? undefined : true} />} />
                     <BoardMarks items={cageTotal === undefined ? cellItems : [
