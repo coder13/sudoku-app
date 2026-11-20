@@ -96,3 +96,15 @@ test('a labeled Coach Difference layer keeps the explicit 1 alongside larger lab
   layer.settings.negativeConstraint = true
   await assert.rejects(detectPuzzle(code()), /unsupported negative rule/)
 })
+
+test('sized Coach Arrow preserves the bulb, its ordered shaft and its companion rules', async () => {
+  const arrow = { type: 'arrow', segments: [{ cells: [0, 5, 10], parameters: {} }] }
+  const code = () => coachCode({ gridSize: 4, givenConstraints: [arrow,
+    { type: 'renban', segments: [{ cells: [0, 1] }] }] })
+  const result = await detectPuzzle(code())
+  assert.deepEqual(result.sizedRules, [
+    { type: 'arrow', circle: 0, cells: [5, 10] }, { type: 'renban', cells: [0, 1] },
+  ])
+  arrow.segments[0].cells = [0, 5, 0]
+  await assert.rejects(detectPuzzle(code()), /invalid rules/)
+})
