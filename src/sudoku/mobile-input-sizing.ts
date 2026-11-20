@@ -12,3 +12,10 @@ export function mobileResizedPuzzleHeight(
 ): number {
   return Math.max(minimumPuzzleHeight, Math.min(naturalPuzzleHeight, total - inputHeight))
 }
+
+/** During a resize preview, use the full available column width, not the
+ * narrower width at which the drag started. This works in both directions.
+ */
+export function mobilePreviewGridWidth(availableWidth: number, puzzleHeight: number, chromeHeight: number): number {
+  return Math.max(0, Math.min(availableWidth, puzzleHeight - chromeHeight))
+}
