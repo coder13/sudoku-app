@@ -213,6 +213,20 @@ These measurements do not include live viewport layout, paint, worker startup or
 
 With two warmups and seven measured samples, the three empty Unique Rectangle inference searches each cost about 92–95 ms at the opening and 34–35 ms at the app stall. `classic_proofs` creates a new Classic search per technique, whereas the three rectangle graph methods share a cache only within one search instance. Profile graph construction before extending that cache lifetime. Preserve the exact board/masks, unique-solution checks, proof ordering and all retained replies. This diagnostic identifies a candidate optimization; it does not ship one or resolve the human reasoning gap.
 
+### Combine Modular Lines and adjacent sums at the app stall
+
+In the 25-step HCHW stall, R5C2 and R6C2 add to 7 and occupy consecutive positions on a Modular Line. If one digit had remainder 2 when divided by 3, the other would have remainder 2 as well. The Modular Line requires different remainders in these cells. R6C3 adds to 13 with R6C2. Since 13 also has remainder 1, R6C3 cannot have remainder 2. Three positions farther along the line, R7C3 and R7C4 repeat the respective remainder groups of R5C2 and R6C2.
+
+| Cell | Candidates at the stall | Removes |
+| --- | --- | --- |
+| R5C2 | 1, 2, 3 | 2 |
+| R6C2 | 4, 5, 6 | 5 |
+| R6C3 | 7, 8, 9 | 8 |
+| R7C3 | 1, 2, 3, 4, 5, 6 | 2, 5 |
+| R7C4 | 1, 2, 3, 4, 5, 6, 7, 8, 9 | 2, 5, 8 |
+
+Enumerating the five stalled domains under just those two sums and three remainder relations yields twelve assignments, including the published solution's values. Applying the eight removals to the app stall produces two further Modular deductions verified against that solution. The current walkthrough then stalls again with all cells unfilled. Detection and proof rendering for the combined deduction remain open. [Coverage issue](https://github.com/coder13/sudoku-app/issues/175)
+
 ## Reproduce
 
 ```sh
