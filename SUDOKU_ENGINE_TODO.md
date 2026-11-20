@@ -977,3 +977,5 @@ Human reasoning gaps remain in [issue 162](https://github.com/coder13/sudoku-app
 - [ ] Verify several sound hints when available, selected techniques, proof provenance, pages and counts across existing variants and combined rules. Investigate actual coverage gaps.
 - [ ] Verify Technique Finder progress/cancellation, enabled techniques, counts, pages and action application against the same live candidate state.
 - [ ] Verify exact solutions and human walkthroughs under every active rule, with honest partial paths. Fix discovered defects and retain meaningful regressions.
+- [x] Check a generated Jigsaw game in standard and advanced Play. Verify a region-based Finder proof, applied removals, exhaustive hint paging and a complete walkthrough. Check a six-family Jigsaw import and compare all 81 final digits with its verified completion. [Browser review](uat/2026-11-20/variant-quality/README.md).
+- [ ] Approve the mobile outside-clue screenshots and ship the measured layout fix. The 390×844 control grows from 161 to 219 pixels with hints and Finder open. [Before and after](uat/2026-11-20/variant-quality/README.md#jigsaw-with-five-companion-rule-families).

@@ -3296,6 +3296,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle {
     --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), max(130px, calc(100dvh - var(--topbar-height) - 540px))));
   }
+  @media (orientation: portrait) {
+    .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle:has(.has-outside-clues) {
+      /* The measured space includes the frame and its gutters. Let the input panel scroll. */
+      --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), 100dvh));
+    }
+  }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle-column {
     box-sizing: content-box;
     min-block-size: var(--mobile-resized-puzzle-height);
