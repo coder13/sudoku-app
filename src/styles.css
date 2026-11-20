@@ -3188,9 +3188,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzle-zoom .board-frame { width: 100%; }
   .puzzle-zoom .sudoku-grid { overflow: clip; }
   .puzzle-zoom-content { transform-origin: top left; }
-  .puzzle-zoom[data-resize-preview] { overflow: clip; }
+  /* The mode icon sits just beyond the grid border. During a resize preview,
+     never clip that overflow or paint-contain its parent, or the icon vanishes. */
+  .puzzle-zoom[data-resize-preview] { overflow: visible; }
   .puzzle-zoom[data-resize-preview] .puzzle-zoom-content {
-    contain: size layout paint;
+    contain: size layout;
     will-change: scale;
   }
   .puzzle-zoom[data-zoomed] { overflow: clip; border-radius: 8px; }
