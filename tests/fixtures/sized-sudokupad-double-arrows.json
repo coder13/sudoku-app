@@ -1,0 +1,163 @@
+[
+  {
+    "id": "y176p34zew",
+    "title": "Choose Your Fighter: Double Arrows",
+    "rules": [
+      {
+        "ends": [
+          16,
+          21
+        ],
+        "cells": [
+          22,
+          28,
+          34,
+          33,
+          27
+        ]
+      },
+      {
+        "ends": [
+          21,
+          24
+        ],
+        "cells": [
+          26,
+          19
+        ]
+      },
+      {
+        "ends": [
+          24,
+          7
+        ],
+        "cells": [
+          18,
+          12
+        ]
+      },
+      {
+        "ends": [
+          7,
+          5
+        ],
+        "cells": [
+          8,
+          9,
+          4
+        ]
+      },
+      {
+        "ends": [
+          5,
+          16
+        ],
+        "cells": [
+          11,
+          17
+        ]
+      }
+    ],
+    "answer": "435621162354521463346512253146614235",
+    "code": "sclN4IglgJiBcIM4A84FsD6ECGyD2qAcAnPhAAwkCMAxgEzkCmAbAKx0kAsAZkwOwDMbTDiQLUARpXIlulcSAA0IZHQAuGTKpig42AK4AnSnRggAyjojYA1joCyGS3T0ACAG7US1BgDoKP3gFouSiZqNgJ5EGUwZQAbI1gAYQALbGw4OicATV1nADEwAHMk5UdoJwARXVE4pwBBPT1sAHc4CIwdZRS9Y0wcfHCFPR041tgAOWw9ZAwYpwYEBic4cysdJyGRpwwAB22YgE8ygAUYjEMnToyIQui4J3IL7DmnbAA7c7ozpKcwV6c6FyOfbrZpyJyUbAxHTIV5gjCvCBOXgIahOUTYBAAHVe2MqOmqGXqjRaZXKN2UdxmbwKWycBT0dGBMV+GSSGEBFySGTgWG50K2d0uS352A4nIyyiaTwhr1edEoJURlDABhGEW0UKib2MbF4TAYtHIBr1AlobAYvH4zHI1GoTF45HNDEd1D1IAAvgpKBgCnRRgBtAC6XroMRiAf9wE9oBcMx08V40aTcijKfdwcjydT2aTGZzaYLObzWZLKZAsah8Wo6bkmcLpajxfrzcbwZADIKYDeEf9JDkJAzffIg7k1Az5H747kw9rE7HGd7cl4I7YI6YU+Xs7kq6364X1EntYPM/9B7Htd4h/9l5Pl/ntdPS4zB53j/XF6fH9fl73D7YV//E9/3Pf0mCvMCTzA+9/X9f9N1g7cM3/d9QM/VDXzAvc22ZOUA1AJoMH2I5sF+CkYBg6gvDAtgqIzJgqO3Wja3osDeCY68GLYlCaKg9iuOndieP7djKLAkh2PIBjJJQ6Sl3Y8TqPkhiWOfZSRIYnjAzbCEYkmYwAGIMCMjgIk6MBKEsXDRjY6s22wQE9FOfY8JAQxXhKbpoFPDSmJAJpIE6GBxLwA8QC5QpiiCrwQoUMyLKsmBJOoPBBl0BE6CgaBlCGOgFFEM5LHpNKIASSE9NgfTciq6qInRPQIEcUrdM8kBDOMj0yzcjzyP4ri238iBAugYLQvCoplCimLIiSczLL9UYkpS9tioymBsvjPKCqKnQESa8rWuqmq8smBq9D2lq2owEzo1cuh3McciFLkFSFAGoaRoUMbIuG6LQriua4AWrxktSnaGsy9bcpAfKLO23ayouw6qtqk7GoRgyjKujrQC6h6vNk6T+oCpJJtGugIomn6pv+hLoEW0H0ohnLNthxowfOgykdyFH6rR5qMfam7cc82CGIUonBpJqmyYp0nYpm+L5sS4GlrZxm1uZ6GtrVkr0YqrmedOjmKsx67A3dIA==="
+  },
+  {
+    "id": "xa14jqkz3e",
+    "title": "Hamburger",
+    "rules": [
+      {
+        "ends": [
+          0,
+          4
+        ],
+        "cells": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "ends": [
+          11,
+          35
+        ],
+        "cells": [
+          17,
+          23,
+          29
+        ]
+      },
+      {
+        "ends": [
+          34,
+          30
+        ],
+        "cells": [
+          33,
+          32,
+          31
+        ]
+      },
+      {
+        "ends": [
+          12,
+          24
+        ],
+        "cells": [
+          18
+        ]
+      },
+      {
+        "ends": [
+          7,
+          10
+        ],
+        "cells": [
+          8,
+          9
+        ]
+      },
+      {
+        "ends": [
+          10,
+          22
+        ],
+        "cells": [
+          16
+        ]
+      },
+      {
+        "ends": [
+          22,
+          19
+        ],
+        "cells": [
+          21,
+          20
+        ]
+      },
+      {
+        "ends": [
+          19,
+          22
+        ],
+        "cells": [
+          26,
+          27
+        ]
+      },
+      {
+        "ends": [
+          19,
+          22
+        ],
+        "cells": [
+          14,
+          15
+        ]
+      }
+    ],
+    "answer": "421653365214142536653421536142214365",
+    "code": "sclN4IglgJiBcIM4A84FsD6BpApgO25gLnACICGEqALAGYDGADCQBwCcAjJphSVQMzNUkArM2aDGjCgCNWAJhkA2SYIogANCGQEyJfCRig4AewCuAJxqYYIAMrGIhgNbGABAFkSDzKecA3GXRlBADpWOhDmAFpBOgoZelY1EHwwfAAbS1gACRJkSTMAcy9EkmN8AAtDUyssXAIAcjhnUih1U2N0uCsAOUrkElTneQR5Zzg7Rxc2jucSAAdZ1IBPIKaTSXTnAEFTU0MAdzhoZ3LMUeNkZ0MqY7LTiDB8lMb+w2x8medUsDwZ01PMACOxn6x0MN1OYwuV3Bznuj0Izm+MJoYHM0x0zkwKVu3hwEEu13KGK+eCCiWQcHyNEqfxo+CsAHUTKl8YsTJ8wJ5nFRTGBMI09tibjoAPyJIypUpgV5WWKseSCHg8BUyVgUNWBZUKnhyxXyDWqijKwQgAC+6hoJEKnWgAG0ALoWzCpVI22224Dmz2qb2+r2mx0e/0+4N+wN+kORsOqINR0P+8PxuMhxPJiOe+2OkB/R6vN3uuiqOiBwusEuqGSB1hFquqMsx6uVwO2ws8csUcuCWtthuqDu9rvNmQ1mPD+u24eVmM8Ee2mfjmdNmMT1Q9lf9ldd6erwMzjczwfLiiz4/j49T22CWdX8dXpfu49r48b49by87mNXjdXwdZkn8mAPRAPYSEWAAFQxvkIQCWyCK8wjfBC+zgzMLUMVJKisABiEhcKoRJyjAGgHDwOAbR4IIZC9YDQIgqD81YODVGCN8WOYlCs2pDCqlgHC8IIsoiJI/lyMo6iQPAyDsGgu1LyYigUM/JiENQkAuMw3jcO4AShNI0SqJ9GjJPomCZGUxTbQU+COLQ7jsK0/D1EI4i9JgCiDNACS6OkhimMYt9/OQt8KK/CyQrrCyrIrSKmJC3d5JstT0I0kA+O0pzBJckS3LEwyvKkmT3XC/zAzMu8LLK1cwoSw8krszT+Iy3TsugdyA3UQwfC8VJQLdUALGkoo7SQlT1EFCByhgMJGGHEBbgeMp6WgabZuc4SyJgRiZEYVoTGwCBMCgaB8DaTB1EkEhiPyXZjH2gBhZKeNSgAxV63sSSRKgO0wHvq1KHLNQyBvwIbYNCrdgMgSblqCGb1Hm/JFqm2HVsy9abS2nbsz2g6jpO4wzpAC6rpu+7Huwt73vOr6vF+lK0vw6jgdBwKWKzcboZW+GsURpauaSNHXOgTHdtu3GYHxwniYca6cbpp6sMp16Pppn7yYa7SmZwEGeLkn9FMhiaymRuG5p5pGYdNtahZF7GxcOiXTvOy6ZdJiB5YppWVdMb6PY1xmge10G2Ks9moeNy3ZoRi3+etlrbbdh3jqdomXdlsW/Zer3qZ92n1f+/itcG3W2NGw3OZR7mFr5yuBeajbhcorHE7xlPpfTsm/sV7OidVzOGcB/qg91yqy45iP+ejmurcF+Om9F/ak8l52Sbl/Pu8p73ffXgGi51wCorH8OTaj83p9R+uMfnu3F9bgmV9dteu6V56t7zrvd8D4vAMCkqxuPyOVdeYnyallBuCccZLzbmnN2/cX5vzVh/QuX9952kCqHf+RsQFm2rtguO4Dr4t0dvfVOq8M7r3gTnbeSDNYoNBsVA249sFTzwbPAh20F7i2TiQ9usCKE90+rnRB9NP5D2/nacKGDy4T1riwwBdcwFXw4TfLhy9SGP3Ic/ARfcd6F3tKaIAA=="
+  }
+]

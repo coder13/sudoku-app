@@ -58,6 +58,12 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         Number.isInteger(rule.circle) && rule.circle >= 0 && rule.circle < size ** 2 &&
         !cells.includes(rule.circle) && new Set(cells).size === cells.length
     }
+    if (rule.type === 'double-arrow') {
+      return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= 2 * size &&
+        Array.isArray(rule.ends) && rule.ends.length === 2 &&
+        rule.ends.every((end: unknown) => typeof end === 'number' && Number.isInteger(end) && end >= 0 && end < size ** 2) &&
+        new Set([...rule.ends, ...cells]).size === cells.length + 2
+    }
     if (rule.type === 'difference') {
       return Object.keys(rule).length === 3 && cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size) &&
         Number.isInteger(rule.difference) && rule.difference >= 1 && rule.difference < size
@@ -116,8 +122,10 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     } else if (rule.type === 'region-sum') {
       const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
       if (new Set(totals).size !== 1) return
-    } else if (rule.type === 'arrow') {
-      if (rule.cells.reduce((sum, cell) => sum + Number(solution[cell]), 0) !== Number(solution[rule.circle])) return
+    } else if (rule.type === 'arrow' || rule.type === 'double-arrow') {
+      const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
+      const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + Number(solution[cell]), 0)
+      if (total(rule.cells) !== total(ends)) return
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
@@ -148,6 +156,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
       ? `The digits on a Region Sum line have the same total in each ${group}. All cells in the same ${group} count together.`
       : `${group === 'region' ? 'Region' : 'Box'} borders split a Region Sum line into segments with the same total. If the line returns to a ${group}, that visit is a separate segment.`)
+    else if (rule.type === 'double-arrow') clues.add('The digits along each Double Arrow add up to the sum of the digits in its two end circles.')
     else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'labeled-dots') {

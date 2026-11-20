@@ -4,7 +4,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -32,7 +32,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
   const cells = cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
-    : rule.type === 'arrow' ? [rule.circle, ...rule.cells] : 'cells' in rule ? [...rule.cells] : []
+    : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
+      : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
+        : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
   let description: string
   let reason: string
@@ -64,6 +66,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'arrow') {
     description = 'The digits along this arrow add up to the digit in its bulb.'
     reason = 'Remove the candidates that cannot appear in an arrow sum that fits the bulb.'
+  } else if (rule.type === 'double-arrow') {
+    description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
+    reason = 'Remove candidates that cannot contribute to a total shared by the line and the two end circles.'
   } else if (rule.type === 'difference') {
     description = `The digits across this numbered marker differ by exactly ${rule.difference}.`
     reason = 'Remove the candidates that have no partner at that difference in the neighboring cell.'
@@ -95,6 +100,9 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else if (rule.type === 'arrow') {
       locations.push(rule.circle, ...rule.cells)
       conflict = 'No set of digits along the arrow can add up to a digit in the bulb.'
+    } else if (rule.type === 'double-arrow') {
+      locations.push(rule.ends[0], ...rule.cells, rule.ends[1])
+      conflict = 'No total fits both the Double Arrow line and its two end circles.'
     } else if (rule.type === 'killer-cages') {
       conflict = 'A cage cannot reach its total with different digits.'
     } else if ('cells' in rule) {
