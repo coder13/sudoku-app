@@ -23,11 +23,13 @@ useWasmWorker()
 
 type Fixture = { url: string; code: string; title: string; puzzle: VariantPuzzle; solution: string }
 const between: Fixture = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
-const renban: Fixture = JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples[0]
+const renbanSources: (Fixture & { description?: string })[] =
+  JSON.parse(readFileSync(new URL('./fixtures/renban-coach.json', import.meta.url), 'utf8')).examples
+const [renban] = renbanSources
 const whispersSources = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as Omit<Fixture, 'puzzle'>[]
 const mixedWhispers = whispersSources.find(source => source.url.endsWith('/Cmdt'))!
 const whispersLesson = whispersSources.find(source => source.url.endsWith('/B5mt'))!
-const modularSources: (Omit<Fixture, 'puzzle'> & { description: string; publishedPuzzle: VariantPuzzle })[] =
+const modularSources: (Fixture & { description: string; publishedPuzzle: VariantPuzzle })[] =
   JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
 const published220V = modularSources.find(source => source.url.endsWith('/7rs9'))!
 
@@ -482,6 +484,62 @@ test('220V imports its complete published rules and centered paths through the s
     sourceCode = coachCode({ givenConstraints: [{ type: 'nonconsecutive', segments: [] }] })
     await assert.rejects(detectPuzzle(url), /has author instructions/)
   } finally { sqlite.close() }
+})
+
+test('greetings and reviewed author notes keep all encoded rules available through the short link', async (t) => {
+  const sources = [
+    { source: renbanSources.find(({ url }) => url.endsWith('/KUUo'))!, complete: true },
+    { source: entropicSources.find(({ url }) => url.endsWith('/EoGB'))!, complete: true },
+    { source: modularSources.find(({ url }) => url.endsWith('/HCHW'))!, complete: false },
+  ]
+  const { sqlite, fetcher } = syncDatabase()
+  t.after(() => sqlite.close())
+  t.mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    const source = sources.find(({ source }) => source.url === path)?.source
+    if (!source) return fetcher(path, init)
+    return Promise.resolve(new Response(coachPage(
+      source.url.split('/').at(-1)!, source.code, source.title, { description: source.description },
+    )))
+  })
+  for (const { source, complete } of sources) await t.test(source.title, async () => {
+    assert.ok(source.description)
+    const { game, format } = await prepareImportedPuzzle(source.url)
+    assert.equal(format, 'Sudoku Coach')
+    assert.equal(game.title, source.title)
+    assert.ok(game.variant)
+    assert.deepEqual(game.variant.puzzle, source.puzzle)
+    assert.equal(game.variant.solution, source.solution)
+    assertVariantCompletion(source.puzzle, source.solution)
+
+    const ranked = await puzzleHints(game)
+    assert.ok(ranked.choices.length > 1)
+    const { technique } = ranked.choices[0]
+    const selected = await puzzleHints(game, 'all', technique)
+    const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(targets.size > 0)
+    const scan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(game.variant, game.position))
+    try { assert.equal(await scan.count(technique), targets.size) } finally { scan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.ok(path.steps.length > 0)
+    if (complete) assert.equal(path.board, source.solution)
+    else assert.equal(path.rating.status, 'stalled')
+    for (const step of path.steps) for (const action of step.actions) {
+      const candidate = 'place' in action ? action.place : action.eliminate
+      assert.equal(Number(source.solution[candidate.cell]) === candidate.digit, 'place' in action)
+    }
+
+    assert.ok(ranked.candidates)
+    const played = applyDeduction(game, ranked.choices[0].actions, ranked.candidates)
+    assert.notEqual(played, game)
+    const restored = readGame(played.id, JSON.stringify(played))
+    assert.deepEqual(restored?.position, played.position)
+    assert.deepEqual(restored?.variant, game.variant)
+    const id = await publishSharedPuzzle(played)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.title, game.title)
+    assert.deepEqual(shared.game.variant, game.variant)
+  })
 })
 
 test('the published Ksy3 link imports Mirrored Renbans and every encoded companion rule', async ({ mock }) => {

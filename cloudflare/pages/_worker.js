@@ -92,6 +92,15 @@ function coachTypedDeclaration(lines) {
   }
 }
 
+const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s go)[.!]?$/i
+
+// These full descriptions concern construction or the author's solve. Bind
+// each reviewed description to its publication so added instructions are visible.
+const reviewedCoachNotes = new Map([
+  ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
+  ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
+])
+
 // Coach publishes the puzzle code and its author instructions separately.
 async function coachPublication(html, id, code) {
   const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
@@ -119,8 +128,11 @@ async function coachPublication(html, id, code) {
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
+  const reviewedNote = reviewedCoachNotes.get(id)
+  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line)) &&
+    (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
   return {
-    hasAuthorInstructions: puzzle.custom_constraints || puzzle.description.trim() !== '',
+    hasAuthorInstructions,
     ...(authoredRule && { authoredRule }),
     ...(declaredRules && { declaredRules }),
     ...(whispersGuide && { whispersGuide: true }),

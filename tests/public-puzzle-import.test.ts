@@ -79,6 +79,41 @@ test('Coach publication metadata belongs to the requested puzzle and preserves a
   while (pages.length) assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(), { code })
 })
 
+test('Coach author notes never bypass custom constraints or extra instructions', async ({ mock }) => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8'))
+  const source = examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const publication = { sudoku_id: 'HCHW', sudoku: source.code, name: source.title,
+    description: source.description, blocked: false, custom_constraints: false }
+  let specificSudoku = publication
+  mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) => url.startsWith('https://sudoku.coach/en/s/')
+    ? Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+    : worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {}))
+
+  const expectAuthorInstructions = async (hasAuthorInstructions: boolean) => {
+    const { sudoku_id, sudoku, name } = specificSudoku
+    assert.deepEqual(await (await request(`sudoku-coach/${sudoku_id}`)).json(),
+      { code: sudoku, coach: { title: name, hasAuthorInstructions } })
+  }
+  await expectAuthorInstructions(false)
+  specificSudoku = { ...publication, sudoku_id: 'Ab12', description: 'Let’s go!\r\n Have fun.' }
+  await expectAuthorInstructions(false)
+  for (const override of [
+    { custom_constraints: true },
+    { custom_constraints: true, description: 'Have fun!' },
+    { description: publication.description + '\nDigits count twice in purple cells.' },
+    { description: 'Have fun! Digits count twice in purple cells.' },
+    { description: 'Good luck!\nDigits count twice in purple cells.' },
+    { sudoku_id: 'Ab12' },
+  ]) {
+    specificSudoku = { ...publication, ...override }
+    await expectAuthorInstructions(true)
+  }
+
+  // A safe greeting still leaves the puzzle's encoded rule checks in charge.
+  specificSudoku = { ...publication, description: 'Enjoy!', sudoku: coachCode({ givenConstraints: [{ type: 'fog', segments: [] }] }) }
+  await assert.rejects(detectPuzzle(source.url), /rule is not supported yet \(fog\)/)
+})
+
 test('the published X-Sums declaration must describe the complete rules', async ({ mock }) => {
   const { metadata } = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8'))
   const codes = [
