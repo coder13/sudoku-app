@@ -34,7 +34,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
-import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { chainToolsActive, defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
 import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
@@ -512,8 +512,8 @@ export function Worktable({
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeToolPanel === 'digits'
     : advancedWorkspace && desktopInputVisible)
   const drawingIntent = savedPlayState?.drawingIntent ?? null
-  const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
-  const chainsActive = chainsVisible || (chainKeypadVisible && (showStrongLinks || chainDrawingRequested))
+  const chainsActive = !grid && chainToolsActive(chainsVisible, chainKeypadVisible, showStrongLinks, drawingIntent,
+    game.chainSketch?.pending != null)
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.six === six ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -2149,8 +2149,8 @@ export function Worktable({
       mobileToolsOpener.current = puzzleMenuButtonRef.current
       focusMobileInput.current = true
     } else if (tool === 'colors') {
+      // Switching tool tabs should not silently end an active chain drawing session.
       setColorMode(false)
-      if (sketch.drawing) sketch.suspend()
     }
     selectToolPanel(tool, alsoOpen)
   }
@@ -2279,9 +2279,10 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset || browsingStrongLinks || (sketch.drawing && !chainsVisible)
+  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset
     ? undefined
-    : sketch.drawing && chainMasks ? 'chain' : eraseMode ? 'erase' : colorMode || brush !== null ? 'color'
+    : (sketch.drawing || browsingStrongLinks) && chainMasks ? 'chain'
+      : eraseMode ? 'erase' : colorMode || brush !== null ? 'color'
       : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
   const badgeMode = game.paused || rearranging || gridInputMode === 'color' ? undefined : gridInputMode
   const showPlayerColors = colorsPanelOpen || colorMode
@@ -2458,9 +2459,11 @@ export function Worktable({
         </div>
         <PuzzleCollectionCredit game={game} />
         {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
+          actionLabel={browsingStrongLinks ? 'Stop showing strong links' : undefined}
           position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
             if (badgeMode === 'chain') {
-              stopDrawingAndFocusGrid()
+              if (sketch.drawing) stopDrawingAndFocusGrid()
+              else if (browsingStrongLinks) setShowStrongLinks(false)
               return
             }
             if (colorsVisible) setColorBrush(null)
