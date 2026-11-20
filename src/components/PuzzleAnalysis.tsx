@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
-import { sixHintChoices, SIX_TECHNIQUES } from '../sudoku/six-play'
+import { sizedRuleHintChoices, SIZED_RULE_TECHNIQUES } from '../sudoku/sized-rule-play'
 import { MINI_TECHNIQUES, miniHintChoices } from '../sudoku/mini-play'
 import { ALGEBRAIC_CAGE_TECHNIQUE, algebraicHintChoices } from '../sudoku/algebraic-play'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, SIX_NAME } from '../sudoku/new-puzzle'
@@ -93,8 +93,8 @@ export function PuzzleAnalysisContents(props: ContentsProps) {
 
 function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {
   const values = valuesOf(game)
-  const { algebraic, grid, six } = game
-  const techniques = six ? SIX_TECHNIQUES : algebraic ? algebraicTechniques : MINI_TECHNIQUES
+  const { algebraic, grid, sized } = game
+  const techniques = sized ? SIZED_RULE_TECHNIQUES : algebraic ? algebraicTechniques : MINI_TECHNIQUES
   const size = grid!.size
   const eliminations = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, size),
     [values, game.position, size])
@@ -106,7 +106,7 @@ function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps
   useEffect(() => {
     if (!active || solved) return
     let current = true
-    const request = six && grid?.size === 6 ? sixHintChoices(six, grid, values, eliminations)
+    const request = sized && grid ? sizedRuleHintChoices(sized, grid, values, eliminations)
       : algebraic ? algebraicHintChoices(algebraic, values, eliminations) : miniHintChoices(values, eliminations)
     void request.then(found => {
       if (!current) return
@@ -124,10 +124,10 @@ function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps
       setScan({ key, results: Object.fromEntries(techniques.map(id => [id, { count: counts.get(id)?.size ?? 0 }])) })
     }, () => { if (current) setFailedKey(key) })
     return () => { current = false }
-  }, [active, algebraic, grid, six, solved, values, eliminations, key, techniques])
+  }, [active, algebraic, grid, sized, solved, values, eliminations, key, techniques])
 
   const results = scan?.key === key ? scan.results : {}
-  const groups = filterAnalysisGroups([{ title: six ? SIX_NAME : algebraic ? ALGEBRAIC_CAGES_NAME : MINI_NAME, techniques: [...techniques] }], results, hideZero, solved)
+  const groups = filterAnalysisGroups([{ title: grid?.size === 6 ? SIX_NAME : algebraic ? ALGEBRAIC_CAGES_NAME : MINI_NAME, techniques: [...techniques] }], results, hideZero, solved)
   return <div className="puzzle-analysis-content">
     {failedKey === key ? <p role="alert" className="analysis-error">Check the placed digits and candidates, then try again.</p> : <>
       <label className="analysis-zero-filter">

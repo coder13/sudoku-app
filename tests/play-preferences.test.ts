@@ -241,3 +241,17 @@ test('a later successful write recovers unsaved changes and keeps other tabs set
     ...DEFAULT_PLAY_PREFERENCES, pencil: true, selectedDigit: 3, multi: true, candidateKind: 'center',
   })
 })
+
+test('pinned puzzle buttons persist in order and ignore invalid saved entries', () => {
+  const storage = memoryStorage()
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().pinnedActions, [])
+  store.set('pinnedActions', ['colors', 'candidates', 'hint'])
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().pinnedActions, ['colors', 'candidates', 'hint'])
+  store.set('pinnedActions', ['hint', 'colors'])
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().pinnedActions, ['hint', 'colors'])
+  assert.deepEqual(parsePlayPreferences({ pinnedActions: ['hint', 'unknown', 'hint', null, 'chain', 3] }).pinnedActions, ['hint', 'chain'])
+  for (const pinnedActions of [null, true, 5, 'hint', {}]) {
+    assert.deepEqual(parsePlayPreferences({ pinnedActions }).pinnedActions, [])
+  }
+})

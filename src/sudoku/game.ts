@@ -1,5 +1,5 @@
 import { STARTER } from './formats.ts'
-import { CLASSIC_GRID, gridHouseCells, isGridText, sixDiagonalCells, sixDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, isGridText, gridDiagonalCells, sizedDigitExclusions, type SizedGrid, type PlayGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { betweenState } from './between.ts'
@@ -13,7 +13,7 @@ import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
-import type { SixGame } from './six-game.ts'
+import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
 
@@ -32,7 +32,7 @@ export type Position = {
   candidateColors?: Record<number, Record<number, number>>
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
-  draftSixRules?: SixGame['rules']
+  draftSizedRules?: SizedRuleGame['rules']
 }
 
 export type HistoryPosition = Position & { chainSketch?: ChainSketchState | null }
@@ -48,7 +48,7 @@ export type Game = {
   variant?: VariantGame
   grid?: SizedGrid
   algebraic?: AlgebraicGame
-  six?: SixGame
+  sized?: SizedRuleGame
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
@@ -116,7 +116,7 @@ export function restartGame(game: Game): Game {
     score: game.score,
     variant: game.variant,
     algebraic: game.algebraic,
-    six: game.six,
+    sized: game.sized,
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ratingAttempt: game.ratingAttempt && {
@@ -139,16 +139,17 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   variant?: Pick<VariantGame, 'id' | 'puzzle'>
   algebraic?: Pick<AlgebraicGame, 'rules'>
   grid?: SizedGrid
-  six?: Pick<SixGame, 'rules'>
-  sixRules?: SixGame['rules']
+  sized?: Pick<SizedRuleGame, 'rules'>
+  sizedRules?: SizedRuleGame['rules']
 }): string {
-  if (game.grid?.size === 6) {
-    const rules = game.six?.rules ?? game.sixRules ?? []
+  if (game.grid && (game.grid.size === 6 || game.sized || game.sizedRules?.length)) {
+    const rules = game.sized?.rules ?? game.sizedRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
       rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
         : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule,
     ))))].sort()
-    return `six:${game.grid.boxRows}:${game.givens}:${keys.join(',')}`
+    const geometry = game.grid.size === 6 ? `six:${game.grid.boxRows}` : `sized:${game.grid.size}:${game.grid.boxRows}:${game.grid.boxColumns}`
+    return `${geometry}:${game.givens}:${keys.join(',')}`
   }
   if (game.algebraic) {
     const cages = game.algebraic.rules.map(({ cells, total }) =>
@@ -191,14 +192,14 @@ export function normalizePuzzleIdentity(identity: string): string {
 
 export const STARTER_GAME = makeGame('warmup', 'The Warm-up', STARTER, 'starter', 0)
 
-export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sixRules?: SixGame['rules']): boolean {
+export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sizedRules?: SizedRuleGame['rules']): boolean {
   const ar = Math.floor(a / grid.size)
   const br = Math.floor(b / grid.size)
   const ac = a % grid.size
   const bc = b % grid.size
   if (ar === br || ac === bc) return true
-  if (sixRules?.some(rule => rule.type === 'diagonal' && (rule.diagonal === 'main'
-    ? ar === ac && br === bc : ar + ac === 5 && br + bc === 5))) return true
+  if (sizedRules?.some(rule => rule.type === 'diagonal' && (rule.diagonal === 'main'
+    ? ar === ac && br === bc : ar + ac === grid.size - 1 && br + bc === grid.size - 1))) return true
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
@@ -221,16 +222,16 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
   return result
 }
 
-export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sixRules?: SixGame['rules']): Set<number> {
+export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sizedRules?: SizedRuleGame['rules']): Set<number> {
   const conflicts = new Set<number>()
   for (let i = 0; i < grid.size ** 2; i++) {
     if (values[i] === '0') continue
-    if (sixRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
+    if (sizedRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
       Number(values[i]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
     for (let j = i + 1; j < grid.size ** 2; j++) {
-      if (values[i] === values[j] && peer(i, j, puzzle, grid, sixRules) ||
+      if (values[i] === values[j] && peer(i, j, puzzle, grid, sizedRules) ||
         values[j] !== '0' && ((variantDigitExclusions(puzzle, i, j, Number(values[i])) |
-          sixDigitExclusions(sixRules, i, j, Number(values[i]))) & 1 << (Number(values[j]) - 1))) {
+          sizedDigitExclusions(sizedRules, i, j, Number(values[i]), grid.size)) & 1 << (Number(values[j]) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
       }
@@ -252,7 +253,7 @@ export function candidateCount(mask: number): number {
 
 export function isSolved(game: Game): boolean {
   const values = valuesOf(game)
-  const solution = game.six?.solution ?? game.algebraic?.solution ?? game.variant?.solution
+  const solution = game.sized?.solution ?? game.algebraic?.solution ?? game.variant?.solution
   return game.source !== 'draft' && (solution ? values === solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
 }
 
@@ -410,8 +411,8 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       if (value && options.removeCandidates !== false) {
         const bit = 1 << (value - 1)
         const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
-          remaining & ~((peer(cell, i, game.variant?.puzzle, game.grid, game.six?.rules) ? bit : 0) |
-            variantDigitExclusions(game.variant?.puzzle, cell, i, value) | sixDigitExclusions(game.six?.rules, cell, i, value)), mask)
+          remaining & ~((peer(cell, i, game.variant?.puzzle, game.grid, game.sized?.rules) ? bit : 0) |
+            variantDigitExclusions(game.variant?.puzzle, cell, i, value) | sizedDigitExclusions(game.sized?.rules, cell, i, value, game.grid?.size ?? 9)), mask)
         const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
         const ruleMasks = placedRuleState(game.variant?.puzzle, values)?.allowed
         center = center.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
@@ -515,8 +516,8 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
     if (removeCandidates) {
       const bit = 1 << (digit - 1)
       for (let peerIndex = 0; peerIndex < nextValues.length; peerIndex++) {
-        const removed = (peer(index, peerIndex, game.variant?.puzzle, game.grid, game.six?.rules) ? bit : 0) |
-          variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit) | sixDigitExclusions(game.six?.rules, index, peerIndex, digit)
+        const removed = (peer(index, peerIndex, game.variant?.puzzle, game.grid, game.sized?.rules) ? bit : 0) |
+          variantDigitExclusions(game.variant?.puzzle, index, peerIndex, digit) | sizedDigitExclusions(game.sized?.rules, index, peerIndex, digit, game.grid?.size ?? 9)
         center[peerIndex] &= ~removed
         corner[peerIndex] &= ~removed
       }
@@ -567,7 +568,7 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
   })
 }
 
-export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle, grid?: SizedGrid, sixRules?: SixGame['rules']): [number, number] | null {
+export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle, grid?: SizedGrid, sizedRules?: SizedRuleGame['rules']): [number, number] | null {
   const size = (grid ?? CLASSIC_GRID).size
   if (values.length !== size ** 2 || masks.length !== values.length) return null
   const remaining = (cell: number) => masks[cell] & ~(eliminations?.[cell] ?? 0)
@@ -585,7 +586,7 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]
     return []
   }) ?? []
-  const diagonals = sixRules?.flatMap(rule => rule.type === 'diagonal' ? [sixDiagonalCells(rule.diagonal)] : []) ?? []
+  const diagonals = sizedRules?.flatMap(rule => rule.type === 'diagonal' ? [gridDiagonalCells(grid?.size ?? 9, rule.diagonal)] : []) ?? []
   for (const house of [...houses, ...extra, ...diagonals]) {
     for (let digit = 1; digit <= size; digit++) {
       if (house.some((index) => values[index] === String(digit))) continue

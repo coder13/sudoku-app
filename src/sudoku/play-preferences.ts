@@ -1,4 +1,5 @@
 import { COLORS, type ColorTarget } from './game.ts'
+import { parsePinnedActions, type PinnedAction } from './pinned-actions.ts'
 import { CHAIN_COLORS, CHAIN_COLOR_PAIRS, type ChainColorPair } from './chain-sketch.ts'
 
 export const MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
@@ -28,6 +29,7 @@ export type PlayPreferences = {
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
+  pinnedActions: readonly PinnedAction[]
   desktopLayoutWidth: number
   desktopPanelWidths: DesktopPanelWidths
 }
@@ -51,6 +53,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   multi: false,
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
+  pinnedActions: [],
   desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
   desktopPanelWidths: DEFAULT_DESKTOP_PANEL_WIDTHS,
 }
@@ -116,6 +119,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
     cardModeBadgePosition: parseModeBadgePosition(saved.cardModeBadgePosition),
+    pinnedActions: parsePinnedActions(saved.pinnedActions),
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),

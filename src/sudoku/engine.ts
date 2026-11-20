@@ -52,7 +52,8 @@ export type VariantRule =
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
-  | { type: 'thermometer' | 'between'; cells: readonly number[] }
+  | { type: 'thermometer'; cells: readonly number[] }
+  | { type: 'between'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }
@@ -135,7 +136,7 @@ type VariantRequest = {
 
 export type SizedClassicPosition = {
   version: 2
-  grid: { size: number; boxRows: number; boxColumns: number }
+  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[] }
   digits: readonly number[]
 }
 
@@ -172,10 +173,8 @@ export type SizedVariantPosition = SizedClassicPosition & {
 }
 
 export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' }>
-  | { type: 'thermometer'; cells: readonly number[] }
-  | Extract<VariantRule, { type: 'renban' }>
-export type SizedConstraintPosition = SizedClassicPosition & { grid: SixGrid; rules: readonly SizedConstraintRule[] }
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' }>
+export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'candidates' }
   | { operation: 'hints'; eliminations?: readonly number[]; limit: number }

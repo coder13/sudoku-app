@@ -1,6 +1,7 @@
 import { settingsEditedEvent } from './settings-events.ts'
 import { createSyncEngine, syncRequest, SyncError, type Credentials } from './sync-engine.ts'
 import { createSyncSocket, type LiveConnection } from './sync-socket.ts'
+import { createSyncConnectivity } from './sync-connectivity.ts'
 import { roomStore } from './storage.ts'
 
 const credentialsKey = 'sudoku-app:sync:device'
@@ -99,6 +100,18 @@ let recoverPending = false
 let lastPull = 0
 let retryAt = 0
 let retryDelay = 0
+let onConnectivityChange: ((online: boolean) => void) | undefined
+const connectivity = createSyncConnectivity({
+  // A successful probe also confirms that the sync service is ready again.
+  probe: async () => (await fetch('/api/v1/health', {
+    cache: 'no-store', signal: AbortSignal.timeout(8_000),
+  })).ok,
+  onChange: online => onConnectivityChange?.(online),
+})
+function isTransportFailure(error: unknown) {
+  return !navigator.onLine || error instanceof TypeError ||
+    error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+}
 
 function puzzlesChanged() {
   puzzleListeners.forEach(listener => listener())
@@ -126,7 +139,7 @@ function currentDevice() {
       }
     })
     active = { device, engine }
-    publishConnection({ ...initialConnection, mode: navigator.onLine ? 'connecting' : 'offline' })
+    publishConnection({ ...initialConnection, mode: connectivity.available() ? 'connecting' : 'offline' })
     recoverPending = true
     publish({ ...initial, linked: true })
   } else {
@@ -169,7 +182,7 @@ function requestPull(delay = checkDelay) {
 
 function arm() {
   clearTimeout(timer)
-  if (!connected || !active || running || !navigator.onLine) return
+  if (!connected || !active || running || !connectivity.available()) return
   let due = pullAt
   for (const edit of pending.values()) due = Math.min(due, edit.due)
   if (Number.isFinite(due)) timer = setTimeout(() => { void flush() }, Math.max(0, Math.max(due, retryAt) - Date.now()))
@@ -228,6 +241,15 @@ function reportError(target: ActiveDevice, error: unknown) {
     publish({ linked: false, ready: true, message: 'This device was unlinked. Local puzzles are still available.' })
     return
   }
+  if (isTransportFailure(error)) {
+    // Stop sync requests and WebSocket reconnects until the health endpoint recovers.
+    connectivity.suspend()
+    publishConnection({ mode: 'offline', checkFailed: false })
+    publish({ ready: true, loadingAccount: false, loadingPuzzles: false,
+      message: 'Offline. Changes are saved on this device.' })
+    puzzlesChanged()
+    return
+  }
   publishConnection({ checkFailed: true })
   const message = error instanceof SyncError || error instanceof Error && error.name === 'Error'
     ? error.message : 'Sync is unavailable. Your changes are saved here and will retry.'
@@ -243,9 +265,9 @@ function recordCloudCheck(ready: boolean) {
 
 async function flush() {
   const target = active
-  if (!target || running || !navigator.onLine || Date.now() < retryAt) { arm(); return }
+  if (!target || running || !connectivity.available() || Date.now() < retryAt) { arm(); return }
   await exclusively(async () => {
-    if (!stillLinked(target) || !navigator.onLine) return
+    if (!stillLinked(target) || !connectivity.available()) return
     const now = Date.now()
     const checkDue = pullAt <= now
     if (!checkDue && ![...pending.values()].some(edit => edit.due <= now)) return
@@ -265,7 +287,7 @@ async function flush() {
           edits.delete(id)
         }
       }
-      if (!stillLinked(target)) return
+      if (!stillLinked(target) || !connectivity.available()) return
       if (!checkDue && !edits.size) { puzzlesChanged(); return }
       uploading = edits
       lastPull = Date.now()
@@ -306,7 +328,7 @@ function puzzleStatus(id: string): PuzzleStatus {
   if (!state.linked) return 'none'
   if (manual.has(id)) return 'saving'
   const hasPending = pending.has(id) || failures.has(id)
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return hasPending ? 'offline' : 'offline-clean'
+  if (!connectivity.available()) return hasPending ? 'offline' : 'offline-clean'
   if (failures.has(id) || (retryAt && hasPending)) return 'failed'
   if (conflicts.has(id)) return 'conflict'
   if (checkFailures.has(id)) return 'check-failed'
@@ -317,13 +339,13 @@ function puzzleStatus(id: string): PuzzleStatus {
 async function syncPuzzle(id: string) {
   const target = currentDevice()
   if (!target || manual.has(id)) return
-  if (!navigator.onLine) { puzzlesChanged(); return }
+  if (!connectivity.available()) { puzzlesChanged(); return }
   checkFailures.delete(id)
   manual.add(id)
   puzzlesChanged()
   try {
     await exclusively(async () => {
-      if (!stillLinked(target)) return
+      if (!stillLinked(target) || !connectivity.available()) return
       const edits = new Map([[id, pending.get(id)]])
       uploading = edits
       const options = { uploads: new Set([id]), includeElapsed: true, settings: false }
@@ -374,9 +396,9 @@ export const deviceSync = {
   syncPuzzle,
   async refreshPuzzles() {
     const target = currentDevice()
-    if (!target || !navigator.onLine || Date.now() < retryAt) return
+    if (!target || !connectivity.available() || Date.now() < retryAt) return
     await exclusively(async () => {
-      if (!stillLinked(target)) return
+      if (!stillLinked(target) || !connectivity.available()) return
       try {
         await target.engine.run({ uploads: new Set(), settings: false })
       } catch (error) {
@@ -431,7 +453,8 @@ export const deviceSync = {
       opened: () => { if (!document.hidden) { requestPull(); devicesChanged() } },
       status: mode => {
         if (!active) return
-        publishConnection({ mode: !navigator.onLine ? 'offline' : mode === 'inactive' ? 'connecting' : mode })
+        publishConnection({ mode: !connectivity.available() ? 'offline' : mode === 'inactive' ? 'connecting' : mode })
+        if (mode === 'fallback' && connectivity.available()) void connectivity.verify()
       },
       changes: () => requestPull(),
       devices: devicesChanged,
@@ -442,14 +465,14 @@ export const deviceSync = {
     function wake() {
       const target = currentDevice()
       socket.showPuzzle(viewedPuzzle)
-      socket.update(target?.device ?? null)
-      if (target && !document.hidden && navigator.onLine) socket.check(Date.now())
-      if (target && !navigator.onLine) {
-        publishConnection({ mode: 'offline' })
+      socket.update(connectivity.available() ? target?.device ?? null : null)
+      if (target && !document.hidden && connectivity.available()) socket.check(Date.now())
+      if (target && !connectivity.available()) {
+        publishConnection({ mode: 'offline', checkFailed: false })
         publish({ ready: true, loadingAccount: false, loadingPuzzles: false, message: 'Offline. Changes are saved on this device.' })
         if (recoverPending) {
           void target.engine.pendingIds().then(ids => {
-            if (!stillLinked(target) || !recoverPending || navigator.onLine) return
+            if (!stillLinked(target) || !recoverPending || connectivity.available()) return
             for (const id of ids) if (!pending.has(id)) queueEdit(id, Date.now())
             recoverPending = false
             puzzlesChanged()
@@ -467,11 +490,12 @@ export const deviceSync = {
       if (!document.hidden) devicesChanged()
     }
     function flushHandoff() {
-      if (!active || !pending.size || !navigator.onLine) return
+      if (!active || !pending.size || !connectivity.available()) return
       expedite()
       void flush()
     }
     function visible() {
+      if (!document.hidden) void connectivity.wake()
       socket.showPuzzle(viewedPuzzle)
       if (document.hidden) flushHandoff()
       else { wake(); devicesChanged() }
@@ -480,12 +504,18 @@ export const deviceSync = {
       socket.stop()
       flushHandoff()
     }
+    function focused() {
+      void connectivity.wake()
+      wake()
+    }
     const storageChanged = (event: StorageEvent) => { if (event.key === credentialsKey) wake() }
+    onConnectivityChange = available => available ? online() : wake()
+    connectivity.start()
     wake()
     let lastCheck = Date.now()
     const interval = window.setInterval(() => {
       const device = active?.device
-      if (!device || !navigator.onLine || document.hidden) return
+      if (!device || !connectivity.available() || document.hidden) return
       const now = Date.now()
       socket.update(device)
       socket.check(now)
@@ -496,11 +526,9 @@ export const deviceSync = {
       }
     }, 15_000)
     window.addEventListener(settingsEditedEvent, settingChanged)
-    window.addEventListener('online', online)
-    window.addEventListener('offline', wake)
-    window.addEventListener('focus', wake)
+    window.addEventListener('focus', focused)
     window.addEventListener('pagehide', pageHidden)
-    window.addEventListener('pageshow', wake)
+    window.addEventListener('pageshow', focused)
     window.addEventListener('storage', storageChanged)
     document.addEventListener('visibilitychange', visible)
     return () => {
@@ -512,11 +540,11 @@ export const deviceSync = {
       clearTimeout(timer)
       window.clearInterval(interval)
       window.removeEventListener(settingsEditedEvent, settingChanged)
-      window.removeEventListener('online', online)
-      window.removeEventListener('offline', wake)
-      window.removeEventListener('focus', wake)
+      connectivity.stop()
+      onConnectivityChange = undefined
+      window.removeEventListener('focus', focused)
       window.removeEventListener('pagehide', pageHidden)
-      window.removeEventListener('pageshow', wake)
+      window.removeEventListener('pageshow', focused)
       window.removeEventListener('storage', storageChanged)
       document.removeEventListener('visibilitychange', visible)
     }
