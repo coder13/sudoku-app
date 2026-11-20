@@ -135,8 +135,9 @@ function sevenJigsawGrid(value) {
     return connected.size === size
   })
 }
-const sizedGrid = value => miniGrid(value) || sixGrid(value) || sevenJigsawGrid(value)
-function sizedRules(value, { size, boxRows, boxColumns, regions }) {
+const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
+const sizedGrid = value => miniGrid(value) || sixGrid(value) || sevenJigsawGrid(value) || sevenBoxlessGrid(value)
+function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
@@ -145,8 +146,22 @@ function sizedRules(value, { size, boxRows, boxColumns, regions }) {
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
       segments.every(part => part.every(index => cells.includes(index))))
   const region = cell => regions ? regions.findIndex(part => part.includes(cell)) : Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
+  const occupiedCages = new Set()
+  const validCage = cage => {
+    if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
+    const count = cage.cells.length
+    if (cage.sum < count * (count + 1) / 2 || cage.sum > count * (2 * size - count + 1) / 2) return false
+    for (const cell of cage.cells) {
+      if (occupiedCages.has(cell)) return false
+      occupiedCages.add(cell)
+    }
+    return true
+  }
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
+    (fields(rule, { type: oneOf('extra-house'), cells: list(cell, size, size) }) && new Set(rule.cells).size === size) ||
+    (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
+      (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
     (fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
       marks: list(mark => fields(mark, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) }), 0, 2 * size * (size - 1)) },
@@ -156,7 +171,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions }) {
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: drawing }) && coversCells(rule)) ||
-    (fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
+    (!noRegions && fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
       coversCells(rule) && new Set(rule.cells.map(region)).size >= 2)
   return list(valid, size === 4 ? 1 : 0, 128)(value)
 }

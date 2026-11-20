@@ -13,7 +13,8 @@ export function sixGridForBoxRows(boxRows?: SixGrid['boxRows']): SixGrid {
 
 export type MiniGrid = typeof MINI_GRID
 export type SevenJigsawGrid = { size: 7; regions: readonly (readonly number[])[] }
-export type SizedGrid = MiniGrid | SixGrid | SevenJigsawGrid
+export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
+export type SizedGrid = MiniGrid | SixGrid | SevenJigsawGrid | typeof SEVEN_BOXLESS_GRID
 const sevenJigsawLayouts: readonly SevenJigsawGrid[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -46,6 +47,7 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 export function isSizedGrid(value: unknown): value is SizedGrid {
   if (isMiniGrid(value) || isSevenJigsawGrid(value)) return true
   if (value === null || typeof value !== 'object') return false
+  if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && value.size === 7 && value.noRegions === true
   const grid = value as Partial<SixGrid>
   return Object.keys(grid).length === 3 && grid.size === 6 &&
     ((grid.boxRows === 2 && grid.boxColumns === 3) || (grid.boxRows === 3 && grid.boxColumns === 2))
@@ -84,12 +86,14 @@ export function jigsawMembership(grid: SevenJigsawGrid) {
 }
 
 export function gridRegionIndex(grid: PlayGrid, cell: number) {
+  if ('noRegions' in grid) return -1
   if ('regions' in grid) return jigsawMembership(grid)[cell]
   const { size, boxRows, boxColumns } = grid
   return Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
 }
 
 export function sizedGridIdentity(grid: SizedGrid) {
+  if ('noRegions' in grid) return `boxless:${grid.size}`
   if ('regions' in grid) {
     const regions = grid.regions.map(cells => [...cells].sort((a, b) => a - b)).sort((a, b) => a[0] - b[0])
     return `jigsaw:${grid.size}:${JSON.stringify(regions)}`
@@ -228,6 +232,7 @@ export function gridHouseCells(house: House, grid: PlayGrid = CLASSIC_GRID) {
   const { size } = grid
   if ('row' in house) return Array.from({ length: size }, (_, index) => house.row * size + index)
   if ('column' in house) return Array.from({ length: size }, (_, index) => index * size + house.column)
+  if ('noRegions' in grid) return []
   if ('regions' in grid) return [...(grid.regions[house.box] ?? [])]
   const { boxRows, boxColumns } = grid
   return Array.from({ length: size }, (_, index) => {

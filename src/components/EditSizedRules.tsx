@@ -21,25 +21,30 @@ const ruleNames = {
   difference: 'Difference marker',
   arrow: 'Arrow',
   'region-sum': 'Region Sum line',
+  'extra-house': 'Extra region',
+  'killer-cages': 'Killer cages',
 }
 
 type RuleChoice = keyof typeof ruleNames
 const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rule.diagonal
   : rule.type === 'parity' ? rule.parity : rule.type
 
+type KillerRule = Extract<SizedConstraintRule, { type: 'killer-cages' }>
+
 type KropkiKind = 'consecutive' | 'ratioTwo'
 type KropkiMarks = Partial<Record<KropkiKind, MarkedPairs>>
 
 const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
 
-function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule): SizedConstraintRule {
+function draftRule(kind: RuleChoice, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
+  if (kind === 'killer-cages') return killer
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
   if (kind === 'arrow') return { type: kind, circle: cells[0] ?? 0, cells: cells.slice(1) }
   if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
   if (kind === 'kropki') return { type: kind, ...marks }
   if (kind === 'main' || kind === 'anti') return { type: 'diagonal', diagonal: kind }
-  if (kind === 'thermometer' || kind === 'renban') return { type: kind, cells }
+  if (kind === 'thermometer' || kind === 'renban' || kind === 'extra-house') return { type: kind, cells }
   return { type: 'parity', parity: kind, cells }
 }
 
@@ -51,6 +56,9 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [editing, setEditing] = useState(-1)
   const [kind, setKind] = useState<RuleChoice>('thermometer')
   const [cells, setCells] = useState<readonly number[]>([])
+  const [cages, setCages] = useState<KillerRule['cages']>([])
+  const [cageIndex, setCageIndex] = useState(-1)
+  const [cageTotal, setCageTotal] = useState('')
   const [marks, setMarks] = useState<KropkiMarks>({})
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
   const [difference, setDifference] = useState(1)
@@ -62,26 +70,59 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
   const previous = rules[editing]
-  let rule = draftRule(kind, cells, marks, difference, groupByRegion, labeled)
+  const editingCage = cageIndex >= 0 || cells.length > 0 || cageTotal !== ''
+  const nextCages = [...cages]
+  if (kind === 'killer-cages' && editingCage) {
+    nextCages[cageIndex < 0 ? cages.length : cageIndex] = { cells, sum: Number(cageTotal) }
+  }
+  const killerLayer = (cages: KillerRule['cages']): KillerRule => ({
+    type: 'killer-cages',
+    cages,
+    ...(previous?.type === 'killer-cages' && previous.coverGrid &&
+      cages.reduce((count, cage) => count + cage.cells.length, 0) === size ** 2 && { coverGrid: true }),
+  })
+  const killer = killerLayer(nextCages)
+  let rule = draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
     rule = groupByRegion === (previous.groupByRegion ?? false) ? previous : { ...previous, groupByRegion }
   }
-  const preview = isSizedRuleList([rule], layout) ? [...otherRules, rule] : otherRules
-  const canSelectCells = 'cells' in rule || (kind === 'kropki' || kind === 'labeled-dots')
+  const previewRule = kind === 'killer-cages' && !isSizedRuleList([...otherRules, rule], layout) ? killerLayer(cages) : rule
+  const preview = isSizedRuleList([...otherRules, previewRule], layout) ? [...otherRules, previewRule] : otherRules
+  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages'
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
   const markedEdge = selectedEdge && marks[dotKind]?.pairs?.some(matchesEdge)
   const labeledEdge = selectedEdge && labeled.marks.find(mark => matchesEdge(mark.cells))
   const hasKropkiClues = Object.values(marks).some(mark => mark?.negative || mark?.pairs?.length)
 
+  function selectCage(index: number) {
+    const cage = cages[index]
+    setCageIndex(index)
+    setCageTotal(cage ? String(cage.sum) : '')
+    setCells(cage?.cells ?? [])
+    if (cage) setActive(cage.cells[0])
+    setError('')
+  }
+
+  function applyCage() {
+    if (!isSizedRuleList([...otherRules, killer], layout)) {
+      setError('Select cells for a cage with a possible total. Each cell can belong to one cage.')
+      return
+    }
+    setCages(nextCages)
+    selectCage(-1)
+  }
 
   function selectRule(index: number) {
     const previous = rules[index]
     setEditing(index)
     setKind(previous ? ruleChoice(previous) : 'thermometer')
     setCells(previous?.type === 'arrow' ? [previous.circle, ...previous.cells] : previous && 'cells' in previous ? previous.cells : [])
+    setCages(previous?.type === 'killer-cages' ? previous.cages : [])
+    setCageIndex(-1)
+    setCageTotal('')
     setMarks(previous?.type === 'kropki' ? { consecutive: previous.consecutive, ratioTwo: previous.ratioTwo } : {})
     setDotKind('consecutive')
     setLabeled(previous?.type === 'labeled-dots' ? previous : emptyDotLayer)
@@ -98,7 +139,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setCells(current => {
       if (current.includes(cell)) return current.filter(item => item !== cell)
       if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots') && current.length === 2) return [cell]
-      if ((kind === 'thermometer' || kind === 'renban') && current.length === size) return current
+      if ((kind === 'thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
       return [...current, cell]
     })
@@ -162,7 +203,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
           : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.`
-            : kind === 'region-sum' ? `Select a path that crosses at least one ${group} border.` : 'Select the cells for this rule.')
+            : kind === 'region-sum' ? `Select a path that crosses at least one ${group} border.`
+              : kind === 'extra-house' ? `Select ${size} cells for the extra region.`
+                : kind === 'killer-cages' ? 'Add at least one cage with a possible total. Each cell can belong to one cage.'
+                  : 'Select the cells for this rule.')
       return
     }
     update(next)
@@ -181,6 +225,9 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       <SelectControl id={`${id}-rule`} value={kind} onChange={event => {
         setKind(event.currentTarget.value as RuleChoice)
         setCells([])
+        setCages([])
+        setCageIndex(-1)
+        setCageTotal('')
         setMarks({})
         setDotKind('consecutive')
         setDifference(1)
@@ -189,14 +236,34 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setGroupByRegion(false)
         setError('')
       }}>
-        {Object.entries(ruleNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        {Object.entries(ruleNames).filter(([value]) => value !== 'region-sum' || !('noRegions' in layout))
+          .map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </SelectControl>
       {'cells' in rule && <p id={`${id}-instructions`}>{kind === 'thermometer'
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' || kind === 'region-sum' ? 'Select the cells in the order you want to draw the line.'
           : kind === 'difference' ? 'Select two cells that share an edge.'
             : kind === 'arrow' ? 'Select the bulb first, then select the cells along the arrow in order.'
-              : 'Select the cells that should have a marker.'}</p>}
+              : kind === 'extra-house' ? `Select ${size} cells that contain each digit once.`
+                : 'Select the cells that should have a marker.'}</p>}
+      {kind === 'killer-cages' && <>
+        {cages.length > 0 && <>
+          <label htmlFor={`${id}-cage`}>Cage</label>
+          <SelectControl id={`${id}-cage`} value={cageIndex} onChange={event => selectCage(Number(event.currentTarget.value))}>
+            <option value={-1}>New cage</option>
+            {cages.map(({ cells, sum }, index) => <option key={index} value={index}>
+              {sum} · {cellName(Math.min(...cells))}
+            </option>)}
+          </SelectControl>
+        </>}
+        <label htmlFor={`${id}-cage-total`}>Cage total</label>
+        <input id={`${id}-cage-total`} inputMode="numeric" type="number" min={1}
+          max={size * (size + 1) / 2} value={cageTotal} onChange={event => {
+            setCageTotal(event.currentTarget.value)
+            setError('')
+          }} />
+        <p id={`${id}-instructions`}>Select the cells in the cage and enter their total.</p>
+      </>}
       {kind === 'region-sum' && <label>
         <input type="checkbox" checked={groupByRegion} onChange={event => setGroupByRegion(event.currentTarget.checked)} />
         Count all visits to the same {group} together
@@ -242,6 +309,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         label="Rule editor" selected={cells} active={active} onCell={canSelectCells ? selectCell : undefined}
         onGridKeyDown={canSelectCells ? moveFocus : undefined}
         descriptionId={canSelectCells ? `${id}-instructions` : undefined} />
+      {kind === 'killer-cages' && <>
+        <Button type="button" disabled={!cells.length || !cageTotal} onClick={applyCage}>
+          {cageIndex < 0 ? 'Add cage' : 'Update cage'}
+        </Button>
+        {cageIndex >= 0 && <Button type="button" onClick={() => {
+          setCages(cages.filter((_, index) => index !== cageIndex))
+          selectCage(-1)
+        }}>Remove cage</Button>}
+      </>}
       {kind === 'kropki' && <>
         <Button type="button" disabled={!selectedEdge} onClick={toggleSelectedDot}>{markedEdge ? 'Remove dot' : 'Add dot'}</Button>
         <label>

@@ -1,3 +1,4 @@
+mod killer;
 mod pairs;
 mod region_sum;
 
@@ -5,6 +6,7 @@ use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 
+use self::killer::Cage;
 use self::pairs::{SizedPairLink, compile_pairs};
 use self::region_sum::RegionSum;
 
@@ -12,6 +14,7 @@ use self::region_sum::RegionSum;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SizedConstraint {
     Diagonal(SizedDiagonal),
+    ExtraHouse { cells: Vec<usize> },
     Parity {
         cells: Vec<usize>,
         parity: SizedParity,
@@ -22,6 +25,10 @@ pub enum SizedConstraint {
     Arrow {
         circle: usize,
         cells: Vec<usize>,
+    },
+    KillerCages {
+        cages: Vec<crate::variant::KillerCage>,
+        cover_grid: bool,
     },
     RegionSum {
         cells: Vec<usize>,
@@ -114,6 +121,7 @@ pub enum SizedConstraintFailure {
     MissingDigit { house: House, digit: u8 },
     RepeatedDigit { house: House, digit: u8 },
     Rule { rule: usize },
+    KillerCage { rule: usize, cage: usize },
     Kropki { rule: usize, pair: SizedKropkiPair },
 }
 
@@ -140,10 +148,12 @@ pub struct SizedConstraintGrid {
     rules: Vec<SizedConstraint>,
     parity: Vec<(usize, u16)>,
     diagonals: Vec<Vec<usize>>,
+    extra_houses: Vec<Vec<usize>>,
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
     region_sums: Vec<Option<RegionSum>>,
+    cages: Vec<Vec<Cage>>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
 
@@ -157,10 +167,13 @@ impl SizedConstraintGrid {
         let size = layout.size();
         let mut parity = vec![layout.full_mask; layout.cell_count()];
         let mut diagonals = Vec::new();
+        let mut extra_houses = Vec::new();
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
         let mut arrows = Vec::new();
         let mut region_sums = Vec::new();
+        let mut cages = Vec::new();
+        let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
@@ -168,6 +181,15 @@ impl SizedConstraintGrid {
                     if !diagonals.contains(&diagonal) {
                         diagonals.push(diagonal);
                     }
+                }
+                SizedConstraint::ExtraHouse { cells } => {
+                    let mut seen = [false; MAX_SIZE * MAX_SIZE];
+                    if cells.len() != size || cells.iter().any(|&cell| {
+                        cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
+                    }) {
+                        return None;
+                    }
+                    extra_houses.push(cells.clone());
                 }
                 SizedConstraint::Parity {
                     cells,
@@ -205,6 +227,15 @@ impl SizedConstraintGrid {
                     }
                     arrows.push((*circle, cells.clone()));
                 }
+                SizedConstraint::KillerCages { cages: authored, cover_grid } => {
+                    cages.resize_with(index + 1, Vec::new);
+                    for cage in authored {
+                        cages[index].push(Cage::compile(&layout, cage, &mut occupied)?);
+                    }
+                    if authored.is_empty() || *cover_grid && authored.iter().map(|cage| cage.cells.len()).sum::<usize>() != layout.cell_count() {
+                        return None;
+                    }
+                }
                 SizedConstraint::RegionSum { cells, group_by_region } => {
                     region_sums.resize_with(index + 1, || None);
                     region_sums[index] = Some(RegionSum::compile(&layout, cells, *group_by_region)?);
@@ -233,10 +264,12 @@ impl SizedConstraintGrid {
             rules: rules.to_vec(),
             parity,
             diagonals,
+            extra_houses,
             thermometers,
             renbans,
             arrows,
             region_sums,
+            cages,
             pair_links,
         })
     }
@@ -298,6 +331,13 @@ impl SizedConstraintGrid {
         }
         loop {
             let mut changed = false;
+            for cells in &self.extra_houses {
+                let support = extra_house_support(cells, candidates, self.layout.full_mask);
+                for (&cell, mask) in cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
             for cells in &self.thermometers {
                 changed |= self.restrict_thermometer(cells, candidates);
             }
@@ -312,6 +352,13 @@ impl SizedConstraintGrid {
                 changed |= candidates[*circle] != bulb;
                 candidates[*circle] = bulb;
                 for (&cell, mask) in cells.iter().zip(shaft) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for cage in self.cages.iter().flatten() {
+                let support = cage.support(candidates);
+                for (&cell, mask) in cage.cells.iter().zip(support) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -483,6 +530,33 @@ impl SizedConstraintGrid {
                     eliminations_for(*circle, candidates[*circle] & !bulb, &mut actions);
                     for (&cell, mask) in cells.iter().zip(shaft) {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::ExtraHouse { cells } => {
+                    let support = extra_house_support(cells, &domains, self.layout.full_mask);
+                    for (&cell, mask) in cells.iter().zip(support) {
+                        if mask == 0 {
+                            return None;
+                        }
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::KillerCages { .. } => {
+                    for cage in &self.cages[rule] {
+                        let mut cage_actions = Vec::new();
+                        let support = cage.support(&domains);
+                        if support[..cage.cells.len()].contains(&0) {
+                            return None;
+                        }
+                        for (&cell, mask) in cage.cells.iter().zip(support) {
+                            eliminations_for(cell, candidates[cell] & !mask, &mut cage_actions);
+                        }
+                        if !cage_actions.is_empty() {
+                            choices.push(SizedConstraintStep::Rule { rule, actions: cage_actions });
+                            if choices.len() == limit {
+                                break;
+                            }
+                        }
                     }
                 }
                 SizedConstraint::RegionSum { cells, .. } => {
@@ -725,6 +799,17 @@ impl SizedConstraintGrid {
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
+                SizedConstraint::ExtraHouse { cells } => {
+                    extra_house_support(cells, &domains, self.layout.full_mask)[..cells.len()].contains(&0)
+                }
+                SizedConstraint::KillerCages { .. } => {
+                    if let Some(cage) = self.cages[rule].iter().position(|cage| {
+                        cage.support(&domains)[..cage.cells.len()].contains(&0)
+                    }) {
+                        return Some(SizedConstraintFailure::KillerCage { rule, cage });
+                    }
+                    false
+                }
                 SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
                 SizedConstraint::Renban { cells } => {
@@ -788,7 +873,7 @@ impl SizedConstraintGrid {
         self.parity
             .iter()
             .all(|&(cell, mask)| digits[cell] == 0 || mask & (1 << (digits[cell] - 1)) != 0)
-            && self.diagonals.iter().all(|cells| {
+            && self.diagonals.iter().chain(&self.extra_houses).all(|cells| {
                 let mut used = 0u16;
                 for &cell in cells {
                     let digit = digits[cell];
@@ -844,6 +929,7 @@ impl SizedConstraintGrid {
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
                 total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
             })
+            && self.cages.iter().flatten().all(|cage| cage.permits(digits))
             && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
@@ -893,4 +979,16 @@ fn advance(actions: &[HintAction], digits: &mut [u8], eliminations: &mut [u16]) 
             }
         }
     }
+}
+
+
+fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; MAX_SIZE] {
+    let mut input = [0; MAX_SIZE];
+    for (&cell, mask) in cells.iter().zip(&mut input) {
+        *mask = domains[cell];
+    }
+    let len = cells.len();
+    let mut support = [0; MAX_SIZE];
+    crate::variant::digit_set_support(digits, &input[..len], &mut support[..len]);
+    support
 }
