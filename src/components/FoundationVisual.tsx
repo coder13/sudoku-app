@@ -5,10 +5,10 @@ import { foundationBoard, foundationVisuals, visualColors, type FoundationVisual
 import { Board } from './Board'
 
 const keyLabels: Record<VisualKey, string> = {
-  pattern: 'A blue ring marks a candidate in the pattern.',
-  accent: 'An amber ring marks a second group.',
-  removal: 'A red strike marks a candidate to remove.',
-  result: 'A green ring marks a digit to place.',
+  pattern: 'Blue marks a candidate in the pattern.',
+  accent: 'Amber marks a second group.',
+  removal: 'Red marks a candidate to remove.',
+  result: 'Green marks a digit to place.',
   strong: 'A solid line is a strong link. At least one end is true.',
   weak: 'A dashed line is a weak link. At most one end is true.',
   arrow: 'An arrow points from an assumption to what follows.',
@@ -19,7 +19,8 @@ function VisualKey({ kind }: { kind: VisualKey }) {
     <span className="foundation-key-symbol" aria-hidden="true">
       {kind === 'strong' || kind === 'weak' ? <i className={`lesson-key-link ${kind === 'weak' ? 'dashed' : ''}`} />
         : kind === 'arrow' ? <svg viewBox="0 0 32 16"><path d="M2 8H27M22 3L28 8L22 13" /></svg>
-        : <span style={{ color: visualColors[kind] }} data-mark={kind === 'removal' ? 'strike' : 'ring'}>5</span>}
+        : <span className="board-candidate" style={{ '--annotation-color': visualColors[kind] } as CSSProperties}
+          data-mark={kind === 'removal' ? 'strike' : 'ring'}>5</span>}
     </span>
     <span>{keyLabels[kind]}</span>
   </span>

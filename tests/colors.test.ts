@@ -31,19 +31,17 @@ test('both shades work on cells and candidates without changing puzzle digits, w
   }
 })
 
-test('the colors panel and the dark brush survive a reload', () => {
+test('the dark brush and color target survive a reload', () => {
   const saved = new Map<string, string>()
   const storage = {
     getItem: (key: string) => saved.get(key) ?? null,
     setItem: (key: string, value: string) => { saved.set(key, value) },
   }
   const store = createPlayPreferenceStore(storage)
-  store.set('desktopViews', { open: ['chains', 'colors'], active: 'colors' })
   store.set('selectedColor', 12)
   store.set('colorBrush', 12)
   store.set('colorTarget', 'candidate')
   const reloaded = createPlayPreferenceStore(storage).getSnapshot()
-  assert.deepEqual(reloaded.desktopViews, { open: ['colors', 'chains'], active: 'colors' })
   assert.equal(reloaded.selectedColor, 12)
   assert.equal(reloaded.colorBrush, 12)
   assert.equal(reloaded.colorTarget, 'candidate')

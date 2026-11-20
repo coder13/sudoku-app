@@ -37,6 +37,7 @@ jobs:
       - run: npm run build:cloudflare
         env:
           RUSTUP_TOOLCHAIN: stable
+          VITE_EXPERIMENTAL_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
 
       - name: Deploy to Cloudflare Pages
         id: pages

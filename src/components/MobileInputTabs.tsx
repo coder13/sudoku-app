@@ -1,16 +1,16 @@
 import { type ReactNode, type Ref, useId, useLayoutEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Palette, PencilLine, X } from 'lucide-react'
+import { MoreHorizontal, X } from 'lucide-react'
 import { IconButton } from './Button'
-import type { MobileInputTab, MobileInputTool } from '../sudoku/play-session'
+import { scrollActiveTabIntoView } from './PlayLayout'
+import { TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 
-const labels = { digits: 'Digits', colors: 'Colors', chains: 'Chains' }
+const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', subsets: 'Subsets' }
 
-function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCandidates, onOpen }: {
+function InputToolsMenu({ disabled, onShow, children }: {
   disabled: boolean
-  colorsOnly?: boolean
-  candidatesDisabled?: boolean
-  onGenerateCandidates?: () => void
-  onOpen: (opener: HTMLButtonElement | null) => void
+  onShow?: (opener: HTMLButtonElement) => void
+  children: ReactNode
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -22,21 +22,23 @@ function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCa
     if (!open || !button || !menu) return
     const position = () => {
       const anchor = button.getBoundingClientRect()
-      const gap = 8
-      const below = window.innerHeight - anchor.bottom - 2 * gap
-      const above = anchor.top - 2 * gap
-      const opensAbove = menu.scrollHeight > below && above > below
+      const inset = 8
+      const below = window.innerHeight - anchor.bottom - inset
+      const menuBottom = Math.min(anchor.bottom, window.innerHeight)
+      const above = menuBottom - inset
+      const minMenuHeight = 64
+      const opensAbove = above >= minMenuHeight || above >= below
       menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below)}px`
-      menu.style.left = `${Math.max(gap, Math.min(anchor.right, window.innerWidth - gap) - menu.offsetWidth)}px`
-      menu.style.top = `${Math.max(gap, opensAbove ? anchor.top - gap - menu.offsetHeight : anchor.bottom + gap)}px`
+      menu.style.left = `${Math.max(inset, Math.min(anchor.right, window.innerWidth - inset) - menu.offsetWidth)}px`
+      menu.style.top = opensAbove ? 'auto' : `${Math.max(inset, anchor.bottom)}px`
+      menu.style.bottom = opensAbove ? `${window.innerHeight - menuBottom}px` : 'auto'
     }
     position()
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
+    // Keep the open menu in place while its toggles move the input card.
     window.addEventListener('resize', position)
-    window.addEventListener('scroll', position, true)
     return () => {
       window.removeEventListener('resize', position)
-      window.removeEventListener('scroll', position, true)
       menu.removeAttribute('style')
     }
   }, [open])
@@ -52,57 +54,60 @@ function InputToolsMenu({ disabled, colorsOnly, candidatesDisabled, onGenerateCa
       <MoreHorizontal size={19} aria-hidden="true" />
     </IconButton>
     <div ref={popup} className="app-menu input-tools-menu" id={id} role="group" aria-label="Input tools" popover="auto"
-      onToggle={event => setOpen(event.currentTarget.matches(':popover-open'))}
+      onToggle={event => {
+        const shown = event.currentTarget.matches(':popover-open')
+        setOpen(shown)
+        if (shown && trigger.current) onShow?.(trigger.current)
+      }}
       onKeyDown={event => {
+        event.stopPropagation()
         if (event.key !== 'Escape') return
         event.preventDefault()
         close()
       }}>
-      {onGenerateCandidates && <button type="button" disabled={candidatesDisabled} onClick={() => { close(); onGenerateCandidates() }}>
-        <PencilLine size={17} aria-hidden="true" /> Generate all candidates
-      </button>}
-      <button type="button" onClick={() => { close(); onOpen(trigger.current) }}>
-        <Palette size={17} aria-hidden="true" /> {colorsOnly ? 'Colors' : 'Colors & Chains'}
-      </button>
+      {children}
     </div>
   </div>
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, colorsOnly, onOpenTools,
-  candidatesDisabled, onGenerateCandidates, onSelect, onClose }: {
-  active: MobileInputTab
-  open: MobileInputTool[]
-  panels: Record<MobileInputTab, ReactNode>
+export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
+  active: ToolPanelTab
+  open: PuzzleTool[]
+  panels: Record<ToolPanelTab, ReactNode>
   activeTabRef: Ref<HTMLButtonElement>
   toolsDisabled: boolean
-  colorsOnly?: boolean
-  onOpenTools?: (opener: HTMLButtonElement | null) => void
-  candidatesDisabled?: boolean
-  onGenerateCandidates?: () => void
-  onSelect: (tab: MobileInputTab) => void
-  onClose: (tab: MobileInputTool) => void
+  toolToggles?: ReactNode
+  onShowTools?: (opener: HTMLButtonElement) => void
+  onSelect: (tab: ToolPanelTab) => void
+  onClose: (tab: PuzzleTool) => void
 }) {
   const id = useId()
-  const tabs = (['digits', 'colors', 'chains'] as const).filter((tab) => tab === 'digits' || open.includes(tab))
-  const toolToClose = active === 'digits' ? open.at(0) : active
-  const hasInputCard = Boolean(open.length || onOpenTools)
+  const visibleTools = TOOL_PANEL_ORDER.filter(tool => open.includes(tool))
+  const tabs = ['digits', ...visibleTools] as const
+  const toolToClose = active === 'digits' ? visibleTools.at(0) : active
+  const hasInputCard = Boolean(open.length || toolToggles)
+  const tabList = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { scrollActiveTabIntoView(tabList.current) }, [active, tabs.length])
 
   return <div className={hasInputCard ? 'surface mobile-input-tabs' : undefined} data-tools-open={open.length > 0 || undefined}>
-    {open.length > 0 && <div className="mobile-input-toolbar" data-no-panel-hold>
-      <div role="tablist" aria-label="Sudoku input" className="mobile-input-tablist" onKeyDown={(event) => {
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-        event.preventDefault()
-        const step = event.key === 'ArrowLeft' ? -1 : 1
-        const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-          : (tabs.indexOf(active) + step + tabs.length) % tabs.length
-        onSelect(tabs[index])
-        event.currentTarget.querySelectorAll('button')[index]?.focus({ preventScroll: true })
-      }}>
-        {tabs.map((tab) => <button type="button" key={tab} ref={active === tab ? activeTabRef : undefined}
-          id={`${id}-tab-${tab}`} role="tab" aria-selected={active === tab} aria-controls={`${id}-panel-${tab}`}
-          tabIndex={active === tab ? 0 : -1} onClick={() => onSelect(tab)}>{labels[tab]}</button>)}
-      </div>
+    {hasInputCard && <div className={open.length ? 'mobile-input-toolbar' : 'mobile-input-menu-slot'} data-no-panel-hold>
+      {open.length > 0 && (
+        <div ref={tabList} role="tablist" aria-label="Sudoku input" className="mobile-input-tablist" onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          event.preventDefault()
+          const step = event.key === 'ArrowLeft' ? -1 : 1
+          const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+            : (tabs.indexOf(active) + step + tabs.length) % tabs.length
+          onSelect(tabs[index])
+          event.currentTarget.querySelectorAll('button')[index]?.focus({ preventScroll: true })
+        }}>
+          {tabs.map((tab) => <button type="button" key={tab} ref={active === tab ? activeTabRef : undefined}
+            id={`${id}-tab-${tab}`} role="tab" aria-selected={active === tab} aria-controls={`${id}-panel-${tab}`}
+            tabIndex={active === tab ? 0 : -1} onClick={() => onSelect(tab)}>{labels[tab]}</button>)}
+        </div>
+      )}
+      {toolToggles && <InputToolsMenu disabled={toolsDisabled} onShow={onShowTools}>{toolToggles}</InputToolsMenu>}
       {toolToClose && <IconButton variant="quiet" className="mobile-input-close"
         aria-label={`Close ${labels[toolToClose].toLowerCase()} panel`} onClick={() => onClose(toolToClose)}>
         <X size={20} aria-hidden="true" />
@@ -116,8 +121,6 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
           className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} hidden={!digits && !selected} inert={!selected}
           tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-          {digits && onOpenTools && <InputToolsMenu disabled={toolsDisabled} colorsOnly={colorsOnly} onOpen={onOpenTools}
-            candidatesDisabled={candidatesDisabled} onGenerateCandidates={onGenerateCandidates} />}
           {panels[tab]}
         </div>
       })}

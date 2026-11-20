@@ -36,19 +36,24 @@ test('play controls save immediately and survive a fresh app instance', () => {
   assert.deepEqual(store.getServerSnapshot(), DEFAULT_PLAY_PREFERENCES)
 })
 
-test('each input mode survives reload and switching modes remains exclusive', () => {
+test('overlay modes stay exclusive and keep the Pen or Pencil choice across reloads', () => {
   const storage = memoryStorage()
   let store = createPlayPreferenceStore(storage)
-  for (const mode of ['pencil', 'highlightMode', 'colorMode', 'eraseMode'] as const) {
+  assert.equal(store.getSnapshot().pencil, false)
+  store.set('pencil', true)
+  for (const mode of ['highlightMode', 'colorMode', 'eraseMode'] as const) {
     store.set(mode, true)
-    const expected = { ...DEFAULT_PLAY_PREFERENCES, [mode]: true }
+    const expected = { ...DEFAULT_PLAY_PREFERENCES, pencil: true, [mode]: true }
     assert.deepEqual(store.getSnapshot(), expected)
     store = createPlayPreferenceStore(storage)
     assert.deepEqual(store.getSnapshot(), expected)
-    store.set(mode, (current) => !current)
-    assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), DEFAULT_PLAY_PREFERENCES)
+    store.set(mode, false)
+    assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), { ...DEFAULT_PLAY_PREFERENCES, pencil: true })
     store.set(mode, true)
   }
+  store.set('eraseMode', false)
+  store.set('pencil', false)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), DEFAULT_PLAY_PREFERENCES)
 })
 
 test('deselecting digits and colors persists null, and candidate color erasers preserve zero', () => {
@@ -75,51 +80,15 @@ test('older partial settings gain new defaults without losing saved choices', ()
   })
 })
 
-test('open desktop views and the active view survive a fresh app instance', () => {
+test('experimental mode saves explicit choices and older settings use the environment default', () => {
   const storage = memoryStorage()
   const store = createPlayPreferenceStore(storage)
-  store.set('desktopViews', { open: ['solution', 'techniques', 'chains'], active: 'chains' })
-  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
-    open: ['solution', 'techniques', 'chains'], active: 'chains',
-  })
-  store.set('desktopViews', { open: ['techniques'], active: 'techniques' })
-  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
-    open: ['techniques'], active: 'techniques',
-  })
-})
-
-test('the legacy techniques panel preference is preserved until the user changes their views', () => {
-  const storage = memoryStorage(JSON.stringify({ pencil: true }))
-  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
-  const store = createPlayPreferenceStore(storage)
-  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques'], active: 'techniques' })
-  store.set('desktopViews', { open: [], active: null })
-  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, { open: [], active: null })
-})
-
-test('saved desktop views ignore unknown names and closed active views', () => {
-  const preferences = parsePlayPreferences({
-    desktopViews: { open: ['chains', 'unknown', 'chains'], active: 'solution' },
-  })
-  assert.deepEqual(preferences.desktopViews, { open: ['chains'], active: 'chains' })
-})
-
-test('the earlier Colors panel preference joins saved views without reopening a closed panel', () => {
-  const storage = memoryStorage(JSON.stringify({ colorsPanelOpen: true, colorBrush: 12 }))
-  storage.setItem('sudoku-app:v1:techniques-card-open', 'true')
-  const store = createPlayPreferenceStore(storage)
-  assert.deepEqual(store.getSnapshot().desktopViews, { open: ['techniques', 'colors'], active: 'colors' })
-  store.set('desktopViews', { open: ['chains'], active: 'chains' })
-  const reloaded = createPlayPreferenceStore(storage).getSnapshot()
-  assert.deepEqual(reloaded.desktopViews, { open: ['chains'], active: 'chains' })
-  assert.equal(reloaded.colorBrush, 12)
-})
-
-test('saved desktop tools put Colors before Chains and keep the selected tab', () => {
-  const storage = memoryStorage(JSON.stringify({ desktopViews: { open: ['chains', 'colors'], active: 'chains' } }))
-  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().desktopViews, {
-    open: ['colors', 'chains'], active: 'chains',
-  })
+  assert.equal(store.getSnapshot().experimentalMode, null)
+  for (const enabled of [true, false]) {
+    store.set('experimentalMode', enabled)
+    assert.equal(createPlayPreferenceStore(storage).getSnapshot().experimentalMode, enabled)
+  }
+  assert.equal(parsePlayPreferences({ experimentalMode: 'true' }).experimentalMode, null)
 })
 
 test('the mode badge position survives reloads and other play setting changes', () => {
@@ -198,7 +167,7 @@ test('malformed values cannot arm invalid digits, colors, or conflicting modes',
     candidateKind: 'invalid', colorTarget: 'invalid', selectedColor: 13, colorBrush: -1,
     multi: 'true', highlightCandidatePairs: 1, puzzleBrowserView: 'invalid', selectedDigit: 8,
   })
-  assert.deepEqual(saved, { ...DEFAULT_PLAY_PREFERENCES, eraseMode: true, selectedDigit: 8 })
+  assert.deepEqual(saved, { ...DEFAULT_PLAY_PREFERENCES, pencil: true, eraseMode: true, selectedDigit: 8 })
   for (const value of [null, false, 7, 'bad', [], '{broken', { selectedDigit: 'bad', pencil: true }]) {
     const store = createPlayPreferenceStore(memoryStorage(typeof value === 'string' ? value : JSON.stringify(value)))
     assert.equal(store.getSnapshot().selectedDigit, null)
@@ -271,4 +240,18 @@ test('a later successful write recovers unsaved changes and keeps other tabs set
   assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
     ...DEFAULT_PLAY_PREFERENCES, pencil: true, selectedDigit: 3, multi: true, candidateKind: 'center',
   })
+})
+
+test('pinned puzzle buttons persist in order and ignore invalid saved entries', () => {
+  const storage = memoryStorage()
+  const store = createPlayPreferenceStore(storage)
+  assert.deepEqual(store.getSnapshot().pinnedActions, [])
+  store.set('pinnedActions', ['colors', 'candidates', 'hint'])
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().pinnedActions, ['colors', 'candidates', 'hint'])
+  store.set('pinnedActions', ['hint', 'colors'])
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().pinnedActions, ['hint', 'colors'])
+  assert.deepEqual(parsePlayPreferences({ pinnedActions: ['hint', 'unknown', 'hint', null, 'chain', 3] }).pinnedActions, ['hint', 'chain'])
+  for (const pinnedActions of [null, true, 5, 'hint', {}]) {
+    assert.deepEqual(parsePlayPreferences({ pinnedActions }).pinnedActions, [])
+  }
 })

@@ -34,7 +34,7 @@ import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
 import { PuzzlesPage } from './PuzzlesPage'
-import { isSettingsSection, Settings } from './Settings'
+import { isSettingsSection, Settings, type SettingsSection } from './Settings'
 import { SyncConnectionStatus } from './SyncConnectionStatus'
 import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
@@ -358,7 +358,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
   }
 
-  function openSettings() {
+  function openSettings(section?: SettingsSection) {
     if (!settingsRoute) settingsReturnLocation.current = {
       href: locationHref,
       left: window.scrollX,
@@ -367,7 +367,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     }
     setMenuOpen(false)
     setPanel(null)
-    void navigate({ to: '/settings' })
+    if (section) void navigate({ to: '/settings/$section', params: { section } })
+    else void navigate({ to: '/settings' })
   }
 
   function closeSettings() {
@@ -559,7 +560,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 <BarChart3 size={17} /> Statistics
               </Link>
               <Link to="/sync" onClick={() => setMenuOpen(false)}><Monitor size={17} /> Device sync</Link>
-              <button onClick={openSettings}><SlidersHorizontal size={17} /> Settings</button>
+              <button onClick={() => openSettings()}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
@@ -621,6 +622,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
                 onEditCages={() => setPanel('cages')}
                 onEditSizedRules={() => setPanel('sized-rules')}
+                onEditChainColors={() => openSettings('chain-colors')}
                 onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
                 onStopPlaying={() => {
                   if (!game) return

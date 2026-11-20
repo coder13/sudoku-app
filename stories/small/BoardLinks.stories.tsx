@@ -21,3 +21,12 @@ const links: BoardLink[] = [
 ]
 export const StrongWeakAndArrow: Story = { args: { links } }
 export const CroppedGrid: Story = { args: { links, region: { row: 0, column: 0, rows: 6, columns: 6 } } }
+export const OddLoopColorBreak: Story = {
+  args: {
+    links: [
+      { from: { cell: 0, digit: 5 }, to: { cell: 2, digit: 5 }, color: 'var(--chain-blue)' },
+      { from: { cell: 2, digit: 5 }, to: { cell: 20, digit: 5 }, color: 'var(--chain-blue)' },
+      { from: { cell: 20, digit: 5 }, to: { cell: 0, digit: 5 }, color: 'var(--chain-blue)', dashed: true, colorBreak: true },
+    ],
+  },
+}

@@ -3,7 +3,7 @@ import {
   INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, readNewPuzzlePreference, readPreferences,
 } from './preferences.ts'
 import { readTiming, TIMING_KEY } from './puzzle-timing.ts'
-import { readShortcuts, SHORTCUTS_KEY } from './shortcuts.ts'
+import { readShortcuts, SHORTCUTS_KEY, storedShortcutPreferences } from './shortcuts.ts'
 import { DISABLED_HINTS_KEY, readDisabledHintTechniques } from './hint-preferences.ts'
 import { readSolverProfile, SOLVER_PROFILE_KEY } from './solver-profile.ts'
 import type { SyncRequest } from './sync-engine.ts'
@@ -16,13 +16,13 @@ function groups(storage: Pick<Storage, 'getItem'>): Group[] {
   return [
     { key: APPEARANCE_KEY, fields: prefs.appearance, format: 'fields', metadata: { themeDefaultsVersion: 2 } },
     { key: ADVANCED_MODE_KEY, fields: prefs.advancedModes, format: 'fields' },
-    { key: HIGHLIGHT_KEY, fields: prefs.highlighting, format: 'fields', metadata: { defaultsVersion: 2 } },
+    { key: HIGHLIGHT_KEY, fields: prefs.highlighting, format: 'fields' },
     { key: TIMING_KEY, fields: readTiming(storage), format: 'fields' },
     single(ERROR_MODE_KEY, prefs.errorMode), single(CELL_REFERENCE_STYLE_KEY, prefs.cellReferenceStyle),
     single(INPUT_SIZE_KEY, prefs.inputSize), single(WORKSPACE_MODE_KEY, prefs.workspaceMode),
     single(DIFFICULTY_KEY, prefs.difficulty), single(NEW_PUZZLE_KEY, readNewPuzzlePreference(storage), 'json'),
     // A key map is one choice: merging individual shortcuts could bind two actions to the same key.
-    single(SHORTCUTS_KEY, readShortcuts(storage), 'json'),
+    single(SHORTCUTS_KEY, storedShortcutPreferences(readShortcuts(storage)), 'json'),
     single(DISABLED_HINTS_KEY, readDisabledHintTechniques(storage), 'json'),
     single(SOLVER_PROFILE_KEY, readSolverProfile(storage) ?? null, 'json'),
   ]
@@ -40,9 +40,18 @@ function snapshot(groups: Group[]): SettingsValues {
 }
 const defaults = snapshot(groups({ getItem: () => null }))
 
+function normalizeShortcutSettings(values: SettingsValues): SettingsValues {
+  const id = fieldId(SHORTCUTS_KEY, '')
+  const saved = values[id]
+  return saved === undefined ? values : {
+    ...values, [id]: JSON.stringify(storedShortcutPreferences(readShortcuts({ getItem: () => saved }))),
+  }
+}
+
 export async function syncSettings(storage: Storage, checkpoint: string, request: SyncRequest, remote: SettingsValues) {
   const previousRaw = storage.getItem(checkpoint)
-  const previous: SettingsValues = JSON.parse(previousRaw ?? '{}')
+  const previous = normalizeShortcutSettings(JSON.parse(previousRaw ?? '{}'))
+  remote = normalizeShortcutSettings(remote)
   // An old default in the checkpoint does not represent a local choice.
   if (previous['error-mode'] === '"all"' && storage.getItem(ERROR_MODE_KEY) === null) delete previous['error-mode']
   const before = snapshot(groups(storage))
@@ -55,7 +64,7 @@ export async function syncSettings(storage: Storage, checkpoint: string, request
     }
   }
   if (Object.keys(seeds).length || Object.keys(edits).length) {
-    remote = await request<SettingsValues>('settings', 'PATCH', { seeds, edits })
+    remote = normalizeShortcutSettings(await request<SettingsValues>('settings', 'PATCH', { seeds, edits }))
   }
   const next: SettingsValues = {}
   const changed = []

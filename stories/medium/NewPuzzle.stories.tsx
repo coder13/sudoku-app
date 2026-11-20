@@ -216,3 +216,11 @@ export const RenbanDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=renban" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
+
+export const InequalityVariant: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?variant=inequality" />,
+}
+export const InequalityDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=inequality" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}

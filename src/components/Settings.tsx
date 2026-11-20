@@ -2,54 +2,54 @@ import { Button, IconButton, iconButtonClassName } from './Button'
 import { useId, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, PanelsTopLeft, PenTool, Plus,
+  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, Palette, PanelsTopLeft, PenTool, Pin, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
 import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM, stepAppTextZoom } from '../sudoku/app-text-zoom'
+import { CHAIN_COLORS, type ChainColorPair } from '../sudoku/chain-sketch'
 import { type ErrorMode } from '../sudoku/game'
 import { CELL_REFERENCE_LABELS, type CellReferenceStyle } from '../sudoku/hints'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
+import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
 import {
   CANDIDATE_TEXT_SIZES, gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
   stepGridTextScale,
-  type AdvancedModes, type AppearancePreferences, type CandidateHighlightStyle,
-  type HighlightPreferences, type ThemeId, type WorkspaceMode,
+  type AdvancedModes, type AppearancePreferences, type HighlightPreferences, type ThemeId, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { resetDesktopPanelLayout } from './DesktopDockLayout'
+import { ChainSwatches } from './ChainsPanel'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
+import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
 
-export type SettingsSection = 'appearance' | 'input' | 'highlighting' | 'solving' | 'hints'
+export type SettingsSection = 'appearance' | 'input' | 'puzzle-buttons' | 'highlighting' | 'chain-colors' | 'solving' | 'hints'
 type Section = SettingsSection
+type GeneralSection = Exclude<Section, 'appearance' | 'puzzle-buttons' | 'highlighting' | 'chain-colors'>
 
 const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
   { id: 'appearance', label: 'Look & feel', description: 'Theme, grid labels, and sizing', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
+  { id: 'puzzle-buttons', label: 'Puzzle buttons', description: 'Shortcuts pinned below the grid', icon: Pin },
   { id: 'highlighting', label: 'Highlighting', description: 'Cells, digits, and candidates', icon: Highlighter },
+  { id: 'chain-colors', label: 'Chain colors', description: 'Color pairs for drawing chains', icon: Palette },
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
 ]
 const screenLabels: Record<Section, string> = {
   appearance: 'Look & feel',
   input: 'Input controls',
+  'puzzle-buttons': 'Puzzle buttons',
   highlighting: 'Highlighting',
+  'chain-colors': 'Chain colors',
   solving: 'Solving style',
   hints: 'Hints',
 }
-
-const candidateStyles: { id: CandidateHighlightStyle; label: string; description: string }[] = [
-  { id: 'text', label: 'Candidate color', description: 'Change only the matching candidate’s color.' },
-  { id: 'spotlight', label: 'Candidate spot', description: 'Add a small background behind the matching candidate.' },
-  { id: 'cell', label: 'Cell tint', description: 'Tint every cell that contains the matching candidate.' },
-  { id: 'outline', label: 'Cell outline', description: 'Outline every cell that contains the matching candidate.' },
-]
 
 export function HighlightSettings({ highlighting, setHighlighting }: {
   highlighting: HighlightPreferences
   setHighlighting: (highlighting: HighlightPreferences) => void
 }) {
-  const candidateStyleGroup = useId()
   return (
     <div className="settings-section mobile-title-duplicate">
       <h3>Highlighting</h3>
@@ -70,21 +70,10 @@ export function HighlightSettings({ highlighting, setHighlighting }: {
           <label className="advanced-toggle">
             <input type="checkbox" checked={highlighting.matchingCandidates}
               onChange={(event) => setHighlighting({ ...highlighting, matchingCandidates: event.target.checked })} />
-            <span><strong>Matching candidates</strong><small>Highlight candidates matching the active digit.</small></span>
+            <span><strong>Matching candidates</strong><small>Highlight cells with a candidate matching the active digit.</small></span>
           </label>
         </fieldset>
-        <fieldset className="highlight-style-options" disabled={!highlighting.matchingCandidates}>
-          <legend>Candidate highlight style</legend>
-          {candidateStyles.map((style) => (
-            <label key={style.id}>
-              <input type="radio" name={candidateStyleGroup} value={style.id}
-                checked={highlighting.candidateStyle === style.id}
-                onChange={() => setHighlighting({ ...highlighting, candidateStyle: style.id })} />
-              <span><strong>{style.label}</strong><small>{style.description}</small></span>
-            </label>
-          ))}
-        </fieldset>
-        <p className="settings-intro">To highlight several digits, touch and hold each digit on the keypad or Shift-click it.</p>
+        <p className="settings-intro">Press Shift+1–9 to match any selected digit or Cmd/Ctrl+1–9 with no cells selected to match all selected digits. You can also touch and hold a digit on the keypad or Shift-click it.</p>
       </div>
     </div>
   )
@@ -93,6 +82,82 @@ const screenIds = new Set<Section>(Object.keys(screenLabels) as Section[])
 
 export function isSettingsSection(value: unknown): value is SettingsSection {
   return typeof value === 'string' && screenIds.has(value as Section)
+}
+
+function ChainColorSettings() {
+  const [pairs, setPairs] = usePlayPreference('chainColorPairs')
+
+  return <div className="settings-section mobile-title-duplicate">
+    <h3>Chain colors</h3>
+    <div className="advanced-options chain-pair-settings">
+      {pairs.map((pair, index) => {
+        const name = `Pair ${index + 1}`
+        return <fieldset key={name}>
+          <legend>{name} <ChainSwatches first={pair[0]} second={pair[1]} /></legend>
+          {(['First color', 'Second color'] as const).map((label, slot) => (
+            <label key={label} className="advanced-select settings-select">
+              <strong>{label}</strong>
+              <SelectControl aria-label={`${name} ${label.toLowerCase()}`} value={pair[slot]}
+                onChange={event => {
+                  const color = CHAIN_COLORS.find(option => option === event.target.value)
+                  if (!color) return
+                  setPairs(current => current.map((currentPair, pairIndex): ChainColorPair => pairIndex !== index
+                    ? currentPair : slot === 0 ? [color, currentPair[1]] : [currentPair[0], color]))
+                }}>
+                {CHAIN_COLORS.map(color => <option key={color} value={color} disabled={color === pair[1 - slot]}>{color}</option>)}
+              </SelectControl>
+            </label>
+          ))}
+        </fieldset>
+      })}
+    </div>
+  </div>
+}
+
+
+function PuzzleButtonSettings() {
+  const [pinned, setPinned] = usePlayPreference('pinnedActions')
+  const ordered = [
+    ...pinned.map(id => PINNABLE_ACTIONS.find(action => action.id === id))
+      .filter((action): action is typeof PINNABLE_ACTIONS[number] => action !== undefined),
+    ...PINNABLE_ACTIONS.filter(action => !pinned.includes(action.id)),
+  ]
+
+  function move(id: PinnedAction, direction: -1 | 1) {
+    setPinned(current => {
+      const index = current.indexOf(id)
+      if (index < 0 || index + direction < 0 || index + direction >= current.length) return current
+      const next = [...current]
+      ;[next[index], next[index + direction]] = [next[index + direction], next[index]]
+      return next
+    })
+  }
+
+  return <div className="settings-section mobile-title-duplicate">
+    <h3>Puzzle buttons</h3>
+    <p className="settings-intro">Pin buttons to the bottom of your puzzle card. Choose their order with the arrows. Unpinned actions stay in the menus.</p>
+    <div className="pinned-action-settings" aria-label="Puzzle footer buttons">
+      {ordered.map(({ id, label, description }) => {
+        const index = pinned.indexOf(id)
+        return <div className="pinned-action-row" key={id}>
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={index !== -1}
+              onChange={event => setPinned(current => event.target.checked
+                ? current.includes(id) ? current : [...current, id]
+                : current.filter(action => action !== id))} />
+            <span><strong>{label}</strong><small>{description}</small></span>
+          </label>
+          {index !== -1 && <div className="pinned-action-reorder" role="group" aria-label={'Order for ' + label}>
+            <span className="pinned-action-order" aria-label={'Position ' + (index + 1)}>{index + 1}</span>
+            <IconButton variant="quiet" aria-label={'Move ' + label + ' up'} disabled={index === 0}
+              onClick={() => move(id, -1)}><ArrowUp size={17} /></IconButton>
+            <IconButton variant="quiet" aria-label={'Move ' + label + ' down'} disabled={index === pinned.length - 1}
+              onClick={() => move(id, 1)}><ArrowDown size={17} /></IconButton>
+          </div>}
+        </div>
+      })}
+    </div>
+  </div>
 }
 
 export function ThemePreview({ theme, mode }: { theme: ThemeId; mode: 'light' | 'dark' }) {
@@ -300,7 +365,7 @@ function PuzzleTimingSettings() {
 export function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft,
   cellReferenceStyle, setCellReferenceStyle, onApplyPaperStyle, paperStyleApplied,
 }: {
-  section: Exclude<Section, 'appearance' | 'highlighting'>
+  section: GeneralSection
   advancedModes: AdvancedModes
   setAdvancedModes: (modes: AdvancedModes) => void
   errorMode: ErrorMode
@@ -313,6 +378,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
 }) {
   const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
+  const [experimentalMode, setExperimentalMode] = useExperimentalMode()
   if (section === 'input') {
     return (
       <div className="settings-section mobile-title-duplicate">
@@ -348,7 +414,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.multiSelectButton}
               onChange={(event) => setAdvancedModes({ ...advancedModes, multiSelectButton: event.target.checked })} />
-            <span><strong>Multi-select button</strong><small>Select multiple cells from the input controls.</small></span>
+            <span><strong>Multi-select button</strong><small>Show the Multi-select button in the Advanced desktop workspace.</small></span>
           </label>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.doubleClickSingles}
@@ -400,6 +466,11 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
             <Button onClick={onApplyPaperStyle} disabled={paperStyleApplied}
               aria-label={paperStyleApplied ? 'Paper style applied' : 'Apply Paper style'}>{paperStyleApplied ? 'Applied' : 'Apply'}</Button>
           </div>}
+          <label className="advanced-toggle">
+            <input type="checkbox" checked={experimentalMode}
+              onChange={(event) => setExperimentalMode(event.target.checked)} />
+            <span><strong>Experimental mode</strong><small>Show tools in development, such as Subsets.</small></span>
+          </label>
         </div>
       </div>
     )
@@ -466,7 +537,7 @@ export function Settings({
     callback?.()
   }
 
-  function renderGeneral(currentSection: Exclude<Section, 'appearance' | 'highlighting'>) {
+  function renderGeneral(currentSection: GeneralSection) {
     return <GeneralSettings section={currentSection} advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
       errorMode={errorMode} setErrorMode={setErrorMode} draft={draft}
       cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle}
@@ -481,6 +552,8 @@ export function Settings({
     if (screen === 'highlighting') {
       return <HighlightSettings highlighting={highlighting} setHighlighting={setHighlighting} />
     }
+    if (screen === 'chain-colors') return <ChainColorSettings />
+    if (screen === 'puzzle-buttons') return <PuzzleButtonSettings />
     return renderGeneral(screen)
   }
 

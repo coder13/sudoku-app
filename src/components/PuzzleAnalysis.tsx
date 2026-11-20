@@ -19,6 +19,21 @@ import { Modal } from './Modal'
 const SCAN_DELAY_MS = 100
 const HIDE_ZERO_KEY = 'sudoku-app:v1:hide-zero-techniques'
 
+function useHideZeroTechniques() {
+  const [hideZero, setHideZero] = useState(true)
+  useEffect(() => {
+    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) !== 'false') }
+    catch { /* The filter still works when storage is unavailable. */ }
+  }, [])
+
+  function changeHideZero(checked: boolean) {
+    setHideZero(checked)
+    try { localStorage.setItem(HIDE_ZERO_KEY, String(checked)) }
+    catch { /* Keep the preference for this session. */ }
+  }
+  return [hideZero, changeHideZero] as const
+}
+
 type ScanResults = Readonly<Record<string, AnalysisCount>>
 type ScanProgress = { key: string; results: ScanResults }
 
@@ -86,7 +101,7 @@ function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps
   const solved = isSolved(game)
   const key = `${game.id}:${values}:${eliminations?.join(',') ?? ''}`
   const [scan, setScan] = useState<ScanProgress | null>(null)
-  const [hideZero, setHideZero] = useState(true)
+  const [hideZero, setHideZero] = useHideZeroTechniques()
   const [failedKey, setFailedKey] = useState<string>()
   useEffect(() => {
     if (!active || solved) return
@@ -141,18 +156,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
   const [retry, setRetry] = useState(0)
-  const [hideZero, setHideZero] = useState(true)
-
-  useEffect(() => {
-    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) !== 'false') }
-    catch { /* The filter still works when storage is unavailable. */ }
-  }, [])
-
-  function changeHideZero(checked: boolean) {
-    setHideZero(checked)
-    try { localStorage.setItem(HIDE_ZERO_KEY, String(checked)) }
-    catch { /* Keep the preference for this session. */ }
-  }
+  const [hideZero, changeHideZero] = useHideZeroTechniques()
 
   useEffect(() => {
     if (!active) return
@@ -284,7 +288,7 @@ type PlacementAnalysisProps = {
 }
 
 export function PlacementAnalysis({ title, techniques, counts, solved, unit = 'Placements', problem, onSelectTechnique }: PlacementAnalysisProps) {
-  const [hideZero, setHideZero] = useState(true)
+  const [hideZero, setHideZero] = useHideZeroTechniques()
   const results = Object.fromEntries(techniques.map(technique => [technique, { count: counts.get(technique) ?? 0 }]))
   const groups = filterAnalysisGroups([{ title, techniques: [...techniques] }], results, hideZero, solved)
   return <div className="puzzle-analysis-content">

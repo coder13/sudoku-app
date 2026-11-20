@@ -8,6 +8,7 @@ export type EditableShortcutId =
   | 'eraseMode'
   | 'chainDrawing'
   | 'newChain'
+  | 'applyEdits'
   | 'actions'
   | 'generateCandidates'
   | 'solveSingles'
@@ -25,16 +26,18 @@ export type EditableShortcutDefinition = {
 }
 
 export const SHORTCUTS_KEY = 'sudoku-app:v1:keyboard-shortcuts'
+const SHORTCUT_DEFAULTS_VERSION = 2
 
 export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
   digitMode: 'd',
-  pencilMode: 'p',
+  pencilMode: 'q',
   highlightMode: 'h',
   colorMode: 'c',
-  switchColorShade: 'x',
+  switchColorShade: 'z',
   eraseMode: 'e',
-  chainDrawing: 'l',
+  chainDrawing: 'x',
   newChain: 'b',
+  applyEdits: 'f',
   actions: 'a',
   generateCandidates: 'g',
   solveSingles: 's',
@@ -45,15 +48,16 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
 
 export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'digitMode', label: 'Digit placement mode', description: 'Place digits in selected cells.', category: 'Input modes' },
-  { id: 'pencilMode', label: 'Pencil mode', description: 'Add or remove candidates in selected cells.', category: 'Input modes' },
+  { id: 'pencilMode', label: 'Cycle input mode', description: 'Cycle from Pen to Pencil to Highlight and back to Pen.', category: 'Input modes' },
   { id: 'highlightMode', label: 'Highlight mode', description: 'Select cells while keeping a digit highlighted.', category: 'Input modes' },
   { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates.', category: 'Input modes' },
   { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
-  { id: 'chainDrawing', label: 'Draw links', description: 'Start or stop drawing links in Chains.', category: 'Input modes' },
+  { id: 'chainDrawing', label: 'Draw links', description: 'Open Chains and start drawing links, or stop drawing.', category: 'Input modes' },
   { id: 'newChain', label: 'New chain', description: 'Start a separate chain while the Chains panel is open.', category: 'Puzzle actions' },
+  { id: 'applyEdits', label: 'Apply edits', description: 'Apply a fully revealed hint or available edits from Chains.', category: 'Puzzle actions' },
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
-  { id: 'generateCandidates', label: 'Generate all candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
+  { id: 'generateCandidates', label: 'Generate candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },
   { id: 'pauseOrSwitchView', label: 'Pause or switch view', description: 'Pause or resume play. After solving, switch between the grid and results.', category: 'Puzzle actions' },
   { id: 'nextPuzzle', label: 'Next puzzle', description: 'Start the next puzzle after solving.', category: 'Puzzle actions' },
@@ -83,7 +87,9 @@ export function shortcutMatches(
   if (event.altKey || event.ctrlKey || event.metaKey) return false
   const key = shortcuts[id]
   if (key === '?') return event.key === '?'
-  return !event.shiftKey && event.key.toLowerCase() === key
+  if (event.shiftKey) return false
+  const pressed = event.key.toLowerCase()
+  return id === 'pencilMode' ? penPencilShortcutKeys(shortcuts).includes(pressed) : pressed === key
 }
 
 export function highlightedDigitShortcut(event: Pick<KeyboardEvent, 'altKey' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey'>) {
@@ -103,19 +109,31 @@ export function shortcutConflict(shortcuts: ShortcutPreferences, id: EditableSho
   return ids.find((candidate) => candidate !== id && shortcuts[candidate] === key) ?? null
 }
 
+export function penPencilShortcutKeys(shortcuts: ShortcutPreferences): string[] {
+  const primary = shortcuts.pencilMode
+  const alternate = primary === 'q' ? 'p' : primary === 'p' ? 'q' : null
+  return alternate && !shortcutConflict(shortcuts, 'pencilMode', alternate) ? [primary, alternate] : [primary]
+}
+
 function validKey(value: unknown, id?: EditableShortcutId): value is string {
   return typeof value === 'string' && (/^[a-z]$/.test(value) || value === '?' || (id === 'pauseOrSwitchView' && value === ' '))
 }
 
 export function parseShortcutPreferences(value: unknown): ShortcutPreferences {
   if (!value || typeof value !== 'object') return DEFAULT_SHORTCUTS
-  const saved = value as Partial<ShortcutPreferences>
+  const saved: Partial<ShortcutPreferences> & { defaultsVersion?: number } = { ...value }
+  // Older key maps saved every default alongside the user's custom bindings.
+  if (saved.defaultsVersion === undefined) {
+    if (saved.chainDrawing === 'l') delete saved.chainDrawing
+    if (saved.switchColorShade === 'x') delete saved.switchColorShade
+  }
   const next = { ...DEFAULT_SHORTCUTS }
   const savedKeys = ids.map((id) => saved[id])
-  for (const id of ['chainDrawing', 'newChain', 'switchColorShade'] as const) {
+  for (const id of ['pencilMode', 'chainDrawing', 'newChain', 'switchColorShade', 'applyEdits'] as const) {
     if (saved[id] !== undefined || !savedKeys.includes(next[id])) continue
     const reserved = new Set([...Object.values(next), ...savedKeys])
-    next[id] = [...'abcdefghijklmnopqrstuvwxyz'].find((key) => !reserved.has(key)) ?? next[id]
+    const fallbackKeys = id === 'pencilMode' ? 'pabcdefghijklmnopqrstuvwxyz' : 'abcdefghijklmnopqrstuvwxyz'
+    next[id] = [...fallbackKeys].find((key) => !reserved.has(key)) ?? next[id]
   }
   for (const id of ids) {
     if (saved[id] !== undefined && !validKey(saved[id], id)) return DEFAULT_SHORTCUTS
@@ -135,6 +153,10 @@ export function readShortcuts(storage?: Pick<Storage, 'getItem'>) {
   catch { return DEFAULT_SHORTCUTS }
 }
 
+export function storedShortcutPreferences(shortcuts: ShortcutPreferences) {
+  return { ...shortcuts, defaultsVersion: SHORTCUT_DEFAULTS_VERSION }
+}
+
 let current = readShortcuts()
 
 if (typeof window !== 'undefined') {
@@ -148,7 +170,7 @@ if (typeof window !== 'undefined') {
 function publish(next: ShortcutPreferences) {
   current = next
   listeners.forEach((listener) => listener())
-  try { window.localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(next)); notifySettingsEdit() }
+  try { window.localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(storedShortcutPreferences(next))); notifySettingsEdit() }
   catch { /* The shortcuts remain active for this session. */ }
 }
 

@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Board } from '../../src/components/Board'
-import { conflictsOf, enter, valuesOf } from '../../src/sudoku/game'
+import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
 import { MINI_GRID } from '../../src/sudoku/grid'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
@@ -56,10 +56,11 @@ export const AlgebraicCageCaptions: Story = {
 }
 export const WithoutGuides: Story = { args: { showGuides: false } }
 export const CellSelection: Story = { render: (args) => <SelectableGrid {...args} /> }
+const candidateExample = enter(enter(inProgress, [3, 5], 'center', 6), [2, 5], 'color', 4)
 export const CandidatesAndColor: Story = {
   args: {
     values: valuesOf(inProgress),
-    position: enter(enter(inProgress, [3, 5], 'center', 6), [2, 5], 'color', 4).position,
+    position: paintCandidates(candidateExample, [{ cell: 5, digit: 2, color: 2 }, { cell: 5, digit: 6, color: 5 }]).position,
     candidateLayout: 'center-corner',
     selected: [3, 5],
     highlightedDigit: 2,

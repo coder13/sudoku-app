@@ -104,15 +104,12 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         onClose()
       }
     }}>
-      <header className="solution-path-heading">
-        <div>
-          {!embedded && <h2>Solution</h2>}
-          {trace && <p>{count} {count === 1 ? 'step' : 'steps'} from the givens</p>}
-        </div>
-        {!embedded && <IconButton ref={close} type="button" variant="quiet" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
+      {!embedded && <header className="solution-path-heading">
+        <h2>Solution</h2>
+        <IconButton ref={close} type="button" variant="quiet" onClick={onClose} aria-label="Return to puzzle" title="Return to puzzle">
           <X size={18} aria-hidden="true" />
-        </IconButton>}
-      </header>
+        </IconButton>
+      </header>}
       {state.status === 'loading' && <p className="solution-path-message" role="status">Finding the steps…</p>}
       {state.status === 'unavailable' && <div className="solution-path-message">
         <p role="status">{state.message}</p>

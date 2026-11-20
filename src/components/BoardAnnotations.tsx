@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { boardLinkRoutes, type BoardPoint, type CandidateInsets } from '../sudoku/board-link-geometry'
+import type { Candidate } from '../sudoku/engine'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
@@ -8,12 +9,15 @@ export type BoardLink = {
   from: BoardPoint
   to: BoardPoint
   color: string
+  muted?: boolean
   dashed?: boolean
+  colorBreak?: boolean
   arrow?: boolean
+  selectFrom?: Candidate
 }
 
-export type CellAnnotation = { fill?: string; outline?: string; ink?: string; label?: string }
-export type CandidateAnnotation = { color: string; mark?: 'ring' | 'strike'; label?: string }
+export type CellAnnotation = { fill?: string; ink?: string; label?: string }
+export type CandidateAnnotation = { color: string; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; label?: string }
 
 export type BoardAnnotations = {
   cells?: ReadonlyMap<number, CellAnnotation>
@@ -23,13 +27,15 @@ export type BoardAnnotations = {
 
 const CELL = 10
 
-export function BoardLinks({ links, region, candidateInsets }: { links?: readonly BoardLink[]; region?: BoardRegion; candidateInsets?: CandidateInsets }) {
+export function BoardLinks({ links, region, candidateInsets, onSelect }: {
+  links?: readonly BoardLink[]; region?: BoardRegion; candidateInsets?: CandidateInsets; onSelect?: (candidate: Candidate) => void
+}) {
   const id = useId()
   const viewBox = region ? `${region.column * CELL} ${region.row * CELL} ${region.columns * CELL} ${region.rows * CELL}` : '0 0 90 90'
   const counts = new Map<string, number>()
   const items: BoardMark[] = []
   const routes = boardLinkRoutes(links ?? [], candidateInsets)
-  for (const [index, { color, dashed, arrow }] of (links ?? []).entries()) {
+  for (const [index, { color, dashed, arrow, muted, colorBreak, selectFrom }] of (links ?? []).entries()) {
     const points = routes[index]
     if (points.length < 2) continue
     const [start, end] = [points[0], points[points.length - 1]]
@@ -38,14 +44,21 @@ export function BoardLinks({ links, region, candidateInsets }: { links?: readonl
     counts.set(shape, count + 1)
     const key = `${shape}_${count}`
     const marker = `${id}-arrow-${key}`
+    const vertices = points.map(({ x, y }) => `${x},${y}`).join(' ')
+    const middle = Math.floor(points.length / 2)
+    const [before, after] = [points[middle - 1], points[middle]]
     items.push(<g key={key}>
       {arrow && <marker id={marker} markerWidth="2.5" markerHeight="2.5" refX="2.3" refY="1.25"
         markerUnits="userSpaceOnUse" orient="auto">
         <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
       </marker>}
-      <polyline points={points.map(({ x, y }) => `${x},${y}`).join(' ')} fill="none"
-        stroke={color} strokeWidth=".45" strokeLinecap="round" strokeLinejoin="round"
+      <polyline points={vertices} fill="none"
+        stroke={color} strokeWidth={muted ? ".3" : ".45"} strokeLinecap="round" strokeLinejoin="round"
         strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
+      {colorBreak && <circle className="chain-color-break" cx={(before.x + after.x) / 2} cy={(before.y + after.y) / 2}
+        r=".9" fill="var(--board-bg)" stroke={color} strokeWidth=".42" />}
+      {onSelect && selectFrom && <polyline className="board-link-target" points={vertices} fill="none"
+        stroke="transparent" strokeWidth="14" vectorEffect="non-scaling-stroke" onClick={() => onSelect(selectFrom)} />}
     </g>)
   }
   return <BoardMarks items={items} group={<svg aria-hidden="true" className="board-links" viewBox={viewBox} />} />

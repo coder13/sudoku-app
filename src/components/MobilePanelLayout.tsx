@@ -1,9 +1,9 @@
 import { IconButton } from './Button'
-import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
+import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
 import { MobileInputResizeHandle } from './MobileInputResizeHandle'
-import { MotionSurface, motionDuration, usePresentContent } from './Presence'
+import { animatePanelLayout, MotionSurface, motionDuration, usePresentContent } from './Presence'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -18,6 +18,9 @@ type Props = {
   puzzleId: string
   withHint: boolean
   resizableInput?: boolean
+  inputTabCount?: number
+  savedInputHeight?: number
+  onInputHeightChange?: (height: number | undefined) => void
   hintSwipe?: HintSwipeActions
 }
 type Hold = { pointerId: number; x: number; y: number; timer: number }
@@ -42,6 +45,7 @@ const MOVE_THRESHOLD = 10
 type MotionProps = {
   root: RefObject<HTMLDivElement | null>
   withHint: boolean
+  tabCount: number
   rearranging: boolean
   children: ReactNode
 }
@@ -51,31 +55,32 @@ type LayoutSnapshot = {
   hint?: { element: HTMLElement; left: number; top: number; width: number }
 }
 
-class MobileHintMotion extends Component<MotionProps, Record<string, never>, LayoutSnapshot | null> {
+class MobilePanelMotion extends Component<MotionProps, Record<string, never>, LayoutSnapshot | null> {
   private animations: Animation[] = []
 
   // Measure the currently visible cards before React changes the grid or flex layout.
   getSnapshotBeforeUpdate(previous: MotionProps): LayoutSnapshot | null {
-    const { root, withHint, rearranging } = this.props
-    if (previous.withHint === withHint || previous.rearranging || rearranging || !root.current) return null
-    const duration = motionDuration('standard')
+    const { root, withHint, tabCount, rearranging } = this.props
+    const hintChanged = previous.withHint !== withHint
+    const tabsChanged = previous.tabCount !== tabCount
+    if ((!hintChanged && !tabsChanged) || previous.rearranging || rearranging || !root.current) return null
+    const duration = motionDuration(tabsChanged ? 'panel' : 'standard')
     if (!duration) return null
 
     const cards = Array.from(root.current.querySelectorAll<HTMLElement>(
       '[data-mobile-panel="puzzle"] .puzzle, [data-mobile-panel="input"] > .mobile-panel-content',
     ), (element) => ({ element, rect: element.getBoundingClientRect() }))
-    const hint = root.current.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
-    return { duration, cards, hint: !withHint && hint ? {
+    const hint = hintChanged && !withHint && root.current.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
+    return { duration, cards, hint: hint ? {
       element: hint, left: hint.offsetLeft, top: hint.offsetTop, width: hint.getBoundingClientRect().width,
     } : undefined }
   }
 
   componentDidUpdate(previous: MotionProps, _state: unknown, snapshot?: LayoutSnapshot | null) {
     const { root, withHint, rearranging } = this.props
-    if (previous.withHint === withHint && previous.rearranging === rearranging) return
-    this.cancelAnimations()
+    if (snapshot || previous.rearranging !== rearranging) this.cancelAnimations()
 
-    const hint = root.current?.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
+    const hint = previous.withHint !== withHint && root.current?.querySelector<HTMLElement>('[data-mobile-panel="hint"]')
     if (withHint && hint) {
       for (const property of ['--hint-exit-left', '--hint-exit-top', '--hint-exit-width', '--hint-exit-visibility']) {
         hint.style.removeProperty(property)
@@ -92,20 +97,10 @@ class MobileHintMotion extends Component<MotionProps, Record<string, never>, Lay
       element.style.setProperty('--hint-exit-visibility', 'visible')
     }
 
-    const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
     for (const { element, rect } of snapshot.cards) {
       if (!element.isConnected) continue
-      const next = element.getBoundingClientRect()
-      if (!next.width || !next.height) continue
-      const x = rect.left - next.left
-      const y = rect.top - next.top
-      const scaleX = rect.width / next.width
-      const scaleY = rect.height / next.height
-      if (x === 0 && y === 0 && scaleX === 1 && scaleY === 1) continue
-      this.animations.push(element.animate([
-        { transform: `translate(${x}px, ${y}px) scale(${scaleX}, ${scaleY})`, transformOrigin: 'top left' },
-        { transform: 'none', transformOrigin: 'top left' },
-      ], { duration: snapshot.duration, easing }))
+      const animation = animatePanelLayout(element, rect, snapshot.duration)
+      if (animation) this.animations.push(animation)
     }
   }
 
@@ -137,6 +132,48 @@ export function MobilePanelLayout(props: Props) {
   const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
   const panels = { ...props.panels, hint: hint || undefined }
   const visible = order.filter((id) => props.panels[id])
+
+  useLayoutEffect(() => {
+    const layout = root.current
+    const page = layout?.closest<HTMLElement>('.standard-workspace-page')
+    const workspace = layout?.parentElement
+    const puzzle = layout?.querySelector<HTMLElement>('[data-mobile-panel="puzzle"]')
+    const input = layout?.querySelector<HTMLElement>('[data-mobile-panel="input"]')
+    const hintPanel = props.withHint ? layout?.querySelector<HTMLElement>('[data-mobile-panel="hint"]') : null
+    const gap = layout?.querySelector<HTMLElement>('.mobile-panel-gap')
+    if (!layout || !page || !workspace || !puzzle || !input || !gap) return
+
+    const blockSize = (element: HTMLElement) => parseFloat(getComputedStyle(element).blockSize)
+    const fitBoard = () => {
+      const fitHint = layout.hasAttribute('data-fit-hint')
+      const sideBySide = fitHint && getComputedStyle(workspace).display === 'grid'
+      if (layout.hasAttribute('data-input-sized') && !sideBySide) return
+      const board = puzzle.querySelector<HTMLElement>('.puzzle-zoom, .puzzle-stage .board-frame')
+      const puzzleColumn = board?.closest<HTMLElement>('.puzzle-column')
+      if (!board || !puzzleColumn) return
+      const pageStyle = getComputedStyle(page)
+      const margins = [puzzle, input, hintPanel].reduce((sum, card) => (
+        sum + (card ? parseFloat(getComputedStyle(card).marginBlockStart) : 0)
+      ), 0)
+      const available = parseFloat(pageStyle.blockSize) - parseFloat(pageStyle.paddingBlockStart) - parseFloat(pageStyle.paddingBlockEnd)
+        - parseFloat(getComputedStyle(workspace).paddingBlockStart) - parseFloat(getComputedStyle(gap).flexBasis) - margins
+      // With a hint open the keypad can scroll, so budget only its minimum usable height.
+      const inputSpace = fitHint ? parseFloat(getComputedStyle(input).minBlockSize) : blockSize(input)
+      const puzzleSpace = sideBySide ? blockSize(puzzle) : available - inputSpace - (hintPanel ? blockSize(hintPanel) : 0)
+      const boardSpace = puzzleSpace - (blockSize(sideBySide ? puzzleColumn : puzzle) - blockSize(board))
+      const limit = `${Math.floor(boardSpace)}px`
+      if (layout.style.getPropertyValue('--mobile-fit-board-height') !== limit) {
+        layout.style.setProperty('--mobile-fit-board-height', limit)
+      }
+    }
+
+    fitBoard()
+    const observer = new ResizeObserver(fitBoard)
+    for (const element of [page, puzzle, puzzle.querySelector('.puzzle-column'), input, hintPanel]) {
+      if (element) observer.observe(element)
+    }
+    return () => observer.disconnect()
+  }, [order, props.inputTabCount, props.rearranging, props.withHint])
 
   function cancelHold() {
     if (hold.current) window.clearTimeout(hold.current.timer)
@@ -324,6 +361,7 @@ export function MobilePanelLayout(props: Props) {
   }, [visible.join(',')])
 
   const layout = <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
+    data-fit-hint={props.withHint && props.resizableInput && !props.rearranging || undefined}
     data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
@@ -363,7 +401,9 @@ export function MobilePanelLayout(props: Props) {
           } as CSSProperties}>
           <div className="mobile-panel-content" inert={props.rearranging} aria-hidden={props.rearranging || undefined}>
             {resizeEdge && <MobileInputResizeHandle inputId={inputId} edge={resizeEdge}
-              disabled={props.blocked || props.rearranging} withHint={props.withHint} />}
+              disabled={props.blocked || props.rearranging} withHint={props.withHint}
+              hasOpenTabs={Boolean(props.inputTabCount)} savedHeight={props.savedInputHeight}
+              onHeightChange={props.onInputHeightChange} />}
             {id === 'hint' ? <MobileHintSwipe exiting={exiting}
               actions={exiting || props.rearranging || props.blocked ? undefined : props.hintSwipe}>
               {panel.content}
@@ -384,5 +424,6 @@ export function MobilePanelLayout(props: Props) {
     <span className="sr-only" role="status">{announcement}</span>
   </div>
 
-  return <MobileHintMotion root={root} withHint={props.withHint} rearranging={props.rearranging}>{layout}</MobileHintMotion>
+  return <MobilePanelMotion root={root} withHint={props.withHint} tabCount={props.inputTabCount ?? 0}
+    rearranging={props.rearranging}>{layout}</MobilePanelMotion>
 }

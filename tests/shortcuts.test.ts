@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   appTextZoomShortcut, DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, highlightedDigitShortcut,
-  parseShortcutPreferences, shortcutConflict, shortcutLabel, shortcutMatches,
+  parseShortcutPreferences, shortcutConflict, shortcutLabel, shortcutMatches, storedShortcutPreferences,
 } from '../src/sudoku/shortcuts.ts'
 
 test('default editable shortcuts are unique', () => {
@@ -13,7 +13,7 @@ test('saved shortcut preferences accept valid partial changes', () => {
   assert.deepEqual(parseShortcutPreferences({ digitMode: 'v' }), { ...DEFAULT_SHORTCUTS, digitMode: 'v' })
 })
 
-test('older saved shortcuts gain the Generate all candidates default without creating a conflict', () => {
+test('older saved shortcuts gain the Generate candidates default without creating a conflict', () => {
   const { generateCandidates: _, ...olderPreferences } = DEFAULT_SHORTCUTS
   assert.deepEqual(parseShortcutPreferences(olderPreferences), DEFAULT_SHORTCUTS)
   assert.deepEqual(parseShortcutPreferences({ ...olderPreferences, digitMode: 'g' }), DEFAULT_SHORTCUTS)
@@ -21,29 +21,55 @@ test('older saved shortcuts gain the Generate all candidates default without cre
 
 test('the new Chains shortcuts preserve keys already assigned by the user', () => {
   const { chainDrawing: _draw, newChain: _new, ...olderPreferences } = DEFAULT_SHORTCUTS
-  const shortcuts = parseShortcutPreferences({ ...olderPreferences, digitMode: 'l', pencilMode: 'b' })
-  assert.equal(shortcuts.digitMode, 'l')
+  const shortcuts = parseShortcutPreferences({ ...olderPreferences, digitMode: 'x', pencilMode: 'b' })
+  assert.equal(shortcuts.digitMode, 'x')
   assert.equal(shortcuts.pencilMode, 'b')
   assert.equal(new Set(Object.values(shortcuts)).size, EDITABLE_SHORTCUTS.length)
 })
 
-test('the shade shortcut preserves existing X bindings and supports a custom key', () => {
+test('the Apply edits shortcut preserves an existing F assignment', () => {
+  const { applyEdits: _, ...olderPreferences } = DEFAULT_SHORTCUTS
+  assert.equal(parseShortcutPreferences(olderPreferences).applyEdits, 'f')
+  const migrated = parseShortcutPreferences({ ...olderPreferences, digitMode: 'f' })
+  assert.equal(migrated.digitMode, 'f')
+  assert.notEqual(migrated.applyEdits, 'f')
+  assert.equal(new Set(Object.values(migrated)).size, EDITABLE_SHORTCUTS.length)
+})
+
+test('the shade shortcut preserves existing Z bindings and supports a custom key', () => {
   const { switchColorShade: _, ...olderPreferences } = DEFAULT_SHORTCUTS
   assert.deepEqual(parseShortcutPreferences(olderPreferences), DEFAULT_SHORTCUTS)
-  const migrated = parseShortcutPreferences({ ...olderPreferences, digitMode: 'x' })
-  assert.equal(migrated.digitMode, 'x')
-  assert.notEqual(migrated.switchColorShade, 'x')
+  const migrated = parseShortcutPreferences({ ...olderPreferences, digitMode: 'z' })
+  assert.equal(migrated.digitMode, 'z')
+  assert.notEqual(migrated.switchColorShade, 'z')
   assert.equal(new Set(Object.values(migrated)).size, EDITABLE_SHORTCUTS.length)
   const custom = parseShortcutPreferences({ switchColorShade: 'v' })
   const plain = { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false }
   assert.equal(shortcutMatches({ ...plain, key: 'v' }, custom, 'switchColorShade'), true)
-  assert.equal(shortcutMatches({ ...plain, key: 'x' }, custom, 'switchColorShade'), false)
+  assert.equal(shortcutMatches({ ...plain, key: 'z' }, custom, 'switchColorShade'), false)
   assert.equal(shortcutMatches({ ...plain, key: 'v', ctrlKey: true }, custom, 'switchColorShade'), false)
+})
+
+test('legacy draw and shade defaults update while explicit bindings survive a reload', () => {
+  const older = { ...DEFAULT_SHORTCUTS, digitMode: 'v', chainDrawing: 'l', switchColorShade: 'x' }
+  assert.deepEqual(parseShortcutPreferences(older), { ...DEFAULT_SHORTCUTS, digitMode: 'v' })
+  assert.deepEqual(parseShortcutPreferences(storedShortcutPreferences(older)), older)
+})
+
+test('P and Q cycle input modes by default and existing bindings remain valid', () => {
+  assert.equal(DEFAULT_SHORTCUTS.pencilMode, 'q')
+  const key = (key: string) => ({ key, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false })
+  for (const shortcut of ['p', 'q']) assert.equal(shortcutMatches(key(shortcut), DEFAULT_SHORTCUTS, 'pencilMode'), true)
+  assert.equal(shortcutMatches(key('p'), { ...DEFAULT_SHORTCUTS, digitMode: 'p' }, 'pencilMode'), false)
+  assert.equal(parseShortcutPreferences({ pencilMode: 'p' }).pencilMode, 'p')
+  const customized = parseShortcutPreferences({ digitMode: 'q' })
+  assert.equal(customized.digitMode, 'q')
+  assert.equal(customized.pencilMode, 'p')
 })
 
 test('invalid or conflicting saved shortcuts fall back to defaults', () => {
   assert.equal(parseShortcutPreferences({ digitMode: '1' }), DEFAULT_SHORTCUTS)
-  assert.equal(parseShortcutPreferences({ digitMode: DEFAULT_SHORTCUTS.pencilMode }), DEFAULT_SHORTCUTS)
+  assert.equal(parseShortcutPreferences({ digitMode: 'v', pencilMode: 'v' }), DEFAULT_SHORTCUTS)
 })
 
 test('editable shortcuts accept letters and question mark without command modifiers', () => {
@@ -54,9 +80,9 @@ test('editable shortcuts accept letters and question mark without command modifi
 })
 
 test('shortcut matching follows customized bindings and rejects modifiers', () => {
-  const shortcuts = { ...DEFAULT_SHORTCUTS, pencilMode: 'x' }
-  assert.equal(shortcutMatches({ altKey: false, ctrlKey: false, key: 'X', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), true)
-  assert.equal(shortcutMatches({ altKey: false, ctrlKey: true, key: 'x', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), false)
+  const shortcuts = { ...DEFAULT_SHORTCUTS, pencilMode: 'v' }
+  assert.equal(shortcutMatches({ altKey: false, ctrlKey: false, key: 'V', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), true)
+  assert.equal(shortcutMatches({ altKey: false, ctrlKey: true, key: 'v', metaKey: false, shiftKey: false }, shortcuts, 'pencilMode'), false)
   assert.equal(shortcutMatches({ altKey: false, ctrlKey: false, key: '?', metaKey: false, shiftKey: true }, shortcuts, 'shortcutHelp'), true)
 })
 
@@ -70,9 +96,9 @@ test('Space is the default for pausing or switching views and can be reassigned'
   assert.equal(editableShortcutKey(space, 'digitMode'), null)
   assert.equal(shortcutMatches(space, migrated, 'pauseOrSwitchView'), true)
   assert.equal(shortcutMatches({ ...space, shiftKey: true }, migrated, 'pauseOrSwitchView'), false)
-  const custom = parseShortcutPreferences({ ...migrated, pauseOrSwitchView: 'f' })
+  const custom = parseShortcutPreferences({ ...migrated, pauseOrSwitchView: 'o' })
   assert.equal(shortcutMatches(space, custom, 'pauseOrSwitchView'), false)
-  assert.equal(shortcutMatches({ ...space, key: 'f' }, custom, 'pauseOrSwitchView'), true)
+  assert.equal(shortcutMatches({ ...space, key: 'o' }, custom, 'pauseOrSwitchView'), true)
 })
 
 test('highlighted digit shortcuts use Shift plus the digit row', () => {
@@ -98,5 +124,5 @@ test('app text zoom uses Ctrl or Command and ignores unmodified puzzle input', (
 test('shortcut conflicts identify the command that already owns a key', () => {
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', DEFAULT_SHORTCUTS.pencilMode), 'pencilMode')
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'v'), null)
-  assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'x'), 'switchColorShade')
+  assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'x'), 'chainDrawing')
 })

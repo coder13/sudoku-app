@@ -5,12 +5,13 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type Position } from './game.ts'
+import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, type Game, type HistoryPosition, type Position } from './game.ts'
 import { isSizedRuleList, restoreSizedRuleGame } from './sized-rule-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSharedPuzzleId } from './puzzle-sharing.ts'
 import { puzzleSelectionKey } from './selection-preferences.ts'
+import { puzzleTabsKey } from './play-session.ts'
 import {
   calculatePlayerRating, initialPlayerRating, isRatingAttempt, isRatingEvent, PLAYER_RATING_VERSION,
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
@@ -58,13 +59,13 @@ function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
 
 function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft: boolean): value is Position {
   if (!value || typeof value !== 'object') return false
-  const position = value as Position & { draftSixRules?: Position['draftSizedRules'] }
+  const position = value as HistoryPosition & { draftSixRules?: Position['draftSizedRules'] }
   if (position.draftSixRules !== undefined) {
     if (grid.size !== 6 || position.draftSizedRules !== undefined) return false
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules } = position
+  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, chainSketch } = position
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
   const mask = (1 << grid.size) - 1
@@ -74,7 +75,8 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid.size)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
-    (eliminations === undefined || validDigits(eliminations, mask))
+    (eliminations === undefined || validDigits(eliminations, mask)) &&
+    (chainSketch == null || validChainSketchState(chainSketch))
 }
 
 export function readGame(id: string, data: string | null): Game | undefined {
@@ -613,6 +615,7 @@ export const roomStore = {
       localStorage.removeItem(legacyKey(key))
       localStorage.removeItem(key)
       localStorage.removeItem(puzzleSelectionKey(id))
+      localStorage.removeItem(puzzleTabsKey(id))
       localStorage.removeItem(activityPrefix + id)
     })
     const outcomeSaved = rememberOutcome(removed && (removed.ratingAttempt?.outcome ?? hintEvidence(removed)))

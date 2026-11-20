@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { ChevronLeft, RotateCcw } from 'lucide-react'
 import { useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import {
-  DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, shortcutConflict, shortcutLabel, shortcutStore,
+  DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, penPencilShortcutKeys, shortcutConflict, shortcutLabel, shortcutStore,
   type EditableShortcutDefinition, type EditableShortcutId,
 } from '../sudoku/shortcuts'
 
@@ -12,10 +12,10 @@ type FixedShortcut = { label: string; description: string; keys: string[] }
 const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
   {
     title: 'Digits and candidates', shortcuts: [
-      { label: 'Enter a digit', description: 'Use the current input mode in selected cells.', keys: ['1–9'] },
+      { label: 'Enter a digit', description: 'Place the digit in selected cells in Pen, Pencil, or Highlight mode.', keys: ['1–9'] },
       { label: 'Hold for Pencil mode', description: 'Switch from Pen to Pencil while you hold the key.', keys: ['Ctrl/⌘'] },
-      { label: 'Toggle a candidate', description: 'Add or remove a candidate in the current cell or selection.', keys: ['Ctrl/⌘', '1–9'] },
-      { label: 'Highlight a digit', description: 'Highlight matching placed digits and candidates without changing modes.', keys: ['Shift', '1–9'] },
+      { label: 'Toggle a candidate or highlight a digit', description: 'Toggle a candidate in selected cells. With no cells selected, match all highlighted digits.', keys: ['Ctrl/⌘', '1–9'] },
+      { label: 'Highlight any selected digit', description: 'Toggle a digit and highlight cells that contain any selected digit.', keys: ['Shift', '1–9'] },
       { label: 'Erase selected cells', description: 'Remove placed digits or candidates from selected cells.', keys: ['0', 'Delete', 'Backspace'] },
     ],
   },
@@ -30,6 +30,7 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
       { label: 'End the path or stop drawing', description: 'End the current path. If no endpoint is selected, stop drawing.', keys: ['Escape'] },
       { label: 'Undo a link edit', description: 'Undo the last edit to the selected chain.', keys: ['Ctrl/⌘', 'Z'] },
       { label: 'Highlight matching candidates', description: 'Highlight the selected digit while you draw links.', keys: ['1–9'] },
+      { label: 'Toggle a strong-link digit', description: 'With Show strong links on, toggle one digit without clearing the others.', keys: ['Shift', '1–9'] },
     ],
   },
   {
@@ -98,12 +99,14 @@ export function KeyboardShortcutsPage() {
         const sectionId = `shortcut-${category.toLowerCase().replaceAll(' ', '-')}`
         return <section className="shortcut-section" key={category} aria-labelledby={sectionId}>
         <header><h2 id={sectionId}>{category}</h2><p>{category === 'Input modes'
-          ? 'Press an active mode’s shortcut again to return to digit placement.'
+          ? 'Press the Highlight mode shortcut again to return to Pen or Pencil.'
           : 'These commands are available while you are solving.'}</p></header>
         <div className="shortcut-list">
           {EDITABLE_SHORTCUTS.filter((definition) => definition.category === category).map((definition) => {
             const changed = shortcuts[definition.id] !== DEFAULT_SHORTCUTS[definition.id]
             const capturing = editing === definition.id
+            const keys = definition.id === 'pencilMode' ? penPencilShortcutKeys(shortcuts) : [shortcuts[definition.id]]
+            const labels = keys.map(shortcutLabel).join(' / ')
             return <div className="shortcut-row" key={definition.id}>
               <span className="shortcut-copy"><strong>{definition.label}</strong><small>{definition.description}</small></span>
               {changed && <Button type="button" variant="quiet" className="shortcut-reset" onClick={() => {
@@ -111,10 +114,10 @@ export function KeyboardShortcutsPage() {
                 setMessage(`${definition.label} reset to ${shortcutLabel(DEFAULT_SHORTCUTS[definition.id])}.`)
               }}>Reset</Button>}
               <button type="button" className={`shortcut-binding${capturing ? ' is-capturing' : ''}`}
-                data-shortcut-capture="true" aria-label={`Change shortcut for ${definition.label}. Current shortcut ${shortcutLabel(shortcuts[definition.id])}`}
+                data-shortcut-capture="true" aria-label={`Change shortcut for ${definition.label}. Current shortcut ${labels}`}
                 onClick={() => { setEditing(definition.id); setMessage(`Press a new key for ${definition.label}.`) }}
                 onKeyDown={(event) => capturing && edit(definition, event)}>
-                {capturing ? 'Press a key' : <kbd>{shortcutLabel(shortcuts[definition.id])}</kbd>}
+                {capturing ? 'Press a key' : <kbd>{labels}</kbd>}
               </button>
             </div>
           })}

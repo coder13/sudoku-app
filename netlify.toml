@@ -1,6 +1,14 @@
+"$schema" = "https://open-api.netlify.com/netlify.schema.json"
+
 [build]
   command = "rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && RUSTUP_TOOLCHAIN=stable npm run build"
   publish = "dist/client"
+
+[context.deploy-preview.environment]
+  VITE_EXPERIMENTAL_MODE = "true"
+
+[context.branch-deploy.environment]
+  VITE_EXPERIMENTAL_MODE = "true"
 
 [[headers]]
   for = "/sw.js"

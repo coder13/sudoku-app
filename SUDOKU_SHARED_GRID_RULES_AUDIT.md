@@ -1,6 +1,12 @@
 # Shared grid rules and layout audit
 
-[Issue #224](https://github.com/coder13/sudoku-app/issues/224) tracks the shared layout and rule contract. This worktree uses the same diagonals, parity, thermometers and Renban rule definitions on rectangular boxes and explicit connected regions. The sized solver derives houses, candidate masks, path lengths, and assumption work from the layout. The 9×9 variant solver still serves its existing protocol, and saved 4×4 Algebraic Cages keep their existing response format.
+The shared layout and rule contract follows the grid foundation in [#224](https://github.com/coder13/sudoku-app/issues/224) and the combined-rule requirements in [#87](https://github.com/coder13/sudoku-app/issues/87). This worktree uses the same diagonals, parity, thermometers and Renban rule definitions on rectangular boxes and explicit connected regions. The sized solver derives houses, candidate masks, path lengths, and assumption work from the layout. The 9×9 variant solver still serves its existing protocol, and saved 4×4 Algebraic Cages keep their existing response format.
+
+## Remaining engine work
+
+Use one puzzle definition with explicit regions and an ordered rule list. Compile rule payloads against the layout's digit range, houses, adjacency, and cell IDs. Keep the 9×9 solver as an optimized backend during migration. The sized compiler currently covers diagonals, parity, standard thermometers, and Renban. Each subsequent migration should use the same authored rule payload for rule checks, candidate propagation, hints, and replay. Import and generation should validate that the player can view and edit every rule in the puzzle before offering it.
+
+Run each rule against multiple layouts through a shared conformance suite. Use both 6×6 box orientations and an irregular layout where region membership matters. Keep published grid-specific puzzles as import and UI regression cases, including a mixed-rule example with independently verified uniqueness. Measure both solver backends against the existing 9×9 controls before changing the default.
 
 ## Source and engine controls
 

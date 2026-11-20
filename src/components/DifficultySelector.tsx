@@ -30,17 +30,18 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
 export function DifficultyOptions<Level extends Difficulty>({ levels, selected, statistics, disabled = false, auto, onChange }: {
   levels: readonly Level[]
   selected: Level
-  statistics: ReadonlyMap<Level, DifficultyStatistics>
+  statistics: ReadonlyMap<Level, DifficultyStatistics> | null
   disabled?: boolean
   auto?: { active: boolean; onChange: (active: boolean) => void }
   onChange: (level: Level) => void
 }) {
   const id = useId()
   const index = levels.indexOf(selected)
-  const selectedStats = statistics.get(selected)
+  const loading = statistics === null
+  const selectedStats = statistics?.get(selected)
 
   function averageTime(level: Level) {
-    const seconds = statistics.get(level)?.averageSeconds
+    const seconds = statistics?.get(level)?.averageSeconds
     return seconds == null ? '–' : formatTime(seconds)
   }
   function move(offset: number) {
@@ -56,11 +57,13 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
           aria-labelledby={`${id}-${level}-label`} aria-describedby={`${id}-${level}-stats`}
           onChange={() => onChange(level)} />
         <span id={`${id}-${level}-label`}>{DIFFICULTY_LABELS[level]}</span>
-        <span className="difficulty-list-stats" id={`${id}-${level}-stats`}>
-          <span>{statistics.get(level)?.solved ?? 0} solved</span>
-          <span aria-label={averageTime(level) === '–' ? 'No average time yet' : `Average time ${averageTime(level)}`}>
-            Avg {averageTime(level)}
-          </span>
+        <span className="difficulty-list-stats" id={`${id}-${level}-stats`} aria-busy={loading}>
+          {loading ? <span>Loading results…</span> : <>
+            <span>{statistics.get(level)?.solved ?? 0} solved</span>
+            <span aria-label={averageTime(level) === '–' ? 'No average time yet' : `Average time ${averageTime(level)}`}>
+              Avg {averageTime(level)}
+            </span>
+          </>}
         </span>
       </label>)}
     </div>
@@ -86,9 +89,9 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
           <ChevronRight size={22} aria-hidden="true" />
         </IconButton>
       </div>
-      <dl className="difficulty-selection-stats" aria-label={`${DIFFICULTY_LABELS[selected]} results`}>
-        <div><dt>Solved</dt><dd>{selectedStats?.solved ?? 0}</dd></div>
-        <div><dt>Average time</dt><dd aria-label={averageTime(selected) === '–' ? 'No average time yet' : undefined}>{averageTime(selected)}</dd></div>
+      <dl className="difficulty-selection-stats" aria-label={`${DIFFICULTY_LABELS[selected]} results`} aria-busy={loading}>
+        <div><dt>Solved</dt><dd aria-label={loading ? 'Loading results' : undefined}>{loading ? '–' : selectedStats?.solved ?? 0}</dd></div>
+        <div><dt>Average time</dt><dd aria-label={!loading && averageTime(selected) === '–' ? 'No average time yet' : undefined}>{averageTime(selected)}</dd></div>
       </dl>
     </div>
     {auto && <label className="difficulty-selector-auto">

@@ -7,6 +7,7 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
 let server: ViteDevServer
 let Board: (props: Record<string, unknown>) => ReactNode
+let Controls: (props: Record<string, unknown>) => ReactNode
 let settings: Record<string, (props: Record<string, unknown>) => ReactNode>
 let preferences: Record<string, unknown>
 
@@ -18,6 +19,7 @@ before(async () => {
     optimizeDeps: { noDiscovery: true, include: [] },
   })
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
+  ;({ Controls } = await server.ssrLoadModule('/src/components/Controls.tsx'))
   settings = await server.ssrLoadModule('/src/components/Settings.tsx')
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
 })
@@ -177,10 +179,36 @@ test('desktop and mobile candidate-layout controls use independent radio groups'
   }), 2)
 })
 
-test('desktop and mobile candidate-highlight controls use independent radio groups', () => {
-  assertIndependentGroups(radioGroups('HighlightSettings', {
+test('Highlighting settings only offer automatic highlight toggles', () => {
+  const html = renderToStaticMarkup(createElement(settings.HighlightSettings, {
     highlighting: preferences.DEFAULT_HIGHLIGHT_PREFERENCES, setHighlighting() {},
-  }), 4)
+  }))
+  assert.equal(html.match(/type="checkbox"/g)?.length, 3)
+  assert.doesNotMatch(html, /type="radio"/)
+})
+
+test('candidate tools highlight individual candidates and preserve their annotations', () => {
+  const tree = boardTree({ highlightedDigitMask: 1, highlightedDigitMatch: 'any',
+    annotations: { candidates: new Map([[0, new Map([[1, { color: 'red', mark: 'strike', label: 'can be removed' }]])]]) },
+  })
+  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-highlight-light')))
+  const matches = tree.filter(({ props }) => String(props.className).includes('candidate-match'))
+  assert.deepEqual(matches.map(({ props }) => props.children), [1, 1])
+  assert.equal(matches[0].props['data-mark'], 'strike')
+})
+
+test('the play grid can fill cells that contain a candidate matching the selected digit', () => {
+  const highlight = (matchingCandidates: boolean) => boardTree({
+    candidates: [3, 2, ...Array(79).fill(0)], highlightedDigit: 1, highlightCandidateCells: true,
+    highlighting: { ...(preferences.DEFAULT_HIGHLIGHT_PREFERENCES as object), matchingCandidates },
+  })
+  const tree = highlight(true)
+  const [match, other] = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(match.props.className), /\bcandidate-highlight-cell\b/)
+  assert.match(String(match.props['aria-label']), /cell highlighted for candidate 1/)
+  assert.doesNotMatch(String(other.props.className), /\bcandidate-highlight-cell\b/)
+  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-match')))
+  assert.ok(!highlight(false).some(({ props }) => String(props.className).includes('candidate-highlight-cell')))
 })
 
 test('desktop and mobile workspace-mode controls use independent radio groups', () => {
@@ -188,4 +216,31 @@ test('desktop and mobile workspace-mode controls use independent radio groups', 
     appearance: preferences.DEFAULT_APPEARANCE, setAppearance() {}, inputSize: 210, setInputSize() {},
     workspaceMode: 'standard', setWorkspaceMode() {},
   }), 2)
+})
+
+test('puzzle Undo and Redo stay enabled during chain drawing when history exists', () => {
+  const defaults = {
+    mode: 'value', pencil: false, togglePencil() {},
+    candidateKind: 'center', setCandidateKind() {}, advancedModes: preferences.DEFAULT_ADVANCED_MODES,
+    colorMode: false, colorTarget: 'cell', setColorTarget() {}, onSwitchShade() {},
+    eraseMode: false, toggleEraseMode() {}, highlightMode: false, toggleHighlightMode() {},
+    selectedDigit: null, hasCellSelection: false, values: '0'.repeat(81),
+    input() {}, undo() {}, redo() {}, disabled: false, draft: false,
+    inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {},
+    multi: false, toggleMulti() {}, compact: true, chainDrawing: true,
+  }
+  const buttonTag = (html: string, label: string) => [...html.matchAll(/<button\b[^>]*>/g)]
+    .map(([tag]) => tag).find(tag => tag.includes(`aria-label="${label}"`)) ?? ''
+
+  const available = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true }))
+  assert.doesNotMatch(buttonTag(available, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.doesNotMatch(buttonTag(available, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
+
+  const noHistory = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: false, canRedo: false }))
+  assert.match(buttonTag(noHistory, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.match(buttonTag(noHistory, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
+
+  const locked = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true, disabled: true }))
+  assert.match(buttonTag(locked, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
+  assert.match(buttonTag(locked, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 })

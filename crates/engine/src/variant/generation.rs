@@ -49,6 +49,10 @@ pub struct VariantGenerationOptions {
     /// and other numeric rules conservatively retain their digits. Exact duplicate rules
     /// do not distinguish played puzzles. Public definitions remain unchanged.
     /// Optional drawing paths do not distinguish otherwise identical logical puzzles.
+    /// Renban compares complete sets and digit mappings that preserve their allowed intervals.
+    /// Inequalities and Thermometers compare the same implied strict order, including
+    /// redundant comparisons. With only digit-invariant companions, complementing all
+    /// digits and reversing every comparison preserves the played-puzzle identity.
     pub exclude: Vec<VariantPuzzle>,
 }
 

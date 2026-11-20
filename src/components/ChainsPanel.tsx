@@ -1,21 +1,28 @@
-import { Button, IconButton } from './Button'
-import { Eraser, Eye, EyeOff, Link2, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Deduction, DeductionAction } from '../sudoku/engine'
+import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
-import { DIGITS } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
+import { techniqueActionKey } from '../sudoku/technique-progress'
 import type { BoardLink } from './BoardAnnotations'
-import { CHAIN_COLORS, chainColor, type useChainSketch } from './useChainSketch'
+import { Button, IconButton } from './Button'
+import { Modal } from './Modal'
+import type { useChainSketch } from './useChainSketch'
+import { usePlayPreference } from './usePlayPreference'
 
 type ChainInspection = CellReferenceOptions & { deduction: Deduction; links: readonly BoardLink[]; explanation?: string }
 type Props = {
   sketch: ReturnType<typeof useChainSketch>
-  onApply: (actions: readonly DeductionAction[]) => void
-  shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain'>
+  onApply: () => void
+  applyFailed: boolean
+  onToggleDrawing: () => void
+  onChooseColors: () => void
+  shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'newChain' | 'applyEdits'>
   compact?: boolean
-  digitHighlight?: { digit: number | null; onChange: (digit: number | null) => void }
+  strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
   unavailable?: string
   inspection?: ChainInspection
 }
@@ -41,7 +48,175 @@ function LinkLegend({ notation = false }: { notation?: boolean }) {
   </div>
 }
 
-export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighlight, unavailable, inspection }: Props) {
+export function ChainSwatches({ first, second }: { first: ChainColor; second: ChainColor }) {
+  return <span className="chain-swatches" aria-hidden="true">
+    <i style={{ backgroundColor: chainColor(first) }} />
+    <i style={{ backgroundColor: chainColor(second) }} />
+  </span>
+}
+
+export function ChainColorsDialog({ open, first, second, onSelect, onClose, onEdit }: {
+  open: boolean; first: ChainColor; second: ChainColor
+  onSelect: (first: ChainColor, second: ChainColor) => void
+  onClose: () => void; onEdit?: () => void
+}) {
+  const [pairs] = usePlayPreference('chainColorPairs')
+  const pairIndex = chainPairIndex(first, second, pairs)
+  const choices = pairs.map(([first, second], index) => ({ first, second, label: `Pair ${index + 1}` }))
+  if (pairIndex === -1) choices.push({ first, second, label: `${first} and ${second}` })
+  const selected = pairIndex === -1 ? choices.length - 1 : pairIndex
+
+  return <Modal title="Chain colors" open={open} onClose={onClose}>
+    <div className="chain-color-options">
+      {choices.map(({ first, second, label }, index) => (
+        <Button key={label} variant="quiet" aria-pressed={index === selected} onClick={() => {
+          if (index !== selected) onSelect(first, second)
+          onClose()
+        }}>
+          <ChainSwatches first={first} second={second} /> {label}
+        </Button>
+      ))}
+    </div>
+    {onEdit && <div className="dialog-actions">
+      <Button variant="quiet" onClick={onEdit}>Edit color pairs</Button>
+    </div>}
+  </Modal>
+}
+
+type ChainProof = {
+  title: string
+  nodes: readonly number[]
+  strengths?: readonly LinkStrength[]
+  actions: readonly DeductionAction[]
+  explanation?: string
+}
+
+function ChainResults({ proofs }: { proofs: readonly ChainProof[] }) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const groups = new Map<string, ChainProof[]>()
+  for (const proof of proofs) {
+    const group = groups.get(proof.title) ?? []
+    group.push(proof)
+    groups.set(proof.title, group)
+  }
+  const titles = [...groups.keys()]
+  if (!titles.length) return null
+
+  const index = Math.max(0, selected === null ? -1 : titles.indexOf(selected))
+  const title = titles[index]
+  const group = groups.get(title)!
+  const actions = group.flatMap(proof => proof.actions)
+  const results = deductionResults([...new Map(actions.map(action => [techniqueActionKey(action), action])).values()])
+  const explanations = group.filter(proof => Boolean(proof.explanation))
+  function move(offset: number) {
+    setSelected(titles[(index + offset + titles.length) % titles.length])
+  }
+
+  return <article className="chain-analysis">
+    <div className="chain-analysis-heading">
+      <h2 aria-live="polite">{title}</h2>
+      {titles.length > 1 && <div className="chain-result-navigation" role="group" aria-label="Chain technique navigation">
+        <IconButton aria-label="Previous chain technique" onClick={() => move(-1)}>
+          <ArrowLeft size={16} aria-hidden="true" />
+        </IconButton>
+        <span>{index + 1}/{titles.length}</span>
+        <IconButton aria-label="Next chain technique" onClick={() => move(1)}>
+          <ArrowRight size={16} aria-hidden="true" />
+        </IconButton>
+      </div>}
+    </div>
+    {results.length > 0 && <ul className="chain-results">{results.map(result => <li key={result}>{result}</li>)}</ul>}
+    {explanations.length > 0 && <details className="chain-links" key={title} open={results.length ? undefined : true}>
+      <summary>Why this works</summary>
+      {explanations.map(({ nodes, strengths, actions, explanation }) => <div className="chain-proof" key={nodes.join('-')}>
+        {strengths && <p><code>{compactPath(nodes, strengths)}</code></p>}
+        {group.length > 1 && actions.length > 0 && <p>{deductionResults(actions).join(' ')}</p>}
+        <p>{explanation}</p>
+      </div>)}
+    </details>}
+  </article>
+}
+
+function ChainActionsMenu({ actions }: {
+  actions: { label: string; icon: typeof Link2; disabled: boolean; title?: string; opensDialog?: boolean; run: () => void }[]
+}) {
+  const id = useId()
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const popover = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const menu = popover.current
+    const button = trigger.current
+    if (!open || !menu || !button) return
+    const position = () => {
+      const anchor = button.getBoundingClientRect()
+      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
+      const gap = 8
+      const below = window.innerHeight - anchor.bottom - 2 * gap
+      const above = anchor.top - 2 * gap
+      const opensAbove = menu.scrollHeight * scale > below && above > below
+      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below) / scale}px`
+      const left = Math.max(gap, Math.min(anchor.right, window.innerWidth - gap) - menu.offsetWidth * scale)
+      const top = opensAbove ? anchor.top - gap - menu.offsetHeight * scale : anchor.bottom + gap
+      menu.style.left = `${left / scale}px`
+      menu.style.top = `${Math.max(gap, top) / scale}px`
+    }
+    position()
+    const first = menu.querySelector<HTMLButtonElement>('button:not([aria-disabled="true"])') ?? menu.querySelector('button')
+    first?.focus({ preventScroll: true })
+    window.addEventListener('resize', position)
+    window.addEventListener('scroll', position, true)
+    return () => {
+      window.removeEventListener('resize', position)
+      window.removeEventListener('scroll', position, true)
+      menu.removeAttribute('style')
+    }
+  }, [open])
+
+  function close() {
+    popover.current?.hidePopover()
+    trigger.current?.focus({ preventScroll: true })
+  }
+
+  return <>
+    <IconButton ref={trigger} variant="quiet" aria-label="Chain actions"
+      title="Chain actions" aria-haspopup="menu" aria-expanded={open} popoverTarget={id}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowDown') return
+        event.preventDefault()
+        popover.current?.showPopover()
+      }}>
+      <MoreHorizontal size={18} aria-hidden="true" />
+    </IconButton>
+    <div ref={popover} id={id} popover="auto" className="app-menu chain-actions-menu" role="menu" aria-label="Chain actions"
+      onToggle={(event) => setOpen(event.currentTarget.matches(':popover-open'))}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' || event.key === 'Tab') {
+          if (event.key === 'Escape') event.preventDefault()
+          close()
+        } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+          event.preventDefault()
+          const items = Array.from(event.currentTarget.querySelectorAll('button'))
+          const index = items.findIndex(item => item === document.activeElement)
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+            : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+          items[next]?.focus()
+        }
+      }}>
+      {actions.map(({ label, icon: Icon, disabled, title, opensDialog, run }) => (
+        <button type="button" key={label} role="menuitem" tabIndex={-1} aria-disabled={disabled}
+          aria-haspopup={opensDialog ? 'dialog' : undefined} title={title} onClick={() => {
+          if (disabled) return
+          close()
+          run()
+        }}><Icon size={16} aria-hidden="true" />{label}</button>
+      ))}
+    </div>
+  </>
+}
+
+export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, compact, strongLinks, unavailable, inspection }: Props) {
+  const chainLabelId = useId()
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
     const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
@@ -60,155 +235,104 @@ export function ChainsPanel({ sketch, onApply, shortcuts, compact, digitHighligh
   }
 
   const { active } = sketch
-  const medusa = active.type === 'medusa'
   const drawLabel = sketch.drawing ? 'Done drawing' : 'Draw links'
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
   const newKey = shortcutLabel(shortcuts.newChain)
-  const status = sketch.status || (sketch.drawing && active.hidden ? 'Show this chain to draw links.' : '')
-  const singlePath = sketch.chains.length === 1 ? sketch.chains[0] : undefined
-  const openPath = singlePath && singlePath.nodes[0] !== singlePath.nodes.at(-1) ? singlePath : undefined
-  const canFinishOpenPath = openPath ? sketch.canFinishLoop(openPath) : false
-  const editor = <>
-    <div className="chain-settings">
-      <label>
-        <span>Type</span>
-        <span className="chain-select-input">
-          <select value={active.type} disabled={sketch.hasLinks} onChange={(event) => {
-            sketch.setType(event.target.value === 'medusa' ? 'medusa' : 'alternating')
-          }}>
-            <option value="alternating">Alternating (XY, AIC)</option>
-            <option value="medusa">3D Medusa</option>
-          </select>
-        </span>
-      </label>
-      <label>
-        <span>{medusa ? 'Color A' : 'Color'}</span>
-        <span className="chain-select-input chain-color-input">
-          <i style={{ backgroundColor: chainColor(active.color) }} aria-hidden="true" />
-          <select value={active.color} onChange={(event) => sketch.setColor(CHAIN_COLORS[event.target.selectedIndex])}>
-            {CHAIN_COLORS.map((color) => <option key={color}>{color}</option>)}
-          </select>
-        </span>
-      </label>
-      {medusa && <label>
-        <span>Color B</span>
-        <span className="chain-select-input chain-color-input">
-          <i style={{ backgroundColor: chainColor(active.secondColor) }} aria-hidden="true" />
-          <select value={active.secondColor} onChange={(event) => sketch.setColor(CHAIN_COLORS[event.target.selectedIndex], true)}>
-            {CHAIN_COLORS.map((color) => <option key={color}>{color}</option>)}
-          </select>
-        </span>
-      </label>}
+  const applyKey = shortcutLabel(shortcuts.applyEdits)
+  const strongLinkStatus = strongLinks?.hasHighlights && !strongLinks.count ? 'No strong links between the highlighted candidates.' : ''
+  const showStrongLinkInstructions = !sketch.drawing || (sketch.pending === null && !sketch.hasLinks)
+  const completablePaths = sketch.chains.filter(sketch.canFinishLoop)
+  const loopPath = completablePaths.length === 1 ? completablePaths[0]
+    : completablePaths.find(({ nodes }) => sketch.pending !== null && nodes.includes(sketch.pending))
+  const editorControls = <div className="chain-toolbar chain-draw-tools">
+    <div className="chain-path-actions">
+      <Button variant={sketch.drawing ? 'secondary' : 'primary'}
+        title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={onToggleDrawing}>
+        {!sketch.drawing && <Link2 size={15} aria-hidden="true" />} {drawLabel}
+      </Button>
+      <Button variant="quiet" disabled={!sketch.drawing || sketch.pending === null}
+        title="Deselect the current endpoint and keep drawing (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</Button>
     </div>
-    <div className="chain-toolbar chain-draw-tools">
-      <div className="chain-path-actions">
-        <Button type="button" variant={sketch.drawing ? 'secondary' : 'primary'}
-          title={`${drawLabel} (${drawKey})`} aria-keyshortcuts={drawKey} onClick={sketch.toggle}>
-          <Link2 size={15} aria-hidden="true" /> {drawLabel}
-        </Button>
-        <Button type="button" disabled={!sketch.drawing || sketch.pending === null}
-          title="End path (Esc)" aria-keyshortcuts="Escape" onClick={sketch.endPath}>End path</Button>
-      </div>
-      <div className="chain-edit-actions">
-        <IconButton type="button" variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
-          aria-keyshortcuts="Control+Z Meta+Z"
-          disabled={!sketch.canUndo} onClick={sketch.undo}>
-          <Undo2 size={16} aria-hidden="true" />
-        </IconButton>
-        <IconButton type="button" variant="quiet" aria-label="Clear links" title="Clear links"
-          disabled={!sketch.hasLinks} onClick={sketch.clear}>
-          <Eraser size={16} aria-hidden="true" />
-        </IconButton>
-      </div>
+    <div className="chain-edit-actions">
+      <IconButton variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
+        aria-keyshortcuts="Control+Z Meta+Z"
+        disabled={!sketch.canUndo} onClick={sketch.undo}>
+        <Undo2 size={16} aria-hidden="true" />
+      </IconButton>
+      <ChainActionsMenu actions={[
+        { label: 'Choose colors', icon: Palette, disabled: false, opensDialog: true, run: onChooseColors },
+        { label: 'Complete loop', icon: RotateCw, disabled: !loopPath,
+          title: loopPath ? 'Add links to close the path' : completablePaths.length
+            ? 'Select a candidate in the path you want to complete' : 'No loop completion found',
+          run: () => { if (loopPath) sketch.finishLoop(loopPath) } },
+        { label: 'Extend strong links', icon: Link2, disabled: !sketch.canExtendStrongLinks,
+          title: 'Add the remaining strong links from the selected candidate', run: sketch.extendStrongLinks },
+        { label: 'Clear links', icon: Eraser, disabled: !sketch.hasLinks, run: sketch.clear },
+      ]} />
     </div>
-    {status && <p role="status">{status}</p>}
-    {sketch.chains.map((chain) => {
-      const results = deductionResults(chain.actions)
-      const canFinishLoop = sketch.chains.length > 1 && sketch.canFinishLoop(chain)
-      const branched = chain.strengths.length === 0
-      if (!results.length && !canFinishLoop && !branched) return null
-      return <article className="chain-analysis" key={chain.nodes[0]}>
-        {sketch.chains.length > 1 && <h2>{chain.title}</h2>}
-        {branched && <p>Remove a branch to analyze the path.</p>}
-        {results.length > 0 && <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>}
-        {(results.length > 0 || canFinishLoop) && <div className="chain-toolbar">
-          {results.length > 0 && <Button type="button" variant="primary" onClick={() => onApply(chain.actions)}>Apply edits</Button>}
-          {canFinishLoop && <Button type="button" onClick={() => sketch.finishLoop(chain)}>Complete loop</Button>}
-        </div>}
-        {results.length > 0 && chain.explanation && <details className="chain-links">
-          <summary>Why this works</summary><p>{chain.explanation}</p>
-        </details>}
-      </article>
-    })}
-    {sketch.medusas.map(({ nodes, actions, explanation }) => {
-      const results = deductionResults(actions)
-      if (!results.length && !explanation) return null
-      return <article className="chain-analysis" key={nodes[0]}>
-        {sketch.medusas.length > 1 && <h2>{`${nodes.length} candidates starting at ${pointName(chainCandidate(nodes[0]))}`}</h2>}
-        {results.length > 0 ? <>
-          <ul className="chain-results">{results.map((result) => <li key={result}>{result}</li>)}</ul>
-          <Button type="button" variant="primary" onClick={() => onApply(actions)}>Apply edits</Button>
-          {explanation && <details className="chain-links"><summary>Why this works</summary><p>{explanation}</p></details>}
-        </> : <p>{explanation}</p>}
-      </article>
-    })}
-  </>
+  </div>
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-panel-tools">
-        <Button type="button" title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
+        <Button title={`New chain (${newKey})`} aria-keyshortcuts={newKey}
           disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
           <Plus size={15} aria-hidden="true" /> New chain
         </Button>
-        {digitHighlight && <label>
-          <span>Highlight digit</span>
-          <select value={digitHighlight.digit ?? ''} onChange={(event) => digitHighlight.onChange(Number(event.target.value) || null)}>
-            <option value="">None</option>
-            {DIGITS.map((digit) => <option key={digit}>{digit}</option>)}
-          </select>
-        </label>}
+        <div className="chain-panel-end-actions">
+          <Button variant="primary" className="apply-chain-edits" disabled={!sketch.allActions.length}
+            title={`Apply deductions from all chains (${applyKey})`} aria-keyshortcuts={applyKey} onClick={onApply}>
+            Apply edits
+          </Button>
+          {strongLinks && <Button aria-pressed={strongLinks.shown} onClick={strongLinks.toggle}>Show strong links</Button>}
+        </div>
       </div>
+      {applyFailed && <p role="status">Some chain edits conflict or the grid has changed.</p>}
+      {strongLinks?.shown && (showStrongLinkInstructions || strongLinkStatus) && <div className="strong-link-tool">
+        {showStrongLinkInstructions && <p>Select a candidate or link to start drawing.</p>}
+        {strongLinkStatus && <p role="status">{strongLinkStatus}</p>}
+      </div>}
       <ul className="chain-list" aria-label="Drawn chains">
-        {sketch.sketches.map(({ id, type, color, secondColor, hidden, edges, chains, paths }, index) => {
+        {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths }, index) => {
           const name = `Chain ${index + 1}`
           const selected = id === active.id
           const visibilityLabel = `${hidden ? 'Show' : 'Hide'} ${name.toLowerCase()}`
           const deleteLabel = `Delete ${name.toLowerCase()}`
-          const title = type === 'medusa' ? '3D Medusa'
-            : chains.length === 1 && chains[0].strengths.length !== 1 ? chains[0].title : undefined
+          const typeId = types.length ? `${chainLabelId}-${id}-type` : undefined
+          const notationId = paths.length ? `${chainLabelId}-${id}-notation` : undefined
+          const description = [typeId, notationId].filter(Boolean).join(' ') || undefined
           const VisibilityIcon = hidden ? EyeOff : Eye
           return <li className="chain-row" key={id} data-active={selected || undefined} data-hidden={hidden || undefined}
             onClick={(event) => {
               if (!selected && event.target instanceof Element && !event.target.closest('button')) sketch.switchSketch(id)
             }}>
             <div className="chain-row-actions">
-              <button type="button" className="chain-select" aria-pressed={selected} onClick={() => sketch.switchSketch(id)}>
-                <span className="chain-swatches" aria-hidden="true">
-                  <i style={{ backgroundColor: chainColor(color) }} />
-                  {type === 'medusa' && <i style={{ backgroundColor: chainColor(secondColor) }} />}
+              <button type="button" className="chain-select" aria-label={name} aria-describedby={description}
+                aria-pressed={selected} onClick={() => sketch.switchSketch(id)}>
+                <span className="chain-select-label">
+                  <ChainSwatches first={color} second={secondColor} />
+                  <span className="chain-name">{name}</span>
+                  {typeId && <span id={typeId} className="chain-type-label">{types.join(' · ')}</span>}
                 </span>
-                {name}
+                {notationId
+                  ? <span className="chain-notation" id={notationId}><code>{paths.map(({ nodes, strengths }) => compactPath(nodes, strengths)).join(', ')}</code></span>
+                  : <span className="chain-empty">No links yet.</span>}
               </button>
-              {selected && openPath && <IconButton type="button" variant="quiet" aria-label="Complete loop"
-                title={canFinishOpenPath ? 'Complete loop' : 'No loop completion found'}
-                disabled={!canFinishOpenPath} onClick={() => sketch.finishLoop(openPath)}>
-                <RotateCw size={16} aria-hidden="true" />
-              </IconButton>}
-              <IconButton type="button" variant="quiet" aria-label={visibilityLabel} title={visibilityLabel}
-                onClick={() => sketch.toggleVisibility(id)}>
+              <IconButton variant="quiet" aria-label={visibilityLabel} title={visibilityLabel}
+                disabled={!hidden && edges.length === 0} onClick={() => sketch.toggleVisibility(id)}>
                 <VisibilityIcon size={16} aria-hidden="true" />
               </IconButton>
-              <IconButton type="button" variant="quiet" aria-label={deleteLabel} title={deleteLabel}
+              <IconButton variant="quiet" aria-label={deleteLabel} title={deleteLabel}
                 disabled={sketch.sketches.length === 1 && edges.length === 0 && sketch.pending === null} onClick={() => sketch.deleteSketch(id)}>
                 <Trash2 size={16} aria-hidden="true" />
               </IconButton>
             </div>
-            {title && <h2>{title}</h2>}
-            {paths.length > 0
-              ? <p className="chain-notation"><code>{paths.map(({ nodes, strengths }) => compactPath(nodes, strengths)).join(', ')}</code></p>
-              : <p>No links yet.</p>}
             {selected && <div className="chain-editor" role="group" aria-label={`Edit ${name.toLowerCase()}`}>
-              {editor}
+              {editorControls}
+              {sketch.status && <p role="status">{sketch.status}</p>}
+              <ChainResults proofs={[
+                ...sketch.chains.filter(proof => proof.actions.length),
+                ...sketch.medusas.filter(proof => proof.actions.length || proof.explanation),
+              ]} />
             </div>}
           </li>
         })}

@@ -41,7 +41,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const [selected, setSelected] = useState<number[]>([])
   const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
   const [selectedColor, setSelectedColor] = useState<number | null>(null)
-  const [pencil, setPencil] = useState(initialPencil)
+  const [savedPencil, setPencil] = useState(initialPencil)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
   const [highlightMode, setHighlightMode] = useState(false)
   const [colorMode, setColorMode] = useState(false)
@@ -73,6 +73,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const errors = useMemo(() => preferences.errorMode === 'all' ? conflictsOf(values, puzzle.variantPuzzle) : undefined,
     [preferences.errorMode, puzzle.variantPuzzle, values])
   const ruleClues = puzzle.variantPuzzle ? variantLessonClues(puzzle.variantPuzzle) : []
+  const pencil = savedPencil && !highlightMode && !colorMode && !eraseMode
   const mode: Mode = colorMode ? 'color' : pencil
     ? preferences.advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind : 'value'
   const painting = colorMode && colorTarget === 'candidate' && selectedColor !== null
@@ -84,10 +85,14 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     if (!sameLessonDigits(game.position, next.position)) onEdit?.()
     setGame(next)
   }
-  function togglePencil() { setPencil(!pencil); setColorMode(false); setHighlightMode(false); setEraseMode(false) }
-  function toggleHighlight() { setHighlightMode(!highlightMode); setPencil(false); setColorMode(false); setEraseMode(false) }
-  function toggleColor() { setColorMode(!colorMode); setPencil(false); setHighlightMode(false); setEraseMode(false) }
-  function toggleErase() { setEraseMode(!eraseMode); setPencil(false); setColorMode(false); setHighlightMode(false); setSelected([]) }
+  function switchPenPencil(pencil: boolean) { setPencil(pencil); setColorMode(false); setHighlightMode(false); setEraseMode(false) }
+  function toggleHighlight() { setHighlightMode(!highlightMode); setColorMode(false); setEraseMode(false) }
+  function cycleDigitMode() {
+    if (pencil) toggleHighlight()
+    else switchPenPencil(!highlightMode)
+  }
+  function toggleColor() { setColorMode(!colorMode); setHighlightMode(false); setEraseMode(false) }
+  function toggleErase() { setEraseMode(!eraseMode); setColorMode(false); setHighlightMode(false); setSelected([]) }
 
   function switchColorShade() {
     if (!interactive || !colorMode || selectedColor === null) return
@@ -176,11 +181,11 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       if (!event.repeat) switchColorShade()
       return
     }
-    const controls: [EditableShortcutId, () => void][] = [['pencilMode', togglePencil], ['highlightMode', toggleHighlight],
+    const controls: [EditableShortcutId, () => void][] = [['pencilMode', cycleDigitMode], ['highlightMode', toggleHighlight],
       ['colorMode', () => { if (preferences.advancedModes.colorsEnabled) toggleColor() }],
-      ['eraseMode', toggleErase], ['digitMode', () => { setPencil(false); setHighlightMode(false); setColorMode(false); setEraseMode(false) }]]
+      ['eraseMode', toggleErase], ['digitMode', () => switchPenPencil(false)]]
     const control = controls.find(([binding]) => shortcutMatches(event.nativeEvent, shortcuts, binding))
-    if (control) { event.preventDefault(); control[1](); return }
+    if (control) { event.preventDefault(); if (control[0] !== 'pencilMode' || !event.repeat) control[1](); return }
     if (key === 'delete' || key === 'backspace' || key === '0') { event.preventDefault(); input(0); return }
     if (key === 'escape') { setSelected([]); setSelectedDigit(null); setSelectedColor(null); setEraseMode(false); return }
     const offsets: Record<string, number> = { arrowleft: -1, arrowright: 1, arrowup: -9, arrowdown: 9 }
@@ -218,6 +223,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
           setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)
         } : undefined}
         highlightedDigit={preview ? null : selectedDigit} highlighting={preferences.highlighting}
+        highlightCandidateCells={!colorMode && !eraseMode}
         candidateLayout={showAnnotations && annotations?.links?.length ? 'grid' : preferences.advancedModes.candidateLayout}
         onCellDoubleClick={interactive && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
           !colorMode && !eraseMode && selectedDigit === null ? (cell) => {
@@ -231,7 +237,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     </div>
     {guide && <div className="lesson-workbench-guide" ref={guidePanel}>{guide(ready)}</div>}
     {showTools && <div className="lesson-workbench-tools" ref={tools}>
-      <Controls mode={mode} pencil={pencil} togglePencil={togglePencil} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
+      <Controls mode={mode} pencil={pencil} togglePencil={() => switchPenPencil(!savedPencil)} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
         setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor} onSwitchShade={switchColorShade}
         highlightMode={highlightMode} toggleHighlightMode={toggleHighlight} eraseMode={eraseMode} toggleEraseMode={toggleErase}

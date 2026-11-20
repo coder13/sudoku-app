@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { Delete, Highlighter, Palette, Pen, Pencil } from 'lucide-react'
+import { Delete, Highlighter, Link2, Pen, Pencil } from 'lucide-react'
 import { MODE_BADGE_EDGES, type ModeBadgePosition } from '../sudoku/play-preferences'
 
 const MODES = {
   pen: { label: 'Pen', Icon: Pen },
   pencil: { label: 'Pencil', Icon: Pencil },
   highlight: { label: 'Highlight', Icon: Highlighter },
-  color: { label: 'Color', Icon: Palette },
   erase: { label: 'Erase', Icon: Delete },
+  chain: { label: 'Chain drawing', Icon: Link2 },
 } as const
 
 type BadgeDrag = {
@@ -21,13 +21,13 @@ type BadgeDrag = {
   lastPosition?: ModeBadgePosition
 }
 
-export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onCycleMode }: {
+export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, onActivate }: {
   mode: keyof typeof MODES
   descriptionId: string
   cardRef: RefObject<HTMLElement | null>
   position: ModeBadgePosition
   onPosition: (position: ModeBadgePosition) => void
-  onCycleMode: () => void
+  onActivate: () => void
 }) {
   const { label, Icon } = MODES[mode]
   const drag = useRef<BadgeDrag | null>(null)
@@ -124,7 +124,7 @@ export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, 
 
   function clickBadge(event: MouseEvent<HTMLButtonElement>) {
     if (event.detail > 0 && suppressClick.current) return
-    onCycleMode()
+    onActivate()
   }
 
   function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
@@ -142,7 +142,8 @@ export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, 
 
   return <>
     <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
-      aria-label="Cycle input mode" aria-description="Drag or use the left and right arrow keys to move the icon around the puzzle card."
+      aria-label={mode === 'chain' ? 'Stop drawing links' : 'Cycle input mode'}
+      aria-description="Drag or use the left and right arrow keys to move the icon around the puzzle card."
       style={{ '--mode-offset': `${displayedPosition.offset * 100}%` } as CSSProperties}
       onPointerDown={startDrag} onDragStart={(event) => event.preventDefault()}
       onClick={clickBadge} onKeyDown={moveWithKeyboard}>
