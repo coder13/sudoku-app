@@ -8,7 +8,7 @@ import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPl
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, makeGame, paintCells, puzzleIdentity, replaceCandidates } from '../../src/sudoku/game'
+import { EMPTY, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates } from '../../src/sudoku/game'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
