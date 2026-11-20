@@ -1,6 +1,6 @@
 import { runEngine, type Analysis } from './engine.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
-import { createGameId, makeGame, puzzleIdentity, type Game } from './game.ts'
+import { createGameId, makeGame, markSolveUntimed, puzzleIdentity, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
@@ -10,11 +10,26 @@ import { validation } from './puzzle-validation.ts'
 import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
 
-export type PuzzlePreview = { game: Game; format: ImportedPuzzle['format'] | 'Photo or screenshot'; grade?: PuzzleGrade | null }
+export type PuzzlePreview = {
+  game: Game
+  format: ImportedPuzzle['format'] | 'Photo or screenshot'
+  grade?: PuzzleGrade | null
+  hasProgress?: true
+}
 
 export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules'>) {
   const identity = puzzleIdentity(imported)
   return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
+}
+
+export function findImportAttempt(games: readonly Game[], { game, hasProgress }: PuzzlePreview): Game | undefined {
+  if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
+  if (!hasProgress) return findImportedPuzzle(games, game)
+  const { entries, center, corner } = game.position
+  const identity = puzzleIdentity(game)
+  return games.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
+    center.every((mask, cell) => mask === saved.position.center[cell]) &&
+    corner.every((mask, cell) => mask === saved.position.corner[cell]) && puzzleIdentity(saved) === identity)
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
@@ -35,7 +50,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution } = imported
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
@@ -43,7 +58,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
       : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
         : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
         : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
-  const game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
+  let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
     game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })
@@ -69,13 +84,20 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     if (status !== 'unique') throw importValidationError(status)
   }
   if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null }
+  if (progress) {
+    game = markSolveUntimed({
+      ...game, position: { ...game.position, ...progress },
+      started: true, candidatesInitialized: true,
+    })
+  }
+  const preview = { format, ...(progress && { hasProgress: true as const }) }
   game.difficulty = existing?.difficulty
   game.score = existing?.score
   if (game.difficulty === undefined || game.score === undefined) {
     try {
       const grade = existing?.ratingAttempt?.grade ?? await ratePuzzle(givens, game.variant)
-      return { game: applyPuzzleGrade(game, grade), grade, format }
+      return { ...preview, game: applyPuzzleGrade(game, grade), grade }
     } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }
-  return { game, format }
+  return { ...preview, game }
 }

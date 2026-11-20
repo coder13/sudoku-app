@@ -44,6 +44,20 @@ export const Preview: Story = {
   },
 }
 
+export const CoachProgressPreview: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const code = 'SCv7_32_f2ecr3md1b130444rtisubacfqdv8q3t0efq140g2p58bdiaa5u7eiaq7i4iegbn5qts6b7jrkkkq72efi5t9uka29fu6u74oj5kob8p0kq00o01s56ttf6rdqrrik0qe1881i21b7eeogsmk0b1sa4f1pk3olbkj7hv8ag06iv3kuq12u3q3qu7o2gluoh9lapqpavhlvdci3v7uk6rgd7mqtu1vi0v9v53auc5'
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(code)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
+    const grid = await canvas.findByRole('grid', { name: 'Puzzle preview' })
+    await expect(grid.querySelector('[data-cell="2"]')).toHaveAccessibleName(/Row 1, column 3, digit 4/)
+    await expect(grid.querySelector('[data-cell="3"]')).toHaveAccessibleName(/corner candidates 8.*center candidates 2 6/)
+    await expect(canvas.getByRole('button', { name: 'Open puzzle' })).toBeVisible()
+  },
+}
+
 export const JigsawAntiSumPreview: Story = {
   play: async ({ canvas, userEvent }) => {
     const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })

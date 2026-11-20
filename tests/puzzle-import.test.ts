@@ -108,17 +108,32 @@ test('keeps the givens and irregular regions of a Jigsaw grid', async () => {
   assert.equal(new Set(regions.regions.flat()).size, 81)
 })
 
-test('keeps givens only from Current State and maps Coach rule direction', async () => {
+test('keeps 9 × 9 Coach Current State digits and both kinds of candidates separate from givens and rules', async () => {
+  const editable = [...STARTER].flatMap((digit, cell) => digit === '0' ? [cell] : [])
+  const [placedCell, candidateCell, cornerOnlyCell] = editable
+  const givenCell = [...STARTER].findIndex(digit => digit !== '0')
+  const entries = [...EMPTY]
+  entries[placedCell] = '1'
+  const center = Array<number>(81).fill(0)
+  const corner = Array<number>(81).fill(0)
+  center[candidateCell] = 1 | 256
+  corner[candidateCell] = 16
+  corner[cornerOnlyCell] = 511
+  const userDigits = [...entries]
+  userDigits[givenCell] = STARTER[givenCell]
   const state = await detectPuzzle(coach({
     givenDigits: STARTER,
-    userDigits: '100' + EMPTY.slice(3),
-    userCellCandidates: '0-0-230',
+    userDigits: userDigits.join(''),
+    userCellCandidates: center.map(mask => mask << 1).join('-'),
+    userBoxCandidates: corner.map(mask => mask << 1).join('-'),
     givenConstraints: [
       { type: 'diagonalNegative', segments: [], settings: {} },
       { type: 'diagonalPositive', segments: [], settings: {} },
     ],
   }))
   assert.equal(state.givens, STARTER)
+  assert.equal(state.variant?.puzzle.givens, STARTER)
+  assert.deepEqual(state.progress, { entries: entries.join(''), center, corner })
   assert.deepEqual(state.variant?.puzzle.rules, [
     { type: 'diagonal', diagonal: 'main' },
     { type: 'diagonal', diagonal: 'anti' },
@@ -134,6 +149,21 @@ test('keeps givens only from Current State and maps Coach rule direction', async
     const puzzle = await detectPuzzle(coach({ givenDigits: STARTER,
       givenConstraints: [{ type, segments: cells.length ? [{ cells, parameters: {} }] : [], settings: {} }] }))
     assert.deepEqual(puzzle.variant?.puzzle.rules, [rule])
+  }
+})
+
+test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
+  const emptyMasks = Array(81).fill('0').join('-')
+  assert.deepEqual(await detectPuzzle(coach({
+    givenDigits: STARTER, userDigits: EMPTY, userCellCandidates: emptyMasks, userBoxCandidates: '',
+  })), { givens: STARTER, format: 'Sudoku Coach' })
+  const wrongGiven = [...EMPTY]
+  const givenCell = [...STARTER].findIndex(digit => digit !== '0')
+  wrongGiven[givenCell] = STARTER[givenCell] === '1' ? '2' : '1'
+  await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userDigits: wrongGiven.join('') })), /replaces a given/)
+  await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userDigits: '123' })), /invalid placed digits/)
+  for (const mask of ['2-4', '1024' + emptyMasks.slice(1), '513' + emptyMasks.slice(1), '0x2' + emptyMasks.slice(1)]) {
+    await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userBoxCandidates: mask })), /invalid candidate marks/)
   }
 })
 

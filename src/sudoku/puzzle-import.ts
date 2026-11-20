@@ -3,7 +3,7 @@ import type { CollectionReference } from './collection-reference.ts'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
-import { EMPTY } from './game.ts'
+import { EMPTY, type Position } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { decodeLegacyCoach } from './legacy-coach.ts'
@@ -53,6 +53,7 @@ export type ImportedPuzzle = {
   title?: string
   sharedPuzzleId?: string
   collection?: CollectionReference
+  progress?: Pick<Position, 'entries' | 'center' | 'corner'>
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
@@ -203,6 +204,31 @@ function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
 
+function readCoachCandidateMasks(value: unknown): number[] {
+  if (value === undefined || value === '') return Array(81).fill(0)
+  const masks = typeof value === 'string' ? value.split('-') : []
+  if (masks.length !== 81 || masks.some(mask => !/^\d{1,4}$/.test(mask) || Number(mask) > 1022 || Number(mask) % 2)) {
+    throw new Error('This Sudoku Coach progress has invalid candidate marks.')
+  }
+  // Coach stores digit d at bit d. Play stores digit d at bit d - 1.
+  return masks.map(mask => Number(mask) >>> 1)
+}
+
+function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
+  const digits = data.userDigits === undefined || data.userDigits === '' ? EMPTY : data.userDigits
+  if (typeof digits !== 'string' || !/^[0-9]{81}$/.test(digits)) {
+    throw new Error('This Sudoku Coach progress has invalid placed digits.')
+  }
+  if ([...digits].some((digit, cell) => digit !== '0' && givens[cell] !== '0' && digit !== givens[cell])) {
+    throw new Error('The Sudoku Coach progress has a placed digit that replaces a given.')
+  }
+  const entries = [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
+  const center = readCoachCandidateMasks(data.userCellCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
+  const corner = readCoachCandidateMasks(data.userBoxCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
+  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean)) return { entries, center, corner }
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -243,7 +269,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     throw new Error('The Sudoku Coach export is missing rules from the published description.')
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
-  return publication?.title ? { ...imported, title: publication.title } : imported
+  const progress = readCoachProgress(data, givens)
+  return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {

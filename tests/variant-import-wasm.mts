@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
-import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, EMPTY, enter, isSolved, needsInitialCandidates, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { findImportAttempt, findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { hasMarkedPair, validVariantSave, variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
@@ -34,6 +35,53 @@ test('a text grid preview includes its play rating and reuses an existing displa
   assert.equal(cached.game.difficulty, previous.difficulty)
   assert.equal(cached.game.score, previous.score)
   assert.equal(cached.grade, undefined)
+})
+
+test('Coach Current State reopens a mixed-rule attempt independently of puzzle verification and rating', async () => {
+  const fixture = mixedFixtures['x-killer']
+  const cages = fixture.puzzle.rules?.find(rule => rule.type === 'killer-cages')
+  assert.equal(cages?.type, 'killer-cages')
+  const entries = '9' + EMPTY.slice(1) // The published solution has 8 here.
+  const input = coachCode({
+    givenDigits: fixture.puzzle.givens,
+    givenConstraints: [
+      { type: 'diagonalNegative', segments: [] },
+      { type: 'diagonalPositive', segments: [] },
+      { type: 'cage', segments: cages.cages.map(({ cells, sum }) => ({ cells, parameters: { sum } })) },
+    ],
+    userDigits: entries,
+    userCellCandidates: ['0', '16', ...Array(79).fill('0')].join('-'),
+    userBoxCandidates: ['0', '256', ...Array(79).fill('0')].join('-'),
+  })
+  const plain = (await prepareImportedPuzzle(fixture.coach)).game
+  const preview = await prepareImportedPuzzle(`https://sudoku.coach/en/play/${input}`)
+  const { game } = preview
+  assert.equal(preview.hasProgress, true)
+  assert.equal(game.givens, plain.givens)
+  assert.deepEqual(game.variant, plain.variant)
+  assert.equal(game.variant?.solution, fixture.solution)
+  assert.deepEqual([game.difficulty, game.score], [plain.difficulty, plain.score])
+  assert.equal(valuesOf(game)[0], '9')
+  assert.equal(game.position.entries, entries)
+  assert.equal(game.position.center[1], 8)
+  assert.equal(game.position.corner[1], 128)
+  assert.equal(game.started, true)
+  assert.equal(game.timeUntracked, true)
+  assert.equal(needsInitialCandidates(game), false)
+  assert.equal(findImportAttempt([plain], preview), undefined)
+  const restored = readGame(game.id, JSON.stringify(game))
+  assert.ok(restored)
+  assert.deepEqual(restored.position, game.position)
+  assert.equal(findImportAttempt([plain, restored], preview), restored)
+  assert.equal(findImportAttempt([enter(restored, [2], 'value', 3)], preview), undefined)
+  const restarted = restartGame(restored)
+  assert.equal(restarted.position.entries, EMPTY)
+  assert.equal(restarted.givens, fixture.puzzle.givens)
+  assert.equal(needsInitialCandidates(restarted), true)
+  const cached = await prepareImportedPuzzle(input, [plain])
+  assert.deepEqual(cached.game.position, game.position)
+  assert.deepEqual(cached.game.variant, game.variant)
+  assert.equal(cached.game.score, plain.score)
 })
 
 for (const [name, fixture] of Object.entries(mixedFixtures)) test(`${name} imports, plays, rates, and replays with every rule intact`, async () => {
