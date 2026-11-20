@@ -69,6 +69,9 @@ export function variantGenerationRequest(
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
       break
+    case 'adjacent-total':
+      for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'adjacent-total', cells: [a, b] })
+      break
     case 'inequality':
       for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'inequality', cells: [a, b] })
       break

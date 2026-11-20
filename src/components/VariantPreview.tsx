@@ -33,6 +33,10 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
   clone: [{ type: 'clone', groups: [[10, 50], [11, 51], [19, 59], [20, 60]] }],
   thermometer: [{ type: 'thermometer', cells: [10, 19, 29, 30] }, { type: 'thermometer', cells: [68, 58, 49, 48] }],
   arrow: [{ type: 'arrow', circle: 28, cells: [29, 39, 40] }, { type: 'arrow', circle: 61, cells: [52, 43] }],
+  'adjacent-total': [
+    { type: 'adjacent-total', cells: [30, 31], sum: 7 },
+    { type: 'adjacent-total', cells: [39, 40], sum: 13 },
+  ],
   xv: [{ type: 'xv', five: { pairs: [[30, 31]] }, ten: { pairs: [[39, 40]] } }],
   kropki: [{ type: 'kropki', consecutive: { pairs: [[20, 21], [48, 57], [31, 40]] }, ratioTwo: { pairs: [[10, 19], [50, 51], [57, 58]] } }],
 }
@@ -83,7 +87,8 @@ export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzz
   const rules: readonly VariantRule[] = variant === 'whispers'
     ? [{ type: 'whispers', cells: [11, 21, 31, 39, 47, 57], minDifference: generationRuleset(variant, ruleset)!.minDifference }]
     : previews[variant]
-  const viewBox = variant === 'inequality' ? '3 3 2 1' : variant === 'xv' ? '3 3 2 2' : undefined
+  const viewBox = variant === 'inequality' ? '3 3 2 1' : variant === 'xv' ? '3 3 2 2'
+    : variant === 'adjacent-total' ? '2.7 3 2.6 2' : undefined
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
     {rules.length > 0 && <VariantClues rules={rules} viewBox={viewBox} />}
     {variant === 'inequality' && <svg className="variant-clues variant-inequality-preview-digits" viewBox={viewBox} focusable="false">

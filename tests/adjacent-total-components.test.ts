@@ -20,6 +20,8 @@ const source = JSON.parse(readFileSync(new URL('./fixtures/adjacent-sum-coach.js
 const corpus = JSON.parse(readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8')) as Record<string, EngineLessonExample>
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
+let VariantPreview: Component, CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
@@ -28,6 +30,9 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
 
@@ -123,4 +128,39 @@ test('a total of three with both dots and a sign stays inside every outer-edge o
     // The compact sign's halo extends 0.056 grid units beyond its path.
     assert.ok(sign.every(coordinate => coordinate >= .056 && coordinate <= 9 - .056))
   }
+})
+
+
+test('New Puzzle offers Two-cell sums with its own clue preview and both calibrated levels', async () => {
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'adjacent-total' }))
+  assert.match(preview, /data-sum="7"[^>]*>VII<\/text>/)
+  assert.match(preview, /data-sum="13"[^>]*>XIII<\/text>/)
+  const choice = await renderNewPuzzle('/puzzles/new?variant=adjacent-total')
+  assert.match(choice, /\/puzzles\/new\/difficulty\?variant=adjacent-total/)
+  assert.match(choice, /Roman numeral/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=adjacent-total')
+  assert.match(difficulty, /Easy/)
+  assert.match(difficulty, /Medium/)
+  assert.doesNotMatch(difficulty, />Hard</)
+  assert.match(difficulty, /Start medium puzzle/)
+})
+
+test('a solved Two-cell sums game can generate another at its difficulty', () => {
+  const { basePuzzle, additionalSums, solution } = source.authoredControl
+  const puzzle: VariantPuzzle = {
+    ...basePuzzle,
+    rules: additionalSums.map(({ cells, total }: { cells: [number, number]; total: number }) =>
+      ({ type: 'adjacent-total', cells, sum: total })),
+  }
+  const game = {
+    ...makeGame('finished-totals', 'Two-cell sums', puzzle.givens, 'generated'),
+    variant: { id: 'adjacent-total' as const, puzzle, solution },
+    difficulty: 'medium' as const,
+  }
+  game.position.entries = [...solution as string].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+  const html = renderToStaticMarkup(createElement(CompletedPuzzle, {
+    game, games: [game], preferredDifficulty: 'medium', ratingPending: false, shortcutEnabled: false, showGuides: true,
+    onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {},
+  }))
+  assert.match(html, /Next medium puzzle/)
 })
