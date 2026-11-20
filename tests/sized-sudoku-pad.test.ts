@@ -78,6 +78,21 @@ test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear c
   }
 })
 
+test('compact SudokuPad thermometers can use a darker bulb and still follow its endpoint', async () => {
+  const makeExport = (bulb: string, clause: string) => 'scl' + lzString.compressToBase64(String.raw`{
+    ce:[[,,,],[,,,],[,,,],[,,,]],
+    re:[[[0,0],[0,1],[1,0],[1,1]],[[0,2],[0,3],[1,2],[1,3]],[[2,0],[2,1],[3,0],[3,1]],[[2,2],[2,3],[3,2],[3,3]]],
+    ca:[{v:'rules: SUDOKU\n- Fill the grid with the digits 1-4 so that no digit repeats in a row, column, or box.\n\nTHERMOMETER\n- ${clause}'}],
+    l:[{wp:[[0.5,0.5],[2.5,0.5]],c:'#ccc',th:19}],
+    u:[{stroke:'none',ct:[2.5,0.5],w:0.8,h:0.8,r:t,c2:'${bulb}'}]
+  }`)
+  const strict = 'Digits increase in value along a thermometer, starting from the bulb end.'
+  const imported = await detectPuzzle(makeExport('#999', strict))
+  assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [8, 4, 0] }])
+  await assert.rejects(detectPuzzle(makeExport('#f00', strict)), /exactly one end/)
+  await assert.rejects(detectPuzzle(makeExport('#999', 'Digits can stay the same along a thermometer.')), /authored rules/)
+})
+
 test('6 × 6 SudokuPad rejects ambiguous bulbs, unknown companion rules, and altered region geometry', async () => {
   const source = thermoExport(2)
   await assert.rejects(detectPuzzle(encode({ ...source,

@@ -35,3 +35,19 @@ Local app-profile Wasm builds, with paired alternating requests for the released
 The first hint request on an empty 16×16 control with a full-length Renban fell from about 152 ms to 5.3 ms after sizing the assumption work budget to the digit and cell counts. Both prototype runs found zero hints. The 6×6 budget stayed at 2,048 assumption steps.
 
 On the published 4×4 Renban, 200 warm application calls measured 76 µs median for code decoding and 112 µs for decoding, uniqueness, solving, and building the preview. Candidates took 10 µs, Renban hints took 21 µs, and the 25-step walkthrough took 84 µs. The preview measurement starts with the fetched code and excludes HTTP latency.
+
+## Compact Thermometer import
+
+The published 4×4 Thermometer has four bulbs in a darker gray than the shafts. The compact importer uses the recognized strict-increase clause, the matching drawing styles, and the bulb's endpoint to orient each path. The existing 6×6 controls use matching shaft and bulb colors and keep both rectangular box orientations. The tests reject unsupported rule wording and bulbs that cannot identify an endpoint. [Published 4×4 puzzle](https://sudokupad.app/9ghz1vyiv0)
+
+Chrome verified the four bulb locations, the hint and full solution, reload, and a phone share. A separate draft kept both thermometers through editing, undo, redo, saving, and sharing. The app-profile Wasm replay solved the publication in 24 steps and offered four Thermometer hints on the starting grid.
+
+Warm measurements over 200 requests start with the fetched source code and exclude network latency.
+
+| Operation | Median | p95 |
+| --- | ---: | ---: |
+| Decode | 93 µs | 142 µs |
+| Decode, verify uniqueness, and build preview | 127 µs | 213 µs |
+| Candidate masks | 11 µs | 16 µs |
+| Technique Finder hints | 26 µs | 39 µs |
+| Full replay | 77 µs | 141 µs |
