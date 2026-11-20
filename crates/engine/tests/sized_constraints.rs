@@ -178,3 +178,43 @@ fn boxless_cages_and_extra_houses_use_all_sixteen_digits() {
     digits[51] = 16;
     assert!(puzzle.candidates(&digits).is_none());
 }
+
+// https://sudokupad.app/y176p34zew
+#[test]
+fn published_choose_your_fighter_double_arrows_are_unique() {
+    let digits = b"030000000000000000000002000000000000".map(|digit| digit - b'0');
+    let answer = b"435621162354521463346512253146614235".map(|digit| digit - b'0');
+    let rules = [
+        Rule::DoubleArrow { ends: [16, 21], cells: vec![22, 28, 34, 33, 27] },
+        Rule::DoubleArrow { ends: [21, 24], cells: vec![26, 19] },
+        Rule::DoubleArrow { ends: [24, 7], cells: vec![18, 12] },
+        Rule::DoubleArrow { ends: [7, 5], cells: vec![8, 9, 4] },
+        Rule::DoubleArrow { ends: [5, 16], cells: vec![11, 17] },
+    ];
+    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
+    let result = grid.solve_unique(&digits, 100_000).unwrap();
+    assert_eq!(result, answer);
+}
+
+// https://sudokupad.app/xa14jqkz3e
+#[test]
+fn published_hamburger_double_arrows_are_unique() {
+    let digits = b"000000000000000000000000000000000000".map(|digit| digit - b'0');
+    let answer = b"421653365214142536653421536142214365".map(|digit| digit - b'0');
+    let rules = [
+        Rule::DoubleArrow { ends: [0, 4], cells: vec![1, 2, 3] },
+        Rule::DoubleArrow { ends: [11, 35], cells: vec![17, 23, 29] },
+        Rule::DoubleArrow { ends: [34, 30], cells: vec![33, 32, 31] },
+        Rule::DoubleArrow { ends: [12, 24], cells: vec![18] },
+        Rule::DoubleArrow { ends: [7, 10], cells: vec![8, 9] },
+        Rule::DoubleArrow { ends: [10, 22], cells: vec![16] },
+        Rule::DoubleArrow { ends: [22, 19], cells: vec![21, 20] },
+        Rule::DoubleArrow { ends: [19, 22], cells: vec![26, 27] },
+        Rule::DoubleArrow { ends: [19, 22], cells: vec![14, 15] },
+    ];
+    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
+    let result = grid.solve_unique(&digits, 100_000).unwrap();
+    assert_eq!(result, answer);
+}

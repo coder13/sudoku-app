@@ -5,7 +5,10 @@ import { numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberPuzz
 import type { DifficultyStatistics } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
 import {
-  emptyNumberPosition, generatedNumberTokens, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
+  generatedNumberHistory, numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberProgress,
+} from '../number-puzzles/generated-storage'
+import {
+  emptyNumberPosition, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
   parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberProgress,
   type NumberMove, type NumberProgress, type SavedNumberProgress,
 } from '../number-puzzles/progress'
@@ -68,10 +71,6 @@ export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
   | { game: Exclude<NumberGame, GeneratedNumberGame>; generatedEntry?: never }
 )
 
-function positionKey(game: NumberGame, id: string) {
-  return `${game}.position.v1.${id}`
-}
-
 function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
   return {
     to: `/puzzles/${game}/$puzzle` as const,
@@ -81,7 +80,7 @@ function puzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
 }
 
 function boardPosition(game: NumberGame, id: string, board: NumberBoard) {
-  const key = positionKey(game, id)
+  const key = numberPositionKey(game, id)
   const editable = editableCells(board)
   return { editable, key, load: () => loadNumberProgress(key, editable, board.maxValue) }
 }
@@ -170,7 +169,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
   useEffect(() => {
     const catalog = new Map<string, ProgressStatus>()
     for (const entry of entries) {
-      const saved = readNumberProgress(positionKey(game, entry.id))
+      const saved = readNumberProgress(numberPositionKey(game, entry.id))
       const status = saved && progressStatus(config.board(entry), saved)
       if (status) catalog.set(entry.id, status)
     }
@@ -178,15 +177,16 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     if (savedDifficulty && entries.some(entry => entry.difficulty === savedDifficulty)) setDifficulty(savedDifficulty)
     setCatalogProgress(catalog)
 
-    const history = generatedEntry ? generatedNumberTokens(game) : []
     const generated: GeneratedProgress = { active: [], solved: new Map() }
-    if (!generatedEntry || !history.length) {
+    if (!generatedEntry) {
       setGeneratedProgress(generated)
       return
     }
 
     setGeneratedProgress(null)
+    let history: Awaited<ReturnType<typeof generatedNumberHistory>> = []
     let cursor = 0
+    let active = true
     const queue = new MessageChannel()
     const closeQueue = () => {
       queue.port1.close()
@@ -195,13 +195,12 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     const readBatch = () => {
       const deadline = performance.now() + 6
       do {
-        const id = history[cursor++]
-        const saved = readNumberProgress(positionKey(game, id))
-        if (!saved) continue
-        const entry = generatedEntry(id, cursor)
+        const { id, number, progress } = history[cursor++]
+        if (!progress) continue
+        const entry = generatedEntry(id, number)
         if (!entry) continue
-        const status = progressStatus(config.board(entry), saved)
-        const { difficulty, number } = entry
+        const status = progressStatus(config.board(entry), progress)
+        const { difficulty } = entry
         if (status === 'solved') generated.solved.set(difficulty, (generated.solved.get(difficulty) ?? 0) + 1)
         if (status === 'started') generated.active.push({ id, difficulty, number, generated: true })
       } while (cursor < history.length && performance.now() < deadline)
@@ -214,8 +213,19 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     }
     // Allow the picker to paint before checking generated boards.
     queue.port1.onmessage = readBatch
-    const frame = window.requestAnimationFrame(() => queue.port2.postMessage(null))
+    const frame = window.requestAnimationFrame(() => {
+      void generatedNumberHistory(game).then(records => {
+        if (!active) return
+        history = records
+        if (history.length) queue.port2.postMessage(null)
+        else {
+          closeQueue()
+          setGeneratedProgress(generated)
+        }
+      })
+    })
     return () => {
+      active = false
       window.cancelAnimationFrame(frame)
       closeQueue()
     }
@@ -289,6 +299,7 @@ type HintSelection = { choices: readonly Hint[]; index: number; depth: number }
 
 function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: { config: NumberGameConfig<Entry>; entry: Entry }) {
   const { game, name, rules, hasClueCells, generatedEntry } = config
+  const generatedGame = entry.generated && generatedEntry ? game : null
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
@@ -299,6 +310,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }))
   const { position, past, future } = progress
   const [ready, setReady] = useState(false)
+  const [number, setNumber] = useState(entry.number)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
   const [numberInput, setNumberInput] = useState('')
@@ -317,6 +329,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [showSolutionHint, setShowSolutionHint] = useState(false)
   const [status, setStatus] = useState('')
   const [storageError, setStorageError] = useState(false)
+  const lastSave = useRef(0)
   const cellButtons = useRef(new Map<number, HTMLButtonElement>())
   const actionsButton = useRef<HTMLButtonElement>(null)
   const actionsMenu = useRef<HTMLDivElement>(null)
@@ -333,10 +346,21 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const overlayOpen = actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null
 
   useEffect(() => {
+    if (generatedGame) {
+      let active = true
+      void openGeneratedNumberPuzzle(generatedGame, entry.id).then(record => {
+        if (!active) return
+        const stored = record.progress && parseNumberProgress(record.progress, editable, maxValue)
+        if (stored) setProgress(stored)
+        setNumber(record.number)
+        setReady(true)
+      })
+      return () => { active = false }
+    }
     const stored = load()
     if (stored) setProgress(stored)
     setReady(true)
-  }, [load])
+  }, [editable, entry.id, generatedGame, load, maxValue])
 
   function positionActionsMenu(menu: HTMLDivElement) {
     const anchor = actionsButton.current?.getBoundingClientRect()
@@ -351,7 +375,12 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   function update(next: NumberProgress) {
     setProgress(next)
-    setStorageError(!saveNumberProgress(key, next))
+    if (generatedGame) {
+      const save = ++lastSave.current
+      void saveGeneratedNumberProgress(generatedGame, entry.id, next).then(saved => {
+        if (save === lastSave.current) setStorageError(!saved)
+      })
+    } else setStorageError(!saveNumberProgress(key, next))
     setShowCheck(false)
     setHint(null)
     setStatus('')
@@ -680,7 +709,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   const puzzlePanel = <section className="surface number-puzzle-board-card">
     <NumberGameHeading game={game} title={name} inPlay>
-      <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</small>
+      <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
     </NumberGameHeading>
     {renderGrid(!mobile && previewing ? solutionPreview ?? undefined : undefined)}
   </section>

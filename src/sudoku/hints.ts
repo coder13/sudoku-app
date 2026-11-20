@@ -55,6 +55,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-labeled-dots': 'Difference and Ratio dots',
   'sized-difference': 'Difference',
   'sized-arrow': 'Arrow',
+  'sized-double-arrow': 'Double Arrow',
   'sized-region-sum': 'Region Sum',
   'group-line-house-support': 'Repeating groups and houses',
   'group-order-contradiction': 'Group order contradiction',

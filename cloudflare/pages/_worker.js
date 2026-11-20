@@ -169,6 +169,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('double-arrow'), ends: list(cell, 2, 2), cells: list(cell, 1, 2 * size) }) &&
+      new Set([...rule.ends, ...rule.cells]).size === rule.cells.length + 2) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: drawing }) && coversCells(rule)) ||
     (!noRegions && fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
