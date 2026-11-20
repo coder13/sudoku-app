@@ -479,7 +479,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio']
+  const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow']
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
@@ -597,7 +597,7 @@ function fromSudokuPad(code: string, format: ImportFormat = 'SudokuPad'): Import
   if (/^(scl|ctc)/i.test(code)) {
     const data = decodeSudokuPadEnvelope(code)
     if (record(data) && Array.isArray(data.cells) && (data.cells.length === 6 ||
-      data.cells.length === 4 && ['lines', 'underlays', 'overlays'].some(field => Object.hasOwn(data, field)))) {
+      data.cells.length === 4 && ['lines', 'underlays', 'overlays', 'arrows'].some(field => Object.hasOwn(data, field)))) {
       return { ...readSizedRuleSudokuPad(data), format }
     }
     const { givens, grid, rules, source } = decodeSizedSudokuPad(code, data)
