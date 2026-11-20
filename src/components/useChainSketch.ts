@@ -16,6 +16,10 @@ import type { BoardAnnotations, BoardLink, CandidateAnnotation, CellAnnotation }
 import { usePlayPreference } from './usePlayPreference'
 
 type ChainPath = { nodes: readonly number[]; strengths: readonly LinkStrength[] }
+export type ChainProof = {
+  title: string; nodes: readonly number[]; strengths?: readonly LinkStrength[]
+  actions: readonly DeductionAction[]; explanation?: string
+}
 
 function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): ChainPath[] {
   const paths: { nodes: number[]; strengths: LinkStrength[] }[] = []
@@ -50,6 +54,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
   const [status, setStatus] = useState('')
+  const [previewedProof, setPreviewedProof] = useState<ChainProof | null>(null)
   const [colorPairs] = usePlayPreference('chainColorPairs')
   const emptySketch = useMemo(() => ({ ...initialChainSketch, sketches: [newChainSketch(1, colorPairs)] }), [colorPairs])
   const { sketches, activeId, pending } = game.chainSketch ?? emptySketch
@@ -147,11 +152,16 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
     const assigned = new Map<number, { pair: ChainColorPair; side: 0 | 1 }>()
     const links: BoardLink[] = []
+    const activeProofs = canAnalyze && activeAnalysis && !active.hidden ? [...activeAnalysis.chains, ...activeAnalysis.medusas] : []
+    const proof = previewedProof && activeProofs.some(proof => proof === previewedProof) ? previewedProof : null
+    const proofNodes = new Set(proof?.nodes)
+    const proofEdges: ChainEdge[] = proof?.strengths ? proof.nodes.slice(1).map((to, i) => [proof.nodes[i], to]) : []
+    for (const action of proof?.actions ?? []) proofNodes.add(candidateId('place' in action ? action.place : action.eliminate))
 
-    function mark(id: number, annotation: CandidateAnnotation) {
+    function mark(id: number, annotation: CandidateAnnotation, preview = false) {
       const { cell, digit } = chainCandidate(id)
       const row = candidateMarks.get(cell) ?? new Map()
-      row.set(digit, annotation)
+      row.set(digit, preview && proof && !proofNodes.has(id) ? { ...annotation, opacity: 0.5 } : annotation)
       candidateMarks.set(cell, row)
     }
 
@@ -184,7 +194,12 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       for (const { nodes, strengths } of sketch.paths) {
         strengths.forEach((strength, i) => {
           const color = coloring.get(nodes[i])
-          links.push({ from: chainCandidate(nodes[i]), to: chainCandidate(nodes[i + 1]), dashed: strength === 'weak',
+          const from = nodes[i]
+          const to = nodes[i + 1]
+          const inProof = proof?.strengths ? proofEdges.some(edge => sameEdge(edge, [from, to]))
+            : strength === 'strong' && proofNodes.has(from) && proofNodes.has(to)
+          const opacity = proof && sketch.id === active.id && !inProof ? 0.5 : undefined
+          links.push({ from: chainCandidate(from), to: chainCandidate(to), dashed: strength === 'weak', opacity,
             color: strength === 'strong' && color ? chainColor(color.pair[0]) : neutral })
         })
       }
@@ -194,10 +209,10 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
         if (color) {
           assigned.set(node, color)
           mark(node, { color: chainColor(color.pair[color.side]),
-            mark: 'emphasized', label: `Chain color ${color.side === 0 ? 'A' : 'B'}` })
+            mark: 'emphasized', label: `Chain color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === active.id)
         } else {
           assigned.delete(node)
-          mark(node, { color: neutral, mark: 'emphasized', label: 'Linked candidate' })
+          mark(node, { color: neutral, mark: 'emphasized', label: 'Linked candidate' }, sketch.id === active.id)
         }
       }
     }
@@ -211,7 +226,6 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
         label: 'Would have no candidates if the crossed-out color were true',
       })
     }
-    const activeProofs = visibleActive ? [...visibleActive.chains, ...visibleActive.medusas] : []
     const removals = new Set(activeProofs.flatMap(({ actions }) =>
       actions.flatMap(action => 'eliminate' in action ? [candidateId(action.eliminate)] : [])))
     for (const id of removals) {
@@ -219,7 +233,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       const colored = candidateMarks.get(cell)?.get(digit)
       mark(id, colored?.mark === 'emphasized'
         ? { ...colored, strike: true, label: [colored.label, 'can be removed'].filter(Boolean).join(', ') }
-        : { color: 'var(--chain-removal)', mark: 'strike', label: 'can be removed' })
+        : { color: 'var(--chain-removal)', mark: 'strike', label: 'can be removed' }, true)
     }
     for (const { actions } of activeProofs) {
       for (const action of actions) {
@@ -227,7 +241,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
         const { cell, digit } = action.place
         const colored = candidateMarks.get(cell)?.get(digit)
         mark(candidateId(action.place), { color: colored?.color ?? 'var(--chain-placement)',
-          mark: colored?.mark ?? 'ring', label: [colored?.label, 'forced placement'].filter(Boolean).join(', ') })
+          mark: colored?.mark ?? 'ring', label: [colored?.label, 'forced placement'].filter(Boolean).join(', ') }, true)
       }
     }
     if (!active.hidden && pending !== null) {
@@ -238,7 +252,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     }
     const annotations: BoardAnnotations = { cells: contradictionCells, candidates: candidateMarks, links }
     return { annotations, assigned, usedPairs }
-  }, [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs])
+  }, [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs, previewedProof])
 
   const preview = useMemo<BoardLink | undefined>(() => {
     if (pending === null || hovered === null) return
@@ -368,6 +382,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     colorPairs, assignedColors: committed.assigned, usedColorPairs: committed.usedPairs,
     sketches: analyzed, active, status, pending, beginAt, select, finishLoop, stop, endPath, setHighlightedDigit,
     suspend: () => setDrawingIntent(false),
+    setPreviewedProof,
     chains: canAnalyze ? activeAnalysis?.chains ?? [] : [],
     medusas: canAnalyze ? activeAnalysis?.medusas ?? [] : [],
     allActions: applicable.actions, appliedChainIds: applicable.chainIds,

@@ -289,6 +289,23 @@ export const ChainShortcuts: Story = {
     await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
   },
 }
+export const ChainProofPreview: Story = {
+  args: { game: branchedGame, games: [branchedGame] },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.keyboard('x')
+    const grid = await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' })
+    await userEvent.click(await canvas.findByText('Why this works', { selector: 'summary' }))
+    const proof = await canvas.findByText('2r3c6 = 4r3c6 − 4r6c6 = 4r4c6')
+    const faded = () => grid.querySelectorAll('.board-links g[opacity="0.5"]')
+    const branch = within(grid).getByRole('button', { name: /^1 in row 6, column 6,/ })
+    await expect(branch).toHaveStyle({ opacity: '1' })
+    await userEvent.hover(proof)
+    await waitFor(() => expect(faded()).toHaveLength(1))
+    await expect(branch).toHaveStyle({ opacity: '0.5' })
+    await userEvent.unhover(proof)
+    await waitFor(() => expect(faded()).toHaveLength(0))
+  },
+}
 export const MedusaRemoval: Story = {
   args: { game: medusaRemovalGame, games: [medusaRemovalGame] },
 }

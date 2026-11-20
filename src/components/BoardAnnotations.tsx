@@ -9,6 +9,7 @@ export type BoardLink = {
   from: BoardPoint
   to: BoardPoint
   color: string
+  opacity?: number
   muted?: boolean
   dashed?: boolean
   colorBreak?: boolean
@@ -17,7 +18,7 @@ export type BoardLink = {
 }
 
 export type CellAnnotation = { fill?: string; ink?: string; label?: string }
-export type CandidateAnnotation = { color: string; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; label?: string }
+export type CandidateAnnotation = { color: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; label?: string }
 
 export type BoardAnnotations = {
   cells?: ReadonlyMap<number, CellAnnotation>
@@ -37,7 +38,7 @@ export function BoardLinks({ links = NO_LINKS, region, candidateInsets, onSelect
   const items = useMemo(() => {
     const counts = new Map<string, number>()
     const marks: BoardMark[] = []
-    for (const [index, { color, dashed, arrow, muted, colorBreak, selectFrom }] of links.entries()) {
+    for (const [index, { color, opacity, dashed, arrow, muted, colorBreak, selectFrom }] of links.entries()) {
       const points = routes[index]
       if (points.length < 2) continue
       const [start, end] = [points[0], points[points.length - 1]]
@@ -49,7 +50,7 @@ export function BoardLinks({ links = NO_LINKS, region, candidateInsets, onSelect
       const vertices = points.map(({ x, y }) => `${x},${y}`).join(' ')
       const middle = Math.floor(points.length / 2)
       const [before, after] = [points[middle - 1], points[middle]]
-      marks.push(<g key={key}>
+      marks.push(<g key={key} opacity={opacity}>
         {arrow && <marker id={marker} markerWidth="2.5" markerHeight="2.5" refX="2.3" refY="1.25"
           markerUnits="userSpaceOnUse" orient="auto">
           <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
