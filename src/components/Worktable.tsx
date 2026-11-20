@@ -36,6 +36,7 @@ import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { puzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { continueStrongLinkColors } from '../sudoku/strong-link-colors'
 import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/technique-history'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
@@ -378,6 +379,7 @@ export function Worktable({
   const puzzleStageRef = useRef<HTMLDivElement>(null)
   const restoreCellFocus = useRef<number | null>(null)
   const puzzleCardRef = useRef<HTMLElement>(null)
+  const puzzleGridBorderRef = useRef<HTMLDivElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
   const puzzleMenuButtonRef = useRef<HTMLButtonElement>(null)
   const puzzleMenuPopupRef = useRef<HTMLDivElement>(null)
@@ -516,7 +518,8 @@ export function Worktable({
   const drawingIntent = savedPlayState?.drawingIntent ?? null
   const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
   // Strong-link highlighting also works directly from the puzzle footer, without opening Chains.
-  const chainsActive = !grid && (chainsVisible || (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
+  const chainsActive = !grid && (chainsVisible || drawingIntent === true ||
+    (chainKeypadVisible && chainDrawingRequested) || showStrongLinks)
   const variantEliminations = (variant || grid) && eliminations
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
@@ -695,7 +698,7 @@ export function Worktable({
     setActionsOpen(false)
     setPuzzleMenuOpen(false)
     if (game.paused) resumePuzzle()
-    else updateWorkingGame((current) => setGamePaused(current, true))
+    else updateWorkingGame((current) => setGamePaused(current, true, { onOpen: mobile }))
   }
 
   useEffect(() => {
@@ -1559,7 +1562,7 @@ export function Worktable({
       if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
       if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
-      if (!draft && !placeholder && !previewing && !variantRulesOpen && (completed || game.started || game.paused) &&
+      if (!draft && !placeholder && !previewing && !variantRulesOpen && (mobile || completed || game.started || game.paused) &&
         !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
         if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
           (event.key === ' ' && target.closest('button, summary, [role="button"]') && !target.matches('[role="gridcell"][data-cell]')))) return
@@ -2153,8 +2156,8 @@ export function Worktable({
       mobileToolsOpener.current = puzzleMenuButtonRef.current
       focusMobileInput.current = true
     } else if (tool === 'colors') {
+      // Opening a tool tab does not end the active chain drawing mode.
       setColorMode(false)
-      if (sketch.drawing) sketch.suspend()
     }
     selectToolPanel(tool, alsoOpen)
   }
@@ -2283,11 +2286,32 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const gridInputMode = placeholder || draft || showResults || previewing || inspectSubset || browsingStrongLinks || (sketch.drawing && !chainsVisible)
-    ? undefined
-    : sketch.drawing && chainMasks ? 'chain' : eraseMode ? 'erase' : colorMode || brush !== null ? 'color'
-      : highlightMode ? 'highlight' : pencilActive ? 'pencil' : 'pen'
-  const badgeMode = game.paused || rearranging || gridInputMode === 'color' ? undefined : gridInputMode
+  // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
+  // Paused/preview/finished puzzles retain their mode without showing editable controls.
+  const gridInputMode = puzzleInputMode({
+    drawingLinks: sketch.drawing, browsingStrongLinks, inspectingSubsets: inspectSubset,
+    erasing: eraseMode, coloring: colorMode || brush !== null,
+    highlighting: highlightMode, penciling: pencilActive,
+  })
+  const badgeMode = disabled || showResults || draft || (solved && !showSolvedGrid) ? undefined : gridInputMode
+  const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleGridBorderRef} boundaryLabel="puzzle grid border"
+          position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
+            if (badgeMode === 'chain') {
+              if (sketch.drawing) stopDrawingAndFocusGrid()
+              else if (browsingStrongLinks) setShowStrongLinks(false)
+              return
+            }
+            if (inspectSubset) {
+              setSelected([])
+              selectToolPanel('digits')
+            }
+            if (colorsVisible) setColorBrush(null)
+            setEraseMode(false)
+            setColorMode(false)
+            setPencilModifier(false)
+            if (badgeMode === 'pen') setPencil(true)
+            setHighlightMode(badgeMode === 'pencil')
+          }} />
   const showPlayerColors = colorsPanelOpen || colorMode
   const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
@@ -2302,6 +2326,8 @@ export function Worktable({
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
+      modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
+      modeBadge={modeBadge}
       highlightedDigit={strongLinksVisible ? null : chainHighlightDigit} highlightedDigitMask={strongLinksVisible ? strongLinkMask : 0}
       highlightedDigitMatch="any" highlighting={highlighting} highlightCandidateCells={!strongLinksVisible}
       highlightCandidateCount={!strongLinksVisible && highlightCandidatePairs ? 2 : null}
@@ -2318,6 +2344,8 @@ export function Worktable({
       candidatePreview={!inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
+      modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
+      modeBadge={modeBadge}
       label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
       highlighting={hintAnnotations || inspectSubset ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
@@ -2410,8 +2438,7 @@ export function Worktable({
 
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
-        <section ref={puzzleCardRef} className="surface puzzle" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
-          data-input-mode={gridInputMode}
+        <section ref={puzzleCardRef} className="puzzle puzzle-flat" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
           data-desktop-solved={desktop && completed && !previewing || undefined}
           style={{ '--board-font-scale': appearance.gridTextScale, '--candidate-font-scale': appearance.candidateTextSize / 100 } as CSSProperties}>
         {(!draft || placeholder) && <div className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
@@ -2461,7 +2488,7 @@ export function Worktable({
                 aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
                 {showSolvedGrid ? 'View results' : 'View grid'}
               </Button>}
-              {timing.showPause && !draft && !completed && (game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+              {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
                 aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
                 title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
                 aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
@@ -2515,19 +2542,6 @@ export function Worktable({
             </Button>
           })}
         </nav>}
-        {badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleCardRef}
-          position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
-            if (badgeMode === 'chain') {
-              stopDrawingAndFocusGrid()
-              return
-            }
-            if (colorsVisible) setColorBrush(null)
-            setEraseMode(false)
-            setColorMode(false)
-            setPencilModifier(false)
-            if (badgeMode === 'pen') setPencil(true)
-            setHighlightMode(badgeMode === 'pencil')
-          }} />}
         {presentationDraft && <div className="draft-tip"><PencilLine size={16} /> Enter the givens, then save your puzzle.</div>}
         </section>
       </div>

@@ -55,14 +55,45 @@ export function gridDiagonalCells(size: number, diagonal: 'main' | 'anti') {
   return Array.from({ length: size }, (_, row) => row * size + (diagonal === 'main' ? row : size - row - 1))
 }
 
+export function gridCellsShareEdge(first: number, second: number, size: number) {
+  return Math.abs(Math.floor(first / size) - Math.floor(second / size)) + Math.abs(first % size - second % size) === 1
+}
+
+export function kropkiDigitExclusions(rules: readonly SizedConstraintRule[], cell: number, other: number, digit: number, size: number) {
+  if (!gridCellsShareEdge(cell, other, size)) return 0
+  let white = false, black = false, negativeWhite = false, negativeBlack = false
+  const matches = ([a, b]: readonly [number, number]) => a === cell && b === other || a === other && b === cell
+  for (const rule of rules) {
+    if (rule.type !== 'kropki') continue
+    white ||= rule.consecutive?.pairs?.some(matches) === true
+    black ||= rule.ratioTwo?.pairs?.some(matches) === true
+    negativeWhite ||= rule.consecutive?.negative === true
+    negativeBlack ||= rule.ratioTwo?.negative === true
+  }
+  let excluded = 0
+  if (white || black || negativeWhite || negativeBlack) for (let candidate = 1; candidate <= size; candidate++) {
+    const consecutive = Math.abs(digit - candidate) === 1
+    const ratioTwo = digit === 2 * candidate || candidate === 2 * digit
+    if (white && !consecutive || black && !ratioTwo ||
+      !white && !black && (negativeWhite && consecutive || negativeBlack && ratioTwo)) excluded |= 1 << (candidate - 1)
+  }
+  return excluded
+}
+
 export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number, size: number) {
   if (!rules) return 0
-  let excluded = 0
+  let excluded = kropkiDigitExclusions(rules, cell, other, digit, size)
   for (const rule of rules) {
     if (rule.type === 'renban' && cell !== other && rule.cells.includes(cell) && rule.cells.includes(other)) {
       for (let candidate = 1; candidate <= size; candidate++) {
         if (candidate === digit || Math.abs(candidate - digit) >= rule.cells.length) excluded |= 1 << (candidate - 1)
       }
+    }
+    if (rule.type === 'difference' && (rule.cells[0] === cell && rule.cells[1] === other ||
+      rule.cells[1] === cell && rule.cells[0] === other)) {
+      const lower = digit - rule.difference, upper = digit + rule.difference
+      const allowed = (lower >= 1 ? 1 << (lower - 1) : 0) | (upper <= size ? 1 << (upper - 1) : 0)
+      excluded |= ((1 << size) - 1) & ~allowed
     }
     if (rule.type !== 'thermometer') continue
     const offset = rule.cells.indexOf(cell)

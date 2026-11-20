@@ -51,3 +51,39 @@ Warm measurements over 200 requests start with the fetched source code and exclu
 | Candidate masks | 11 µs | 16 µs |
 | Technique Finder hints | 26 µs | 39 µs |
 | Full replay | 77 µs | 141 µs |
+
+## Kropki dots and explicit negative rules
+
+The same pair support code applies to the sized and 9×9 solvers. The sized compiler derives orthogonal edges from the layout and builds each relation's support table once per compilation. A negative rule constrains an edge only when the author enabled that relationship and neither dot color marks the edge. Hints name the specific pair, dot relation, and whether the edge is unmarked.
+
+Independent solving found one completion for each published 4×4 and 6×6 puzzle with its authored dots. Both had multiple standard completions and zero completions after adding implicit negative rules. Chrome verified five and ten dots respectively, author credit, hints, reload, final grids, and phone shares. The Mini editor check also covered two different dots on the same edge, undo and redo, and independent negative settings. [4×4 source](https://sudokupad.app/z58l737mye) · [6×6 source](https://sudokupad.app/izy7jz9hzh)
+
+The following warm app-profile Wasm timings use 200 samples per operation and exclude network latency. Replay took 33 steps on 4×4 and 88 steps on 6×6.
+
+| Operation | 4×4 median / p95 | 6×6 median / p95 |
+| --- | ---: | ---: |
+| Decode | 101 / 285 µs | 71 / 119 µs |
+| Decode, verify uniqueness, and build preview | 140 / 217 µs | 1,085 / 1,339 µs |
+| Candidate masks | 11 / 15 µs | 12 / 15 µs |
+| Technique Finder hints | 22 / 32 µs | 28 / 31 µs |
+| Full replay | 126 / 141 µs | 2,097 / 2,279 µs |
+
+A paired 9×9 control with both negative rules produced identical candidate and hint responses in 400 samples. The old and new medians were 31 and 32 µs for warmed candidates, 104 and 105 µs for compilation and candidates, and 71 µs for hints in both builds.
+
+## Labeled Difference with Renban
+
+The published 6×6 Race track export has two six-cell Renban lines and three numbered Difference markers. The importer preserves labels 1, 2, and 3 as exact absolute differences. A Coach layer with only difference-of-one dots retains the Kropki representation and its existing negative rule. Other numbered Difference layers require positive markers. The importer rejects unsupported negative settings for these layers.
+
+The shared pair solver checked the published grid and its transposed 3×2-box version. Both rule families together give one completion. Either family on its own leaves multiple completions. The wider-grid control also checks the largest possible difference on 4×4, 8×8, and 16×16.
+
+Chrome verified the short link through the Worker, the three printed labels at their exact edge midpoints, both Renban lines, Technique Finder, hints, reload, the authored final grid, and mobile sharing. A Mini draft kept its Difference marker through keyboard editing, reload, undo, and redo. [Race track](https://sudoku.coach/en/s/9uMo)
+
+The local app-profile Wasm benchmark uses 200 warm samples and excludes network latency. The published puzzle offered two Difference hints initially and replayed to the full answer in 45 steps.
+
+| Operation | Median | p95 |
+| --- | ---: | ---: |
+| Read the Coach export | 101 µs | 257 µs |
+| Read, verify uniqueness, and build preview | 210 µs | 456 µs |
+| Candidate masks | 20 µs | 23 µs |
+| Difference hints | 32 µs | 38 µs |
+| Full replay | 256 µs | 278 µs |

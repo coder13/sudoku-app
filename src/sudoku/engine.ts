@@ -35,7 +35,7 @@ type GenerationCommand =
   | { type: 'generation-start'; job: number; request: GenerationRequest }
   | { type: 'generation-advance' | 'generation-cancel'; job: number }
 
-type MarkedPairs = { pairs?: readonly (readonly [number, number])[]; negative?: boolean }
+export type MarkedPairs = { pairs?: readonly (readonly [number, number])[]; negative?: boolean }
 type ClueDirection = 'north' | 'east' | 'south' | 'west'
 type DiagonalDirection = 'north-east' | 'south-east' | 'south-west' | 'north-west'
 
@@ -173,7 +173,9 @@ export type SizedVariantPosition = SizedClassicPosition & {
 }
 
 export type SixGrid = { size: 6 } & ({ boxRows: 2; boxColumns: 3 } | { boxRows: 3; boxColumns: 2 })
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' }>
+export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number, number]; difference: number }
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' }>
+  | SizedDifferenceRule
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'candidates' }
@@ -181,13 +183,17 @@ type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraint
   | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
 )
 
+export type SizedKropkiPair = { cells: [number, number]; relation: 'consecutive' | 'ratio-two'; negative: boolean }
+
 export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
   | { type: 'rule'; rule: number; actions: DeductionAction[] }
+  | { type: 'kropki'; rule: number; pair: SizedKropkiPair; actions: DeductionAction[] }
   | { type: 'contradiction'; assumption: Candidate; placements: Candidate[]; failure: SizedConstraintFailure }
 
 type SizedConstraintFailure = { type: 'cell'; cell: number }
   | { type: 'missing-digit' | 'repeated-digit'; house: House; digit: number }
   | { type: 'rule'; rule: number }
+  | { type: 'kropki'; rule: number; pair: SizedKropkiPair }
 
 type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
 

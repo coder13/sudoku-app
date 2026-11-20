@@ -8,6 +8,7 @@ mod lines;
 mod global_entropy;
 mod logical;
 mod pairs;
+pub(crate) use pairs::{KROPKI, PairConstraint};
 #[cfg(any(feature = "teaching", test))]
 mod practice;
 mod quadruple;
@@ -28,7 +29,7 @@ pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
     VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
 };
-use pairs::{PairClue, PairCompiler, PairConstraint, ParityClue};
+use pairs::{PairClue, PairCompiler, ParityClue};
 #[cfg(all(
     feature = "teaching",
     feature = "wasm-api",

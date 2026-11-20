@@ -58,3 +58,41 @@ test('six-by-six Coach keeps intersecting Renban segments as one set alongside o
   source.givenConstraints[0].segments[1].cells[1] = 36
   await assert.rejects(decodeCoachSix(coachCode(source)), /invalid rules/)
 })
+
+test('sized Coach Kropki combines positive dots, independent negative rules and companion lines', async () => {
+  const source = {
+    ...six, regions: rectangularRegions(2, 3), givenConstraints: [
+      { type: 'difference', settings: { negativeConstraint: true }, segments: [{ cells: [0, 1], parameters: { difference: 1 } }] },
+      { type: 'ratio', settings: { negativeConstraint: false }, segments: [{ cells: [1, 7], parameters: { ratio: 2 } }] },
+      { type: 'renban', segments: [{ cells: [0, 1, 7] }] },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode(source))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', consecutive: { pairs: [[0, 1]], negative: true } },
+    { type: 'kropki', ratioTwo: { pairs: [[1, 7]], negative: false } },
+    { type: 'renban', cells: [0, 1, 7] },
+  ])
+  source.givenConstraints[0].segments[0].cells = [5, 6]
+  await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
+})
+
+test('a labeled Coach Difference layer keeps the explicit 1 alongside larger labels', async () => {
+  const layer = {
+    type: 'difference', settings: { negativeConstraint: false }, segments: [
+      { cells: [0, 1], parameters: { difference: 1 } },
+      { cells: [1, 2], parameters: { difference: 3 } },
+    ],
+  }
+  const code = () => coachCode({ gridSize: 4, givenConstraints: [layer] })
+  const puzzle = await detectPuzzle(code())
+  assert.deepEqual(puzzle.sizedRules, [
+    { type: 'difference', cells: [0, 1], difference: 1 },
+    { type: 'difference', cells: [1, 2], difference: 3 },
+  ])
+  layer.segments[1].parameters.difference = 4
+  await assert.rejects(detectPuzzle(code()), /between 1 and 3/)
+  layer.segments[1].parameters.difference = 3
+  layer.settings.negativeConstraint = true
+  await assert.rejects(detectPuzzle(code()), /unsupported negative rule/)
+})

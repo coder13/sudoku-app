@@ -1,6 +1,10 @@
+mod pairs;
+
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
-pub use crate::variant::{Diagonal as SizedDiagonal, Parity as SizedParity};
+pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
+
+use self::pairs::{SizedPairLink, compile_pairs};
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,6 +20,29 @@ pub enum SizedConstraint {
     Renban {
         cells: Vec<usize>,
     },
+    Kropki {
+        consecutive: MarkedPairs,
+        ratio_two: MarkedPairs,
+    },
+    Difference {
+        cells: [usize; 2],
+        difference: u8,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "kebab-case"))]
+pub enum SizedKropkiRelation {
+    Consecutive,
+    RatioTwo,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct SizedKropkiPair {
+    pub cells: [usize; 2],
+    pub relation: SizedKropkiRelation,
+    pub negative: bool,
 }
 
 /// A deduction from a standard house or one authored rule.
@@ -31,6 +58,11 @@ pub enum SizedConstraintStep {
     },
     Rule {
         rule: usize,
+        actions: Vec<HintAction>,
+    },
+    Kropki {
+        rule: usize,
+        pair: SizedKropkiPair,
         actions: Vec<HintAction>,
     },
     Contradiction {
@@ -51,6 +83,7 @@ pub enum SizedConstraintFailure {
     MissingDigit { house: House, digit: u8 },
     RepeatedDigit { house: House, digit: u8 },
     Rule { rule: usize },
+    Kropki { rule: usize, pair: SizedKropkiPair },
 }
 
 #[derive(Debug)]
@@ -78,6 +111,7 @@ pub struct SizedConstraintGrid {
     diagonals: Vec<Vec<usize>>,
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
+    pair_links: Vec<Vec<SizedPairLink>>,
 }
 
 impl SizedConstraintGrid {
@@ -135,6 +169,7 @@ impl SizedConstraintGrid {
                     }
                     renbans.push(cells.clone());
                 }
+                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. } => {}
             }
         }
         let parity = parity
@@ -142,6 +177,7 @@ impl SizedConstraintGrid {
             .enumerate()
             .filter(|(_, mask)| *mask != layout.full_mask)
             .collect();
+        let pair_links = compile_pairs(size, rules)?;
         Some(Self {
             layout,
             rules: rules.to_vec(),
@@ -149,6 +185,7 @@ impl SizedConstraintGrid {
             diagonals,
             thermometers,
             renbans,
+            pair_links,
         })
     }
 
@@ -205,6 +242,14 @@ impl SizedConstraintGrid {
             for cells in &self.renbans {
                 for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
                     changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for link in self.pair_links.iter().flatten() {
+                let before = link.constraint.cells.map(|cell| candidates[cell]);
+                let supported = link.constraint.restrict(before);
+                changed |= before != supported;
+                for (cell, mask) in link.constraint.cells.into_iter().zip(supported) {
                     candidates[cell] = mask;
                 }
             }
@@ -362,6 +407,34 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
                     }
                 }
+                SizedConstraint::Difference { .. } => {
+                    let link = self.pair_links[rule].first()?;
+                    let support = link.supports(&domains);
+                    if support.contains(&0) {
+                        return None;
+                    }
+                    for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
+                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::Kropki { .. } => {
+                    for link in &self.pair_links[rule] {
+                        let support = link.supports(&domains);
+                        if support.contains(&0) {
+                            return None;
+                        }
+                        let mut actions = Vec::new();
+                        for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
+                            eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
+                        }
+                        if !actions.is_empty() {
+                            choices.push(SizedConstraintStep::Kropki { rule, pair: link.kropki_proof()?, actions });
+                            if choices.len() == limit {
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             if !actions.is_empty() {
                 choices.push(SizedConstraintStep::Rule { rule, actions });
@@ -411,7 +484,8 @@ impl SizedConstraintGrid {
                 SizedConstraintStep::House { proof } => {
                     advance(&proof.actions, &mut digits, &mut eliminations)
                 }
-                SizedConstraintStep::Rule { actions, .. } => {
+                SizedConstraintStep::Rule { actions, .. }
+                | SizedConstraintStep::Kropki { actions, .. } => {
                     advance(actions, &mut digits, &mut eliminations)
                 }
             }
@@ -463,7 +537,8 @@ impl SizedConstraintGrid {
                     };
                     let actions = match hints.choices.pop() {
                         Some(SizedConstraintStep::House { proof }) => proof.actions,
-                        Some(SizedConstraintStep::Rule { actions, .. }) => actions,
+                        Some(SizedConstraintStep::Rule { actions, .. })
+                        | Some(SizedConstraintStep::Kropki { actions, .. }) => actions,
                         _ => break,
                     };
                     placements.extend(actions.iter().filter_map(|action| match action {
@@ -555,6 +630,17 @@ impl SizedConstraintGrid {
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
+                SizedConstraint::Difference { .. } => {
+                    self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
+                }
+                SizedConstraint::Kropki { .. } => {
+                    if let Some(link) = self.pair_links[rule].iter().find(|link| {
+                        link.supports(&domains).contains(&0)
+                    }) {
+                        return Some(SizedConstraintFailure::Kropki { rule, pair: link.kropki_proof()? });
+                    }
+                    false
+                }
             };
             if fails {
                 return Some(SizedConstraintFailure::Rule { rule });
@@ -632,6 +718,10 @@ impl SizedConstraintGrid {
                 used == 0
                     || (u16::BITS - used.leading_zeros() - used.trailing_zeros()) as usize
                         <= cells.len()
+            })
+            && self.pair_links.iter().flatten().all(|link| {
+                let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
+                left == 0 || right == 0 || link.constraint.permits(left, right)
             })
     }
 }

@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import type { SizedConstraintRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
+import type { SizedConstraintRule, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
 import { regionSumParts } from '../sudoku/region-sum'
@@ -9,7 +9,7 @@ import { cloneLayout } from '../sudoku/clone'
 const x = (cell: number, size = 9) => cell % size
 const y = (cell: number, size = 9) => Math.floor(cell / size)
 const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) + 0.5] as const
-const pairKey = (a: number, b: number) => Math.min(a, b) * 81 + Math.max(a, b)
+const pairKey = (a: number, b: number, size = 9) => Math.min(a, b) * size ** 2 + Math.max(a, b)
 const points = (cells: readonly number[], size = 9) => cells.map(cell => center(cell, size).join(',')).join(' ')
 
 function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { type: 'parity' }> & { size?: number }) {
@@ -46,9 +46,43 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
   </g>
 }
 
+function kropkiDots(rules: readonly (VariantRule | SizedDifferenceRule)[], size = 9) {
+  const dots = new Map<number, number>()
+  for (const rule of rules) {
+    if (rule.type !== 'kropki') continue
+    for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
+      for (const [a, b] of marks?.pairs ?? []) {
+        const key = pairKey(a, b, size)
+        dots.set(key, (dots.get(key) ?? 0) | (1 << kind))
+      }
+    }
+  }
+  return dots
+}
+
+function renderKropkiDot(a: number, b: number, kind: number, paired: boolean, compact: boolean, size: number) {
+  const offset = paired ? (kind ? 1 : -1) * (compact ? .1 : .125) : 0
+  const [ax, ay] = center(a, size), [bx, by] = center(b, size)
+  return <circle key={`${kind}-${a}-${b}`} className={`variant-dot ${kind ? 'variant-dot-black' : 'variant-dot-white'}`}
+    cx={(ax + bx) / 2 + (ax === bx ? offset : 0)}
+    cy={(ay + by) / 2 + (ay === by ? offset : 0)} r={compact ? .085 : .105} />
+}
+
+function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferenceRule & { dots: number; size: number }) {
+  const offset = dots === 3 ? .43 : dots ? .3 : 0
+  const point = pairCenter(a, b, offset, size)
+  const [cx, cy] = point.some(coordinate => coordinate < .18 || coordinate > size - .18)
+    ? pairCenter(a, b, -offset, size) : point
+  return <g className="variant-difference" data-difference={difference}>
+    <circle cx={cx} cy={cy} r=".16" />
+    <text x={cx} y={cy}>{difference}</text>
+  </g>
+}
+
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const renbans = rules.filter(rule => rule.type === 'renban')
   const lanes = coloredLineOverlapLanes(renbans, size)
+  const dots = kropkiDots(rules, size)
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
@@ -57,11 +91,19 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     {[...lanes].map(([index, edges]) => <g key={index} className="variant-renban-overlap" data-renban={index + 1}>
       {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={renbanColors[index % renbanColors.length]} />)}
     </g>)}
+    {[...dots].flatMap(([edge, marks]) => {
+      const a = Math.floor(edge / (size ** 2)), b = edge % (size ** 2)
+      return [0, 1].filter(kind => marks & (1 << kind))
+        .map(kind => renderKropkiDot(a, b, kind, marks === 3, false, size))
+    })}
+    {rules.map((rule, index) => rule.type === 'difference' &&
+      <DifferenceClue key={index} {...rule} dots={dots.get(pairKey(...rule.cells, size)) ?? 0} size={size} />)}
   </svg>
 }
 
 export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size: number) {
   const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
+  const at = (cell: number) => `row ${y(cell, size) + 1}, column ${x(cell, size) + 1}`
   let renbanNumber = 0
   for (const rule of rules) {
     if (rule.type === 'diagonal') {
@@ -75,6 +117,17 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
         ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
+    } else if (rule.type === 'difference') {
+      const [a, b] = rule.cells
+      labels[a].add(`difference of ${rule.difference} with ${at(b)}`)
+      labels[b].add(`difference of ${rule.difference} with ${at(a)}`)
+    } else if (rule.type === 'kropki') {
+      for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
+        for (const [a, b] of marks?.pairs ?? []) {
+          labels[a].add(`${color} dot with ${at(b)}`)
+          labels[b].add(`${color} dot with ${at(a)}`)
+        }
+      }
     } else {
       rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
     }
@@ -83,9 +136,9 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
 }
 
 // Use the same side of an edge even when a directed clue reverses its endpoints.
-function pairCenter(a: number, b: number, offset = 0) {
+function pairCenter(a: number, b: number, offset = 0, size = 9) {
   const [first, second] = a < b ? [a, b] : [b, a]
-  const [ax, ay] = center(first), [bx, by] = center(second)
+  const [ax, ay] = center(first, size), [bx, by] = center(second, size)
   const length = Math.hypot(bx - ax, by - ay)
   return [(ax + bx) / 2 - (by - ay) / length * offset,
     (ay + by) / 2 + (bx - ax) / length * offset] as const
@@ -304,7 +357,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
     ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
     ...(rule.type === 'between' ? [{ rule, index, overlay: 'between-endpoints' as const, layer: .65 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
-  const dots = new Map<number, number>()
+  const dots = kropkiDots(rules)
   const sums = new Map<number, Map<number, SumKind>>()
   const addSum = (a: number, b: number, sum: number, kind: SumKind) => {
     const key = pairKey(a, b), marks = sums.get(key) ?? new Map<number, SumKind>()
@@ -316,13 +369,6 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
     if (rule.type === 'xv') {
       for (const [kind, marks] of [rule.five, rule.ten].entries()) for (const [a, b] of marks?.pairs ?? []) {
         addSum(a, b, kind === 0 ? 5 : 10, 'xv')
-      }
-    }
-    if (rule.type !== 'kropki') continue
-    for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
-      for (const [a, b] of marks?.pairs ?? []) {
-        const key = pairKey(a, b)
-        dots.set(key, (dots.get(key) ?? 0) | (1 << kind))
       }
     }
   }
@@ -415,10 +461,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
               // A sum of three can validly share both dots and a sign. Keep
               // the complete group inside the cells even at the grid edge.
               const compact = other && sums.has(pairKey(a, b))
-              const offset = other ? (kind ? 1 : -1) * (compact ? .1 : .125) : 0
-              return <circle key={`${kind}-${a}-${b}`} className={`variant-dot ${kind ? 'variant-dot-black' : 'variant-dot-white'}`}
-                cx={(x(a) + x(b) + 1) / 2 + (x(a) === x(b) ? offset : 0)}
-                cy={(y(a) + y(b) + 1) / 2 + (y(a) === y(b) ? offset : 0)} r={compact ? .085 : .105} />
+              return renderKropkiDot(a, b, kind, other, compact, 9)
             }))}</g>
         default: return null
       }

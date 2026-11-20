@@ -89,7 +89,8 @@ export function usePuzzleZoom(enabled: boolean, puzzleId: string, cancelGridPres
   }
 
   function onPointerDownCapture(event: PointerEvent<HTMLDivElement>) {
-    if (!enabled) return
+    // The floating mode button has its own drag gesture, even over a zoomed grid.
+    if (!enabled || (event.target instanceof Element && event.target.closest('.puzzle-mode-tab'))) return
     const points = touches.current
     if (!points.size) consumed.current = false
     if (event.pointerType !== 'touch') return

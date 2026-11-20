@@ -15,14 +15,14 @@ type Allowed = [u16; 9];
 type Relation = fn(u8, u8) -> bool;
 
 #[derive(Clone, Debug)]
-pub(super) struct PairConstraint {
+pub(crate) struct PairConstraint<const N: usize = 9> {
     pub cells: [usize; 2],
-    supports: [Allowed; 2],
+    supports: [[u16; N]; 2],
 }
 
-impl PairConstraint {
-    fn new(cells: [usize; 2], forward: Allowed) -> Self {
-        let mut backward = [0; 9];
+impl<const N: usize> PairConstraint<N> {
+    fn new(cells: [usize; 2], forward: [u16; N]) -> Self {
+        let mut backward = [0; N];
         for (index, &mask) in forward.iter().enumerate() {
             for digit in digits(mask) {
                 backward[usize::from(digit - 1)] |= 1 << index;
@@ -32,6 +32,30 @@ impl PairConstraint {
             cells,
             supports: [forward, backward],
         }
+    }
+
+    pub(crate) fn from_relation(
+        [first, second]: [usize; 2],
+        size: usize,
+        relation: impl Fn(u8, u8) -> bool,
+    ) -> Self {
+        let cells = [first.min(second), first.max(second)];
+        let forward = std::array::from_fn(|index| {
+            if index >= size {
+                return 0;
+            }
+            let left = index as u8 + 1;
+            (1..=size as u8)
+                .filter(|&right| {
+                    if first < second {
+                        relation(left, right)
+                    } else {
+                        relation(right, left)
+                    }
+                })
+                .fold(0, |mask, right| mask | digit_bit(right))
+        });
+        Self::new(cells, forward)
     }
 
     pub fn permits(&self, first: u8, second: u8) -> bool {
@@ -112,7 +136,7 @@ struct PositiveMarker {
     rule_indices: Vec<usize>,
 }
 
-pub(super) const KROPKI: [Relation; 2] =
+pub(crate) const KROPKI: [Relation; 2] =
     [|a, b| a.abs_diff(b) == 1, |a, b| a.max(b) == 2 * a.min(b)];
 pub(super) const XV: [Relation; 2] = [|a, b| a + b == 5, |a, b| a + b == 10];
 
@@ -417,20 +441,7 @@ fn path(source: &Arc<RuleSource>, cells: &[usize], relation: impl Fn(u8, u8) -> 
 }
 
 fn link([first, second]: [usize; 2], relation: impl Fn(u8, u8) -> bool) -> PairConstraint {
-    let cells = [first.min(second), first.max(second)];
-    let forward = std::array::from_fn(|index| {
-        let left = index as u8 + 1;
-        (1..=9)
-            .filter(|&right| {
-                if first < second {
-                    relation(left, right)
-                } else {
-                    relation(right, left)
-                }
-            })
-            .fold(0, |mask, right| mask | digit_bit(right))
-    });
-    PairConstraint::new(cells, forward)
+    PairConstraint::from_relation([first, second], 9, relation)
 }
 
 pub(super) fn orthogonal_pairs() -> impl Iterator<Item = [usize; 2]> {

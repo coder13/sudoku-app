@@ -31,6 +31,9 @@ export const SixWithCombinedRules: Story = {
       { type: 'parity', parity: 'odd', cells: [25] },
       { type: 'renban', cells: [20, 13, 19] },
       { type: 'thermometer', cells: [12, 13, 20, 27] },
+      { type: 'difference', cells: [13, 19], difference: 2 },
+      { type: 'difference', cells: [8, 9], difference: 1 },
+      { type: 'kropki', consecutive: { pairs: [[8, 9]] }, ratioTwo: { pairs: [[8, 9]] } },
     ],
     selected: [20], candidates: Array.from({ length: 36 }, (_, cell) => cell === 20 ? 0b101000 : 0),
   },
@@ -41,6 +44,14 @@ export const MiniRenbanLine: Story = {
     grid: MINI_GRID, givens: '1000000000000000', values: '1000000000000000',
     sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1], [1, 5]] }],
     selected: [5],
+  },
+  decorators: [(Story) => <Width width={290}><Story /></Width>],
+}
+export const MiniKropkiDots: Story = {
+  args: {
+    grid: MINI_GRID, givens: '1000000000000000', values: '1000000000000000',
+    sizedRules: [{ type: 'kropki', consecutive: { pairs: [[0, 1], [6, 10]] }, ratioTwo: { pairs: [[0, 1], [2, 6]] } }],
+    selected: [1], active: 1,
   },
   decorators: [(Story) => <Width width={290}><Story /></Width>],
 }

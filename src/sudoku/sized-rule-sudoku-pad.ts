@@ -35,9 +35,38 @@ function readPath(value: unknown, size: number) {
   return path
 }
 
+function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
+  if (!Array.isArray(overlays) || !overlays.length || overlays.length > 4 * size * (size - 1)) {
+    throw new Error('This SudokuPad export has invalid Kropki dots.')
+  }
+  const consecutive: [number, number][] = [], ratioTwo: [number, number][] = []
+  for (const overlay of overlays) {
+    if (!record(overlay) || Object.keys(overlay).some(key =>
+      !['stroke', 'center', 'width', 'height', 'rounded', 'text', 'color', 'backgroundColor', 'borderColor', 'thickness'].includes(key)) ||
+      overlay.rounded !== true || typeof overlay.width !== 'number' || overlay.width !== overlay.height ||
+      overlay.width <= 0 || overlay.width > .5 || overlay.text !== undefined && overlay.text !== '' ||
+      overlay.stroke !== undefined && overlay.stroke !== 'none' || !Array.isArray(overlay.center) ||
+      overlay.center.length !== 2 || !overlay.center.every(point => typeof point === 'number')) {
+      throw new Error('This SudokuPad export has an unsupported dot.')
+    }
+    const color = typeof overlay.backgroundColor === 'string' ? overlay.backgroundColor.toLowerCase() : ''
+    const pairs = ['#fff', '#ffffff', '#ffffffff'].includes(color) ? consecutive
+      : ['#000', '#000000', '#000000ff'].includes(color) ? ratioTwo : undefined
+    if (!pairs) throw new Error('A Kropki dot must be white or black.')
+    const [row, col] = overlay.center
+    if (Number.isInteger(row) && Number.isInteger(col - .5)) {
+      pairs.push([boardCell([row - .5, col], size, .5), boardCell([row + .5, col], size, .5)])
+    } else if (Number.isInteger(row - .5) && Number.isInteger(col)) {
+      pairs.push([boardCell([row, col - .5], size, .5), boardCell([row, col + .5], size, .5)])
+    } else throw new Error('A Kropki dot must lie between two neighboring cells.')
+  }
+  return { type: 'kropki', ...(consecutive.length && { consecutive: { pairs: consecutive } }),
+    ...(ratioTwo.length && { ratioTwo: { pairs: ratioTwo } }) }
+}
+
 export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
-  const fields = ['id', 'metadata', 'cages', 'cells', 'regions', 'lines', 'underlays']
-  const { cells, metadata, regions, cages, lines, underlays } = data
+  const fields = ['id', 'metadata', 'cages', 'cells', 'regions', 'lines', 'underlays', 'overlays']
+  const { cells, metadata, regions, cages, lines, underlays, overlays } = data
   if (Object.keys(data).some(key => !fields.includes(key)) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
     Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution'].includes(key)) ||
@@ -82,12 +111,16 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
   const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
+  const kropki = /^Digits separated by a white dot are consecutive\. Digits separated by a black dot have a 1:2 ratio\. Not all dots are given\.$/i
+  const compactKropki = /^PARTIAL KROPKI - A white dot between two cells requires that the value in one cell is exactly 1 greater than the value of the other cell\. - A black dot between two cells requires that the value in one cell is exactly double the value of the other cell\.$/i
+  const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause)
+  const authoredKropki = clauses.some(isKropki)
   const authoredThermometers = clauses.some(isThermometer)
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause))
   const authoredRenban = clauses.some(isRenban)
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
     Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns : Number(compactBase?.[1]) === size
-  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause))) {
+  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause))) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
@@ -128,6 +161,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
         : 'This SudokuPad puzzle has markings without supported rules.')
     }
   }
+  if (authoredKropki) rules.push(readKropkiDots(overlays, size))
+  else if (overlays !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   if (bulbs.length || authoredThermometers !== rules.some(rule => rule.type === 'thermometer') ||
     authoredRenban !== rules.some(rule => rule.type === 'renban') || !isSizedRuleList(rules, size) ||
     (size === 4 && !rules.length)) {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { applyDeduction, fillEntries, isSolved, makeGame, puzzleIdentity, restartGame, undo } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -6,7 +7,7 @@ import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
-import { runEngine } from '../src/sudoku/engine.ts'
+import { runEngine, type SizedConstraintRule } from '../src/sudoku/engine.ts'
 import { decodeCoachSix } from '../src/sudoku/puzzle-import.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -137,5 +138,45 @@ test('mixed 6 × 6 Renban and thermometer need both overlapping rules in both bo
     const trace = await runEngine({ type: 'sized-variant', operation: 'trace', position: puzzle })
     assert.equal(trace?.at(-1)?.digits.join(''), solution)
     assert.ok(trace?.some(step => step.deduction?.type === 'rule' && step.deduction.rule === 0))
+  }
+})
+
+test('Race track keeps both rule families through exact solving and replay in either 6 × 6 box orientation', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-race-track.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string
+  }
+  const original = await decodeCoachSix(fixture.code)
+  assert.deepEqual(original.rules, [
+    { type: 'renban', cells: [9, 8, 14, 20, 26, 27] },
+    { type: 'renban', cells: [8, 9, 15, 21, 27, 26] },
+    { type: 'difference', cells: [26, 20], difference: 1 },
+    { type: 'difference', cells: [8, 9], difference: 3 },
+    { type: 'difference', cells: [20, 14], difference: 2 },
+  ])
+  const { game } = await prepareImportedPuzzle(fixture.code)
+  assert.deepEqual(game.sized?.rules, original.rules)
+  assert.equal(game.sized?.solution, fixture.solution)
+  const transpose = (cell: number) => cell % 6 * 6 + Math.floor(cell / 6)
+  for (const transposeBoxes of [false, true]) {
+    const cellMap = transposeBoxes ? transpose : (cell: number) => cell
+    const rules = original.rules.map((rule): SizedConstraintRule => {
+      if (rule.type === 'renban') return { ...rule, cells: rule.cells.map(cellMap), segments: rule.segments?.map(path => path.map(cellMap)) }
+      assert.equal(rule.type, 'difference')
+      return { ...rule, cells: [cellMap(rule.cells[0]), cellMap(rule.cells[1])] }
+    })
+    const grid = transposeBoxes ? { size: 6, boxRows: 3, boxColumns: 2 } as const : original.grid
+    const givens = Array.from(original.givens, (_, cell) => original.givens[cellMap(cell)]).join('')
+    const solution = Array.from(fixture.solution, (_, cell) => fixture.solution[cellMap(cell)]).join('')
+    const position = { version: 2 as const, grid, digits: Array.from(givens, Number), rules }
+    for (const type of ['renban', 'difference']) {
+      assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze',
+        position: { ...position, rules: rules.filter(rule => rule.type === type) } }), 'multiple')
+    }
+    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+    const answer = await runEngine({ type: 'sized-variant', operation: 'solve', position })
+    assert.equal(answer?.digits.join(''), solution)
+    const trace = await runEngine({ type: 'sized-variant', operation: 'trace', position })
+    assert.equal(trace?.at(-1)?.digits.join(''), solution)
+    assert.ok(trace?.some(({ deduction }) => deduction?.type === 'rule' && rules[deduction.rule]?.type === 'difference'))
   }
 })

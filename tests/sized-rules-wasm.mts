@@ -71,3 +71,59 @@ test('the sized dispatcher rejects a whole variant position when a companion rul
   } as EngineRequest
   await assert.rejects(runEngine(request), error => error instanceof EngineError && error.code === 'unsupported-rule')
 })
+
+test('Kropki support uses the digit range and edge layout on small and wide grids', async () => {
+  for (const [size, boxRows, boxColumns] of [[4, 2, 2], [6, 2, 3], [6, 3, 2], [16, 4, 4]]) {
+    const digits = Array.from({ length: size ** 2 }, (_, cell) => cell === 0 ? 1 : 0)
+    const position: SizedConstraintPosition = {
+      version: 2, grid: { size, boxRows, boxColumns }, digits,
+      rules: [{ type: 'kropki', consecutive: { pairs: [[0, 1]] }, ratioTwo: { pairs: [[1, 2]] } }],
+    }
+    const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+    assert.equal(masks?.[1], 1 << 1)
+    assert.equal(masks?.[2], 1 << 3)
+    assert.equal(masks?.[size], (1 << size) - 2)
+    const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 5 })
+    assert.ok(hints?.choices.some(choice => choice.type === 'kropki' && choice.pair.cells[1] === 1 &&
+      choice.pair.relation === 'consecutive' && !choice.pair.negative))
+    const invalid: SizedConstraintPosition = { ...position, rules: [{ type: 'kropki', ratioTwo: { pairs: [[size - 1, size]] } }] }
+    await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: invalid }),
+      error => error instanceof EngineError && error.code === 'invalid-rules')
+  }
+})
+
+test('Kropki negative rules exempt any marked edge across authored rule records', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 } as const
+  const digits = Array<number>(36).fill(0)
+  digits[0] = 1
+  const position: SizedConstraintPosition = {
+    version: 2, grid, digits,
+    rules: [{ type: 'kropki', consecutive: { negative: true } },
+      { type: 'kropki', ratioTwo: { pairs: [[1, 0]] } }],
+  }
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 8 })
+  assert.ok(hints?.choices.some(choice => choice.type === 'kropki' && choice.rule === 0 &&
+    choice.pair.cells[0] === 0 && choice.pair.cells[1] === 6 && choice.pair.negative &&
+    choice.actions.some(action => 'eliminate' in action && action.eliminate.cell === 6 && action.eliminate.digit === 2)))
+  assert.ok(!hints?.choices.some(choice => choice.type === 'kropki' && choice.pair.cells[0] === 0 &&
+    choice.pair.cells[1] === 1 && choice.pair.negative))
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(masks?.[1], 1 << 1)
+  assert.equal((masks?.[6] ?? 0) & (1 << 1), 0)
+})
+
+test('Difference markers can use the largest valid gap at each supplied size', async () => {
+  for (const [size, boxRows, boxColumns] of [[4, 2, 2], [8, 2, 4], [16, 4, 4]]) {
+    const digits = Array<number>(size * size).fill(0)
+    digits[0] = 1
+    const position: SizedConstraintPosition = {
+      version: 2, grid: { size, boxRows, boxColumns }, digits,
+      rules: [{ type: 'difference', cells: [1, 0], difference: size - 1 }],
+    }
+    const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+    assert.equal(masks?.[1], 1 << (size - 1))
+    await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+      ...position, rules: [{ type: 'difference', cells: [1, 0], difference: size }],
+    } }), error => error instanceof EngineError && error.code === 'invalid-rules')
+  }
+})

@@ -24,7 +24,9 @@ All three original diagrams were inspected. The source fixture records their has
 
 The original Renban release deferred [Ksy3](https://sudoku.coach/en/s/Ksy3) for its Entropic companion. [PR 163](https://github.com/coder13/sudoku-app/pull/163) now imports its complete definition on main `dded30a`. It preserves all Renban, Palindrome, general-total, ratio-dot and Entropic clues. [Subsequent source audit and full/partial paths](SUDOKU_ENTROPIC_AUDIT.md)
 
-The other originals still expose broader gaps. [9uMo](https://sudoku.coach/en/s/9uMo) uses a 6×6 grid and general-difference markers. [5NW](https://sudoku.coach/en/s/5NW) uses legacy SCv4 interchange and a Consecutive Line companion. These originals remain preserved and rejected for those specific gaps. They are not partial imports.
+[Race track](https://sudoku.coach/en/s/9uMo) imports through the sized rule path with its two Renban lines and three numbered Difference markers. [Sized-grid verification](SUDOKU_SHARED_GRID_RULES_AUDIT.md)
+
+[5NW](https://sudoku.coach/en/s/5NW) still requires legacy SCv4 interchange and Consecutive Line support.
 
 ## Compiler and drawing semantics
 
