@@ -130,6 +130,8 @@ function sizedRules(value, size) {
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
+    (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
+      !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: list(list(cell, 1, 128), 1, 128) }) &&
       new Set(rule.cells).size === rule.cells.length &&

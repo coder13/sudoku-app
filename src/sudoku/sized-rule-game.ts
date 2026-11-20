@@ -35,6 +35,11 @@ export function isSizedRuleList(value: unknown, size: number): value is SizedRul
     const cells: unknown = rule.cells
     if (!Array.isArray(cells) || cells.length > size ** 2 ||
       !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2)) return false
+    if (rule.type === 'arrow') {
+      return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= size &&
+        Number.isInteger(rule.circle) && rule.circle >= 0 && rule.circle < size ** 2 &&
+        !cells.includes(rule.circle) && new Set(cells).size === cells.length
+    }
     if (rule.type === 'difference') {
       return Object.keys(rule).length === 3 && cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size) &&
         Number.isInteger(rule.difference) && rule.difference >= 1 && rule.difference < size
@@ -85,6 +90,8 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     } else if (rule.type === 'renban') {
       const digits = rule.cells.map(cell => Number(solution[cell]))
       if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
+    } else if (rule.type === 'arrow') {
+      if (rule.cells.reduce((sum, cell) => sum + Number(solution[cell]), 0) !== Number(solution[rule.circle])) return
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
@@ -108,6 +115,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
+    else if (rule.type === 'arrow') clues.add('The digits along each arrow add up to the digit in its bulb. The same digit can appear more than once along an arrow if the other rules allow it.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
     else {

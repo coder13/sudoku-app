@@ -333,13 +333,22 @@ fn reachable(domains: &[u16]) -> u128 {
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
-    let mut prefix = [0u128; 10];
+    sum_support_with_prefix(domains, totals, support, &mut [0; 10]);
+}
+
+pub(crate) fn sum_support_with_prefix(
+    domains: &[u16],
+    totals: u128,
+    support: &mut [u16],
+    prefix: &mut [u128],
+) -> u128 {
     prefix[0] = 1;
     for (i, &domain) in domains.iter().enumerate() {
         prefix[i + 1] = add_digit(prefix[i], domain);
     }
-    if prefix[domains.len()] & totals == 0 {
-        return;
+    let matched = prefix[domains.len()] & totals;
+    if matched == 0 {
+        return 0;
     }
 
     // Move from the allowed totals back toward the empty prefix. A digit
@@ -358,6 +367,7 @@ pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
         support[i] = supported;
         allowed = previous;
     }
+    matched
 }
 
 fn between_support(domains: &[u16], support: &mut [u16]) {

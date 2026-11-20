@@ -87,3 +87,21 @@ The local app-profile Wasm benchmark uses 200 warm samples and excludes network 
 | Candidate masks | 20 µs | 23 µs |
 | Difference hints | 32 µs | 38 µs |
 | Full replay | 256 µs | 278 µs |
+
+## Arrow sums on sized grids
+
+The published 6×6 Arrow puzzle has six bulbs and shafts. The importer matches each shortened path to its bulb and fills skipped cells along straight segments. It keeps companion Kropki dots in their own rule. Independent solving and the app-profile Wasm engine both reached the authored answer, which repeats a digit on one shaft. The exact solver verified both rectangular box orientations. A 16×16 control exercised a shaft as long as the grid's digit range. [Published Arrow puzzle](https://sudokupad.app/68v1n4di20)
+
+Chrome verified the live import, all bulb centers and shaft coordinates, the author credit, hints, the final grid, reload, and mobile sharing. A Mini draft verified bulb and shaft editing with keyboard and pointer input. Player-side tests cover both kinds of candidates, pencil updates, impossible sums, and save validation.
+
+Warm timings from 200 local app-profile calls exclude network latency. The published puzzle has six initial Arrow hints and an 87-step replay.
+
+| Operation | Median | p95 |
+| --- | ---: | ---: |
+| Read the SudokuPad export | 101 µs | 376 µs |
+| Read, verify uniqueness, and build preview | 700 µs | 1,088 µs |
+| Candidate masks | 19 µs | 94 µs |
+| Arrow hints | 45 µs | 59 µs |
+| Complete app replay | 4,564 µs | 6,145 µs |
+
+The sized engine now scans for ordinary house hints only when rule deductions leave room in the result. Paired before-and-after Wasm calls returned identical hint and replay payloads for Arrow and Race track. Arrow replay fell from 7.47 ms to 4.79 ms median, and Race track replay from 303 µs to 272 µs. A paired 9×9 Arrow control also returned identical candidates, hints, and replay. Its candidate and hint medians stayed at 29 and 36 µs, with replay at 72 and 73 µs.

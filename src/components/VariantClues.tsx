@@ -80,10 +80,12 @@ function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferen
 }
 
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
+  const marker = useId()
   const renbans = rules.filter(rule => rule.type === 'renban')
   const lanes = coloredLineOverlapLanes(renbans, size)
   const dots = kropkiDots(rules, size)
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
+    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
@@ -91,6 +93,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     {[...lanes].map(([index, edges]) => <g key={index} className="variant-renban-overlap" data-renban={index + 1}>
       {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={renbanColors[index % renbanColors.length]} />)}
     </g>)}
+    {rules.map((rule, index) => rule.type === 'arrow' && <ArrowClue key={index} {...rule} size={size} marker={marker} />)}
     {[...dots].flatMap(([edge, marks]) => {
       const a = Math.floor(edge / (size ** 2)), b = edge % (size ** 2)
       return [0, 1].filter(kind => marks & (1 << kind))
@@ -117,6 +120,9 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], size:
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
         ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
+    } else if (rule.type === 'arrow') {
+      labels[rule.circle].add(`arrow bulb for ${rule.cells.map(at).join('; ')}`)
+      for (const cell of rule.cells) labels[cell].add(`arrow shaft from the bulb at ${at(rule.circle)}`)
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
       labels[a].add(`difference of ${rule.difference} with ${at(b)}`)
@@ -225,13 +231,22 @@ function CloneClue({ groups, color }: { groups: readonly (readonly number[])[]; 
   </g>
 }
 
-function ArrowClue({ circle, cells, marker }: { circle: number; cells: readonly number[]; marker: string }) {
-  const [cx, cy] = center(circle)
-  const [nx, ny] = center(cells[0])
+function arrowHead(marker: string) {
+  return <defs>
+    <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
+      markerUnits="userSpaceOnUse" orient="auto">
+      <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
+    </marker>
+  </defs>
+}
+
+function ArrowClue({ circle, cells, marker, size = 9 }: { circle: number; cells: readonly number[]; marker: string; size?: number }) {
+  const [cx, cy] = center(circle, size)
+  const [nx, ny] = center(cells[0], size)
   const length = Math.hypot(nx - cx, ny - cy)
   const start = [cx + (nx - cx) * .33 / length, cy + (ny - cy) * .33 / length]
   return <>
-    <polyline className="variant-arrow-line" points={`${start.join(',')} ${points(cells)}`} markerEnd={`url(#${marker})`} />
+    <polyline className="variant-arrow-line" points={`${start.join(',')} ${points(cells, size)}`} markerEnd={`url(#${marker})`} />
     <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />
   </>
 }
@@ -375,12 +390,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
   const drawnSums = new Set<number>()
   const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
   return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
-    {rules.some((rule) => rule.type === 'arrow') && <defs>
-      <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
-        markerUnits="userSpaceOnUse" orient="auto">
-        <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
-      </marker>
-    </defs>}
+    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />

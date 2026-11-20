@@ -152,3 +152,20 @@ test('sized SudokuPad uses midpoint overlays for positive Kropki dots', async ()
   await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{ ...overlays[0], center: [1, 1] }] })), /between two neighboring cells/)
   await assert.rejects(detectPuzzle(encode({ ...source, overlays: [{ ...overlays[0], text: '2' }] })), /unsupported dot/)
 })
+
+test('sized SudokuPad aligns shortened arrow paths to bulbs and preserves companion dots', async () => {
+  const { lines, underlays, ...source } = thermoExport(2)
+  source.metadata.rules = source.metadata.rules.split('\n\n')[0] + '\n\n' +
+    'Digits along an arrow sum to the digit in a bulb. Digits may repeat if allowed by other rules.\n\n' +
+    'Digits separated by a white dot are consecutive.\nDigits separated by a black dot have a 1:2 ratio.\nNot all dots are given.'
+  const bulb = { center: [0.5, 0.5], width: .82, height: .82, rounded: true, backgroundColor: '#fff', borderColor: '#aaaf' }
+  const dot = { center: [1.5, 1], width: .34, height: .34, rounded: true, backgroundColor: '#fff' }
+  const arrow = { wayPoints: [[0.5, .899], [0.5, 2.5], [1.5, 3.5]], headLength: .35, color: '#aaaf', thickness: 3.2 }
+  const code = (arrows = [arrow], overlays = [dot, bulb]) => encode({ ...source, arrows, overlays })
+  assert.deepEqual((await detectPuzzle(code())).sizedRules, [
+    { type: 'arrow', circle: 0, cells: [1, 2, 9] }, { type: 'kropki', consecutive: { pairs: [[6, 7]] } },
+  ])
+  await assert.rejects(detectPuzzle(code([arrow], [dot])), /exactly one matching bulb/)
+  await assert.rejects(detectPuzzle(code([{ ...arrow, wayPoints: [[.88, .5], ...arrow.wayPoints.slice(1)] }])), /does not align/)
+  await assert.rejects(detectPuzzle(code([arrow], [dot, bulb, { ...bulb, center: [1.5, 1.5] }])), /between two neighboring cells|unsupported dot/)
+})
