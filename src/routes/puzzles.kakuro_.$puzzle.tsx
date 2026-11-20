@@ -1,9 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { KakuroPlay } from '../components/Kakuro'
 import { kakuroCatalog, generatedKakuroEntry } from '../kakuro/catalog'
 import { generatedNumberToken } from '../number-puzzles/generated'
-import { generatedNumberTokens, rememberGeneratedNumberPuzzle } from '../number-puzzles/progress'
 
 export const Route = createFileRoute('/puzzles/kakuro_/$puzzle')({
   staticData: { standalonePuzzlePage: true },
@@ -24,11 +23,8 @@ function KakuroPlayRoute() {
   const entryId = Route.useLoaderData()
   const { board } = Route.useSearch()
   const entry = useMemo(() => entryId === 'generated'
-    ? board && generatedKakuroEntry(board, Math.max(1, generatedNumberTokens('kakuro').indexOf(board) + 1))
+    ? board && generatedKakuroEntry(board, 1)
     : kakuroCatalog.find(candidate => candidate.id === entryId), [board, entryId])
-  useEffect(() => {
-    if (entry && entry.generated) rememberGeneratedNumberPuzzle('kakuro', entry.id)
-  }, [entry])
   if (!entry) return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
       <h1>Kakuro puzzle unavailable</h1>

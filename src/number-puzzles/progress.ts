@@ -1,5 +1,4 @@
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
-import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
 
 export type NumberPosition = { values: number[]; notes: number[] }
 export type NumberMove = readonly [cell: number, value: number, notes: number]
@@ -11,13 +10,17 @@ export function emptyNumberPosition(cells: number): NumberPosition {
   return { values: Array(cells).fill(0), notes: Array(cells).fill(0) }
 }
 
-export function readNumberProgress(key: string): SavedNumberProgress | null {
+export function parseSavedNumberProgress(raw: string | null): SavedNumberProgress | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
+    const saved = JSON.parse(raw ?? 'null')
     return Array.isArray(saved?.values) && Array.isArray(saved?.notes) ? saved : null
   } catch {
     return null
   }
+}
+
+export function readNumberProgress(key: string): SavedNumberProgress | null {
+  try { return parseSavedNumberProgress(localStorage.getItem(key)) } catch { return null }
 }
 
 export function parseNumberProgress(saved: SavedNumberProgress, editable: readonly boolean[], maxValue: number): NumberProgress | null {
@@ -60,24 +63,6 @@ export function saveNumberProgress(key: string, { position, past, future }: Numb
     return true
   } catch {
     return false
-  }
-}
-
-export function generatedNumberTokens(game: GeneratedNumberGame): string[] {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(`${game}.generated.v1`) ?? '[]')
-    return Array.isArray(stored) ? stored.filter(token => generatedNumberToken(token)) : []
-  } catch {
-    return []
-  }
-}
-
-export function rememberGeneratedNumberPuzzle(game: GeneratedNumberGame, token: string): void {
-  try {
-    const known = generatedNumberTokens(game)
-    if (!known.includes(token)) localStorage.setItem(`${game}.generated.v1`, JSON.stringify([...known, token]))
-  } catch {
-    // The puzzle link still identifies the board when storage is unavailable.
   }
 }
 
