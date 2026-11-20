@@ -1,0 +1,7 @@
+node_modules/
+dist/
+results/smoke.json
+results/keyboard-check.json
+results/ci.json
+results/latest.json
+results/*.png

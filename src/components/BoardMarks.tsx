@@ -1,4 +1,4 @@
-import { cloneElement, useEffect, useRef, useState, type ReactElement, type TransitionEvent } from 'react'
+import { cloneElement, memo, useEffect, useRef, useState, type ReactElement, type TransitionEvent } from 'react'
 
 const EXIT_CLEANUP_FALLBACK_MS = 250
 
@@ -11,7 +11,8 @@ type FadeProps = {
 
 export type BoardMark = ReactElement<FadeProps>
 
-export function BoardMarks({ items, group }: { items: BoardMark[]; group?: ReactElement }) {
+// Stable items and group props skip unrelated board updates; fade state still updates normally.
+export const BoardMarks = memo(function BoardMarks({ items, group }: { items: BoardMark[]; group?: ReactElement }) {
   const [previous, setPrevious] = useState(items)
   const [entering, setEntering] = useState<Set<BoardMark['key']>>(() => new Set())
   const [exiting, setExiting] = useState<BoardMark[]>([])
@@ -69,4 +70,4 @@ export function BoardMarks({ items, group }: { items: BoardMark[]; group?: React
     ...items.map((item) => cloneElement(item, { 'data-board-fade': entering.has(item.key) ? 'enter' : undefined })),
   ]
   return group && marks.length ? cloneElement(group, undefined, marks) : marks
-}
+})
