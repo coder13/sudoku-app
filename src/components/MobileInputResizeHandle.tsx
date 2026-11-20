@@ -236,7 +236,25 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
       stopResize()
       clearSplit(layout)
     }
-  }, [withHint, edge, hasOpenTabs, savedHeight])
+  }, [withHint, edge, hasOpenTabs])
+
+  // Saving a completed drag must not clear the sizing styles and briefly snap
+  // the board back to its initial position. Apply only independent height changes.
+  useLayoutEffect(() => {
+    preferredHeight.current = savedHeight
+    const layout = getLayout()
+    if (!layout || drag.current) return
+    const appliedHeight = parseFloat(layout.style.getPropertyValue('--mobile-resized-input-height'))
+    if (savedHeight === undefined) {
+      if (!layout.hasAttribute('data-input-sized')) return
+      clearSplit(layout)
+      const split = measureSplit(layout, withHint)
+      if (split) describe(split)
+    } else if (!Number.isFinite(appliedHeight) || Math.abs(appliedHeight - savedHeight) > 1) {
+      const split = measureSplit(layout, withHint)
+      if (split) updateHeight(layout, split, clampHeight(split, savedHeight))
+    }
+  }, [savedHeight])
 
   useLayoutEffect(() => {
     if (disabled) lastTap.current = null
