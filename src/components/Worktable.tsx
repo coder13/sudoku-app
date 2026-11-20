@@ -2293,7 +2293,7 @@ export function Worktable({
     erasing: eraseMode, coloring: colorMode || brush !== null,
     highlighting: highlightMode, penciling: pencilActive,
   })
-  const badgeMode = !puzzleToolsAvailable || disabled || showResults ? undefined : gridInputMode
+  const badgeMode = disabled || showResults || draft || (solved && !showSolvedGrid) ? undefined : gridInputMode
   const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleGridBorderRef} boundaryLabel="puzzle grid border"
           position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
             if (badgeMode === 'chain') {
