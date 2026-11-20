@@ -78,6 +78,33 @@ The placed-digit checks now include parity, Thermometers, Arrow sums, Killer tot
 
 Whispers feedback now follows connected clues through empty cells, including touching German and Dutch lines. Play flags incompatible placements and clears unsupported candidates in either Pencil mode. The local calculation is exact for trees and a single loop. With several loops, it removes candidates only when the connected checks disprove support. Independent enumeration checks 110,000 partial positions. In the local JavaScript benchmark, the median added time for conflict checks was 0.003 ms on Brain Zaps and 0.007 ms on the encoded K95q rules. The median added time for entering a digit stayed below 0.003 ms on both. [Play tests](tests/variant-placed-rules.test.ts)
 
+## Play feedback performance
+
+Play indexes pair exclusions once per immutable rule list. Directed clues stay attached to their source cells, and global Kropki, XV, and Non-Consecutive layers still check their edge exemptions together. Digit entry shares each removal mask between center and corner candidates.
+
+Local Node 26.13.0 measurements on macOS arm64 compared the normal Play entry points against `733b7d76`. Times are median/p95 in milliseconds. Each warmed operation uses 160 paired samples. A fresh midgame sample uses a new rule list, with 80 pairs. The benchmark alternates invocation order and checks conflict sets, resulting positions, and move history before timing.
+
+| Fixture and operation | Baseline | Indexed |
+| --- | ---: | ---: |
+| Classic midgame conflicts | 0.036 / 0.069 | 0.029 / 0.035 |
+| B5mt midgame conflicts | 0.575 / 0.639 | 0.051 / 0.085 |
+| Cmdt midgame conflicts | 2.017 / 2.234 | 0.253 / 0.351 |
+| Cmdt fresh midgame conflicts | 1.821 / 2.036 | 0.226 / 0.283 |
+| Cmdt entry with candidates | 0.697 / 0.806 | 0.181 / 0.242 |
+| Cmdt entry without candidates | 0.696 / 0.874 | 0.033 / 0.051 |
+| Cmdt bulk fill | 6.190 / 7.127 | 2.617 / 2.960 |
+| Jigsaw Killer midgame conflicts | 0.104 / 0.116 | 0.066 / 0.073 |
+
+All 472,392 directed pair-and-digit masks match, including split Kropki/XV layers, V/X sums, Clone closure, repeated paths, and reversed rule order. Opening conflict p95 increased by 0.002 ms on Cmdt and 0.001 ms on encoded K95q in this run. The index retains about 3.3 KB per Cmdt-sized rule list in a forced-GC Node sample. Production JavaScript adds 199 gzip bytes, and the Wasm is byte-identical. Browser rendering and input-to-paint timing still need a live trace. [Benchmark](scripts/bench-variant-play.mts) · [Performance tracking](https://github.com/coder13/sudoku-app/issues/88)
+
+Reproduce from this worktree using a baseline checkout, or unpack its source inside `target` so Node can resolve the installed dependencies.
+
+```sh
+mkdir -p target/qa/play-feedback-baseline
+git archive 733b7d76 src/sudoku | tar -x -C target/qa/play-feedback-baseline
+node --expose-gc --experimental-strip-types scripts/bench-variant-play.mts target/qa/play-feedback-baseline
+```
+
 ## Priority controls
 
 Use complete source definitions, including every companion clue and parameter. Start browser review with these controls, then cover every table row:

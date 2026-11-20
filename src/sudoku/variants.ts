@@ -308,31 +308,56 @@ export function sumLabel(sum: number) {
   return ROMAN_TOTALS[sum - 3] ?? String(sum)
 }
 
+type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
+type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' }>
+const noCellExclusions: readonly CellExclusionRule[] = []
+const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
+
+// Puzzle definitions share an immutable rule list across Play positions.
+function indexExclusions(rules: readonly VariantRule[]) {
+  const byCell = Array<CellExclusionRule[] | undefined>(81)
+  const edgeRules: EdgeExclusionRule[] = []
+  const kropki: Extract<VariantRule, { type: 'kropki' }>[] = []
+  let clones: ReturnType<typeof cloneLayout>['at'] | undefined
+  for (const rule of rules) {
+    switch (rule.type) {
+      case 'kropki': kropki.push(rule); continue
+      case 'xv': case 'non-consecutive': edgeRules.push(rule); continue
+      case 'clone': clones ??= cloneLayout(rules).at; continue
+      case 'entropic': case 'modular': case 'renban': case 'adjacent-total': case 'palindrome': case 'whispers':
+      case 'inequality': {
+        const cells = rule.type === 'inequality' ? [rule.less, rule.greater] : new Set(rule.cells)
+        for (const cell of cells) (byCell[cell] ??= []).push(rule)
+      }
+    }
+  }
+  const index = { byCell: byCell.map(local => local?.slice()), edgeRules, kropki, clones }
+  exclusionIndexes.set(rules, index)
+  return index
+}
+
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
-  const rules = puzzle?.rules ?? []
-  const edge = cellsShareEdge(from, to)
-  let excluded = edge && rules.length ? kropkiDigitExclusions(rules, from, to, digit, 9) : 0
+  const rules = puzzle?.rules
+  if (!rules?.length) return 0
+  const { byCell, edgeRules, kropki, clones } = exclusionIndexes.get(rules) ?? indexExclusions(rules)
+  let excluded = kropki.length ? kropkiDigitExclusions(kropki, from, to, digit, 9) : 0
+  const clone = clones?.[from]
+  if (clone && clone === clones?.[to]) excluded |= 511 & ~(1 << (digit - 1))
   let v = false, x = false, negativeV = false, negativeX = false
-  for (const rule of rules) {
-    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(from) && rule.cells.includes(to)) {
+  for (const rule of byCell[from] ?? noCellExclusions) {
+    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(to)) {
       const samePhase = rule.cells.indexOf(from) % 3 === rule.cells.indexOf(to) % 3
       const group = lineGroupMask(rule.type, digit)
       excluded |= samePhase ? 511 & ~group : group
     }
-    if (rule.type === 'renban' && rule.cells.includes(from) && rule.cells.includes(to)) {
+    if (rule.type === 'renban' && rule.cells.includes(to)) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
     }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
       x ||= rule.sum === 10
       for (let other = 1; other <= 9; other++) if (digit + other !== rule.sum) excluded |= 1 << (other - 1)
-    }
-    if (rule.type === 'xv' && edge) {
-      v ||= hasMarkedPair(rule.five?.pairs, from, to)
-      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
-      negativeV ||= rule.five?.negative === true
-      negativeX ||= rule.ten?.negative === true
     }
     if (rule.type === 'inequality' && (from === rule.less && to === rule.greater || from === rule.greater && to === rule.less)) {
       for (let other = 1; other <= 9; other++) {
@@ -342,16 +367,19 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
     }
-    if (rule.type === 'clone') {
-      const layout = cloneLayout(puzzle?.rules), set = layout.at[from]
-      if (set && set === layout.at[to]) excluded |= 511 & ~(1 << (digit - 1))
-    }
-    if (rule.type === 'non-consecutive' && cellsShareEdge(from, to) && !hasMarkedPair(rule.except, from, to)) {
-      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
-    }
     if (rule.type === 'whispers' && rule.cells.some((cell, i) => i > 0 &&
       (cell === from && rule.cells[i - 1] === to || cell === to && rule.cells[i - 1] === from))) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) < rule.minDifference) excluded |= 1 << (other - 1)
+    }
+  }
+  if (edgeRules.length && cellsShareEdge(from, to)) for (const rule of edgeRules) {
+    if (rule.type === 'xv') {
+      v ||= hasMarkedPair(rule.five?.pairs, from, to)
+      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
+      negativeV ||= rule.five?.negative === true
+      negativeX ||= rule.ten?.negative === true
+    } else if (!hasMarkedPair(rule.except, from, to)) {
+      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
   }
   if (v || x || negativeV || negativeX) for (let other = 1; other <= 9; other++) {

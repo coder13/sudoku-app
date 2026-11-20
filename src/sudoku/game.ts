@@ -255,14 +255,18 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
 
 export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sizedRules?: SizedRuleGame['rules']): Set<number> {
   const conflicts = new Set<number>()
-  for (let i = 0; i < grid.size ** 2; i++) {
-    if (values[i] === '0') continue
+  const cellCount = grid.size ** 2
+  for (let i = 0; i < cellCount; i++) {
+    const placed = values[i]
+    if (placed === '0') continue
+    const digit = Number(placed)
     if (sizedRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
-      Number(values[i]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
-    for (let j = i + 1; j < grid.size ** 2; j++) {
-      if (values[i] === values[j] && peer(i, j, puzzle, grid, sizedRules) ||
-        values[j] !== '0' && ((variantDigitExclusions(puzzle, i, j, Number(values[i])) |
-          sizedDigitExclusions(sizedRules, i, j, Number(values[i]), grid.size)) & 1 << (Number(values[j]) - 1))) {
+      digit % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+    for (let j = i + 1; j < cellCount; j++) {
+      const other = values[j]
+      if (other === '0') continue
+      if (placed === other && peer(i, j, puzzle, grid, sizedRules) ||
+        ((variantDigitExclusions(puzzle, i, j, digit) | sizedDigitExclusions(sizedRules, i, j, digit, grid.size)) & 1 << (Number(other) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
       }
@@ -454,13 +458,24 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
       }
       if (value && options.removeCandidates !== false) {
         const bit = 1 << (value - 1)
-        const clearCandidates = (mask: number, i: number) => editable.reduce((remaining, cell) =>
-          remaining & ~((peer(cell, i, game.variant?.puzzle, game.grid, game.sized?.rules) ? bit : 0) |
-            variantDigitExclusions(game.variant?.puzzle, cell, i, value) | sizedDigitExclusions(game.sized?.rules, cell, i, value, game.grid?.size ?? 9)), mask)
+        const puzzle = game.variant?.puzzle
+        const grid = game.grid ?? CLASSIC_GRID
+        const sizedRules = game.sized?.rules
         const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-        const ruleMasks = placedRuleState(game.variant?.puzzle, values, game.grid ?? CLASSIC_GRID, game.sized?.rules)?.allowed
-        center = center.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
-        corner = corner.map((mask, i) => clearCandidates(mask, i) & (ruleMasks?.[i] ?? 511))
+        const ruleMasks = placedRuleState(puzzle, values, grid, sizedRules)?.allowed
+        center = center.slice()
+        corner = corner.slice()
+        for (let i = 0; i < center.length; i++) {
+          if (!(center[i] | corner[i])) continue
+          let allowed = ruleMasks?.[i] ?? 511
+          for (const cell of editable) {
+            const removed = (peer(cell, i, puzzle, grid, sizedRules) ? bit : 0) |
+              variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size)
+            allowed &= ~removed
+          }
+          center[i] &= allowed
+          corner[i] &= allowed
+        }
       } else {
         const clearCell = (mask: number, i: number) => editable.includes(i) && (value || game.position.entries[i] === '0') ? 0 : mask
         center = center.map(clearCell)

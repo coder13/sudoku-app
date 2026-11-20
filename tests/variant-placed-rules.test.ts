@@ -14,6 +14,23 @@ const position = (cells: readonly number[], digits: readonly number[]) => {
   return values.join('')
 }
 
+test('replacing a rule list replaces its pair exclusions in both Pencil modes and conflicts', () => {
+  const negative: VariantRule = { type: 'xv', five: { negative: true }, ten: { negative: true } }
+  const five: VariantPuzzle = { version: 1, givens: empty, rules: [negative, { type: 'adjacent-total', cells: [0, 1], sum: 5 }] }
+  const six: VariantPuzzle = { ...five, rules: [negative, { type: 'adjacent-total', cells: [0, 1], sum: 6 }] }
+  const game = makeGame('rule-list', 'Pair totals', empty, 'imported')
+  game.position.center[1] = game.position.corner[1] = (1 << 2) | (1 << 3)
+  for (const [puzzle, digit] of [[five, 3], [six, 4], [five, 3]] as const) {
+    const attempt = { ...game, variant: { id: 'mixed' as const, puzzle } }
+    const placed = enter(attempt, [0], 'value', 2)
+    assert.equal(placed.position.center[1], 1 << (digit - 1))
+    assert.equal(placed.position.corner[1], 1 << (digit - 1))
+    assert.deepEqual(undo(placed).position, attempt.position)
+    assert.equal(conflictsOf(position([0, 1], [2, digit]), puzzle).size, 0)
+    assert.deepEqual([...conflictsOf(position([0, 1], [2, digit === 3 ? 4 : 3]), puzzle)], [0, 1])
+  }
+})
+
 test('mixed 9×9 play shows parity, Thermometer, Arrow, Killer and Quadruple conflicts', () => {
   const rules: VariantRule[] = [
     { type: 'parity', cells: [0], parity: 'odd' },
