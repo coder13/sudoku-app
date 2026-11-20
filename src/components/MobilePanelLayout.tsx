@@ -268,7 +268,7 @@ export function MobilePanelLayout(props: Props) {
     if (!event.isPrimary) { cancelHold(); return }
     if (props.rearranging || props.blocked || event.button !== 0 ||
       !(event.target instanceof Element) || !event.target.closest('[data-mobile-panel]') ||
-      event.target.closest('[data-no-panel-hold]')) return
+      event.target.closest('[data-no-panel-hold], dialog')) return
     cancelHold()
     hold.current = {
       pointerId: event.pointerId, x: event.clientX, y: event.clientY,
@@ -393,7 +393,6 @@ export function MobilePanelLayout(props: Props) {
         <X size={22} aria-hidden="true" />
       </IconButton>
     </div>}</MotionSurface>
-    <div className="mobile-panel-space" aria-hidden="true" />
     {order.filter((id) => panels[id]).map((id) => {
       const panel = panels[id]!
       const exiting = id === 'hint' && hintExiting
@@ -431,10 +430,9 @@ export function MobilePanelLayout(props: Props) {
             </button>
           </div>}
         </div>
-        {index === 0 && visible.length > 1 && <div className="mobile-panel-space mobile-panel-gap" aria-hidden="true" />}
+        {index === 0 && visible.length > 1 && <div className="mobile-panel-gap" aria-hidden="true" />}
       </Fragment>
     })}
-    <div className="mobile-panel-space" aria-hidden="true" />
     <span className="sr-only" role="status">{announcement}</span>
   </div>
 

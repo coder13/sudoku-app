@@ -3,7 +3,7 @@ import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanst
 import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
-  Monitor, Moon, SlidersHorizontal, Sun,
+  Monitor, Moon, Scaling, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
@@ -123,6 +123,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const requested = workspaceReady ? puzzleParam : undefined
   const shared = workspaceReady ? shareParam : undefined
   const [resizeMode, setResizeMode] = useState(false)
+  const [layoutSizeOptionsOpen, setLayoutSizeOptionsOpen] = useState(false)
   const [linkError, setLinkError] = useState('')
   const savedAppearance = useRef(appearance)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -527,9 +528,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const emptyPuzzleContent = <div className="empty-puzzle-content">
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
   </div>
+  const canResizeDesktopLayout = playing && workspaceReady && !loadingPage && desktopStandard
+
   return (
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
-      enabled={playing && workspaceReady && !loadingPage && desktopStandard}>
+      enabled={canResizeDesktopLayout} sizeOptionsOpen={layoutSizeOptionsOpen}
+      onCloseSizeOptions={() => setLayoutSizeOptionsOpen(false)} returnFocus={() => menuButtonRef.current}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <div className="topbar-brand">
@@ -582,6 +586,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 setMenuOpen(false)
                 setWorkspaceMode(workspaceMode === 'advanced' ? 'standard' : 'advanced')
               }}><PanelsTopLeft size={17} /> {workspaceMode === 'advanced' ? 'Standard mode' : 'Advanced mode'}</button>}
+              {canResizeDesktopLayout && <button onClick={() => {
+                setMenuOpen(false)
+                setLayoutSizeOptionsOpen(true)
+              }}><Scaling size={17} /> Resize play layout</button>}
               <button className="mobile-menu-only" onClick={cycleColorMode}
                 aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}>
                 <ColorModeIcon size={17} /> Color mode: {COLOR_MODE_LABELS[appearance.colorMode]}

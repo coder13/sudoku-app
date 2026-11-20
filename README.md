@@ -41,6 +41,8 @@ Open **Small → Hints → Copy review → All Techniques** to filter and compar
 
 Run `npm run build-storybook` to create a static catalog in `storybook-static/`. Both commands prepare the browser engine and regenerate the technique stories. The play stories use a temporary puzzle library, so changes in Storybook do not affect your saved puzzles.
 
+Run `npx playwright install chromium --only-shell` once, then run `npm run test:visual` to compare isolated Storybook stories with their saved screenshots. Add visual tests in `tests/visual`. When a comparison fails, look for the actual image and diff in `test-results/`. Use `npm run test:visual -- --update-snapshots` after an intentional visual change and review the updated images. The checked-in screenshots are for macOS Chromium. Generate a baseline on each additional platform you use for comparisons.
+
 ## Edit Learn articles
 
 Run `npm run dev:lessons` and open [the local lesson editor](http://127.0.0.1:5180/__lesson-editor/). Select Overview or a technique and click the highlighted text to edit it on the rendered page. Use the left panel to add and move blocks, change diagram examples or crops, rename practice options, and edit links.

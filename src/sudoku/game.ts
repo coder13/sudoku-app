@@ -293,7 +293,7 @@ export function progressOf(game: Game) {
   return { total, filled }
 }
 
-function hasCandidates({ center, corner }: Position): boolean {
+export function hasCandidates({ center, corner }: Position): boolean {
   return center.some(Boolean) || corner.some(Boolean)
 }
 

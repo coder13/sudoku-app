@@ -128,6 +128,18 @@ test('actual generate-candidates handler rejects a result after note or color ed
   }
 })
 
+test('generating candidates requires confirmation before replacing center or corner candidates', async () => {
+  for (const mode of ['center', 'corner'] as const) {
+    const game = enter(playing(`confirm-${mode}`), [8], mode, 7)
+    roomStore.add(game)
+    const before = TestWorker.all.length
+    capture(game)('Generate candidates')()
+    await settle()
+    assert.equal(TestWorker.all.length, before)
+    assert.equal(latest(game.id), game)
+  }
+})
+
 test('actual generate-candidates handler accepts clock-only changes and guards duplicate requests before React commits', async () => {
   const game = playing('clock-candidates')
   roomStore.add(game)
