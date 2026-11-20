@@ -54,6 +54,19 @@ const mixedRulesGame = {
 }
 
 export const Starter: Story = {}
+export const CycleHighlightedDigit: Story = {
+  args: {
+    game: fillEntries(starter, [...solved.position.entries].map(digit => '139'.includes(digit) ? digit : '0').join('')),
+    games: [],
+  },
+  play: async ({ canvas, userEvent }) => {
+    for (const digit of [2, 4, 5, 6, 7, 8, 2]) {
+      await userEvent.keyboard('`')
+      const keypad = within(canvas.getByRole('group', { name: 'Digit pad' }))
+      await expect(keypad.getByRole('button', { name: `Deselect ${digit}` })).toHaveAttribute('aria-pressed', 'true')
+    }
+  },
+}
 export const MixedRules: Story = {
   args: { game: mixedRulesGame, games: [mixedRulesGame] },
   play: async ({ canvas, canvasElement, userEvent }) => {
@@ -291,12 +304,12 @@ export const ChainShortcuts: Story = {
 }
 export const ChainProofPreview: Story = {
   args: { game: branchedGame, games: [branchedGame] },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.keyboard('x')
     const grid = await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' })
     await userEvent.click(await canvas.findByText('Why this works', { selector: 'summary' }))
     const proof = await canvas.findByText('2r3c6 = 4r3c6 − 4r6c6 = 4r4c6')
-    const faded = () => grid.querySelectorAll('.board-links g[opacity="0.5"]')
+    const faded = () => canvasElement.querySelectorAll('.board-links g[opacity="0.5"]')
     const branch = within(grid).getByRole('button', { name: /^1 in row 6, column 6,/ })
     await expect(branch).toHaveStyle({ opacity: '1' })
     await userEvent.hover(proof)
