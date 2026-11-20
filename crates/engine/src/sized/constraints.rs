@@ -722,6 +722,9 @@ impl SizedConstraintGrid {
         if self.layout.used_digits(digits).is_none() || !self.permits(digits) {
             return (Analysis::Conflict, None);
         }
+        // Fast puzzles often finish with local rule propagation alone.
+        // Scan every house once the search has expanded several gridfuls of nodes.
+        let mut local_nodes_left = (4 * digits.len()).max(256);
         self.layout
             .search_filtered::<true>(digits, budget, limit, |digits, used, domains| {
                 for (cell, &digit) in digits.iter().enumerate() {
@@ -731,8 +734,22 @@ impl SizedConstraintGrid {
                         1 << (digit - 1)
                     };
                 }
-                self.apply_rules(digits, domains);
-                !domains.contains(&0)
+                if local_nodes_left > 0 {
+                    local_nodes_left -= 1;
+                    self.apply_rules(digits, domains);
+                    return !domains.contains(&0);
+                }
+                loop {
+                    self.apply_rules(digits, domains);
+                    if domains.contains(&0) {
+                        return false;
+                    }
+                    match self.layout.restrict_search_houses(domains) {
+                        Some(true) => {}
+                        Some(false) => return true,
+                        None => return false,
+                    }
+                }
             })
     }
 

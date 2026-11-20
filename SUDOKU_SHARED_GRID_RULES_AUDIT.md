@@ -113,3 +113,22 @@ The same native code partitions Region Sum paths into box visits on standard and
 TVDK’s published 6×6 puzzle has five lines and no given digits. An independent exact solver found one completion with all lines and multiple completions with the box rules alone. The app reproduced the author's solution in both rectangular box orientations and replayed the original in 85 steps. Chrome verified the SudokuPad short link, all path coordinates, the author credit, Technique Finder, reload, replay, and a shared puzzle on a phone-size viewport. The Mini editor verified separate and grouped visits, cell labels, keyboard input, undo, and redo. [Published Region Sum puzzle](https://sudokupad.app/2yastk3l6j)
 
 An independent enumeration of all 288 Mini completions found a re-entry puzzle with one solution under the segment rule and zero under the grouped rule. A second Mini Coach fixture composes an overlapping Renban line with the same Region Sum path. Each rule alone leaves six completions, and together they leave one. The engine and player replay both rule families. A 16×16 engine contract exercises equal totals of 136 across two complete boxes.
+
+The published 6×6 Region Sum median times were 60 µs for decoding, 937 µs for verifying uniqueness, 718 µs for exact solving, 15 µs for candidate masks, 28 µs for the first hints, and 4.39 ms for the complete replay. Building the preview took 1.73 ms. These timings use 200 warm app-profile requests and exclude network time. Paired 9×9 Arrow and Region Sum calls produced identical candidates, hints and traces. Their median times moved by at most 3 µs.
+
+## Exact search on sparse sized grids
+
+The published 7×7 irregular Thermometer has no givens and six lines. Restoring omitted region labels to their default row recovers seven connected regions. An independent solver and the native engine both found one completion, and the engine reached it through the logical replay. [Published Jigsaw pack](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=0008KH)
+
+Exact search starts by propagating the authored rules. After it has expanded several gridfuls of nodes, it also checks every house for a missing digit or hidden single. A house with no possible placement for a digit rules out that branch. A digit with one possible placement restricts that cell's domain before search expands the branch. The sparse 7×7 now verifies its unique completion within the native test's 15,000-node budget.
+
+Paired app-profile Wasm measurements use 40 warm calls per 7×7 operation and 150 per operation on the other controls. The two builds produced the same classifications and exact results in every pair. Values are medians.
+
+| Grid | Before and after uniqueness | Before and after solving |
+| --- | ---: | ---: |
+| 7×7 Jigsaw Thermometer | 200.90 ms → 3.16 ms | 195.72 ms → 2.97 ms |
+| 4×4 Region Sum with box re-entry | 15 µs → 15 µs | 14 µs → 13 µs |
+| 6×6 Region Sum | 967 µs → 787 µs | 727 µs → 626 µs |
+| 6×6 Arrow | 296 µs → 271 µs | 186 µs → 186 µs |
+| 6×6 Race track | 50 µs → 50 µs | 34 µs → 35 µs |
+| 16×16 empty Renban | 229 µs → 232 µs | 223 µs → 226 µs |
