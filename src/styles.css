@@ -3403,8 +3403,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     background: transparent;
     box-shadow: none;
   }
-  /* The button extends beyond the bottom grid border, so leave its click area clear. */
-  .standard-workspace-page .puzzle-flat:has(.puzzle-quick-actions) .puzzle-stage:has(.puzzle-mode-tab[data-edge="bottom"]) {
+  /* Reserve room for the mode icon at every edge, even when the icon is hidden.
+     Toggling it must never change the grid's height or centered position. */
+  .standard-workspace-page .puzzle-flat:has(.puzzle-quick-actions) .puzzle-stage {
     margin-block-end: var(--space-10);
   }
   .standard-workspace-page .mobile-panel .puzzle { max-inline-size: none; }
