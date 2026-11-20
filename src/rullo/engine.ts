@@ -76,10 +76,16 @@ function lineSupport(line: Line, domains: readonly number[]) {
   return { anyKeep, anyRemove, combinations }
 }
 
-export function checkRullo(puzzle: RulloPuzzle, values: readonly number[]) {
+export function checkRullo(puzzle: RulloPuzzle, values: readonly number[], { keepUnmarked = false } = {}) {
   const domains = domainsOf(puzzle, values)
   const conflicts = puzzle.lines.filter(line => lineSupport(line, domains).combinations === 0)
-  return { complete: !conflicts.length && domains.every(domain => domain === KEEP || domain === REMOVE), conflicts }
+  const complete = !conflicts.length && (keepUnmarked
+    ? puzzle.lines.every(line => {
+      const kept = line.cells.reduce((mask, cell, offset) => mask | (domains[cell] & KEEP ? 1 << offset : 0), 0)
+      return line.masks.includes(kept)
+    })
+    : domains.every(domain => domain === KEEP || domain === REMOVE))
+  return { complete, conflicts }
 }
 
 function propagate(puzzle: RulloPuzzle, domains: number[], trace?: Step[]) {
