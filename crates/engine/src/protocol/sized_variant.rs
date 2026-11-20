@@ -82,6 +82,7 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
+            Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
                 Self::Kropki { consecutive, ratio_two }
             }

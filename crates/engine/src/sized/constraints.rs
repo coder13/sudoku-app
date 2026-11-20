@@ -17,6 +17,10 @@ pub enum SizedConstraint {
     Thermometer {
         cells: Vec<usize>,
     },
+    Arrow {
+        circle: usize,
+        cells: Vec<usize>,
+    },
     Renban {
         cells: Vec<usize>,
     },
@@ -111,6 +115,7 @@ pub struct SizedConstraintGrid {
     diagonals: Vec<Vec<usize>>,
     thermometers: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
+    arrows: Vec<(usize, Vec<usize>)>,
     pair_links: Vec<Vec<SizedPairLink>>,
 }
 
@@ -126,6 +131,7 @@ impl SizedConstraintGrid {
         let mut diagonals = Vec::new();
         let mut thermometers = Vec::new();
         let mut renbans = Vec::new();
+        let mut arrows = Vec::new();
         for rule in rules {
             match rule {
                 SizedConstraint::Diagonal(direction) => {
@@ -159,6 +165,17 @@ impl SizedConstraintGrid {
                     }
                     thermometers.push(cells.clone());
                 }
+                SizedConstraint::Arrow { circle, cells } => {
+                    if *circle >= layout.cell_count()
+                        || !(1..=size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || cell == *circle || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    arrows.push((*circle, cells.clone()));
+                }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
@@ -185,6 +202,7 @@ impl SizedConstraintGrid {
             diagonals,
             thermometers,
             renbans,
+            arrows,
             pair_links,
         })
     }
@@ -241,6 +259,15 @@ impl SizedConstraintGrid {
             }
             for cells in &self.renbans {
                 for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for (circle, cells) in &self.arrows {
+                let (bulb, shaft) = arrow_masks(*circle, cells, candidates);
+                changed |= candidates[*circle] != bulb;
+                candidates[*circle] = bulb;
+                for (&cell, mask) in cells.iter().zip(shaft) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -396,6 +423,16 @@ impl SizedConstraintGrid {
                             house.candidates[cell] & !support[cell],
                             &mut actions,
                         );
+                    }
+                }
+                SizedConstraint::Arrow { circle, cells } => {
+                    let (bulb, shaft) = arrow_masks(*circle, cells, &domains);
+                    if bulb == 0 {
+                        return None;
+                    }
+                    eliminations_for(*circle, house.candidates[*circle] & !bulb, &mut actions);
+                    for (&cell, mask) in cells.iter().zip(shaft) {
+                        eliminations_for(cell, house.candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::Renban { cells } => {
@@ -627,6 +664,9 @@ impl SizedConstraintGrid {
                     self.restrict_thermometer(cells, &mut support);
                     support.contains(&0)
                 }
+                SizedConstraint::Arrow { circle, cells } => {
+                    arrow_masks(*circle, cells, &domains).0 == 0
+                }
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
@@ -719,11 +759,33 @@ impl SizedConstraintGrid {
                     || (u16::BITS - used.leading_zeros() - used.trailing_zeros()) as usize
                         <= cells.len()
             })
+            && self.arrows.iter().all(|(circle, cells)| {
+                let (total, empty) = cells.iter().fold((0, 0), |(total, empty), &cell| {
+                    (total + usize::from(digits[cell]), empty + usize::from(digits[cell] == 0))
+                });
+                let bulb = usize::from(digits[*circle]);
+                let max = if bulb == 0 { self.layout.size() } else { bulb };
+                total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
+            })
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
                 left == 0 || right == 0 || link.constraint.permits(left, right)
             })
     }
+}
+
+fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16; MAX_SIZE]) {
+    let mut shaft = [0; MAX_SIZE];
+    let mut support = [0; MAX_SIZE];
+    for (mask, &cell) in shaft.iter_mut().zip(cells) {
+        *mask = candidates[cell];
+    }
+    // A bulb is a single digit, so sums that exceed the bitset cannot qualify.
+    let totals = u128::from(candidates[circle]) << 1;
+    let matching = crate::variant::sum_support_with_prefix(
+        &shaft[..cells.len()], totals, &mut support[..cells.len()], &mut [0; MAX_SIZE + 1],
+    );
+    ((matching >> 1) as u16, support)
 }
 
 fn diagonal_cells(size: usize, direction: SizedDiagonal) -> impl Iterator<Item = usize> + Clone {
