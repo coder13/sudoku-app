@@ -3205,8 +3205,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     .mobile-panel-space { flex: 1 1 0; }
     .mobile-panel-gap { flex: 0 0 var(--space-8); }
 
-    /* The puzzle card is inset by its badge gutter; align the input card to it. */
-    .standard-workspace-page .workspace:has(.puzzle-column[data-reserve-badge-space])
+    /* Use a shared inset, including for new and imported puzzles. */
+    .standard-workspace-page .workspace:has(.puzzle-column)
       .mobile-panel[data-mobile-panel="input"] {
       margin-inline: var(--space-16);
     }
