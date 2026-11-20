@@ -20,7 +20,7 @@ export function generatedNumberToken(value: unknown): string | undefined {
 export function encodeGeneratedNumberPuzzle(puzzle: GeneratedNumberPuzzle, playId?: string): string {
   const { game, difficulty, recipe } = puzzle
   const payload = btoa(JSON.stringify([game, difficulty, recipe])).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-  if (game === 'calcudoku' && playId) return `v2.${payload}.${playId}`
+  if (playId) return `v2.${payload}.${playId}`
   return `v1.${payload}`
 }
 
@@ -28,8 +28,7 @@ export function decodeGeneratedNumberPuzzle(token: string, game: 'kakuro'): Gene
 export function decodeGeneratedNumberPuzzle(token: string, game: 'calcudoku'): GeneratedCalcudoku | null
 export function decodeGeneratedNumberPuzzle(token: string, game: GeneratedNumberGame): GeneratedNumberPuzzle | null {
   if (!generatedNumberToken(token)) return null
-  const [version, encoded] = token.split('.', 2)
-  if (version === 'v2' && game !== 'calcudoku') return null
+  const [, encoded] = token.split('.', 2)
   try {
     const payload: unknown = JSON.parse(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')))
     if (!Array.isArray(payload) || payload.length !== 3 || payload[0] !== game) return null
