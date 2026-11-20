@@ -8,6 +8,8 @@ export type ResolvedColorMode = 'light' | 'dark'
 export const DEFAULT_DARK_THEME: ThemeId = 'github'
 
 type ThemeAccents = {
+  boardSelection?: string
+  entryInk?: string
   accent: string
   selectionBorder: string
   secondaryAccent: string
@@ -109,7 +111,7 @@ function contrastingAccent(accent: string, fallback: string, against: string[], 
   return fallback
 }
 
-function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, secondaryAccent }: ThemeAccents) {
+function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, secondaryAccent, boardSelection, entryInk }: ThemeAccents) {
   const base = colorModes[mode]
   const { boardBg, ink } = base
   const lightMode = mode === 'light'
@@ -138,13 +140,13 @@ function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, seconda
     boardOutline: base.gridStrong,
     boardBoxBg: boardBg,
     boardInk: ink,
-    entryInk: accentInk,
+    entryInk: entryInk ?? accentInk,
     matchingBg,
     matchingDigitBg: matchingBg,
     candidateCountBg,
     selectedBg,
     selectedBorder,
-    boardSelectedBg: selectedBg,
+    boardSelectedBg: boardSelection ?? selectedBg,
     boardSelectedBorder: selectedBorder,
     keyInk: ink,
     centerNoteBg: boardBg,
@@ -203,67 +205,67 @@ const andokuTokens: ThemeTokens = {
 const definitions: ThemeDefinition[] = [
   {
     id: 'violet', name: 'Violet', category: 'Sudoku',
-    light: { accent: '#5b3dba', selectionBorder: '#6f49c2', secondaryAccent: '#78583d' },
+    light: { accent: '#5b3dba', selectionBorder: '#6f49c2', secondaryAccent: '#78583d', boardSelection: '#c2b7e6' },
     dark: { accent: '#8f70dd', selectionBorder: '#bc9cf4', secondaryAccent: '#efc27f' },
   },
   {
     id: 'ocean', name: 'Ocean', category: 'Sudoku',
-    light: { accent: '#1967b3', selectionBorder: '#2774b7', secondaryAccent: '#7b542f' },
+    light: { accent: '#1967b3', selectionBorder: '#2774b7', secondaryAccent: '#7b542f', boardSelection: '#a8c5e3' },
     dark: { accent: '#4f8fd2', selectionBorder: '#83b9ed', secondaryAccent: '#efbd76' },
   },
   {
     id: 'forest', name: 'Forest', category: 'Sudoku',
-    light: { accent: '#28755a', selectionBorder: '#367d60', secondaryAccent: '#76552f' },
+    light: { accent: '#28755a', selectionBorder: '#367d60', secondaryAccent: '#76552f', boardSelection: '#adcac0' },
     dark: { accent: '#4c9b77', selectionBorder: '#83cba7', secondaryAccent: '#edbe77' },
   },
   {
     id: 'rose-pine', name: 'Rosé Pine', category: 'Curated',
-    light: { accent: '#907aa9', selectionBorder: '#725d8b', secondaryAccent: '#9a5b42' },
+    light: { accent: '#907aa9', selectionBorder: '#725d8b', secondaryAccent: '#9a5b42', boardSelection: '#cdc2d8' },
     dark: { accent: '#c4a7e7', selectionBorder: '#c4a7e7', secondaryAccent: '#f6c177' },
   },
   {
     id: 'catppuccin', name: 'Catppuccin', category: 'Curated',
-    light: { accent: '#8839ef', selectionBorder: '#7c2bd6', secondaryAccent: '#8c4d20' },
+    light: { accent: '#8839ef', selectionBorder: '#7c2bd6', secondaryAccent: '#8c4d20', boardSelection: '#d2b4f9' },
     dark: { accent: '#cba6f7', selectionBorder: '#cba6f7', secondaryAccent: '#fab387' },
   },
   {
     id: 'solarized', name: 'Solarized', category: 'IDE',
-    light: { accent: '#6c71c4', selectionBorder: '#5b60ad', secondaryAccent: '#9a5d00' },
+    light: { accent: '#6c71c4', selectionBorder: '#5b60ad', secondaryAccent: '#9a5d00', boardSelection: '#c1c4e7' },
     dark: { accent: '#6c71c4', selectionBorder: '#7f87da', secondaryAccent: '#d99b25' },
   },
   {
     id: 'nord', name: 'Nord', category: 'IDE',
-    light: { accent: '#5e81ac', selectionBorder: '#4f719d', secondaryAccent: '#8b5e22' },
+    light: { accent: '#5e81ac', selectionBorder: '#4f719d', secondaryAccent: '#8b5e22', boardSelection: '#b9c8db' },
     dark: { accent: '#5e81ac', selectionBorder: '#88c0d0', secondaryAccent: '#ebcb8b' },
   },
   {
     id: 'ayu', name: 'Ayu', category: 'IDE',
-    light: { accent: '#b35c00', selectionBorder: '#a95200', secondaryAccent: '#8a4b08' },
+    light: { accent: '#b35c00', selectionBorder: '#a95200', secondaryAccent: '#8a4b08', boardSelection: '#e2c09c' },
     dark: { accent: '#e6b450', selectionBorder: '#e6b450', secondaryAccent: '#ffb454' },
   },
   {
     id: 'github', name: 'GitHub', category: 'IDE',
-    light: { accent: '#0969da', selectionBorder: '#0969da', secondaryAccent: '#8a4b08' },
+    light: { accent: '#0969da', selectionBorder: '#0969da', secondaryAccent: '#8a4b08', boardSelection: '#a1c5f1' },
     dark: { accent: '#2f81f7', selectionBorder: '#58a6ff', secondaryAccent: '#e3b341' },
   },
   {
     id: 'one', name: 'One', category: 'IDE',
-    light: { accent: '#a626a4', selectionBorder: '#982397', secondaryAccent: '#986801' },
+    light: { accent: '#a626a4', selectionBorder: '#982397', secondaryAccent: '#986801', boardSelection: '#ddaedd' },
     dark: { accent: '#c678dd', selectionBorder: '#d08ee3', secondaryAccent: '#e5c07b' },
   },
   {
     id: 'tokyo-night', name: 'Tokyo Night', category: 'IDE',
-    light: { accent: '#2e7de9', selectionBorder: '#256ed1', secondaryAccent: '#8b5500' },
+    light: { accent: '#2e7de9', selectionBorder: '#256ed1', secondaryAccent: '#8b5500', boardSelection: '#a8c9f5' },
     dark: { accent: '#7aa2f7', selectionBorder: '#8fb5ff', secondaryAccent: '#e0af68' },
   },
   {
     id: 'gruvbox', name: 'Gruvbox', category: 'IDE',
-    light: { accent: '#8f3f71', selectionBorder: '#8f3f71', secondaryAccent: '#9d4f00' },
+    light: { accent: '#8f3f71', selectionBorder: '#8f3f71', secondaryAccent: '#9d4f00', boardSelection: '#d5b7ca' },
     dark: { accent: '#d3869b', selectionBorder: '#e39caf', secondaryAccent: '#fabd2f' },
   },
   {
     id: 'high-contrast', name: 'High contrast', category: 'Accessibility',
-    light: { accent: '#0047cc', selectionBorder: '#003fae', secondaryAccent: '#6b3e00' },
+    light: { accent: '#0047cc', selectionBorder: '#003fae', secondaryAccent: '#6b3e00', entryInk: '#0c182c' },
     dark: { accent: '#70a7ff', selectionBorder: '#8db9ff', secondaryAccent: '#ffd27a' },
   },
 ]

@@ -57,13 +57,22 @@ describe('theme palette system', () => {
 
   test('standard light palettes distinguish cell highlights from the grid background', () => {
     const highlights = [
-      ['peerBg', 1.3], ['matchingBg', 1.4], ['selectedBg', 1.7], ['candidateCountBg', 1.6],
+      ['peerBg', 1.3], ['matchingBg', 1.4], ['boardSelectedBg', 1.7], ['candidateCountBg', 1.6],
     ] as const
     for (const id of standardThemeIds) {
       const theme = THEME_TOKENS[id].light
       for (const [key, minimum] of highlights) {
         assert.ok(contrast(theme[key], theme.boardBg) >= minimum, `${id} ${key}`)
       }
+    }
+  })
+
+  test('light board selections keep given and entered digits legible', () => {
+    for (const id of THEME_IDS) {
+      const theme = THEME_TOKENS[id].light
+      assert.ok(contrast(theme.boardInk, theme.boardSelectedBg) >= 7, id)
+      const entryMinimum = id === 'high-contrast' ? 7 : 4.9
+      assert.ok(contrast(theme.entryInk, theme.boardSelectedBg) >= entryMinimum, id)
     }
   })
 
