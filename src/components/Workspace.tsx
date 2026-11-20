@@ -8,7 +8,7 @@ import {
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
-import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../sudoku/grid'
+import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows, type SizedGrid } from '../sudoku/grid'
 import { gameGenerationVariant, isSizedPuzzleId, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { createGameId, EMPTY, makeGame, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
@@ -470,9 +470,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     })
   }
 
-  function createPuzzle(variant?: NewPuzzleId, boxRows?: 2 | 3) {
+  function createPuzzle(variant?: NewPuzzleId, boxRows?: 2 | 3, layout?: SizedGrid) {
     setPanel(null)
-    const grid = variant === 'six' ? sixGridForBoxRows(boxRows) : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined
+    const grid = layout ?? (variant === 'six' ? sixGridForBoxRows(boxRows) : variant === 'jigsaw-seven' ? sevenJigsawForSeed() : isSizedPuzzleId(variant) ? MINI_GRID : undefined)
     const givens = grid ? '0'.repeat(grid.size ** 2) : EMPTY
     const draft = makeGame(createGameId(), 'Untitled puzzle', givens, 'draft', undefined, grid)
     if (variant === 'algebraic-cages') draft.position.draftCages = []
@@ -494,6 +494,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     if (returnId) roomStore.select(returnId)
   }
 
+  const boxlessDraftLayout = game?.grid && 'noRegions' in game.grid ? game.grid : undefined
   const onlyActivePuzzle = activePuzzles.length === 1 ? activePuzzles[0] : undefined
   const emptyPuzzleContent = <div className="empty-puzzle-content">
     <Link className={buttonClassName('primary')} to="/puzzles/new"><Plus size={18} />New puzzle</Link>
@@ -620,7 +621,10 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onOpenHintPanel={() => setPanelVisibility('bottom', true)}
                 onOpenRightPanel={() => setPanelVisibility('right', true)}
                 puzzleBrowserView={puzzleBrowserView} setPuzzleBrowserView={setPuzzleBrowserView}
-                onNewPuzzle={openNewPuzzle} onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages' : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined, boxRows)} onEditPuzzle={editPuzzle}
+                onNewPuzzle={openNewPuzzle} onEditPuzzle={editPuzzle}
+                onCreatePuzzle={() => createPuzzle(game?.algebraic ? 'algebraic-cages'
+                  : game?.grid?.size === 6 ? 'six' : game?.grid?.size === 7 ? 'jigsaw-seven' : game?.grid ? 'mini' : undefined,
+                boxRows, boxlessDraftLayout)}
                 onEditCages={() => setPanel('cages')}
                 onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}
                 onEditChainColors={() => openSettings('chain-colors')}
@@ -664,7 +668,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
         draft={game?.source === 'draft'} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}
-      {panel === 'jigsaw-regions' && game?.grid?.size === 7 && game.source === 'draft' && <EditJigsawRegions
+      {panel === 'jigsaw-regions' && game?.grid && 'regions' in game.grid && game.source === 'draft' && <EditJigsawRegions
         game={game} layout={game.grid} close={close} />}
       {panel === 'sized-rules' && game?.grid && game.source === 'draft' && !game.position.draftCages && <EditSizedRules
         key={game.id} game={game} layout={game.grid} close={close} />}

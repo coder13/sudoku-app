@@ -2,7 +2,7 @@ import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, VariantPuzzle, VariantRule } from './engine.ts'
 import { parsePuzzle, textGridCells } from './formats.ts'
-import { gridRegionIndex, isGridText, isMiniGrid, isSevenJigsawGrid, MINI_GRID, regionsFromMembership, sixGridFromRegions, type SizedGrid } from './grid.ts'
+import { gridRegionIndex, isGridText, isMiniGrid, isSevenJigsawGrid, MINI_GRID, regionsFromMembership, SEVEN_BOXLESS_GRID, sixGridFromRegions, type SizedGrid } from './grid.ts'
 import { EMPTY } from './game.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
@@ -465,7 +465,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const distinct = size === 7 && labels ? [...new Set<number>(labels)] : []
   const explicit = size === 7 && labels?.length === 49 && distinct.length === 7
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const grid = size === 7 ? isSevenJigsawGrid(explicit) ? explicit : undefined
+  const grid = size === 7 ? labels?.length === 0 ? SEVEN_BOXLESS_GRID : isSevenJigsawGrid(explicit) ? explicit : undefined
     : size === 6 ? labels && sixGridFromRegions(labels)
       : regions === undefined || hasMiniBoxes(regions) ? MINI_GRID : undefined
   if (!grid) throw new Error(size === 4 ? 'Mini Sudoku import requires four 2 × 2 boxes.'
@@ -483,7 +483,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine']
+  const supported = ['diagonalNegative', 'diagonalPositive', 'cage', 'region', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine']
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }

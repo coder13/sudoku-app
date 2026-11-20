@@ -318,10 +318,11 @@ export function Board({
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => 'regions' in grid ? jigsawMembership(grid)
     : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [grid, regions])
+  const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
-  const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
-    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
+  const cageTotals = useMemo(() => new Map((variantRules ?? sizedRules)?.flatMap((rule) => rule.type === 'killer-cages'
+    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules, sizedRules])
   const algebraicLabels = useMemo(() => {
     const captions = new Map<number, string>()
     const descriptions = new Map<number, string[]>()
@@ -401,18 +402,18 @@ export function Board({
     return {
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
       cageStyle: cageTotal !== undefined && variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined,
-      boxEdge: !regionsAt && column % boxColumns === 0,
+      boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
       regionBottom: Boolean(regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize]),
-      alternateBox: !regionsAt && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
+      alternateBox: rectangularBoxes && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
       clues: [cellClues?.[index]?.join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
     }
-  }), [gridSize, boxRows, boxColumns, regionsAt, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
+  }), [gridSize, boxRows, boxColumns, regionsAt, rectangularBoxes, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
 
   // Parent timers and fresh event closures do not change the grid. Event wrappers
   // read the latest committed callbacks even when this element tree is reused.
   const gridRows = useMemo(() => rows.map((row) => (
-    <div className="grid-row" role="row" data-box-edge={!regionsAt && row % boxRows === 0 || undefined} key={row}>
+    <div className="grid-row" role="row" data-box-edge={rectangularBoxes && row % boxRows === 0 || undefined} key={row}>
       {columns.map((col) => {
         const index = (row - 1) * gridSize + col - 1
         const value = Number(values[index])
@@ -470,7 +471,7 @@ export function Board({
       })}
     </div>
   )), [
-    rows, columns, regionsAt, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
+    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.colors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, matchAnyDigit, highlighting.matchingCandidates,
     highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors,

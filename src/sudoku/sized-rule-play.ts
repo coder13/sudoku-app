@@ -4,7 +4,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -29,7 +29,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   }
   const { actions, rule: index } = step
   const rule = rules[index]
-  const cells = rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
+  const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
+    cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
+  const cells = cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells] : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
   let description: string
@@ -41,6 +43,12 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     reason = 'place' in action
       ? `This is the only cell on the diagonal where ${action.place.digit} can go.`
       : 'A placed digit rules out the same candidate in the other cells on this diagonal.'
+  } else if (rule.type === 'killer-cages') {
+    description = cage ? `The digits in this cage add up to ${cage.sum} and cannot repeat.` : 'Digits in a cage add to its total and cannot repeat.'
+    reason = 'Remove the candidates that cannot be part of a set of different digits with this total.'
+  } else if (rule.type === 'extra-house') {
+    description = `Every digit from 1 to ${size} appears once in this extra region.`
+    reason = 'Remove candidates that cannot appear in an assignment of different digits across this region.'
   } else if (rule.type === 'parity') {
     description = rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.'
     reason = `Remove the ${rule.parity === 'odd' ? 'even' : 'odd'} candidates from each marked cell.`
@@ -87,14 +95,23 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else if (rule.type === 'arrow') {
       locations.push(rule.circle, ...rule.cells)
       conflict = 'No set of digits along the arrow can add up to a digit in the bulb.'
+    } else if (rule.type === 'killer-cages') {
+      conflict = 'A cage cannot reach its total with different digits.'
     } else if ('cells' in rule) {
       locations.push(...rule.cells)
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
+        : rule.type === 'extra-house' ? 'The extra region cannot contain each digit once.'
         : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
           : rule.type === 'difference' ? `No pair of digits differs by exactly ${rule.difference} across the marker.`
             : rule.type === 'region-sum' ? 'No total fits every part of this Region Sum line.'
               : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
+  } else if (failure.type === 'killer-cage') {
+    const rule = rules[failure.rule]
+    const cage = rule.type === 'killer-cages' ? rule.cages[failure.cage] : undefined
+    if (cage) locations.push(...cage.cells)
+    conflict = cage ? `The cage at ${reference(Math.min(...cage.cells))} cannot reach ${cage.sum} with different digits.`
+      : 'A cage cannot reach its total with different digits.'
   } else if (failure.type === 'kropki') {
     locations.push(...failure.pair.cells)
     conflict = `${kropkiPairRule(failure.pair)} The two cells have no candidates that fit the rule.`

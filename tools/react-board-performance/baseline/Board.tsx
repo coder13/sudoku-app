@@ -93,10 +93,11 @@ export function Board({
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => 'regions' in grid ? jigsawMembership(grid)
     : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [grid, regions])
+  const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
-  const cageTotals = useMemo(() => new Map(variantRules?.flatMap((rule) => rule.type === 'killer-cages'
-    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules])
+  const cageTotals = useMemo(() => new Map((variantRules ?? sizedRules)?.flatMap((rule) => rule.type === 'killer-cages'
+    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules, sizedRules])
   const algebraicLabels = useMemo(() => {
     const captions = new Map<number, string>()
     const descriptions = new Map<number, string[]>()
@@ -203,7 +204,7 @@ export function Board({
           onPointerLeave={onGridPointerLeave}
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {rows.map((row) => (
-            <div className="grid-row" role="row" data-box-edge={!regionsAt && row % boxRows === 0 || undefined} key={row}>
+            <div className="grid-row" role="row" data-box-edge={rectangularBoxes && row % boxRows === 0 || undefined} key={row}>
               {columns.map((col) => {
                 const index = (row - 1) * gridSize + col - 1
                 const regionAtCell = regionsAt?.[index]
@@ -347,10 +348,10 @@ export function Board({
                   <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
-                    data-box-edge={!regionsAt && col % boxColumns === 0 || undefined}
+                    data-box-edge={rectangularBoxes && col % boxColumns === 0 || undefined}
                     data-region-right={regionsAt && col < gridSize && regionAtCell !== regionsAt[index + 1] || undefined}
                     data-region-bottom={regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize] || undefined}
-                    data-alternate-box={!regionsAt && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
+                    data-alternate-box={rectangularBoxes && alternateBox || undefined} data-cage-total={cageTotal !== undefined || undefined}
                     type={onCell && 'button'} tabIndex={onCell ? (active === index ? 0 : -1) : undefined}
                     aria-selected={onCell ? inSelection : undefined}
                     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}

@@ -13,7 +13,7 @@ import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
 import { findSharedAttempt } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
-import { MINI_RULE } from '../sudoku/new-puzzle'
+import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { Board } from './Board'
 import { Modal } from './Modal'
 import { PhotoPuzzleReview } from './PhotoPuzzleReview'
@@ -139,7 +139,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{preview.game.grid?.size === 6 ? '6 × 6 Sudoku' : preview.game.grid ? 'Mini Sudoku · 4 × 4' : variantName(preview.game.variant)}</strong>
+        <strong>{preview.game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
+          : preview.game.grid ? sizedGridName(preview.game.grid) : variantName(preview.game.variant)}</strong>
         <span className="import-preview-rating">
           {preview.game.difficulty
             ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>

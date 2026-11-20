@@ -3926,7 +3926,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }
-.cell > .variant-cage-total {
+.variant-board .cell > .variant-cage-total {
   position: absolute;
   inset-block-start: 5%;
   inset-inline-start: 10%;

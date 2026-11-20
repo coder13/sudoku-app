@@ -117,3 +117,64 @@ fn exact_search_proves_the_sparse_jigsaw_thermometer_within_a_small_node_budget(
         .collect();
     assert_eq!(grid.solve(&digits, 15_000), Some(answer));
 }
+
+#[test]
+fn the_published_boxless_killer_uses_only_rows_columns_and_the_authored_cages() {
+    use sudoku_app_engine::{KillerCage, SizedGrid};
+    let digits = [0; 49];
+    let expected = b"3542671762314513754265214763415623764375122761354"
+        .map(|digit| digit - b'0');
+    let layout = SizedGrid::without_regions(7).unwrap();
+    let mut repeated = digits;
+    repeated[0] = 1;
+    repeated[8] = 1;
+    assert!(layout.candidates(&repeated).is_some());
+    repeated[1] = 1;
+    assert!(layout.candidates(&repeated).is_none());
+    assert_eq!(layout.analyze(&digits, 100_000), Analysis::Multiple);
+
+    let authored: &[(u16, &[usize])] = &[
+        (26, &[0, 1, 2, 7, 8, 14]), (8, &[3, 4]), (13, &[5, 6, 13]),
+        (5, &[9, 10]), (5, &[11, 12]), (5, &[15, 22]), (17, &[16, 17, 23, 24]),
+        (11, &[18, 25]), (8, &[19, 20]), (10, &[27, 34]), (24, &[26, 32, 33, 38, 39, 40]),
+        (9, &[21, 28]), (15, &[35, 42, 43]), (5, &[29, 36]), (11, &[30, 31]),
+        (9, &[37, 44]), (4, &[45, 46]), (11, &[41, 47, 48]),
+    ];
+    let cages = authored.iter().map(|(sum, cells)| KillerCage { cells: cells.to_vec(), sum: *sum }).collect();
+    let puzzle = SizedConstraintGrid::with_layout(layout, &[Rule::KillerCages { cages, cover_grid: true }]).unwrap();
+    assert_eq!(puzzle.analyze(&digits, 100_000), Analysis::Unique);
+    assert_eq!(puzzle.solve(&digits, 100_000).as_deref(), Some(expected.as_slice()));
+    assert!(puzzle.candidates(&digits).unwrap().iter().all(|&mask| mask != 0));
+    assert_eq!(puzzle.trace(digits.to_vec(), vec![0; 49], false).unwrap().last().unwrap().digits, expected);
+}
+
+#[test]
+fn boxless_cages_and_extra_houses_use_all_sixteen_digits() {
+    use sudoku_app_engine::{KillerCage, SizedGrid};
+
+    let layout = SizedGrid::without_regions(16).unwrap();
+    let rules = [
+        Rule::ExtraHouse { cells: (0..16).map(|i| 17 * i).collect() },
+        Rule::KillerCages {
+            cages: vec![
+                KillerCage { cells: vec![0, 17], sum: 31 },
+                KillerCage { cells: vec![33], sum: 16 },
+            ],
+            cover_grid: false,
+        },
+    ];
+    let puzzle = SizedConstraintGrid::with_layout(layout, &rules).unwrap();
+    let mut digits = [0; 256];
+    let candidates = puzzle.candidates(&digits).unwrap();
+    assert_eq!(candidates[0], 0xc000);
+    assert_eq!(candidates[17], 0xc000);
+    assert_eq!(candidates[33], 0x8000);
+    assert_eq!(candidates[34] & 0xc000, 0);
+
+    digits[0] = 16;
+    let candidates = puzzle.candidates(&digits).unwrap();
+    assert_eq!(candidates[17], 0x4000);
+    assert_eq!(candidates[34] & 0x8000, 0);
+    digits[51] = 16;
+    assert!(puzzle.candidates(&digits).is_none());
+}

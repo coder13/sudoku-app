@@ -69,7 +69,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     delete position.draftSixRules
   }
   const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
-  if (draft && grid.size === 7) {
+  if (draft && 'regions' in grid) {
     const layout = { size: 7, regions: draftRegions }
     if (!isSevenJigsawGrid(layout)) return false
     grid = layout
@@ -114,7 +114,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       (value.editingId === undefined || (typeof value.editingId === 'string' && value.editingId.length <= 100)) &&
       (value.returnId === undefined || (typeof value.returnId === 'string' && value.returnId.length <= 100))
     ) {
-      if (draft && grid.size === 7) {
+      if (draft && 'regions' in grid) {
         if (JSON.stringify(value.position.draftRegions) !== JSON.stringify(grid.regions)) return
         value.position.draftRegions = grid.regions
       }

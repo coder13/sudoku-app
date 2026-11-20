@@ -1,4 +1,5 @@
 import { STARTER } from './formats.ts'
+import { sizedKillerState } from './sized-killer.ts'
 import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type SevenJigsawGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
@@ -105,7 +106,7 @@ export function makeGame(id: string, title: string, givens: string, source: Sour
     id, title, givens, source, created, ...(grid && { grid }),
     position: {
       entries: '0'.repeat(cellCount), center: Array(cellCount).fill(0), corner: Array(cellCount).fill(0), colors: Array(cellCount).fill(0),
-      ...(source === 'draft' && grid?.size === 7 && { draftRegions: grid.regions, draftSizedRules: [] }),
+      ...(source === 'draft' && grid?.size === 7 && { draftSizedRules: [], ...('regions' in grid && { draftRegions: grid.regions }) }),
     },
     past: [], future: [], elapsed: 0, started: false, paused: false,
   }
@@ -207,7 +208,8 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (puzzle?.regions?.type === 'jigsaw') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
-  return gridRegionIndex(grid, a) === gridRegionIndex(grid, b) || variantPeers(puzzle, a, b)
+  if (sizedRules?.some(rule => rule.type === 'extra-house' && rule.cells.includes(a) && rule.cells.includes(b))) return true
+  return !('noRegions' in grid) && gridRegionIndex(grid, a) === gridRegionIndex(grid, b) || variantPeers(puzzle, a, b)
 }
 
 export function valuesOf(game: Game): string {
@@ -215,7 +217,7 @@ export function valuesOf(game: Game): string {
 }
 
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
-  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values), sizedArrowState(sizedRules, values, grid.size), sizedRegionSumState(sizedRules, values, grid)]
+  const states = [globalEntropyState(puzzle, values), betweenState(puzzle, values), regionSumState(puzzle, values), sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values), sizedArrowState(sizedRules, values, grid.size), sizedRegionSumState(sizedRules, values, grid), sizedKillerState(sizedRules, values, grid.size)]
     .filter(state => state !== undefined)
   const result = states[0]
   if (!result) return
@@ -289,7 +291,7 @@ export function needsInitialCandidates(game: Game): boolean {
 function draftGridAt(game: Game, position: Position) {
   const { grid } = game
   const { draftRegions } = position
-  return game.source === 'draft' && grid?.size === 7 && draftRegions && draftRegions !== grid.regions
+  return game.source === 'draft' && grid && 'regions' in grid && draftRegions && draftRegions !== grid.regions
     ? { ...grid, regions: draftRegions } : grid
 }
 

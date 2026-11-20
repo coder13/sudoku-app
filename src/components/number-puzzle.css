@@ -12,6 +12,11 @@
   margin: 0 0 .5rem;
 }
 
+.number-puzzle-resume > ul > li:not(:focus-within) {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 61px;
+}
+
 .number-puzzle-play.workspace {
   height: auto;
   min-width: 0;

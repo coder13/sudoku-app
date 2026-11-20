@@ -50,6 +50,8 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-thermometer': 'Thermometer',
   'sized-renban': 'Renban',
   'sized-kropki': 'Kropki',
+  'sized-killer-cages': 'Killer Cages',
+  'sized-extra-house': 'Extra Region',
   'sized-labeled-dots': 'Difference and Ratio dots',
   'sized-difference': 'Difference',
   'sized-arrow': 'Arrow',

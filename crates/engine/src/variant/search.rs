@@ -533,7 +533,7 @@ impl CompiledCage {
 
 // For one digit subset, the remaining digits determine how many cells
 // have been filled. Memoization avoids revisiting permutations of the prefix.
-pub(super) fn record_support<const N: usize, const CACHE: usize>(
+pub(crate) fn record_support<const N: usize, const CACHE: usize>(
     remaining: u16,
     candidates: &[u16],
     support: &mut [u16; N],

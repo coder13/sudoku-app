@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Board } from '../../../src/components/Board'
 import type { SizedConstraintRule, VariantRule } from '../../../src/sudoku/engine'
-import { MINI_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
+import { MINI_GRID, SEVEN_BOXLESS_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
 import { createFixture, type BoardState } from './model'
 
 export type BoardProps = ComponentProps<typeof Board>
@@ -159,6 +159,12 @@ export function scenarios(): Scenario[] {
         { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 1 }], negative: true },
         { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 2 }], negative: true },
       ] },
+      { ...basic, sizedRules: [{ type: 'killer-cages', cages: [
+        { cells: [0, 1, grid.size], sum: 6 }, { cells: [grid.size + 1, grid.size + 2], sum: 7 },
+      ] }] },
+      { ...basic, sizedRules: [{ type: 'killer-cages', cages: [
+        { cells: [0, 1, grid.size], sum: 9 }, { cells: [grid.size + 1, grid.size + 2], sum: 5 },
+      ] }] },
       basic,
     ] })
   }
@@ -184,6 +190,21 @@ export function scenarios(): Scenario[] {
     { ...smallJigsaw, grid: secondJigsaw, candidatePreview: { cell: 8, digit: 7, mode: 'candidate' },
       region: { row: 1, column: 1, rows: 4, columns: 4 } },
     smallJigsaw,
+  ] })
+  const boxless: BoardProps = { ...smallJigsaw, grid: SEVEN_BOXLESS_GRID }
+  const killerRules: readonly SizedConstraintRule[] = [
+    { type: 'killer-cages', cages: [
+      { cells: [0, 1, 7], sum: 12 }, { cells: [8, 9], sum: 9 },
+    ] },
+    { type: 'extra-house', cells: [2, 10, 18, 26, 34, 35, 43] },
+  ]
+  result.push({ id: 'sized-7-boxless-killer-and-extra-house', states: [smallJigsaw, boxless,
+    { ...boxless, sizedRules: killerRules, selected: [1], active: 1 },
+    { ...boxless, sizedRules: killerRules, values: '7' + boxless.values.slice(1), selected: [8], active: 8 },
+    { ...boxless, sizedRules: [{ type: 'killer-cages', cages: [{ cells: [0, 1, 7], sum: 11 }] }],
+      candidatePreview: { cell: 0, digit: 7, mode: 'candidate' } },
+    { ...smallJigsaw, sizedRules: killerRules },
+    boxless,
   ] })
   return result.map(scenario => ({ ...scenario, states: scenario.states.map(props => freezeInputs(props)) }))
 }
