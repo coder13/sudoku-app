@@ -4,6 +4,8 @@ import { createKakuro } from '../kakuro/engine.ts'
 import type { KakuroRecipe } from '../kakuro/generator.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
 
+export const RECENT_GENERATED_PUZZLE_LIMIT = 150
+
 export type GeneratedNumberGame = 'kakuro' | 'calcudoku'
 type GeneratedKakuro = { game: 'kakuro'; difficulty: NumberPuzzleDifficulty; recipe: KakuroRecipe }
 type GeneratedCalcudoku = { game: 'calcudoku'; difficulty: NumberPuzzleDifficulty; recipe: CalcudokuRecipe }
