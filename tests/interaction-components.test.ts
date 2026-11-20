@@ -30,7 +30,7 @@ before(async () => {
 
 after(async () => { await server?.close() })
 
-test('a saved puzzle URL renders the same initial shell as the prerendered home page', async () => {
+test('home and saved puzzle URLs render the same blank loading shell before device data', async () => {
   const { getRouter } = await server.ssrLoadModule('/src/router.tsx') as typeof import('../src/router.tsx')
 
   async function renderHome(path: string) {
@@ -44,8 +44,13 @@ test('a saved puzzle URL renders the same initial shell as the prerendered home 
   const savedPuzzle = await renderHome('/?puzzle=saved-puzzle')
   const openingTag = /<main\b[^>]*>/
   const homeMain = home.match(openingTag)?.[0]
-  assert.match(homeMain ?? '', /puzzles-home/)
+  assert.match(homeMain ?? '', /startup-loading/)
+  assert.match(homeMain ?? '', /aria-busy="true"/)
   assert.equal(savedPuzzle.match(openingTag)?.[0], homeMain)
+  for (const markup of [home, savedPuzzle]) {
+    assert.match(markup, /class="startup-progress" role="progressbar" aria-label="Loading puzzles"/)
+    assert.doesNotMatch(markup, /class="[^"]*\bpuzzles-(?:home|page)\b|id="sudoku-workspace"/)
+  }
 })
 
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
