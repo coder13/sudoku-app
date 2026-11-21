@@ -27,6 +27,7 @@ pub(crate) struct OverlaySearch<'a> {
     positions: [u128; 9],
     allowed: [u128; 9],
     layouts: [OnceCell<Vec<u128>>; 9],
+    digit_equivalences: OnceCell<[u16; 9]>,
     supports: BTreeMap<u16, [u128; 9]>,
     #[cfg(feature = "variants")]
     witnessed: Option<OnceCell<[u128; 9]>>,
@@ -60,6 +61,9 @@ impl<'a> OverlaySearch<'a> {
         }
         // A group's support only depends on the layouts for its own digits.
         self.supports.retain(|group, _| group & changed == 0);
+        if changed != 0 {
+            self.digit_equivalences.take();
+        }
         // Full geometric witnesses are local to the position's proof searches.
         #[cfg(feature = "variants")]
         if let Some(witnessed) = &mut self.witnessed {
@@ -76,6 +80,7 @@ impl<'a> OverlaySearch<'a> {
             }),
             positions,
             layouts: Default::default(),
+            digit_equivalences: OnceCell::new(),
             supports: BTreeMap::new(),
             #[cfg(feature = "variants")]
             witnessed: None,
@@ -209,6 +214,16 @@ impl<'a> OverlaySearch<'a> {
             }
             return support;
         }
+        let (representative, mapping) = self.representative(group);
+        if representative != group {
+            let known = self.support(representative);
+            let mut support = [0; 9];
+            for digit in bit_indices(group) {
+                support[digit] = known[mapping[digit]];
+            }
+            self.supports.insert(group, support);
+            return support;
+        }
         let mut support = [0; 9];
         #[cfg(feature = "variants")]
         if let Some(witnessed) = &self.witnessed {
@@ -250,6 +265,30 @@ impl<'a> OverlaySearch<'a> {
         }
         self.supports.insert(group, support);
         support
+    }
+
+    // Equal allowed cells give digits identical geometric templates. A
+    // minimum-label representative has the same exact joint support under
+    // renaming. Choose a distinct representative for each digit in the group.
+    fn representative(&self, group: u16) -> (u16, [usize; 9]) {
+        let equivalents = self.digit_equivalences.get_or_init(|| {
+            std::array::from_fn(|digit| {
+                self.allowed[..=digit]
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, cells)| *cells == self.allowed[digit])
+                    .fold(0, |mask, (other, _)| mask | (1 << other))
+            })
+        });
+        let mut representative = 0;
+        let mut mapping = [0; 9];
+        for digit in bit_indices(group) {
+            let remaining = equivalents[digit] & !representative;
+            let selected = remaining.trailing_zeros() as usize;
+            mapping[digit] = selected;
+            representative |= 1 << selected;
+        }
+        (representative, mapping)
     }
 
     fn layouts(&self, digit: usize) -> &[u128] {
@@ -415,6 +454,53 @@ mod tests {
             search.support(0b011),
             OverlaySearch::classic(&board, &masks).support(0b011),
         );
+    }
+
+    #[cfg(feature = "wasm-api")]
+    #[test]
+    fn interchangeable_digit_groups_match_exact_joint_support_after_an_edit() {
+        let solution =
+            crate::parse_givens("658492731974316582132875694461523978387149256295768143849251367726934815513687429")
+                .unwrap();
+        let board = solution.map(|digit| if [5, 7].contains(&digit) { 0 } else { digit });
+        let mut masks = candidates(&board).unwrap();
+        let mut search = OverlaySearch::classic(&board, &masks);
+        let canonical = 0b1_0111; // 1, 2, 3, 5
+        let alias = 0b100_0111; // 1, 2, 3, 7
+        let both = canonical | alias;
+        assert_eq!(search.allowed[4], search.allowed[6]);
+        assert_eq!(search.representative(alias).0, canonical);
+        assert_eq!(search.representative(both).0, both);
+
+        let exact = |search: &OverlaySearch<'_>, group| {
+            let layouts: Vec<_> = bit_indices(group)
+                .map(|digit| templates::layouts(search.allowed[digit]))
+                .collect();
+            let families: Vec<_> = layouts.iter().map(Vec::as_slice).collect();
+            let mut supported = vec![0; families.len()];
+            assert!(replay(&families, 0, &mut supported));
+            let mut result = [0; 9];
+            for (digit, sites) in bit_indices(group).zip(supported) {
+                result[digit] = sites;
+            }
+            result
+        };
+
+        let expected = exact(&search, alias);
+        assert_eq!(search.support(alias), expected);
+        assert!(search.supports.contains_key(&canonical));
+        assert!(search.layouts[6].get().is_none());
+        assert_eq!(search.support(both), exact(&search, both));
+
+        // Keep the known solution while breaking the equivalence. The
+        // unaffected group's exact result still applies at the new position.
+        let cell = solution.iter().position(|&digit| digit == 7).unwrap();
+        masks[cell] &= !(1 << 4);
+        search.update_position(&board, &masks);
+        assert_eq!(search.representative(alias).0, alias);
+        assert_eq!(search.supports.get(&alias), Some(&expected));
+        assert_eq!(search.support(canonical), exact(&search, canonical));
+        assert_eq!(search.support(both), exact(&search, both));
     }
 
     // Independent checker. Enumerate complete combinations from the row search

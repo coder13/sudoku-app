@@ -109,6 +109,22 @@ Warm Node/Wasm measurements used 80 calls per operation. The table gives p50 and
 
 After warm-up, 2,000 paired Node/Wasm calls per operation returned identical responses with inline visibility and with the same pre-projected position. The inline path took 0.047 ms median and 0.124 ms at p95 for candidates, 0.060 ms and 0.090 ms for singles, and 0.070 ms and 0.117 ms for Kropki hints. The pre-projected medians were 0.019 ms, 0.025 ms, and 0.033 ms. This measures engine request handling after the first reveal, including JSON serialization. The TypeScript projection, including the reveal calculation, took 4.8 to 9.5 microseconds per call over positions with 1, 6, and 49 visible cells. These are medians of 100 warm batches of 1,000 calls on the local Node runner. With the complete import and play paths connected, 200 warm Node/Wasm calls per operation produced p50 and p95 of 1.094 and 2.046 ms for a pasted preview, 0.024 and 0.031 ms for candidates after the first reveal, and 0.570 and 1.244 ms for ranked hints at that position. Preview includes decompression and full uniqueness verification. The measurements exclude the browser and short-link network request.
 
+### Fog walkthrough performance
+
+The E3xE opening trace stalls after 18 Locked Candidates steps. The most expensive scans at that position are five-digit and four-digit Pattern Overlay. Digits 4 and 7 have identical candidate locations, so their geometric layouts can share an exact support result when either digit appears in the same group. The engine keeps separate slots when both digits occur in a group. Changes to candidate locations invalidate the relevant results.
+
+The table compares the local Wasm build with `07e29fc8` using nine warm pairs with alternating request order. Every complete response matched. Times are median milliseconds for engine requests.
+
+| Fixture and operation | Baseline | Updated |
+| --- | ---: | ---: |
+| E3xE opening trace | 762.67 | 663.64 |
+| E3xE stalled four-digit Pattern Overlay | 195.21 | 168.20 |
+| E3xE stalled five-digit Pattern Overlay | 455.49 | 360.76 |
+| DD1N opening trace | 3.83 | 3.73 |
+| HCHW archived five-digit Pattern Overlay | 27.56 | 10.35 |
+
+The gzip-compressed Wasm grows by 4.4 KiB. The E3xE walkthrough offers its explicitly labeled exact completion after step 18. Fog walkthrough ratings remain open. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
+
 ## Play feedback performance
 
 Play indexes pair exclusions once per immutable rule list. Directed clues stay attached to their source cells, and global Kropki, XV, and Non-Consecutive layers still check their edge exemptions together. Digit entry shares each removal mask between center and corner candidates.
