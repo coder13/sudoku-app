@@ -72,8 +72,9 @@ test('generated Kakuro and Calcudoku links have precached shells and workers', a
   assert.ok(assets.some(path => /history\.worker-[^/]+\.js$/.test(path)))
 })
 
-test('imported Futoshiki links have a precached Play shell', () => {
+test('imported number puzzle links have precached Play shells', () => {
   assert.ok(cached.has('/puzzles/futoshiki/imported/index.html'))
+  assert.ok(cached.has('/puzzles/calcudoku/imported/index.html'))
 })
 
 test('each Futoshiki puzzle precaches every inequality sign', async () => {

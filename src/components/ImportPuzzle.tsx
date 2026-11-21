@@ -27,6 +27,18 @@ const LazyFutoshikiImportPreview = lazy(async () => {
   return { default: FutoshikiImportPreview }
 })
 
+const LazyCalcudokuImportChoices = lazy(async () => {
+  const { CalcudokuImportChoices } = await import('./Calcudoku')
+  return { default: CalcudokuImportChoices }
+})
+
+const LazyCalcudokuImportPreview = lazy(async () => {
+  const { CalcudokuImportPreview } = await import('./Calcudoku')
+  return { default: CalcudokuImportPreview }
+})
+
+type ReadyImport = Exclude<PlayableImport, { calcudokuSource: unknown }>
+
 function preparePuzzle(input: string): Promise<PlayableImport> {
   return preparePlayableImport(input, roomStore.getSnapshot().games)
 }
@@ -71,7 +83,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [preview, setPreview] = useState<PlayableImport>()
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
-  const title = preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
+  const calcudokuSource = preview && 'calcudokuSource' in preview ? preview.calcudokuSource : undefined
+  const title = calcudokuSource ? 'Choose cage operations' : preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
 
   useEffect(() => () => pending.current?.abort(), [])
   useEffect(() => {
@@ -103,13 +116,14 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     }
   }
 
-  async function saveAndContinue(puzzle: PlayableImport) {
+  async function saveAndContinue(puzzle: ReadyImport) {
     let added: boolean
-    if ('futoshiki' in puzzle) {
+    if (!('game' in puzzle)) {
       setBusy(true)
       try {
-        const { saveFutoshikiImport } = await import('../futoshiki/imported-storage')
-        const saved = saveFutoshikiImport(puzzle.futoshiki)
+        const saved = 'futoshiki' in puzzle
+          ? (await import('../futoshiki/imported-storage')).saveFutoshikiImport(puzzle.futoshiki)
+          : (await import('../calcudoku/imported-storage')).saveCalcudokuImport(puzzle.calcudoku)
         if (saved === 'unavailable') {
           setError('This browser cannot save the puzzle. Start playing to open it.')
           return
@@ -157,13 +171,18 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setCameraOpen(false)
   }
 
-  const standalone = preview && 'futoshiki' in preview ? preview.futoshiki : undefined
-  const game = preview && 'game' in preview ? preview.game : undefined
+  const ready = preview && !('calcudokuSource' in preview) ? preview : undefined
+  const futoshiki = ready && 'futoshiki' in ready ? ready.futoshiki : undefined
+  const calcudoku = ready && 'calcudoku' in ready ? ready.calcudoku : undefined
+  const game = ready && 'game' in ready ? ready.game : undefined
   const fog = game && fogView(game.variant, game.position.entries)
-  const puzzlePreview = preview && (
+  const destination = futoshiki ? numberPuzzleDestination('futoshiki', futoshiki)
+    : calcudoku ? numberPuzzleDestination('calcudoku', calcudoku) : undefined
+  const puzzlePreview = ready && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        {standalone && <strong>Futoshiki · {standalone.puzzle.size} × {standalone.puzzle.size}</strong>}
+        {futoshiki && <strong>Futoshiki · {futoshiki.puzzle.size} × {futoshiki.puzzle.size}</strong>}
+        {calcudoku && <strong>Calcudoku · {calcudoku.puzzle.size} × {calcudoku.puzzle.size}</strong>}
         {game && <>
           <strong>{game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
             : game.grid ? sizedGridName(game.grid) : variantName(game.variant)}</strong>
@@ -174,15 +193,16 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
             {game.score != null && <span><span>Score</span> <strong>{game.score}</strong></span>}
           </span>
         </>}
-        <span className="import-preview-format">{preview.format}</span>
+        <span className="import-preview-format">{ready.format}</span>
       </p>
-      {standalone && <Suspense fallback={<p role="status">Loading puzzle preview…</p>}>
-        <LazyFutoshikiImportPreview entry={standalone} />
+      {(futoshiki || calcudoku) && <Suspense fallback={<p role="status">Loading puzzle preview…</p>}>
+        {futoshiki ? <LazyFutoshikiImportPreview entry={futoshiki} />
+          : calcudoku && <LazyCalcudokuImportPreview entry={calcudoku} />}
       </Suspense>}
-      {'game' in preview && game && <>
-        {preview.hasProgress && <p>This import includes your progress.</p>}
+      {'game' in ready && game && <>
+        {ready.hasProgress && <p>This import includes your progress.</p>}
         <Board grid={game.grid} whispersGuide={game.whispersGuide} label="Puzzle preview" givens={game.givens} values={valuesOf(game)}
-          position={preview.hasProgress ? game.position : undefined} candidateLayout="center-corner"
+          position={ready.hasProgress ? game.position : undefined} candidateLayout="center-corner"
           variantPuzzle={game.variant?.puzzle} fog={fog} algebraicCages={game.algebraic?.rules} sizedRules={game.sized?.rules} showGuides={false} />
         {game.algebraic ? <>
           {game.algebraic.source?.author && <p>By {game.algebraic.source.author}</p>}
@@ -203,14 +223,14 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <Button type="button" className="import-edit" disabled={busy} onClick={() => { setPreview(undefined); setError('') }}>
           {photo ? 'Edit givens' : 'Edit input'}
         </Button>
-        <Button type="button" disabled={busy} onClick={() => void saveAndContinue(preview)}>
+        <Button type="button" disabled={busy} onClick={() => void saveAndContinue(ready)}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </Button>
-        {standalone ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination('futoshiki', standalone)}
+        {destination ? <Link className={buttonClassName('primary')} {...destination}
           state={fullPage ? { fromNumberPuzzleImport: true } : undefined}>
           <Play size={17} aria-hidden="true" /> Start playing
-        </Link> : 'game' in preview && <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
-          <Play size={17} aria-hidden="true" /> {preview.hasProgress ? 'Open puzzle' : 'Start playing'}
+        </Link> : 'game' in ready && <Button type="button" variant="primary" onClick={() => { finishImport(ready, true); onPlay?.() }}>
+          <Play size={17} aria-hidden="true" /> {ready.hasProgress ? 'Open puzzle' : 'Start playing'}
         </Button>}
       </div>
     </div>
@@ -264,7 +284,10 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   )
 
   const content = <>
-    {preview && puzzlePreview}
+    {puzzlePreview}
+    {calcudokuSource && preview && <Suspense fallback={<p role="status">Loading cage choices…</p>}>
+      <LazyCalcudokuImportChoices source={calcudokuSource} onResolve={entry => setPreview({ calcudoku: entry, format: preview.format })} />
+    </Suspense>}
     {photo && <PhotoPuzzleReview image={photo} visible={!preview} onBack={backToInput}
       onCheck={givens => void check(givens, true)} onEdit={() => setError('')} checking={busy} checkError={error} />}
     {cameraOpen && <PuzzleCamera onCapture={usePhoto} onCancel={backToInput} />}

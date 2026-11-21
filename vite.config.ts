@@ -72,6 +72,7 @@ function prerenderPages() {
     '/puzzles/games',
     '/puzzles/calcudoku',
     '/puzzles/calcudoku/generated',
+    '/puzzles/calcudoku/imported',
     ...calcudokuCatalog.map(({ id }) => `/puzzles/calcudoku/${id}`),
     '/puzzles/futoshiki',
     '/puzzles/futoshiki/imported',

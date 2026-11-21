@@ -2,7 +2,7 @@ import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/en
 
 export const operatorSymbol = { equal: '', add: '+', multiply: '×', subtract: '−', divide: '÷' } as const
 export type CageOperator = keyof typeof operatorSymbol
-export type Cage = { target: number; operator: CageOperator; cells: readonly number[] }
+export type Cage = { target: number; operator: CageOperator; cells: readonly number[]; distinct?: true }
 
 export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[] }
 
@@ -16,7 +16,7 @@ function cageTuples(size: number, cage: Cage): Uint16Array {
     const cell = cells[i]
     for (let p = 0; p < i; p++) {
       const peer = cells[p]
-      if (cell % size === peer % size || Math.floor(cell / size) === Math.floor(peer / size)) {
+      if (cage.distinct || cell % size === peer % size || Math.floor(cell / size) === Math.floor(peer / size)) {
         layout |= 1 << (4 * i + p)
       }
     }
@@ -90,19 +90,22 @@ function checkCages(size: number, cages: readonly Cage[]) {
   if (covered.size !== size * size) throw new Error('Every Calcudoku cell needs exactly one cage.')
 }
 
-export function createCalcudoku(size: number, cages: readonly Cage[]): CalcudokuPuzzle {
+export function createCalcudoku(size: number, cages: readonly Cage[], fixed?: readonly number[]): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
   checkCages(size, cages)
-  const givens = Array<number>(size * size).fill(0)
+  const givens = fixed ? [...fixed] : Array<number>(size * size).fill(0)
   const rules = cages.map(cage => {
     const { cells, operator, target } = cage
     const tuples = cageTuples(size, cage)
     if (!tuples.length) throw new Error('A Calcudoku cage has no valid arithmetic combinations.')
-    if (operator === 'equal') givens[cells[0]] = target
+    if (operator === 'equal') {
+      if (givens[cells[0]] && givens[cells[0]] !== target) throw new Error('A Calcudoku given conflicts with its cage.')
+      givens[cells[0]] = target
+    }
     const length = cells.length
     const cache = new Map<number, readonly number[] | null>()
     return {
-      label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}`,
+      label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}${cage.distinct ? ' with no repeats' : ''}`,
       cells,
       support(domains: readonly number[]) {
         const masks = cells.map(cell => domains[cell])

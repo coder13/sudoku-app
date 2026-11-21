@@ -1,3 +1,4 @@
+import type { CalcudokuImport } from '../calcudoku/imported.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
 import type { Inequality } from '../futoshiki/engine.ts'
 import lzString from 'lz-string'
@@ -54,6 +55,7 @@ export type ImportedPuzzle = {
   givens: string
   format: ImportFormat
   futoshiki?: FutoshikiEntry
+  calcudoku?: CalcudokuImport
   variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   grid?: SizedGrid
   sizedRules?: SizedRuleGame['rules']
@@ -282,11 +284,11 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   }
 }
 
-function readCoachColourCells(colours: unknown, value: unknown): string[] | undefined {
+function readCoachColourCells(colours: unknown, value: unknown, cellCount = 81): string[] | undefined {
   if (value === undefined || value === '') return []
   if (typeof value !== 'string') return
   const cellColours = value.split(',')
-  if (cellColours.length !== 81) return
+  if (cellColours.length !== cellCount) return
   if (!cellColours.some(Boolean)) return []
   if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
     !colours.every(colour => typeof colour === 'string' && colour.length > 0)) return
@@ -394,6 +396,23 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (futoshiki) {
     checkStandaloneCoachPublication(publication)
     return futoshiki
+  }
+  if (typeof data.gridSize === 'number' && Number.isInteger(data.gridSize) && data.gridSize >= 3 && data.gridSize <= 9 &&
+    Array.isArray(data.regions) && data.regions.length === 0 && Array.isArray(data.givenConstraints) &&
+    data.givenConstraints.some(layer => record(layer) && (layer.type === 'cosmeticCage' || data.gridSize !== 7 && layer.type === 'cage'))) {
+    checkStandaloneCoachPublication(publication)
+    if (COACH_DRAWINGS.some(key => hasData(data[key]))) {
+      throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+    }
+    const codes = readCoachColourCells(data.colours, data.givenColours, data.gridSize ** 2)
+    const palette = data.colours as unknown[] | undefined
+    const colors = codes?.map(code => code ? palette?.[COACH_BASE62.indexOf(code)] : '')
+    if (!codes || codes.some(code => code.length > 1) || !colors?.every(color => color === '' || isImportedColor(color))) {
+      throw new Error('This Sudoku Coach puzzle has unsupported cell colors.')
+    }
+    const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
+    const calcudoku = readCoachCalcudoku(data, colors)
+    return { givens: calcudoku.givens, format: 'Sudoku Coach', calcudoku }
   }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const { givens, grid, rules } = readCoachSized(data)

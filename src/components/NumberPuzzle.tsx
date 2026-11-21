@@ -27,6 +27,7 @@ import { PuzzleCheckResult, type DialogResult } from './PuzzleCheckResult'
 import { SolutionDialog, SolutionPath, solutionEndSummary, type NumberSolutionTrace } from './SolutionPath'
 import { useMobileLayout } from './mobile-layout'
 import { numberSolution } from '../number-puzzles/solution'
+import { importedColorValue } from '../sudoku/imported-colors'
 import { formatTime } from '../sudoku/game'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { usePuzzleTimer } from './usePuzzleTimer'
@@ -39,6 +40,7 @@ import './number-puzzle.css'
 
 type BoardCell = {
   label?: string
+  color?: string
   given?: number
   printed?: number
   decoration?: ReactNode
@@ -57,6 +59,7 @@ export type NumberBoard = {
   height: number
   maxValue: number
   cells: readonly BoardCell[]
+  ruleNotes?: readonly string[]
   cellChoices?: { labels: readonly string[]; off: number }
   mirrorEdgeClues?: boolean
   check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
@@ -331,7 +334,7 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, h
     </div>
   }
 
-  function renderCell({ label, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
+  function renderCell({ label, color, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
     if (block) return renderBlock(index)
     const value = given || values?.[index] || 0
     const marks = noteMasks ? digits.filter(digit => noteMasks[index] & (1 << (digit - 1))) : []
@@ -339,6 +342,8 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, h
       : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
     return <button key={index} type="button" className="number-puzzle-cell"
       data-cell={index}
+      data-color={color}
+      style={color ? { '--number-cell-color': importedColorValue(color) } as CSSProperties : undefined}
       ref={events && (button => events.setButton(index, button))}
       tabIndex={selection === index ? 0 : -1}
       aria-pressed={cellChoices ? value !== cellChoices.off : events ? selection === index : undefined}
@@ -346,7 +351,7 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, h
       data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
       data-conflict={conflicts?.has(index) ?? false} data-hint={hintCell === index} data-context={context.has(index)}
       data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
-      aria-label={`${numberCellName(index, width)}, ${description}${label ? ', ' + label : ''}`}
+      aria-label={`${numberCellName(index, width)}, ${description}${label ? ', ' + label : ''}${color ? ', ' + color : ''}`}
       onFocus={events && (() => events.onFocus(index))}
       onClick={events && (() => events.onClick(index, value))}>
       {decoration}
@@ -857,7 +862,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination(game, next)}
         state={previous => previous.fromNumberPuzzleLibrary ? { fromNumberPuzzleLibrary: previous.fromNumberPuzzleLibrary } : { fromNumberDifficulty: game }}
         replace>Next puzzle</Link>
-      : config.generatedEntry
+      : config.generatedEntry && !entry.imported
         ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
           {generation.pending ? 'Generating…' : 'Generate next puzzle'}
         </Button>
@@ -885,7 +890,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       <div className="app-menu puzzle-menu" id="mobile-actions-menu">{actionItems}</div>
     </Modal>}
     <Modal title={`${name} rules`} open={rulesOpen} onClose={() => setRulesOpen(false)}>
-      <div className="variant-rules-copy"><p>{rules}</p></div>
+      <div className="variant-rules-copy">
+        <p>{rules}</p>
+        {board.ruleNotes?.map(rule => <p key={rule}>{rule}</p>)}
+      </div>
     </Modal>
     {checkResult && <PuzzleCheckResult result={checkResult} onClose={() => setCheckResult(null)} />}
     {mobile && mobileInsight === 'techniques' && <PuzzleAnalysis {...analysisProps} close={() => closeInsight('techniques')} />}

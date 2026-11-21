@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
+import calcudokuCoach from '../../tests/fixtures/calcudoku-coach.json'
 import futoshikiCoach from '../../tests/fixtures/futoshiki-coach.json'
 import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
 import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
@@ -114,5 +115,27 @@ export const FutoshikiPreview: Story = {
     await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Back to puzzle input' }))
     await expect(await canvas.findByRole('textbox', { name: 'Puzzle text or link' })).toHaveValue(futoshikiCoach.fourByFour.code)
+  },
+}
+
+export const CalcudokuPreview: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: args => <PreviewRouter shell><ImportPuzzle {...args} fullPage /></PreviewRouter>,
+  play: async ({ canvas, userEvent }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(calcudokuCoach.code)
+    await userEvent.click(canvas.getByRole('button', { name: 'Preview puzzle' }))
+    const operation = await canvas.findByRole('combobox', { name: '6 cage at R2C3' })
+    const check = canvas.getByRole('button', { name: 'Check puzzle' })
+    await expect(check).toBeDisabled()
+    await userEvent.selectOptions(operation, 'multiply')
+    check.focus()
+    await userEvent.keyboard('{Enter}')
+    const board = await canvas.findByRole('group', { name: 'Calcudoku puzzle preview' })
+    await expect(board.querySelector('[data-cell="0"]')).toHaveAccessibleName(/6 times cage at R1C1, green/)
+    await expect(board.querySelector('[data-cell="34"]')).toHaveAccessibleName(/given 4/)
+    await expect(canvas.getByText('The 6 cage at R2C3 uses multiplication.')).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
   },
 }

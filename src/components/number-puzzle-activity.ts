@@ -1,3 +1,4 @@
+import { readCalcudokuImports } from '../calcudoku/imported-storage'
 import { readFutoshikiImports } from '../futoshiki/imported-storage'
 import { calcudoku } from './Calcudoku'
 import { futoshiki } from './Futoshiki'
@@ -23,26 +24,30 @@ export type NumberPuzzleActivity = {
   pending?: true
 }
 
-function catalogActivity<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>, status: NumberResultStatus) {
+function catalogActivity<Entry extends NumberPuzzleEntry>(
+  config: NumberGameConfig<Entry>, status: NumberResultStatus, imported: readonly Entry[] = [],
+) {
   const { game, name } = config
-  return readCatalogNumberResults(config, status).entries.map(entry => ({ ...entry, game, name }))
+  const results = readCatalogNumberResults(imported.length ? { ...config, entries: [...config.entries, ...imported] } : config, status)
+  return {
+    entries: results.entries.map(entry => ({ ...entry, game, name })),
+    saved: status === 'started'
+      ? imported.filter(entry => !results.status.has(entry.id)).reverse()
+        .map(({ id, difficulty, number }) => ({ id, difficulty, number, imported: true as const, game, name }))
+      : [],
+  }
 }
 
 export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (result: NumberPuzzleActivity) => void) {
-  const imported = readFutoshikiImports()
-  const futoshikiResults = readCatalogNumberResults({ ...futoshiki, entries: [...futoshiki.entries, ...imported] }, status)
-  const futoshikiRow = <Entry extends NumberPuzzleEntry>(entry: Entry) => ({ ...entry, game: futoshiki.game, name: futoshiki.name })
-  const saved = status === 'started'
-    ? imported.filter(entry => !futoshikiResults.status.has(entry.id)).reverse()
-      .map(({ id, difficulty, number }) => futoshikiRow({ id, difficulty, number, imported: true }))
-    : []
-  const catalog = [
-    ...catalogActivity(kakuro, status),
-    ...catalogActivity(calcudoku, status),
-    ...futoshikiResults.entries.map(futoshikiRow),
-    ...catalogActivity(hidato, status),
-    ...catalogActivity(rullo, status),
+  const games = [
+    catalogActivity(kakuro, status),
+    catalogActivity(calcudoku, status, readCalcudokuImports()),
+    catalogActivity(futoshiki, status, readFutoshikiImports()),
+    catalogActivity(hidato, status),
+    catalogActivity(rullo, status),
   ]
+  const catalog = games.flatMap(game => game.entries)
+  const saved = games.flatMap(game => game.saved)
   const sources = [kakuro, calcudoku]
   const generated = new Map<NumberGame, GeneratedNumberWindowResult>()
   let revision = 0

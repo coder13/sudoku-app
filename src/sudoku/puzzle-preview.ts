@@ -1,3 +1,5 @@
+import type { CalcudokuEntry } from '../calcudoku/catalog.ts'
+import type { CalcudokuImport } from '../calcudoku/imported.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
 import { runEngine, type Analysis } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
@@ -47,7 +49,10 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
   return preparePuzzlePreview(await detectPuzzle(input), games)
 }
 
-export type PlayableImport = PuzzlePreview | { futoshiki: FutoshikiEntry; format: PuzzlePreview['format'] }
+export type PlayableImport = PuzzlePreview
+  | { futoshiki: FutoshikiEntry; format: PuzzlePreview['format'] }
+  | { calcudoku: CalcudokuEntry; format: PuzzlePreview['format'] }
+  | { calcudokuSource: CalcudokuImport; format: PuzzlePreview['format'] }
 
 /** Prepare either a Sudoku board or a standalone puzzle for the import screen. */
 export async function preparePlayableImport(input: string, games: readonly Game[] = []): Promise<PlayableImport> {
@@ -55,6 +60,11 @@ export async function preparePlayableImport(input: string, games: readonly Game[
   if (imported.futoshiki) {
     const { verifiedImportedFutoshiki } = await import('../futoshiki/imported.ts')
     return { futoshiki: verifiedImportedFutoshiki(imported.futoshiki), format: imported.format }
+  }
+  if (imported.calcudoku) {
+    if (imported.calcudoku.cages.some(cage => !cage.operator)) return { calcudokuSource: imported.calcudoku, format: imported.format }
+    const { prepareImportedCalcudoku } = await import('../calcudoku/imported.ts')
+    return { calcudoku: prepareImportedCalcudoku(imported.calcudoku), format: imported.format }
   }
   return preparePuzzlePreview(imported, games)
 }
@@ -73,6 +83,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
   if (imported.futoshiki) throw new Error('Open this puzzle in Futoshiki.')
+  if (imported.calcudoku) throw new Error('Open this puzzle in Calcudoku.')
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress, whispersGuide } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')

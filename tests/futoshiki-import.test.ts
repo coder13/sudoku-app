@@ -50,6 +50,6 @@ test('the standalone importer rejects invalid, ambiguous and unhandled rules', a
   await assert.rejects(preparePlayableImport(coachCode({ ...base, givenDigits: '1150000000000000' })), /invalid givens/)
   await assert.rejects(preparePlayableImport(coachCode({ ...base, givenDigits: '1100000000000000' })), /no solution/)
   await assert.rejects(preparePlayableImport(coachCode({
-    ...base, givenConstraints: [{ type: 'cage', segments: [{ cells: [0, 1], parameters: { sum: 3 } }] }],
-  })), /boxes/)
+    ...base, givenConstraints: [...withEdges([0, 1]).givenConstraints, { type: 'cage', segments: [{ cells: [2, 3], parameters: { sum: 3 } }] }],
+  })), /unsupported rule/)
 })
