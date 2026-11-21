@@ -1,5 +1,5 @@
 mod group_sums;
-mod groups;
+pub(super) mod groups;
 pub(super) mod ray_houses;
 pub(super) mod renban_sum;
 
@@ -44,6 +44,13 @@ impl LineConstraint {
     pub fn little_killer_sum(&self) -> Option<u16> {
         match self.kind {
             LineKind::Sum(total) => Some(total),
+            _ => None,
+        }
+    }
+
+    pub(super) fn group_line(&self) -> Option<&groups::GroupLine> {
+        match &self.kind {
+            LineKind::ThreeGroups(line) => Some(line),
             _ => None,
         }
     }

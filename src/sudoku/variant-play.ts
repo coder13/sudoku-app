@@ -20,6 +20,10 @@ function withRenbanTechniques(order: readonly string[]) {
   })
 }
 
+function withGroupLineHouses(order: readonly string[]) {
+  return order.flatMap(id => id === 'skyscrapers' ? ['group-line-house-support', id] : [id])
+}
+
 function withLittleKillerHouses(order: readonly string[]) {
   return order.flatMap(id => id === 'little-killer' ? [id, 'little-killer-house-support'] : [id])
 }
@@ -39,7 +43,10 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   const rules = puzzle?.rules ?? []
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
-  if (!renbans.length && !rays.length) return playProfile
+  const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
+  const hasGroupPairs = hasEntropicLine && rules.some(rule =>
+    rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
+  if (!renbans.length && !rays.length && !hasEntropicLine) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -49,7 +56,9 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   return playProfile.then(({ techniqueOrder: order, catalog, firstBeyondHard }) => {
     const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
-    const scoped = rayOrder.flatMap(id => {
+    const groupOrder = hasEntropicLine ? withGroupLineHouses(rayOrder) : rayOrder
+    const scoped = groupOrder.flatMap(id => {
+      if (hasGroupPairs && id === 'group-line-house-support') return [id, 'group-order-contradiction']
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
@@ -70,7 +79,8 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
   const order = await getVariantPlayOrder()
   const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
-    : id === 'little-killer' ? withLittleKillerHouses(order) : order
+    : id === 'little-killer' ? withLittleKillerHouses(order)
+      : id === 'entropic' ? withGroupLineHouses(order) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')

@@ -459,8 +459,9 @@ test('220V imports its complete published rules and centered paths through the s
     const path = await puzzleSolution(game)
     assert.ok('rating' in path)
     assert.equal(path.rating.status, 'stalled')
-    assert.equal(path.steps.length, 32)
-    assert.equal(path.rating.score.points, 1045)
+    assert.equal(path.steps.length, 82)
+    assert.equal(path.rating.score.points, 2895)
+    assert.equal(path.rating.score.counts['group-line-house-support'], 3)
     let played = game
     for (const step of path.steps) {
       for (const action of step.actions) {

@@ -39,6 +39,16 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::GroupLineHouseSupport(proof) => {
+            let choices: u16 = proof.domains.iter()
+                .map(|domain| (u32::BITS - (domain.count_ones() - 1).leading_zeros()) as u16)
+                .sum();
+            return 34 + 2 * choices + 2 * proof.cases.len() as u16;
+        }
+        VariantEvidence::GroupOrder(proof) => {
+            let checks: u16 = proof.rejected.iter().map(|order| order.checks.len() as u16 + 1).sum();
+            return 72 + 5 * checks + 2 * proof.rejected.len() as u16;
+        }
         VariantEvidence::LineHouses(proof) => {
             let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
             return 24 + 2 * cells.len() as u16 + 2 * binary_choices(domains) + 3 * houses.len() as u16;

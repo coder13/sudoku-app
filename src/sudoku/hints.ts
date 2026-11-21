@@ -59,6 +59,8 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-arrow': 'Arrow',
   'sized-double-arrow': 'Double Arrow',
   'sized-region-sum': 'Region Sum',
+  'group-line-house-support': 'Repeating groups and houses',
+  'group-order-contradiction': 'Group order contradiction',
   'whispers-house-support': 'Whispers and shared houses',
   'renban-locked-digit': 'Renban locked digit',
   'renban-house-support': 'Renban in one house',

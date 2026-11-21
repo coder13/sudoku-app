@@ -79,11 +79,85 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     }
 }
 
+
+fn positive_pairs<const N: usize>(pairs: [[usize; 2]; N]) -> MarkedPairs {
+    MarkedPairs {
+        pairs: pairs.into(),
+        negative: false,
+    }
+}
+
+fn entropic_order_practice(givens: &'static str, cell: usize, digit: u8) -> ExampleSeed {
+    seed(
+        givens, cell, digit,
+        [
+            PuzzleRule::Entropic { cells: vec![59,51,52,44,35,26,17,25,24,23,31,21,20,19,9,18,27,36,46,47,57] },
+            PuzzleRule::Entropic { cells: vec![34,33,41] },
+            PuzzleRule::Entropic { cells: vec![28,29,39] },
+            PuzzleRule::Entropic { cells: vec![45,55,56,66,76,68,60,61,53] },
+            PuzzleRule::Xv {
+                five: positive_pairs([[67, 58], [38, 29], [42, 33]]),
+                ten: positive_pairs([[49, 40], [24, 15], [20, 11], [65, 64], [70, 69], [8, 7], [1, 0]]),
+            },
+            PuzzleRule::Kropki {
+                ratio_two: MarkedPairs::default(),
+                consecutive: positive_pairs([[52, 43], [37, 28], [42, 41]]),
+            },
+        ],
+    )
+}
+
 // Authored and seeded variant exercises. Each suggested action
 // is verified against the current detector and the unique completion.
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        GroupOrderContradiction => [
+            seed(
+                "003007041000400056000106000000604500600000004004009068000045007006000400400061000",
+                10, 7,
+                [
+                    PuzzleRule::Entropic {
+                        cells: vec![40,39,38,37,46,55,64,65,66,57,58,67,68,69,70,61,52,43,42,33,34,
+                            25,16,15,14,23,22,13,12,11,10,19,28,29,30,31,40],
+                    },
+                    PuzzleRule::Kropki {
+                        ratio_two: positive_pairs([[32, 41], [48, 49], [27, 36], [35, 44], [21, 20], [47, 56], [51, 60]]),
+                        consecutive: positive_pairs([[24, 23], [41, 50], [45, 36], [80, 79]]),
+                    },
+                ],
+            ),
+            entropic_order_practice(
+                "086000500000006042301000000003108200002004001810009005600000009037005020090627003",
+                28, 4,
+            ),
+            entropic_order_practice(
+                "080001530059300040000000900000100200960070000000000075000800710430000000000607000",
+                29, 4,
+            ),
+        ],
+        GroupLineHouseSupport => [
+            seed(
+                "000950040010003000002100709301004002000030000004019300000300007130002005475001023",
+                28, 5,
+                [PuzzleRule::Entropic {
+                    cells: vec![40,39,38,37,46,55,64,65,66,57,58,67,68,69,70,61,52,43,42,33,34,
+                        25,16,15,14,23,22,13,12,11,10,19,28,29,30,31,40],
+                }],
+            ),
+            seed(
+                "086400537059306102000000000003000200000504380810209005625003010407915800008020400",
+                28, 4,
+                [PuzzleRule::Entropic {
+                    cells: vec![59,51,52,44,35,26,17,25,24,23,31,21,20,19,9,18,27,36,46,47,57],
+                }],
+            ),
+            seed(
+                "357002008406000000090000065125040070008001002040065000000000007001500000500103000",
+                60, 1,
+                [PuzzleRule::Modular { cells: vec![52,61,70,69,68,67,66] }],
+            ),
+        ],
         Quadruple => [
             seed(
                 "403591602260008109000006030009207308034015700070080090720030915501070080340050060",
