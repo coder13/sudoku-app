@@ -12,14 +12,14 @@ import { assertExclusionProof, NC_EXCLUSION_TECHNIQUES } from './helpers/exclusi
 
 const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))
 type Component = (props: Record<string, unknown>) => ReactNode
-let server: ViteDevServer, HintCard: Component, Board: Component, SolutionPath: Component, SolutionDialog: Component
+let server: ViteDevServer, HintCard: Component, Board: Component, SolutionPath: Component
 let MobilePanelLayout: typeof import('../src/components/MobilePanelLayout.tsx').MobilePanelLayout
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
-  ;({ SolutionPath, SolutionDialog } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
 })
 after(async () => { await server?.close() })
@@ -77,11 +77,11 @@ test('desktop and mobile proof cards and solution lists honor every cell naming 
         if (cellReferenceStyle === 'concise') assert.match(html, /r[1-9]c[1-9]/)
         else { assert.match(html, /row [1-9], column [1-9]/); assert.doesNotMatch(html, /\br[1-9]c[1-9]\b/i) }
       }
-      for (const Component of [SolutionPath, SolutionDialog]) {
-        const html = renderToStaticMarkup(createElement(Component, {
+      for (const embedded of [false, true]) {
+        const html = renderToStaticMarkup(createElement(SolutionPath, {
           state: { status: 'ready', trace: { steps: [view.deduction], rating: { status: { solved: 'easy' } } } },
-          index: 0, cellReferenceStyle, techniqueDifficulties: { [technique]: 'easy' }, grid: null,
-          explanation: { title: hint.title, text: diagram.description }, onSelect() {}, onRetry() {}, onClose() {},
+          index: 0, cellReferenceStyle, techniqueDifficulties: { [technique]: 'easy' }, embedded,
+          onSelect() {}, onRetry() {}, onClose() {},
         }))
         assert.ok(html.includes(techniqueLabel(technique)))
         if (cellReferenceStyle !== 'concise') assert.doesNotMatch(html, /\br[1-9]c[1-9]\b/i)
