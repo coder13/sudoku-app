@@ -762,7 +762,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
     if ('variant' in copy) variant = copy.variant
   }
   const pattern: Pattern | undefined = variant
-    ? proof && { ...proof, description: variant.description, reason: variant.reason }
+    ? proof && { ...proof, description: variant.description, reason: variant.reason, reasonSteps: variant.reasonSteps }
     : describePattern(deduction, candidates, displayCellName(displayOptions)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(displayOptions)) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()

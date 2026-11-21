@@ -7702,6 +7702,54 @@
           "difficulty": "easy"
         },
         {
+          "id": "linked-clue-contradiction",
+          "title": "Linked clue contradiction",
+          "summary": "Try one candidate and follow the restrictions it puts on neighboring clues. Remove it if a clue or house runs out of valid assignments.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Follow one candidate through the clues"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a cell that touches a Between Line or a two-cell clue. Assume one of its candidates is placed there. Update the affected houses and clues in order.",
+                "Each check uses the candidates left by earlier checks. Stop at the first clue or house that cannot be filled. Remove the original candidate."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "linked-clue-contradiction",
+              "copy": {
+                "description": "Try 6 in R9C7. Its Between Line ends at R8C9, which contains 8.",
+                "reason": "Both R9C8 and R9C9 would have to contain 7, the only digit between 6 and 8. Those cells share box 9, so remove 6 from R9C7."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "linked-clue-contradiction",
+                  "title": "Linked clue contradiction"
+                }
+              ],
+              "guide": {
+                "start": "Choose an empty cell on a line or beside a two-cell clue.",
+                "check": "Assume one candidate is placed and update the houses and clues it affects.",
+                "reason": "Remove the candidate when a clue or house has no valid assignment."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Between the Dots by Raumplaner",
+              "href": "https://sudoku.coach/en/s/9KxH"
+            }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "between",
           "title": "Between lines",
           "summary": "The two ends of a Between line set a range. Every digit inside the line must lie strictly between them. The interior digits can appear in any order.",

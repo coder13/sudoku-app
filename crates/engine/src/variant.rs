@@ -36,6 +36,7 @@ pub use logical::{
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
     VariantSumPairProof, VariantTechnique, VariantTrace,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
 };

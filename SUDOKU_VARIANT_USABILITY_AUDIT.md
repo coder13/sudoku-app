@@ -280,3 +280,12 @@ Nine alternating warmed Wasm samples measured median thread CPU time in millisec
 | Thermo Sandwich | 63.786 → 63.644 | 15.631 → 15.676 |
 
 Seventeen replacement recipes preserve all seven Kropki generation tiers. Mixed Hard generation with complete Kropki markings checks more layouts within the existing time budget. Tests verify the requested grade, unique solutions, preserved markers, and complete walkthroughs.
+
+
+## Between Lines with pair clues
+
+Between the Dots now completes its 163-step walk at Hard with 4,715 points. The previous path stalled after 66 steps. All twelve Between Lines, eleven black dots, and the verified completion survive import. The 13 linked clue proofs agree with independent line, pair, and house checks. The first removes 6 from R9C7. If it were 6, the Between Line would leave only 7 in both R9C8 and R9C9, which share a box.
+
+Play shows the checks in order, including the digits or cells that fail in the final house. The same evidence is available through ranked hints, Technique Finder, the walkthrough, and the worked Learn example. Three practice positions estimate 78, 78, and 88 points, setting the 78-point cost. Saved ratings refresh at variant scoring version 17 when the puzzle combines a Between Line with a supported pair clue.
+
+Nine alternating warmed Wasm samples on Darwin arm64 measured median thread CPU time for the published puzzle. Rating fell from 154.3 to 77.5 ms. Exact verification returned the same solution and took 3.7 to 5.1 ms. Opening candidates were identical and took 0.067 to 0.073 ms. Ranked opening hints kept ten choices and took 0.359 to 0.406 ms. Cauldron kept its complete walkthrough and Between, the Lines kept its existing logic and eight opening choices.

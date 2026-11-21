@@ -440,6 +440,7 @@ type Evidence =
   | { variant: {
       description: string; reason: string
       /** App display context; native proof data and worker responses stay unchanged. */
+      reasonSteps?: string[]
       source?: { deduction: VariantDeduction; puzzle: VariantPuzzle }
     } }
   | { cell: number }
@@ -587,7 +588,7 @@ export type VariantGroupSumLink = {
 type VariantRenbanGroupConflict = { house: VariantHouse; cells: number[]; digits: number }
 type VariantRenbanGroupProjection = { rule: number; cells: number[]; domains: number[]; supported: number[] }
 
-type VariantGroupOrderCheck = {
+type VariantConstraintCheck = {
   scope: { type: 'house'; house: VariantHouse } | { type: 'pair'; rules: number[] } | { type: 'line'; rule: number }
   cells: number[]
   domains: number[]
@@ -620,9 +621,11 @@ export type VariantDeduction = {
       lines: { rule: number; inRegion: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
         commonTotals: number[]; remainingTotals: number[] }[];
       remainder: number[]; remainderDomains: number[] }
+    | { type: 'linked-clue'; assumption: Candidate; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
+      houseConflict?: { cells: number[]; digits: number } }
     | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
       remaining: number[][];
-      rejected: { groups: number[]; checks: VariantGroupOrderCheck[]; conflict: VariantGroupOrderCheck;
+      rejected: { groups: number[]; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
         houseConflict?: { cells: number[]; digits: number } }[] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'entropy-areas'; rules: number[]; windows: [number, number, number, number][]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[] }

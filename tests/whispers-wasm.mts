@@ -42,7 +42,7 @@ test('Brain Zaps imports, rates, replays every deduction and reaches the publish
   masks.forEach((mask, cell) => { if (game.givens[cell] === '0') assert.ok(mask & 1 << (Number(fixture.solution[cell]) - 1)) })
   const techniqueOrder = await getVariantPlayOrder(), position = variantPosition(game.variant!)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 16)
+  assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 17)
   assert.deepEqual(trace.rating, await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }))
   assert.ok(trace.steps.some(step => step.technique === 'whispers-house-support'))
   let played = game

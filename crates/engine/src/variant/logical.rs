@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 16;
+pub const VARIANT_SCORING_VERSION: u32 = 17;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -28,6 +28,8 @@ mod exclusions;
 mod pruning;
 mod group_line_houses;
 mod group_order;
+mod linked_clues;
+mod scope_checks;
 mod line_houses;
 mod entropy_quadruple;
 mod sum_pairs;
@@ -187,6 +189,8 @@ catalog! {
     ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
     /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
     KropkiHouseSupport: "kropki-house-support", 48, Medium;
+    /// Reject a candidate using a bounded sequence of Between, pair and house checks.
+    LinkedClueContradiction: "linked-clue-contradiction", 78, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -378,6 +382,8 @@ pub enum VariantEvidence {
     GroupLineHouseSupport(Box<VariantGroupLineHouseProof>),
     /// One or more repeating orders contradict the surrounding clues and houses.
     GroupOrder(Box<VariantGroupOrderProof>),
+    /// A candidate refuted by a sequence of linked rule and house checks.
+    LinkedClue(Box<VariantLinkedClueProof>),
     /// A Region Sum line whose parts must each use distinct digits.
     RegionSumDistinct(Box<VariantRegionSumProof>),
     /// Several Region Sum line parts must use disjoint digits in one region.
@@ -737,14 +743,14 @@ pub struct VariantGroupLineHouseConflict {
     pub digits: u16,
 }
 
-/// The rules or house whose support is recorded for a hypothetical group order.
+/// The rules or house checked under a hypothetical assignment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(
     feature = "wasm-api",
     derive(serde::Serialize),
     serde(tag = "type", rename_all = "kebab-case")
 )]
-pub enum VariantGroupOrderScope {
+pub enum VariantConstraintScope {
     /// All-different candidates in a single house.
     House {
         /// The house used here.
@@ -755,25 +761,46 @@ pub enum VariantGroupOrderScope {
         /// Indices of the rules that define the relationship.
         rules: Vec<usize>,
     },
-    /// Another Entropic or Modular line.
+    /// A line rule.
     Line {
-        /// Index of the repeating group rule.
+        /// Index of the line rule.
         rule: usize,
     },
 }
 
-/// The candidates supported by a scope under an assumed group order.
+/// A checked scope in a group-order proof.
+pub use VariantConstraintScope as VariantGroupOrderScope;
+
+/// The candidates supported by a scope under a hypothetical assignment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
-pub struct VariantGroupOrderCheck {
+pub struct VariantConstraintCheck {
     /// Scope responsible for this restriction.
-    pub scope: VariantGroupOrderScope,
+    pub scope: VariantConstraintScope,
     /// Cells in scope order.
     pub cells: Vec<usize>,
     /// Candidate masks before the check.
     pub domains: Vec<u16>,
     /// Candidate masks supported by the scope. All zero at a contradiction.
     pub supported: Vec<u16>,
+}
+
+/// A checked constraint in a group-order proof.
+pub use VariantConstraintCheck as VariantGroupOrderCheck;
+
+/// A candidate that leaves a linked clue or house without an assignment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantLinkedClueProof {
+    /// The candidate assumed to be true.
+    pub assumption: Candidate,
+    /// Checks that narrow candidate masks under the assumption.
+    pub checks: Vec<VariantConstraintCheck>,
+    /// The final scope, which has no valid assignment.
+    pub conflict: VariantConstraintCheck,
+    /// The cells or digits that cannot fit if the final scope is a house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house_conflict: Option<VariantGroupLineHouseConflict>,
 }
 
 /// A repeating order that ends in a contradiction.
@@ -1191,6 +1218,7 @@ impl VariantDeduction {
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
+            VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
             VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
             VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
                 .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
@@ -1739,6 +1767,7 @@ impl CompiledVariant {
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
+            LinkedClueContradiction => self.linked_clue_proofs(position, &mut proofs),
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),

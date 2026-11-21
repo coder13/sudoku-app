@@ -69,6 +69,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'region-sum-distinct': 'Region Sum with distinct digits',
   'region-sum-house': 'Region Sum lines in one region',
   'thermometer-house-support': 'Thermometer and house',
+  'linked-clue-contradiction': 'Linked clue contradiction',
   'kropki-house-support': 'Kropki dot and house',
   'little-killer-house-support': 'Little Killer and shared houses',
   'renban-sum-ray-houses': 'Renban sum and shared houses',

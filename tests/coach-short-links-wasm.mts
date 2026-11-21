@@ -85,9 +85,9 @@ test('a published mixed Coach short link preserves the title, all rules, help, p
     try { assert.equal(await scan.count('between'), targets.size) } finally { scan.close() }
 
     const path = await puzzleSolution(game)
-    assert.equal(path.steps.length, 66)
-    assert.equal(path.rating.status, 'stalled')
-    assert.notEqual(path.board, between.solution)
+    assert.equal(path.steps.length, 163)
+    assert.deepEqual(path.rating.status, { solved: 'hard' })
+    assert.equal(path.board, between.solution)
     const move = ranked.choices[0].actions
     const applied = applyDeduction(game, move, ranked.candidates!)
     assert.notEqual(applied, game)
@@ -332,7 +332,7 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     try { assert.equal(await scan.count('kropki'), actions.size) } finally { scan.close() }
 
     const walkthrough = await puzzleSolution(game)
-    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 16])
+    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 17])
     assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
     assert.equal(walkthrough.board, solution)
     assert.ok(walkthrough.steps.some(step => step.technique === 'kropki-house-support'))
