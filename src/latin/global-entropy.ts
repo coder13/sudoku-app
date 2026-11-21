@@ -1,6 +1,8 @@
 import { ENTROPY_AREAS } from '../sudoku/global-entropy.ts'
 import { cellLabel, type LatinRule } from './engine.ts'
-import { availableBands, digitsInBands } from './entropy-groups.ts'
+import { latinDigitGroups } from './digit-group-tables.ts'
+
+const { available: availableBands, digits: digitsInBands } = latinDigitGroups.entropic
 
 export const globalEntropyTechnique = 'Global Entropy'
 export const globalEntropyNote = 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6), and a high digit (7–9).'

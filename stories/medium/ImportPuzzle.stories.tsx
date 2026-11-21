@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn, waitFor } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
 import calcudokuCoach from '../../tests/fixtures/calcudoku-coach.json'
+import modularCoach from '../../tests/fixtures/modular-coach.json'
 import kingX from '../../tests/fixtures/coach-boxless-king-x.json'
 import futoshikiCoach from '../../tests/fixtures/futoshiki-coach.json'
 import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
@@ -157,6 +158,31 @@ export const BoxlessKingXPreview: Story = {
     await expect(board.querySelector('[data-cell="40"]')).toHaveAccessibleName(/top-left to bottom-right diagonal.*top-right to bottom-left diagonal/)
     await expect(board.querySelector('[data-cell="77"]')).toHaveAccessibleName(/odd circle/)
     await expect(canvas.getByText('Cells that touch at a corner must have different digits.')).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
+  },
+}
+
+
+export const BoxlessModularLinesPreview: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: args => <PreviewRouter shell><ImportPuzzle {...args} fullPage /></PreviewRouter>,
+  play: async ({ canvas, userEvent }) => {
+    const source = modularCoach.examples.find(example => example.url.endsWith('/7hzU'))!
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(source.code)
+    const preview = await canvas.findByRole('button', { name: 'Preview puzzle' })
+    preview.focus()
+    await userEvent.keyboard('{Enter}')
+    const board = await canvas.findByRole('group', { name: 'Futoshiki puzzle preview' })
+    const modular = board.querySelectorAll('.variant-modular polyline')
+    const entropic = board.querySelectorAll('.variant-entropic polyline')
+    await expect(modular).toHaveLength(2)
+    await expect(entropic).toHaveLength(4)
+    await expect(parseFloat(getComputedStyle(modular[0]).strokeWidth))
+      .toBeGreaterThan(parseFloat(getComputedStyle(entropic[0]).strokeWidth))
+    await expect(board.querySelector('[data-cell="0"]')).toHaveAccessibleName(/Modular Line 1.*Entropic Line 1/)
+    await expect(canvas.getByText('The groups are {1, 4}, {2, 5}, {3}.', { exact: false })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
   },
 }

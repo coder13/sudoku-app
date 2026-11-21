@@ -110,6 +110,8 @@
   pointer-events: none;
 }
 
+.number-puzzle-line-clues .variant-modular polyline { stroke-width: .18; }
+
 .number-puzzle-grid > .board-authored-artwork {
   inset: 0;
   width: 100%;

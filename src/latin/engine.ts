@@ -6,7 +6,7 @@ type RuleEvidence = {
 }
 
 export type LatinRule = RuleEvidence & {
-  kind?: 'line' | 'extra-region' | 'unnumbered-cage' | 'global-entropy' | 'quadruple' | 'parity' | 'anti-knight' | 'anti-king' | 'diagonal' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'entropic' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
+  kind?: 'line' | 'extra-region' | 'unnumbered-cage' | 'global-entropy' | 'quadruple' | 'parity' | 'anti-knight' | 'anti-king' | 'diagonal' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'entropic' | 'modular' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
   // Derived rules are used for solving and hints. The board check uses the basic rules.
   afterBasic?: true
   support: (domains: readonly number[], explain?: (evidence: RuleEvidence) => void) => readonly number[] | null
@@ -200,7 +200,7 @@ function collectLatinHints(
 function isForcingClue({ kind }: LatinReason) {
   return kind === 'whispers' || kind === 'palindrome' || kind === 'consecutive' ||
     kind === 'thermometer' || kind === 'arrow' || kind === 'pill-arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between' ||
-    kind === 'anti-king' || kind === 'diagonal' || kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple' || kind === 'parity'
+    kind === 'modular' || kind === 'anti-king' || kind === 'diagonal' || kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple' || kind === 'parity'
 }
 
 export const latinContradictionTechnique = 'Contradiction'
@@ -211,10 +211,12 @@ type TrialChange = {
 
 function tryCandidatePlacements(puzzle: LatinPuzzle, domains: readonly number[], dependencies: readonly (Set<LatinReason> | undefined)[]) {
   // Limit the extra work when none of the direct rules gives a placement.
-  // A diagonal can link distant cells. Include three-candidate branches for these puzzles.
+  const hasModular = puzzle.rules.some(rule => rule.kind === 'modular')
   const hasDiagonal = puzzle.rules.some(rule => rule.kind === 'diagonal')
-  let trials = hasDiagonal ? 48 : 16
-  const maxCandidates = puzzle.rules.some(rule => rule.kind === 'palindrome' || rule.kind === 'consecutive') || hasDiagonal ? 3 : 2
+  // Long paths and diagonals can link distant cells. Try wider branches within the limit.
+  const maxCandidates = hasModular ? 4
+    : hasDiagonal || puzzle.rules.some(rule => rule.kind === 'palindrome' || rule.kind === 'consecutive') ? 3 : 2
+  let trials = hasModular || hasDiagonal ? 48 : 16
   for (let count = 2; count <= maxCandidates; count++) for (const [cell, mask] of domains.entries()) {
     if (counts[mask] !== count) continue
     let remaining = mask

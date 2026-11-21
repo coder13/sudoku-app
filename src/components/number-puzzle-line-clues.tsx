@@ -3,6 +3,7 @@ import { latinDiagonalNames, latinDiagonalTechnique } from '../latin/diagonals'
 import { cellLabel } from '../latin/engine'
 import { lockoutMinimumGap } from '../latin/endpoint-lines'
 import { extraRegionNote, extraRegionTechnique, unnumberedCageNote, unnumberedCageTechnique } from '../latin/extra-regions'
+import { groupLineNames, groupLineNote } from '../latin/group-line'
 import { globalEntropyNote, globalEntropyTechnique } from '../latin/global-entropy'
 import { latinParityTechnique } from '../latin/parity'
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
@@ -10,6 +11,7 @@ import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { regionsInsideArtwork } from '../number-puzzles/authored-region-borders'
 import { gridDiagonalCells } from '../sudoku/grid'
+import { coloredLineOverlapLanes } from '../sudoku/line-geometry'
 import { antiKingNote, antiKingTechnique } from '../sudoku/anti-king'
 import { antiKnightNote, antiKnightTechnique } from '../sudoku/anti-knight'
 import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
@@ -20,7 +22,7 @@ import { ParityClue } from './ParityClue'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue } from './RenbanClue'
-import { Cage, DiagonalClue, ExtraRegion } from './VariantClues'
+import { Cage, ColoredLineLane, DiagonalClue, ExtraRegion } from './VariantClues'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
@@ -73,7 +75,7 @@ export function numberPuzzleClues(
       }
     }
   }
-  let entropicNumber = 0
+  const groupLineNumbers = { entropic: 0, modular: 0 }
   for (const { type, cells, segments } of pathClues) {
     if (type === 'consecutive') {
       for (const path of segments ?? [cells]) {
@@ -117,11 +119,11 @@ export function numberPuzzleClues(
       for (const cell of cells.slice(1, -1)) {
         addLabel(cell, `Lockout Line, digit below both or above both diamonds at ${first} and ${last}`)
       }
-    } else if (type === 'entropic') {
-      entropicNumber++
+    } else if (type === 'entropic' || type === 'modular') {
+      const number = ++groupLineNumbers[type]
       const rule = cells.length === 1 ? 'one-cell path, any digit' : cells.length === 2 ? 'two positions from different digit groups'
         : 'every three successive positions need one digit from each group'
-      for (const cell of cells) addLabel(cell, `Entropic Line ${entropicNumber}, ${rule}`)
+      for (const cell of cells) addLabel(cell, `${groupLineNames[type]} ${number}, ${rule}`)
     } else if (type === 'renban') {
       for (const cell of cells) addLabel(cell, `Renban line of ${cells.length} consecutive digits`)
     } else {
@@ -140,6 +142,9 @@ export function numberPuzzleClues(
     squareArtworkRegions.every(cells => regionKeys.includes(cells.join(',')))
   const regionCells = extraRegions.flat()
   const regionsOverlap = new Set(regionCells).size !== regionCells.length
+  const groupLines = pathClues.flatMap(({ type, cells }) =>
+    type === 'entropic' || type === 'modular' ? [{ type, cells }] : [])
+  const lanes = coloredLineOverlapLanes(groupLines, size)
   const drawing = hasDrawing ? <svg className="number-puzzle-line-clues" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
     {diagonals.map(diagonal => <DiagonalClue key={diagonal} diagonal={diagonal} size={size} />)}
     {odd.length > 0 && <ParityClue parity="odd" cells={odd} size={size} />}
@@ -152,7 +157,15 @@ export function numberPuzzleClues(
     {pathClues.filter(line => line.type === 'renban').map((line, index) => <RenbanClue key={`renban-${index}`} {...line} number={index + 1} size={size} />)}
     {pathClues.filter(line => line.type === 'palindrome').map((line, index) => <PuzzlePathClue key={`palindrome-${index}`} line={line} size={size} />)}
     {whispers.map((line, index) => <WhispersLineClue key={`whispers-${index}`} line={line} size={size} />)}
-    {pathClues.filter(line => line.type === 'entropic').map((line, index) => <PuzzlePathClue key={`entropic-${index}`} line={line} size={size} />)}
+    {groupLines.map((line, index) => <PuzzlePathClue key={`group-line-${index}`} line={line} size={size} />)}
+    {[...lanes].map(([index, edges]) => {
+      const { type } = groupLines[index]
+      const entropic = type === 'entropic'
+      return <g key={`group-line-overlap-${index}`} className={`variant-${type}-overlap`}>
+        {edges.map((edge, index) => <ColoredLineLane key={index} {...edge} size={size}
+          color={entropic ? '#bc6c27' : '#288e93'} dashed={entropic} />)}
+      </g>
+    })}
     {pathClues.filter(line => line.type === 'consecutive').map((line, index) => <PuzzlePathClue key={`consecutive-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'arrow').map(({ cells: [circle, ...cells] }, index) =>
       <ArrowClue key={`arrow-${index}`} circle={circle} cells={cells} size={size} />)}
@@ -177,7 +190,7 @@ export function numberPuzzleClues(
       ...(extraRegions.length ? [squareRegionRule ? 'Digits cannot repeat in each outlined 3 × 3 square.' : extraRegionNote] : []),
       ...(unnumberedCages.length ? [unnumberedCageNote] : []),
       ...(whispers.length ? [whispersRuleNote] : []),
-      ...Array.from(types, type => pathClueNotes[type]),
+      ...Array.from(types, type => type === 'entropic' || type === 'modular' ? groupLineNote(type, size) : pathClueNotes[type]),
     ],
     techniques: [
       ...(diagonals.length ? [latinDiagonalTechnique] : []),

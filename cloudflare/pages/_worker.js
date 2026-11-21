@@ -111,6 +111,9 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // for hints. When a note repeats encoded rules, also bind the reviewed export.
 const reviewedCoachNotes = new Map([
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
+  // The author identifies the two encoded line families by width.
+  ['7hzU', ['8c6d7c65ce35ea28fec297a68be7363fc37c08b5749febfd17a6d406c9333aaf',
+    '4e8ce36443972d7cfb5a1288bfd3b8307cc3cc6e235ee589cba7927d7fce5674']],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],

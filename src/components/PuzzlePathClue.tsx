@@ -1,6 +1,6 @@
 import type { LatinPathClue } from '../latin/path-clues'
 
-/** Draw a Thermometer, Palindrome Line, Consecutive Line, or Entropic Line at the active grid size. */
+/** Draw a Thermometer, Palindrome Line, Consecutive Line, Entropic Line, or Modular Line at the active grid size. */
 export function PuzzlePathClue({ line, size = 9 }: { line: LatinPathClue; size?: number }) {
   if (line.type === 'thermometer') {
     const bulb = line.cells[0]

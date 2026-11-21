@@ -467,7 +467,7 @@ function coachUnnumberedCages(layer: Record<string, unknown>) {
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'antiKing' || layer.type === 'entropicLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'antiKing' || layer.type === 'entropicLine' || layer.type === 'modularLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'cage' && Array.isArray(layer.segments) && layer.segments.length > 0 && layer.segments.every(isUnnumberedCoachCage)) ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
@@ -874,8 +874,11 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
       }
       continue
     }
-    if (type === 'entropicLine') {
-      for (const cells of readCoachGroupPaths(layer, size, 'Entropic')) pathClues.push({ type: 'entropic', cells })
+    if (type === 'entropicLine' || type === 'modularLine') {
+      const name = type === 'entropicLine' ? 'Entropic' : 'Modular'
+      for (const cells of readCoachGroupPaths(layer, size, name)) {
+        pathClues.push({ type: type === 'entropicLine' ? 'entropic' : 'modular', cells })
+      }
       continue
     }
     if (type === 'betweenLine') {
