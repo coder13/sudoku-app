@@ -93,14 +93,17 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
 
   const { evidence, pattern } = hint
   if (!pattern) return
-  const focus = 'house' in evidence ? [] : pattern.cells
+  const coloring = 'coloring' in evidence ? evidence.coloring : undefined
+  const focus = coloring ? [...new Set(coloring.colors.flatMap(group => group.map(({ cell }) => cell)))].sort((a, b) => a - b)
+    : 'house' in evidence ? [] : pattern.cells
+  const houses = coloring ? [] : pattern.houses
   const cells = new Map<number, CellAnnotation>()
-  for (const house of pattern.houses) {
+  for (const house of houses) {
     for (const cell of houseCells(house, grid)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
   }
   for (const cell of focus) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
 
-  const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty, grid.size)) : pattern.houses.map(houseName)
+  const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty, grid.size)) : houses.map(houseName)
   const text = references.length > 0 && references.length <= 4 ? `Look in ${list.format(references)}.`
     : 'Look at the highlighted cells.'
   const annotations: BoardAnnotations = { cells }

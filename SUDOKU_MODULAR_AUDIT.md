@@ -28,10 +28,10 @@ The [Coach corpus](tests/fixtures/modular-coach.json) preserves eight original e
 | [Entropic Runaround](https://sudoku.coach/en/s/Cmki), FatPhil | A 6 × 6 puzzle with replacement regions, two Whispers paths with minimum difference three, a sum and four Modular paths. Grid-size support remains open. |
 | [kicking modular lines…](https://sudoku.coach/en/s/7hzU), vajrajames | A 5 × 5 Latin-square puzzle with Anti-King, two Modular and four Entropic paths. Preserve its grid and region semantics. |
 | [Modular Colouring](https://sudoku.coach/en/s/GYTv), cyboogie | Six Modular paths, eight Consecutive Lines, seven difference-three circles and a printed XI total. Requires [Consecutive Lines](https://github.com/coder13/sudoku-app/issues/89) and [General Difference](https://github.com/coder13/sudoku-app/issues/85). |
-| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | Non-Consecutive, three Entropic paths, two Modular paths and Region Sum paths. The author explicitly includes blue cosmetic lines in the mathematical rule. Preserve the source and description until [Region Sum](https://github.com/coder13/sudoku-app/issues/67) and authored-context import are complete. |
-| [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. Preserve the complete export pending [Fog app support](https://github.com/coder13/sudoku-app/issues/91). |
+| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | The verified short link imports Non-Consecutive, four Entropic paths, two Modular paths, and nine Region Sum lines. The authored legend accounts for the drawn orange and blue paths. An independent counter verifies the unique published answer. [Verification](SUDOKU_VARIANT_USABILITY_AUDIT.md#published-coach-links) |
+| [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. The complete export now opens through 9×9 Fog import. [Fog app audit](https://github.com/coder13/sudoku-app/issues/91) |
 
-Six incomplete sources still reject as whole imports. A supported Modular path does not justify discarding a companion rule or changing the grid. Original short URLs still require Copy → Puzzle; this change does not add a network link resolver.
+Six raw exports remain deferred. The 220V short link supplies the author legend required to recover its drawn paths. The other deferred sources still need the rules or grid layouts listed above.
 
 ## Engine and app contract
 
@@ -212,6 +212,188 @@ These measurements do not include live viewport layout, paint, worker startup or
 [Issue 175](https://github.com/coder13/sudoku-app/issues/175) records both exact stalled positions, the reviewed source head and a diagnostic across all 121 catalog techniques. No detector offers a proof at the app stall. Preferring ALS AIC, Sue de Coq, Aligned Triplet Exclusion, Dynamic Forcing Net or Kraken Fish 2 gives different proof sequences that reach the same remaining candidates.
 
 With two warmups and seven measured samples, the three empty Unique Rectangle inference searches each cost about 92–95 ms at the opening and 34–35 ms at the app stall. `classic_proofs` creates a new Classic search per technique, whereas the three rectangle graph methods share a cache only within one search instance. Profile graph construction before extending that cache lifetime. Preserve the exact board/masks, unique-solution checks, proof ordering and all retained replies. This diagnostic identifies a candidate optimization; it does not ship one or resolve the human reasoning gap.
+
+### Combine Modular Lines and adjacent sums at the app stall
+
+In the 25-step HCHW stall, R5C2 and R6C2 add to 7 and occupy consecutive positions on a Modular Line. If one digit had remainder 2 when divided by 3, the other would have remainder 2 as well. The Modular Line requires different remainders in these cells. R6C3 adds to 13 with R6C2. Since 13 also has remainder 1, R6C3 cannot have remainder 2. Three positions farther along the line, R7C3 and R7C4 repeat the respective remainder groups of R5C2 and R6C2.
+
+| Cell | Candidates at the stall | Removes |
+| --- | --- | --- |
+| R5C2 | 1, 2, 3 | 2 |
+| R6C2 | 4, 5, 6 | 5 |
+| R6C3 | 7, 8, 9 | 8 |
+| R7C3 | 1, 2, 3, 4, 5, 6 | 2, 5 |
+| R7C4 | 1, 2, 3, 4, 5, 6, 7, 8, 9 | 2, 5, 8 |
+
+Enumerating the five stalled domains under just those two sums and three remainder relations yields twelve assignments, including the published solution's values. Applying the eight removals to the app stall produces two further Modular deductions verified against that solution. The current walkthrough then stalls again with all cells unfilled. The engine now detects this combination for any positive adjacent total, including V and X clues, whose endpoints both lie on a Modular Line. It also assigns the third position in each window to the excluded group, so the verified proof removes 19 candidates at the archived app stall. The following adjacent-total deduction removes 8 from R6C3. The hint names both cells, the sum and the repeating remainder group.
+
+HCHW's native path grows from 21 to 24 steps and its app path from 25 to 28 steps. The new partial scores are 517 and 2,097. Both paths still stall with all cells unfilled. Exact solves, candidate masks, and full trace records for Newman, Hu9m and 220V match the previous engine. The proof uses the existing 27-point Modular technique and scoring version 8. [Coverage issue](https://github.com/coder13/sudoku-app/issues/175)
+
+### Quintuple Pattern Overlay at the later stall
+
+The later HCHW position exposed slow searches for five compatible digit layouts. The fallback indexes the layouts by cell. After choosing a layout, it filters the remaining families and searches the one with the fewest compatible layouts first. This search remains exhaustive. The index applies to five families with at most 8,192 layouts each. Larger families use the linear search. The original witness probes run first, so quick matches avoid the index.
+
+These are warmed WebAssembly CPU times in milliseconds, shown as median and maximum of five samples in rotating order. All three engines return the same empty Quintuple replies at both positions. The two engines with the new Modular deduction return identical complete trace and rating records for HCHW.
+
+| Request | Previous engine | Modular deduction only | Modular deduction and indexed search |
+| --- | ---: | ---: | ---: |
+| Archived HCHW Quintuple scan | 26.52 / 27.77 | 29.44 / 31.34 | 26.94 / 29.52 |
+| Later HCHW Quintuple scan | 2,357.63 / 2,382.68 | 2,381.01 / 2,417.21 | 448.94 / 453.88 |
+| HCHW app-order rating | 990.27 / 1,039.21 | 3,606.17 / 3,658.64 | 1,668.98 / 1,672.20 |
+
+The combined changes add 4,581 raw bytes and 5,736 gzip bytes to the app engine. A fresh Wasm instance reaches 3 MiB of linear-memory capacity on the later scan, up from 2.25 MiB without the index. To compare the two Quintuple positions, pass the older and newer Wasm artifacts to the existing benchmark. It reconstructs the archived position with Modular deductions disabled and the later position with the current app order.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=5 --warmups=1 --cases=HCHW-22,HCHW-current-stall
+```
+
+### Combine repeating groups with shared houses
+
+Two cells a multiple of three positions apart on a Modular or Entropic Line use the same digit group. If they share a house, they must use different digits. A crossed-out candidate would force its partner to repeat that digit, because the partner has no other candidate in the same group. The proof records the exact line, house, cells and candidate masks. It works with rows, columns, regions, and declared houses such as diagonals.
+
+The [captured 28-step HCHW stall](tests/fixtures/modular-hchw-stall.json) now offers two Modular hints in Play. R1C5 only has candidates 1, 2 and 3, one per remainder group, and R1C8 shares its group and row. Remove 1, 2 and 3 from R1C8. R4C3 only has 4, 5 and 6, so it rules those digits out of R4C6 the same way. Technique Finder counts all six removals. Testing independently enumerates valid digit pairs and checks the published answer, hint text, application, undo and redo.
+
+In a full walkthrough the detector also finds a line-and-column proof earlier in HCHW. The native path reaches 27 steps and 598 points, up from 24 and 517. The app path reaches 31 steps and 2,178 points, up from 28 and 2,097. The app path for 220V reaches 32 steps and 1,045 points, up from 29 and 980. Both puzzles still stall before placing a digit. Newman, Hu9m, Ksy3 and EoGB preserve their full app deduction sequences and scores. The technique costs stay the same and variant scoring advances to version 9 to identify the changed paths. [HCHW coverage](https://github.com/coder13/sudoku-app/issues/175)
+
+The app still solves the published Clover and Entropic Web puzzles at Medium. Clover moves from 73 steps and 1,036 points to 75 and 1,090. Entropic Web moves from 92 and 1,573 to 93 and 1,600. Entropic Loop moves from 12 and 1,680 to 28 and 2,871, still without a placement. The Entropic Loop native path and both Entropic Hafj paths stay the same. [Entropic coverage](https://github.com/coder13/sudoku-app/issues/162)
+
+Raw app WebAssembly grows from 4,031,922 to 4,067,229 bytes. Gzip grows from 1,065,545 to 1,068,933 bytes. On the saved HCHW position, the selected Modular request moves from zero hints to two, with a warmed median of 0.034 to 0.073 ms over 100 samples. Five alternating warmed full app traces put the HCHW median at 1.24 to 1.53 seconds, with overlapping timings. Four alternating warmed Entropic Loop traces take a median of 1.21 to 2.03 seconds as the solver explores the longer path. On the final Entropic Loop positions, the forcing searches take 431 to 536 ms in a separate diagnostic and find no move. That is the largest measured family at the stall.
+
+### Combine repeating groups, sums, and shared houses
+
+On the [captured 31-step HCHW position](tests/fixtures/modular-hchw-sum-house.json), assume R1C8 is 5. Its Modular partner R1C5 needs a digit from {2, 5, 8}. R1C5 has candidates 1, 2 and 3, so it would have to be 2. The adjacent sum of 7 makes R1C4 equal 5, repeating the digit in row 1. Enumerating the three domains with the sum and same remainder yields six assignments. Five respect row 1 and none of those uses 5 in R1C8.
+
+The detector projects possible digits through a positive two-cell total, including V and X, from a same-group cell on a Modular or Entropic Line. It reports the removal only when every sum assignment for that candidate would repeat its digit in a shared house. If the house contains all three cells, it checks distinctness against both sum endpoints. Proofs identify both authored rules, the three input masks, the sum and the house. The sum partner may lie off the line. Exact solutions and starting candidates match the prior build across ten published sources.
+
+The archived position now offers three Modular choices. They remove 5 from R1C8, 5 from R3C8, or 5 and 8 from R2C8. In the last proof, R2C8 and R5C8 share a remainder group. If R2C8 is 5 or 8, the 13 clue between R5C8 and R6C8 needs 5 and 8 in either order. Both sum cells share column 8 with R2C8, so either order repeats the assumed digit. The live trace also finds an earlier shared-house sum proof at R4C6. The app walkthrough grows from 31 steps and 2,178 points to 35 and 2,286. The native path grows from 27 steps and 598 points to 31 and 706. Both still stall without placements. The published Entropic puzzle L25 entropic (Hafj) uses two of the new V/X proofs and grows from 5 steps and 107 points to 13 steps and 309 points in both orders. It still stalls without a placement. The eight other published controls retain their full app traces and scores. [HCHW coverage](https://github.com/coder13/sudoku-app/issues/175)
+
+Five alternating warmed HCHW app traces take a median of 2.25 seconds before and 2.69 seconds after in the same WebAssembly run. The selected Modular request at the archived 31-step position stays below 0.16 ms at the warmed median and returns three proofs instead of zero. The app Wasm drops from 4,067,229 to 4,053,828 bytes, and from 1,068,933 to 1,066,814 bytes with gzip.
+
+At the 35-step stall, R1C2 and R4C2 share a Modular remainder group. If R1C2 were 4, R4C2 would be 1. Column 2 then requires R5C2 to use its other candidate, 3, and the adjacent 7 sum makes R6C2 equal 4. If R1C2 were 6, R4C2 would be 3 and the sum would make R6C2 equal 6. Independent enumeration gives six distinct-digit assignments across those four cells. None uses 4 or 6 in R1C2. The next proof needs the two sum cells outside the line, with the line pair and both sum cells sharing column 2.
+
+### Quintuple Pattern Overlay after the four-cell edits
+
+The [saved benchmark position](tests/fixtures/overlay-hchw-linked.json) starts at the 35-step stall. It applies the verified 4 and 6 removals from R1C2 and the corresponding proof for R2C2, then replays the resulting Dynamic Forcing Net elimination of 8 from R3C2. The R2C2 proof uses its same-group partner R4C1. In each case, the group and the shared house fix R5C2, and the 7 sum would make R6C2 repeat the assumed digit in column 2.
+
+A selected Quintuple scan took 7.15 seconds of Wasm CPU in an initial probe and returned zero deductions. One native instrumented scan spent 3.01 seconds in the group for digits 4, 5, 6, 7 and 9. Digits 4 and 6 share their complete allowed-cell and layout lists, as do 7 and 9. Sharing each valid witness among interchangeable digits and choosing one layout order among the interchangeable unpinned digits brought that group's native search to 1.32 seconds. Reusing the bitset buffers and applying each cell's mask across their active words brought it to 0.56 seconds. These native timings are single measurements for the same five-digit group.
+
+The matcher keeps the layout requirement for the candidate being tested. The app regression independently checks both four-cell eliminations and replays the forcing step. Then it verifies the empty Quintuple hints and Finder count. A native direct-enumeration test checks mixed identical domains, partial witness support, family order, changed domains and layout indices on both sides of a bitset word boundary.
+
+Three alternating warm samples on macOS arm64 with Node 26.13 measured a median of 10,157 ms versus 1,688 ms of Wasm CPU for the selected Quintuple request. Both artifacts returned zero hints. The full edited replay fell from a median of 17,623 to 3,949 ms of Wasm CPU in the same run. The complete replay records match, including the one forcing deduction and the stalled result. The broader paired comparison also matched 640 replies across 30 positive practice positions and 13 retained corpus positions, including complete traces, ratings and hint pages. The app binary grows from 4,053,828 to 4,076,895 bytes, and from 1,066,814 to 1,070,501 bytes with gzip. The selected request used 2.5 MiB versus 2.44 MiB of Wasm linear-memory capacity.
+
+The pre-forcing and post-forcing scans both reach the same expensive five-digit layout group. The forcing step removes one candidate for digit 8, so it leaves the allowed cells for all five digits in that group unchanged. The saved positions can also check a later optimization that retains exact group support between steps in a solve.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=3 --warmups=1 --cases=HCHW-linked,HCHW-edited-tail,HCHW-current-stall,classic-quintuple-pattern-overlay,variant-quintuple-pattern-overlay
+```
+
+### Four-cell sum hints in Play
+
+The line pair and sum can use four separate cells. For each candidate in either line cell, the detector checks the same-group candidates at its partner and both orders of the sum allowed by the domains. Every repeating digit must be justified by a recorded house. The four-cell proof carries both authored rule indices, the candidate masks, the house list and the total. Positive V and X clues use the same path.
+
+At the [archived HCHW position](tests/fixtures/overlay-hchw-linked.json), Play offers both verified hints. The first rules out 4 and 6 from R1C2 using column 2. The second rules them out from R2C2 using column 2 and box 4. Technique Finder counts the removals. The regression checks the displayed explanations against independent enumeration, plays both hints with undo and redo, and verifies the resulting Dynamic Forcing Net move. A separate Entropic and V control checks the same proof, a restored candidate that makes an assignment possible, and a V with no shared house.
+
+The live HCHW app path grows from 35 steps and 2,286 points to 38 steps and 3,140 points. It reaches the same candidate state as the manual experiment and still stalls without placing a digit. The native path grows from 31 steps and 706 points to 33 and 760. L25 entropic (Hafj) moves from 13 steps and 309 points to 17 steps and 417 points in both orders. The four new steps use the original V/X clues and leave its walkthrough partial. Exact solutions and starting candidates match the prior build across ten published sources.
+
+Variant walkthroughs now retain exact overlay support for digit groups whose allowed cells are unchanged from one step to the next. Groups containing an edited digit are recomputed. Each position's full geometric witnesses are rebuilt on demand, including when an exact group is already cached. That preserves the availability of witnesses to forcing techniques and other detectors. The saved HCHW tail tests reuse across the digit 8 removal while the expensive group for 4, 5, 6, 7 and 9 stays the same.
+
+Three warmed, alternating WebAssembly samples put HCHW's standard app walkthrough at a median of 2.21 seconds of CPU before the new hints, 4.58 seconds with the hints alone, and 4.70 seconds with the cache. The default edited replay stays near 3.1 seconds across the three builds. Median CPU times for the 220V, Hafj and Hyk5 app ratings vary by less than 1% in paired cache-only measurements. The new archived-position Modular request returns two hints in 0.11 ms at the warmed median.
+
+In a custom profile that checks Quintuple Pattern Overlay before Dynamic Forcing Net, the overlay itself removes 8 from R3C2 at the edited position. The resulting candidate state matches the default edited replay. The cache preserves that full custom replay and cuts its median Wasm CPU time from 16.42 to 12.16 seconds. The comparison matches 640 other complete replies between the two artifacts with the new hints. The final app Wasm is 4,061,770 bytes raw and 1,082,802 bytes gzipped, a decrease of 15,125 raw bytes and an increase of 12,301 gzip bytes from the preceding local commit.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before-cache.wasm after-cache.wasm --samples=3 --warmups=1 --cases=HCHW-edited-tail,HCHW-overlay-first
+```
+
+The next verified deduction uses R3C2, R4C2 and R4C1 on the same Modular Line. If R3C2 were 5 or 8, its group would force R4C2 and R4C1 to be 1 and 3 in either order. Both share box 4 with R5C2, which has only 1 and 3 left. Independent enumeration excludes both candidates before the forcing step and excludes the remaining 5 at the 38-step stall. Applying the 5 removal manually gives an additional valid move without opening another step under the current profile.
+
+### Line-and-box hints in Play
+
+Two line cells in different repeating phases share a house with a cell outside the line. For a candidate group in the third phase, the detector checks both orders of the other two groups. If every order allowed by the line exhausts the off-line cell's candidates, it removes that group from the target. A house cell with three or more candidates always has a way to differ from two assigned digits. The proof records the line, house, four cells and their input masks. The same logic works for Modular and Entropic Lines.
+
+On the archived HCHW position before forcing, Play offers the hint that eliminates 5 and 8 from R3C2 ahead of the forcing proof. R4C2 and R4C1 would have to use 1 and 3, leaving R5C2 with no candidate in box 4. Technique Finder counts both eliminations. The regression independently enumerates the four domains, verifies the published answer, applies the hint, and checks undo and redo. An Entropic control uses the same structure and restores support by adding a third candidate to the off-line cell.
+
+In the live app replay, the engine finds the hint earlier and also eliminates 2 from R3C2 in the same move. It takes 37 steps and 1,867 points, compared with 38 steps and 3,140 points before this hint. The new path reaches the previous stall with 5 also removed from R3C2. The native path grows from 33 steps and 760 points to 34 and 787. Both remain partial, with no placements. The nine other published controls keep their full app traces and scores. All ten keep their exact solutions and starting candidates.
+
+Five alternating warmed WebAssembly samples put the median CPU time for the normal HCHW walkthrough at 4,099 ms before and 1,679 ms after. From the archived position before forcing, it falls from 2,910 to 773 ms. That replay now uses one 27-point Modular hint instead of the prior 800-point forcing step. The selected Modular request returns the new proof in 0.13 ms at the warmed median. The app Wasm grows by 23,043 raw bytes and shrinks by 5,241 gzip bytes.
+
+The full Play request for up to ten hints at the archived position still scans higher tiers for additional choices. One paired run took 26.4 seconds before and 27.1 seconds after, returning one forcing hint before and the new Modular hint followed by the forcing hint after. The rating and selected-technique timings measure different requests.
+
+### Ranked hints after the linked-sum edits
+
+A per-technique scan at the archived HCHW position attributed 11.8 seconds of Wasm CPU to Quintuple Pattern Overlay. Each other technique finished in under 80 ms in that scan. The full Play request scans additional tiers to fill the requested list. Its 8 removal from Dynamic Forcing Net already covers the same action as the Quintuple proof.
+
+After the quick layout probes, Quintuple Pattern Overlay can search cell assignments directly. It chooses the most constrained house for its remaining digits, respects extra equal-digit exclusions, and assigns at most one digit to a cell. A complete search either finds a compatible packing or proves the pinned candidate has none. A 1,024-node cap per candidate and 4,096-node cap per group preserve the existing indexed or exhaustive layout fallback. The proof and scoring rules use the same exact support.
+
+Across three alternating samples after one warmup on arm64 macOS, the median Wasm CPU time for Play's up-to-ten request fell from 23,090 to 580 ms. Both builds return the same Modular and Dynamic Forcing Net choices, with identical actions and evidence. The selected Quintuple request falls from 18,315 to 131 ms and retains its complete proof. The complete 37-step walkthrough from givens matches across five pairs, with median CPU time falling from 1,492 to 1,366 ms. Peak Wasm linear memory stays at 6,225,920 bytes for the ranked request.
+
+The overlay comparison matches 640 complete responses, including 30 positive practice positions and 13 corpus positions. The Murphy X-Sums full scan keeps all 179 choices and moves from 429 to 444 ms median CPU across five pairs. Its five Quintuple proofs still match, with medians of 313 and 310 ms. In ten warm positive practice pairs, median CPU time moves from 36.4 to 39.9 ms for Classic and from 2.5 to 3.0 ms for the variant exercise. Wasm grows from 4,084,813 to 4,088,642 raw bytes and from 1,077,561 to 1,081,541 gzip bytes.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=3 --warmups=1 --cases=HCHW-ranked-hints,HCHW-edited-quintuple,HCHW-edited-tail
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=5 --warmups=1 --cases=HCHW-app-walkthrough,Murphy-full,Murphy-quintuple
+node --experimental-strip-types scripts/compare-overlay-engines.mjs before.wasm after.wasm
+```
+
+### Two adjacent sums on the same row
+
+At the 37-step stall, the 13 sum between R1C3 and R1C4 and the 7 sum between R1C4 and R1C5 make R1C3 six greater than R1C5. R1C8 shares a Modular group with R1C5. In row 1 it must differ from both R1C5 and R1C3.
+
+R1C5 can be 1, 2 or 3. If it were 2, R1C8 could only be 8, repeating R1C3. If R1C5 is 1 or 3, R1C8 must be 4 or 6 respectively, and R1C4 uses the other digit in that pair. Row 1 therefore reserves 4 and 6 for R1C4 and R1C8.
+
+The engine enumerates the possible first digits and derives the two sum partners. It checks that all four cells can use different digits in their shared house. Proofs report additional removals and reserved digits that require the line's group relation. Play can explain the rejected choice for R1C5 and why 4 and 6 occupy two of the four cells in every valid assignment.
+
+The archived hint removes 8 from R1C3, 5 from R1C4, 2 from R1C5, and 7, 8, and 9 from R1C8. The same restriction also removes 4 and 6 from R1C1, R1C6, R1C7, and R1C9, for 14 removals in total. Technique Finder counts all 14. The test checks the printed rules and enumerates the four-cell assignments independently, then verifies the displayed explanation, applying the hint, undo, redo, and the eight correct placements that follow. An Entropic control uses linked positive V and X clues from one rule and drops the proof when only a negative marking remains for the X.
+
+From givens, both configured profiles first use the hint at step 29. It removes 16 candidates there, since R1C2 still lists both 4 and 6. The app walkthrough grows from 37 steps and 1,867 points to 81 steps and 6,821 points, with eight correct placements before a new stall. The engine's standard order still stalls after 34 steps and 787 points. It uses the new hint but makes no placements. Eight other published controls keep full app traces and scores. All nine keep their exact solutions and initial candidate masks.
+
+Across five alternating warm Wasm samples, app walkthrough CPU time falls from 1,393 to 627 ms on HCHW. The full ranked hint request at the old stall falls from 1,238 to 614 ms while gaining the new choice. The published Newman control runs at medians of 2.39 and 2.34 ms with identical traces. App Wasm changes from 4,088,642 to 4,061,391 raw bytes and from 1,081,541 to 1,084,332 gzip bytes. The unpublished variant scoring version remains 9.
+
+### Linked sums across houses
+
+At the 81-step stall, R2C6 can be 7 or 9. The 13 sum through R3C6 makes R3C6 6 or 4 respectively. The 7 sum through that same cell makes R3C5 1 or 3. R3C8 shares a Modular group with R2C6. When R2C6 is 7, row 3 rules out 1 in R3C8 because R3C5 already uses 1. When R2C6 is 9, the Modular group rules out 1 directly. The same reasoning rules out 3. The core cells use both box 2 and row 3, which calls for a proof that can combine their separate house restrictions.
+
+The engine checks the two sums and only the distinctness requirements supplied by the recorded houses. For equal totals, the sum endpoints must contain the same digit. A control confirms that the engine still finds a proof when those cells share no house. Play names the repeated digit and a house for each rejected starting choice. On the saved HCHW position, ranked Play offers the two removals in one hint, Finder counts both, and the regression verifies applying the hint, undo, and redo against the imported solution.
+
+From the givens, the native and app walkthroughs both use the new cross-house proofs at steps 29 and 30. The first excludes 7, 8, and 9 from R7C3 using column 3 and box 4. The second excludes 1, 2, and 3 from R3C8 using row 3 and box 2. The previous row 1 hint follows as step 31. The app trace grows from 81 steps and 6,821 points to 83 steps and 6,875 points. It still stalls after eight placements. Its final candidate state also excludes 1 and 3 at R3C8, R9C7, and R9C9 compared with the preceding replay. Native rises from 34 steps and 787 points to 36 steps and 841 points, without a placement.
+
+Five alternating warm Wasm pairs put the median full ranked request at the archived position at 184 ms before and 93 ms after. The app walkthrough from the givens grows from 528 to 600 ms median CPU. Eight other published controls keep their exact walkthroughs and ratings. All nine keep the same exact solutions and initial candidates. App Wasm changes from 4,061,391 to 4,056,700 raw bytes and from 1,084,332 to 1,084,133 gzip bytes.
+
+### Separate sum clues at the next stall
+
+R1C5 and R3C5 both hold 1 or 3. Their column makes them different. Each has a 7 sum with a partner, so R1C4 and R4C5 must use 4 and 6 in some order. R4C4 sees both via column 4 and row 4. Remove 4 and 6 from R4C4.
+
+R1C3 and R6C3 hold 7 and 9 in some order in column 3. If R2C2 were 7, box 1 forces R1C3 to be 9 and column 3 forces R6C3 to be 7. Its 13 sum makes R6C2 6. The Modular Line then restricts R3C2 to 6 or 9. Column 2 rules out 6 because of R6C2, and box 1 rules out 9 because of R1C3. The corresponding choice of 9 in R2C2 restricts R3C2 to 4 or 7, both blocked in the same houses.
+
+Applying the R4C4 removals manually opens three more verified steps. The R2C2 removals open one. Applying both sets opens four steps and reaches another stall without a placement.
+
+The new detector proves both removals with two adjacent sums. To exclude a digit, it checks what each sum would require if its outside partner avoided the digit. The avoidance would make both anchors use the same digit in their shared house. A cell that sees both partners can therefore lose that candidate. The detector also handles positive V or X marks and totals that differ. A control pairs a V with an X to make the partners reserve 1, and checks the same proof across an Adjacent Total and an X.
+
+At the saved HCHW position, two 13 sums share their anchors in box 2 and reserve 7 and 9 for R2C6 and R1C3. Both partners see R2C1 and R2C2, so those cells lose 7 and 9. The two 7 sums prove the four removals from R4C4 and R5C4. This gives two ranked Play choices and eight distinct Finder actions. Independent enumeration checks all cited sums, forced repeats, and target houses, including the simpler proof for R2C2. The archived tests verify applying the hint, undo, and redo.
+
+The app uses five of the new proofs from the givens. HCHW moves from 83 steps and 6,875 points to 128 steps and 19,692 points. It reaches 18 correct placements, up from eight, and still stalls. The native default still stalls after 36 steps at 841 points with no placements. The authored XV Clover app path solves in 140 steps and 2,358 points, compared with 151 and 4,538. Entropy 7/13 shortens by one step in both profiles. The Ksy3 Entropic and Renban puzzle still solves and now exposes three sum pair proofs. The nine published Modular and Entropic controls retain their exact answers and opening candidate masks.
+
+Across five alternating warm Wasm pairs, ranked Play at the archived HCHW position falls from 225 to 115 ms median CPU while gaining both choices. The complete HCHW app walkthrough rises from 515 to 835 ms with 45 additional steps. App Wasm changes from 4,056,700 to 4,091,729 raw bytes and from 1,084,133 to 1,089,850 gzip bytes.
+
+The published XV Clover walkthrough fell from 16.08 to 2.65 ms median CPU in eight paired samples. On the 144-clue control, opening candidate medians were 0.301 and 0.303 ms. Exact uniqueness medians were 0.456 and 0.463 ms across 50 pairs, with identical replies. The current scoring invalidated one single-attempt Medium recipe per sum family. The Two-cell sums seed changes from 17 to 57 and the XV seed from 16 to 46. The checked recipe lists retain their layouts, clue counts, target difficulty, and distinct, independently verified unique solutions.
+
+### Combine a sum with different line phases
+
+At the 128-step stall, R8C7 holds 8 and fixes its Modular phase to the remainder-2 group. R8C5 and R8C6 therefore use the other two groups in some order. If R8C6 is 4, its phase has remainder 1, so R8C5 must be 9. The 13 sum also makes R7C6 9, repeating 9 in box 8. If R8C6 is 6, the same reasoning repeats 7 in box 8.
+
+Independent enumeration of the Modular Line, the 13 sum, and their shared houses removes 4 and 6 from R8C6 and 7 and 9 from R7C6. Applying those four removals manually in the preceding build opened 38 app steps and seven placements. The detector now finds the removals in Play and Technique Finder. It checks both orders of the other two groups when one line cell fixes the third group. The proof cites the sum, that cell, and the house that would repeat a digit. The Hafj Entropic control adds one partial step through the same detector.
+
+### Finish the replay with two Modular Lines and two sums
+
+After the different-phase removals and the resulting 38 steps, R2C2 holds 1 or 3. If it were 3, the first Modular Line would make R3C2 a 7. Box 1 then forces R1C3 to be 9, and its 13 sum makes R1C4 a 4. Box 2 forces R3C6 to be 6, and its 13 sum makes R2C6 a 7. On the second Modular Line, R2C6 and the placed 2 in R2C8 fix the two other phases. R2C7 must belong to the remainder-0 group. Its candidates are 1, 3, and 7, so it must be 3. That repeats the assumed 3 in row 2.
+
+Independent enumeration of those rules confirms the removal. In the preceding build, applying it manually let the app profile finish in 61 additional steps, placing the remaining 56 digits.
+
+The new detector builds forced links from actual candidate domains. It joins two distinct Entropic or Modular rules through at most four intermediate links, including one or two positive sums. House links can force the other candidate in a bivalue cell. A chain cannot repeat a cell and succeeds when its final digit repeats the assumed digit in a shared house. Each step records its specific rule or house and its input mask. At the saved R2C2 position, Play finds a proof using just the R1C3 and R1C4 sum. R1C4 = 4 forces R1C8 = 6 in row 1, then R3C8 = 4 in column 8. From there the second Modular Line forces the same R2C7 = 3 contradiction in row 2.
+
+The imported short link now solves completely from the original zero givens under the app's standard profile. The walkthrough has 202 steps, 81 correct placements, and 4,665 points. It uses 18 group-and-sum chains and two fixed-phase sum deductions. Independent tests replay every action against the published answer, check the new premises separately, and exercise hint application, Finder, undo and redo. The native default still stalls, now at 75 steps and 1,604 points with seven placements. All nine published controls retain the same exact solutions and opening candidate masks. Seven other controls retain their full app walkthroughs, and Hafj adds one step.
+
+In five alternating warm Wasm pairs, the direct app-order walkthrough request falls from 639 to 7.6 ms median CPU. The new complete replay uses Medium or easier techniques. Ranked hints at the saved box 8 position fall from 64 to 36 ms median CPU. The Wasm artifact grows by 13,034 raw bytes and shrinks by 7,298 gzip bytes.
 
 ## Reproduce
 

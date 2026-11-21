@@ -10,8 +10,17 @@ import { generationVariant, isPlayablePuzzle, variantDigitExclusions, variantPee
 import { countWhispersSolutions } from './helpers/whispers-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { whispersLinkCounts } from '../src/sudoku/whispers-guide.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 const constraints = fixture.puzzle.rules!.map(rule => { assert.equal(rule.type, 'whispers'); return { type: 'whisper', settings: {}, segments: [{ cells: rule.cells, parameters: {} }] } })
+const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
+
+function decodeSource(code: string) {
+  const alphabet = '0123456789abcdefghijklmnopqrstuv'
+  const bits = [...code.slice('SCv7_32_'.length)].map(char => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('')
+  const bytes = Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))
+  return JSON.parse(inflateSync(bytes).toString('utf8'))
+}
 
 test('Brain Zaps has its published unique completion and needs its Whispers rules', () => {
   assertVariantCompletion(fixture.puzzle, fixture.solution)
@@ -73,19 +82,87 @@ test('every geometric symmetry preserves complete line order and the independent
 
 
 test('Whispers constraints from unmodified real Coach exports retain every minimum and ordered segment', async () => {
-  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string }[]
-  const alphabet = '0123456789abcdefghijklmnopqrstuv'
   for (const { code } of examples) {
-    const bits = [...code.slice('SCv7_32_'.length)].map(char => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('')
-    const bytes = Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))
-    const data = JSON.parse(inflateSync(bytes).toString('utf8'))
+    const data = decodeSource(code)
     const constraints = data.givenConstraints.filter((rule: { type: string }) => rule.type === 'whisper')
-    // Isolate this family for its decoder contract; whole exports still retain
-    // their unsupported companion clues in the separate rejection checks.
     const result = await detectPuzzle(coachCode({ givenDigits: data.givenDigits, givenConstraints: constraints }))
     const expected = constraints.flatMap((rule: { settings: { difference?: number }; segments: { cells: number[] }[] }) =>
       rule.segments.map(segment => ({ type: 'whispers', cells: segment.cells, minDifference: rule.settings.difference ?? 5 })))
     assert.deepEqual(result.variant?.puzzle.rules, expected)
+  }
+})
+
+test('Cmdt maps every encoded clue while using the app’s region and cage drawing', async () => {
+  const { code } = examples.find(source => source.url.endsWith('/Cmdt'))!
+  const data = decodeSource(code)
+  const { variant, givens } = await detectPuzzle(code)
+  assert.equal(variant?.id, 'mixed')
+  assert.equal(givens, '0'.repeat(81))
+  const rules = variant.puzzle.rules!
+  const layers = data.givenConstraints as {
+    type: string
+    settings: { difference?: number; horizontalOffset?: number }
+    segments: { cells: number[]; parameters: { sum: number; digits: string } }[]
+  }[]
+  const segments = (type: string) => layers.filter(layer => layer.type === type).flatMap(layer => layer.segments)
+  assert.equal(rules.length, 63)
+  assert.deepEqual(rules.filter(rule => rule.type === 'diagonal'), [
+    { type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' },
+  ])
+  assert.deepEqual(rules.filter(rule => rule.type === 'extra-house').map(rule => rule.cells),
+    segments('region').map(({ cells }) => cells))
+  assert.deepEqual(rules.filter(rule => rule.type === 'killer-cages').flatMap(rule => rule.cages),
+    segments('cage').map(({ cells, parameters }) => ({ cells, sum: parameters.sum })))
+  assert.deepEqual(rules.filter(rule => rule.type === 'quadruple').map(({ topLeft, digits }) => ({ topLeft, digits })),
+    segments('quadruple').map(({ cells, parameters }) => ({ topLeft: cells[0], digits: [...parameters.digits].map(Number) })))
+  assert.deepEqual(rules.filter(rule => rule.type === 'thermometer').map(rule => rule.cells),
+    segments('thermometer').map(({ cells }) => cells))
+  assert.deepEqual(rules.filter(rule => rule.type === 'whispers'),
+    segments('whisper').map(({ cells }) => ({ type: 'whispers', cells, minDifference: 2 })))
+})
+
+test('Coach keeps rejecting unknown cage settings', async () => {
+  for (const settings of [{ horizontalOffset: -1 }, { horizontalOffset: 101 }, { horizontalOffset: '36' }, { distinct: false }]) {
+    await assert.rejects(detectPuzzle(coachCode({
+      givenConstraints: [{ type: 'cage', settings, segments: [{ cells: [0, 1], parameters: { sum: 8 } }] }],
+    })), /unsupported settings for cage/)
+  }
+})
+
+test('the Coach Whispers lesson retains every link and derives its guide from the encoded geometry', async () => {
+  const lesson = examples.find(example => example.url.endsWith('/B5mt'))!
+  const state = decodeSource(lesson.code)
+  const { variant, whispersGuide, givens } = await detectPuzzle(lesson.code)
+  assert.equal(whispersGuide, true)
+  assert.equal(givens, state.givenDigits)
+  assert.equal(variant?.id, 'whispers')
+  const source = state.givenConstraints.find((rule: { type: string }) => rule.type === 'whisper')
+  assert.deepEqual(variant.puzzle.rules, source.segments.map(({ cells }: { cells: number[] }) =>
+    ({ type: 'whispers', cells, minDifference: 5 })))
+  const palette: Record<string, number> = { orange: 1, yellow: 2, lime: 3, magenta: 4 }
+  const counts = state.givenColours.split(',').map((shade: string) => shade ? palette[state.colours[Number(shade)]] : 0)
+  assert.equal(counts.filter(Boolean).length, 44)
+  assert.deepEqual(whispersLinkCounts(variant.puzzle), counts)
+
+  const colours = ['blue', ...state.colours]
+  const givenColours = state.givenColours.split(',').map((shade: string) => shade ? String(Number(shade) + 1) : '').join(',')
+  const marked = await detectPuzzle(coachCode({ ...state, colours, givenColours, userColours: '0' + ','.repeat(80),
+    quickDrawLineSegments: { '2/1=>3/2': { colour: 'blueHeavy' } },
+  }))
+  assert.equal(marked.whispersGuide, true)
+  assert.deepEqual(marked.variant, variant)
+  assert.deepEqual(marked.progress?.importedCellColors, { 0: ['blue'] })
+  assert.deepEqual(marked.progress?.importedDrawings, [{ shape: 'line', from: [2, 1], to: [3, 2], color: 'blueHeavy' }])
+
+  for (const mutate of [
+    (data: typeof state) => { data.givenColours = data.givenColours.replace('0', '1') },
+    (data: typeof state) => { data.givenConstraints[1].segments[0].parameters.text = '= 3 unique links' },
+    (data: typeof state) => { data.givenConstraints[2].segments[0].parameters.shape = 'circle' },
+    (data: typeof state) => { data.givenConstraints[0].settings.difference = 4 },
+  ]) {
+    const damaged = structuredClone(state)
+    mutate(damaged)
+    await assert.rejects(detectPuzzle(coachCode(damaged)), /unsupported Whispers guide/)
   }
 })
 

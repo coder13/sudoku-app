@@ -650,7 +650,6 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     },
   }
 
-  const hintStage = [cellChoices ? 'Show choice' : 'Show digits', 'Show location', 'Show explanation', 'Apply hint'][depth]
   const hintChoice = hint && cellChoices?.labels[hint.value - 1]
   const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
     <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
@@ -672,9 +671,9 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           ...current, depth: 0, index: (current.index + offset + current.choices.length) % current.choices.length,
         }),
       } : undefined}
-      lessDetail={{ disabled: depth === 0, onClick: () => setHint(current => current && { ...current, depth: current.depth - 1 }) }}
-      action={depth === 3 ? { label: hintStage, onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) }
-        : { label: hintStage, onClick: () => setHint(current => current && { ...current, depth: current.depth + 1 }) }} />
+      detailNavigation={{ first: depth === 0, last: depth === 3, onMove: offset => setHint(current => current &&
+        { ...current, depth: Math.max(0, Math.min(3, current.depth + offset)) }) }}
+      action={{ label: 'Apply hint', onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) }} />
   </PlayHint> : null
 
   const actionItems = <>

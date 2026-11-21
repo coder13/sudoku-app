@@ -1,0 +1,20 @@
+{
+  "commit": "9b4e635752819d6045d96d602af3dc639622fbfa",
+  "files": {
+    "Board.tsx": {
+      "source": "src/components/Board.tsx",
+      "originalSha256": "2cb3c46b8f9b06eefb6306b46dff244f85a262da81d828ad68df1dd11ffb025b",
+      "fixtureSha256": "b4574fc7ba0dbdd5fb7a3ce9dd66553e7881def3f89a5ec405d723747a55bbca"
+    },
+    "BoardMarks.tsx": {
+      "source": "src/components/BoardMarks.tsx",
+      "originalSha256": "9463d2a7afbbf87f429ff069a1cff160959e9bb71a8b0ad9169917e416e6b6c3",
+      "fixtureSha256": "9463d2a7afbbf87f429ff069a1cff160959e9bb71a8b0ad9169917e416e6b6c3"
+    },
+    "BoardAnnotations.tsx": {
+      "source": "src/components/BoardAnnotations.tsx",
+      "originalSha256": "495cf505461d8c9d3ee0930579bc55daae452c29aaa97656711420d45df6db85",
+      "fixtureSha256": "cbcd896f5d475fdec94fbb161dc092c187b566cf290a77f7012c5f68960bcf52"
+    }
+  }
+}

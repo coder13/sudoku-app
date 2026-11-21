@@ -1,0 +1,12 @@
+{
+  "name": "sudoku-react-board-performance",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "build": "node ../../node_modules/vite/bin/vite.js build --config vite.config.ts",
+    "check": "node ../../node_modules/typescript/bin/tsc --noEmit --project tsconfig.json",
+    "benchmark": "node scripts/run.mjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

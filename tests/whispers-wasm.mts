@@ -42,7 +42,7 @@ test('Brain Zaps imports, rates, replays every deduction and reaches the publish
   masks.forEach((mask, cell) => { if (game.givens[cell] === '0') assert.ok(mask & 1 << (Number(fixture.solution[cell]) - 1)) })
   const techniqueOrder = await getVariantPlayOrder(), position = variantPosition(game.variant!)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 8)
+  assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 9)
   assert.deepEqual(trace.rating, await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }))
   assert.ok(trace.steps.some(step => step.technique === 'whispers-house-support'))
   let played = game
@@ -112,19 +112,18 @@ test('Whispers rules and player history survive the real save and reload service
   } finally { keys.forEach((key, i) => { if (prior[i]) Object.defineProperty(globalThis, key, prior[i]!); else Reflect.deleteProperty(globalThis, key) }) }
 })
 
-test('real Coach exports retain Whispers settings while unsupported companion rules still reject', async () => {
-  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string; deferred: string }[]
-  for (const example of examples) {
-    if (example.deferred !== 'twoCellSum') {
-      await assert.rejects(detectPuzzle(example.code), /unsupported|not supported/)
-      continue
-    }
-    const imported = (await detectPuzzle(example.code)).variant!.puzzle
-    assert.equal(imported.rules!.length, 12)
-    assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])
-    const sums = imported.rules!.find(rule => rule.type === 'xv')!
-    assert.equal(sums.type, 'xv'); assert.equal(sums.ten?.pairs?.length, 7)
-  }
+test('real Coach exports retain Whispers settings, the teaching guide, and XV marks', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { code: string; url: string }[]
+  const lesson = examples.find(source => source.url.endsWith('/B5mt'))!
+  const colouring = examples.find(source => source.url.endsWith('/Chcs'))!
+  const guided = await prepareImportedPuzzle(lesson.code)
+  assert.equal(guided.game.whispersGuide, true)
+  assert.equal(guided.game.variant?.puzzle.rules?.length, 15)
+  const imported = (await detectPuzzle(colouring.code)).variant!.puzzle
+  assert.equal(imported.rules!.length, 12)
+  assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])
+  const sums = imported.rules!.find(rule => rule.type === 'xv')!
+  assert.equal(sums.type, 'xv'); assert.equal(sums.ten?.pairs?.length, 7)
 })
 
 test('seeded Whispers exercises remain distinct, unique and checkable', async () => {

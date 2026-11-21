@@ -1,4 +1,4 @@
-import type { House, SizedClassicPosition, SizedConstraintRule } from './engine.ts'
+import type { House, SizedClassicPosition, SizedConstraintRule, VariantRule } from './engine.ts'
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
@@ -114,6 +114,36 @@ export function jigsawMembership(grid: JigsawGrid) {
   return regions
 }
 
+export function jigsawRegionColors(membership: readonly number[], size: number) {
+  const regions = [...new Set(membership)]
+  const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
+  membership.forEach((region, cell) => {
+    const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]
+    for (const other of edges) {
+      if (other === undefined || other === region) continue
+      neighbors.get(region)!.add(other)
+      neighbors.get(other)!.add(region)
+    }
+  })
+
+  // Connected regions form a planar graph, so four colors suffice.
+  const colors: number[] = []
+  function assign(index: number): boolean {
+    if (index === regions.length) return true
+    const region = regions[index]
+    const used = new Set([...neighbors.get(region)!].map(other => colors[other]))
+    for (let color = 1; color <= 4; color++) {
+      if (used.has(color)) continue
+      colors[region] = color
+      if (assign(index + 1)) return true
+      delete colors[region]
+    }
+    return false
+  }
+  assign(0)
+  return colors
+}
+
 export function gridRegionIndex(grid: PlayGrid, cell: number) {
   if ('noRegions' in grid) return -1
   if ('regions' in grid) return jigsawMembership(grid)[cell]
@@ -166,7 +196,7 @@ export function rowColumnSumTotal([first, second]: readonly [number, number], si
   return (row === Math.floor(second / size) ? row : first % size) + 1
 }
 
-export function kropkiDigitExclusions(rules: readonly SizedConstraintRule[], cell: number, other: number, digit: number, size: number) {
+export function kropkiDigitExclusions(rules: readonly (SizedConstraintRule | VariantRule)[], cell: number, other: number, digit: number, size: number) {
   if (!gridCellsShareEdge(cell, other, size)) return 0
   let white = false, black = false, negativeWhite = false, negativeBlack = false
   const matches = ([a, b]: readonly [number, number]) => a === cell && b === other || a === other && b === cell
@@ -239,7 +269,7 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   return excluded
 }
 
-export function sizedArrowState(rules: readonly SizedConstraintRule[] | undefined, values: string, size: number) {
+export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number) {
   const arrows = rules?.filter(rule => rule.type === 'arrow' || rule.type === 'double-arrow')
   if (!arrows?.length) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)

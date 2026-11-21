@@ -75,6 +75,27 @@ test('Grouped AIC location shows all candidates in an endpoint group', () => {
   assert.equal(marks?.get(2)?.get(4)?.label, 'chain end')
 })
 
+test('3D Medusa location marks only cells in the coloring proof', () => {
+  const patternCells = [10, 13, 15, 22, 24]
+  const hint: HintChoice = {
+    technique: '3d-medusa', actions: [{ eliminate: { cell: 15, digit: 1 } }],
+    evidence: { coloring: {
+      colors: [
+        [{ cell: 10, digit: 9 }, { cell: 13, digit: 1 }, { cell: 22, digit: 4 }, { cell: 24, digit: 9 }],
+        [{ cell: 13, digit: 4 }, { cell: 15, digit: 9 }, { cell: 24, digit: 4 }],
+      ],
+      links: [], reason: 'both-colors',
+    } },
+    pattern: { cells: patternCells, candidates: [], houses: [{ row: 1 }, { row: 2 }, { column: 4 }, { column: 6 }] },
+  }
+  const clue = hintLocation(hint, 'concise')
+  assert.ok(clue)
+  assert.equal(clue.text, 'Look at the highlighted cells.')
+  assert.deepEqual([...clue.annotations.cells!.keys()], patternCells)
+  assert.equal(clue.annotations.candidates, undefined)
+  assert.equal(clue.annotations.links, undefined)
+})
+
 test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfilled', () => {
   const candidates = Array(81).fill(0)
   candidates[33] = mask(5, 8)

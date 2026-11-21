@@ -17,6 +17,7 @@ let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 let PlayLayout: (props: Record<string, unknown>) => ReactNode
 let Worktable: (props: Record<string, unknown>) => ReactNode
+let AdvancedPuzzleBrowser: typeof import('../src/components/AdvancedPuzzleBrowser.tsx').AdvancedPuzzleBrowser
 let SolutionDialog: (props: Record<string, unknown>) => ReactNode
 let SolutionPath: (props: Record<string, unknown>) => ReactNode
 let solutionEndSummary: typeof import('../src/components/SolutionPath.tsx').solutionEndSummary
@@ -34,6 +35,7 @@ before(async () => {
   ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
   ;({ PlayLayout } = await server.ssrLoadModule('/src/components/PlayLayout.tsx'))
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
+  ;({ AdvancedPuzzleBrowser } = await server.ssrLoadModule('/src/components/AdvancedPuzzleBrowser.tsx'))
   ;({ SolutionDialog, SolutionPath, solutionEndSummary } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ ChainsPanel } = await server.ssrLoadModule('/src/components/ChainsPanel.tsx'))
@@ -43,6 +45,21 @@ before(async () => {
   ;({ playSession } = await server.ssrLoadModule('/src/sudoku/play-session.ts'))
 })
 after(async () => { await server?.close() })
+
+test('the advanced puzzle browser offers import and lets an existing draft be saved', () => {
+  const noop = () => {}
+  for (const source of ['custom', 'draft'] as const) {
+    const game = makeGame(source, 'Puzzle', STARTER, source)
+    const markup = renderToStaticMarkup(createElement(AdvancedPuzzleBrowser, {
+      games: [game], active: game.id, view: 'active', onViewChange: noop, onSelect: noop,
+      onNew: noop, onImport: noop, onSave: noop, onSavePuzzle: noop, onUnsavePuzzle: noop,
+      onArchivePuzzle: noop, onRestorePuzzle: noop,
+    }))
+    assert.match(markup, /Import puzzle/)
+    assert.doesNotMatch(markup, /Create puzzle|Edit puzzle/)
+    assert.equal(/Save puzzle/.test(markup), source === 'draft')
+  }
+})
 
 test('mixed rules group repeated clues under one heading and preserve both diagonal descriptions', () => {
   const sections = variantRuleSections({ version: 1, givens: STARTER, rules: [
@@ -216,7 +233,7 @@ function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'st
       cellReferenceStyle: 'concise', workspaceMode, multi: false, actionsRef: { current: null },
       inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {}, toggleMulti() {},
       onShare() {}, onPublish() {}, onCancelDraft() {}, onNewPuzzle() {},
-      onCreatePuzzle() {}, onEditPuzzle() {}, onStopPlaying() {},
+      onImportPuzzle() {}, onStopPlaying() {},
       showLeftPanel: true, showRightPanel: true, showBottomPanel: true,
       onOpenHintPanel() {}, onOpenRightPanel() {}, puzzleBrowserView: 'active', setPuzzleBrowserView() {},
     })

@@ -82,6 +82,40 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(cells);
                 }
+                VariantEvidence::SumPair(proof) => {
+                    assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(proof.cells.to_vec());
+                }
+                VariantEvidence::GroupLineHouse { rule, cells, .. } => {
+                    assert!(position.puzzle.rules.get(rule).is_some());
+                    scopes.insert(cells.to_vec());
+                }
+                VariantEvidence::GroupLineHouseTriplet { rule, cells, .. } => {
+                    assert!(position.puzzle.rules.get(rule).is_some());
+                    scopes.insert(cells.to_vec());
+                }
+                VariantEvidence::GroupLineSumHouse { rules, cells, .. } => {
+                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(cells.to_vec());
+                }
+                VariantEvidence::GroupSumImplication { assumption, links, .. } => {
+                    let cells = std::iter::once(assumption.cell)
+                        .chain(links.into_iter().map(|link| link.candidate.cell))
+                        .collect();
+                    scopes.insert(cells);
+                }
+                VariantEvidence::GroupLinePhaseSum { rules, cells, .. } => {
+                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(cells.to_vec());
+                }
+                VariantEvidence::GroupLineDisjointSum { rules, cells, .. } => {
+                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(cells.to_vec());
+                }
+                VariantEvidence::GroupLineSumChain(proof) => {
+                    assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(proof.cells.to_vec());
+                }
                 VariantEvidence::LineHouses(proof) => {
                     if position.puzzle.rules.len() > 1 {
                         overlaps.insert(technique);

@@ -35,6 +35,7 @@ import { Route as PuzzlesCalcudokuPuzzleRouteImport } from './routes/puzzles.cal
 import { Route as PuzzlesFutoshikiPuzzleRouteImport } from './routes/puzzles.futoshiki_.$puzzle'
 import { Route as PuzzlesHidatoPuzzleRouteImport } from './routes/puzzles.hidato_.$puzzle'
 import { Route as PuzzlesKakuroPuzzleRouteImport } from './routes/puzzles.kakuro_.$puzzle'
+import { Route as PuzzlesNewCustomRouteImport } from './routes/puzzles.new.custom'
 import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
 import { Route as PuzzlesRulloPuzzleRouteImport } from './routes/puzzles.rullo_.$puzzle'
 
@@ -168,6 +169,11 @@ const PuzzlesKakuroPuzzleRoute = PuzzlesKakuroPuzzleRouteImport.update({
   path: '/kakuro/$puzzle',
   getParentRoute: () => PuzzlesRoute,
 } as any)
+const PuzzlesNewCustomRoute = PuzzlesNewCustomRouteImport.update({
+  id: '/custom',
+  path: '/custom',
+  getParentRoute: () => PuzzlesNewRoute,
+} as any)
 const PuzzlesNewDifficultyRoute = PuzzlesNewDifficultyRouteImport.update({
   id: '/difficulty',
   path: '/difficulty',
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/futoshiki/$puzzle': typeof PuzzlesFutoshikiPuzzleRoute
   '/puzzles/hidato/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
+  '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/puzzles/futoshiki/$puzzle': typeof PuzzlesFutoshikiPuzzleRoute
   '/puzzles/hidato/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
+  '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
@@ -266,6 +274,7 @@ export interface FileRoutesById {
   '/puzzles/futoshiki_/$puzzle': typeof PuzzlesFutoshikiPuzzleRoute
   '/puzzles/hidato_/$puzzle': typeof PuzzlesHidatoPuzzleRoute
   '/puzzles/kakuro_/$puzzle': typeof PuzzlesKakuroPuzzleRoute
+  '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo_/$puzzle': typeof PuzzlesRulloPuzzleRoute
 }
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/puzzles/futoshiki/$puzzle'
     | '/puzzles/hidato/$puzzle'
     | '/puzzles/kakuro/$puzzle'
+    | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo/$puzzle'
   fileRoutesByTo: FileRoutesByTo
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/puzzles/futoshiki/$puzzle'
     | '/puzzles/hidato/$puzzle'
     | '/puzzles/kakuro/$puzzle'
+    | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo/$puzzle'
   id:
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/puzzles/futoshiki_/$puzzle'
     | '/puzzles/hidato_/$puzzle'
     | '/puzzles/kakuro_/$puzzle'
+    | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo_/$puzzle'
   fileRoutesById: FileRoutesById
@@ -555,6 +567,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesKakuroPuzzleRouteImport
       parentRoute: typeof PuzzlesRoute
     }
+    '/puzzles/new/custom': {
+      id: '/puzzles/new/custom'
+      path: '/custom'
+      fullPath: '/puzzles/new/custom'
+      preLoaderRoute: typeof PuzzlesNewCustomRouteImport
+      parentRoute: typeof PuzzlesNewRoute
+    }
     '/puzzles/new/difficulty': {
       id: '/puzzles/new/difficulty'
       path: '/difficulty'
@@ -585,10 +604,12 @@ const LearnRouteChildren: LearnRouteChildren = {
 const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 
 interface PuzzlesNewRouteChildren {
+  PuzzlesNewCustomRoute: typeof PuzzlesNewCustomRoute
   PuzzlesNewDifficultyRoute: typeof PuzzlesNewDifficultyRoute
 }
 
 const PuzzlesNewRouteChildren: PuzzlesNewRouteChildren = {
+  PuzzlesNewCustomRoute: PuzzlesNewCustomRoute,
   PuzzlesNewDifficultyRoute: PuzzlesNewDifficultyRoute,
 }
 

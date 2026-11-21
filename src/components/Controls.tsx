@@ -7,7 +7,7 @@ import {
   useEffect, useRef, useState, useSyncExternalStore,
 } from 'react'
 import { ArrowUpDown, Check, Delete, Eraser, Highlighter, Layers2, Palette, Pencil, Redo2, Undo2 } from 'lucide-react'
-import { alternateColorShade, candidateCount, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, type ColorTarget, type Mode } from '../sudoku/game'
+import { alternateColorShade, candidateCount, COLORS, COLOR_FAMILIES, DIGITS, hasCandidate, placedDigitCounts, type ColorTarget, type Mode } from '../sudoku/game'
 import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { penPencilShortcutKeys, shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
@@ -85,8 +85,7 @@ export function Controls(props: Props) {
   const gridSize = props.gridSize ?? 9
   const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS.slice(0, gridSize)
   const alternate = props.selectedDigit === null ? null : alternateColorShade(props.selectedDigit)
-  const counts = Array(10).fill(0) as number[]
-  for (const value of props.values) counts[Number(value)]++
+  const counts = placedDigitCounts(props.values)
 
   useEffect(() => {
     if (props.compact) return
@@ -244,7 +243,7 @@ export function Controls(props: Props) {
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
               <IconButton className="pencil-button" title={`Pencil mode · Use ${penPencilKeys.join(' / ')} to cycle Pen, Pencil, and Highlight · Drag with a mouse and a chosen digit to add or remove candidates`} aria-label="Pencil mode"
-                aria-pressed={props.pencil && !props.colorMode} onClick={props.togglePencil} disabled={editsDisabled}>
+                aria-pressed={!props.chainDrawing && props.pencil && !props.colorMode} onClick={props.togglePencil} disabled={props.disabled}>
                 <Pencil size={18} />
               </IconButton>
             )}

@@ -1,8 +1,13 @@
+mod group_sums;
 mod groups;
+
+pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums};
 
 use std::{collections::HashMap, ops::Range};
 
-use super::{ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, cell_mask};
+use super::{
+    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind, cell_mask,
+};
 use crate::{
     CELLS, DIGITS,
     hints::{digit_bit, digits},
@@ -158,6 +163,101 @@ impl LineConstraint {
             rule_id: rule.id(),
             rule_index: index,
         })
+    }
+
+    pub(super) fn group_phases(&self) -> Option<(&[usize], [u16; 3])> {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return None;
+        };
+        let (phases, partition) = line.phases()?;
+        Some((phases, partition.masks()))
+    }
+
+    pub fn visit_group_house_removals(
+        &self,
+        puzzle: &CompiledVariant,
+        domains: &[u16],
+        basic_support: &[u16],
+        mut visit: impl FnMut(VariantHouseKind, [usize; 2], [u16; 2], [u16; 2]),
+    ) {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return;
+        };
+        if basic_support.contains(&0) {
+            return;
+        }
+        for (i, &a) in self.cells.iter().enumerate() {
+            for (j, &b) in self.cells.iter().enumerate().skip(i + 1) {
+                if puzzle.peers[a] & (1u128 << b) == 0 {
+                    continue;
+                }
+                let pair_domains = [domains[i], domains[j]];
+                let [left, right] = line.house_pair_removals(i, j, pair_domains);
+                let removals = [left & basic_support[i], right & basic_support[j]];
+                if removals == [0, 0] || left == pair_domains[0] || right == pair_domains[1] {
+                    continue;
+                }
+                if let Some(house) = puzzle.shared_enforced_house(a, &[b]) {
+                    visit(house, [a, b], pair_domains, removals);
+                }
+            }
+        }
+    }
+
+    pub fn visit_group_house_triplets(
+        &self,
+        puzzle: &CompiledVariant,
+        domains: &[u16; CELLS],
+        basic_support: &[u16],
+        narrow: u128,
+        mut visit: impl FnMut(VariantHouseKind, [usize; 4], [u16; 4], u16),
+    ) {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return;
+        };
+        if self.cells.len() < 3 || basic_support.contains(&0) {
+            return;
+        }
+        let scope = self.cells.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        let outside = narrow & !scope;
+        if outside == 0 {
+            return;
+        }
+        for &house in &puzzle.search_houses {
+            let shared = puzzle.house_masks[house] & scope;
+            let third = puzzle.house_masks[house] & outside;
+            if shared.count_ones() < 2 || third == 0 {
+                continue;
+            }
+            for (i, &a) in self.cells.iter().enumerate() {
+                if shared & (1u128 << a) == 0 {
+                    continue;
+                }
+                for (j, &b) in self.cells.iter().enumerate().skip(i + 1) {
+                    if shared & (1u128 << b) == 0 || !line.different_phases(i, j) {
+                        continue;
+                    }
+                    for other in super::cells_in(third) {
+                        if domains[other] & !(domains[a] | domains[b]) != 0 {
+                            continue;
+                        }
+                        let blocked = line.house_triplet_removals(i, j, [domains[a], domains[b], domains[other]]);
+                        if blocked == 0 {
+                            continue;
+                        }
+                        for (target, &cell) in self.cells.iter().enumerate() {
+                            let removals = basic_support[target] & blocked;
+                            if removals != 0 && removals != basic_support[target]
+                                && line.different_phases(target, i) && line.different_phases(target, j)
+                            {
+                                visit(puzzle.houses[house].kind, [cell, a, b, other],
+                                    [domains[cell], domains[a], domains[b], domains[other]], removals);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Domains and support are in the same order as cells.

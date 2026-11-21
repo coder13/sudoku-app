@@ -780,6 +780,9 @@ impl Extension {
 }
 
 #[cfg(test)]
+mod contract_tests;
+
+#[cfg(test)]
 mod tests {
     use super::super::{inference::Rule, tridagon};
     use super::*;

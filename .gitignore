@@ -8,7 +8,9 @@ public/collections/
 .tanstack/
 .netlify/
 storybook-static/
+/test-results/
 stories/generated/
 .codex-attachments/
+/.desktop-resize-baseline/
 debug-storybook.log
 .wrangler/

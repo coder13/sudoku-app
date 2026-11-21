@@ -5,6 +5,7 @@ import { isSizedRuleAuthor, isSizedRuleList, type SizedRuleGame } from './sized-
 import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSizedSudokuPadCode } from './sized-sudoku-pad.ts'
 import { isPlayablePuzzle, isPuzzleVariantId, type VariantGame } from './variants.ts'
+import { whispersLinkCounts } from './whispers-guide.ts'
 
 export type SharedPuzzleDefinition = {
   version: 1
@@ -14,7 +15,8 @@ export type SharedPuzzleDefinition = {
   sizedRules?: SizedRuleGame['rules']
   sizedAuthor?: string
   algebraic?: { rules: readonly AlgebraicCage[] } | { sudokuPad: string }
-  variant?: Pick<VariantGame, 'id' | 'puzzle'>
+  variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
+  whispersGuide?: true
   collection?: CollectionReference
 }
 
@@ -44,8 +46,9 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzlePayload {
     : game.algebraic ? { rules: game.algebraic.rules } : undefined
   return {
     version: 1, title: game.title, givens: game.givens, grid: game.grid,
-    variant: variant && { id: variant.id, puzzle: { version: variant.puzzle.version, givens: game.givens, rules, regions } },
+    variant: variant && { id: variant.id, puzzle: { version: variant.puzzle.version, givens: game.givens, rules, regions }, ...(variant.fog && { fog: variant.fog }) },
     collection,
+    ...(game.whispersGuide && { whispersGuide: true }),
     ...(algebraic && { algebraic }),
     ...(game.sized && (game.grid?.size === 6
       ? { sixRules: game.sized.rules, ...(game.sized.author && { sixAuthor: game.sized.author }) }
@@ -83,7 +86,7 @@ export async function publishSharedPuzzle(game: Game, signal?: AbortSignal): Pro
 export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Promise<SharedPuzzleDefinition> {
   if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
   const data = await sharingRequest(`/${id.toLowerCase()}`, undefined, signal) as Partial<SharedPuzzlePayload>
-  const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor } = data
+  const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide } = data
   const legacy = sixRules !== undefined || sixAuthor !== undefined
   const sizedRules = legacy ? sixRules : data.sizedRules
   const sizedAuthor = legacy ? sixAuthor : data.sizedAuthor
@@ -96,11 +99,13 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
       (grid.size === 4 && !sizedRules.length))) ||
     (sizedAuthor !== undefined && (!sizedRules || !isSizedRuleAuthor(sizedAuthor))) ||
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
-      !isPlayablePuzzle(variant.id, variant.puzzle) || variant.puzzle.givens !== givens)) ||
+      !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||
+    (whispersGuide !== undefined && (whispersGuide !== true || variant?.id !== 'whispers' || !whispersLinkCounts(variant.puzzle))) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')
   }
-  return { version, title, givens, variant, collection, grid, sizedRules, sizedAuthor, ...(algebraic && { algebraic }) }
+  return { version, title, givens, variant, collection, grid, sizedRules, sizedAuthor,
+    ...(algebraic && { algebraic }), ...(whispersGuide && { whispersGuide }) }
 }
 
 function validSharedAlgebraic(value: unknown): value is NonNullable<SharedPuzzleDefinition['algebraic']> {

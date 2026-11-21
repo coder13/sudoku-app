@@ -24,7 +24,7 @@ test('published XV puzzles import and replay complete app-order paths to their i
   const nativeOrder = (await runEngine({ type: 'techniques', variant: true })).defaultOrder
   const appOrder = await getVariantPlayOrder()
   for (const [name, nativePoints, nativeSteps, appPoints, appSteps] of [
-    ['xv-clover', 1076, 55, 4538, 151], ['xv-quadruple-clover', 1540, 123, 1870, 123],
+    ['xv-clover', 1156, 59, 2358, 140], ['xv-quadruple-clover', 1540, 123, 1870, 123],
   ] as const) {
     const { puzzle, solution } = load(name)
     const { game } = await prepareImportedPuzzle(share(puzzle, name === 'xv-clover' ? 'xv' : 'mixed'))
@@ -35,7 +35,7 @@ test('published XV puzzles import and replay complete app-order paths to their i
     for (const [techniqueOrder, points, count] of [[nativeOrder, nativePoints, nativeSteps], [appOrder, appPoints, appSteps]] as const) {
       const position = variantPosition(game.variant!)
       const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-      assert.equal(trace.rating.scoringVersion, 8); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
+      assert.equal(trace.rating.scoringVersion, 9); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
       let played = game
       for (const step of trace.steps) {
         for (const action of step.actions) {
@@ -111,6 +111,35 @@ test('XV hints, pages, Finder counts and disabled profiles retain the same rule-
   assert.equal(disabled.steps.length, 0); assert.equal(disabled.rating.status, 'stalled')
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [], limit: 10 }), [])
   assert.equal(await runEngine({ type: 'variant', operation: 'solve', position }), solution)
+})
+
+test('unequal positive sums can rule out the same partner digit', async () => {
+  const marks: NonNullable<VariantPuzzle['rules']>[number] = {
+    type: 'xv', five: { pairs: [[3, 4]] }, ten: { pairs: [[22, 31]] },
+  }
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [marks] }
+  const eliminations = Array(81).fill(0)
+  for (const [cell, mask] of [[4, 10], [3, 5], [22, 258], [31, 129]]) eliminations[cell] = 511 ^ mask
+  const find = async (puzzle: VariantPuzzle, technique: string) => (await runEngine({
+    type: 'variant', operation: 'hints', position: { puzzle, eliminations },
+    techniqueOrder: [technique], limit: 0xffff_ffff,
+  })).filter(proof => proof.evidence.type === 'sum-pair')
+  const [pure] = await find(puzzle, 'xv')
+  assert.ok(pure?.evidence.type === 'sum-pair')
+  assert.deepEqual(pure.evidence.rules, [0, 0])
+  assert.deepEqual(pure.evidence.totals, [5, 10])
+  assert.ok(pure.actions.some(action => 'eliminate' in action && action.eliminate.cell === 30 && action.eliminate.digit === 1))
+  assertXvProof(puzzle, pure)
+
+  const mixed: VariantPuzzle = { ...puzzle, rules: [
+    { type: 'adjacent-total', cells: [3, 4], sum: 5 },
+    { type: 'xv', ten: { pairs: [[22, 31]] } },
+  ] }
+  const [hybrid] = await find(mixed, 'adjacent-total')
+  assert.ok(hybrid?.evidence.type === 'sum-pair')
+  assert.deepEqual(hybrid.evidence.rules, [0, 1])
+  assert.deepEqual(hybrid.actions, pure.actions)
+  assert.deepEqual(await find(mixed, 'xv'), [])
 })
 
 test('all three XV exercises retain independent proofs, twenty-point costs and checked practice answers', async () => {

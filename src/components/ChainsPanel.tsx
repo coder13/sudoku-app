@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, Redo2, RotateCw, Trash2, Undo2 } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
-import type { Deduction, DeductionAction } from '../sudoku/engine'
+import type { Deduction } from '../sudoku/engine'
 import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
@@ -10,7 +10,7 @@ import { techniqueActionKey } from '../sudoku/technique-progress'
 import type { BoardLink } from './BoardAnnotations'
 import { Button, IconButton } from './Button'
 import { Modal } from './Modal'
-import type { useChainSketch } from './useChainSketch'
+import type { ChainProof, useChainSketch } from './useChainSketch'
 import { usePlayPreference } from './usePlayPreference'
 
 type ChainInspection = CellReferenceOptions & { deduction: Deduction; links: readonly BoardLink[]; explanation?: string }
@@ -83,16 +83,18 @@ export function ChainColorsDialog({ open, first, second, onSelect, onClose, onEd
   </Modal>
 }
 
-type ChainProof = {
-  title: string
-  nodes: readonly number[]
-  strengths?: readonly LinkStrength[]
-  actions: readonly DeductionAction[]
-  explanation?: string
-}
-
-function ChainResults({ proofs }: { proofs: readonly ChainProof[] }) {
+function ChainResults({ proofs, onPreview }: {
+  proofs: readonly ChainProof[]; onPreview: (proof: ChainProof | null) => void
+}) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<ChainProof | null>(null)
+  const [focused, setFocused] = useState<ChainProof | null>(null)
+  const preview = hovered ?? focused
+  const visiblePreview = preview && proofs.includes(preview) ? preview : null
+  useLayoutEffect(() => {
+    onPreview(visiblePreview)
+    return () => onPreview(null)
+  }, [onPreview, visiblePreview])
   const groups = new Map<string, ChainProof[]>()
   for (const proof of proofs) {
     const group = groups.get(proof.title) ?? []
@@ -108,7 +110,12 @@ function ChainResults({ proofs }: { proofs: readonly ChainProof[] }) {
   const actions = group.flatMap(proof => proof.actions)
   const results = deductionResults([...new Map(actions.map(action => [techniqueActionKey(action), action])).values()])
   const explanations = group.filter(proof => Boolean(proof.explanation))
+  function clearPreview() {
+    setHovered(null)
+    setFocused(null)
+  }
   function move(offset: number) {
+    clearPreview()
     setSelected(titles[(index + offset + titles.length) % titles.length])
   }
 
@@ -126,12 +133,17 @@ function ChainResults({ proofs }: { proofs: readonly ChainProof[] }) {
       </div>}
     </div>
     {results.length > 0 && <ul className="chain-results">{results.map(result => <li key={result}>{result}</li>)}</ul>}
-    {explanations.length > 0 && <details className="chain-links" key={title} open={results.length ? undefined : true}>
+    {explanations.length > 0 && <details className="chain-links" key={title} open={results.length ? undefined : true}
+      onToggle={(event) => { if (!event.currentTarget.open) clearPreview() }}>
       <summary>Why this works</summary>
-      {explanations.map(({ nodes, strengths, actions, explanation }) => <div className="chain-proof" key={nodes.join('-')}>
-        {strengths && <p><code>{compactPath(nodes, strengths)}</code></p>}
-        {group.length > 1 && actions.length > 0 && <p>{deductionResults(actions).join(' ')}</p>}
-        <p>{explanation}</p>
+      {explanations.map(proof => <div className="chain-proof" key={proof.nodes.join('-')} tabIndex={0}
+        onPointerEnter={(event) => { if (event.pointerType !== 'touch') setHovered(proof) }}
+        onPointerLeave={() => setHovered(null)}
+        onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) setFocused(proof) }}
+        onBlur={() => setFocused(null)}>
+        {proof.strengths && <p><code>{compactPath(proof.nodes, proof.strengths)}</code></p>}
+        {group.length > 1 && proof.actions.length > 0 && <p>{deductionResults(proof.actions).join(' ')}</p>}
+        <p>{proof.explanation}</p>
       </div>)}
     </details>}
   </article>
@@ -239,7 +251,6 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
   const applyKey = shortcutLabel(shortcuts.applyEdits)
   const strongLinkStatus = strongLinks?.hasHighlights && !strongLinks.count ? 'No strong links between the highlighted candidates.' : ''
-  const showStrongLinkInstructions = !sketch.drawing || (sketch.pending === null && !sketch.hasLinks)
   const completablePaths = sketch.chains.filter(sketch.canFinishLoop)
   const loopPath = completablePaths.length === 1 ? completablePaths[0]
     : completablePaths.find(({ nodes }) => sketch.pending !== null && nodes.includes(sketch.pending))
@@ -258,6 +269,11 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         aria-keyshortcuts="Control+Z Meta+Z"
         disabled={!sketch.canUndo} onClick={sketch.undo}>
         <Undo2 size={16} aria-hidden="true" />
+      </IconButton>
+      <IconButton variant="quiet" aria-label="Redo edit" title="Redo edit (Ctrl+Shift+Z or Command+Shift+Z)"
+        aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
+        disabled={!sketch.canRedo} onClick={sketch.redo}>
+        <Redo2 size={16} aria-hidden="true" />
       </IconButton>
       <ChainActionsMenu actions={[
         { label: 'Choose colors', icon: Palette, disabled: false, opensDialog: true, run: onChooseColors },
@@ -286,9 +302,8 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         </div>
       </div>
       {applyFailed && <p role="status">Some chain edits conflict or the grid has changed.</p>}
-      {strongLinks?.shown && (showStrongLinkInstructions || strongLinkStatus) && <div className="strong-link-tool">
-        {showStrongLinkInstructions && <p>Select a candidate or link to start drawing.</p>}
-        {strongLinkStatus && <p role="status">{strongLinkStatus}</p>}
+      {strongLinks?.shown && strongLinkStatus && <div className="strong-link-tool">
+        <p role="status">{strongLinkStatus}</p>
       </div>}
       <ul className="chain-list" aria-label="Drawn chains">
         {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths }, index) => {
@@ -328,7 +343,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
             {selected && <div className="chain-editor" role="group" aria-label={`Edit ${name.toLowerCase()}`}>
               {editorControls}
               {sketch.status && <p role="status">{sketch.status}</p>}
-              <ChainResults proofs={[
+              <ChainResults onPreview={sketch.setPreviewedProof} proofs={[
                 ...sketch.chains.filter(proof => proof.actions.length),
                 ...sketch.medusas.filter(proof => proof.actions.length || proof.explanation),
               ]} />

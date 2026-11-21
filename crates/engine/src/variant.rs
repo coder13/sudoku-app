@@ -23,15 +23,16 @@ pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
 };
-use lines::LineConstraint;
+use lines::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum, compile_line_sums};
 pub(crate) use search::record_support;
 pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantLineHouseProof,
-    VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
+    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantLineHouseProof,
+    VariantLogicalError, VariantRating, VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace,
 };
-use pairs::{PairClue, PairCompiler, ParityClue};
+use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(
     feature = "teaching",
     feature = "wasm-api",
@@ -545,9 +546,15 @@ impl VariantPuzzle {
             allowed_digits: [DIGITS; CELLS],
             pairs: Vec::new(),
             lines: Vec::new(),
+            modular_sums: Vec::new(),
+            group_sum_houses: Vec::new(),
+            group_sum_phases: Vec::new(),
+            disjoint_group_sums: Vec::new(),
+            group_sum_chains: Vec::new(),
             quadruples: Vec::new(),
             global_entropy: None,
             pair_clues: Vec::new(),
+            positive_sums: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
             extra_rule_cells: 0,
@@ -641,6 +648,8 @@ impl VariantPuzzle {
                 }).then_some(index)
             })
             .collect();
+        compiled.positive_sums = positive_sums(&self.rules);
+        compile_line_sums(&mut compiled);
         compiled.extra_rule_cells = compiled.house_masks[27..]
             .iter()
             .copied()
@@ -786,9 +795,15 @@ pub struct CompiledVariant {
     allowed_digits: [u16; CELLS],
     pairs: Vec<PairConstraint>,
     lines: Vec<LineConstraint>,
+    modular_sums: Vec<ModularSum>,
+    group_sum_houses: Vec<GroupSumHouse>,
+    group_sum_phases: Vec<GroupSumPhase>,
+    disjoint_group_sums: Vec<DisjointGroupSum>,
+    group_sum_chains: Vec<GroupSumChain>,
     quadruples: Vec<Quadruple>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
+    positive_sums: Vec<PositiveSum>,
     pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,
     extra_rule_cells: u128,
@@ -804,6 +819,17 @@ struct CompiledCage {
 }
 
 impl CompiledVariant {
+    fn shared_enforced_house(&self, first: usize, others: &[usize]) -> Option<VariantHouseKind> {
+        let cells = others.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        self.memberships[first]
+            .iter()
+            .find(|&&index| {
+                self.house_masks[index] & cells == cells
+                    && self.search_houses.binary_search(&index).is_ok()
+            })
+            .map(|&index| self.houses[index].kind)
+    }
+
     fn are_primary_peers(&self, first: usize, second: usize, enforce_regions: bool) -> bool {
         first != second
             && (first / 9 == second / 9
@@ -948,7 +974,7 @@ fn drawing_paths_cover(cells: &[usize], segments: &Option<Vec<Vec<usize>>>) -> b
             == cell_mask(cells)
 }
 
-fn cell_mask(cells: &[usize]) -> Option<u128> {
+pub(crate) fn cell_mask(cells: &[usize]) -> Option<u128> {
     cells.iter().try_fold(0, |mask, &cell| {
         if cell >= CELLS {
             return None;

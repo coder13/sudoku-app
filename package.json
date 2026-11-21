@@ -17,6 +17,7 @@
     "build:cloudflare": "npm run build && cp cloudflare/pages/_worker.js cloudflare/pages/_routes.json cloudflare/pages/_headers dist/client/",
     "check": "node .agents/skills/sudoku-components/scripts/check-catalog.mjs && npm run build:collections && tsc --noEmit",
     "test": "npm run build:collections && node --experimental-sqlite --experimental-strip-types --test tests/*.test.ts",
+    "test:visual": "playwright test",
     "test:wasm": "npm run build:wasm && npm run test:wasm:contracts",
     "test:wasm:contracts": "node --experimental-strip-types --test tests/*-wasm.mts",
     "test:collections": "npm run build:collections && node scripts/ensure-wasm.mjs && node --experimental-strip-types --test tests/collections-wasm.mts",
@@ -40,6 +41,7 @@
     "tesseract.js-core": "^7.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@storybook/addon-a11y": "^10.6.7",
     "@storybook/addon-docs": "^10.6.7",
     "@storybook/react-vite": "^10.6.7",

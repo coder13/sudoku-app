@@ -1,4 +1,4 @@
-import type { SizedConstraintRule } from './engine.ts'
+import type { SizedConstraintRule, VariantRule } from './engine.ts'
 
 type KillerRule = Extract<SizedConstraintRule, { type: 'killer-cages' }>
 type Cage = KillerRule['cages'][number]
@@ -40,7 +40,7 @@ function possibleDigitSets(cage: Cage, size: number) {
   return result
 }
 
-export function sizedKillerState(rules: readonly SizedConstraintRule[] | undefined, values: string, size: number) {
+export function sizedKillerState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number) {
   if (!rules?.some(rule => rule.type === 'killer-cages')) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)
   const conflicts = new Set<number>()

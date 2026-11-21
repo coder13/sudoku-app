@@ -108,17 +108,32 @@ test('keeps the givens and irregular regions of a Jigsaw grid', async () => {
   assert.equal(new Set(regions.regions.flat()).size, 81)
 })
 
-test('keeps givens only from Current State and maps Coach rule direction', async () => {
+test('keeps 9 × 9 Coach Current State digits and both kinds of candidates separate from givens and rules', async () => {
+  const editable = [...STARTER].flatMap((digit, cell) => digit === '0' ? [cell] : [])
+  const [placedCell, candidateCell, cornerOnlyCell] = editable
+  const givenCell = [...STARTER].findIndex(digit => digit !== '0')
+  const entries = [...EMPTY]
+  entries[placedCell] = '1'
+  const center = Array<number>(81).fill(0)
+  const corner = Array<number>(81).fill(0)
+  center[candidateCell] = 1 | 256
+  corner[candidateCell] = 16
+  corner[cornerOnlyCell] = 511
+  const userDigits = [...entries]
+  userDigits[givenCell] = STARTER[givenCell]
   const state = await detectPuzzle(coach({
     givenDigits: STARTER,
-    userDigits: '100' + EMPTY.slice(3),
-    userCellCandidates: '0-0-230',
+    userDigits: userDigits.join(''),
+    userCellCandidates: center.map(mask => mask << 1).join('-'),
+    userBoxCandidates: corner.map(mask => mask << 1).join('-'),
     givenConstraints: [
       { type: 'diagonalNegative', segments: [], settings: {} },
       { type: 'diagonalPositive', segments: [], settings: {} },
     ],
   }))
   assert.equal(state.givens, STARTER)
+  assert.equal(state.variant?.puzzle.givens, STARTER)
+  assert.deepEqual(state.progress, { entries: entries.join(''), center, corner })
   assert.deepEqual(state.variant?.puzzle.rules, [
     { type: 'diagonal', diagonal: 'main' },
     { type: 'diagonal', diagonal: 'anti' },
@@ -134,6 +149,105 @@ test('keeps givens only from Current State and maps Coach rule direction', async
     const puzzle = await detectPuzzle(coach({ givenDigits: STARTER,
       givenConstraints: [{ type, segments: cells.length ? [{ cells, parameters: {} }] : [], settings: {} }] }))
     assert.deepEqual(puzzle.variant?.puzzle.rules, [rule])
+  }
+})
+
+test('Coach Current State keeps multiple player colors separate from the authored region', async () => {
+  const house = [0, 1, 2, 9, 10, 11, 18, 19, 27]
+  const givenConstraints = [{ type: 'region', segments: [{ cells: house }] }]
+  const givenColours = Array.from({ length: 81 }, (_, cell) => house.includes(cell) ? '0' : '').join(',')
+  const marks = Array<string>(81).fill('')
+  marks[0] = '21'
+  marks[80] = '3'
+  const data = { givenDigits: STARTER, givenConstraints, givenColours,
+    colours: ['green', 'blueHeavy', 'cyan', '#6c5ce7'], userColours: marks.join(',') }
+  const imported = await detectPuzzle(coach(data))
+  assert.deepEqual(imported.variant?.puzzle.rules, [{ type: 'extra-house', cells: house }])
+  assert.deepEqual(imported.progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedCellColors: { 0: ['blueHeavy', 'cyan'], 80: ['#6c5ce7'] },
+  })
+  assert.equal((await detectPuzzle(coach({ ...data, userColours: ','.repeat(80) }))).progress, undefined)
+  assert.equal((await detectPuzzle(coach({ ...data, userColours: undefined }))).progress, undefined)
+  for (const userColours of ['1', '4' + ','.repeat(80), '11' + ','.repeat(80)]) {
+    await assert.rejects(detectPuzzle(coach({ ...data, userColours })), /invalid cell colors/)
+  }
+  await assert.rejects(detectPuzzle(coach({ ...data, colours: ['green', 'var(--custom)', 'cyan', '#6c5ce7'] })),
+    /invalid or unsupported cell colors/)
+})
+
+test('Coach Current State decodes candidate colors without changing either candidate style', async () => {
+  const palette = ['blueHeavy', 'orangeHeavy', ...Array(8).fill('blue'), '#542aff']
+  const masks = [4, 32, ...Array(79).fill(0)].join('-')
+  const data = { colours: palette, userCellCandidates: masks, userBoxCandidates: masks, userCellCandidatesColours: '0+2+0-1+5+1-80+9+A' }
+  const { progress } = await detectPuzzle(coach(data))
+  assert.deepEqual(progress?.importedCandidateColors, { 0: { 2: 'blueHeavy' }, 1: { 5: 'orangeHeavy' }, 80: { 9: '#542aff' } })
+  assert.deepEqual(progress?.center, [2, 16, ...Array(79).fill(0)])
+  assert.deepEqual(progress?.corner, progress?.center)
+  assert.deepEqual((await detectPuzzle(coach({ colours: palette, userCellCandidatesColours: '80+9+A' }))).progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0), importedCandidateColors: { 80: { 9: '#542aff' } },
+  })
+  for (const userCellCandidatesColours of ['81+2+0', '0+0+0', '0+2+B', '0+2+0-0+2+1', '0+2+0-', '00+2+0']) {
+    await assert.rejects(detectPuzzle(coach({ ...data, userCellCandidatesColours })), /invalid or unsupported candidate colors/)
+  }
+  await assert.rejects(detectPuzzle(coach({ ...data, colours: ['var(--bad)'] })), /invalid or unsupported candidate colors/)
+})
+
+test('Coach Current State preserves Quick Draw lines, edge crosses, and cell symbols', async () => {
+  const diagonal = { type: 'diagonalNegative', segments: [] }
+  const data = {
+    givenDigits: STARTER, givenConstraints: [diagonal],
+    quickDrawLineSegments: {
+      '0.5/0.5=>2.5/3.5': { colour: 'blueHeavy' },
+      '0/1=>1/1': { colour: '#3af89c' },
+      '-0.5/0.5=>0.5/0.5': { colour: 'grey' },
+    },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'redHeavy' } },
+    cells: {
+      0: { quickSymbol: { shape: 'circle', colour: 'greenHeavy' } },
+      40: { quickSymbol: { shape: 'square', colour: 'orangeHeavy' } },
+      80: { quickSymbol: { shape: 'cross', colour: 'purpleHeavy' } },
+    },
+  }
+  const result = await detectPuzzle(coach(data))
+  assert.equal(result.givens, STARTER)
+  assert.deepEqual(result.variant?.puzzle.rules, [{ type: 'diagonal', diagonal: 'main' }])
+  assert.deepEqual(result.progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedDrawings: [
+      { shape: 'line', from: [.5, .5], to: [2.5, 3.5], color: 'blueHeavy' },
+      { shape: 'line', from: [0, 1], to: [1, 1], color: '#3af89c' },
+      { shape: 'line', from: [-.5, .5], to: [.5, .5], color: 'grey' },
+      { shape: 'cross', at: [1, .5], color: 'redHeavy' },
+      { shape: 'circle', at: [.5, .5], color: 'greenHeavy' },
+      { shape: 'square', at: [4.5, 4.5], color: 'orangeHeavy' },
+      { shape: 'cross', at: [8.5, 8.5], color: 'purpleHeavy' },
+    ],
+  })
+  for (const override of [
+    { quickDrawLineSegments: { '1.2/1=>1/1': { colour: 'red' } } },
+    { quickDrawLineSegments: { '1/1=>1/1': { colour: 'red' } } },
+    { quickDrawLineSegments: { '0/0=>1/1': { colour: 'var(--unsafe)' } } },
+    { quickDrawSymbols: { '1/1': { shape: 'cross', colour: 'red' } } },
+    { quickDrawSymbols: { '1/0.5': { shape: 'circle', colour: 'red' } } },
+    { cells: { 81: data.cells[0] } },
+    { cells: { 0: { ...data.cells[0], predefinedLetters: 'A' } } },
+    { cells: { 0: { quickSymbol: { shape: 'triangle', colour: 'red' } } } },
+  ]) await assert.rejects(detectPuzzle(coach({ ...data, ...override })), /invalid or unsupported Quick Draw/)
+})
+
+test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
+  const emptyMasks = Array(81).fill('0').join('-')
+  assert.deepEqual(await detectPuzzle(coach({
+    givenDigits: STARTER, userDigits: EMPTY, userCellCandidates: emptyMasks, userBoxCandidates: '',
+  })), { givens: STARTER, format: 'Sudoku Coach' })
+  const wrongGiven = [...EMPTY]
+  const givenCell = [...STARTER].findIndex(digit => digit !== '0')
+  wrongGiven[givenCell] = STARTER[givenCell] === '1' ? '2' : '1'
+  await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userDigits: wrongGiven.join('') })), /replaces a given/)
+  await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userDigits: '123' })), /invalid placed digits/)
+  for (const mask of ['2-4', '1024' + emptyMasks.slice(1), '513' + emptyMasks.slice(1), '0x2' + emptyMasks.slice(1)]) {
+    await assert.rejects(detectPuzzle(coach({ givenDigits: STARTER, userBoxCandidates: mask })), /invalid candidate marks/)
   }
 })
 
@@ -271,8 +385,9 @@ test('Coach white and black dot layers keep independent negative flags and share
     { type: 'kropki', consecutive: { pairs: [[7, 8]], negative: true } },
     { type: 'kropki', ratioTwo: { pairs: [[8, 7]], negative: false } },
   ])
-  assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair of consecutive digits')))
-  assert.ok(!variantRuleDescriptions(imported.variant.puzzle).some(rule => rule.includes('Every adjacent pair with one digit double')))
+  const rules = variantRuleDescriptions(imported.variant.puzzle)
+  assert.ok(rules.includes('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.'))
+  assert.ok(!rules.includes('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.'))
   for (const constraint of [
     { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },

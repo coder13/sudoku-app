@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
-import { EngineError, runEngine } from '../sudoku/engine'
+import { createEngineSession, EngineError, type EngineRunner, type EngineSession } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
+import { isCustomDifficulty, type CustomModeDefinition } from '../sudoku/custom-modes'
 import { createGameId, makeGame } from '../sudoku/game'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -11,7 +12,7 @@ import { generatePlayableVariant } from '../sudoku/variant-play'
 import { verifySizedRulePuzzle } from '../sudoku/sized-rule-game'
 import { fiveJigsawForSeed, MINI_GRID, rectangularGridForBoxRows, sevenJigsawForSeed, type RectangularBoxRows } from '../sudoku/grid'
 import { ALGEBRAIC_CAGES_NAME, miniDifficulty, MINI_NAME, rectangularPuzzleSize, sizedGridName, type NewPuzzleId } from '../sudoku/new-puzzle'
-import { VARIANTS, variantDifficulty } from '../sudoku/variants'
+import { VARIANTS, variantDifficulty, variantIdForPuzzle } from '../sudoku/variants'
 import { generationRuleset, type VariantGenerationOptions } from '../sudoku/variant-rulesets'
 
 export function usePlayerRating() {
@@ -22,28 +23,60 @@ export function usePlayerRating() {
 export function usePuzzleGeneration() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const pending = useRef(false)
+  const pending = useRef<EngineSession | null>(null)
   const mounted = useRef(false)
+  const customSearch = useRef<AbortController | null>(null)
 
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false }
+    return () => {
+      mounted.current = false
+      customSearch.current?.abort()
+      customSearch.current = null
+      pending.current?.close()
+      pending.current = null
+    }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows }) {
+  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows; customMode?: CustomModeDefinition }) {
     if (pending.current) return
-    pending.current = true
+    const session = createEngineSession()
+    pending.current = session
+    const active = () => mounted.current && pending.current === session
+    const run: EngineRunner = (request, options) => active()
+      ? session.run(request, options)
+      : Promise.reject(new DOMException('Puzzle generation cancelled.', 'AbortError'))
     setBusy(true)
     setError('')
     try {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      if (options?.customMode) {
+        const mode = options.customMode
+        const difficulty = isCustomDifficulty(preference) ? preference : 'medium'
+        const controller = new AbortController()
+        customSearch.current = controller
+        const { generateCustomSudoku } = await import('../sudoku/custom-generation')
+        const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, {
+          signal: controller.signal, negativeMarkers: mode.negativeMarkers,
+        })
+        if (!active() || controller.signal.aborted) return
+        const id = variantIdForPuzzle(result.puzzle)
+        if (id === 'classic') throw new Error('The generated puzzle is missing its custom rules.')
+        const game = makeGame(createGameId(), nextPuzzleTitle(`${mode.name} `), result.puzzle.givens, 'generated')
+        roomStore.add({ ...game, pendingSave: true, customMode: mode, difficulty, score: result.rating.points,
+          variant: { id, puzzle: result.puzzle, solution: result.solution },
+          ratingAttempt: ratingAttemptFor({ difficulty, points: result.rating.points, scoringVersion: result.rating.scoringVersion,
+            techniqueOrder: result.rating.techniqueOrder }, 'fixed') })
+        onGenerated?.()
+        return
+      }
       if (variant === 'algebraic-cages') {
         const difficulty = miniDifficulty(preference)
-        const { digits, rules } = await runEngine({ type: 'generate-algebraic', seed, difficulty, exclude: roomStore.playedAlgebraicPuzzles() })
+        const { digits, rules } = await run({ type: 'generate-algebraic', seed, difficulty, exclude: roomStore.playedAlgebraicPuzzles() })
         const givens = digits.join('')
-        const algebraic = await verifyAlgebraicPuzzle({ givens, rules })
-        const rating = await rateAlgebraicPuzzle(givens, rules)
-        if (!mounted.current) return
+        const algebraic = await verifyAlgebraicPuzzle({ givens, rules }, run)
+        const rating = await rateAlgebraicPuzzle(givens, rules, run)
+        if (!active()) return
         if (rating?.difficulty !== difficulty) throw new Error('The walkthrough did not match the selected difficulty.')
         const game = makeGame(createGameId(), nextPuzzleTitle(`${ALGEBRAIC_CAGES_NAME} `), givens, 'generated', undefined, MINI_GRID)
         roomStore.add({ ...game, pendingSave: true, algebraic, difficulty, score: rating.points })
@@ -56,11 +89,11 @@ export function usePuzzleGeneration() {
         const grid = size ? rectangularGridForBoxRows(size, options?.boxRows)
           : variant === 'jigsaw-five' ? fiveJigsawForSeed(seed) : sevenJigsawForSeed(seed)
         const exclude = roomStore.playedSizedGivens(grid).map(givens => Array.from(givens, Number))
-        const givens = (await runEngine('boxRows' in grid
+        const givens = (await run('boxRows' in grid
           ? { type: 'generate-rectangular', seed, difficulty, grid, exclude }
           : { type: 'generate-jigsaw', seed, difficulty, grid, exclude })).join('')
-        const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] })
-        if (!mounted.current) return
+        const sized = await verifySizedRulePuzzle({ grid, givens, rules: [] }, run)
+        if (!active()) return
         const game = makeGame(createGameId(), nextPuzzleTitle(`${sizedGridName(grid)} `), givens, 'generated', undefined, grid)
         roomStore.add({ ...game, pendingSave: true, sized, difficulty, score: null })
         onGenerated?.()
@@ -69,8 +102,8 @@ export function usePuzzleGeneration() {
       if (variant === 'mini') {
         const difficulty = miniDifficulty(preference)
         const exclude = roomStore.playedMiniGivens().map(givens => Array.from(givens, Number))
-        const givens = (await runEngine({ type: 'generate-mini', seed, difficulty, exclude })).join('')
-        if (!mounted.current) return
+        const givens = (await run({ type: 'generate-mini', seed, difficulty, exclude })).join('')
+        if (!active()) return
         const game = makeGame(createGameId(), nextPuzzleTitle(`${MINI_NAME} `), givens, 'generated', undefined, MINI_GRID)
         roomStore.add({ ...game, pendingSave: true, difficulty, score: null })
         onGenerated?.()
@@ -79,8 +112,8 @@ export function usePuzzleGeneration() {
       const auto = preference === 'auto'
       const difficulty = variantDifficulty(variant, auto ? roomStore.getSnapshot().playerRating.recommended : preference)
       if (variant !== 'classic') {
-        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games, options)
-        if (!mounted.current) return
+        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games, options, run)
+        if (!active()) return
         const title = nextPuzzleTitle(`${generationRuleset(variant, options?.ruleset)?.name ?? VARIANTS[variant].name} `)
         const game = makeGame(createGameId(), title, result.puzzle.givens, 'generated')
         game.variant = { id: variant, puzzle: result.puzzle, solution: result.solution }
@@ -96,8 +129,10 @@ export function usePuzzleGeneration() {
         return
       }
       const previousPuzzles = roomStore.getSnapshot().games.filter(game => !game.variant && !game.grid).map(game => game.givens)
-      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, auto ? await techniqueHistory.readProgress() : undefined, previousPuzzles)
-      if (!mounted.current) return
+      const progress = auto ? await techniqueHistory.readProgress() : undefined
+      if (!active()) return
+      const { board: givens, rating, canonical } = await generateClassic(difficulty, seed, progress, previousPuzzles, run)
+      if (!active()) return
       const game = makeGame(createGameId(), nextPuzzleTitle(), givens, 'generated')
       if (auto) game.generatedWithAuto = true
       if (rating && rating.status !== 'stalled') {
@@ -111,18 +146,23 @@ export function usePuzzleGeneration() {
       roomStore.add({ ...game, pendingSave: true, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
     } catch (reason) {
-      if (mounted.current) {
+      if (active() && !(reason instanceof Error && reason.name === 'AbortError')) {
         setError(reason instanceof EngineError && reason.code === 'search-limit'
-          ? 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.'
+          ? options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
+            : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.'
           : (reason as Error).message)
       }
     } finally {
-      pending.current = false
-      if (mounted.current) setBusy(false)
+      session.close()
+      if (pending.current === session) {
+        customSearch.current = null
+        pending.current = null
+        if (mounted.current) setBusy(false)
+      }
     }
   }
 
-  return { busy, error, generate }
+  return { busy, error, generate, cancelGeneration: () => customSearch.current?.abort() }
 }
 
 

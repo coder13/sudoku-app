@@ -1,6 +1,6 @@
 import { CLASSIC_GRID, isGridText, type PlayGrid } from './grid.ts'
 import type { DeductionAction } from './engine.ts'
-import { completeCandidateMasks, createGameId, hintEliminations, valuesOf, type Game } from './game.ts'
+import { completeCandidateMasks, createGameId, hintEliminations, valuesOf, visibleGivensOf, type Game } from './game.ts'
 import { techniqueActionKey } from './technique-progress.ts'
 
 export const ACTION_GROUP_DELAY = 2000
@@ -21,7 +21,7 @@ export type ActionHistoryEntry = {
   technique?: string | null
   matchFailed?: true
   // Save unclassified positions so a refresh cannot lose a pending match.
-  pending?: { values: string; eliminations?: readonly number[] }
+  pending?: { values: string; entries?: string; eliminations?: readonly number[] }
 }
 
 export function deductionActions(changes: readonly ActionChange[]): DeductionAction[] {
@@ -34,9 +34,10 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
   options: { at?: number; technique?: string; actions?: readonly DeductionAction[] } = {}): Game {
   if (before === after || before.source === 'draft' || before.position === after.position) return after
   const size = (before.grid ?? CLASSIC_GRID).size
+  const visibleGivens = visibleGivensOf(before)
   const changes: ActionChange[] = []
   for (let cell = 0; cell < before.givens.length; cell++) {
-    if (before.givens[cell] !== '0') continue
+    if (visibleGivens[cell] !== '0') continue
     const previous = Number(before.position.entries[cell])
     const next = Number(after.position.entries[cell])
     if (previous !== next) changes.push({ kind: 'entry', cell, before: previous, after: next })
@@ -49,7 +50,7 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
       }
     } else {
       for (let cell = 0; cell < before.givens.length; cell++) {
-        if (before.givens[cell] !== '0' || before.position.entries[cell] !== '0' || after.position.entries[cell] !== '0') continue
+        if (visibleGivens[cell] !== '0' || before.position.entries[cell] !== '0' || after.position.entries[cell] !== '0') continue
         const previous = before.position.center[cell] | before.position.corner[cell]
         const next = after.position.center[cell] | after.position.corner[cell]
         for (let digit = 1; digit <= size; digit++) {
@@ -63,7 +64,8 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
   const at = options.at ?? Date.now()
   const actions = deductionActions(changes)
   const pending = kind === 'edit' && actions.length > 0 && actions.length === changes.length
-    ? { values: valuesOf(before), eliminations: hintEliminations(valuesOf(before), completeCandidateMasks(before), before.position.eliminations, size) }
+    ? { values: valuesOf(before), ...(before.variant?.fog && { entries: before.position.entries }),
+      eliminations: hintEliminations(valuesOf(before), completeCandidateMasks(before), before.position.eliminations, size) }
     : undefined
   const entry: ActionHistoryEntry = {
     id: createGameId(), at, lastAt: at, elapsed: before.elapsed, kind, changes,
@@ -87,7 +89,7 @@ export function pendingActionBatch(history: readonly ActionHistoryEntry[], now: 
       const previous = entries[entries.length - 1]
       const gap = next.at - previous.lastAt
       if (!next.pending || !onlyRemovals(next) || gap < 0 || gap > ACTION_GROUP_DELAY ||
-        next.pending.values !== entries[0].pending!.values) break
+        next.pending.values !== entries[0].pending!.values || next.pending.entries !== entries[0].pending!.entries) break
       entries.push(next)
     }
   }
@@ -156,6 +158,7 @@ export function validActionHistory(value: unknown, grid: PlayGrid = CLASSIC_GRID
       (change.kind === 'entry' ? integer(change.before, grid.size) && integer(change.after, grid.size)
         : change.kind === 'candidate' && integer(change.digit, grid.size) && change.digit > 0 && typeof change.added === 'boolean')) &&
     (entry.pending === undefined || entry.pending && isGridText(entry.pending.values, grid) &&
+      (entry.pending.entries === undefined || isGridText(entry.pending.entries, grid)) &&
       (entry.pending.eliminations === undefined || Array.isArray(entry.pending.eliminations) && entry.pending.eliminations.length === cellCount &&
         entry.pending.eliminations.every((mask) => integer(mask, fullMask)))))
 }

@@ -145,9 +145,8 @@ export const KakuroFromGameTypes: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
     await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
-    for (const name of ['Show digits', 'Show location', 'Show explanation']) {
-      await userEvent.click(await canvas.findByRole('button', { name }))
-    }
+    const more = await canvas.findByRole('button', { name: 'More detail' })
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(more)
     await userEvent.click(canvas.getByText('Show hint steps'))
     await expect(canvas.getByText('The clue rules out 1 in R4C2. R4C2 can only be 3.')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Apply hint' }))

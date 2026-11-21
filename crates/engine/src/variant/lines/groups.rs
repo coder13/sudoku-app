@@ -16,7 +16,7 @@ pub(super) enum DigitGroups {
 }
 
 impl DigitGroups {
-    fn masks(self) -> [u16; 3] {
+    pub(super) fn masks(self) -> [u16; 3] {
         match self {
             Self::Entropic => [0b000000111, 0b000111000, 0b111000000],
             Self::Modular => [0b001001001, 0b010010010, 0b100100100],
@@ -62,8 +62,121 @@ impl GroupLine {
         ))
     }
 
+    pub(super) fn phases(&self) -> Option<(&[usize], DigitGroups)> {
+        self.consistent.then_some((&self.phases, self.partition))
+    }
+
     pub(super) fn different_phases(&self, a: usize, b: usize) -> bool {
         self.phases[a] != self.phases[b]
+    }
+
+    pub(super) fn repeating_group(&self, a: usize, b: usize) -> Option<DigitGroups> {
+        (self.consistent && !self.different_phases(a, b)).then_some(self.partition)
+    }
+
+    pub(super) fn distinct_groups(&self, a: usize, b: usize) -> Option<DigitGroups> {
+        (self.consistent && self.different_phases(a, b)).then_some(self.partition)
+    }
+
+    pub(super) fn house_pair_removals(
+        &self,
+        left: usize,
+        right: usize,
+        domains: [u16; 2],
+    ) -> [u16; 2] {
+        let Some(partition) = self.repeating_group(left, right) else {
+            return [0; 2];
+        };
+        let mut removals = [0; 2];
+        let common = domains[0] & domains[1];
+        for group in partition.masks() {
+            let shared = common & group;
+            if shared == 0 {
+                continue;
+            }
+            // If one cell has only this digit in the group, the other
+            // cannot use it without making the house repeat that digit.
+            if domains[0] & group == shared && shared.is_power_of_two() {
+                removals[1] |= shared;
+            }
+            if domains[1] & group == shared && shared.is_power_of_two() {
+                removals[0] |= shared;
+            }
+        }
+        removals
+    }
+
+    pub(super) fn house_triplet_removals(
+        &self,
+        first: usize,
+        second: usize,
+        [a, b, other]: [u16; 3],
+    ) -> u16 {
+        if !self.consistent || !self.different_phases(first, second) {
+            return 0;
+        }
+        let groups = self.partition.masks();
+        let mut possible = 0;
+        let mut supported = 0;
+        for (i, &left) in groups.iter().enumerate() {
+            let left = a & left;
+            if left == 0 {
+                continue;
+            }
+            for (j, &right) in groups.iter().enumerate() {
+                let right = b & right;
+                if i == j || right == 0 {
+                    continue;
+                }
+                let remaining = groups[3 - i - j];
+                possible |= remaining;
+                // The first two positions already use different digit groups.
+                // Only singleton choices from those groups can deny digits to
+                // the third cell in their shared house.
+                let fixed_left = if left.is_power_of_two() { left } else { 0 };
+                let fixed_right = if right.is_power_of_two() { right } else { 0 };
+                if other & !(fixed_left | fixed_right) != 0 {
+                    supported |= remaining;
+                }
+            }
+        }
+        possible & !supported
+    }
+
+    pub(super) fn modular_sum_groups(
+        &self,
+        left: usize,
+        right: usize,
+        sum: u8,
+    ) -> Option<Vec<u16>> {
+        if !self.consistent {
+            return None;
+        }
+        let DigitGroups::Modular = self.partition else {
+            return None;
+        };
+        let a = self.phases[left];
+        let b = self.phases[right];
+        // A sum S has only one way to use the same remainder twice: 2 * S (mod 3).
+        // The group masks are ordered by the remainder of digit minus one.
+        let group = self.partition.masks()[usize::from((2 * sum + 2) % 3)];
+        Some(
+            self.phases
+                .iter()
+                .map(|&phase| {
+                    let must_use_group = if a == b {
+                        phase == a
+                    } else {
+                        phase != a && phase != b
+                    };
+                    if must_use_group {
+                        group
+                    } else {
+                        DIGITS & !group
+                    }
+                })
+                .collect(),
+        )
     }
 
     pub(super) fn support(&self, domains: &[u16], support: &mut [u16]) {

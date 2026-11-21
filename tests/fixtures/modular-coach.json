@@ -586,7 +586,29 @@
       "solution": "173694258948352716526817493261573849485926371739148625357481962692735184814269537",
       "imageUrl": "https://sudoku.coach/open_graph_images/7rs9.png",
       "imageSha256": "aca87d331e5c859e288f770afd2a77cd1ba6527ba6dbdc2efefcde23de5d5bac",
-      "deferred": "Region Sum Lines and mathematical cosmetic lines remain unsupported; the author explicitly includes the cosmetic blue paths in the sum rule.",
+      "deferred": "The pasted code requires the publication’s line legend. The original short link imports the authored orange and blue paths.",
+      "publishedPuzzle": {
+        "version": 1,
+        "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "rules": [
+          {"type": "non-consecutive"},
+          {"type": "entropic", "cells": [72, 73, 63, 64, 65, 55, 56, 48]},
+          {"type": "entropic", "cells": [60, 52, 51, 50, 42, 34]},
+          {"type": "entropic", "cells": [20, 12, 21, 30, 22]},
+          {"type": "modular", "cells": [29, 38, 47, 57, 58]},
+          {"type": "modular", "cells": [34, 26]},
+          {"type": "region-sum", "cells": [58, 59, 60, 52, 42, 34], "groupByRegion": false},
+          {"type": "region-sum", "cells": [14, 22, 12, 20, 29, 38], "groupByRegion": false},
+          {"type": "region-sum", "cells": [56, 48, 40, 49], "groupByRegion": false},
+          {"type": "region-sum", "cells": [47, 39], "groupByRegion": false},
+          {"type": "entropic", "cells": [40, 31, 41, 40, 39, 49, 40]},
+          {"type": "region-sum", "cells": [42, 32, 22, 14], "groupByRegion": false},
+          {"type": "region-sum", "cells": [14, 6], "groupByRegion": false},
+          {"type": "region-sum", "cells": [38, 30], "groupByRegion": false},
+          {"type": "region-sum", "cells": [50, 58], "groupByRegion": false},
+          {"type": "region-sum", "cells": [57, 49], "groupByRegion": false}
+        ]
+      },
       "description": "Orange = entropy, brown = modular, blue = regional sum (including the cosmetic lines)."
     },
     {
@@ -610,7 +632,6 @@
       "solution": "732418695641295387589367241915632478468971523327584169853746912194823756276159834",
       "imageUrl": "https://sudoku.coach/open_graph_images/Fnxt.png",
       "imageSha256": "dd58df4925f1ed588671b9d2d310195e96111557c43eae45020adca87dadcbde",
-      "deferred": "Fog of War remains unsupported. Preserve the fog reveal and every companion rule.",
       "description": ""
     }
   ],

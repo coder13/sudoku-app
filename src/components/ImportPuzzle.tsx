@@ -1,16 +1,16 @@
+import { fogView } from '../sudoku/fog'
 import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
-import type { Game } from '../sudoku/game'
+import { valuesOf } from '../sudoku/game'
 import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
-import { findImportedPuzzle, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
-import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
-import { findSharedAttempt } from '../sudoku/puzzle-sharing'
+import { findImportAttempt, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { applyPuzzleGrade, needsPuzzleGrade } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
@@ -20,19 +20,15 @@ import { PhotoPuzzleReview } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function existingPuzzle(game: Pick<Game, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sized' | 'sharedPuzzleId'>) {
-  const { games } = roomStore.getSnapshot()
-  return game.sharedPuzzleId ? findSharedAttempt(games, game.sharedPuzzleId) : findImportedPuzzle(games, game)
-}
-
 function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-export function finishImport({ game, grade }: PuzzlePreview, play: boolean) {
-  const existing = existingPuzzle(game)
+export function finishImport(preview: PuzzlePreview, play: boolean) {
+  const { game, grade } = preview
+  const existing = findImportAttempt(roomStore.getSnapshot().games, preview)
   if (existing) {
-    if (grade !== undefined && (existing.difficulty === undefined || existing.score === undefined)) {
+    if (grade !== undefined && needsPuzzleGrade(existing)) {
       roomStore.update(existing.id, current => applyPuzzleGrade(current, grade))
     }
     if (play) roomStore.select(existing.id)
@@ -136,6 +132,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setCameraOpen(false)
   }
 
+  const fog = preview && fogView(preview.game.variant, preview.game.position.entries)
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
@@ -149,8 +146,10 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </span>
         <span className="import-preview-format">{preview.format}</span>
       </p>
-      <Board grid={preview.game.grid} label="Puzzle preview" givens={preview.game.givens} values={preview.game.givens}
-        variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
+      {preview.hasProgress && <p>This import includes your progress.</p>}
+      <Board grid={preview.game.grid} whispersGuide={preview.game.whispersGuide} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
+        position={preview.hasProgress ? preview.game.position : undefined} candidateLayout="center-corner"
+        variantPuzzle={preview.game.variant?.puzzle} fog={fog} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
       {preview.game.algebraic ? <>
         {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
         <ul className="import-preview-rules">
@@ -162,7 +161,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         {sizedRuleDescriptions(preview.game.grid, preview.game.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       {preview.game.variant && <ul className="import-preview-rules">
-        {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
+        {variantRuleDescriptions(fog?.puzzle ?? preview.game.variant.puzzle, preview.game.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       <div className="dialog-actions import-preview-actions">
         <Button type="button" className="import-edit" onClick={() => setPreview(undefined)}>
@@ -172,7 +171,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </Button>
         <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
-          <Play size={17} aria-hidden="true" /> Start playing
+          <Play size={17} aria-hidden="true" /> {preview.hasProgress ? 'Open puzzle' : 'Start playing'}
         </Button>
       </div>
     </div>

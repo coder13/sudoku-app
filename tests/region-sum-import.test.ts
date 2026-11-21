@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
+import { readCoachColouredLines } from '../src/sudoku/coach-coloured-lines.ts'
 import { conflictsOf, enter, fillEntries, makeGame, redo, undo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { regionSumState } from '../src/sudoku/region-sum.ts'
@@ -14,6 +15,18 @@ const empty = '0'.repeat(81), bit = (digit: number) => 1 << (digit - 1)
 function valuesAt(cells: readonly number[], digits: readonly number[]) {
   const values = [...empty]; cells.forEach((cell, i) => { values[cell] = String(digits[i]) }); return values.join('')
 }
+
+test('drawn line recovery rejects unknown palettes, uncertain endpoints and same-region sums', () => {
+  const drawn = (colour: string, cells: number[][]) => ({
+    type: 'cosmeticLine', settings: { colour }, segments: [{ cells, parameters: {} }],
+  })
+  const orange = drawn('#ffbd61', [[0.5, 0.5], [2.5, 2.5]])
+  const blue = (cells: number[][]) => drawn('#d6feff', cells)
+  assert.throws(() => readCoachColouredLines([orange, drawn('#abcdef', [[0.5, 0.5], [0.5, 3.5]])], undefined), /undeclared line colour/)
+  assert.throws(() => readCoachColouredLines([orange, blue([[1, 0.5], [1, 3.5]])], undefined), /end or bend on a cell border/)
+  assert.throws(() => readCoachColouredLines([orange, blue([[0.5, 0.5], [1.5, 3.5]])], undefined), /ambiguous path between cells/)
+  assert.throws(() => readCoachColouredLines([orange, blue([[0.5, 0.5], [0.5, 2.5]])], undefined), /ambiguous Region Sum drawing/)
+})
 
 test('all original Coach Region Sum exports preserve their full lines and every companion rule', async () => {
   assert.equal(variantIdForPuzzle(published.puzzle), 'region-sum')

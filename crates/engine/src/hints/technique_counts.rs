@@ -28,7 +28,7 @@ impl TechniqueCountScan {
         }) {
             let checked = checked_position(&board, eliminations.as_ref());
             if let (Some(overlay), Ok(position)) = (&mut self.overlay, &checked) {
-                overlay.update_classic(position.board(), position.masks());
+                overlay.update_position(position.board(), position.masks());
             }
             self.snapshot = Some(ScanPosition {
                 board,

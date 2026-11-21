@@ -1,9 +1,11 @@
 import { useEffect, useEffectEvent } from 'react'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 
-/** Count whole seconds in one visible tab for each puzzle. */
-export function usePuzzleTimer(id: string, running: boolean, onTick: (seconds: number, puzzleId: string) => void) {
+/** Count whole seconds in one visible tab; optionally flush buffered time when its clock stops. */
+export function usePuzzleTimer(id: string, running: boolean, onTick: (seconds: number, puzzleId: string) => void,
+  onStop?: (puzzleId: string) => void) {
   const advance = useEffectEvent(onTick)
+  const finish = useEffectEvent((puzzleId: string) => onStop?.(puzzleId))
   useEffect(() => {
     if (!running) return
     let started: number | null = null
@@ -42,6 +44,7 @@ export function usePuzzleTimer(id: string, running: boolean, onTick: (seconds: n
 
     function stop() {
       tick()
+      finish(id)
       started = null
       lockRequest?.abort()
       lockRequest = undefined

@@ -150,7 +150,8 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const eliminationMasks = useMemo(() => hintEliminations(values, completeCandidateMasks(game), game.position.eliminations),
     [values, game.position.center, game.position.corner, game.position.eliminations])
   const variant = Boolean(game.variant)
-  const snapshotKey = techniqueScanKey(values, eliminationMasks, game.variant?.puzzle)
+  const position = game.variant && variantPosition(game.variant, game.position)
+  const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
   const positionProblem = variantHintProblem(game, values, eliminationMasks)
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -191,7 +192,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
         const latestValues = valuesOf(latest)
         if (latestValues !== values) return latest
         const masks = hintEliminations(latestValues, completeCandidateMasks(latest), latest.position.eliminations)
-        if (techniqueScanKey(latestValues, masks, latest.variant?.puzzle) !== snapshotKey) return latest
+        if (techniqueScanKey(latestValues, masks, latest.variant && variantPosition(latest.variant, latest.position).puzzle) !== snapshotKey) return latest
         const attempt = latest.ratingAttempt
         const ratingAttempt = attempt && addAnalysisAssistance(attempt)
         return latest.analysisUsed && ratingAttempt === attempt ? latest
@@ -202,8 +203,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     if (missing.length < techniques.length) recordAssistance()
     if (missing.length === 0) return
 
-    const scan = watchTechniqueScan(values, eliminationMasks,
-      game.variant ? variantPosition(game.variant, game.position) : undefined)
+    const scan = watchTechniqueScan(values, eliminationMasks, position)
 
     function showResult(technique: string, result: AnalysisCount) {
       setScan((previous) => previous?.key === snapshotKey

@@ -25,7 +25,7 @@ function MobilePuzzleDropdown() {
         multi={false} actionsRef={actionsRef} inputSize={DEFAULT_INPUT_SIZE} panelHeight={panelHeight}
         setPanelHeight={setPanelHeight} beginResize={() => {}} toggleMulti={() => {}}
         onShare={() => {}} onPublish={() => {}} onCancelDraft={() => {}} onStopPlaying={() => {}}
-        onNewPuzzle={() => {}} onCreatePuzzle={() => {}} onEditPuzzle={() => {}}
+        onNewPuzzle={() => {}} onImportPuzzle={() => {}}
         showLeftPanel showRightPanel showBottomPanel onOpenHintPanel={() => {}} onOpenRightPanel={() => {}}
         puzzleBrowserView="active" setPuzzleBrowserView={() => {}} />
     </div></main>

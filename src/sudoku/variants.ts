@@ -1,3 +1,4 @@
+import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
@@ -5,6 +6,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
+import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -112,11 +114,6 @@ export const VARIANTS = {
     name: 'Kropki',
     rule: 'Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other. Unmarked pairs have no extra rule.',
   },
-} as const
-
-// Playable imported variants can be released before generation recipes exist.
-export const PUZZLE_VARIANTS = {
-  ...VARIANTS,
   xv: {
     name: 'XV',
     rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
@@ -131,6 +128,8 @@ export const PUZZLE_VARIANTS = {
   },
 } as const
 
+export const PUZZLE_VARIANTS = VARIANTS
+
 export function quadrupleCells(topLeft: number): readonly number[] {
   return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
 }
@@ -138,10 +137,17 @@ export function quadrupleCells(topLeft: number): readonly number[] {
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
   Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
 
+export function variantHouseFillCells(rule: VariantRule): readonly number[] {
+  if (rule.type === 'diagonal') return gridDiagonalCells(9, rule.diagonal)
+  if (rule.type === 'extra-house' && WINDOKU_REGIONS.some(region =>
+    region.length === rule.cells.length && region.every(cell => rule.cells.includes(cell)))) return rule.cells
+  return []
+}
+
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type PuzzleVariantId = keyof typeof PUZZLE_VARIANTS | 'mixed'
-export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string }
+export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string; fog?: FogDefinition }
 
 export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
@@ -310,30 +316,56 @@ export function sumLabel(sum: number) {
   return ROMAN_TOTALS[sum - 3] ?? String(sum)
 }
 
+type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
+type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' }>
+const noCellExclusions: readonly CellExclusionRule[] = []
+const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
+
+// Puzzle definitions share an immutable rule list across Play positions.
+function indexExclusions(rules: readonly VariantRule[]) {
+  const byCell = Array<CellExclusionRule[] | undefined>(81)
+  const edgeRules: EdgeExclusionRule[] = []
+  const kropki: Extract<VariantRule, { type: 'kropki' }>[] = []
+  let clones: ReturnType<typeof cloneLayout>['at'] | undefined
+  for (const rule of rules) {
+    switch (rule.type) {
+      case 'kropki': kropki.push(rule); continue
+      case 'xv': case 'non-consecutive': edgeRules.push(rule); continue
+      case 'clone': clones ??= cloneLayout(rules).at; continue
+      case 'entropic': case 'modular': case 'renban': case 'adjacent-total': case 'palindrome': case 'whispers':
+      case 'inequality': {
+        const cells = rule.type === 'inequality' ? [rule.less, rule.greater] : new Set(rule.cells)
+        for (const cell of cells) (byCell[cell] ??= []).push(rule)
+      }
+    }
+  }
+  const index = { byCell: byCell.map(local => local?.slice()), edgeRules, kropki, clones }
+  exclusionIndexes.set(rules, index)
+  return index
+}
+
 /** Extra pairwise exclusions beyond the same-digit peers used by the player. */
 export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
-  let excluded = 0
+  const rules = puzzle?.rules
+  if (!rules?.length) return 0
+  const { byCell, edgeRules, kropki, clones } = exclusionIndexes.get(rules) ?? indexExclusions(rules)
+  let excluded = kropki.length ? kropkiDigitExclusions(kropki, from, to, digit, 9) : 0
+  const clone = clones?.[from]
+  if (clone && clone === clones?.[to]) excluded |= 511 & ~(1 << (digit - 1))
   let v = false, x = false, negativeV = false, negativeX = false
-  const edge = cellsShareEdge(from, to)
-  for (const rule of puzzle?.rules ?? []) {
-    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(from) && rule.cells.includes(to)) {
+  for (const rule of byCell[from] ?? noCellExclusions) {
+    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(to)) {
       const samePhase = rule.cells.indexOf(from) % 3 === rule.cells.indexOf(to) % 3
       const group = lineGroupMask(rule.type, digit)
       excluded |= samePhase ? 511 & ~group : group
     }
-    if (rule.type === 'renban' && rule.cells.includes(from) && rule.cells.includes(to)) {
+    if (rule.type === 'renban' && rule.cells.includes(to)) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
     }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
       x ||= rule.sum === 10
       for (let other = 1; other <= 9; other++) if (digit + other !== rule.sum) excluded |= 1 << (other - 1)
-    }
-    if (rule.type === 'xv' && edge) {
-      v ||= hasMarkedPair(rule.five?.pairs, from, to)
-      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
-      negativeV ||= rule.five?.negative === true
-      negativeX ||= rule.ten?.negative === true
     }
     if (rule.type === 'inequality' && (from === rule.less && to === rule.greater || from === rule.greater && to === rule.less)) {
       for (let other = 1; other <= 9; other++) {
@@ -343,16 +375,19 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
       excluded |= 511 & ~(1 << (digit - 1))
     }
-    if (rule.type === 'clone') {
-      const layout = cloneLayout(puzzle?.rules), set = layout.at[from]
-      if (set && set === layout.at[to]) excluded |= 511 & ~(1 << (digit - 1))
-    }
-    if (rule.type === 'non-consecutive' && cellsShareEdge(from, to) && !hasMarkedPair(rule.except, from, to)) {
-      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
-    }
     if (rule.type === 'whispers' && rule.cells.some((cell, i) => i > 0 &&
       (cell === from && rule.cells[i - 1] === to || cell === to && rule.cells[i - 1] === from))) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) < rule.minDifference) excluded |= 1 << (other - 1)
+    }
+  }
+  if (edgeRules.length && cellsShareEdge(from, to)) for (const rule of edgeRules) {
+    if (rule.type === 'xv') {
+      v ||= hasMarkedPair(rule.five?.pairs, from, to)
+      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
+      negativeV ||= rule.five?.negative === true
+      negativeX ||= rule.ten?.negative === true
+    } else if (!hasMarkedPair(rule.except, from, to)) {
+      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
   }
   if (v || x || negativeV || negativeX) for (let other = 1; other <= 9; other++) {
@@ -469,7 +504,7 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
   return isPuzzleVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
 }
 
-export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is VariantPuzzle {
+export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
   if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
@@ -481,7 +516,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
   if (rules?.some(rule => rule.type === 'region-sum' && regionSumParts(rule, regions).length < 2)) return false
-  return kind !== 'classic' && (id === 'mixed' || kind === id)
+  return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
 }
 
 const RULE_NAMES: Record<VariantRule['type'], string> = {
@@ -515,8 +550,9 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
-export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): string {
+export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>): string {
   if (!variant) return VARIANTS.classic.name
+  if (variant.fog) return 'Fog of War'
   if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
   const { rules, regions } = variant.puzzle
   const names = [
@@ -598,8 +634,8 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       case 'xv':
         descriptions.push(PUZZLE_VARIANTS.xv.rule)
-        if (rule.five?.negative) descriptions.push('All V clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 5.')
-        if (rule.ten?.negative) descriptions.push('All X clues are given. Digits in an unmarked pair of cells sharing an edge cannot sum to 10.')
+        if (rule.five?.negative) descriptions.push('Digits in cells sharing an edge without a V or X cannot sum to 5.')
+        if (rule.ten?.negative) descriptions.push('Digits in cells sharing an edge without a V or X cannot sum to 10.')
         break
       case 'non-consecutive':
         descriptions.push(nonConsecutiveDescription(puzzle, rule))
@@ -634,11 +670,16 @@ function describedVariantRules(puzzle: VariantPuzzle) {
       case 'extra-house':
         descriptions.push(disjoint.has(index) ? DISJOINT_GROUPS_RULE : 'Each shaded extra region must also contain the digits 1–9 once each.')
         break
-      case 'kropki':
-        descriptions.push('Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other.')
-        if (rule.consecutive?.negative) descriptions.push('Every adjacent pair of consecutive digits has a white dot.')
-        if (rule.ratioTwo?.negative) descriptions.push('Every adjacent pair with one digit double the other has a black dot.')
+      case 'kropki': {
+        const marked = [
+          rule.consecutive?.pairs?.length && 'Digits separated by a white dot are consecutive.',
+          rule.ratioTwo?.pairs?.length && 'Across a black dot, one digit is double the other.',
+        ].filter(Boolean).join(' ')
+        if (marked) descriptions.push(marked)
+        if (rule.consecutive?.negative) descriptions.push('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.')
+        if (rule.ratioTwo?.negative) descriptions.push('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.')
         break
+      }
       default:
         if (isVariantId(rule.type)) descriptions.push(VARIANTS[rule.type].rule)
     }
@@ -647,14 +688,14 @@ function describedVariantRules(puzzle: VariantPuzzle) {
 }
 
 /** Explain every active rule, including the direction and negative dot clues. */
-export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
-  return [...new Set([...baseRuleSection(puzzle).descriptions, ...describedVariantRules(puzzle).flatMap(rule => rule.descriptions)])]
+export function variantRuleDescriptions(puzzle: VariantPuzzle, fog?: FogDefinition): string[] {
+  return [...new Set([...(fog ? [FOG_RULE] : []), ...baseRuleSection(puzzle).descriptions, ...describedVariantRules(puzzle).flatMap(rule => rule.descriptions)])]
 }
 
-export function variantRuleSections(puzzle: VariantPuzzle): VariantRuleSection[] {
+export function variantRuleSections(puzzle: VariantPuzzle, fog?: FogDefinition): VariantRuleSection[] {
   const sections = new Map<VariantRuleSectionId, VariantRuleSection>()
   const base = baseRuleSection(puzzle)
-  sections.set(base.id, base)
+  sections.set(base.id, fog ? { ...base, descriptions: [FOG_RULE, ...base.descriptions] } : base)
   for (const { id, descriptions } of describedVariantRules(puzzle)) {
     if (!descriptions.length) continue
     const current = sections.get(id)
@@ -666,7 +707,7 @@ export function variantRuleSections(puzzle: VariantPuzzle): VariantRuleSection[]
 
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {
   if (!variant || typeof variant !== 'object') return false
-  const { id, puzzle, solution } = variant as VariantGame
-  return isPlayablePuzzle(id, puzzle) && puzzle.givens === givens && typeof solution === 'string' &&
+  const { id, puzzle, solution, fog } = variant as VariantGame
+  return isPlayablePuzzle(id, puzzle, fog) && puzzle.givens === givens && typeof solution === 'string' &&
     /^[1-9]{81}$/.test(solution) && [...givens].every((digit, cell) => digit === '0' || digit === solution[cell])
 }

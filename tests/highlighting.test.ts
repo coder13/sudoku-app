@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../src/sudoku/highlighting.ts'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected } from '../src/sudoku/highlighting.ts'
 import { HIGHLIGHT_KEY, readPreferences } from '../src/sudoku/preferences.ts'
 
 test('a selected placed digit drives matching candidate highlights', () => {
@@ -20,6 +20,15 @@ test('F1–F9 map to highlighted digits without accepting other function keys', 
   assert.equal(functionKeyDigit('f9'), 9)
   assert.equal(functionKeyDigit('F10'), null)
   assert.equal(functionKeyDigit('5'), null)
+})
+
+test('cycling the highlighted digit skips completed digits and wraps', () => {
+  const values = '1'.repeat(9) + '3'.repeat(9) + '9'.repeat(9) + '0'.repeat(54)
+  assert.equal(nextIncompleteDigit(values, null), 2)
+  assert.equal(nextIncompleteDigit(values, 2), 4)
+  assert.equal(nextIncompleteDigit(values, 8), 2)
+  assert.equal(nextIncompleteDigit('123456789'.repeat(9), 8), null)
+  assert.equal(nextIncompleteDigit('123456'.repeat(5) + '123450', 6, 6), 6)
 })
 
 test('highlighting is inactive without a placed or selected digit', () => {

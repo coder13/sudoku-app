@@ -23,10 +23,11 @@ test('a real Coach export preserves repeated digits alongside the original Diago
   assert.equal(imported.variant.puzzle.rules?.filter(rule => rule.type === 'diagonal').length, 2)
   assert.equal(imported.variant.puzzle.rules?.find(rule => rule.type === 'killer-cages')?.cages.length, 27)
   assert.match(variantName(imported.variant), /Quadruple/)
+  assert.equal(generationVariant(imported.variant), undefined)
   assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(text => text.includes('repeated printed digit')))
 })
 
-test('Quadruple imports have a playable name without implying a generation recipe', async () => {
+test('pure Quadruple imports retain their name, clues and next-puzzle setting', async () => {
   const source = coachCode({ givenDigits: fixture.puzzle.givens, givenConstraints: [{ type: 'quadruple', settings: {},
     segments: fixture.puzzle.rules!.map(rule => {
       assert.equal(rule.type, 'quadruple')
@@ -37,8 +38,7 @@ test('Quadruple imports have a playable name without implying a generation recip
   assert.equal(imported.variant?.id, 'quadruple')
   assert.deepEqual(imported.variant.puzzle, fixture.puzzle)
   assert.equal(variantName(imported.variant), 'Quadruple')
-  assert.equal(generationVariant(imported.variant), undefined)
-  assert.equal(generationVariant({ id: 'windoku' }), 'windoku')
+  assert.equal(generationVariant(imported.variant), 'quadruple')
   const link = '#variant=' + encodeURIComponent(JSON.stringify(imported.variant))
   assert.deepEqual((await detectPuzzle(link)).variant, imported.variant)
 })

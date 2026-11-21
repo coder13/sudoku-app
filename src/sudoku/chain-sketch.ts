@@ -1,4 +1,5 @@
-import { chainCandidate, sameEdge, type ChainEdge } from './chains.ts'
+import { playVariantPuzzle } from './fog.ts'
+import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, makeChainGraph, sameEdge, type ChainEdge } from './chains.ts'
 import type { DeductionAction } from './engine.ts'
 import { applyDeduction, conflictsOf, fillEntries, hasCandidate, move, valuesOf, type Game } from './game.ts'
 
@@ -155,7 +156,7 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
       values[cell] = String(digit)
     }
     const filled = values.join('')
-    if (conflictsOf(filled, game.variant?.puzzle, game.grid, game.sized?.rules).size) return game
+    if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
     position = fillEntries(eliminated, filled, removeCandidates).position
   }
 
@@ -210,10 +211,14 @@ export function validChainSketchState(value: unknown): value is ChainSketchState
   return true
 }
 
-export function removeUnavailableChains(state: ChainSketchState, unavailable: (node: number) => boolean): ChainSketchState {
+export function removeUnavailableChains(state: ChainSketchState, unavailable: (node: number) => boolean,
+  resolved?: (edges: readonly ChainEdge[]) => boolean): ChainSketchState {
   const missingEndpoint = (edge: ChainEdge) => edge.some(unavailable)
   const before = state.sketches.findIndex(({ id }) => id === state.activeId)
-  const sketches = state.sketches.filter(({ history }) => !history.at(-1)!.some(missingEndpoint)).map(sketch => {
+  const sketches = state.sketches.filter(({ history }) => {
+    const edges = history.at(-1)!
+    return !edges.some(missingEndpoint) && !resolved?.(edges)
+  }).map(sketch => {
     const history: ChainEdge[][] = []
     const steps = new Map<number, number>()
     for (const [step, edges] of sketch.history.entries()) {
@@ -252,7 +257,8 @@ export function savePrunedChains(game: Game, chainSketch: ChainSketchState, reco
   return { ...game, chainSketch, past }
 }
 
-export function pruneChainsAfterMove(previous: Game, next: Game): Game {
+export function pruneChainsAfterMove(previous: Game, next: Game,
+  candidateMasks?: (game: Game) => readonly number[] | null): Game {
   const state = next.chainSketch
   if (!state || next.position === previous.position) return next
   // Puzzle undo or redo can restore a board and its matching sketch together.
@@ -260,11 +266,23 @@ export function pruneChainsAfterMove(previous: Game, next: Game): Game {
     (state === previous.past.at(-1)?.chainSketch || state === previous.future.at(-1)?.chainSketch)) return next
   const { entries, center, corner, eliminations } = next.position
   const old = previous.position
-  const chainSketch = removeUnavailableChains(state, (node) => {
+  const removed = center.map((mask, cell) => (old.center[cell] | old.corner[cell]) & ~(mask | corner[cell]))
+  const unavailable = (node: number) => {
     const { cell, digit } = chainCandidate(node)
-    const bit = 1 << (digit - 1)
-    const removed = (old.center[cell] | old.corner[cell]) & ~(center[cell] | corner[cell])
-    return entries[cell] !== '0' || Boolean(bit & (removed | (eliminations?.[cell] ?? 0)))
-  })
-  return savePrunedChains(next, chainSketch, next.past.at(-1) === previous.position)
+    return entries[cell] !== '0' || hasCandidate(removed[cell] | (eliminations?.[cell] ?? 0), digit)
+  }
+  // The graph before the edit still contains the eliminated candidates.
+  const masks = next.future.length === 0 && (entries !== old.entries || eliminations !== old.eliminations || removed.some(Boolean))
+    ? candidateMasks?.(previous) : null
+  const graph = masks ? makeChainGraph(masks, playVariantPuzzle(previous.variant, previous.position.entries)) : null
+  const chainSketch = removeUnavailableChains(state, unavailable, graph ? edges => {
+    if (!edges.length) return false
+    const targets = [...analyzeChainPaths(graph, edges), ...analyzeMedusa(graph, edges)]
+      .flatMap(({ actions }) => actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : []))
+    return targets.length > 0 && targets.every(target => unavailable(candidateId(target)))
+  } : undefined)
+  const undoPosition = next.past.at(-1)
+  const extendsMove = next.past !== previous.past && undoPosition === previous.past.at(-1) &&
+    next.past.length === previous.past.length
+  return savePrunedChains(next, chainSketch, undoPosition === previous.position || extendsMove)
 }

@@ -188,3 +188,55 @@ await writeFile('/tmp/sudoku-forcing-recipes.json', JSON.stringify(recipes))
 JS
 node --experimental-strip-types scripts/bench-exact-houses.mjs before.wasm after.wasm --generation-only --recipes=/tmp/sudoku-forcing-recipes.json
 ```
+
+## Candidate masks for cell and house clauses
+
+[Issue 192](https://github.com/coder13/sudoku-app/issues/192) tracks this follow-up to the Tridagon change in PR 297. On current main, `BranchSearch::settle` accounted for 3,930 of 6,273 samples across the complete 8AGt trace and three ratings.
+
+Each forcing branch uses a mask to find the candidates that remain in a cell or house clause. A new removal updates the cell mask and the existing mask for its digit. Rollback clears only the removals from discarded facts. Each clause reads the latest masks. The engine visits live candidates in their original order and uses the same causes in its proofs.
+
+The rollback test rebuilds both masks from the facts after outer and inner assumptions and after rollback. It covers all four propagation modes and conflicting branches. The independent digit-array solver found the published 8AGt solution in seven nodes. All 320 actions in the 185-step trace agree with that solution. The same solver found one completion for the first Nested Forcing Net exercise in 99 nodes. All 22 returned proof actions agree with that completion.
+
+### Paired measurements
+
+The baseline is `3be5fcfa1a985cc5ef3ac5291b898c1ace1299da`. The engine change is `357cfed482cd2c8fc77d579ef78e16943c1c3c36`. Both app Wasm builds use Rust 1.92.0 and Node 22.23.1 on an AMD Ryzen 7 7840U with Arch Linux 7.3.5. The benchmarks use logical CPUs 6 and 7. They measure complete Node/Wasm requests, including JSON.
+
+The source runs alternate order after one warmup per build and record five samples. The forcing runs rotate order across the baseline, the candidate, and the rejected experiment. They record nine samples after two warmups per build. Each row reports median and p95 milliseconds. With these sample counts, p95 is the largest sample.
+
+| Request | Baseline median / p95 (ms) | Candidate median / p95 (ms) |
+| --- | ---: | ---: |
+| 8AGt full walkthrough | 1,683.76 / 1,724.64 | 1,446.14 / 1,553.42 |
+| 91BB rating | 396.11 / 396.53 | 330.91 / 336.08 |
+| 8oer rating | 157.98 / 162.13 | 137.85 / 138.79 |
+| FaxQ rating | 146.82 / 151.06 | 146.90 / 150.35 |
+| 8AGt opening Tridagon scan, zero proofs | 36.24 / 36.57 | 35.92 / 36.35 |
+| Positive Nested Forcing Net exercise, 22 proofs | 677.34 / 684.62 | 488.53 / 490.78 |
+| Positive Forcing Chain exercise, 33 proofs | 4.24 / 4.67 | 4.09 / 5.01 |
+
+The complete 8AGt walkthrough retains its 185 steps, 4,058 points, and all proof fields. Two rating runs had large outliers on both builds. The timed walkthrough repeat and the separate forcing requests provide the comparisons in the table.
+
+An experiment also packed the locked-candidate intersections. That build measured 1,654.53 ms for the median 8AGt rating against 1,645.80 ms on main. The selected change keeps the existing intersection representation.
+
+Both Wasm instances reached 5,570,560 bytes of linear-memory capacity in the source replay. The cumulative forcing replay reached 10,223,616 bytes on main and 10,420,224 bytes on the candidate after the nested exercise. The app Wasm grows by 1,268 raw bytes and 1,604 gzip bytes.
+
+| App Wasm | Raw bytes | Gzip bytes | SHA-256 |
+| --- | ---: | ---: | --- |
+| Baseline | 4,185,183 | 1,134,670 | `02cf2700efb4dfbeadfccef64aa1b8fc9341492fe072c7476ca7da634afb3b9b` |
+| Candidate | 4,186,451 | 1,136,274 | `4e08a09d36b8199ceaa5ef05fb33978fb59a26937357008f12aa619a7c7fa96e` |
+
+### Reproduce the comparison
+
+Build the app Wasm at the two pinned commits with `node scripts/build-wasm.mjs app <output-directory>`. Use separate Cargo targets. Then run these commands from the checkout that contains this audit.
+
+```sh
+node --experimental-strip-types scripts/bench-region-sum-rating.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/bench-forcing-modes.mjs before.wasm after.wasm
+node --experimental-strip-types scripts/compare-engine-pruning.mjs before.wasm after.wasm --region-sum --classic-tridagon --little-killer --xv --renban
+cargo test --locked --release -p sudoku-app-engine --all-features --lib guardian_tests
+```
+
+The Region Sum fixture and technique order are the inputs from the earlier audit. The forcing benchmark includes the first practice position for each technique. It also measures every technique on the original 8AGt opening, which returns zero proofs.
+
+All 6,825 variant response pairs match across 43 corpus positions, 363 positive practice positions, and 121 detector IDs. All 148 Classic response pairs match across nine Tridagon practice positions. The comparisons include complete proofs, progress, removals, restricted technique orders, and all hint pages. All six focused native tests pass.
+
+The seven generation recipes use the same seeds and budgets as the previous validation. All 140 results match. Renban seed 10 returns its search limit on both builds.

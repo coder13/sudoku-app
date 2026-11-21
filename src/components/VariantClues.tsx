@@ -1,8 +1,8 @@
 import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
-import { useId, useMemo } from 'react'
+import { memo, useId, useMemo } from 'react'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
-import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges } from '../sudoku/line-geometry'
+import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
@@ -36,6 +36,14 @@ function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?:
 
 const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
 const regionSumColors = ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0']
+const regionSumEndGap = .28
+const overlapColors: Partial<Record<VariantRule['type'], string>> = {
+  thermometer: 'currentColor',
+  whispers: '#72a54e',
+  entropic: '#bc6c27',
+  modular: '#288e93',
+  between: 'var(--board-ink)',
+}
 
 function RenbanClue({ cells, segments, number, size = 9 }: {
   cells: readonly number[]; segments?: readonly (readonly number[])[]; number: number; size?: number
@@ -407,16 +415,31 @@ function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; e
   </g>
 }
 
-function RegionSumClue({ rule, color, number, size = 9 }: { rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number; size?: number }) {
+function RegionSumClue({ rule, color, number, size = 9, sharedEnds }: {
+  rule: Extract<VariantRule, { type: 'region-sum' }>; color: string; number: number; size?: number; sharedEnds?: ReadonlySet<number>
+}) {
   const paths = rule.segments ?? [rule.cells]
   const separated = paths.some(path => lineSkipsCells(path, size))
+  const shifted = sharedEnds && new Map<number, readonly [number, number]>()
+  const drawings = paths.map(path => path.map((cell, i) => {
+    const origin = center(cell, size)
+    if (!sharedEnds?.has(cell)) return origin
+    const next = center(i === 0 ? path[1] : path[i - 1], size)
+    const dx = next[0] - origin[0], dy = next[1] - origin[1]
+    const fraction = regionSumEndGap / Math.hypot(dx, dy)
+    const end = [origin[0] + dx * fraction, origin[1] + dy * fraction] as const
+    shifted?.set(cell, end)
+    return end
+  }))
   return <g className="variant-region-sum" data-region-sum={number} style={{ color }}>
     {paths.map((path, index) => lineSkipsCells(path, size)
       ? <g key={index}>{path.slice(1).map((cell, i) => <line key={i} className={lineSkipsCells([path[i], cell], size) ? 'variant-region-sum-jump' : undefined}
-        x1={center(path[i], size)[0]} y1={center(path[i], size)[1]} x2={center(cell, size)[0]} y2={center(cell, size)[1]} />)}</g>
-      : <polyline key={index} points={points(path, size)} />)}
-    {(separated ? rule.cells : paths.filter(path => path.length === 1).flat()).map(cell =>
-      <circle key={cell} className="variant-region-sum-node" cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".11" />)}
+        x1={drawings[index][i][0]} y1={drawings[index][i][1]} x2={drawings[index][i + 1][0]} y2={drawings[index][i + 1][1]} />)}</g>
+      : <polyline key={index} points={drawings[index].map(point => point.join(',')).join(' ')} />)}
+    {(separated ? rule.cells : paths.filter(path => path.length === 1).flat()).map(cell => {
+      const [cx, cy] = shifted?.get(cell) ?? center(cell, size)
+      return <circle key={cell} className="variant-region-sum-node" cx={cx} cy={cy} r=".11" />
+    })}
   </g>
 }
 
@@ -438,12 +461,16 @@ function InequalityClue({ less, greater, offset, compact = false }: { less: numb
 
 type SumKind = 'xv' | 'adjacent-total'
 
-function ColoredLineLane({ cells, lane, count, color, endpoints, dashed, size = 9 }: { cells: readonly [number, number]; lane: number; count: number; color: string; endpoints?: readonly number[]; dashed?: boolean; size?: number }) {
+function ColoredLineLane({ cells, lane, count, color, endpoints, sharedEnds, dashed, size = 9 }: {
+  cells: readonly [number, number]; lane: number; count: number; color: string
+  endpoints?: readonly number[]; sharedEnds?: ReadonlySet<number>; dashed?: boolean; size?: number
+}) {
   const [ax, ay] = center(cells[0], size), [bx, by] = center(cells[1], size)
   const length = Math.hypot(bx - ax, by - ay)
   const offset = (lane - (count - 1) / 2) * Math.min(.1, .26 / count)
   const dx = -(by - ay) / length * offset, dy = (bx - ax) / length * offset
-  const first = endpoints?.includes(cells[0]) ? .32 : 0, last = endpoints?.includes(cells[1]) ? .32 : 0
+  const inset = (cell: number) => endpoints?.includes(cell) ? .32 : sharedEnds?.has(cell) ? regionSumEndGap : 0
+  const first = inset(cells[0]), last = inset(cells[1])
   return <line x1={ax + dx + (bx - ax) / length * first} y1={ay + dy + (by - ay) / length * first}
     x2={bx + dx - (bx - ax) / length * last} y2={by + dy - (by - ay) / length * last}
     stroke={color} strokeWidth={Math.min(.075, .2 / count)} strokeDasharray={dashed ? '.1 .08' : undefined} />
@@ -490,14 +517,47 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
   </g>
 }
 
-export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly VariantRule[]; viewBox?: string }) {
+function visibleCellPath(cells: ReadonlySet<number>) {
+  const runs: string[] = []
+  for (let row = 0; row < 9; row++) {
+    for (let column = 0; column < 9; column++) {
+      if (!cells.has(row * 9 + column)) continue
+      const first = column
+      while (column < 8 && cells.has(row * 9 + column + 1)) column++
+      const width = column - first + 1
+      runs.push(`M${first} ${row}h${width}v1h-${width}z`)
+    }
+  }
+  return runs.join(' ')
+}
+
+export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
+  rules: readonly VariantRule[]; viewBox?: string; visibleCells?: ReadonlySet<number>
+}) {
+  const marker = useId()
+  const clipId = `${marker}-fog`
+  const clip = useMemo(() => visibleCells && visibleCellPath(visibleCells), [visibleCells])
+  const drawing = <VariantClueDrawing rules={rules} marker={marker} />
+  return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
+    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {clip === undefined ? drawing : <>
+      <defs><clipPath id={clipId}><path d={clip} /></clipPath></defs>
+      <g clipPath={`url(#${clipId})`}>{drawing}</g>
+    </>}
+  </svg>
+}
+
+// A reveal changes the clip path while the authored geometry stays in place.
+const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
+  rules: readonly VariantRule[]; marker: string
+}) {
   const clones = cloneLayout(rules)
   const cloneIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'clone') cloneIndices.set(index, cloneIndices.size) })
   const disjoint = useMemo(() => disjointGroupRuleIndices(rules), [rules])
-  const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
+  const sumEnds = useMemo(() => sharedRegionSumEnds(rules), [rules])
   const renbanIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
   const renbanColor = (index: number) => renbanColors[renbanIndices.get(index)! % renbanColors.length]
@@ -530,18 +590,28 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
     }
   }
   const drawnSums = new Set<number>()
-  const markedEdges = new Set([...dots.keys(), ...sums.keys(), ...rules.flatMap(rule => rule.type === 'inequality' ? [pairKey(rule.less, rule.greater)] : [])])
-  return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
-    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+  const markedEdges = new Set([...dots.keys(), ...sums.keys()])
+  for (const rule of rules) {
+    if (rule.type === 'inequality') markedEdges.add(pairKey(rule.less, rule.greater))
+    if (rule.type === 'quadruple') {
+      const corner = rule.topLeft
+      markedEdges.add(pairKey(corner, corner + 10))
+      markedEdges.add(pairKey(corner + 1, corner + 9))
+    }
+  }
+  return <>
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
-        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]] : undefined
+        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]]
+          : rule.type === 'thermometer' ? [rule.cells[0]] : undefined
         const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))
-        const color = rule.type === 'entropic' ? '#bc6c27' : rule.type === 'modular' ? '#288e93' : rule.type === 'between' ? 'var(--board-ink)' : rule.type === 'region-sum' ? regionSumColor(index) : renbanColor(index)
-        return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}>
-          {coloredLanes.get(index)!.map((lane, part) => <ColoredLineLane key={part} {...lane} endpoints={endpoints} dashed={dashed} color={color} />)}
+        const color = rule.type === 'region-sum' ? regionSumColor(index) : overlapColors[rule.type] ?? renbanColor(index)
+        return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}
+          data-region-sum={rule.type === 'region-sum' ? regionSumIndices.get(index)! + 1 : undefined}>
+          {coloredLanes.get(index)!.map((lane, part) =>
+            <ColoredLineLane key={part} {...lane} endpoints={endpoints} sharedEnds={sumEnds.get(index)} dashed={dashed} color={color} />)}
         </g>
       }
       if (overlay === 'palindrome') return <g key={`${index}-overlap`} className="variant-palindrome-overlap">
@@ -601,7 +671,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
         case 'between':
           return <BetweenClue key={index} cells={rule.cells} />
         case 'region-sum':
-          return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} />
+          return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} sharedEnds={sumEnds.get(index)} />
         case 'thermometer':
           return <ThermometerClue key={index} cells={rule.cells} />
         case 'arrow':
@@ -624,8 +694,8 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
         <text className="variant-clone-label-mark" data-clone-label-cell={cell} x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
       </g>)}
     </g>)}
-  </svg>
-}
+  </>
+})
 
 const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
 

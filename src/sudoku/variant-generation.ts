@@ -13,7 +13,9 @@ export type VariantSeed = {
   retryAttempts?: number
   cageSizes?: number[]
   dotCount?: number
+  markCount?: number
   markedCells?: number[]
+  quadruples?: { topLeft: number; clueSize: number }[]
   minDifference?: number
   layout?: string
   lines?: number[][]
@@ -62,8 +64,17 @@ export function variantGenerationRequest(
     case 'kropki':
       derivedClues.push({ type: 'markers', family: 'kropki', count: recipe.dotCount })
       break
+    case 'xv':
+      derivedClues.push({ type: 'markers', family: 'xv', count: recipe.markCount })
+      break
+    case 'quadruple':
+      for (const clue of recipe.quadruples!) derivedClues.push({ type: 'quadruple', ...clue })
+      break
     case 'parity':
       derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
+      break
+    case 'adjacent-total':
+      for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'adjacent-total', cells: [a, b] })
       break
     case 'inequality':
       for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'inequality', cells: [a, b] })

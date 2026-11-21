@@ -1,6 +1,6 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { DIGITS, onlyCandidate } from './game.ts'
-import { lineGroups } from './line-groups.ts'
+import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
 import { cloneLayout } from './clone.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
@@ -147,6 +147,19 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
     case 'entropic': case 'modular': {
+      const sumRule = rules[1]
+      const sum = sumRule?.type === 'adjacent-total' ? sumRule.sum : sumRule?.type === 'xv'
+        ? (hasMarkedPair(sumRule.five?.pairs, a, b) ? 5 : hasMarkedPair(sumRule.ten?.pairs, a, b) ? 10 : undefined)
+        : undefined
+      if (rule.type === 'modular' && sum !== undefined) {
+        const group = `{${DIGITS.filter(digit => digit % 3 === (2 * sum) % 3).join(', ')}}`
+        const sameGroup = (rule.cells.indexOf(a) - rule.cells.indexOf(b)) % 3 === 0
+        const description = `${pair} add to ${sum}. On this Modular Line, they use ${sameGroup ? 'the same remainder group' : 'different remainder groups'}.`
+        const reason = sameGroup
+          ? `Only ${group} can supply two digits from the same group that add to ${sum}. This group repeats every three positions and is ruled out of the other positions.`
+          : `If either cell used a digit from ${group}, the sum would force both cells into that group.${rule.cells.length > 2 ? ' This group belongs to the remaining position in each set of three.' : ''}`
+        return { description, reason }
+      }
       const { masks, names } = lineGroups[rule.type]
       const group = (mask: number) => masks.map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)
       const known = cells.flatMap((cell, i) => group(domains[i]).length === 1 ? [`${at(cell)} is ${names[group(domains[i])[0]]}`] : [])
@@ -279,6 +292,259 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         description = `This cage must add to ${evidence.sum} using different digits.`
       }
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
+      break
+    }
+    case 'sum-pair': {
+      const { cells: [anchor, partner, otherAnchor, otherPartner], totals: [left, right], domains } = evidence
+      const house = houseLabel(evidence.house)
+      description = `${nameCell(anchor)} and ${nameCell(partner)} add to ${left}. ${nameCell(otherAnchor)} and ${nameCell(otherPartner)} add to ${right}.`
+      const locked = [...new Set(focus.map(({ digit }) => digit))]
+      const exclusions = locked.map(digit => {
+        const repeated = DIGITS.find(value => {
+          const other = left - value
+          return other !== digit && other !== value && DIGITS.includes(other) &&
+            (domains[0] & (1 << (value - 1))) && (domains[1] & (1 << (other - 1)))
+        })
+        return `If neither ${nameCell(partner)} nor ${nameCell(otherPartner)} used ${digit}, ${nameCell(anchor)} and ${nameCell(otherAnchor)} would both be ${repeated}. That repeats ${repeated} in ${house}.`
+      })
+      const targets = [...new Set(focus.map(({ cell }) => cell))]
+      const sites = evidence.houses.map(house => ({ house, cells: variantHouseCells(house, puzzle) }))
+      const connection = (from: number, to: number) => houseLabel(sites.find(({ cells }) =>
+        cells.includes(from) && cells.includes(to))!.house)
+      const conjunction = new Intl.ListFormat('en', { type: 'conjunction' })
+      const cell = targets[0]
+      const digits = conjunction.format(focus.filter(candidate => candidate.cell === cell).map(({ digit }) => String(digit)))
+      reason = exclusions.join(' ') +
+        ` ${nameCell(cell)} shares ${connection(cell, partner)} with ${nameCell(partner)} and ${connection(cell, otherPartner)} with ${nameCell(otherPartner)}. Remove ${digits} from ${nameCell(cell)}.`
+      if (targets.length > 1) reason += ' The other marked cells also share houses with both sum partners.'
+      cells = [...evidence.cells, ...targets]
+      candidates = [
+        ...domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+          .map(digit => ({ cell: evidence.cells[i], digit }))),
+        ...focus,
+      ]
+      break
+    }
+    case 'group-line-phase-sum': {
+      const { cells: [endpoint, partner, other, fixed], domains, total } = evidence
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groups = lineGroups[kind].masks
+      const names = (mask: number) => DIGITS.filter(digit => mask & (1 << (digit - 1))).join(', ')
+      const fixedMask = groups.find(group => domains[3] & group)!
+      description = `${nameCell(fixed)} uses the group {${names(fixedMask)}} on this ${line} Line. ${nameCell(endpoint)} and ${nameCell(other)} use the other two groups. ${nameCell(endpoint)} and ${nameCell(partner)} add to ${total}.`
+      const house = houseLabel(evidence.house)
+      const examples = focus.filter(candidate => candidate.cell === endpoint)
+      reason = examples.map(({ digit }) => {
+        const sumPartner = total - digit
+        const own = lineGroupMask(kind, digit)
+        const remaining = groups.find(group => group !== own && group !== fixedMask)!
+        return `If ${nameCell(endpoint)} were ${digit}, the sum would make ${nameCell(partner)} ${sumPartner}. The group {${names(remaining)}} would also force ${nameCell(other)} to be ${sumPartner}, repeating ${sumPartner} in ${house}.`
+      }).join(' ')
+      if (!reason) {
+        reason = `Check both orders of the remaining groups against the sum. A crossed-out candidate would repeat the same digit in ${nameCell(partner)} and ${nameCell(other)}, which share ${house}.`
+      }
+      cells = evidence.cells
+      candidates = domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+        .map(digit => ({ cell: evidence.cells[i], digit })))
+      break
+    }
+    case 'group-sum-implication': {
+      const { assumption, links, conflict } = evidence
+      const start = nameCell(assumption.cell)
+      const sums = links.filter(({ source }) => source.type === 'sum').length === 1 ? 'a sum' : 'two sums'
+      description = `If ${start} were ${assumption.digit}, two group lines and ${sums} would force a repeat in ${houseLabel(conflict)}.`
+      let previous = assumption
+      reason = links.map(({ candidate, domain, source }) => {
+        const from = nameCell(previous.cell), to = nameCell(candidate.cell)
+        let sentence: string
+        if (source.type === 'sum') {
+          sentence = `The ${source.total} sum with ${from} makes ${to} ${candidate.digit}.`
+        } else if (source.type === 'house') {
+          sentence = `${to} shares ${houseLabel(source.house)} with ${from}, so it must use ${candidate.digit}.`
+        } else {
+          const rule = puzzle.rules?.[source.rule]
+          const line = rule?.type === 'entropic' ? 'Entropic' : 'Modular'
+          if (source.anchor) {
+            const [anchor, mask] = source.anchor
+            const digits = DIGITS.filter(digit => mask & (1 << (digit - 1))).join(', ')
+            sentence = `${nameCell(anchor)} (${digits}) and ${from} fix two groups on the ${line} Line. The remaining group makes ${to} ${candidate.digit}.`
+          } else {
+            sentence = `${to} must use the same group as ${from} on the ${line} Line. That makes it ${candidate.digit}.`
+          }
+        }
+        previous = candidate
+        return sentence
+      }).join(' ')
+      reason += ` That repeats ${assumption.digit} in ${houseLabel(conflict)}. Remove ${assumption.digit} from ${start}.`
+      const anchors = links.flatMap(({ source }) => source.type === 'line' && source.anchor ? [source.anchor[0]] : [])
+      cells = [...new Set([assumption.cell, ...links.map(link => link.candidate.cell), ...anchors])]
+      candidates = [assumption, ...links.flatMap(({ candidate, domain }) =>
+        DIGITS.filter(digit => domain & (1 << (digit - 1))).map(digit => ({ cell: candidate.cell, digit })))]
+      break
+    }
+    case 'group-line-house-triplet': {
+      cells = evidence.cells
+      const [target, first, second, other] = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit groups' : 'remainder groups'
+      const house = houseLabel(evidence.house)
+      const groupMask = lineGroupMask(kind, focus[0].digit)
+      const example = focus.filter(({ digit }) => groupMask & (1 << (digit - 1)))
+      const guesses = alternatives.format(example.map(({ digit }) => String(digit)))
+      const blocked = DIGITS.filter(digit => evidence.domains[3] & (1 << (digit - 1)))
+      const pair = `${nameCell(first)} and ${nameCell(second)}`
+      const occupied = blocked.length === 1 ? `one of those cells would have to use ${blocked[0]}`
+        : `those cells would have to use ${blocked.join(' and ')}`
+      description = `${nameCell(target)}, ${nameCell(first)}, and ${nameCell(second)} use different ${group} on this ${line} Line. ${pair} share ${house} with ${nameCell(other)}.`
+      reason = `If ${nameCell(target)} were ${guesses}, ${pair} would need the other two ${group}. With their current candidates, ${occupied}. That leaves ${nameCell(other)} with no candidate in ${house}.`
+      if (example.length < focus.length) reason += ' Apply the same check to the other crossed-out digits.'
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+        .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
+    case 'group-line-disjoint-sum': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groupName = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const { cells: [first, second, left, right], domains, houses, total } = evidence
+      const { cell: target, digit } = focus[0]
+      const targetIndex = target === first ? 0 : 1
+      const partnerIndex = 1 - targetIndex
+      const partner = evidence.cells[partnerIndex]
+      const sites = houses.map(house => variantHouseCells(house, puzzle))
+      const sharedHouse = (a: number, b: number) => sites.findIndex(group => group.includes(a) && group.includes(b))
+      const hasDigit = (i: number, value: number) => Boolean(domains[i] & (1 << (value - 1)))
+      const group = lineGroupMask(kind, digit)
+      const choices = DIGITS.filter(value => hasDigit(partnerIndex, value) &&
+        (group & (1 << (value - 1))) && (value !== digit || sharedHouse(first, second) < 0))
+      const failures: string[] = []
+      for (const value of choices) for (const a of DIGITS) {
+        const b = total - a
+        if (a === b || !hasDigit(2, a) || b < 1 || b > 9 || !hasDigit(3, b)) continue
+        const lineDigits = targetIndex === 0 ? [digit, value] : [value, digit]
+        const conflict = [[0, a, left], [0, b, right], [1, a, left], [1, b, right]]
+          .find(([i, sumDigit, sumCell]) => lineDigits[i] === sumDigit && sharedHouse(evidence.cells[i], sumCell) >= 0)
+        if (!conflict) continue
+        const [i, repeated, sumCell] = conflict
+        const name = houseLabel(houses[sharedHouse(evidence.cells[i], sumCell)])
+        const assumption = choices.length === 1 ? '' : `${nameCell(partner)} is ${value} and `
+        failures.push(`If ${assumption}${nameCell(left)} is ${a} and ${nameCell(right)} is ${b}, ${repeated} repeats in ${name}.`)
+      }
+      description = `${nameCell(first)} and ${nameCell(second)} must use the same ${groupName} on this ${line} Line. ${nameCell(left)} and ${nameCell(right)} add to ${total}.`
+      const lead = `If ${nameCell(target)} were ${digit}, ${nameCell(partner)} could only be ${alternatives.format(choices.map(String))}.`
+      const detail = failures.length <= 4 ? failures.join(' ') : 'Every order of the sum would repeat a digit in a shared house.'
+      reason = `${lead} ${detail}`
+      if (focus.length > 1) reason += ' The same check rules out the other crossed-out candidates.'
+      candidates = domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+        .map(value => ({ cell: cells[i], digit: value })))
+      break
+    }
+    case 'group-line-sum-chain': {
+      const { cells: [start, middle, end, partner], domains, supported, locked, totals: [left, right] } = evidence
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const house = evidence.house && houseLabel(evidence.house)
+      const [lower, higher] = right > left ? [start, end] : [end, start]
+      description = `${nameCell(start)} and ${nameCell(middle)} add to ${left}. ${nameCell(middle)} and ${nameCell(end)} add to ${right}.`
+      description += left === right
+        ? ` That forces ${nameCell(start)} and ${nameCell(end)} to use the same digit.`
+        : ` That makes ${nameCell(higher)} ${Math.abs(right - left)} more than ${nameCell(lower)}.`
+      reason = `${nameCell(start)} and ${nameCell(partner)} must use the same ${group} on this ${line} Line.`
+      if (house) {
+        reason += ` All four cells must use different digits in ${house}.`
+        const example = focus.find(({ cell }) => cell === start)
+        if (example) {
+          const second = left - example.digit
+          reason += ` If ${nameCell(start)} were ${example.digit}, the sums would put ${second} in ${nameCell(middle)} and ${right - second} in ${nameCell(end)}. That leaves no candidate from the same ${group} in ${nameCell(partner)}.`
+        }
+      } else {
+        const houses = (evidence.houses ?? []).map(house => ({ house, sites: variantHouseCells(house, puzzle) }))
+        const shared = (a: number, b: number) =>
+          houses.find(({ sites }) => sites.includes(a) && sites.includes(b))?.house
+        const named = new Intl.ListFormat('en', { type: 'conjunction' }).format(houses.map(({ house }) => houseLabel(house)))
+        reason += ` Check the two sums together and exclude repeated digits in ${named}.`
+        const triples = DIGITS.flatMap(first => {
+          const second = left - first
+          const third = right - second
+          const digits = [first, second, third]
+          if (first === second || second === third || first === third && shared(start, end) ||
+            !digits.every((digit, i) => DIGITS.includes(digit) && domains[i] & (1 << (digit - 1)))) return []
+          return [digits]
+        })
+        const repeats = evidence.cells.slice(0, 3).map(cell => shared(cell, partner))
+        for (const { cell, digit } of focus) {
+          if (cell !== partner) continue
+          const groupMask = lineGroupMask(kind, digit)
+          const matching = triples.filter(([first]) => groupMask & (1 << (first - 1)))
+          if (matching.length === 0) {
+            reason += ` If ${nameCell(partner)} were ${digit}, no starting digit in the same ${group} could satisfy both sums.`
+            continue
+          }
+          const startingDigits = alternatives.format(matching.map(([first]) => String(first)))
+          reason += ` If ${nameCell(partner)} were ${digit}, ${nameCell(start)} would have to be ${startingDigits}.`
+          for (const triple of matching) {
+            const [first, second, third] = triple
+            const repeat = repeats.find((house, i) => house && triple[i] === digit)
+            if (!repeat) continue
+            const prefix = matching.length === 1 ? 'The' : `With ${first} in ${nameCell(start)}, the`
+            reason += ` ${prefix} sums would put ${second} in ${nameCell(middle)} and ${third} in ${nameCell(end)}. That repeats ${digit} in ${houseLabel(repeat)}.`
+          }
+        }
+      }
+      const names = (mask: number) => alternatives.format(DIGITS.filter(digit => mask & (1 << (digit - 1))).map(String))
+      reason += ` ${nameCell(start)} can only be ${names(supported[0])}, and ${nameCell(partner)} can only be ${names(supported[3])}.`
+      if (house && focus.some(({ cell }) => !evidence.cells.includes(cell))) {
+        const digits = DIGITS.filter(digit => locked & (1 << (digit - 1)))
+        const text = new Intl.ListFormat('en', { type: 'conjunction' }).format(digits.map(String))
+        reason += ` These four cells always use ${text}. Remove ${digits.length === 1 ? 'it' : 'those digits'} from the other cells in ${house}.`
+      }
+      cells = [...new Set([...evidence.cells, ...focus.map(({ cell }) => cell)])]
+      candidates = [
+        ...domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+          .map(digit => ({ cell: evidence.cells[i], digit }))),
+        ...focus.filter(({ cell }) => !evidence.cells.includes(cell)),
+      ]
+      break
+    }
+    case 'group-line-sum-house': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groupName = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const [target, endpoint, partner] = evidence.cells
+      const { total } = evidence
+      description = `${nameCell(target)} and ${nameCell(endpoint)} must use the same ${groupName} on this ${line} Line. ${nameCell(endpoint)} and ${nameCell(partner)} add to ${total}.`
+      const { digit } = focus[0]
+      const group = DIGITS.filter(value => lineGroupMask(kind, digit) & (1 << (value - 1)))
+      const otherDigit = total - digit
+      const repeatsAtEndpoint = variantHouseCells(evidence.house, puzzle).includes(endpoint) &&
+        (evidence.domains[1] & (1 << (digit - 1))) && (evidence.domains[2] & (1 << (otherDigit - 1)))
+      const house = houseLabel(evidence.house)
+      const endpointReason = repeatsAtEndpoint ? ` It cannot use ${digit}, which would repeat in ${house}.` : ''
+      const example = `If ${nameCell(target)} were ${digit}, ${nameCell(endpoint)} would need a digit from {${group.join(', ')}}.${endpointReason} Only ${otherDigit} in that group can complete the sum, so ${nameCell(partner)} would also be ${digit}. That repeats ${digit} in ${house}.`
+      reason = focus.length === 1 ? example : `Each crossed-out candidate forces a repeated digit. ${example}`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+        .map(value => ({ cell: cells[i], digit: value })))
+      break
+    }
+    case 'group-line-house': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const [first, second] = evidence.cells
+      description = `${nameCell(first)} and ${nameCell(second)} are a multiple of three positions apart on a ${line} Line. They must use the same ${group} and different digits in ${houseLabel(evidence.house)}.`
+      const { cell, digit } = focus[0]
+      const partner = cell === first ? second : first
+      const groupDigits = DIGITS.filter(value => lineGroupMask(kind, digit) & 1 << (value - 1))
+      const example = `If ${nameCell(cell)} were ${digit}, ${nameCell(partner)} would need a digit from {${groupDigits.join(', ')}}. Its only candidate in that group is ${digit}, which would repeat in ${houseLabel(evidence.house)}.`
+      reason = focus.length === 1 ? example : `Each crossed-out digit would force the same digit in the other cell. ${example}`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+        .map(digit => ({ cell: cells[i], digit })))
       break
     }
     case 'line-houses': {

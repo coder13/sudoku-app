@@ -34,17 +34,51 @@ const saved = await load('overlay-dense')
 const source = (await load('modular-coach')).examples.find(source => source.url === saved.url)
 assert.ok(source?.puzzle)
 const cases = []
+const archivedOrder = order.filter(technique => technique !== 'modular')
 for (const stepIndex of [22, 23, 24, 25]) {
+  const name = `HCHW-${stepIndex}`
+  if (selected.length && !selected.includes(name)) continue
   const position = stepIndex === 25
-    ? (await seed.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: order })).end
-    : (await seed.request({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: order, stepIndex })).before
+    ? (await seed.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder })).end
+    : (await seed.request({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder, stepIndex })).before
   if (stepIndex === 22) {
     assert.equal(position.entries, saved.entries)
     assert.deepEqual(position.eliminations, saved.eliminations)
     assert.deepEqual(await seed.request({ type: 'variant', operation: 'candidates', position }), saved.domains)
   }
-  cases.push({ name: `HCHW-${stepIndex}`, request: { type: 'variant', operation: 'hints', position,
+  cases.push({ name, request: { type: 'variant', operation: 'hints', position,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+}
+if (selected.includes('HCHW-app-walkthrough')) {
+  cases.push({ name: 'HCHW-app-walkthrough', request: { type: 'variant', operation: 'trace',
+    position: { puzzle: source.puzzle }, techniqueOrder: order }, expectedSteps: 37 })
+}
+if (selected.includes('HCHW-current-stall')) {
+  const current = await engine(binaries[1])
+  const trace = await current.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: order })
+  assert.equal(trace.rating.status, 'stalled')
+  cases.push({ name: 'HCHW-current-stall', request: { type: 'variant', operation: 'hints', position: trace.end,
+    techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+}
+if (selected.some(name => [
+  'HCHW-linked', 'HCHW-edited-tail', 'HCHW-overlay-first', 'HCHW-ranked-hints', 'HCHW-edited-quintuple',
+].includes(name))) {
+  const linked = await load('overlay-hchw-linked')
+  assert.equal(linked.url, source.url)
+  const position = { puzzle: source.puzzle, entries: linked.entries, eliminations: linked.after }
+  cases.push({ name: 'HCHW-linked', request: { type: 'variant', operation: 'hints', position,
+    techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+  const removed = (1 << (4 - 1)) | (1 << (6 - 1))
+  const edits = linked.before.map((mask, cell) => [1, 10].includes(cell) ? mask | removed : mask)
+  const edited = { ...position, eliminations: edits }
+  cases.push({ name: 'HCHW-edited-tail', request: { type: 'variant', operation: 'trace',
+    position: edited, techniqueOrder: order }, expectedSteps: 1 })
+  cases.push({ name: 'HCHW-overlay-first', request: { type: 'variant', operation: 'trace',
+    position: edited, techniqueOrder: ['quintuple-pattern-overlay', 'dynamic-forcing-net'] }, expectedSteps: 1 })
+  cases.push({ name: 'HCHW-ranked-hints', request: { type: 'variant', operation: 'hints',
+    position: edited, techniqueOrder: order, limit: 10, preferProgress: true, difficulty: 'medium' }, expected: 2 })
+  cases.push({ name: 'HCHW-edited-quintuple', request: { type: 'variant', operation: 'hints',
+    position: edited, techniqueOrder: ['quintuple-pattern-overlay'], limit: 10 }, expected: 1 })
 }
 const methods = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
 for (const technique of methods) {
@@ -67,15 +101,17 @@ for (const [name, techniqueOrder, expected] of [
 for (const name of selected) assert.ok(cases.some(source => source.name === name), `Unknown case ${name}`)
 console.log(JSON.stringify({ host: `${process.platform} ${process.arch}`, node: process.version,
   artifacts: binaries.map(bytes => ({ raw: bytes.length, gzip: gzipSync(bytes).length, sha256: createHash('sha256').update(bytes).digest('hex') })),
-  samples, warmups, method: 'Fresh instances per case, alternate execution order. Include serialization; exclude assertions, instantiation, worker startup/transfer and rendering. Zero warmups retains the first request in the raw samples. Complete replies match outside timing; small-sample p95 is the maximum.' }))
+  samples, warmups, method: 'Fresh instances per case, alternate execution order. Report wall time and process CPU time. Include serialization; exclude assertions, instantiation, worker startup/transfer and rendering. Zero warmups retains the first request in the raw samples. Complete replies match outside timing; small-sample p95 is the maximum.' }))
 const summary = times => [0.5, 0.95].map(q => Number(times.toSorted((a,b) => a-b)[Math.ceil(q * times.length)-1].toFixed(3)))
 for (const source of cases.filter(source => !selected.length || selected.includes(source.name))) {
-  const pair = await Promise.all(binaries.map(engine)), times = [[], []]
+  const pair = await Promise.all(binaries.map(engine)), times = [[], []], cpuTimes = [[], []]
   let expected
   for (let round = 0; round < warmups + samples; round++) {
     for (const index of round % 2 ? [1, 0] : [0, 1]) {
       if (source.checkpoints) console.error(JSON.stringify({ status: 'started', name: source.name, round, engine: index }))
+      const cpuStart = process.cpuUsage()
       const start = performance.now(), actual = await pair[index].request(source.request), elapsed = performance.now() - start
+      const cpu = process.cpuUsage(cpuStart)
       if (source.checkpoints) console.error(JSON.stringify({ status: 'complete', name: source.name, round,
         engine: index, elapsed, warmup: round < warmups, proofCount: actual.length,
         responseSha256: createHash('sha256').update(JSON.stringify(actual)).digest('hex') }))
@@ -83,9 +119,21 @@ for (const source of cases.filter(source => !selected.length || selected.include
       else assert.deepEqual(actual, expected, `${source.name}: engine ${index}`)
       if (source.positive) assert.ok(actual.length > 0)
       else if (source.expectedError) assert.equal(actual.engineError, source.expectedError)
-      else assert.equal(actual.length, source.expected)
-      if (round >= warmups) times[index].push(elapsed)
+      else if (source.expectedSteps !== undefined) {
+        assert.equal(actual.rating.status, 'stalled')
+        assert.equal(actual.steps.length, source.expectedSteps)
+      } else assert.equal(actual.length, source.expected)
+      if (round >= warmups) {
+        times[index].push(elapsed)
+        cpuTimes[index].push((cpu.user + cpu.system) / 1_000)
+      }
     }
   }
-  console.log(JSON.stringify({ name: source.name, proofs: Array.isArray(expected) ? expected.length : undefined, error: expected.engineError, medianP95: times.map(summary), samples: times, memoryBytes: pair.map(engine => engine.memory()) }))
+  console.log(JSON.stringify({
+    name: source.name, proofs: Array.isArray(expected) ? expected.length : undefined,
+    steps: expected.steps?.length, error: expected.engineError,
+    medianP95: times.map(summary), samples: times,
+    cpuMedianP95: cpuTimes.map(summary), cpuSamples: cpuTimes,
+    memoryBytes: pair.map(engine => engine.memory()),
+  }))
 }
