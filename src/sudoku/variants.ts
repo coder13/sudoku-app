@@ -1,3 +1,4 @@
+import { validLetteredQuadruples } from './lettered-quadruples.ts'
 import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
@@ -493,6 +494,7 @@ function isPlayableRule(rule: VariantRule): boolean {
     case 'quadruple': case 'quadruple-sum': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
+    case 'lettered-quadruples': return Object.keys(rule).length === 2 && validLetteredQuadruples(rule.clues)
     case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
@@ -581,7 +583,8 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): p
     !(hasAuthoredRegions(regions) && validAuthoredRegions(regions.regions, regions.type === 'partial'))) return false
   // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
   // The interchange decoders bound the encoded and decoded input sizes.
-  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
+  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule) ||
+    rules.filter(rule => rule.type === 'lettered-quadruples').length > 1)) return false
   if (regions?.type === 'partial' && rules?.some(rule => rule.type === 'region-sum' &&
     rule.cells.some((cell: number) => !regions.regions.some(region => region.includes(cell))))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
@@ -608,6 +611,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'extra-house': 'Extra regions',
   'distinct-cells': 'Shaded groups',
   'inside-grid': 'Inside Grid',
+  'lettered-quadruples': 'Lettered Quadruples',
   'consecutive-run': 'Consecutive Lines',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
@@ -776,6 +780,10 @@ function describedVariantRules(puzzle: VariantPuzzle) {
             const at = (site: number) => `r${Math.floor(site / 9) + 1}c${site % 9 + 1}`
             return `${at(cell)} with ${at(rule.cells[rule.cells.length - 1 - i])}`
           }))}.`)
+        break
+      case 'lettered-quadruples':
+        descriptions.push('Each letter stands for the same digit throughout the puzzle. Different letters stand for different digits.',
+          'Each letter in a circle needs a separate cell among the four surrounding cells.')
         break
       case 'quadruple': case 'quadruple-sum':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)

@@ -13,6 +13,10 @@ const fixtures = JSON.parse(readFileSync(new URL('./fixtures/coach-forcing-ratin
   id: string; title: string; code: string; solution: string; status: VariantRating['status']; points: number; traceDigest: string
 }[]
 
+const techniquesAddedSinceRecording = new Set([
+  'entropy-quadruple', 'consecutive-run', 'distinct-cells', 'pill-arrow', 'lockout', 'inside-grid', 'lettered-quadruples',
+])
+
 test('deferred import ratings preserve uniqueness, complete proofs, and versioned scores', async (context) => {
   const techniqueOrder = await getVariantPlayOrder()
   for (const source of fixtures) {
@@ -32,7 +36,7 @@ test('deferred import ratings preserve uniqueness, complete proofs, and versione
       assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
       assert.ok(techniqueOrder.includes('entropy-quadruple'))
       const value = { ...trace, rating: { ...trace.rating, scoringVersion: 9,
-        techniqueOrder: techniqueOrder.filter(id => !['entropy-quadruple', 'consecutive-run', 'distinct-cells', 'pill-arrow', 'lockout'].includes(id)) } }
+        techniqueOrder: techniqueOrder.filter(id => !techniquesAddedSinceRecording.has(id)) } }
       assert.equal(createHash('sha256').update(JSON.stringify({ value })).digest('hex'), source.traceDigest)
       if (source.status === 'stalled') assert.equal(trace.steps.length, 16)
     })

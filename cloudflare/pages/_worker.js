@@ -159,7 +159,10 @@ async function coachPublication(puzzle, id, code) {
   const insideGrid = puzzle.custom_constraints && id === '7FCB' &&
     await digest(code) === 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c' &&
     await digest(lines.join('\n')) === '084367b723e227b486649f3641a2d4791ae491ca32bd541059cd76faa38b2a85'
-  const authoredRule = coachAuthoredRule(lines) ?? (insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
+  const letteredQuadruples = puzzle.custom_constraints && id === 'ALYC' &&
+    await digest(code) === 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653' &&
+    await digest(lines.join('\n')) === 'c294c3a30269133929f4ac39c1144372cad5e8daf2dcfb4ad6bf08db5d9d1bdb'
+  const authoredRule = coachAuthoredRule(lines) ?? (letteredQuadruples ? 'lettered-quadruples' : insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
     : mirroredRenbans ? 'mirrored-renban' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
@@ -421,7 +424,13 @@ function insideGridRows(rows) {
     rows.every((row, i) => row.every((cell, j) =>
       rowOf(cell) === rowOf(start) + i * dr + j * rr && colOf(cell) === colOf(start) + i * dc + j * rc))
 }
-const quadruple = [{ topLeft: value => cell(value) && value < 72 && value % 9 < 8, digits: list(integer(1, 9), 1, 4) }]
+const quadrupleCorner = value => cell(value) && value < 72 && value % 9 < 8
+const quadruple = [{ topLeft: quadrupleCorner, digits: list(integer(1, 9), 1, 4) }]
+const letteredCircle = clue => fields(clue, { topLeft: quadrupleCorner,
+  letters: value => typeof value === 'string' && /^[A-Z]{1,4}$/.test(value) })
+const letteredClues = clues => list(letteredCircle, 1, 64)(clues) &&
+  new Set(clues.map(clue => clue.topLeft)).size === clues.length &&
+  new Set(clues.flatMap(clue => [...clue.letters])).size <= 9
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
@@ -454,6 +463,7 @@ const ruleFields = {
   'non-consecutive': [{}, { except: pairs }],
   parity: [{ cells, parity: oneOf('odd', 'even') }],
   quadruple,
+  'lettered-quadruples': [{ clues: letteredClues }],
   'quadruple-sum': quadruple,
   sandwich: [{ direction, cells: house, sum: integer(0, 35) }],
   skyscrapers: [{ direction, cells: house, count: integer(1, 9) }],
@@ -469,9 +479,10 @@ const rule = value => {
   return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) <= 1 && Math.abs(a % 9 - b % 9) <= 1 &&
     !value.cells.some(cell => value.pill.includes(cell))
 }
+const variantRules = value => list(rule, 0)(value) && value.filter(rule => rule.type === 'lettered-quadruples').length <= 1
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
-  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
+  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: variantRules }),
 }, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }, { cellColors }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),

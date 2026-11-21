@@ -1,7 +1,7 @@
 import type { LessonExample, PracticeExercise, VariantPracticeExercise, VariantPuzzle } from './engine.ts'
 import { cellName } from './lesson-diagram.ts'
 import { variantHintChoice } from './variant-hints.ts'
-import { nonConsecutiveDescription } from './variants.ts'
+import { nonConsecutiveDescription, quadrupleCells } from './variants.ts'
 
 export type LessonExercise = PracticeExercise & { variantPuzzle?: VariantPuzzle }
 type LessonDiagramExample = Omit<LessonExample, 'practice'> & { practice: LessonExercise; variantPuzzle?: VariantPuzzle }
@@ -46,6 +46,8 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'anti-king': return ['Cells touching at a corner must differ.']
       case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]
       case 'consecutive-run': return [`${rule.fromBulb ? 'Consecutive Thermometer' : 'Consecutive Line'} · ${path(rule.cells)}`]
+      case 'lettered-quadruples':
+        return rule.clues.map(({ topLeft, letters }) => `Lettered Quadruple ${[...letters].join(', ')} · ${cells(quadrupleCells(topLeft))}`)
       case 'inside-grid': return [`Inside Grid · ${rule.rows.length} × ${rule.rows.length}`]
       case 'distinct-cells': return [`Different digits · ${cells(rule.cells)}`]
       case 'inequality': return [`${cellName(rule.less)} < ${cellName(rule.greater)}`]

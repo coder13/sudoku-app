@@ -733,3 +733,123 @@ function insideGridTruth(rows: number[][], proofCells: readonly number[], domain
   assert.ok(cells.every(cell => support[cell] !== 0))
   return support
 }
+
+test('Sandwich Roll solves with an unknown key and offers focused hints for its lettered circles', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-lettered.json', import.meta.url), 'utf8')) as {
+    url: string; title: string; coach: string; description: string; solution: string; keyDigits: string
+    clues: { topLeft: number; letters: string }[]; symbolLayouts: string[]
+  }
+  const { sqlite, fetcher } = syncDatabase()
+  const specificSudoku = { sudoku_id: 'ALYC', sudoku: source.coach, name: source.title, blocked: false,
+    description: source.description, custom_constraints: true }
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
+    if (url === source.url) return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+    if (url.startsWith('/api/v1/shares')) return fetcher(url, init)
+    return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {})
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+    assert.ok(game.variant)
+    const { puzzle, solution } = game.variant
+    assert.equal(game.title, source.title)
+    assert.equal(solution, source.solution)
+    assert.equal(puzzle.givens, '0'.repeat(81))
+    assert.deepEqual(puzzle.rules?.at(-1), { type: 'lettered-quadruples', clues: source.clues })
+    const alphabet = [...new Set(source.clues.flatMap(clue => [...clue.letters]))].sort()
+    assert.equal(source.keyDigits.length, alphabet.length)
+    const covers = (values: string, at: number, expected: string) => {
+      const actual = [at, at + 1, at + 9, at + 10].map(cell => values[cell])
+      for (const digit of expected) {
+        const index = actual.indexOf(digit)
+        if (index < 0) return false
+        actual.splice(index, 1)
+      }
+      return true
+    }
+    for (const { topLeft, letters } of source.clues) {
+      assert.ok(covers(source.solution, topLeft, [...letters].map(letter => source.keyDigits[alphabet.indexOf(letter)]).join('')))
+    }
+    const symbolsOnly = { ...puzzle, rules: puzzle.rules?.flatMap((rule): VariantRule[] =>
+      rule.type === 'palindrome' || rule.type === 'extra-house' ? [rule] : rule.type === 'whispers'
+        ? [{ ...rule, minDifference: 1 }] : []) }
+    assert.equal(new Set(source.symbolLayouts).size, 4)
+    for (const layout of source.symbolLayouts) {
+      assertVariantCompletion(symbolsOnly, layout)
+      for (const { topLeft, letters } of source.clues) {
+        assert.ok(covers(layout, topLeft, [...letters].map(letter => String(alphabet.indexOf(letter) + 1)).join('')))
+      }
+    }
+
+    const pasted = await detectPuzzle(source.coach)
+    assert.deepEqual(pasted.variant?.puzzle, puzzle)
+    const progressed = enter(game, [72], 'value', Number(solution[72]))
+    assert.deepEqual(readGame(game.id, JSON.stringify(progressed))?.variant, game.variant)
+    assert.deepEqual((await downloadSharedPuzzle(await publishSharedPuzzle(progressed))).variant?.puzzle, puzzle)
+    const withoutLettered = { ...puzzle, rules: puzzle.rules?.filter(rule => rule.type !== 'lettered-quadruples') }
+    assertVariantCompletion(withoutLettered, source.solution)
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: withoutLettered } }), 'multiple')
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+    for (const step of path.steps) for (const action of step.actions) {
+      if ('place' in action) assert.equal(action.place.digit, Number(solution[action.place.cell]))
+      else assert.notEqual(action.eliminate.digit, Number(solution[action.eliminate.cell]))
+    }
+    const index = path.steps.findIndex(step => step.technique === 'lettered-quadruples')
+    assert.ok(index >= 0)
+    const { entries, eliminations } = path.positions![index]
+    const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+    const hints = await puzzleHints(checkpoint, 'all', 'lettered-quadruples')
+    assert.ok(hints.choices.length > 1)
+    const moves = new Set(hints.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+    const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+    try { assert.equal(await scan.count('lettered-quadruples'), moves.size) } finally { scan.close() }
+    for (const choice of [...hints.choices, ...path.steps.filter(step => step.technique === 'lettered-quadruples')]) {
+      assert.ok('variant' in choice.evidence)
+      assert.match(choice.evidence.variant.reason, /possible keys leave/)
+      const evidence = choice.evidence.variant.source?.deduction.evidence
+      assert.ok(evidence?.type === 'constraint')
+      const support = letterKeyTruth(source.symbolLayouts, evidence.cells, evidence.domains)
+      const [target] = choice.pattern.cells
+      assert.deepEqual(choice.pattern.cells, [target])
+      const unsupported = evidence.domains[evidence.cells.indexOf(target)] & ~support[target]
+      const expected = Array.from({ length: 9 }, (_, i) => i + 1).filter(digit => unsupported & (1 << (digit - 1)))
+      assert.deepEqual(choice.actions, expected.map(digit => ({ eliminate: { cell: target, digit } })))
+      assert.ok(support[target] & (1 << (Number(solution[target]) - 1)))
+    }
+    const drills = await runEngine({ type: 'practice-examples', technique: 'lettered-quadruples', variant: true })
+    assert.equal(drills.length, 3)
+    assert.ok(drills.every(drill => drill.deduction.technique === 'lettered-quadruples'))
+
+    specificSudoku.description += '\nEach letter in a blue cell is odd.'
+    await assert.rejects(detectPuzzle(source.url), /author instructions/)
+  } finally { sqlite.close() }
+})
+
+// The four symbol layouts were enumerated externally from the printed circles,
+// ordinary houses, marked region, Palindromes and difference-only Whispers.
+// Enumerate the keys directly for each layout rather than calling the matching solver.
+function letterKeyTruth(layouts: readonly string[], cells: readonly number[], domains: readonly number[]) {
+  const support = Array<number>(81).fill(0)
+  for (const layout of layouts) {
+    const possible = Array<number>(9).fill(511)
+    cells.forEach((cell, index) => { possible[Number(layout[cell]) - 1] &= domains[index] })
+    const key: number[] = []
+    function visit(symbol: number, used: number) {
+      if (symbol === 9) {
+        for (let cell = 0; cell < 81; cell++) support[cell] |= key[Number(layout[cell]) - 1]
+        return
+      }
+      for (let bit = 1; bit <= 256; bit <<= 1) {
+        if (possible[symbol] & bit && !(used & bit)) {
+          key[symbol] = bit
+          visit(symbol + 1, used | bit)
+        }
+      }
+    }
+    visit(0, 0)
+  }
+  assert.ok(support.every(Boolean))
+  return support
+}

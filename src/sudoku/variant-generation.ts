@@ -149,6 +149,9 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
         case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
+        case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
+          ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),
+        })) }
         case 'quadruple': case 'quadruple-sum': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
         case 'little-killer': {
           const [dr, dc] = clueDelta(rule.direction)

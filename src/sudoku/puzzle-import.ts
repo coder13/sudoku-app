@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { isHexColor, isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
+import { validLetteredQuadruples } from './lettered-quadruples.ts'
 import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
@@ -212,7 +213,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows' | 'partial-regions' | 'inside-grid'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows' | 'partial-regions' | 'inside-grid' | 'lettered-quadruples'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -405,6 +406,7 @@ async function coachExportHash(code: string) {
 // Coach leaves this rule out of a pasted Quad-Arrows export.
 const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
 const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
+const sandwichRollExport = 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653'
 
 // The Rainbow colors repeat the region map. Revival's yellow pattern adds no
 // rule. Match the reviewed exports in full because other colors can encode clues.
@@ -455,6 +457,38 @@ function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
   return [{ type: 'inside-grid', rows }, ...runs, ...readCoachRules(other, {})]
 }
 
+function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRule[] {
+  const invalid = new Error('The export does not match its published lettered Quadruples.')
+  const layers = constraints.filter(record)
+  if (layers.length !== constraints.length) throw invalid
+  const captions = layers.find(layer => layer.type === 'cosmeticText' && record(layer.settings) &&
+    layer.settings.gridSnapToCentres === false && layer.settings.gridSnapToEdges === false)
+  const circles = layers.find(layer => layer.type === 'cosmeticShape' && record(layer.settings) &&
+    layer.settings.gridSnapToCorners === true)
+  const corner = (segment: unknown) => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2) throw invalid
+    const [x, y] = segment.cells[0]
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 1 || x > 8 || y < 1 || y > 8) throw invalid
+    return (y - 1) * 9 + x - 1
+  }
+  if (!Array.isArray(captions?.segments) || !Array.isArray(circles?.segments)) throw invalid
+  const clues = captions.segments.map(segment => ({
+    topLeft: corner(segment),
+    letters: record(segment) && record(segment.parameters) ? segment.parameters.text : undefined,
+  }))
+  if (!validLetteredQuadruples(clues)) throw invalid
+  const drawn = new Set(circles.segments.map(segment => {
+    if (!record(segment) || !record(segment.parameters) || segment.parameters.shape !== 'circle') throw invalid
+    return corner(segment)
+  }))
+  if (drawn.size !== clues.length || clues.some(clue => !drawn.has(clue.topLeft))) throw invalid
+  // The original also carries transparent answer letters and decorative
+  // text and shapes. Only the paired circles and their visible labels are clues.
+  const typed = layers.filter(layer => !['cosmeticText', 'cosmeticShape', 'cosmeticLine'].includes(String(layer.type)))
+  return [...readCoachRules(typed, {}), { type: 'lettered-quadruples', clues }]
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -497,15 +531,19 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasQuadruples = encodedRules.some(layer => record(layer) && layer.type === 'quadruple')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
-  const exportHash = (!publication && hasQuadruples || declaredInsideGrid || !fog && cellColours?.some(Boolean))
+  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
+  const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || !fog && cellColours?.some(Boolean))
     ? await coachExportHash(code) : undefined
   const insideGrid = exportHash === codeCrackerExport && (!publication || declaredInsideGrid)
+  const lettered = exportHash === sandwichRollExport && (!publication || declaredLettered)
+  if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
   const rawQuadArrows = !publication && exportHash === quadArrowsExport
   const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
     ? reviewedCoachColorExports.get(exportHash) : undefined
   const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
-  let rules = insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(encodedRules, { regions, authoredRule })
+  let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
+    : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(encodedRules, { regions, authoredRule })
   if (reviewedArtwork?.partialRegions) {
     const marked = rules.filter(rule => rule.type === 'extra-house')
     if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')
@@ -569,7 +607,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? reviewedArtwork?.title ?? reviewedColorTitle ?? (rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : undefined)
+  const title = publication?.title ?? reviewedArtwork?.title ?? reviewedColorTitle ?? (rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
@@ -1283,7 +1321,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', path: strin
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' ||
-        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows' || coach.authoredRule === 'partial-regions' || coach.authoredRule === 'inside-grid') && { authoredRule: coach.authoredRule }),
+        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows' || coach.authoredRule === 'partial-regions' || coach.authoredRule === 'inside-grid' || coach.authoredRule === 'lettered-quadruples') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }

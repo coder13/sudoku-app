@@ -45,6 +45,7 @@ export const HINT_CANDIDATES_ERROR: PuzzleHint = {
 const TECHNIQUE_LABELS: Record<string, string> = {
   'consecutive-run': 'Consecutive Line',
   'inside-grid': 'Inside Grid',
+  'lettered-quadruples': 'Lettered Quadruples',
   'distinct-cells': 'Shaded group',
   'algebraic-cage-bounds': 'Algebraic cage bounds',
   'sized-contradiction': 'Candidate contradiction',

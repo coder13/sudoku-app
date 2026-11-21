@@ -121,7 +121,9 @@ impl CompiledVariant {
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
         };
-        let count = self.search(position, 2, &mut max_nodes, solution, mode, &mut digits);
+        let count = self.search(position, 2, &mut max_nodes, &mut |board| {
+            solution.get_or_insert(board);
+        }, mode, &mut digits);
         Ok(match count {
             None => Analysis::SearchLimit,
             Some(0) => Analysis::Unsolvable,
@@ -197,10 +199,19 @@ impl CompiledVariant {
     ) -> Result<Board, VariantPositionError> {
         let position = self.prepare_search(entries, eliminations, max_nodes, mode)?;
         let mut solution = None;
-        match self.search(position, 1, &mut max_nodes, &mut solution, mode, &mut order) {
+        match self.search(position, 1, &mut max_nodes, &mut |board| { solution = Some(board); }, mode, &mut order) {
             None => Err(VariantPositionError::Puzzle(Analysis::SearchLimit)),
             Some(_) => solution.ok_or(VariantPositionError::Puzzle(Analysis::Unsolvable)),
         }
+    }
+
+    /// Visit every completion within the bounds. No partial list is returned.
+    pub(super) fn complete_bounded(&self, limit: u8, mut nodes: u32) -> Option<Vec<Board>> {
+        let mode = SearchMode::Verify(&[]);
+        let position = self.prepare_search(&[0; CELLS], &[0; CELLS], nodes, mode).ok()?;
+        let mut layouts = Vec::new();
+        let count = self.search(position, limit, &mut nodes, &mut |board| layouts.push(board), mode, &mut digits)?;
+        (count < limit).then_some(layouts)
     }
 
     fn prepare_search(
@@ -314,6 +325,12 @@ impl CompiledVariant {
                 return Err(VariantPositionError::Puzzle(Analysis::Conflict));
             }
         }
+        if let Some(clue) = &self.lettered_quadruples {
+            let domains = board.map(|digit| if digit == 0 { DIGITS } else { digit_bit(digit) });
+            if !clue.permits(&domains) {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+        }
         let mut position = SearchPosition { board, masks };
         self.restrict_domains(&mut position, SearchMode::PreserveTraversal);
         Ok(position)
@@ -324,7 +341,7 @@ impl CompiledVariant {
         mut position: SearchPosition,
         limit: u8,
         nodes: &mut u32,
-        solution: &mut Option<Board>,
+        record: &mut impl FnMut(Board),
         mode: SearchMode<'_>,
         order: &mut impl FnMut(u16) -> D,
     ) -> Option<u8> {
@@ -344,13 +361,16 @@ impl CompiledVariant {
             .filter(|&(_, &digit)| digit == 0)
             .min_by_key(|&(cell, _)| position.masks[cell].count_ones());
         let Some((cell, _)) = next else {
-            solution.get_or_insert(position.board);
+            if self.lettered_quadruples.as_ref().is_some_and(|clue| !clue.permits(&position.board.map(digit_bit))) {
+                return Some(0);
+            }
+            record(position.board);
             return Some(1);
         };
         let mut count = 0;
         for digit in order(position.masks[cell]) {
             let child = self.propagate_placement_with_mode(&position, cell, digit, mode);
-            count += self.search(child, limit - count, nodes, solution, mode, order)?;
+            count += self.search(child, limit - count, nodes, record, mode, order)?;
             if count == limit {
                 break;
             }
@@ -512,6 +532,23 @@ impl CompiledVariant {
                         position.masks[cell] = mask;
                         changed = true;
                     }
+                }
+            }
+            if let Some(clue) = &self.lettered_quadruples {
+                let domains = std::array::from_fn(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                if let Some(support) = clue.support(&domains) {
+                    for (cell, mask) in support.into_iter().enumerate() {
+                        if position.board[cell] == 0 && position.masks[cell] != mask {
+                            position.masks[cell] = mask;
+                            changed = true;
+                        }
+                    }
+                } else if !clue.permits(&domains) {
+                    position.masks.fill(0);
+                    return;
                 }
             }
             for (_, cells) in self.entropy_windows() {

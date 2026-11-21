@@ -47,6 +47,7 @@ export type VariantRule =
   | { type: 'inside-grid'; rows: readonly (readonly number[])[] }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
+  | { type: 'lettered-quadruples'; clues: readonly import('./lettered-quadruples.ts').LetteredQuadruple[] }
   | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }

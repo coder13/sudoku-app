@@ -1,6 +1,6 @@
 use super::{ExampleSeed, seed};
 use crate::{
-    ClueDirection, Diagonal, KillerCage, MarkedPairs, Parity as CellParity, PuzzleRule,
+    ClueDirection, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs, Parity as CellParity, PuzzleRule,
     VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
 };
 
@@ -131,6 +131,24 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 65, 5, [PuzzleRule::DistinctCells { cells: vec![0, 65, 1, 2], color: None }],
             ),
         ],
+        LetteredQuadruples => {
+            let rules = || {
+                let clues = [(9, "AOUG"), (12, "IVGE"), (15, "NEO"), (16, "EVO"), (27, "EVO"),
+                    (31, "AEOR"), (39, "NAI"), (43, "IUN"), (54, "AGE"), (57, "NRU"), (61, "VEUR")]
+                    .into_iter().map(|(top_left, letters)| LetteredQuadruple { top_left, letters: letters.into() }).collect();
+                [
+                    PuzzleRule::LetteredQuadruples { clues },
+                    PuzzleRule::ExtraHouse { cells: vec![1, 14, 28, 40, 49, 48, 50, 43, 2] },
+                    PuzzleRule::Palindrome { cells: vec![19, 29, 39, 48], segments: None },
+                    PuzzleRule::Palindrome { cells: vec![2, 12, 22], segments: None },
+                ]
+            };
+            [
+                seed("015468370687239154430751862761895243523146987894372516356917428142683795078524631", 0, 9, rules()),
+                seed("215468379687239150439751862761895200523146987894372516356917428142683795978524631", 35, 4, rules()),
+                seed("215468379687239154439751862761895243523146987894372506356907408142683795978524630", 61, 1, rules()),
+            ]
+        },
         Quadruple => [
             seed(
                 "403591602260008109000006030009207308034015700070080090720030915501070080340050060",

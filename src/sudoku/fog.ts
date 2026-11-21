@@ -143,6 +143,10 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const ten = visibleMarks(rule.ten, visible, completeXv)
         return five || ten ? [{ type: 'xv', ...(five && { five }), ...(ten && { ten }) }] : []
       }
+      case 'lettered-quadruples': {
+        const clues = rule.clues.filter(clue => allVisible(quadrupleCells(clue.topLeft)))
+        return clues.length ? [{ ...rule, clues }] : []
+      }
       case 'inside-grid': return allVisible(rule.rows.flat()) ? [rule] : []
       case 'distinct-cells':
         return allVisible(rule.cells) ? [rule] : visibleShadedGroups(rule.cells, visible).map(cells => ({ ...rule, cells }))
@@ -231,6 +235,9 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
       case 'between': case 'lockout': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
+        break
+      case 'lettered-quadruples':
+        for (const clue of rule.clues) addFragment(quadrupleCells(clue.topLeft), 'part of a lettered Quadruple')
         break
       case 'inside-grid':
         addFragment(rule.rows.flat(), 'part of an Inside Grid')

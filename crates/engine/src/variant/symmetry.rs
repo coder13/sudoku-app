@@ -233,6 +233,17 @@ impl SquareTransform {
                 }
                 cages.sort_unstable();
             }
+            LetteredQuadruples { clues } => {
+                for clue in clues.iter_mut() {
+                    let mut cells = super::quadruple::cells(clue.top_left).expect("validated circle");
+                    self.unordered(&mut cells);
+                    clue.top_left = cells[0];
+                    let mut letters: Vec<_> = clue.letters.bytes().collect();
+                    letters.sort_unstable();
+                    clue.letters = String::from_utf8(letters).expect("validated letters");
+                }
+                clues.sort_unstable();
+            }
             Quadruple { top_left, digits } | QuadrupleSum { top_left, digits } => {
                 let mut cells = super::quadruple::cells(*top_left).expect("validated Quadruple");
                 self.unordered(&mut cells);

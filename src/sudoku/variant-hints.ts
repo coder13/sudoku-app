@@ -16,6 +16,15 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'lettered-quadruples': {
+      const target = focus[0].cell
+      const remaining = DIGITS.filter(digit => (domains[cells.indexOf(target)] & (1 << (digit - 1))) &&
+        !focus.some(candidate => candidate.digit === digit))
+      return {
+        description: 'Each letter stands for the same digit throughout the puzzle. Different letters stand for different digits.',
+        reason: `Match the letters in the circles against the rows, columns, regions and current candidates. The digit for each letter must appear around every circle that lists it. The possible keys leave ${alternatives.format(remaining.map(String))} in ${at(target)}.`,
+      }
+    }
     case 'inside-grid':
       return {
         description: `Every row and column of the rotated ${rule.rows.length} × ${rule.rows.length} grid uses the same set of different digits.`,
@@ -787,6 +796,9 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       description = clue.description
       reason = clue.reason
       switch (technique) {
+        case 'lettered-quadruples':
+          cells = [focus[0].cell]
+          break
         case 'parity': {
           const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'parity')
           if (rule?.type === 'parity') {

@@ -1,7 +1,7 @@
 #![cfg(all(feature = "variants"))]
 
 use sudoku_app_engine::{
-    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
+    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs,
     Parity, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind, VariantPositionError,
     VariantPuzzle, analyze, candidates, parse_givens,
 };
@@ -1089,4 +1089,27 @@ fn a_consecutive_thermometer_keeps_its_bulb_direction() {
     ));
     puzzle.rules = vec![PuzzleRule::ConsecutiveRun { cells, color: None, from_bulb: false }];
     assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}
+
+
+#[test]
+fn lettered_quadruples_use_one_key_even_without_a_small_symbol_projection() {
+    let solution = parse_givens(
+        "215468379687239154439751862761895243523146987894372516356917428142683795978524631",
+    ).unwrap();
+    let mut puzzle = VariantPuzzle::classic(solution);
+    let circle = |top_left, letters: &str| LetteredQuadruple { top_left, letters: letters.into() };
+    let key = |clues| PuzzleRule::LetteredQuadruples { clues };
+    puzzle.rules = vec![key(vec![circle(0, "AB"), circle(7, "CD")])];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.solve_unique(&EMPTY, &NO_REMOVALS, 1), Ok(solution));
+
+    puzzle.rules = vec![key(vec![circle(0, "A"), circle(7, "A")])];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.analyze(&EMPTY, &NO_REMOVALS, 10), Ok(Analysis::Conflict));
+
+    puzzle.rules = vec![key(vec![circle(0, "AA")])];
+    assert_eq!(puzzle.compile().unwrap().analyze(&EMPTY, &NO_REMOVALS, 10), Ok(Analysis::Conflict));
+    puzzle.rules = vec![key(vec![circle(0, "a")])];
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
 }

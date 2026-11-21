@@ -134,6 +134,8 @@ catalog! {
     Thermometer: "thermometer", 26, Easy;
     /// Require every printed digit occurrence in the four cells touching a circle.
     Quadruple: "quadruple", 27, Medium;
+    /// Use the shared digit key of a puzzle's lettered circles.
+    LetteredQuadruples: "lettered-quadruples", 58, Hard;
     /// Find possible digit differences along a Whispers line.
     Whispers: "whispers", 27, Medium;
     /// Apply the repeating low, medium and high groups along an Entropic line.
@@ -1430,6 +1432,27 @@ impl CompiledVariant {
                         clue.support(domains).into_iter(),
                     ) {
                         proofs.push(proof);
+                    }
+                }
+            }
+            LetteredQuadruples => {
+                if let Some(clue) = &self.lettered_quadruples {
+                    let cells: [usize; CELLS] = std::array::from_fn(|cell| cell);
+                    let domains = cells.map(|cell| position.domain(cell));
+                    let supported = clue.hint_support(&domains);
+                    if !supported.contains(&0) {
+                        // A shared key can affect the entire puzzle. Explain
+                        // one cell at a time and retain the domains used by it.
+                        let mut local = domains;
+                        for cell in cells {
+                            local[cell] = supported[cell];
+                            if let Some(proof) = position.explain_constraint(
+                                technique, &[clue.rule], &cells, local.into_iter(),
+                            ) {
+                                proofs.push(proof);
+                            }
+                            local[cell] = domains[cell];
+                        }
                     }
                 }
             }

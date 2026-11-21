@@ -46,6 +46,8 @@ pub(crate) use practice::generate_practice_example;
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
+mod lettered_quadruples;
+use lettered_quadruples::LetteredQuadruples;
 pub(crate) use quadruple::QuadrupleSupport;
 pub use search::VariantPositionError;
 pub(crate) use symmetry::SquareTransform;
@@ -183,6 +185,16 @@ impl ClueDirection {
     }
 }
 
+/// One circle in a puzzle-wide letter-to-digit key.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "camelCase", deny_unknown_fields))]
+pub struct LetteredQuadruple {
+    /// Top-left cell touching the circle.
+    pub top_left: usize,
+    /// Each printed letter must occur in a separate cell.
+    pub letters: String,
+}
+
 // One list supplies the wire identifiers and the protocol's supported-rule check.
 macro_rules! rules {
     ($(
@@ -250,6 +262,11 @@ rules! {
         top_left: usize,
         /// One to four required digit occurrences, in any order.
         digits: Vec<u8>,
+    }
+    /// Require a common bijection between printed letters and Sudoku digits.
+    LetteredQuadruples => "lettered-quadruples" {
+        /// All circles using this key.
+        clues: Vec<LetteredQuadruple>,
     }
     /// Constrain a Quadruple's largest digit to the sum of the other three.
     QuadrupleSum => "quadruple-sum" {
@@ -634,6 +651,7 @@ impl VariantPuzzle {
             disjoint_group_sums: Vec::new(),
             group_sum_chains: Vec::new(),
             quadruples: Vec::new(),
+            lettered_quadruples: None,
             global_entropy: None,
             pair_clues: Vec::new(),
             positive_sums: Vec::new(),
@@ -704,6 +722,12 @@ impl VariantPuzzle {
                     let clue = Quadruple::compile(&compiled, index, *top_left, digits, is_sum, enforce_regions)?;
                     compiled.quadruples.push(clue);
                 }
+                PuzzleRule::LetteredQuadruples { clues } => {
+                    if compiled.lettered_quadruples.is_some() {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    compiled.lettered_quadruples = Some(LetteredQuadruples::compile(self, index, clues, enforce_regions)?);
+                }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::PillArrow { .. }
                 | PuzzleRule::Renban { .. }
@@ -768,7 +792,7 @@ impl VariantPuzzle {
             )
             .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
             .fold(0, |cells, scope| cells | scope);
-        if compiled.global_entropy.is_some() {
+        if compiled.global_entropy.is_some() || compiled.lettered_quadruples.is_some() {
             compiled.extra_rule_cells = (1u128 << CELLS) - 1;
         }
         Ok(compiled)
@@ -890,6 +914,7 @@ pub struct CompiledVariant {
     disjoint_group_sums: Vec<DisjointGroupSum>,
     group_sum_chains: Vec<GroupSumChain>,
     quadruples: Vec<Quadruple>,
+    lettered_quadruples: Option<LetteredQuadruples>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
     positive_sums: Vec<PositiveSum>,

@@ -7610,7 +7610,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start at a placed digit or a cell with few candidates. Check the runs in both directions and keep those that fit every cell on the line."
+                "Start at a placed digit or a cell with few candidates. Check the runs in both directions and keep those that fit every cell on the line. A Consecutive Thermometer already sets the direction. Its digits increase by one starting at the bulb."
               ]
             },
             {
@@ -7634,6 +7634,46 @@
           ],
           "references": [],
           "difficulty": "easy"
+        },
+        {
+          "id": "inside-grid",
+          "title": "Inside Grid",
+          "summary": "Every row and column of the outlined grid uses the same set of different digits. Find that set to rule out other candidates inside the outline.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Read a complete row inside the outline"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Follow the rows and columns of the outline, which may run diagonally across the main grid. A complete inside row or column shows every digit in the shared set.",
+                "If each inside row and column has empty cells, compare the placed digits and candidates across them. Each digit in the set needs a place in every inside row and column."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "inside-grid",
+              "copy": {
+                "description": "The second inside row runs from R2C4 to R6C8. It contains 9, 4, 6, 1, and 2.",
+                "reason": "R1C5 is inside the outline, so it needs one of those five digits."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "inside-grid", "title": "Find the shared digits" }
+              ],
+              "guide": {
+                "start": "Look for an inside row or column with all five digits placed.",
+                "check": "Compare its digits with the candidates in the highlighted cell.",
+                "reason": "Remove any candidate outside that shared set."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
         },
         {
           "id": "distinct-cells",
@@ -8754,6 +8794,47 @@
             {
               "label": "Sudoku Coach constructor and rule description",
               "href": "https://sudoku.coach/en/construct"
+            }
+          ]
+        },
+        {
+          "id": "lettered-quadruples",
+          "title": "Lettered Quadruples",
+          "summary": "Each letter in a Quadruple circle stands for one digit throughout the puzzle. Compare circles that share a letter to narrow its possible digits and rule out candidates.",
+          "difficulty": "hard",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a letter printed in several circles"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For each circle with that letter, list the digits that can appear in its four surrounding cells. Keep only the digits that appear on every list. For example, if two circles with A can use only {1, 3, 5, 7} and {2, 3, 6, 8}, A must be 3.",
+                "Different letters need different digits. After finding A, remove its digit from the choices for the other letters. In every circle, fit the digits for its letters into separate surrounding cells. Each occurrence of a repeated letter needs its own cell."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "lettered-quadruples"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "lettered-quadruples", "title": "Check the shared letter key" }
+              ],
+              "guide": {
+                "start": "Read the letters in the circles and look for letters that appear more than once.",
+                "check": "Check whether each letter can use the same digit around every circle that lists it.",
+                "reason": "Remove a candidate when it leaves no way to fit the circles using one shared key."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Sandwich Roll by vajrajames",
+              "href": "https://sudoku.coach/en/s/ALYC"
             }
           ]
         }
