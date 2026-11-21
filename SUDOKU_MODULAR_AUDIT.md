@@ -381,13 +381,19 @@ The published XV Clover walkthrough fell from 16.08 to 2.65 ms median CPU in eig
 
 At the 128-step stall, R8C7 holds 8 and fixes its Modular phase to the remainder-2 group. R8C5 and R8C6 therefore use the other two groups in some order. If R8C6 is 4, its phase has remainder 1, so R8C5 must be 9. The 13 sum also makes R7C6 9, repeating 9 in box 8. If R8C6 is 6, the same reasoning repeats 7 in box 8.
 
-Independent enumeration of the Modular Line, the 13 sum, and their shared houses removes 4 and 6 from R8C6 and 7 and 9 from R7C6. Applying those four removals manually opens 38 app steps with seven correct placements before another stall.
+Independent enumeration of the Modular Line, the 13 sum, and their shared houses removes 4 and 6 from R8C6 and 7 and 9 from R7C6. Applying those four removals manually in the preceding build opened 38 app steps and seven placements. The detector now finds the removals in Play and Technique Finder. It checks both orders of the other two groups when one line cell fixes the third group. The proof cites the sum, that cell, and the house that would repeat a digit. The Hafj Entropic control adds one partial step through the same detector.
 
 ### Finish the replay with two Modular Lines and two sums
 
 After the different-phase removals and the resulting 38 steps, R2C2 holds 1 or 3. If it were 3, the first Modular Line would make R3C2 a 7. Box 1 then forces R1C3 to be 9, and its 13 sum makes R1C4 a 4. Box 2 forces R3C6 to be 6, and its 13 sum makes R2C6 a 7. On the second Modular Line, R2C6 and the placed 2 in R2C8 fix the two other phases. R2C7 must belong to the remainder-0 group. Its candidates are 1, 3, and 7, so it must be 3. That repeats the assumed 3 in row 2.
 
-Independent enumeration of the two lines and the two positive sums confirms this removal. Applying only the removal of 3 in R2C2 lets the existing app profile finish in 61 additional steps, placing the remaining 56 digits. Every action matches the published answer. The detectors for the different-phase deduction and this two-line argument are still pending.
+Independent enumeration of those rules confirms the removal. In the preceding build, applying it manually let the app profile finish in 61 additional steps, placing the remaining 56 digits.
+
+The new detector builds forced links from actual candidate domains. It joins two distinct Entropic or Modular rules through at most four intermediate links, including one or two positive sums. House links can force the other candidate in a bivalue cell. A chain cannot repeat a cell and succeeds when its final digit repeats the assumed digit in a shared house. Each step records its specific rule or house and its input mask. At the saved R2C2 position, Play finds a proof using just the R1C3 and R1C4 sum. R1C4 = 4 forces R1C8 = 6 in row 1, then R3C8 = 4 in column 8. From there the second Modular Line forces the same R2C7 = 3 contradiction in row 2.
+
+The imported short link now solves completely from the original zero givens under the app's standard profile. The walkthrough has 202 steps, 81 correct placements, and 4,665 points. It uses 18 group-and-sum chains and two fixed-phase sum deductions. Independent tests replay every action against the published answer, check the new premises separately, and exercise hint application, Finder, undo and redo. The native default still stalls, now at 75 steps and 1,604 points with seven placements. All nine published controls retain the same exact solutions and opening candidate masks. Seven other controls retain their full app walkthroughs, and Hafj adds one step.
+
+In five alternating warm Wasm pairs, the direct app-order walkthrough request falls from 639 to 7.6 ms median CPU. The new complete replay uses Medium or easier techniques. Ranked hints at the saved box 8 position fall from 64 to 36 ms median CPU. The Wasm artifact grows by 13,034 raw bytes and shrinks by 7,298 gzip bytes.
 
 ## Reproduce
 

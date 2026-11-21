@@ -98,6 +98,16 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
                     scopes.insert(cells.to_vec());
                 }
+                VariantEvidence::GroupSumImplication { assumption, links, .. } => {
+                    let cells = std::iter::once(assumption.cell)
+                        .chain(links.into_iter().map(|link| link.candidate.cell))
+                        .collect();
+                    scopes.insert(cells);
+                }
+                VariantEvidence::GroupLinePhaseSum { rules, cells, .. } => {
+                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(cells.to_vec());
+                }
                 VariantEvidence::GroupLineDisjointSum { rules, cells, .. } => {
                     assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
                     scopes.insert(cells.to_vec());

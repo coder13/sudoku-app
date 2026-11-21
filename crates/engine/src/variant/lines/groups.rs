@@ -62,12 +62,20 @@ impl GroupLine {
         ))
     }
 
+    pub(super) fn phases(&self) -> Option<(&[usize], DigitGroups)> {
+        self.consistent.then_some((&self.phases, self.partition))
+    }
+
     pub(super) fn different_phases(&self, a: usize, b: usize) -> bool {
         self.phases[a] != self.phases[b]
     }
 
     pub(super) fn repeating_group(&self, a: usize, b: usize) -> Option<DigitGroups> {
         (self.consistent && !self.different_phases(a, b)).then_some(self.partition)
+    }
+
+    pub(super) fn distinct_groups(&self, a: usize, b: usize) -> Option<DigitGroups> {
+        (self.consistent && self.different_phases(a, b)).then_some(self.partition)
     }
 
     pub(super) fn house_pair_removals(

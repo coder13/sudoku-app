@@ -1,7 +1,7 @@
 mod group_sums;
 mod groups;
 
-pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, ModularSum, compile_line_sums};
+pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums};
 
 use std::{collections::HashMap, ops::Range};
 
@@ -163,6 +163,14 @@ impl LineConstraint {
             rule_id: rule.id(),
             rule_index: index,
         })
+    }
+
+    pub(super) fn group_phases(&self) -> Option<(&[usize], [u16; 3])> {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return None;
+        };
+        let (phases, partition) = line.phases()?;
+        Some((phases, partition.masks()))
     }
 
     pub fn visit_group_house_removals(

@@ -32,6 +32,7 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant) {
     }
     let mut modular = Vec::new();
     let mut with_houses = Vec::new();
+    let mut phases = Vec::new();
     let mut disjoint = Vec::new();
     let mut chains = Vec::new();
     for line in group_lines {
@@ -47,6 +48,7 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant) {
             }
             for [a, b] in [pair, [pair[1], pair[0]]] {
                 GroupSumHouse::compile(puzzle, line, rule, a, b, sum, &mut with_houses);
+                GroupSumPhase::compile(puzzle, line, rule, a, b, sum, &mut phases);
                 for &(next_rule, c, next_total) in &incident[b] {
                     if c != a {
                         GroupSumChain::compile(
@@ -65,6 +67,7 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant) {
     }
     puzzle.modular_sums = modular;
     puzzle.group_sum_houses = with_houses;
+    puzzle.group_sum_phases = phases;
     puzzle.disjoint_group_sums = disjoint;
     puzzle.group_sum_chains = chains;
 }
@@ -185,6 +188,126 @@ impl GroupSumHouse {
         } else {
             0
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(in crate::variant) struct GroupSumPhase {
+    /// Sum endpoint, its partner, and a different-phase line cell sharing a house with the partner.
+    pub cells: [usize; 3],
+    pub rules: [usize; 2],
+    pub house: VariantHouseKind,
+    pub total: u8,
+    pub technique: &'static str,
+    anchors: Vec<usize>,
+    partition: DigitGroups,
+}
+
+impl GroupSumPhase {
+    fn compile(
+        puzzle: &CompiledVariant,
+        line: &LineConstraint,
+        rule: usize,
+        endpoint: usize,
+        partner: usize,
+        total: u8,
+        out: &mut Vec<Self>,
+    ) {
+        let LineKind::ThreeGroups(groups) = &line.kind else {
+            return;
+        };
+        let Some(index) = line.cells.iter().position(|&cell| cell == endpoint) else {
+            return;
+        };
+        for (i, &target) in line.cells.iter().enumerate() {
+            if target == partner {
+                continue;
+            }
+            let Some(partition) = groups.distinct_groups(index, i) else {
+                continue;
+            };
+            let Some(house) = puzzle.shared_enforced_house(target, &[partner]) else {
+                continue;
+            };
+            let anchors: Vec<_> = line
+                .cells
+                .iter()
+                .enumerate()
+                .filter_map(|(j, &cell)| {
+                    (cell != partner
+                        && groups.different_phases(index, j)
+                        && groups.different_phases(i, j))
+                    .then_some(cell)
+                })
+                .collect();
+            if !anchors.is_empty() {
+                out.push(Self {
+                    cells: [endpoint, partner, target],
+                    rules: [line.rule_index, rule],
+                    house,
+                    total,
+                    technique: line.rule_id,
+                    anchors,
+                    partition,
+                });
+            }
+        }
+    }
+
+    pub fn removals(
+        &self,
+        [endpoint, partner, target]: [u16; 3],
+        domain: impl Fn(usize) -> u16,
+    ) -> Option<([u16; 3], usize, u16)> {
+        let groups = self.partition.masks();
+        let [start, _, _] = self.cells;
+        let (anchor, anchor_domain, group) = self
+            .anchors
+            .iter()
+            .filter_map(|&cell| {
+                let mask = domain(cell);
+                (mask != 0).then_some(())?;
+                let group = groups.iter().position(|&group| mask & !group == 0)?;
+                Some((cell, mask, group))
+            })
+            .min_by_key(|&(cell, mask, _)| {
+                (
+                    mask.count_ones(),
+                    (cell / 9).abs_diff(start / 9) + (cell % 9).abs_diff(start % 9),
+                    cell,
+                )
+            })?;
+        let mut possible = [0; 3];
+        let mut supported = [0; 3];
+        for (i, own_group) in groups.into_iter().enumerate() {
+            if i == group {
+                continue;
+            }
+            let others = target & groups[3 - i - group];
+            if others == 0 {
+                continue;
+            }
+            for a in digits(endpoint & own_group) {
+                let b = self.total.saturating_sub(a);
+                if !(1..=9).contains(&b) || a == b || partner & digit_bit(b) == 0 {
+                    continue;
+                }
+                possible[0] |= digit_bit(a);
+                possible[1] |= digit_bit(b);
+                possible[2] |= others;
+                let compatible = others & !digit_bit(b);
+                if compatible != 0 {
+                    supported[0] |= digit_bit(a);
+                    supported[1] |= digit_bit(b);
+                    supported[2] |= compatible;
+                }
+            }
+        }
+        if supported[0] == 0 {
+            return None;
+        }
+        let removed = std::array::from_fn(|i| possible[i] & !supported[i]);
+        (removed != [0; 3]).then_some((removed, anchor, anchor_domain))
     }
 }
 

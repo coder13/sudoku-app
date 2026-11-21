@@ -28,7 +28,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
-  ['HCHW', 841, 36, 19692, 128, false, false, 'medium'],
+  ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
 ] as const
 for (const [
   id,
@@ -93,7 +93,7 @@ for (const [
           ? [[index, proof.evidence.rules, proof.actions.length]] : [])
         assert.deepEqual(chains, [[28, [15, 5, 4], 3], [29, [18, 8, 7], 3], [30, [19, 10, 9], 16]])
         assert.equal(trace.steps.flatMap(step => step.actions).filter(action => 'place' in action).length,
-          techniqueOrder === orders[0][0] ? 0 : 18)
+          techniqueOrder === orders[0][0] ? 7 : 81)
       }
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
@@ -371,9 +371,9 @@ test('HCHW offers the linked row sums and their reserved digits in Play and Find
   })
   const placements = trace.steps.flatMap(step => step.actions)
     .flatMap(action => 'place' in action ? [action.place] : [])
-  assert.equal(placements.length, 18)
+  assert.equal(placements.length, 81)
   assert.ok(placements.every(({ cell, digit }) => Number(solution[cell]) === digit))
-  assert.equal(trace.rating.status, 'stalled')
+  assert.deepEqual(trace.rating.status, { solved: 'medium' })
 })
 
 test('HCHW Play and Finder combine two sums across box 2 and row 3', async () => {
@@ -382,8 +382,9 @@ test('HCHW Play and Finder combine two sums across box 2 and row 3', async () =>
   const { game } = await prepareImportedPuzzle(code)
   const stalled = { ...game, position: { ...game.position, entries, eliminations } }
   const { choices, candidates } = await puzzleHints(stalled)
-  assert.deepEqual(choices.map(choice => choice.technique), ['adjacent-total', 'adjacent-total', 'modular'])
-  const hint = choices[2]
+  assert.deepEqual(choices.slice(0, 3).map(choice => choice.technique), ['adjacent-total', 'adjacent-total', 'modular'])
+  const hint = choices.find(choice => 'variant' in choice.evidence &&
+    choice.evidence.variant.source?.deduction.evidence.type === 'group-line-sum-chain')
   assert.ok(candidates && hint && 'variant' in hint.evidence && hint.evidence.variant.source)
   const { description, reason, source: { deduction } } = hint.evidence.variant
   assert.equal(hint.technique, 'modular')
@@ -402,7 +403,7 @@ test('HCHW Play and Finder combine two sums across box 2 and row 3', async () =>
   assertModularProof(position.puzzle, deduction)
   assert.ok(actions.every(({ eliminate: { cell, digit } }) => Number(solution[cell]) !== digit))
   const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
-  try { assert.equal(await scan.count('modular'), actions.length) } finally { scan.close() }
+  try { assert.equal(await scan.count('modular'), 6) } finally { scan.close() }
   const played = applyDeduction(stalled, hint.actions, candidates)
   assert.equal(played.position.eliminations![25], eliminations[25] | 5)
   assert.deepEqual(undo(played).position, stalled.position)
@@ -414,9 +415,12 @@ test('HCHW Play and Finder explain eight removals from two pairs of separate sum
   const { code, solution } = load('coach').examples.find((source: { url: string }) => source.url === url)
   const { game } = await prepareImportedPuzzle(code)
   const stalled = { ...game, position: { ...game.position, entries, eliminations } }
-  const { choices, candidates } = await puzzleHints(stalled)
+  const ranked = await puzzleHints(stalled)
+  const choices = ranked.choices.filter(choice => choice.technique === 'adjacent-total')
+  const { candidates } = ranked
   assert.ok(candidates)
-  assert.deepEqual(choices.map(hint => hint.technique), ['adjacent-total', 'adjacent-total'])
+  assert.equal(choices.length, 2)
+  assert.deepEqual(choices, ranked.choices.slice(0, 2))
   const position = variantPosition(game.variant!, stalled.position)
   const expected = [
     { rules: [8, 9], cells: [9, 10], digits: [7, 9] },
@@ -443,6 +447,62 @@ test('HCHW Play and Finder explain eight removals from two pairs of separate sum
   const played = applyDeduction(stalled, hint.actions, candidates)
   assert.deepEqual(undo(played).position, stalled.position)
   assert.deepEqual(redo(undo(played)).position, played.position)
+})
+
+test('HCHW explains the box 8 group and sum across both line phases', async () => {
+  const { url, phase }: { url: string; phase: { entries: string; eliminations: number[] } } = load('hchw-phase-and-chain')
+  const { code, solution } = load('coach').examples.find((source: { url: string }) => source.url === url)
+  const { game } = await prepareImportedPuzzle(code)
+  const stalled = { ...game, position: { ...game.position, ...phase } }
+  const ranked = await puzzleHints(stalled)
+  const hint = ranked.choices.find(choice => 'variant' in choice.evidence &&
+    choice.evidence.variant.source?.deduction.evidence.type === 'group-line-phase-sum')
+  assert.ok(ranked.candidates && hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  const { description, reason, source: { deduction } } = hint.evidence.variant
+  assert.match(description, /R8C7 uses the group.*R8C6 and R7C6 add to 13/i)
+  assert.match(reason, /R8C6 were 4.*repeating 9 in box 8/i)
+  assert.match(reason, /R8C6 were 6.*repeating 7 in box 8/i)
+  const position = variantPosition(game.variant!, stalled.position)
+  assertModularProof(position.puzzle, deduction)
+  assert.deepEqual(hint.actions, [[59, 7, 9], [68, 4, 6]]
+    .flatMap(([cell, ...digits]) => digits.map(digit => ({ eliminate: { cell, digit } }))))
+  assert.ok(hint.actions.every(action => 'eliminate' in action && Number(solution[action.eliminate.cell]) !== action.eliminate.digit))
+  const selected = await puzzleHints(stalled, 'all', 'modular')
+  const targets = new Set(selected.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+  const scan = watchTechniqueScan(valuesOf(stalled), phase.eliminations, position)
+  try { assert.equal(await scan.count('modular'), targets.size) } finally { scan.close() }
+  const played = applyDeduction(stalled, hint.actions, ranked.candidates)
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+})
+
+test('HCHW explains why R2C2 cannot be 3 and finishes the imported puzzle', async () => {
+  const { url, chain }: { url: string; chain: { entries: string; eliminations: number[] } } = load('hchw-phase-and-chain')
+  const { code, solution } = load('coach').examples.find((source: { url: string }) => source.url === url)
+  const { game } = await prepareImportedPuzzle(code)
+  const stalled = { ...game, position: { ...game.position, ...chain } }
+  const { choices, candidates } = await puzzleHints(stalled)
+  const actions = [{ eliminate: { cell: 10, digit: 3 } }]
+  const hint = choices.find(hint => 'variant' in hint.evidence &&
+    hint.evidence.variant.source?.deduction.evidence.type === 'group-sum-implication' &&
+    JSON.stringify(hint.actions) === JSON.stringify(actions))
+  assert.ok(candidates && hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  const { description, reason, source: { deduction } } = hint.evidence.variant
+  assert.match(description, /If R2C2 were 3.*force a repeat in row 2/i)
+  assert.match(reason, /13 sum with R1C3 makes R1C4 4/i)
+  assert.match(reason, /R2C7 3.*repeats 3 in row 2/i)
+  const position = variantPosition(game.variant!, stalled.position)
+  assertModularProof(position.puzzle, deduction)
+  const selected = await puzzleHints(stalled, 'all', 'modular')
+  const targets = new Set(selected.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+  const scan = watchTechniqueScan(valuesOf(stalled), chain.eliminations, position)
+  try { assert.equal(await scan.count('modular'), targets.size) } finally { scan.close() }
+
+  const played = applyDeduction(stalled, hint.actions, candidates)
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+  const continuation = await puzzleSolution(played)
+  assert.equal(continuation.board, solution)
 })
 
 test('a sum chain permits equal endpoints when they share no house', async () => {

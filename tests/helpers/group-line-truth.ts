@@ -9,6 +9,10 @@ function assertGroupAndSum(puzzle: VariantPuzzle, type: 'entropic' | 'modular', 
   assert.equal(line.type, type)
   assert.ok(line.cells.includes(first) && line.cells.includes(second))
   assert.equal(Math.abs(line.cells.indexOf(first) - line.cells.indexOf(second)) % 3, 0)
+  assertPrintedSum(sum, left, right, total)
+}
+
+function assertPrintedSum(sum: NonNullable<VariantPuzzle['rules']>[number], left: number, right: number, total: number) {
   const samePair = ([a, b]: readonly number[]) => a === left && b === right || b === left && a === right
   const printedTotal = sum.type === 'adjacent-total' && samePair(sum.cells) ? sum.sum
     : sum.type === 'xv' && sum.five?.pairs?.some(samePair) ? 5
@@ -23,6 +27,91 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-phase-sum') {
+    const { cells, rules, domains, total, house } = proof.evidence
+    const [a, b, c, fixed] = cells
+    assert.equal(new Set(cells).size, 4)
+    const line = puzzle.rules![rules[0]]
+    assert.ok(line.type === 'modular' || line.type === 'entropic')
+    assert.equal(line.type, type)
+    const phases = [a, c, fixed].map(cell => line.cells.indexOf(cell))
+    assert.ok(phases.every(phase => phase >= 0))
+    assert.equal(new Set(phases.map(phase => phase % 3)).size, 3)
+    assertPrintedSum(puzzle.rules![rules[1]], a, b, total)
+    const sites = variantHouseCells(house, puzzle)
+    assert.ok(sites.includes(b) && sites.includes(c))
+
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const allDigits = Array.from({ length: 9 }, (_, i) => i + 1)
+    const allowed = domains.map(mask => allDigits.filter(digit => mask & (1 << (digit - 1))))
+    assert.equal(new Set(allowed[3].map(group)).size, 1)
+    const possible = [0, 0, 0], supported = [0, 0, 0]
+    for (const x of allowed[0]) for (const y of allowed[1]) for (const z of allowed[2]) for (const d of allowed[3]) {
+      if (x === y || x + y !== total || new Set([x, z, d].map(group)).size !== 3) continue
+      for (const [i, digit] of [x, y, z].entries()) {
+        possible[i] |= 1 << (digit - 1)
+        if (y !== z) supported[i] |= 1 << (digit - 1)
+      }
+    }
+    assert.ok(supported.every(Boolean))
+    const expected = cells.slice(0, 3).flatMap((cell, i) =>
+      allDigits.filter(digit => (possible[i] & ~supported[i]) & (1 << (digit - 1)))
+        .map(digit => ({ eliminate: { cell, digit } })))
+      .sort((a, b) => a.eliminate.cell - b.eliminate.cell || a.eliminate.digit - b.eliminate.digit)
+    assert.deepEqual(proof.actions, expected)
+    return
+  }
+  if (proof.evidence.type === 'group-sum-implication') {
+    const { assumption, links, conflict } = proof.evidence
+    const first = links[0].source, last = links.at(-1)!.source
+    assert.ok(first.type === 'line' && last.type === 'line')
+    assert.notEqual(first.rule, last.rule)
+    assert.equal(puzzle.rules![first.rule].type, type)
+    assert.ok(links.length >= 3 && links.length <= 6)
+    assert.ok([1, 2].includes(links.filter(link => link.source.type === 'sum').length))
+    assert.equal(new Set([assumption.cell, ...links.map(link => link.candidate.cell)]).size, links.length + 1)
+
+    let previous = assumption
+    for (const { source, candidate, domain } of links) {
+      const allowed = Array.from({ length: 9 }, (_, i) => i + 1).filter(digit => domain & (1 << (digit - 1)))
+      assert.ok(allowed.length > 1)
+      if (source.type === 'sum') {
+        assertPrintedSum(puzzle.rules![source.rule], previous.cell, candidate.cell, source.total)
+        assert.deepEqual(allowed.filter(digit => digit !== previous.digit && digit + previous.digit === source.total), [candidate.digit])
+      } else if (source.type === 'house') {
+        const sites = variantHouseCells(source.house, puzzle)
+        assert.ok(sites.includes(previous.cell) && sites.includes(candidate.cell))
+        assert.ok(allowed.includes(previous.digit))
+        assert.deepEqual(allowed.filter(digit => digit !== previous.digit), [candidate.digit])
+      } else {
+        const line = puzzle.rules![source.rule]
+        assert.ok(line.type === 'modular' || line.type === 'entropic')
+        const group = (digit: number) => line.type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+        const phases = [previous.cell, candidate.cell].map(cell => line.cells.indexOf(cell))
+        assert.ok(phases.every(phase => phase >= 0))
+        if (source.anchor) {
+          const [anchor, mask] = source.anchor
+          const thirdPhase = line.cells.indexOf(anchor)
+          assert.ok(thirdPhase >= 0)
+          assert.equal(new Set([...phases, thirdPhase].map(phase => phase % 3)).size, 3)
+          const fixed = new Set(Array.from({ length: 9 }, (_, i) => i + 1)
+            .filter(digit => mask & (1 << (digit - 1))).map(group))
+          assert.equal(fixed.size, 1)
+          assert.ok(!fixed.has(group(previous.digit)))
+          assert.deepEqual(allowed.filter(digit => group(digit) !== group(previous.digit) && !fixed.has(group(digit))), [candidate.digit])
+        } else {
+          assert.equal(Math.abs(phases[0] - phases[1]) % 3, 0)
+          assert.deepEqual(allowed.filter(digit => group(digit) === group(previous.digit)), [candidate.digit])
+        }
+      }
+      previous = candidate
+    }
+    const sites = variantHouseCells(conflict, puzzle)
+    assert.ok(sites.includes(assumption.cell) && sites.includes(previous.cell))
+    assert.equal(previous.digit, assumption.digit)
+    assert.deepEqual(proof.actions, [{ eliminate: assumption }])
+    return
+  }
   if (proof.evidence.type === 'group-line-sum-chain') {
     const { cells, rules, totals, house, houses, domains, supported, locked } = proof.evidence
     const [start, middle, end, partner] = cells

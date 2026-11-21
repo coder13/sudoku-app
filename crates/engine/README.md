@@ -550,6 +550,11 @@ Entropic and Modular hints can also use a shared house. Two cells a multiple of 
 
 [`VariantEvidence::SumPair`] cites two separate positive sums and a house connecting one endpoint of each. If the other endpoints both avoided a digit, the two sums would repeat the same digit in that house. Any cell that sees both partners can exclude the digit. Two V or X marks fall under `xv`. When an Adjacent Total contributes a sum, the proof falls under `adjacent-total`. Wasm reports `sum-pair`.
 
+
+[`VariantEvidence::GroupLinePhaseSum`] uses a line cell whose candidates belong to one group. The other two groups constrain the two remaining phases. A positive sum and a shared house can rule out assignments that would repeat a digit. The evidence records the four cells, their domains, and the shared house.
+
+[`VariantEvidence::GroupSumImplication`] records an assumed placement, an ordered chain of consequences and the house in which its digit repeats. The first and last links use different group lines. The chain joins them with at most four links, including one or two positive sums. Each link carries its premise and the target domain. The engine can replay these proofs without running an exact solution search. Wasm reports `group-sum-implication`.
+
 Non-Consecutive has four additional techniques. Each checks finite alternatives rather than searching for a solution. [`VariantEvidence::Exclusion`] records a typed [`VariantExclusionPremise`], the source rules, and any houses needed to exclude equal digits. Every alternative must conflict with each removed candidate. The detector uses the compiled binary relation, including explicit edge exceptions. House premises include Jigsaw regions, diagonals and extra houses.
 
 | Technique ID | Required pattern | Points | Tier |

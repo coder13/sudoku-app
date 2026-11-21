@@ -325,6 +325,64 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       ]
       break
     }
+    case 'group-line-phase-sum': {
+      const { cells: [endpoint, partner, other, fixed], domains, total } = evidence
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groups = lineGroups[kind].masks
+      const names = (mask: number) => DIGITS.filter(digit => mask & (1 << (digit - 1))).join(', ')
+      const fixedMask = groups.find(group => domains[3] & group)!
+      description = `${nameCell(fixed)} uses the group {${names(fixedMask)}} on this ${line} Line. ${nameCell(endpoint)} and ${nameCell(other)} use the other two groups. ${nameCell(endpoint)} and ${nameCell(partner)} add to ${total}.`
+      const house = houseLabel(evidence.house)
+      const examples = focus.filter(candidate => candidate.cell === endpoint)
+      reason = examples.map(({ digit }) => {
+        const sumPartner = total - digit
+        const own = lineGroupMask(kind, digit)
+        const remaining = groups.find(group => group !== own && group !== fixedMask)!
+        return `If ${nameCell(endpoint)} were ${digit}, the sum would make ${nameCell(partner)} ${sumPartner}. The group {${names(remaining)}} would also force ${nameCell(other)} to be ${sumPartner}, repeating ${sumPartner} in ${house}.`
+      }).join(' ')
+      if (!reason) {
+        reason = `Check both orders of the remaining groups against the sum. A crossed-out candidate would repeat the same digit in ${nameCell(partner)} and ${nameCell(other)}, which share ${house}.`
+      }
+      cells = evidence.cells
+      candidates = domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+        .map(digit => ({ cell: evidence.cells[i], digit })))
+      break
+    }
+    case 'group-sum-implication': {
+      const { assumption, links, conflict } = evidence
+      const start = nameCell(assumption.cell)
+      const sums = links.filter(({ source }) => source.type === 'sum').length === 1 ? 'a sum' : 'two sums'
+      description = `If ${start} were ${assumption.digit}, two group lines and ${sums} would force a repeat in ${houseLabel(conflict)}.`
+      let previous = assumption
+      reason = links.map(({ candidate, domain, source }) => {
+        const from = nameCell(previous.cell), to = nameCell(candidate.cell)
+        let sentence: string
+        if (source.type === 'sum') {
+          sentence = `The ${source.total} sum with ${from} makes ${to} ${candidate.digit}.`
+        } else if (source.type === 'house') {
+          sentence = `${to} shares ${houseLabel(source.house)} with ${from}, so it must use ${candidate.digit}.`
+        } else {
+          const rule = puzzle.rules?.[source.rule]
+          const line = rule?.type === 'entropic' ? 'Entropic' : 'Modular'
+          if (source.anchor) {
+            const [anchor, mask] = source.anchor
+            const digits = DIGITS.filter(digit => mask & (1 << (digit - 1))).join(', ')
+            sentence = `${nameCell(anchor)} (${digits}) and ${from} fix two groups on the ${line} Line. The remaining group makes ${to} ${candidate.digit}.`
+          } else {
+            sentence = `${to} must use the same group as ${from} on the ${line} Line. That makes it ${candidate.digit}.`
+          }
+        }
+        previous = candidate
+        return sentence
+      }).join(' ')
+      reason += ` That repeats ${assumption.digit} in ${houseLabel(conflict)}. Remove ${assumption.digit} from ${start}.`
+      const anchors = links.flatMap(({ source }) => source.type === 'line' && source.anchor ? [source.anchor[0]] : [])
+      cells = [...new Set([assumption.cell, ...links.map(link => link.candidate.cell), ...anchors])]
+      candidates = [assumption, ...links.flatMap(({ candidate, domain }) =>
+        DIGITS.filter(digit => domain & (1 << (digit - 1))).map(digit => ({ cell: candidate.cell, digit })))]
+      break
+    }
     case 'group-line-house-triplet': {
       cells = evidence.cells
       const [target, first, second, other] = evidence.cells

@@ -492,7 +492,7 @@ test('greetings and reviewed author notes keep all encoded rules available throu
   const sources = [
     { source: renbanSources.find(({ url }) => url.endsWith('/KUUo'))!, complete: true },
     { source: entropicSources.find(({ url }) => url.endsWith('/EoGB'))!, complete: true },
-    { source: modularSources.find(({ url }) => url.endsWith('/HCHW'))!, complete: false },
+    { source: modularSources.find(({ url }) => url.endsWith('/HCHW'))!, complete: true },
   ]
   const { sqlite, fetcher } = syncDatabase()
   t.after(() => sqlite.close())

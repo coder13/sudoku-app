@@ -574,6 +574,14 @@ export type VariantHouse = { row: number } | { column: number } | { region: numb
 export type VariantExclusionPremise =
   | { type: 'cell'; cell: number; domain: number }
   | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
+export type VariantGroupSumLink = {
+  candidate: Candidate
+  domain: number
+  source:
+    | { type: 'line'; rule: number; anchor: [number, number] | null }
+    | { type: 'sum'; rule: number; total: number }
+    | { type: 'house'; house: VariantHouse }
+}
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -581,6 +589,8 @@ export type VariantDeduction = {
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'sum-pair'; rules: [number, number]; cells: [number, number, number, number]; totals: [number, number]; domains: [number, number, number, number]; house: VariantHouse; houses: VariantHouse[] }
+    | { type: 'group-line-phase-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; total: number; house: VariantHouse }
+    | { type: 'group-sum-implication'; assumption: Candidate; links: VariantGroupSumLink[]; conflict: VariantHouse }
     | { type: 'group-line-house-triplet'; rule: number; house: VariantHouse; cells: [number, number, number, number]; domains: [number, number, number, number] }
     | { type: 'group-line-disjoint-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; houses: VariantHouse[]; total: number }
     | { type: 'group-line-sum-chain'; rules: [number, number, number]; house?: VariantHouse; houses?: VariantHouse[]; cells: [number, number, number, number]; domains: [number, number, number, number]; totals: [number, number]; supported: [number, number, number, number]; locked: number }
