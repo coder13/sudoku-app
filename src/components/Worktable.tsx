@@ -1367,10 +1367,11 @@ export function Worktable({
   }
 
   function showDigitHighlights(mask: SetStateAction<number>, match: DigitHighlightMatch) {
-    setDigitHighlight((current) => {
-      const nextMask = typeof mask === 'function' ? mask(current.mask) : mask
-      return { mask: nextMask, match, modeOverridden: current.modeOverridden && candidateCount(nextMask) > 1 }
-    })
+    setDigitHighlight((current) => ({
+      mask: typeof mask === 'function' ? mask(current.mask) : mask,
+      match,
+      modeOverridden: false,
+    }))
     setSelectedDigit(null)
     setHighlightCandidatePairs(false)
     if (colorsVisible) setColorBrush(null)
@@ -1384,8 +1385,7 @@ export function Worktable({
   }
 
   function changeDigitHighlightMatch(match: DigitHighlightMatch) {
-    const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
-    showDigitHighlights((current) => current || previous, match)
+    setDigitHighlight((current) => ({ ...current, match }))
   }
 
   function highlightCellCandidates(mask: number) {
