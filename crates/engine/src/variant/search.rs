@@ -48,8 +48,9 @@ impl CompiledVariant {
     ///
     /// Returns a direct conflict as [`Analysis::Conflict`]. Invalid removal masks
     /// are reported separately. The node budget includes the starting position.
-    /// Search-only house propagation can complete counts within budgets that
-    /// previously exhausted. It does not change [`Self::candidates`].
+    /// Search-only house propagation and distinct-digit Region Sum checks
+    /// can complete counts within budgets that previously exhausted. These
+    /// checks do not change [`Self::candidates`].
     pub fn analyze(
         &self,
         entries: &Board,
@@ -142,7 +143,7 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
-        if self.quadruples.is_empty() {
+        if self.quadruples.is_empty() && !self.lines.iter().any(|line| line.supports_distinct_sums()) {
             return self.solve_for_proof(entries, eliminations, max_nodes);
         }
         self.complete(entries, eliminations, max_nodes, SearchMode::Verify(&[]), digits)
@@ -447,10 +448,10 @@ impl CompiledVariant {
     }
 
     fn restrict_domains(&self, position: &mut SearchPosition, mode: SearchMode<'_>) {
-        // In exact search, support a Quadruple and its Global Entropy window
-        // with the same assignment. Public candidates and logical gates keep
-        // their per-rule support so their deductions retain the same meaning.
-        let join_windows = matches!(mode, SearchMode::Verify(_)) && self.global_entropy.is_some();
+        // Verification can join rules with the same assignment. Public
+        // candidates and logical gates keep their per-rule support.
+        let verify = matches!(mode, SearchMode::Verify(_));
+        let join_windows = verify && self.global_entropy.is_some();
         loop {
             for cage in &self.cages {
                 cage.restrict(position);
@@ -480,7 +481,11 @@ impl CompiledVariant {
                     };
                 }
                 let mut support = [0; CELLS];
-                line.support(line_domains, &mut support[..len]);
+                if verify {
+                    line.support_exact(line_domains, &mut support[..len]);
+                } else {
+                    line.support(line_domains, &mut support[..len]);
+                }
                 for (&cell, &mask) in line.cells.iter().zip(&support) {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
@@ -571,11 +576,14 @@ mod exact_house_tests {
     #[test]
     fn retained_regions_do_not_reintroduce_removed_distinctness() {
         let solution = std::array::from_fn(|cell| ((cell / 9 + cell % 9) % 9 + 1) as u8);
-        let mut definition = VariantPuzzle::classic(solution);
-        // Region 1 contributes 1+2, and region 6 contributes 3. The Latin
-        // completion respects this sum line but repeats digits in its boxes.
+        let mut givens = solution;
+        givens[3] = 0;
+        givens[9] = 0;
+        let mut definition = VariantPuzzle::classic(givens);
+        // A Latin completion repeats 2 in the first part and has 4 in the
+        // second. Both parts must still sum to 4 without the box rule.
         definition.rules.push(PuzzleRule::RegionSum {
-            cells: vec![0, 1, 35],
+            cells: vec![1, 9, 3],
             group_by_region: false,
             segments: None,
         });
@@ -583,10 +591,10 @@ mod exact_house_tests {
         assert_eq!(reduced.houses.len(), 27);
         assert_eq!(reduced.search_houses.len(), 18);
         assert_eq!(
-            reduced.analyze(&[0; CELLS], &[0; CELLS], 1),
+            reduced.analyze(&[0; CELLS], &[0; CELLS], 3),
             Ok(Analysis::Unique)
         );
-        assert_eq!(reduced.solve(&[0; CELLS], &[0; CELLS], 1), Ok(solution));
+        assert_eq!(reduced.solve(&[0; CELLS], &[0; CELLS], 3), Ok(solution));
         assert_eq!(
             definition
                 .compile()

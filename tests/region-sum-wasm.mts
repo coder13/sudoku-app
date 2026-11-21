@@ -82,7 +82,13 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
     }
     assert.equal(isSolved(play), complete)
     assert.equal(valuesOf(play), solution.board)
-    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 20_000 }), source === coach[3] ? 'search-limit' : 'unique')
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 20_000 }), 'unique')
+    if (source === coach[3]) {
+      assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position, maxNodes: 10_000 }),
+        { status: 'search-limit' })
+      assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position, maxNodes: 20_000 }),
+        { status: 'unique', solution: source.solution })
+    }
     assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position }), 'unique')
     assert.equal(await runEngine({ type: 'variant', operation: 'solve', position }), source.solution)
     assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [], limit: 10 }), [])
@@ -206,6 +212,11 @@ test('shared-region deductions use Jigsaw geometry and grouped visits', async ()
   }
   assertVariantCompletion(puzzle, coach[3].solution)
   const position = { puzzle }
+  const counted = countLineSolutions(puzzle)
+  assert.equal(counted.count, 1)
+  assert.equal(counted.solution, coach[3].solution)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position }),
+    { status: 'unique', solution: coach[3].solution })
   const proofs = await runEngine({
     type: 'variant', operation: 'hints', position, techniqueOrder: [houseTechnique], limit: 0xffff_ffff,
   })

@@ -165,7 +165,7 @@ impl VariantPuzzle {
                 | PuzzleRule::LittleKiller { .. }
                 | PuzzleRule::XSum { .. }
                 | PuzzleRule::Skyscrapers { .. } => {
-                    let line = LineConstraint::compile(&mut compiled, index, rule)?;
+                    let line = LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
                     compiled.lines.push(line);
                 }
                 PuzzleRule::Parity { .. }
