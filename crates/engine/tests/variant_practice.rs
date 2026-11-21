@@ -80,7 +80,17 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                             .iter()
                             .all(|&rule| position.puzzle.rules.get(rule).is_some())
                     );
-                    scopes.insert(cells);
+                    if matches!(technique, VariantTechnique::InsideGrid | VariantTechnique::LetteredQuadruples) {
+                        // The shared set or key stays in view. Each exercise
+                        // must use it to explain a different part of the grid.
+                        let focus: Vec<_> = exercise.deduction.actions.iter()
+                            .map(|action| action.candidate().cell)
+                            .collect::<BTreeSet<_>>().into_iter().collect();
+                        assert!(focus.iter().all(|cell| cells.contains(cell)));
+                        scopes.insert(focus);
+                    } else {
+                        scopes.insert(cells);
+                    }
                 }
                 VariantEvidence::SumPair(proof) => {
                     assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));

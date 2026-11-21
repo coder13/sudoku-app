@@ -2,7 +2,7 @@
 
 use sudoku_app_engine::{
     DEFAULT_VARIANT_SEARCH_NODES, Difficulty, SolveStatus, Technique, VARIANT_SCORING_VERSION,
-    VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantTechnique,
+    PuzzleRule, VariantDeduction, VariantEvidence, VariantExclusionPremise, VariantPuzzle, VariantTechnique,
     variant_practice_examples,
 };
 
@@ -17,7 +17,7 @@ fn binary_choices(domains: &[u16]) -> u16 {
         .sum()
 }
 
-fn estimate(deduction: &VariantDeduction) -> u16 {
+fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
     use VariantTechnique::*;
     let (cells, domains, supporting_rules): (&[usize], &[u16], u16) = match &deduction.evidence {
         VariantEvidence::Exclusion { premise, .. } => {
@@ -90,6 +90,16 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::LockedDigit { clue, domains, .. } => (&clue.cells, domains, 0),
+        VariantEvidence::Constraint { rules, .. } if deduction.technique == LetteredQuadruples => {
+            // Establish the common key and check its digit occurrences at each circle.
+            let circles: u16 = rules.iter().map(|&index| {
+                let PuzzleRule::LetteredQuadruples { clues } = &puzzle.rules[index] else {
+                    panic!("a letter-key proof must cite its circles");
+                };
+                clues.len() as u16
+            }).sum();
+            return 25 + 3 * circles;
+        }
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
         VariantEvidence::RayHouses(proof) => {
             (&proof.cells, &proof.domains, proof.houses.len() as u16)
@@ -118,6 +128,8 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
     match deduction.technique {
         Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome | ConsecutiveRun | DistinctCells => 8 + span + choices,
+        // Read the shared set and check each inside row and column.
+        InsideGrid => 20 + 4 * (cells.len() as u16).isqrt(),
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Lockout | Whispers | Entropic | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | PillArrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
@@ -154,7 +166,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         let examples = variant_practice_examples(technique).unwrap();
         let mut estimates: Vec<_> = examples
             .iter()
-            .map(|example| estimate(&example.deduction))
+            .map(|example| estimate(&example.deduction, &example.position.puzzle))
             .collect();
         estimates.sort_unstable();
         assert_eq!(estimates[1], technique.cost(), "{}", technique.id());
@@ -162,9 +174,9 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             (VariantTechnique::Arrow | VariantTechnique::PillArrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
                 Difficulty::Easy
             }
-            // The price reflects confirming the local candidates. Finding an
-            // overlap that couples both types of rule belongs in Hard.
-            (VariantTechnique::EntropyQuadruple, _) => Difficulty::Hard,
+            // Finding a relationship across overlapping clues or a shared key
+            // needs more planning than confirming a single candidate.
+            (VariantTechnique::EntropyQuadruple | VariantTechnique::LetteredQuadruples, _) => Difficulty::Hard,
             (_, 27..=68) => Difficulty::Medium,
             _ => Difficulty::Hard,
         };
