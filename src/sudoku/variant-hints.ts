@@ -295,9 +295,17 @@ function explainLinkedClue(
       case 'house': return houseLabel(check.scope.house)
     }
   }
-  const pairRule = (check: typeof conflict) => check.scope.type === 'pair' ? constraintClue({
-    type: 'constraint', rules: check.scope.rules, cells: check.cells, domains: check.domains,
-  }, puzzle, at, []).description + ' ' : ''
+  const pairRule = (check: typeof conflict) => {
+    if (check.scope.type !== 'pair') return ''
+    const rule = puzzle.rules?.[check.scope.rules[0]]
+    if (rule?.type === 'palindrome' || rule?.type === 'clone') {
+      const [a, b] = check.cells.map(at)
+      return `${a} and ${b} must match under the ${rule.type === 'palindrome' ? 'Palindrome' : 'Clone'} rule. `
+    }
+    return constraintClue({
+      type: 'constraint', rules: check.scope.rules, cells: check.cells, domains: check.domains,
+    }, puzzle, at, []).description + ' '
+  }
   const steps = checks.map((check, index) => {
     const later = new Set([...checks.slice(index + 1), conflict].flatMap(step => step.cells))
     const updates = check.cells.flatMap((cell, i) => check.domains[i] === check.supported[i]

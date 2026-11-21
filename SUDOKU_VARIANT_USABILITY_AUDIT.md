@@ -289,3 +289,12 @@ Between the Dots now completes its 163-step walk at Hard with 4,715 points. The 
 Play shows the checks in order, including the digits or cells that fail in the final house. The same evidence is available through ranked hints, Technique Finder, the walkthrough, and the worked Learn example. Three practice positions estimate 78, 78, and 88 points, setting the 78-point cost. Saved ratings refresh at variant scoring version 17 when the puzzle combines a Between Line with a supported pair clue.
 
 Nine alternating warmed Wasm samples on Darwin arm64 measured median thread CPU time for the published puzzle. Rating fell from 154.3 to 77.5 ms. Exact verification returned the same solution and took 3.7 to 5.1 ms. Opening candidates were identical and took 0.067 to 0.073 ms. Ranked opening hints kept ten choices and took 0.359 to 0.406 ms. Cauldron kept its complete walkthrough and Between, the Lines kept its existing logic and eight opening choices.
+
+
+## Palindrome 14
+
+The published zero-given Palindrome 14 keeps three Palindromes, seven inequalities, and five white dots. The logical path advances from nine to twelve steps. At the old stall, two short proofs remove 2 from R3C8 and 9 from R5C8. Both use the white dot and inequality in column 8. A third hint follows a Palindrome from R2C7 to R5C8 and rules out 9 there too. The three actions agree with independent checks of the authored clues. Technique Finder and the hint pages agree on the available actions.
+
+For a stalled 9 × 9 variant, the Solution panel keeps the last logical position and can show the verified exact grid as a separate choice. The exact grid comes from the saved solution after the engine checks the full rule definition with all digits supplied. The walkthrough and score still describe only the logical deductions.
+
+In 21 alternating, warmed Node/Wasm samples, median opening hints took 1.08 to 1.20 ms and retained seven choices. At the old stall, the request went from zero choices in 1.35 ms to three in 1.77 ms. The extra steps move median rating time from 1.52 to 2.69 ms. Validation of the filled grid for the Solution panel took 0.04 ms. These measurements exclude worker transfer and rendering.

@@ -47,6 +47,11 @@ function pairSupport(rules: VariantRule[], [a, b]: number[], domains: number[]) 
     if (!rules.every(rule => {
       if (rule.type === 'inequality') return rule.less === a ? x < y : y < x
       if (rule.type === 'adjacent-total') return x !== y && x + y === rule.sum
+      if (rule.type === 'palindrome') {
+        const at = rule.cells.indexOf(a)
+        return at >= 0 && rule.cells[rule.cells.length - 1 - at] === b && x === y
+      }
+      if (rule.type === 'clone') return rule.groups.some(group => group.includes(a) && group.includes(b)) && x === y
       return rule.type === 'kropki' || rule.type === 'xv'
     })) continue
     supports[0] |= bit(x)

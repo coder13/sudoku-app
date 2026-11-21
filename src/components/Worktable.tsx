@@ -69,7 +69,7 @@ import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionPath, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
+import { SolutionPath, solutionEndIndex, solutionEndSummary, solutionStatus, verifiedSolutionSummary, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
@@ -596,8 +596,9 @@ export function Worktable({
     setCandidatePreviewCell(null)
   })
   const trace = solutionPath?.status === 'ready' ? solutionPath.trace : undefined
-  const solutionStep = Math.min(solutionView?.step ?? 0, trace?.steps.length ?? 0)
-  const previewPosition = trace?.positions?.[solutionStep]
+  const solutionStep = Math.min(solutionView?.step ?? 0, trace ? solutionEndIndex(trace) : 0)
+  const exactPosition = trace && 'exactPosition' in trace && solutionStep > trace.steps.length ? trace.exactPosition : undefined
+  const previewPosition = exactPosition ?? trace?.positions?.[solutionStep]
   const exactFogSolution = trace && 'exact' in trace && trace.exact && solutionStep === trace.steps.length
   const solutionFog = previewing && !exactFogSolution ? fogView(variant, previewPosition?.entries) : undefined
   const replayedSolutionStep = useMemo(() => trace && replayStep(trace, solutionStep), [trace, solutionStep])
@@ -616,9 +617,10 @@ export function Worktable({
     ? describeHint(replayedSolutionStep.deduction, {
       difficulty: solutionStepDifficulty, cellReferenceStyle, gridSize,
     })
-    : trace && solutionStep === trace.steps.length
-      ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined)
-      : null
+    : exactPosition ? verifiedSolutionSummary
+      : trace && solutionStep === trace.steps.length
+        ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined)
+        : null
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || completed)

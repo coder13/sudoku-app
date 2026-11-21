@@ -21,7 +21,7 @@ test('the published Between the Dots walkthrough replays independently checked c
   const { game, grade } = await prepareImportedPuzzle(source.code)
   assert.ok(game.variant)
   assert.equal(game.variant.solution, source.solution)
-  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['hard', 4715, 17])
+  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['hard', 4715, 18])
   const old = { ...game, variantRatingVersion: 16, difficulty: null, score: null }
   assert.ok(puzzleGradeIsStale(old))
   const rerated = applyPuzzleGrade(old, await ratePuzzle(game.givens, game.variant))

@@ -705,11 +705,17 @@ export function variantRuleSections(puzzle: VariantPuzzle, fog?: FogDefinition):
   return [...sections.values()]
 }
 
-export function hasBetweenAndPairClues(rules: VariantPuzzle['rules'], layouts: readonly VariantClueLayout[] = []) {
-  return Boolean(rules?.some(rule => rule.type === 'between') && (
-    rules.some(rule => rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
+function hasPairClues(rules: VariantPuzzle['rules'], layouts: readonly VariantClueLayout[]) {
+  return rules?.some(rule => rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
     || layouts.some(layout => layout.type === 'adjacent-total' || layout.type === 'inequality' || layout.type === 'markers')
-  ))
+}
+
+export function hasBetweenAndPairClues(rules: VariantPuzzle['rules'], layouts: readonly VariantClueLayout[] = []) {
+  return Boolean(rules?.some(rule => rule.type === 'between') && hasPairClues(rules, layouts))
+}
+
+export function hasMatchingAndPairClues(rules: VariantPuzzle['rules'], layouts: readonly VariantClueLayout[] = []) {
+  return Boolean(rules?.some(rule => rule.type === 'palindrome' || rule.type === 'clone') && hasPairClues(rules, layouts))
 }
 
 export function hasPrintedKropki(rules: VariantPuzzle['rules']) {

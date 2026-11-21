@@ -17,18 +17,7 @@ impl CompiledVariant {
         position: &ProofPosition<'_>,
         proofs: &mut Vec<VariantDeduction>,
     ) {
-        let pairs = self
-            .pair_clues
-            .iter()
-            .enumerate()
-            .filter_map(|(index, clue)| {
-                (matches!(
-                    clue.source.id,
-                    "kropki" | "xv" | "adjacent-total" | "inequality"
-                ) && clue.binary_relation().is_some())
-                .then_some(Scope::Pair(index))
-            })
-            .collect::<Vec<_>>();
+        let pairs: Vec<_> = self.numeric_pair_scopes().collect();
         if pairs.is_empty() {
             return;
         }
@@ -129,7 +118,7 @@ impl CompiledVariant {
                 index += 1;
             }
         }
-        if !used.iter().any(|scope| matches!(scope, Scope::Pair(_))) {
+        if !used.iter().any(|scope| matches!(scope, Scope::Pair(..))) {
             return None;
         }
 
@@ -217,7 +206,7 @@ mod tests {
         let mut domains = [DIGITS; CELLS];
         domains[9] = digit_bit(4);
         domains[10] = digit_bit(2) | digit_bit(6);
-        let scope = Scope::Pair(0);
+        let scope = Scope::Pair(0, 0);
         assert_eq!(compiled.scope_cells(scope), &[9, 10]);
 
         let mut reports = Vec::new();
