@@ -33,6 +33,8 @@ The browser compares normalized DOM trees after each update. This includes tags,
 
 The regression also checks theme fills independently for diagonal, Windoku, and Jigsaw cells. It omits the superseded baseline diagonal lines and Windoku outlines from the comparison when those rules are out of focus. Focused outlines and other clues still go through the full geometry comparison.
 
+Grouped chain behavior postdates the pinned baseline. Before the DOM comparison, the current Board must match the supplied group identities, outline geometry, colors, opacity, labels, complete accessible description, and selected candidates. The comparison then omits only those checked group outlines and descriptions and restores the baseline's single-candidate selection state. Link geometry, existing description references, and other candidate attributes remain in the comparison. Fixtures cover linked groups, explicit groups, mixed-digit groups, selection changes, and cleanup. The pinned baseline files and hashes stay unchanged.
+
 Fixtures cover every `VariantRule` type, combined rules, jigsaw regions, 4×4 and both 6×6 box shapes, center and corner notes, candidate previews, player colors, annotations, links, highlighting modes, cropped regions, guides, overlays, and mode badges. Input data is frozen.
 
 Interaction checks compare callback arguments, current targets, callback replacement, candidate focus and keyboard navigation, mouse and touch hover, painting priority, refs, link selection, and native element changes when callbacks appear or disappear.

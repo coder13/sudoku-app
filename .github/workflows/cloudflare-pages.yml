@@ -54,7 +54,7 @@ jobs:
           node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
 
       - name: Check grouped chain tools
-        if: github.event_name == 'pull_request'
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         run: node --experimental-strip-types scripts/check-grouped-chains.mjs --output tools/react-board-performance/results/grouped-chains-ci.json --screenshots tools/react-board-performance/results/grouped-chains-screenshots
 
       - name: Upload grouped chain checks

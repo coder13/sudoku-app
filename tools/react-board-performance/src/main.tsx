@@ -13,6 +13,7 @@ import { regionMembership, variantHouseFillCells } from '../../../src/sudoku/var
 import { runComparison, type BoardBenchmarkApi, type ComparisonOptions } from './benchmark'
 import { createFixture, reduceAction, type Action, type BoardState, type Implementation } from './model'
 import { propsFromState, scenarios, type BoardProps } from './fixtures'
+import { checkedGroupAdditions } from './grouped-parity'
 
 applyTheme(document.documentElement, 'violet', 'light')
 const root = document.querySelector<HTMLElement>('#board-root')!
@@ -77,10 +78,12 @@ function replacedHouseClues(): Set<Element> {
 function snapshot(includeFades = false): NormalNode[] {
   const ids = new Map([...root.querySelectorAll('[id]')].map((element, index) => [element.id, `local-id-${index}`]))
   const replaced = implementation === 'baseline' ? replacedHouseClues() : new Set<Element>()
+  const groups = implementation === 'optimized' ? checkedGroupAdditions(root, props) : undefined
   function normalize(node: Node): NormalNode | null {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || null
     if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return null
     if (replaced.has(node)) return null
+    if (groups?.ignored.has(node)) return null
     if (!includeFades && node.getAttribute('data-board-fade') === 'exit') return null
     const children = [...node.childNodes].map(normalize).filter((item): item is NormalNode => item !== null)
     if (!includeFades && node.classList.contains('candidate-marks') && !children.length) return null
@@ -90,6 +93,11 @@ function snapshot(includeFades = false): NormalNode[] {
       if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
       let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board').sort().join(' ')
         : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
+      if (node === groups?.grid && attr.name === 'aria-describedby' && groups.description) {
+        value = value.split(/\s+/).filter(id => id !== groups.description!.id).join(' ')
+        if (!value) continue
+      }
+      if (attr.name === 'aria-pressed' && groups?.pressed.has(node)) value = groups.pressed.get(node)!
       if ((attr.name === 'class' || attr.name === 'style') && !value) continue
       if (attr.name === 'id' && ids.has(value)) value = ids.get(value)!
       else for (const [id, replacement] of ids) value = value.split(`url(#${id})`).join(`url(#${replacement})`)
