@@ -18,9 +18,6 @@ use packing::{Family, compatible_support};
 #[cfg(feature = "variants")]
 mod witnesses;
 
-#[cfg(feature = "variants")]
-const COMPLETION_PROBE_NODES: u32 = 4096;
-
 pub(crate) struct OverlaySearch<'a> {
     geometry: Option<Geometry<'a>>,
     geometry_evidence: OnceCell<PatternOverlayGeometry>,
@@ -44,6 +41,11 @@ impl OverlaySearch<'static> {
 }
 
 impl<'a> OverlaySearch<'a> {
+    // Geometric witnesses are shared by overlay and the classic proof checks.
+    // A failed probe leaves the exact overlay and logical fallbacks available.
+    #[cfg(feature = "variants")]
+    pub(crate) const COMPLETION_PROBE_NODES: u32 = 16_384;
+
     #[cfg(any(
         feature = "variants",
         all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))
@@ -210,7 +212,7 @@ impl<'a> OverlaySearch<'a> {
             // current position's witnesses when a fresh scan would do so.
             #[cfg(feature = "variants")]
             if !group.is_power_of_two() || self.geometry.is_some() {
-                self.completion_support(COMPLETION_PROBE_NODES);
+                self.completion_support(Self::COMPLETION_PROBE_NODES);
             }
             return support;
         }
@@ -230,7 +232,7 @@ impl<'a> OverlaySearch<'a> {
             let witnesses = if group.is_power_of_two() && self.geometry.is_none() {
                 witnessed.get()
             } else {
-                self.completion_support(COMPLETION_PROBE_NODES)
+                self.completion_support(Self::COMPLETION_PROBE_NODES)
             };
             if let Some(witnesses) = witnesses {
                 for digit in bit_indices(group) {
