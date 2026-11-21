@@ -1,15 +1,16 @@
+import { validAuthoredCornerPaths, type AuthoredCornerPath } from '../sudoku/authored-artwork.ts'
 import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../sudoku/imported-colors.ts'
 import { validImportedDrawings, type ImportedDrawing } from '../sudoku/imported-drawings.ts'
+import { numberAnnotationTokenLength } from './import-token-limits.ts'
 
 export type NumberImportAnnotations = {
   givenColors?: ImportedCellColors
   givenDrawings?: readonly ImportedDrawing[]
+  authoredPaths?: readonly AuthoredCornerPath[]
   cellColors?: ImportedCellColors
   candidateColors?: CandidateColors<string>
   drawings?: readonly ImportedDrawing[]
 }
-
-export const numberAnnotationTokenLength = 11_000
 
 export function hasPlayerNumberAnnotations(annotations?: NumberImportAnnotations) {
   return Boolean(annotations?.cellColors || annotations?.candidateColors || annotations?.drawings)
@@ -17,9 +18,11 @@ export function hasPlayerNumberAnnotations(annotations?: NumberImportAnnotations
 
 export function encodeNumberImportAnnotations(annotations?: NumberImportAnnotations) {
   if (!annotations) return ''
-  const { givenColors, givenDrawings, cellColors, candidateColors, drawings } = annotations
-  if (!givenColors && !givenDrawings && !cellColors && !candidateColors && !drawings) return ''
-  const encoded = btoa(JSON.stringify([givenColors, givenDrawings, cellColors, candidateColors, drawings]))
+  const { givenColors, givenDrawings, cellColors, candidateColors, drawings, authoredPaths } = annotations
+  if (!givenColors && !givenDrawings && !cellColors && !candidateColors && !drawings && !authoredPaths) return ''
+  // Keep the existing five-slot format for links without authored paths.
+  const fields = [givenColors, givenDrawings, cellColors, candidateColors, drawings, ...(authoredPaths ? [authoredPaths] : [])]
+  const encoded = btoa(JSON.stringify(fields))
     .replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
   if (encoded.length > numberAnnotationTokenLength) throw new Error('This puzzle has too many annotations to save in a play link.')
   return '.a' + encoded
@@ -43,13 +46,14 @@ function validCandidates(colors: unknown, size: number): colors is CandidateColo
 export function readNumberImportAnnotations(encoded: string, size: number): NumberImportAnnotations {
   if (!encoded.length || encoded.length > numberAnnotationTokenLength) throw new Error('Invalid puzzle annotations.')
   const data: unknown = JSON.parse(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')))
-  if (!Array.isArray(data) || data.length !== 5) throw new Error('Invalid puzzle annotations.')
-  const [givenColors, givenDrawings, cellColors, candidateColors, drawings] = data
+  if (!Array.isArray(data) || data.length !== 5 && data.length !== 6) throw new Error('Invalid puzzle annotations.')
+  const [givenColors, givenDrawings, cellColors, candidateColors, drawings, authoredPaths] = data
   if (givenColors !== null && !validCells(givenColors, size) ||
     givenDrawings !== null && !validImportedDrawings(givenDrawings, size) ||
     cellColors !== null && !validCells(cellColors, size) ||
     candidateColors !== null && !validCandidates(candidateColors, size) ||
-    drawings !== null && !validImportedDrawings(drawings, size)) throw new Error('Invalid puzzle annotations.')
+    drawings !== null && !validImportedDrawings(drawings, size) ||
+    data.length === 6 && !validAuthoredCornerPaths(authoredPaths, size)) throw new Error('Invalid puzzle annotations.')
   return { ...(givenColors && { givenColors }), ...(givenDrawings && { givenDrawings }), ...(cellColors && { cellColors }),
-    ...(candidateColors && { candidateColors }), ...(drawings && { drawings }) }
+    ...(candidateColors && { candidateColors }), ...(drawings && { drawings }), ...(authoredPaths && { authoredPaths }) }
 }

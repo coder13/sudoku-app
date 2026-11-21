@@ -95,10 +95,35 @@
 
 .number-puzzle-preview { width: var(--board-frame-width, 100%); }
 
-.number-puzzle-grid > :not(.board-quick-draw) {
+.number-puzzle-grid > :is(.number-puzzle-cell, .number-puzzle-block) {
   aspect-ratio: 1;
   min-width: 0;
   min-height: 0;
+}
+
+/* Keep line clues below digits, candidates, and edge clues. */
+.number-puzzle-line-clues {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.number-puzzle-line-clues .variant-modular polyline { stroke-width: .18; }
+
+.number-puzzle-grid > .board-authored-artwork {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+}
+
+.number-puzzle-grid[data-line-clues] .number-puzzle-cell:focus-visible { z-index: auto; }
+
+.number-puzzle-grid[data-line-clues] :is(.number-puzzle-digit, .number-puzzle-notes,
+  .number-puzzle-corner-notes, .number-puzzle-center-notes, .number-puzzle-cell-label) {
+  z-index: 1;
 }
 
 .number-puzzle-cell {
@@ -273,6 +298,8 @@
   font-size: clamp(.65rem, calc(26cqi / var(--number-puzzle-columns)), .9rem);
   line-height: 1;
 }
+
+.number-puzzle-cell-label[data-below-quadruple] { top: calc(28cqi / var(--number-puzzle-columns)); }
 
 .number-difficulty-preview {
   display: grid;

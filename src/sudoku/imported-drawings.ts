@@ -67,6 +67,10 @@ export function readCoachQuickDraw(data: Record<string, unknown>, size = 9): rea
     if (!record(marks)) throw invalid()
     for (const [key, value] of Object.entries(marks)) {
       if (!record(value)) throw invalid()
+      // Coach can save a pencil mask with no grid coordinate. It has no cell to annotate.
+      if (field === 'cells' && key === 'NaN,NaN' && Object.keys(value).length === 1 &&
+        typeof value.cellCandidates === 'number' && Number.isInteger(value.cellCandidates) &&
+        value.cellCandidates >= 0 && value.cellCandidates < (1 << size)) continue
       if (field === 'quickDrawLineSegments') {
         const ends = key.split('=>')
         const from = readPoint(ends[0]), to = readPoint(ends[1] ?? '')

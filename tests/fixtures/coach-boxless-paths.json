@@ -1,0 +1,12 @@
+{
+  "url": "https://sudoku.coach/en/s/GLaG",
+  "publication": {
+    "sudoku_id": "GLaG",
+    "sudoku": "SCv7_32_f2ear4m1991j2425vsiuneu89gj36idnn9qefcjka7df025kpvpfk55kujfkr9am864hncoas5e2ce9n4srkotfrb3fokmr4n2kgptb97itcasg56va9ecmuqugstre0v7lslvkviqtkte3b0fjmine7pecebiellldp11srbs7uqknem3fdas9r7nmsmgot9c5hritg5ufv19nceqbpqhsbm13v044ft2ghtpkhfhtseo9tlnrmabij0d7uectua8224c11222102aa63l4c664c13602136aabmv0ci2011g01qgr5qm2008b090a8is61272126oomaa8o7d6a3347u0tahfk7jbn3e057q5a2mphjfb5nm9spums6nhjipggiphggl2phg02lgnkqcpk846qlk082lk5un6ch04t240lm54ujisj1h4h10p8kgnj0p44ghg0gvc9jj0gjv4bp3ntubc3qbfqklv7et7kg4ta",
+    "solution": "123456789912345678891234567789123456678912345567891234456789123345678912234567891",
+    "name": "Too simple?",
+    "description": "The answer is simple, but if you solve this honestly, there are many nasty forcing chains. This would be a great April Fool's joke! I'm sure this must have been done before.",
+    "custom_constraints": false,
+    "blocked": false
+  }
+}

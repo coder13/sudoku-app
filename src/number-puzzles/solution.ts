@@ -1,6 +1,8 @@
 type Placement = { cell: number; value: number }
 
 type SolutionBoard<Hint extends Placement> = {
+  // Each hint in the list follows from the position and the hints before it.
+  solutionHints?: (values: readonly number[]) => readonly Hint[]
   hints: (values: readonly number[], limit?: number) => readonly Hint[]
   check: (values: readonly number[], mode: 'solution') => { complete: boolean }
   solve: () => readonly number[] | null
@@ -13,11 +15,16 @@ export function numberSolution<Hint extends Placement>(board: SolutionBoard<Hint
   let values = positions[0]
   let complete = board.check(values, 'solution').complete
   while (!complete) {
-    const hint = board.hints(values, 1)[0]
-    if (!hint || !editable[hint.cell] || values[hint.cell] || !hint.value) break
-    values = values.map((value, cell) => cell === hint.cell ? hint.value : value)
-    steps.push(hint)
-    positions.push(values)
+    const hints = board.solutionHints?.(values) ?? board.hints(values, 1)
+    const before = steps.length
+    for (const hint of hints) {
+      if (!editable[hint.cell] || values[hint.cell] || !hint.value) break
+      values = values.map((value, cell) => cell === hint.cell ? hint.value : value)
+      steps.push(hint)
+      positions.push(values)
+      if (!board.solutionHints) break
+    }
+    if (steps.length === before) break
     complete = board.check(values, 'solution').complete
   }
   if (!complete) {

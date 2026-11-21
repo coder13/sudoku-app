@@ -32,9 +32,9 @@ test('Coach odd/even segments preserve both marker kinds, cell order and native 
   assert.equal(variantRuleDescriptions(fixture.puzzle).length, 3)
 })
 
-test('unmodified official Coach demos establish the source shape without importing unsupported 3×3 grids', async () => {
+test('official Coach parity diagrams retain the source shape and reject values outside the 3 × 3 digit range', async () => {
   for (const example of official.examples) {
-    await assert.rejects(detectPuzzle(example.coach), /9 × 9/)
+    await assert.rejects(detectPuzzle(example.coach), /progress has invalid placed digits/)
     // Only the grid size changes; the official rule payload remains intact.
     const { variant } = await detectPuzzle(coachCode({ gridSize: 9, givenConstraints: example.data.givenConstraints }))
     const constraint = example.data.givenConstraints[0]

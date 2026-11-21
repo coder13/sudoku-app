@@ -1,10 +1,21 @@
-import { encodeNumberImportAnnotations, hasPlayerNumberAnnotations, numberAnnotationTokenLength, readNumberImportAnnotations, type NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
-import { encodeNumberImportPosition, numberPositionTokenLength, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
+import { encodeLatinDiagonals, readLatinDiagonals } from '../latin/diagonals.ts'
+import { encodeAdjacentClues, readAdjacentClues } from '../latin/adjacent-clues.ts'
+import type { Inequality } from '../futoshiki/inequality-rules.ts'
+import { encodeNumberImportAnnotations, hasPlayerNumberAnnotations, readNumberImportAnnotations, type NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
+import { encodeNumberImportPosition, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
 import type { NumberPosition } from '../number-puzzles/progress.ts'
 import { isImportedColor } from '../sudoku/imported-colors.ts'
+import { encodeWhispers, readWhispers } from '../latin/whispers.ts'
+import { encodeLatinParity, readLatinParity } from '../latin/parity.ts'
+import { encodeLatinQuadruples, readLatinQuadruples } from '../latin/quadruples.ts'
+import { encodeLatinCellGroups, readLatinCellGroups } from '../latin/extra-regions.ts'
+import { encodeLatinPathClues, readLatinPathClues, type LatinClues } from '../latin/path-clues.ts'
 import { cellLabel, solveLatin } from '../latin/engine.ts'
 import type { CalcudokuEntry } from './catalog.ts'
 import { createCalcudoku, type Cage, type CageOperator } from './engine.ts'
+import { matchImportedCalcudoku } from './import-token.ts'
+
+export { importedCalcudokuToken } from './import-token.ts'
 
 export type CalcudokuImportCage = {
   label: string
@@ -13,11 +24,12 @@ export type CalcudokuImportCage = {
   distinct?: true
 }
 
-export type CalcudokuImport = {
+export type CalcudokuImport = LatinClues & {
   size: number
   givens: string
   cages: CalcudokuImportCage[]
   colors: string[]
+  inequalities?: readonly Inequality[]
   position?: NumberPosition
   annotations?: NumberImportAnnotations
 }
@@ -29,6 +41,8 @@ const signs = new Map<string, CageOperator>([
 export const importedOperatorNames = {
   equal: 'Fixed digit', add: 'Addition', multiply: 'Multiplication', subtract: 'Subtraction', divide: 'Division',
 } satisfies Record<CageOperator, string>
+// Portable links from before the shared Coach color reader also allowed these CSS colors.
+const legacyColors = new Set(['black', 'brown', 'gray', 'pink', 'turquoise', 'teal'])
 const twoCellOperators = ['add', 'multiply', 'subtract', 'divide'] as const
 const multiCellOperators = ['add', 'multiply'] as const
 
@@ -44,7 +58,7 @@ function importedCage(label: unknown, cells: unknown, distinct: boolean, size: n
   }
   const sign = signs.get(label.at(-1)!)
   if (distinct && sign || sign && cells.length === 1) throw new Error('This Sudoku Coach puzzle has an invalid cage operation.')
-  const operator = cells.length === 1 ? 'equal' : distinct ? 'add' : sign
+  const operator = distinct ? 'add' : cells.length === 1 ? 'equal' : sign
   return { label, cells: [...cells].sort((a, b) => a - b), operator, ...(distinct && { distinct: true }) }
 }
 
@@ -60,7 +74,9 @@ function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-export function readCoachCalcudoku(data: Record<string, unknown>, colors: string[]): CalcudokuImport {
+export function readCoachCalcudoku(
+  data: Record<string, unknown>, colors: string[], inequalities: readonly Inequality[], clues: LatinClues,
+): CalcudokuImport {
   const size = data.gridSize
   const givens = data.givenDigits ?? (typeof size === 'number' ? '0'.repeat(size ** 2) : undefined)
   assertSizeAndGivens(size, givens)
@@ -87,11 +103,11 @@ export function readCoachCalcudoku(data: Record<string, unknown>, colors: string
       if (cages.length > size ** 2) throw new Error('This Sudoku Coach puzzle has too many cages.')
     }
   }
-  return { size, givens: givens as string, cages, colors: colors.some(Boolean) ? colors : [] }
+  return { size, givens: givens as string, cages, colors: colors.some(Boolean) ? colors : [], inequalities, ...clues }
 }
 
 function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Partial<Record<number, CageOperator>>>): CalcudokuEntry {
-  const { size, givens, colors, annotations } = source
+  const { size, givens, colors, annotations, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals } = source
   const fixed = [...givens].map(Number)
   const labels: Record<number, string> = {}
   const ruleNotes: string[] = []
@@ -117,12 +133,18 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
   for (const [cell, target] of fixed.entries()) {
     if (target && !covered.has(cell)) cages.push({ cells: [cell], target, operator: 'equal' })
   }
-  const puzzle = createCalcudoku(size, cages, fixed)
+  const inequalities = [...(source.inequalities ?? [])].sort((a, b) => a.less - b.less || a.greater - b.greater)
+  const puzzle = createCalcudoku(size, cages, fixed, { allowUncaged: true, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals })
+  if (inequalities.length) ruleNotes.push('The point of each inequality sign faces the smaller digit.')
+  // Each cell index occupies two base-36 characters.
+  const signs = inequalities.map(({ less, greater }) => [less, greater]
+    .map(cell => cell.toString(36).padStart(2, '0')).join('')).join('')
+  const rules = signs ? `.i${signs}` : ''
   const bytes = new TextEncoder().encode(JSON.stringify([size, givens, recipe, colors]))
   const payload = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
   const progress = withImportedNumberPosition(source.position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
   return {
-    id: `c1.${payload}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
+    id: `c1.${payload}${rules}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinCellGroups('r', extraRegions)}${encodeLatinCellGroups('u', unnumberedCages)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${antiKing ? '.j1' : ''}${encodeLatinDiagonals(diagonals)}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
     imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, annotations, ...progress,
   }
 }
@@ -139,17 +161,11 @@ export function prepareImportedCalcudoku(source: CalcudokuImport, operators: Rea
   return verifyImportedCalcudoku(calcudokuImportEntry(source, operators))
 }
 
-const importToken = /^c1\.([A-Za-z0-9_-]{1,4093})(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
-
-export function importedCalcudokuToken(value: unknown) {
-  return typeof value === 'string' && value.length <= 4096 + 2 + numberPositionTokenLength + 2 + numberAnnotationTokenLength &&
-    importToken.test(value) ? value : undefined
-}
-
 export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined {
-  if (!importedCalcudokuToken(token)) return
+  const match = matchImportedCalcudoku(token)
+  if (!match) return
   try {
-    const [, payload, progress, marks] = importToken.exec(token)!
+    const [, payload, signs, adjacent, whisperLines, paths, regions, unnumbered, entropy, quadClues, parityMarks, antiKnight, antiKing, diagonalMask, progress, marks] = match
     const bytes = Uint8Array.from(atob(payload.replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
     const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
     if (!Array.isArray(data) || data.length !== 4) return
@@ -157,17 +173,35 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
     assertSizeAndGivens(size, givens)
     if (!Array.isArray(recipe) || recipe.length > size ** 2 || !Array.isArray(colors) ||
       colors.length && colors.length !== size ** 2 ||
-      colors.some(color => color !== '' && !isImportedColor(color))) return
+      colors.some(color => color !== '' && !isImportedColor(color) && !legacyColors.has(color))) return
     const operators: Record<number, CageOperator> = {}
     const cages = recipe.map((item: unknown) => {
       if (!Array.isArray(item) || item.length !== 4 || typeof item[3] !== 'boolean') throw new Error('Invalid cage.')
       const cage = importedCage(item[0], item[1], item[3], size)
+      // Older links treated single-cell Killer totals as givens.
+      if (item[3] && cage.cells.length === 1 && item[2] === 'equal') cage.operator = 'equal'
       operators[cage.cells[0]] = item[2]
       return cage
     })
+    const inequalities = signs?.match(/.{4}/g)?.map(edge => ({
+      less: Number.parseInt(edge.slice(0, 2), 36), greater: Number.parseInt(edge.slice(2), 36),
+    }))
     const position = progress ? readNumberImportPosition(progress, size) : undefined
     const annotations = marks ? readNumberImportAnnotations(marks, size) : undefined
-    const entry = calcudokuImportEntry({ size, givens, cages, colors, position, annotations }, operators)
+    const adjacentClues = adjacent ? readAdjacentClues(adjacent) : undefined
+    const whispers = whisperLines ? readWhispers(whisperLines) : undefined
+    const pathClues = paths ? readLatinPathClues(paths) : undefined
+    const extraRegions = regions ? readLatinCellGroups(regions) : undefined
+    const unnumberedCages = unnumbered ? readLatinCellGroups(unnumbered) : undefined
+    const entry = calcudokuImportEntry({
+      size, givens, cages, colors, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, position, annotations,
+      globalEntropy: entropy ? true : undefined,
+      quadruples: quadClues ? readLatinQuadruples(quadClues) : undefined,
+      parity: parityMarks ? readLatinParity(size, parityMarks) : undefined,
+      antiKnight: antiKnight ? true : undefined,
+      antiKing: antiKing ? true : undefined,
+      diagonals: readLatinDiagonals(diagonalMask),
+    }, operators)
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }
 }

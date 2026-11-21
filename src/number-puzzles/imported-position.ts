@@ -1,8 +1,5 @@
 import { emptyNumberPosition, type NumberPosition } from './progress.ts'
-
-// Each populated cell uses its index, placed digit, center mask, and corner mask.
-const cellLength = 7
-export const numberPositionTokenLength = 81 * cellLength
+import { positionTokenCellLength } from './import-token-limits.ts'
 
 export function withImportedNumberPosition(source: NumberPosition | undefined, givens: readonly number[], playerAnnotations = false) {
   if (!source && !playerAnnotations) return {}
@@ -38,11 +35,11 @@ export function encodeNumberImportPosition(position?: NumberPosition) {
 }
 
 export function readNumberImportPosition(encoded: string, size: number) {
-  if (!encoded.length || encoded.length % cellLength) throw new Error('Invalid number puzzle progress.')
+  if (!encoded.length || encoded.length % positionTokenCellLength) throw new Error('Invalid number puzzle progress.')
   const { values, notes } = emptyNumberPosition(size ** 2)
   const cornerNotes = Array<number>(values.length).fill(0)
   let previous = -1
-  for (let offset = 0; offset < encoded.length; offset += cellLength) {
+  for (let offset = 0; offset < encoded.length; offset += positionTokenCellLength) {
     const cell = Number.parseInt(encoded.slice(offset, offset + 2), 36)
     const value = Number(encoded[offset + 2])
     const center = Number.parseInt(encoded.slice(offset + 3, offset + 5), 36)
