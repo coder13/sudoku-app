@@ -10,6 +10,7 @@ import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { checkSandwichProof } from './helpers/sandwich-proof.ts'
+import { assertThermometerHouseProof } from './helpers/thermometer-house-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -36,16 +37,22 @@ for (const [index, source] of sources.entries()) {
     if (index < 2) {
       assert.equal(solution.rating.score.points, index === 0 ? 2564 : 1886)
       assert.equal(solution.steps.length, index === 0 ? 87 : 76)
+    } else {
+      assert.deepEqual(solution.rating.status, { solved: 'very-hard' })
+      assert.equal(solution.rating.score.points, 5942)
+      assert.equal(solution.steps.length, 163)
     }
     let play = game
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: await getVariantPlayOrder() })
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: await getVariantPlayOrder(source.puzzle) })
     for (const step of trace.steps) {
       for (const action of step.actions) {
         if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
         else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
       }
       const before = play
-      play = applyDeduction(play, step.actions, variantHouseMasks(source.puzzle, valuesOf(play), play.position.eliminations))
+      const masks = variantHouseMasks(source.puzzle, valuesOf(play), play.position.eliminations)
+      if (step.technique === 'thermometer-house-support') assertThermometerHouseProof(source.puzzle, valuesOf(play), masks, step)
+      play = applyDeduction(play, step.actions, masks)
       assert.deepEqual(undo(play).position, before.position)
       assert.deepEqual(redo(undo(play)).position, play.position)
     }
@@ -57,6 +64,33 @@ for (const [index, source] of sources.entries()) {
     assert.equal(await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: source.puzzle }, maxNodes: 20_000 }), source.solution)
   })
 }
+
+test('Thermo Sandwich keeps its ranked hints and reports no Unique Rectangle chains', async () => {
+  const { puzzle, solution } = sources[2]
+  const { game } = await prepareImportedPuzzle(share(puzzle))
+  const hints = await puzzleHints(game, 10, undefined, 859)
+  assert.equal(hints.available, 8)
+  assert.deepEqual((await puzzleHintPage(game.variant, 859, 0)).choices, hints.choices)
+  await runEngine({ type: 'release-hints', collection: 859 })
+  for (const hint of hints.choices) for (const action of hint.actions) {
+    if ('place' in action) assert.equal(action.place.digit, Number(solution[action.place.cell]))
+    else assert.notEqual(action.eliminate.digit, Number(solution[action.eliminate.cell]))
+  }
+
+  const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant!))
+  try {
+    for (const technique of [
+      'unique-rectangle-aic',
+      'unique-rectangle-discontinuous-nice-loop',
+      'unique-rectangle-continuous-nice-loop',
+    ]) {
+      assert.equal(await scan.count(technique), 0)
+      assert.equal((await puzzleHints(game, 'all', technique)).available, 0)
+    }
+  } finally {
+    scan.close()
+  }
+})
 
 test('disabled human techniques and explicit removals still enforce all Sandwich and companion rules', async () => {
   for (const source of sources) {

@@ -1,5 +1,5 @@
 mod group_sums;
-mod groups;
+pub(super) mod groups;
 mod inside_grid;
 pub(super) mod ray_houses;
 pub(super) mod renban_sum;
@@ -47,9 +47,23 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
+        match &self.kind {
+            LineKind::EqualSums(parts) if self.rule_id == "region-sum" => Some(parts),
+            _ => None,
+        }
+    }
+
     pub fn little_killer_sum(&self) -> Option<u16> {
         match self.kind {
             LineKind::Sum(total) => Some(total),
+            _ => None,
+        }
+    }
+
+    pub(super) fn group_line(&self) -> Option<&groups::GroupLine> {
+        match &self.kind {
+            LineKind::ThreeGroups(line) => Some(line),
             _ => None,
         }
     }

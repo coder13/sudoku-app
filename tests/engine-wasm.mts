@@ -11,7 +11,7 @@ import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 import { practiceClueAnnotations, practiceSearch } from '../src/sudoku/lesson-guidance.ts'
 import { lessonExample, variantLessonExercise, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { articles, lessonRoutes } from '../src/sudoku/lessons.ts'
-import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
+import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { generatePlayableVariant, playCandidates } from '../src/sudoku/variant-play.ts'
 import { WINDOKU_REGIONS, validVariantSave } from '../src/sudoku/variants.ts'
@@ -2485,7 +2485,7 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 11)
+  assert.equal(catalog.scoringVersion, 17)
   assert.ok(!catalog.defaultOrder.includes('little-killer-house-support'))
   assert.ok(!catalog.defaultOrder.includes('renban-sum-ray-houses'))
   assert.ok(!catalog.defaultOrder.includes('renban-locked-digit'))
@@ -2493,7 +2493,10 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.ok(!catalog.defaultOrder.includes('renban-group-counts'))
   assert.ok(!catalog.defaultOrder.includes('renban-sum'))
   assert.ok(!catalog.defaultOrder.includes('renban-sum-house'))
-  const expectedIds = new Set([...catalog.defaultOrder, 'little-killer-house-support', 'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house', ...classic.techniques.map(technique => technique.id)])
+  assert.ok(!catalog.defaultOrder.includes('group-line-house-support'))
+  assert.ok(!catalog.defaultOrder.includes('group-order-contradiction'))
+  assert.ok(!catalog.defaultOrder.includes('kropki-house-support'))
+  const expectedIds = new Set([...catalog.defaultOrder, 'region-sum-distinct', 'region-sum-house', 'thermometer-house-support', 'kropki-house-support', 'linked-clue-contradiction', 'group-line-house-support', 'group-order-contradiction', 'little-killer-house-support', 'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house', ...classic.techniques.map(technique => technique.id)])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
@@ -2504,6 +2507,11 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(costs.get('non-consecutive-bivalue'), 22)
   assert.equal(costs.get('non-consecutive-trivalue'), 24)
   assert.equal(costs.get('cage-house-sum'), 67)
+  assert.equal(costs.get('region-sum-distinct'), 67)
+  assert.equal(costs.get('region-sum-house'), 133)
+  assert.equal(costs.get('thermometer-house-support'), 64)
+  assert.equal(costs.get('kropki-house-support'), 48)
+  assert.equal(costs.get('linked-clue-contradiction'), 78)
   assert.equal(costs.get('little-killer-house-support'), 64)
   assert.equal(costs.get('renban-sum-ray-houses'), 79)
   assert.equal(costs.get('renban-locked-digit'), 40)
@@ -2556,9 +2564,12 @@ test('Windoku reproduces the public Sudoku Coach example with all four extra hou
 test('every playable variant generates its supported difficulties with a unique solution and usable hints', async (t) => {
   const { run } = engineRequests()
   const [variant, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty])))
+  const tiers = Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))
+  const defaultOrder = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, tiers)
 
   for (const id of Object.keys(variantSeeds) as (keyof typeof variantSeeds)[]) {
+    const techniqueOrder = id === 'thermometer' ? withMediumVariantTechniques(defaultOrder, tiers, ['thermometer-house-support'])
+      : id === 'kropki' ? withMediumVariantTechniques(defaultOrder, tiers, ['kropki-house-support']) : defaultOrder
     const levels = variantSeeds[id]
     for (const difficulty of Object.keys(levels) as (keyof typeof levels)[]) {
       await t.test(`${id} / ${difficulty}`, async () => {

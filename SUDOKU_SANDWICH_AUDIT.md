@@ -10,7 +10,7 @@ A Sandwich total is the sum strictly between the unique 1 and 9 in a full row or
 | --- | --- | --- | --- |
 | Bill Murphy, [American Food](https://www.gmpuzzles.com/blog/2025/10/sandwich-sudoku-by-bill-murphy/), 2025-10-21 | 16 / 8 | Independent unique, one search node | Hard, 2,564 points, 87 steps |
 | Philip Newman, [Leftovers](https://www.gmpuzzles.com/blog/2025/11/sandwich-sudoku-by-philip-newman/), 2025-11-30 | 24 / 9 | Independent unique, one search node | Hard, 1,886 points, 76 steps |
-| CaroBaro, [Thermo Sandwich](https://sudoku.coach/en/s/9VLq) | 0 / 13, plus seven thermometers | Independent unique, seven search nodes | Extreme, complete at 17,026 points, including dynamic forcing nets |
+| CaroBaro, [Thermo Sandwich](https://sudoku.coach/en/s/9VLq) | 0 / 13, plus seven thermometers | Independent unique, seven search nodes | Very Hard, complete at 5,942 points in 163 steps with Thermometer and house |
 
 The GMP fixtures preserve original grid/solution PDF links, their SHA-256 hashes, every printed given and outside total, and the printed completions. Both PDFs were rendered and checked. The Coach fixture preserves the complete original SCv7 code, decoded typed payload, published solution and metadata. No companion rule is removed. Removing Sandwich from any of these three controls produces multiple independent solutions.
 
@@ -42,6 +42,8 @@ Native calibration accepts twenty of twenty one-attempt Hard candidates per publ
 Focused contracts pass: six import/input/math tests, six component tests, twelve Wasm app-flow tests and strict TypeScript checks for the new contracts. The app component catalog covers 123 named components. Full suites pass 589 app tests and 373 Wasm contracts. The production build generates all 171 routes; three actual-build offline contracts verify every shell, precache entry and the packaged Wasm. The rebuilt local app Wasm is byte-identical to main, as are all five generated JSON files. All exact-head CI and deployment gates pass; release evidence follows below.
 
 The original research order placed Full House before Hidden Single (Box); the actual app order reverses those first two techniques. All remaining techniques match. Using the actual app order gives the Coach score of 17,026 consistently through direct protocol and app worker calls. The research score of 16,846 describes a different order, not the shipping app profile.
+
+The current Play order uses the 64-point Thermometer and house technique before higher-tier deductions. It reaches the same published grid in 163 steps. The table below retains the original measurements from the 17,026-point path. [Thermometer and house replay and paired timings](SUDOKU_VARIANT_USABILITY_AUDIT.md#thermometer-deductions-with-a-shared-house)
 
 ### Controlled runtime samples
 

@@ -1,16 +1,16 @@
 import { playVariantPuzzle } from './fog.ts'
 import { difficultyIndex } from './difficulty.ts'
-import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantClueLayout, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
-import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from './variant-generation.ts'
-import type { PlayableVariant, VariantGame } from './variants.ts'
+import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
+import { hasBetweenAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
-let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; firstBeyondHard: string | undefined }> | undefined
+let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
 
 function withRenbanTechniques(order: readonly string[]) {
   return order.flatMap(id => {
@@ -20,17 +20,29 @@ function withRenbanTechniques(order: readonly string[]) {
   })
 }
 
+function withGroupLineHouses(order: readonly string[]) {
+  return order.flatMap(id => id === 'skyscrapers' ? ['group-line-house-support', id] : [id])
+}
+
+function withRegionSumTechniques(order: readonly string[], sharedRegion = false) {
+  return order.flatMap(id => {
+    if (id === 'region-sum') return [id, 'region-sum-distinct']
+    if (id === 'skyscrapers' && sharedRegion) return [id, 'region-sum-house']
+    return [id]
+  })
+}
+
 function withLittleKillerHouses(order: readonly string[]) {
   return order.flatMap(id => id === 'little-killer' ? [id, 'little-killer-house-support'] : [id])
 }
 
-export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
+export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly VariantClueLayout[]) {
   playProfile ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
     .then(([catalog, classic]) => {
       const tiers = Object.fromEntries([...classic.techniques, ...catalog.techniques].map(technique => [technique.id, technique.difficulty]))
       const techniqueOrder = variantTechniqueOrder(catalog.defaultOrder, classic.difficultyOrder, tiers)
       const firstBeyondHard = techniqueOrder.find(id => difficultyIndex(tiers[id] ?? 'impossible') > difficultyIndex('hard'))
-      return { catalog, techniqueOrder, firstBeyondHard }
+      return { catalog, techniqueOrder, tiers, firstBeyondHard }
     })
     .catch((error) => {
       playProfile = undefined
@@ -39,38 +51,64 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   const rules = puzzle?.rules ?? []
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
-  if (!renbans.length && !rays.length) return playProfile
+  const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
+  const hasLinkedClues = hasBetweenAndPairClues(rules, layouts)
+  const hasKropki = hasPrintedKropki(rules)
+  const hasThermometer = rules.some(rule => rule.type === 'thermometer')
+  const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
+  const hasGroupPairs = hasEntropicLine && rules.some(rule =>
+    rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
+  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
   const hasRenbanGroups = renbans.filter(rule => rule.cells.length === 3 || rule.cells.length === 4).length >= 3
   const hasCompanion = joined.some(ray => renbans.some(renban =>
     renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
-  return playProfile.then(({ techniqueOrder: order, catalog, firstBeyondHard }) => {
+  return playProfile.then(({ techniqueOrder: order, catalog, tiers, firstBeyondHard }) => {
     const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
-    const scoped = rayOrder.flatMap(id => {
+    const groupOrder = hasEntropicLine ? withGroupLineHouses(rayOrder) : rayOrder
+    const sumOrder = regionSumLines.length ? withRegionSumTechniques(groupOrder, regionSumLines.length >= 2) : groupOrder
+    const scoped = sumOrder.flatMap(id => {
+      if (hasGroupPairs && id === 'group-line-house-support') return [id, 'group-order-contradiction']
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
-      if (hasRenbanGroups && id === firstBeyondHard) return ['renban-group-counts', id]
+      if (id === firstBeyondHard) return [
+        ...(hasRenbanGroups ? ['renban-group-counts'] : []),
+        ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+        id,
+      ]
       return [id]
     })
-    const techniqueOrder = hasRenbanGroups && !firstBeyondHard ? [...scoped, 'renban-group-counts'] : scoped
-    return { techniqueOrder, catalog, firstBeyondHard }
+    const withLateChecks = firstBeyondHard ? scoped : [
+      ...scoped,
+      ...(hasRenbanGroups ? ['renban-group-counts'] : []),
+      ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+    ]
+    const techniqueOrder = withMediumVariantTechniques(withLateChecks, tiers, [
+      ...(hasThermometer ? ['thermometer-house-support'] : []),
+      ...(hasKropki ? ['kropki-house-support'] : []),
+    ])
+    return { techniqueOrder, catalog, tiers, firstBeyondHard }
   })
 }
 
-export async function getVariantPlayOrder(puzzle?: VariantPuzzle) {
-  return (await getVariantPlayProfile(puzzle)).techniqueOrder
+export async function getVariantPlayOrder(puzzle?: VariantPuzzle, layouts?: readonly VariantClueLayout[]) {
+  return (await getVariantPlayProfile(puzzle, layouts)).techniqueOrder
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
-  const order = await getVariantPlayOrder()
+  const { techniqueOrder: order, tiers } = await getVariantPlayProfile()
   const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
-    : id === 'little-killer' ? withLittleKillerHouses(order) : order
+    : id === 'little-killer' ? withLittleKillerHouses(order)
+      : id === 'entropic' ? withGroupLineHouses(order)
+        : id === 'region-sum' ? withRegionSumTechniques(order, true)
+          : id === 'thermometer' ? withMediumVariantTechniques(order, tiers, ['thermometer-house-support'])
+            : id === 'kropki' ? withMediumVariantTechniques(order, tiers, ['kropki-house-support']) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')

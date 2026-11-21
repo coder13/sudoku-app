@@ -42,6 +42,12 @@ export function variantTechniqueOrder(variantOrder: readonly string[], classicOr
     .sort((a, b) => difficultyIndex(difficulties[a] ?? 'impossible') - difficultyIndex(difficulties[b] ?? 'impossible'))
 }
 
+export function withMediumVariantTechniques(order: string[], tiers: Partial<Record<string, Difficulty>>, techniques: readonly string[]) {
+  if (!techniques.length) return order
+  const index = order.findIndex(id => difficultyIndex(tiers[id] ?? 'impossible') > difficultyIndex('medium'))
+  return index < 0 ? [...order, ...techniques] : [...order.slice(0, index), ...techniques, ...order.slice(index)]
+}
+
 export function variantGenerationRequest(
   id: PlayableVariant, difficulty: Difficulty, recipe: VariantSeed, techniqueOrder: readonly string[],
   seed = recipe.seed,

@@ -379,7 +379,6 @@ export function Worktable({
   const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
   const solved = playground ? isSolved(game) : completed
   const mobileHintOpen = mobile && hintRevealed && !draft && !solved
-  const showMobileHintCard = mobileHintOpen || rearranging
   const hint = hintState?.position === hintPosition ? hintState : null
   const visibleHint = hintRevealed ? hint : null
   const hintLoading = hintRevealed && busy && !visibleHint
@@ -2944,7 +2943,7 @@ export function Worktable({
               : activeDesktopTab.id === 'rules' ? rulesPanel : solutionPathPanel,
         } : undefined}
         mobile={{
-          puzzleId: game.id, rearranging, withHint: showMobileHintCard,
+          puzzleId: game.id, rearranging, withHint: mobileHintOpen || Boolean(solutionHintPanel) || rearranging,
           resizableInput: mobileToolsAvailable || openPuzzlePanels.length > 0, inputTabCount: openPuzzlePanels.length,
           savedInputHeight: toolPanels.height,
           onInputHeightChange: height => playSession.set(id, 'toolPanels', current => {

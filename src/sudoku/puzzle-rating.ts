@@ -1,22 +1,35 @@
-import { isQuadrupleRule } from './variants.ts'
 import { runEngine } from './engine.ts'
 import { solveFogPath } from './fog-solution.ts'
 import { isSolved, type Game } from './game.ts'
 import { addAnalysisAssistance, ratingAttemptFor, type RatingAttempt } from './player-rating.ts'
 import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
+import { hasBetweenAndPairClues, hasPrintedKropki, isQuadrupleRule } from './variants.ts'
 
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
 const FOG_QUADRUPLE_RATING_VERSION = 2
+const LINKED_CLUE_RATING_VERSION = 17
+const KROPKI_HOUSE_RATING_VERSION = 16
+const THERMOMETER_RATING_VERSION = 15
+const REGION_SUM_LINE_RATING_VERSION = 13
+const REGION_SUM_HOUSE_RATING_VERSION = 14
+const ENTROPIC_LINE_RATING_VERSION = 12
 const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
-const QUADRUPLE_RATING_VERSION = 13
+const QUADRUPLE_RATING_VERSION = 18
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
   if (rules?.some(isQuadrupleRule)) return QUADRUPLE_RATING_VERSION
+  if (hasBetweenAndPairClues(rules)) return LINKED_CLUE_RATING_VERSION
+  if (hasPrintedKropki(rules)) return KROPKI_HOUSE_RATING_VERSION
+  if (rules?.some(rule => rule.type === 'thermometer')) return THERMOMETER_RATING_VERSION
+  const regionSumCount = rules?.filter(rule => rule.type === 'region-sum').length ?? 0
+  if (regionSumCount >= 2) return REGION_SUM_HOUSE_RATING_VERSION
+  if (regionSumCount === 1) return REGION_SUM_LINE_RATING_VERSION
+  if (rules?.some(rule => rule.type === 'entropic')) return ENTROPIC_LINE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
     return RENBAN_AND_LITTLE_KILLER_RATING_VERSION
   }

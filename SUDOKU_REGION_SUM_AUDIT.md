@@ -143,3 +143,74 @@ cargo test --locked --release -p sudoku-app-engine --all-features --lib guardian
 ```
 
 The comparison matches 4,197 complete variant responses and 148 Classic responses. It includes ordered proofs, all hint pages, disabled techniques, explicit removals, and the complete source ratings and traces. All six native guardian tests pass. All 140 seeded generation pairs match across seven recipes with six attempts and 20,000 nodes per request. X-Sudoku generation p95 rises from 2.083 to 3.929 ms in that check.
+
+## Distinct digits within a line part
+
+The ordinary Region Sum deduction intersects totals without requiring distinct digits within a part. The new opt-in `region-sum-distinct` technique also checks whether each part can assign the digits without a repeat in its region. It reports candidate removals that need this extra premise. The proof records the source clue, each part’s cells and candidate masks, the totals each part can make, and the common totals. The app tries the 67-point Medium technique immediately after ordinary Region Sum and refreshes cached ratings for puzzles containing its rule. Scoring version 13 records the change. Native callers keep their existing default order and can opt in explicitly.
+
+The detector tracks reachable digit sets in each part and traces back through the sets that reach a common total. There are at most 512 sets per depth. It uses the compiled parts for separate and grouped visits, including Jigsaw region layouts. It checks that the puzzle enforces each relevant region’s distinct-digit rule before making a deduction. Exact solving and candidate propagation keep their existing arithmetic paths.
+
+| Complete source definition | Earlier Play steps / points | New Play steps / points | New proofs used | New status |
+| --- | ---: | ---: | ---: | --- |
+| Symmetease | 68 / 986 | 68 / 986 | 0 | Medium, complete |
+| Thermos and Region Sums (91BB) | 67 / 2,262 | 156 / 3,830 | 6 | Medium, complete |
+| Non Con and Anti Royal Region Sums (8AGt) | 185 / 4,058 | 219 / 2,815 | 1 | Medium, complete |
+| Region Lines and Dots (8oer) | 55 / 1,272 | 146 / 3,218 | 4 | Medium, complete |
+| Region Sum, Easy (FaxQ) | 1 / 48 | 22 / 881 | 5 | Partial |
+| 220V (7rs9) | 82 / 2,895 | 200 / 3,815 | 3 | Medium, complete |
+
+Every walkthrough action agrees with its published completion. An independent enumeration checks each distinct-digit Region Sum deduction on the five Region Sum source fixtures, including totals, rule topology, live candidates and removed digits. The 220V import contract retains the complete authored mixed ruleset and checks each walkthrough action against its published solution. FaxQ offers three opening hints, including two distinct-digit proofs. Its default exact request still verifies the unique completion, and its 20,000-node request still reports the search limit. The logical walkthrough ends after 22 explained steps.
+
+Tests cover saved score refresh, grouped repeat visits, all nine opening proofs of the selected technique on 91BB, paging and Finder action counts, three practice positions, a fresh drill, undo and redo, and the existing Region Sum New Puzzle contracts. Chromium verified the new walkthrough proof in a desktop import of 91BB and a phone import of FaxQ. Learn explains the deduction and includes an interactive example.
+
+
+### Paired request timings
+
+The comparison uses the production Wasm from main `921344c5` and the local app Wasm on macOS arm64 and Node 26.13.0. Each value is median / p95 thread CPU milliseconds across seven warmed, alternating samples. Hints use the normal ten-choice request and the difficulty each profile assigns to the puzzle. The timings include direct protocol serialization and exclude browser startup, worker transport and rendering.
+
+| Puzzle | Candidates before → after | Unique solution before → after | Rating before → after | Ten hints before → after |
+| --- | ---: | ---: | ---: | ---: |
+| Symmetease | 0.059 / 0.161 → 0.057 / 0.065 | 0.222 / 0.231 → 0.219 / 0.232 | 0.487 / 0.587 → 0.619 / 0.812 | 33.311 / 41.071 → 35.603 / 39.117 |
+| 91BB | 0.091 / 0.116 → 0.087 / 0.102 | 0.883 / 0.944 → 0.879 / 0.905 | 104.685 / 112.375 → 1.758 / 2.049 | 0.467 / 0.569 → 0.555 / 0.601 |
+| 8AGt | 0.088 / 0.166 → 0.106 / 0.161 | 1.096 / 1.682 → 1.116 / 1.784 | 982.711 / 1010.441 → 6.400 / 6.715 | 132.423 / 142.765 → 0.473 / 0.807 |
+| 8oer | 0.123 / 0.251 → 0.133 / 0.149 | 0.649 / 1.010 → 0.888 / 1.008 | 89.469 / 93.858 → 1.258 / 1.798 | 110.504 / 111.696 → 0.611 / 1.090 |
+| FaxQ | 0.032 / 0.051 → 0.031 / 0.037 | 131.101 / 142.408 → 135.165 / 147.635 | 103.414 / 113.650 → 69.389 / 74.758 | 15.386 / 17.200 → 14.182 / 16.205 |
+| 7rs9 | 0.100 / 0.117 → 0.096 / 0.107 | 0.709 / 1.018 → 0.676 / 0.956 | 205.156 / 209.305 → 5.313 / 6.373 | 1.042 / 1.237 → 1.196 / 1.477 |
+| HCHW | 0.079 / 0.141 → 0.076 / 0.110 | 0.396 / 0.619 → 0.383 / 0.574 | 8.646 / 10.293 → 10.983 / 13.115 | 0.470 / 0.633 → 0.484 / 0.512 |
+
+The 8AGt rating avoids its earlier forcing work. Its new Medium rating also reduces the ranked hint request’s search scope. FaxQ still spends about 135 ms of Wasm CPU on default exact verification. HCHW exercises the unchanged Modular profile. Its full replies match after normalizing the rating version, with a 2.3 ms median increase in this build comparison. All candidate and unique-solution replies match on the seven fixtures. Removing the new technique from the current order reproduces earlier rates and hints on all seven fixtures after normalizing the rating version. A separate full replay matched earlier traces under that same disabled profile.
+
+The app artifacts measured 4,297,093 bytes (1,133,862 gzip) in production and 4,261,430 bytes (1,163,135 gzip) in the local build. The artifacts come from different build hosts. These sizes and small timing differences include toolchain and build effects.
+
+```sh
+node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm
+```
+
+
+## Parts from different lines in one region
+
+The 133-point Hard technique `region-sum-house` checks disjoint parts from different lines in the same box or Jigsaw region. Each part must first match a total available to the other parts of its own line. The engine then joins compatible digit sets across the region and accounts for the remaining cells. When the line parts cover the whole region, their totals sum to 45. The evidence records each part’s candidates, the earlier and remaining line totals, and the other cells in the region. Separate visits and grouped visits follow the authored layout. The app retries saved scores for puzzles with multiple Region Sum lines. Variant scoring version 14 records the revised profile. Native clients can enable the technique explicitly.
+
+In FaxQ, three parts fill box 9. Matching its digits first narrows the possible triples of totals. The intervening logical steps set one line’s total and a second region proof fixes the last total. The walkthrough reaches the published solution in 108 steps and 3,977 points (Master), using two new region proofs and seven distinct-digit Region Sum proofs. The previous order still stalls at 22 steps and 881 points with the new technique disabled. Default exact verification matches the original solution, and the 20,000-node budget still reports the search limit. Symmetease, 91BB, 8AGt, 8oer and 220V keep their complete walkthroughs and scores.
+
+The independent oracle enumerates the nine region cells in order and verifies the source line parts, their before and after totals, and every removal. The Wasm contract tests cover the full published trace, opening hints and Finder, authored grouped visits in a Jigsaw layout, and practice with both a complete and a partial region partition. Chromium checks the complete FaxQ Preview and Play flows and the Learn example on desktop and phone.
+
+The benchmarks pair the same local app toolchain builds of `5eb98e07` and the shared-region implementation. Each timing is median / p95 in thread CPU milliseconds across seven warmed alternating samples. The baseline and current hint requests use the difficulty each profile assigns.
+
+| Puzzle | Unique solution before → after | Rating before → after | Ten hints before → after |
+| --- | ---: | ---: | ---: |
+| Symmetease | 0.236 / 0.434 → 0.226 / 0.396 | 0.590 / 0.753 → 0.611 / 0.961 | 35.107 / 35.968 → 0.705 / 1.083 |
+| 91BB | 1.426 / 1.532 → 1.457 / 1.535 | 1.224 / 2.242 → 1.122 / 2.222 | 0.358 / 0.718 → 0.322 / 0.652 |
+| 8AGt | 1.206 / 1.624 → 1.496 / 1.650 | 7.672 / 9.957 → 9.021 / 9.769 | 0.292 / 0.375 → 0.286 / 0.405 |
+| 8oer | 0.987 / 1.087 → 1.035 / 1.152 | 1.044 / 1.819 → 1.027 / 1.947 | 0.503 / 0.677 → 0.517 / 0.594 |
+| FaxQ | 139.605 / 151.483 → 139.686 / 147.785 | 72.799 / 77.172 → 11.313 / 12.470 | 17.463 / 20.071 → 17.402 / 19.600 |
+| 7rs9 | 0.758 / 1.341 → 0.753 / 1.107 | 6.245 / 6.358 → 4.141 / 6.214 | 0.655 / 0.733 → 0.602 / 0.619 |
+| HCHW | 0.503 / 0.743 → 0.487 / 0.593 | 8.712 / 9.885 → 8.726 / 12.058 | 0.271 / 0.323 → 0.255 / 0.271 |
+
+Candidate and exact-solution responses match on all seven controls. Disabling the new detector reproduces the baseline hint and rating responses after normalizing the rating version. Symmetease fills the ten-choice list earlier, with three additional region proofs. All twenty deterministic Medium New Puzzle outputs match apart from versioned rating metadata and the enabled order. Each generated puzzle has a unique completion and still depends on its Region Sum rules.
+
+With the shared-region technique enabled, FaxQ’s Master hint request initially repeated the uniqueness check when progress probes found too few choices. Ranking now reuses the checked position within the same request. An isolated paired comparison before and after that reuse reduced median CPU from 25.638 ms to 13.017 ms. All 488 complete hint responses match across 61 puzzles. The comparison includes several limits and difficulty scopes, the ordinary ranked path, and a position after applying a hint on each puzzle. FaxQ retains all five choices and their order.
+
+```sh
+node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm region-sum-house
+```

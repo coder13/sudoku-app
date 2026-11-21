@@ -1,3 +1,5 @@
+import type { ImportedCellColors } from './imported-colors.ts'
+
 type Point = readonly [x: number, y: number]
 
 export type AuthoredMark = { type: 'outline' | 'divider'; points: readonly Point[]; thickness: number }
@@ -45,9 +47,9 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
   })
 }
 
-// A drawing may carry a rule. Bind the review to the whole original export:
+// A drawing or fill may carry a rule. Bind each review to the whole original export.
 // Windoku I outlines four of its typed regions, and Khachkar's discs are artwork.
-const reviewed = new Map<string, { layer: string; title: string; partialRegions?: true }>([
+const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true }>([
   ['6d6a3b498a48ea8bd5cd78a41495fca7c9fb0bbd8f5573a25e07b0115504d0c2', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true }],
   ['644e296695e5e5993472985da14111a57d7f8760bcc579ea1743103d8d6cf35a', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true }],
   ['349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
@@ -55,14 +57,43 @@ const reviewed = new Map<string, { layer: string; title: string; partialRegions?
   ['df51c464f943b9c2436f9897ce4d5cbaaaaf3309da5c2eef68bc93ed1e8ab095', { layer: 'cosmeticShape', title: 'Khachkar' }],
 ])
 
+// These reviews cover the complete authoring data and ordered cell shades.
+const reviewedFills = new Map([
+  ['5a500262913542452647e2a3623d6caeff79a00e949ad5c4f83acea306c1f980', 'Sudoku Spider'],
+  ['5b9cb5df490c8ac7e2b55566ef5a0e37c6161f260887484c457baf7e76ad6fc8', 'Pumpkin 2024'],
+  ['3f9c2090ae6dab63a274a4c8dc16711e406bad21e077df0103671470d8e42aa0', 'Halloween Candy 1'],
+])
+
+const fieldsOutsideFillReview = new Set([
+  'colours', 'givenColours', 'userDigits', 'userCellCandidates', 'userBoxCandidates',
+  'userColours', 'userCellCandidatesColours',
+])
+
+async function reviewKey(text: string) {
+  if (!globalThis.crypto?.subtle) return
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export async function reviewedCoachFillTitle(data: Record<string, unknown>, fills: ImportedCellColors) {
+  // The palette also holds player shades. The normalized fills retain the
+  // author's shades while entries and candidate notes may change separately.
+  const definition = Object.fromEntries(Object.entries(data).filter(([key]) => !fieldsOutsideFillReview.has(key)))
+  const material = JSON.stringify([definition, fills], (_key, value) => record(value)
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value)
+  const key = await reviewKey(material)
+  return key ? reviewedFills.get(key) : undefined
+}
+
 export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
   const drawn = constraints.filter(layer => record(layer) && (layer.type === 'cosmeticLine' || layer.type === 'cosmeticShape'))
-  if (drawn.length !== 1 || !record(drawn[0]) || !globalThis.crypto?.subtle) return
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
-  const review = reviewed.get(hash)
+  if (drawn.length !== 1 || !record(drawn[0])) return
+  const hash = await reviewKey(code)
+  if (!hash) return
+  const review = reviewedDrawings.get(hash)
   const layer = drawn[0]
-  if (!review || review.layer !== layer.type || !record(layer.settings) || !Array.isArray(layer.segments)) return
+  if (!review || review.layer !== layer.type ||
+      !record(layer.settings) || !Array.isArray(layer.segments)) return
   const settings = layer.settings
   const artwork = layer.segments.map(segment => {
     if (!record(segment) || !Array.isArray(segment.cells)) return

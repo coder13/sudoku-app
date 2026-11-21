@@ -80,9 +80,11 @@ Cmdt shares 31 edges between Whispers and Thermometers. The 9×9 renderer draws 
 
 The German Whisper Line Basics lesson preserves 15 paths and all 44 shaded cells. The app derives each cell's minimum distinct linked digit count from the line geometry and Sudoku houses, then draws its own digit guide. Import checks the source colors, legend, and published declaration. The guide survives restart, reload, and sharing. Wasm verifies the published solution, gives ten opening hints, and completes the 124-step Medium walkthrough. Desktop and mobile component checks cover all four legend groups. [Published lesson](https://sudoku.coach/en/s/B5mt)
 
-The 220V short link verifies the original export and author legend before recovering the drawn clues. It follows the cell centers of five blue Region Sum paths and joins the orange strokes into one Entropic path with three visits to the center. The blue line from R5C7 to R2C6 passes through R4C6 and R3C5, with a drawn offset at the adjacent R3C6 corner. Desktop and mobile component checks cover all nine Region Sum lines, four Entropic paths, two Modular paths, and cells shared by multiple lines. Direct enumeration finds the published solution in 42 search nodes. Play offers four opening Region Sum hints and Finder reports 30 distinct actions. The walkthrough now reaches 32 steps and 1,045 points before stalling. The additional deductions use shared houses with Entropic and Modular Lines. The raw code omits the legend required for this reconstruction. [Published puzzle](https://sudoku.coach/en/s/7rs9) · [Short-link contracts](tests/coach-short-links-wasm.mts)
+The 220V short link verifies the original export and author legend before recovering the drawn clues. It follows the cell centers of five blue Region Sum paths and joins the orange strokes into one Entropic path with three visits to the center. The blue line from R5C7 to R2C6 passes through R4C6 and R3C5, with a drawn offset at the adjacent R3C6 corner. Desktop and mobile component checks cover all nine Region Sum lines, four Entropic paths, two Modular paths, and cells shared by multiple lines. Direct enumeration finds the published solution in 42 search nodes. Play offers four opening Region Sum hints and Finder reports 30 distinct actions. The walkthrough now reaches the published solution in 200 steps and scores 3,815 points (Medium). Three Region Sum with distinct digits proofs account for new candidate removals. Every step agrees with the published grid. The raw code omits the legend required for this reconstruction. [Published puzzle](https://sudoku.coach/en/s/7rs9) · [Short-link contracts](tests/coach-short-links-wasm.mts)
 
 In the 220V regression, the first Region Sum hint removes candidates without placing a digit. Both ranked hints and selected Region Sum proofs omit those removals afterward, and Finder agrees with the distinct targets in the selected proofs. Removing a candidate by hand from a complete set of Pencil candidates also changes the selected results. Undo and redo restore the matching counts and proofs. Worktable now ties pending and revealed hints to the same givens, rule definition and candidate state. [Hint guard tests](tests/variant-hint-validation.test.ts) · [Short-link contracts](tests/coach-short-links-wasm.mts)
+
+On phones, selecting a walkthrough step now opens its explanation card alongside the preview grid. Closing the card keeps the selected step and leaves the editable puzzle and move history intact. [Chromium lifecycle regression](scripts/check-worktable-lifecycle.mjs)
 
 9×9 Region Sum paths that end in a cell shared with another Region Sum line now stop slightly short of its center. Each cap and any dashed endpoint dot stay inside the logical cell. The gap also applies to overlapping strokes. Closed paths and continuous joins within one clue keep their full geometry. Tests cover 220V at both layout sizes, including the three distinct Region Sum lines at R2C6. [Rendering checks](tests/region-sum-components.test.ts)
 
@@ -189,6 +191,8 @@ Use complete source definitions, including every companion clue and parameter. S
 
 For each control, check starting, correctly progressed and explicit-removal states. Check both Pencil modes, placement cleanup, conflicts, undo/redo, reload and sharing. Compare ordinary hints, selected hints, paged hints and Finder against that same current position. Confirm stale results cannot apply after an edit. A genuine zero-hint state stays visible; exact completion must not become an invented logical explanation.
 
+Hyk5 and Hafj now have complete logical walkthroughs of 144 and 169 steps. They use the full original rules. At the checked positions, Hyk5 uses two rows and a white dot. Hafj uses a dot, four houses, and a second Entropic line. The released HCHW walkthrough still completes in 202 steps. [Issue 162](https://github.com/coder13/sudoku-app/issues/162)
+
 ## Browser review and approval
 
 The user authorized the built-in browser. Its runtime currently fails with `Trusted RPC service is not configured: browser`, including after a preview tab opened. Actual app screenshots have not been captured. Existing exported SVG figures and component markup are diagnostic evidence only.
@@ -196,3 +200,92 @@ The user authorized the built-in browser. Its runtime currently fails with `Trus
 Pending captures must show the actual app at narrow and desktop sizes, light and dark themes, and increased app/grid text sizes. Review empty/full candidates, overlaps, outside clues, Jigsaw borders, focus, menus, hint stages, selected Finder results and solution navigation. Include enough context to identify the puzzle and state. Share the screenshots for approval before merging broader visual changes.
 
 No browser review or screenshot approval is complete. Preserve the open checklist in [SUDOKU_ENGINE_TODO.md](SUDOKU_ENGINE_TODO.md) as each part is verified.
+
+## Reviewed Coach fills on 9×9 puzzles
+
+Sudoku Spider uses 26 grey and red background fills to illustrate the grid. Its mathematical clues are ten givens and eight encoded Thermometers. The importer checks the complete authoring data and the normalized cell shades against the reviewed export. It recognizes the same artwork when a Current State export adds known player entries, Pencil candidates, or player colors. Preview, Play, restart, reload and sharing keep the authored fills separate from the player’s annotations. The same check joins the raw, short and collection links for Pumpkin 2024 and Halloween Candy 1.
+
+An independent counter found the published completion of Sudoku Spider. The Play profile before the joint Thermometer and house deduction offered ten opening hints and explained 68 steps before stalling. Every recorded action agreed with the published grid. A paired re-decode of 72 captured 9×9 codes admitted the three reviewed exports and matched all 69 other outcomes. Changed authoring data, new mathematical instructions accompanying a published code, and authored colors outside the reveal data of a Fog puzzle continue to reject.
+
+
+## Thermometer deductions with a shared house
+
+A Thermometer can share two or more cells with a row, column, region, diagonal, or extra house. A set of digits that increases from the bulb can still leave the house unable to place all its digits. The new Medium technique, worth 64 points, removes a candidate only when it fits the two rules separately and has no support when they are combined. Play, Technique Finder, the walkthrough, and practice use the same proof. The three practice examples use a row, column, and box. A separate test exercises the region order of an irregular Jigsaw partition.
+
+| Archived Sudoku Coach puzzle | Previous walkthrough | Walkthrough with Thermometer and house |
+| --- | --- | --- |
+| Sudoku Spider | 68 steps, partial at 9,312 points | 100 steps, Medium at 1,952 points |
+| Thermo Sandwich | 187 steps, Extreme at 17,026 points | 163 steps, Very Hard at 5,942 points |
+| carved out | 121 steps, Medium at 1,843 points | 121 steps, Medium at 1,843 points |
+| cauldron | 82 steps, partial at 12,215 points | 82 steps, partial at 12,215 points |
+| Thermos and Region Sums | 156 steps, Medium at 3,830 points | 156 steps, Medium at 3,830 points |
+
+All five retained the same exact completions. Each trace action agrees with the published completion, and independent assignment enumeration checks each new proof. With the technique disabled, all five replay their previous paths.
+
+Nine alternating, warmed Wasm samples on Darwin arm64 measured the median thread CPU times below in milliseconds. Rated opening-hint requests retained ten choices for the first four puzzles and eight for Thermo Sandwich.
+
+| Archived puzzle | Rating before → after | Ranked opening hints before → after |
+| --- | --- | --- |
+| Sudoku Spider | 218.169 → 0.762 | 0.326 → 1.131 |
+| carved out | 0.869 → 0.930 | 0.300 → 0.449 |
+| cauldron | 531.867 → 534.975 | 0.135 → 0.140 |
+| Thermos and Region Sums | 0.963 → 0.960 | 0.260 → 2.046 |
+| Thermo Sandwich | 634.057 → 67.196 | 238.103 → 244.454 |
+
+The lower-tier generation check treats the new deduction as a Medium move. Five former recipes could no longer reach their advertised difficulty. Checked replacements cover the same difficulty range and include two distinct Extreme recipes. The new Extreme recipes have 17 and 21 givens.
+
+
+## Skip impossible Unique Rectangle searches
+
+Thermo Sandwich's Sandwich clues and Thermometers touch 79 cells. The remaining two cells cannot form a four-corner rectangle. Unique Rectangle AIC and both Unique Rectangle Nice Loops now check for an eligible two-box rectangle using the live candidates and added rule scopes. They skip the 4,096-node uniqueness check and graph construction when every rectangle is excluded. If an eligible rectangle exists, the normal bounded uniqueness check and proof filters still apply.
+
+Across 116 archived 9×9 definitions, 912 paired Wasm replies matched in full. The comparisons include ranked hints, the three unbounded searches used by Technique Finder before and after a move, eight full trace replies, retained hint pages, and 26 seeded generation results. All nine positive rectangle-chain exercises kept their complete proof lists with and without an unrelated parity clue. The variant scoring version remains 15.
+
+The table reports median thread CPU time in milliseconds from nine alternating, warmed measurements on Darwin arm64. Hint requests used the rated puzzle's actual tier. The two timings for Finder use the complete selected Unique Rectangle AIC search.
+
+| Published puzzle | Ranked opening hints before → after | Unique Rectangle AIC before → after | Rating before → after |
+| --- | --- | --- | --- |
+| Thermo Sandwich | 187.072 → 17.413 | 174.254 → 9.397 | 64.968 → 65.708 |
+| American Food | 51.937 → 52.436 | 10.751 → 10.686 | 1.601 → 1.610 |
+| Leftovers | 1.253 → 1.267 | 5.262 → 0.952 | 2.169 → 2.138 |
+| Brain Zaps | 4.388 → 4.380 | 3.631 → 3.630 | 0.458 → 0.457 |
+| Sudoku Spider | 0.960 → 0.946 | 4.096 → 4.534 | 0.569 → 0.737 |
+
+Thermo Sandwich kept all eight opening hints, its 163-step Very Hard walkthrough, and the published exact grid. It continues to report zero Unique Rectangle chain moves at the opening position.
+
+
+## Kropki dots with a shared house
+
+For a printed white or black dot, the engine checks whether its two open cells can use each feasible pair of digits while the rest of their shared house uses the other digits. The technique removes a candidate only when the dot and the house each allow it on their own and their combination rules it out. It can also remove a digit elsewhere in the house when every assignment uses it on the dot. Proofs carry both rule indices when white and black marks share an edge. An irregular Jigsaw control verifies the authored region and both marks. Unmarked edges retain their negative-rule behavior.
+
+Kropki dot and house costs 48 points at Medium. The three practice estimates are 42, 70, and 48 points. Variant scoring is version 16, and saved ratings with printed dots refresh on the next rating pass.
+
+| Published puzzle | Previous app walkthrough | Walkthrough with dot and house |
+| --- | --- | --- |
+| Cauldron | 82 steps, partial at 12,215 points | 123 steps, Medium at 2,653 points |
+| Entropic Loop (Hyk5) | 144 steps, Hard at 3,345 points | 153 steps, Hard at 3,604 points |
+| L25 entropic (Hafj) | 169 steps, Hard at 4,081 points | 193 steps, Tricky at 5,062 points |
+| Between the Dots | 62 steps, partial at 1,921 points | 66 steps, partial at 2,085 points |
+
+The original Cauldron import and each walkthrough action agree with the published grid. Independent house permutations check its five new proofs and the new proofs in the Entropic and Between controls. The archived K95q import with complete black-dot markings and Global Entropy also finishes at Medium with 2,452 points. Its exact grid and all 24 printed dots are preserved.
+
+Nine alternating warmed Wasm samples measured median thread CPU time in milliseconds on Darwin arm64. Exact verification replies and opening candidate masks matched on all five sampled puzzles. Each opening-hint request retained its choice count.
+
+| Published puzzle | Rating before → after | Ranked opening hints before → after |
+| --- | --- | --- |
+| carved out | 1.090 → 0.842 | 0.443 → 0.449 |
+| Cauldron | 503.917 → 1.418 | 0.129 → 0.126 |
+| Entropic Loop | 3.078 → 4.613 | 6.046 → 6.465 |
+| L25 entropic | 7.169 → 8.728 | 1.962 → 2.227 |
+| Thermo Sandwich | 63.786 → 63.644 | 15.631 → 15.676 |
+
+Seventeen replacement recipes preserve all seven Kropki generation tiers. Mixed Hard generation with complete Kropki markings checks more layouts within the existing time budget. Tests verify the requested grade, unique solutions, preserved markers, and complete walkthroughs.
+
+
+## Between Lines with pair clues
+
+Between the Dots now completes its 163-step walk at Hard with 4,715 points. The previous path stalled after 66 steps. All twelve Between Lines, eleven black dots, and the verified completion survive import. The 13 linked clue proofs agree with independent line, pair, and house checks. The first removes 6 from R9C7. If it were 6, the Between Line would leave only 7 in both R9C8 and R9C9, which share a box.
+
+Play shows the checks in order, including the digits or cells that fail in the final house. The same evidence is available through ranked hints, Technique Finder, the walkthrough, and the worked Learn example. Three practice positions estimate 78, 78, and 88 points, setting the 78-point cost. Saved ratings refresh at variant scoring version 17 when the puzzle combines a Between Line with a supported pair clue.
+
+Nine alternating warmed Wasm samples on Darwin arm64 measured median thread CPU time for the published puzzle. Rating fell from 154.3 to 77.5 ms. Exact verification returned the same solution and took 3.7 to 5.1 ms. Opening candidates were identical and took 0.067 to 0.073 ms. Ranked opening hints kept ten choices and took 0.359 to 0.406 ms. Cauldron kept its complete walkthrough and Between, the Lines kept its existing logic and eight opening choices.

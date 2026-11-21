@@ -8,7 +8,7 @@ mod patterns;
 #[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
 pub(crate) use patterns::OverlaySearch;
 #[cfg(feature = "variants")]
-pub(crate) use patterns::{RectangleInferenceCache, layouts_in_houses};
+pub(crate) use patterns::{RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses};
 
 #[path = "proofs.rs"]
 mod proofs;

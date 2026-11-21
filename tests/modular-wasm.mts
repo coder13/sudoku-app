@@ -312,6 +312,7 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.deepEqual(otherChoices.map(choice => [choice.technique, choice.actions]), [
     ['modular', hint.actions],
     ['modular', [1, 2, 3].map(digit => ({ eliminate: { cell: 25, digit } }))],
+    ['kropki-house-support', [67, 76].flatMap(cell => [1, 2].map(digit => ({ eliminate: { cell, digit } })))],
     ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
   ])
   const position = variantPosition(game.variant!, stalled.position)

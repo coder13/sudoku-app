@@ -3,7 +3,7 @@ import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
-import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
+import type { Difficulty, VariantClueLayout, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
@@ -836,6 +836,18 @@ export function variantRuleSections(puzzle: VariantPuzzle, fog?: FogDefinition):
     else sections.set(id, { id, title: id === 'killer-cages' ? 'Killer Sudoku' : RULE_NAMES[id], descriptions })
   }
   return [...sections.values()]
+}
+
+export function hasBetweenAndPairClues(rules: VariantPuzzle['rules'], layouts: readonly VariantClueLayout[] = []) {
+  return Boolean(rules?.some(rule => rule.type === 'between') && (
+    rules.some(rule => rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
+    || layouts.some(layout => layout.type === 'adjacent-total' || layout.type === 'inequality' || layout.type === 'markers')
+  ))
+}
+
+export function hasPrintedKropki(rules: VariantPuzzle['rules']) {
+  return Boolean(rules?.some(rule => rule.type === 'kropki' &&
+    (rule.consecutive?.pairs?.length || rule.ratioTwo?.pairs?.length)))
 }
 
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {

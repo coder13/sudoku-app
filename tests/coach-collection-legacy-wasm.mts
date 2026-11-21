@@ -31,10 +31,13 @@ test('original Coach collection and legacy codes keep givens, authored fills, an
   mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
     if (path === coach + '/beapi/get-collection-hierarchy') return Promise.resolve(Response.json({ hierarchy }))
     if (!path.startsWith(coach)) return fetcher(path, init)
-    const source = all.find(ex => path === `${coach}/beapi/get-sudoku/${ex.id}`)
+    const source = all.find(ex => path === `${coach}/beapi/get-sudoku/${ex.id}` || path === `${coach}/en/s/${ex.id}`)
     assert.ok(source)
-    return Promise.resolve(Response.json({ sudoku_id: source.id, sudoku: source.code, name: source.title,
-      description: 'description' in source ? source.description : instructions, blocked: false, custom_constraints: false, published: false }))
+    const publication = { sudoku_id: source.id, sudoku: source.code, name: source.title,
+      description: 'description' in source ? source.description : instructions, blocked: false, custom_constraints: false, published: false }
+    return Promise.resolve(path.startsWith(coach + '/en/s/')
+      ? new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku: publication }) + '</script>')
+      : Response.json(publication))
   })
   try {
     for (const source of classic) {
@@ -61,10 +64,11 @@ test('original Coach collection and legacy codes keep givens, authored fills, an
       const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
       assert.equal(shared.game.givens, source.givens)
       assert.deepEqual(shared.game.givenCellColors, givenCellColors)
-      if (source.code.startsWith('SCv7_')) continue
+      const reviewed = source.code.startsWith('SCv7_')
       const direct = await detectPuzzle(source.code)
-      assert.deepEqual(direct, { format: 'Sudoku Coach', givens: source.givens, givenCellColors })
+      assert.deepEqual(direct, { format: 'Sudoku Coach', givens: source.givens, givenCellColors, ...(reviewed && { title: source.title }) })
       assert.deepEqual(await detectPuzzle(`${coach}/fr/solver/${encodeURIComponent(source.code)}`), direct)
+      if (reviewed) assert.deepEqual(await detectPuzzle(`${coach}/en/s/${source.id}`), direct)
     }
     const { game } = await prepareImportedPuzzle(collectionLink(mixed))
     assert.deepEqual(game.variant?.puzzle.rules?.map(({ type }) => type),

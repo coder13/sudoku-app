@@ -8,7 +8,7 @@ import { isHexColor, isImportedColor, validImportedCellColors, type CandidateCol
 import { readCoachQuickDraw } from './imported-drawings.ts'
 import { validLetteredQuadruples } from './lettered-quadruples.ts'
 import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
-import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
+import { readReviewedCoachArtwork, reviewedCoachFillTitle, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines, coachConsecutiveRuns } from './coach-lines.ts'
@@ -516,10 +516,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const isFogLayer = (layer: unknown): layer is Record<string, unknown> => record(layer) && layer.type === 'fog'
   let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
-  const reviewedArtwork = await readReviewedCoachArtwork(code, constraints)
+  const artwork = await readReviewedCoachArtwork(code, constraints)
   let regions: VariantPuzzle['regions'] = Array.isArray(data.regions) && data.regions.length === 0
     ? { type: 'partial', regions: [] } : readRegions(data.regions)
-  if (publication?.authoredRule === 'partial-regions' && !reviewedArtwork?.partialRegions) {
+  if (publication?.authoredRule === 'partial-regions' && !artwork?.partialRegions) {
     throw new Error('The export does not match its published region outlines.')
   }
   const guideLayers = constraints.every(layer => record(layer) &&
@@ -527,7 +527,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
-    : reviewedArtwork ? constraints.filter(layer => layer !== reviewedArtwork.layer) : constraints
+    : artwork ? constraints.filter(layer => layer !== artwork.layer) : constraints
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasQuadruples = encodedRules.some(layer => record(layer) && layer.type === 'quadruple')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
@@ -544,7 +544,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
   let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
     : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(encodedRules, { regions, authoredRule })
-  if (reviewedArtwork?.partialRegions) {
+  if (artwork?.partialRegions) {
     const marked = rules.filter(rule => rule.type === 'extra-house')
     if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')
     regions = { type: 'partial', regions: marked.map(rule => [...rule.cells].sort((a, b) => a - b)) }
@@ -568,14 +568,18 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unsupportedDrawings = publication && COACH_DRAWINGS.some(key => hasData(data[key]))
   if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   let givenCellColors: ImportedCellColors | undefined
+  let fillTitle: string | undefined
   if (!whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
-      if (reviewedColorTitle || !fog && !rules.length && (!regions || regions.type === 'boxes') &&
-        !publication?.hasAuthorInstructions && (fromCollection || LEGACY_COACH_CODE.test(code))) {
-        givenCellColors = readCoachColorNames(remaining, palette)
-        if (!givenCellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-      } else {
+      if (!fog && !publication?.hasAuthorInstructions) {
+        const plainCollectionArtwork = !rules.length && (!regions || regions.type === 'boxes') &&
+          (fromCollection || LEGACY_COACH_CODE.test(code))
+        const fills = readCoachColorNames(remaining, palette)
+        if (fills && !plainCollectionArtwork) fillTitle = reviewedColorTitle ?? await reviewedCoachFillTitle(data, fills)
+        if (plainCollectionArtwork || fillTitle) givenCellColors = fills
+      }
+      if (!givenCellColors) {
         const cellColors = fog && regions?.type === 'jigsaw' && !publication?.hasAuthorInstructions
           ? readCoachFogCellColors(fog, cellColours, palette) : undefined
         if (!fog || !cellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
@@ -607,9 +611,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? reviewedArtwork?.title ?? reviewedColorTitle ?? (rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
+  const title = publication?.title ?? artwork?.title ?? fillTitle ?? (rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
-    ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
+    ...(artwork && { authoredArtwork: artwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 

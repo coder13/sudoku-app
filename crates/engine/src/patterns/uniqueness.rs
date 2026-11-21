@@ -55,6 +55,31 @@ pub(super) fn rectangles(masks: &[u16; CELLS], bivalue: u128) -> Vec<Rectangle> 
         .collect()
 }
 
+/// A rectangle link needs a shared pair and two guardian candidates. Only
+/// rectangles whose four cells can be swapped under the active rules qualify.
+#[cfg(feature = "variants")]
+pub(crate) fn has_rectangle_guardians(masks: &[u16; CELLS], blocked: u128) -> bool {
+    let eligible = masks.iter().enumerate().fold(0, |cells, (cell, mask)| {
+        if mask.count_ones() >= 2 {
+            cells | cell_bit(cell)
+        } else {
+            cells
+        }
+    }) & !blocked;
+    if eligible.count_ones() < 4 {
+        return false;
+    }
+    RECTANGLES.iter().any(|&corners| {
+        if !corners.iter().all(|&cell| eligible & cell_bit(cell) != 0) {
+            return false;
+        }
+        let [a, b, c, d] = corners.map(|cell| masks[cell]);
+        // A shared pair uses eight slots. Each guardian needs another slot.
+        (a & b & c & d).count_ones() >= 2
+            && a.count_ones() + b.count_ones() + c.count_ones() + d.count_ones() >= 10
+    })
+}
+
 pub(super) fn visit_guardian_links(
     search: &PatternSearch<'_>,
     mut visit: impl FnMut([GuardianGroup; 2], LinkSource),
@@ -445,6 +470,31 @@ const RECTANGLES: [[usize; 4]; 486] = {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "variants")]
+    #[test]
+    fn rectangle_link_preflight_checks_geometry_pair_and_guardian_count() {
+        let pair = digit_bit(1) | digit_bit(2);
+        let corners = [7, 8, 43, 44];
+        let mut masks = [0; CELLS];
+        for cell in corners {
+            masks[cell] = pair;
+        }
+        masks[44] |= digit_bit(3);
+        assert!(!has_rectangle_guardians(&masks, 0));
+        masks[43] |= digit_bit(3);
+        assert!(has_rectangle_guardians(&masks, 0));
+        assert!(!has_rectangle_guardians(&masks, cell_bit(7)));
+        masks[8] = digit_bit(2) | digit_bit(4);
+        assert!(!has_rectangle_guardians(&masks, 0));
+
+        // Four cells confined to one box do not form a two-box trade.
+        let mut masks = [0; CELLS];
+        for cell in [0, 1, 9, 10] {
+            masks[cell] = pair | digit_bit(3);
+        }
+        assert!(!has_rectangle_guardians(&masks, 0));
+    }
 
     #[test]
     fn a_rectangle_link_needs_two_boxes_and_both_swap_digits_in_every_corner() {

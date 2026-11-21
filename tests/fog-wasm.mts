@@ -573,6 +573,13 @@ test('published Jigsaw Fog hides authored colors alongside givens and cages unti
     assert.deepEqual(shared.game.variant, variant)
     assert.deepEqual(fogView(shared.game.variant)?.cellColors, initial.cellColors)
     const definition = puzzleDefinitionForSharing(loaded)
+    const uncoveredColors = { 0: ['red'] }
+    assert.equal(readGame(loaded.id, JSON.stringify({ ...loaded, givenCellColors: uncoveredColors })), undefined)
+    const uncoveredShare = await fetch('/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...definition, givenCellColors: uncoveredColors }),
+    })
+    assert.equal(uncoveredShare.status, 400)
     const invalidDefinition = { ...definition, variant: { ...definition.variant,
       fog: { ...definition.variant?.fog, cellColors: { 0: ['unknown shade'] } },
     } }

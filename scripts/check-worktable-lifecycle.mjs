@@ -155,8 +155,8 @@ async function release(page, id) {
   await frames(page)
 }
 
-async function withPage(name, pathname, check, options = {}) {
-  const context = await browser.newContext({ viewport: report.viewport, reducedMotion: 'reduce' })
+async function withPage(name, pathname, check, { context: contextOptions, ...options } = {}) {
+  const context = await browser.newContext({ viewport: report.viewport, reducedMotion: 'reduce', ...contextOptions })
   await context.addInitScript(instrument, { fixture: game, key: gameKey, ...options })
   const page = await context.newPage()
   page.setDefaultTimeout(20_000)
@@ -337,6 +337,27 @@ const checks = [
     assert.deepEqual(await boardSnapshot(page), before)
     return { assertions: 4 }
   }],
+  ['mobile-solution-step-explanation', '/?puzzle=' + game.id, async page => {
+    const before = await boardSnapshot(page)
+    const options = page.getByRole('button', { name: 'Open puzzle options' })
+    await options.tap()
+    await page.locator('#puzzle-menu').getByRole('button', { name: 'Solution', exact: true }).tap()
+    await options.tap()
+    await page.getByRole('button', { name: 'Reveal solution', exact: true }).tap()
+
+    const steps = page.getByRole('list', { name: 'Solving steps' })
+    const step = steps.getByRole('button').first()
+    const hint = page.getByRole('complementary', { name: 'Puzzle hint' })
+    await step.tap()
+    await hint.waitFor()
+    assert.equal(await hint.getByRole('heading').first().textContent(), await step.locator('strong').textContent())
+    await hint.getByRole('button', { name: 'Close hint', exact: true }).tap()
+    await hint.waitFor({ state: 'hidden' })
+    assert.equal(await step.getAttribute('aria-current'), 'step')
+    await page.getByRole('grid', { name: 'Solution preview' }).waitFor()
+    assert.deepEqual(await boardSnapshot(page), before, 'viewing a step must leave the editable position and history intact')
+    return { assertions: 6, viewport: { width: 390, height: 844 } }
+  }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }],
   ['edit-import-during-verification', '/import', async page => {
     const input = page.getByRole('textbox', { name: 'Puzzle text or link' })
     const submit = page.getByRole('button', { name: 'Preview puzzle' })

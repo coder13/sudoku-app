@@ -39,6 +39,45 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::LinkedClue(proof) => {
+            // Track the assumption, then verify each restriction and the final conflict.
+            return 48 + 10 * (proof.checks.len() as u16 + 1);
+        }
+        VariantEvidence::KropkiHouse(proof) => {
+            // Compare the dot’s number pairs against the house candidates.
+            return 30 + 2 * binary_choices(&proof.domains) + 2 * proof.tested as u16;
+        }
+        VariantEvidence::ThermometerHouse(proof) => {
+            // Read the line, then check enough remaining cells to fit the house.
+            return 36 + 2 * proof.line_cells.len() as u16 + 2 * binary_choices(&proof.domains)
+                + 2 * proof.rejected.len() as u16;
+        }
+        VariantEvidence::RegionSumHouse(proof) => {
+            // Check the digits in the shared region and compare the totals
+            // imposed by each line's remaining parts.
+            let lines: u16 = proof.lines.iter().map(|line| {
+                let span: u16 = line.parts.iter().map(|part| part.cells.len() as u16).sum();
+                let choices: u16 = line.parts.iter().map(|part| binary_choices(&part.domains)).sum();
+                4 + 3 * line.parts.len() as u16 + 2 * span + 2 * choices
+            }).sum();
+            return 32 + lines + 2 * proof.remainder.len() as u16 + 2 * binary_choices(&proof.remainder_domains);
+        }
+        VariantEvidence::RegionSumDistinct(proof) => {
+            let span: u16 = proof.parts.iter().map(|part| part.cells.len() as u16).sum();
+            let choices: u16 = proof.parts.iter().map(|part| binary_choices(&part.domains)).sum();
+            // Inspect the candidates and compare each part's distinct-digit totals.
+            return 24 + 2 * span + 2 * choices + 3 * proof.parts.len() as u16;
+        }
+        VariantEvidence::GroupLineHouseSupport(proof) => {
+            let choices: u16 = proof.domains.iter()
+                .map(|domain| (u32::BITS - (domain.count_ones() - 1).leading_zeros()) as u16)
+                .sum();
+            return 34 + 2 * choices + 2 * proof.cases.len() as u16;
+        }
+        VariantEvidence::GroupOrder(proof) => {
+            let checks: u16 = proof.rejected.iter().map(|order| order.checks.len() as u16 + 1).sum();
+            return 72 + 5 * checks + 2 * proof.rejected.len() as u16;
+        }
         VariantEvidence::LineHouses(proof) => {
             let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
             return 24 + 2 * cells.len() as u16 + 2 * binary_choices(domains) + 3 * houses.len() as u16;
@@ -131,9 +170,9 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         };
         assert_eq!(technique.difficulty(), tier, "{}", technique.id());
 
-        // Rate the actual path from each example, with its target as the first
-        // technique, then the rest of the standard variant solver order.
-        let order: Vec<_> = std::iter::once(technique)
+        // Rate the actual path from each example, with its target first and
+        // the standard variant solver order for the rest.
+        let mut order: Vec<_> = std::iter::once(technique)
             .chain(
                 VariantTechnique::DEFAULT_ORDER
                     .iter()
@@ -141,6 +180,15 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
                     .filter(|&other| other != technique),
             )
             .collect();
+        if technique == VariantTechnique::LinkedClueContradiction {
+            // The archived mixed-rule positions also need the pair techniques
+            // available in the app before their later contradictions appear.
+            order.extend([
+                Technique::LockedPair,
+                Technique::NakedPair,
+                Technique::HiddenPair,
+            ].map(VariantTechnique::Classic));
+        }
         for example in examples {
             let position = example.position;
             let trace = position.solve_logically(&order).unwrap();

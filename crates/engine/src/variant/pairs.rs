@@ -2,6 +2,7 @@ mod house_support;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
+    ops::Range,
     sync::Arc,
 };
 
@@ -381,7 +382,7 @@ impl PairCompiler {
     }
 
     pub fn finish(mut self, puzzle: &mut CompiledVariant) {
-        finish_markers(&mut self.clues, self.kropki, "kropki", KROPKI);
+        puzzle.kropki_marks = finish_markers(&mut self.clues, self.kropki, "kropki", KROPKI);
         finish_markers(&mut self.clues, self.xv, "xv", XV);
         for (kind, rule) in self.labeled_negative.into_iter().enumerate() {
             let Some(index) = rule else { continue };
@@ -470,7 +471,7 @@ fn finish_markers(
     markers: Markers,
     id: &'static str,
     relations: [Relation; 2],
-) {
+) -> Range<usize> {
     if markers.negative.into_iter().any(|active| active) {
         let source = Arc::new(RuleSource {
             id,
@@ -488,6 +489,7 @@ fn finish_markers(
             }));
         }
     }
+    let start = clues.len();
     for (cells, marker) in markers.marked {
         let source = Arc::new(RuleSource {
             id,
@@ -499,6 +501,7 @@ fn finish_markers(
             links: vec![PairConstraint::new(cells, marker.allowed)],
         });
     }
+    start..clues.len()
 }
 
 fn pair(

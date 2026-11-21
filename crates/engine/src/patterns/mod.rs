@@ -41,6 +41,8 @@ mod templates;
 pub(crate) use templates::layouts_in_houses;
 mod tridagon;
 mod uniqueness;
+#[cfg(feature = "variants")]
+pub(crate) use uniqueness::has_rectangle_guardians;
 mod wings;
 
 pub(super) struct PatternSearch<'a> {

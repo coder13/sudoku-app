@@ -1,5 +1,5 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
-import { DIGITS, onlyCandidate } from './game.ts'
+import { candidateCount, DIGITS, onlyCandidate } from './game.ts'
 import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
 import { cloneLayout } from './clone.ts'
@@ -8,6 +8,7 @@ import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName }
 
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
+const conjunction = new Intl.ListFormat('en', { type: 'conjunction' })
 
 function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number; digit: number }[]) {
   const { cells, domains } = evidence
@@ -264,6 +265,148 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   }
 }
 
+type GroupOrderEvidence = Extract<VariantDeduction['evidence'], { type: 'group-order' }>
+type GroupOrderCheck = GroupOrderEvidence['rejected'][number]['conflict']
+
+function explainGroupOrder(
+  evidence: GroupOrderEvidence,
+  puzzle: VariantPuzzle,
+  at: (cell: number) => string,
+  houseLabel: (house: VariantHouse) => string,
+) {
+  const shown = new Set(evidence.cells.slice(0, 3))
+  const digits = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1)).join(', ')
+  const order = (groups: number[]) => groups.map(mask => `{${digits(mask)}}`).join(', then ')
+  const family = (rule: number) => puzzle.rules?.[rule]?.type === 'modular' ? 'Modular' : 'Entropic'
+  const pairRule = ({ scope, cells, domains }: GroupOrderCheck) =>
+    scope.type === 'pair' ? constraintClue({ type: 'constraint', rules: scope.rules, cells, domains }, puzzle, at, []).description : ''
+  const name = (check: GroupOrderCheck) => {
+    const { scope, cells } = check
+    switch (scope.type) {
+      case 'house': return houseLabel(scope.house)
+      case 'line': return `the ${family(scope.rule)} line starting at ${at(cells[0])}`
+      case 'pair': return `the clue between ${at(cells[0])} and ${at(cells[1])}`
+    }
+  }
+  const cases = evidence.rejected.map(({ groups, checks, conflict, houseConflict }) => {
+    const steps = checks.map((check, index) => {
+      const following = new Set([...checks.slice(index + 1), conflict].flatMap(step => step.cells))
+      const narrowed = check.cells.flatMap((cell, i) =>
+        check.domains[i] !== check.supported[i] ? [{ cell, mask: check.supported[i] }] : [])
+      const relevant = narrowed.filter(({ cell }) => following.has(cell))
+      const detail = relevant.length ? relevant : narrowed.slice(0, 1)
+      for (const { cell } of detail) shown.add(cell)
+      const restrictions = conjunction.format(detail.map(({ cell, mask }) => `${at(cell)} can use only ${digits(mask)}`))
+      return check.scope.type === 'pair'
+        ? `${pairRule(check)} Across that clue, ${restrictions}.`
+        : `With ${name(check)}, ${restrictions}.`
+    })
+    const { scope, cells, domains } = conflict
+    if (scope.type === 'pair') {
+      for (const cell of cells) shown.add(cell)
+      const limits = conjunction.format(cells.map((cell, i) => `${at(cell)} can use only ${digits(domains[i])}`))
+      steps.push(`${pairRule(conflict)} ${limits}. No pair fits the clue.`)
+    } else if (scope.type === 'line') {
+      const line = puzzle.rules?.[scope.rule]
+      if (line?.type === 'entropic' || line?.type === 'modular') {
+        const masks = new Map(cells.map((cell, i) => [cell, domains[i]]))
+        for (let i = 0; i + 2 < line.cells.length; i++) {
+          const window = line.cells.slice(i, i + 3)
+          const missing = lineGroups[line.type].masks.find(mask => window.every(cell => !(masks.get(cell)! & mask)))
+          if (!missing) continue
+          for (const cell of window) shown.add(cell)
+          steps.push(`The three successive cells ${conjunction.format(window.map(at))} have no candidate in {${digits(missing)}}.`)
+          break
+        }
+      }
+      steps.push(`No order of the three groups fits the remaining candidates on ${name(conflict)}.`)
+    } else if (houseConflict) {
+      const locations = conjunction.format(houseConflict.cells.map(at))
+      const required = digits(houseConflict.digits)
+      for (const cell of houseConflict.cells) shown.add(cell)
+      const count = DIGITS.filter(digit => houseConflict.digits & 1 << (digit - 1)).length
+      const shortage = !locations ? `there is no place for ${required}`
+        : houseConflict.cells.length < count ? `only ${locations} can use ${required}`
+          : `${locations} can use only ${required}`
+      steps.push(`In ${name(conflict)}, ${shortage}. Each digit needs its own cell.`)
+    }
+    return `Try ${order(groups)}. ${steps.join(' ')}`
+  })
+  const remaining = evidence.remaining.map(order)
+  const conclusion = remaining.length === 1
+    ? `The line must start with ${remaining[0]}. Remove candidates outside the corresponding groups.`
+    : `Remove candidates that fit none of the remaining group orders.`
+  return {
+    cells: [...shown],
+    description: `Check the order of the repeating groups on the ${family(evidence.rule)} line starting at ${at(evidence.cells[0])}.`,
+    reason: [...cases, conclusion].join(' '),
+  }
+}
+
+function explainLinkedClue(
+  evidence: Extract<VariantDeduction['evidence'], { type: 'linked-clue' }>,
+  puzzle: VariantPuzzle,
+  at: (cell: number) => string,
+  houseLabel: (house: VariantHouse) => string,
+) {
+  const { assumption, checks, conflict, houseConflict } = evidence
+  const shown = new Set([assumption.cell])
+  const digits = (mask: number) => alternatives.format(DIGITS.filter(digit => mask & 1 << (digit - 1)).map(String))
+  const name = (check: typeof conflict) => {
+    switch (check.scope.type) {
+      case 'pair': return `the clue between ${at(check.cells[0])} and ${at(check.cells[1])}`
+      case 'line': return `the Between Line from ${at(check.cells[0])} to ${at(check.cells.at(-1)!)}`
+      case 'house': return houseLabel(check.scope.house)
+    }
+  }
+  const pairRule = (check: typeof conflict) => check.scope.type === 'pair' ? constraintClue({
+    type: 'constraint', rules: check.scope.rules, cells: check.cells, domains: check.domains,
+  }, puzzle, at, []).description + ' ' : ''
+  const steps = checks.map((check, index) => {
+    const later = new Set([...checks.slice(index + 1), conflict].flatMap(step => step.cells))
+    const updates = check.cells.flatMap((cell, i) => check.domains[i] === check.supported[i]
+      ? [] : [{ cell, mask: check.supported[i] }])
+    const relevant = updates.filter(({ cell }) => later.has(cell))
+    const detail = relevant.length ? relevant : updates.slice(0, 1)
+    for (const { cell } of detail) shown.add(cell)
+    const remaining = conjunction.format(detail.map(({ cell, mask }) => `${at(cell)} can use only ${digits(mask)}`))
+    return `${pairRule(check)}With ${name(check)}, ${remaining}.`
+  })
+  if (houseConflict) {
+    const required = conjunction.format(DIGITS.filter(digit => houseConflict.digits & 1 << (digit - 1)).map(String))
+    const places = conjunction.format(houseConflict.cells.map(at))
+    for (const cell of houseConflict.cells) shown.add(cell)
+    const count = candidateCount(houseConflict.digits)
+    const shortage = !places ? `there is no cell for ${required}`
+      : houseConflict.cells.length < count ? `only ${places} can use ${required}`
+        : `${places} can use only ${required}`
+    steps.push(`In ${name(conflict)}, ${shortage}. Each digit needs its own cell.`)
+  } else {
+    for (const cell of conflict.cells) shown.add(cell)
+    steps.push(`${pairRule(conflict)}No assignment fits ${name(conflict)}.`)
+  }
+  steps.push(`Remove ${assumption.digit} from ${at(assumption.cell)}.`)
+  return { cells: [...shown], description: `Start by assuming ${at(assumption.cell)} is ${assumption.digit}.`, steps }
+}
+
+function dotHouseConflict(proof: Extract<VariantDeduction['evidence'], { type: 'kropki-house' }>) {
+  const remaining = proof.cells.flatMap((cell, i) => proof.pair.includes(cell) ? [] : [{ cell, domain: proof.domains[i] }])
+  let shortest: { used: number; blocked: number[]; digits: number } | undefined
+  for (const used of proof.rejected) {
+    for (let subset = 1; subset < 1 << remaining.length; subset++) {
+      const size = candidateCount(subset)
+      if (shortest && size >= shortest.blocked.length) continue
+      const cells = remaining.filter((_, i) => subset & (1 << i))
+      const digits = cells.reduce((union, { domain }) => union | (domain & ~used), 0)
+      if (candidateCount(digits) < size) {
+        shortest = { used, blocked: cells.map(({ cell }) => cell), digits }
+        if (size === 1) return shortest
+      }
+    }
+  }
+  return shortest
+}
+
 export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle, options: CellReferenceOptions = {}): HintChoice {
   const { actions, evidence, technique } = deduction
   const nameCell = (cell: number) => cellReference(cell, options.cellReferenceStyle ?? 'concise', options.difficulty)
@@ -277,6 +420,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   let cells: readonly number[]
   let description: string
   let reason: string
+  let reasonSteps: string[] | undefined
   let candidates = focus
   switch (evidence.type) {
     case 'single': {
@@ -647,6 +791,118 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         .map(digit => ({ cell: cells[i], digit })))
       break
     }
+    case 'group-line-house-support': {
+      cells = evidence.cells
+      const rule = puzzle.rules?.[evidence.rule]
+      const family = rule?.type === 'modular' ? 'Modular' : 'Entropic'
+      const list = new Intl.ListFormat('en', { type: 'conjunction' })
+      const group = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+      const phaseOrder = (groups: number[]) => groups.map(mask => group(mask).join(', ')).join(' / ')
+      const failed = evidence.cases.flatMap(({ groups, conflict }) => {
+        if (!conflict) return []
+        const digits = group(conflict.digits)
+        const placeNames = list.format(conflict.cells.map(nameCell))
+        const digitNames = list.format(digits.map(String))
+        const limit = !conflict.cells.length ? `there is no place for ${digitNames}`
+          : !digits.length ? `${placeNames} would have no candidate`
+          : conflict.cells.length < digits.length ? `${digitNames} could go only in ${placeNames}`
+            : `${placeNames} could use only ${digitNames}`
+        return [`With groups ${phaseOrder(groups)}, ${limit}.`]
+      })
+      const house = houseLabel(evidence.house)
+      description = `The ${family} line starts at ${nameCell(evidence.lineCells[0])} and repeats three groups. Fit its highlighted cells into ${house} without repeating a digit.`
+      const remaining = evidence.cases.filter(example => !example.conflict)
+      const choices = remaining.map(({ groups }) => phaseOrder(groups))
+      const surviving = choices.length <= 3 ? `Only these group orders fit ${house}. ${alternatives.format(choices)}.` : ''
+      reason = [...failed.slice(0, 2), surviving,
+        'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
+      break
+    }
+    case 'kropki-house': {
+      const house = houseLabel(evidence.house)
+      const [a, b] = evidence.pair
+      const rules = evidence.rules.map(index => puzzle.rules?.[index]).filter(rule => rule?.type === 'kropki')
+      const white = rules.some(rule => hasMarkedPair(rule.consecutive?.pairs, a, b))
+      const black = rules.some(rule => hasMarkedPair(rule.ratioTwo?.pairs, a, b))
+      const dot = white && black ? 'The white and black dots' : white ? 'The white dot' : 'The black dot'
+      const rule = white && black ? 'The two digits must be 1 and 2.'
+        : white ? 'The two digits must be consecutive.' : 'One digit must be double the other.'
+      description = `${dot} join${white && black ? '' : 's'} ${nameCell(a)} and ${nameCell(b)} in ${house}. ${rule}`
+      cells = evidence.cells
+      const pairDigits = (mask: number) => new Intl.ListFormat('en').format(DIGITS
+        .filter(digit => mask & (1 << (digit - 1))).map(String))
+      const conflict = dotHouseConflict(evidence)
+      if (conflict) {
+        const shortage = conflict.blocked.length === 1
+          ? `${nameCell(conflict.blocked[0])} has no digit left`
+          : `${new Intl.ListFormat('en').format(conflict.blocked.map(nameCell))} can only use ${pairDigits(conflict.digits)}`
+        reason = `If the dot uses ${pairDigits(conflict.used)}, ${shortage}. Check the other pairs in ${house} to rule out the crossed-out candidates.`
+      } else if (focus.every(({ cell, digit }) => !evidence.pair.includes(cell) && evidence.locked & (1 << (digit - 1)))) {
+        const named = pairDigits(evidence.locked)
+        reason = `Every assignment that fills ${house} uses ${named} on the dot. Remove those candidates from the other cells in ${house}.`
+      } else {
+        reason = `Try each pair that fits the dot. The other cells in ${house} must use the digits it leaves. None of the complete assignments uses the crossed-out candidates.`
+      }
+      break
+    }
+    case 'thermometer-house': {
+      const house = houseLabel(evidence.house)
+      const shared = evidence.lineCells.filter(cell => evidence.cells.includes(cell))
+      cells = [...new Set([...evidence.cells, ...evidence.lineCells])]
+      description = `Read the Thermometer cells in ${house} from ${nameCell(shared[0])} to ${nameCell(shared[shared.length - 1])}. Fit the remaining digits into ${house}.`
+      const blocked = evidence.rejected.slice(0, 2).map(mask => Array.from({ length: 9 }, (_, i) => i + 1)
+        .filter(digit => mask & (1 << (digit - 1))).join('–'))
+      reason = [blocked.length
+        ? `The sequence${blocked.length === 1 ? '' : 's'} ${alternatives.format(blocked)} leave${blocked.length === 1 ? 's' : ''} too few places for the remaining digits in ${house}.`
+        : `Check where the remaining digits can go for each set on the Thermometer.`,
+      `None of the assignments that fill ${house} uses the crossed-out candidates.`].join(' ')
+      break
+    }
+    case 'region-sum-house': {
+      const region = houseLabel(evidence.house)
+      const inRegion = evidence.lines.flatMap(line => line.parts[line.inRegion].cells)
+      cells = [...new Set([...inRegion, ...evidence.remainder, ...focus.map(({ cell }) => cell)])]
+      description = evidence.remainder.length
+        ? `The marked Region Sum parts and the other cells in ${region} must share the digits 1 to 9 without repeats.`
+        : `The marked Region Sum parts fill ${region}. Their totals must add up to 45, using every digit once.`
+      const narrowed = evidence.lines.filter(line => line.remainingTotals.length < line.commonTotals.length)
+      const totals = narrowed.map(line => {
+        const cell = nameCell(line.parts[line.inRegion].cells[0])
+        return `The part starting at ${cell} can now total only ${alternatives.format(line.remainingTotals.map(String))}.`
+      })
+      reason = [`Match each part’s total to the other parts of its line, then check which digit sets fit together in ${region}.`,
+        ...totals, 'The crossed-out candidates cannot fit any of the remaining assignments.'].join(' ')
+      break
+    }
+    case 'region-sum-distinct': {
+      cells = evidence.parts.flatMap(part => part.cells)
+      const shared = alternatives.format(evidence.commonTotals.map(String))
+      const smallest = [...evidence.parts].sort((a, b) => a.totals.length - b.totals.length).slice(0, 2)
+      const examples = smallest.map(part => {
+        const totals = alternatives.format(part.totals.map(String))
+        return `The part starting at ${nameCell(part.cells[0])} can total ${totals} with distinct digits.`
+      })
+      const rule = puzzle.rules?.[evidence.rule]
+      const start = rule?.type === 'region-sum' ? rule.cells[0] : cells[0]
+      description = `The Region Sum line starts at ${nameCell(start)}. Each part has the same total, and its cells share a region, so its digits must be distinct.`
+      reason = `${examples.join(' ')} All parts can reach only ${shared}. None of the assignments for those totals uses the crossed-out candidates.`
+      break
+    }
+    case 'linked-clue': {
+      const explanation = explainLinkedClue(evidence, puzzle, nameCell, houseLabel)
+      cells = explanation.cells
+      description = explanation.description
+      reasonSteps = explanation.steps
+      reason = reasonSteps.join(' ')
+      break
+    }
+    case 'group-order': {
+      const explanation = explainGroupOrder(evidence, puzzle, nameCell, houseLabel)
+      cells = [...new Set([...explanation.cells, ...focus.map(({ cell }) => cell)])]
+      description = explanation.description
+      reason = explanation.reason
+      break
+    }
     case 'line-houses': {
       cells = evidence.cells
       const gap = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'whispers')
@@ -832,7 +1088,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   }
   return {
     technique, actions,
-    evidence: { variant: { description, reason, source: { deduction, puzzle } } },
+    evidence: { variant: { description, reason, ...(reasonSteps && { reasonSteps }), source: { deduction, puzzle } } },
     pattern: { houses: [], cells: [...cells], candidates },
   }
 }

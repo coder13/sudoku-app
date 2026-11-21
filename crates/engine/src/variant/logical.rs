@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 11;
+pub const VARIANT_SCORING_VERSION: u32 = 17;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -28,11 +28,18 @@ mod exclusions;
 mod forcing;
 pub use forcing::VariantTrialFailure;
 mod pruning;
+mod group_line_houses;
+mod group_order;
+mod linked_clues;
+mod scope_checks;
 mod line_houses;
 mod entropy_quadruple;
 mod sum_pairs;
+mod thermometer_houses;
+mod kropki_houses;
 mod group_sum_implications;
 mod ray_houses;
+mod region_sums;
 mod renban_group_counts;
 mod renban_house_support;
 mod renban_locks;
@@ -184,6 +191,20 @@ catalog! {
     RenbanSum: "renban-sum", 66, Medium;
     /// Fit a Renban and diagonal sum against another Renban in a shared house.
     RenbanSumHouse: "renban-sum-house", 88, Hard;
+    /// Fit the repeated phases of an Entropic or Modular line inside one house.
+    GroupLineHouseSupport: "group-line-house-support", 64, Medium;
+    /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
+    GroupOrderContradiction: "group-order-contradiction", 89, Hard;
+    /// Intersect Region Sum totals after requiring distinct digits inside each part.
+    RegionSumDistinct: "region-sum-distinct", 67, Medium;
+    /// Combine disjoint Region Sum parts using the digits in their shared region.
+    RegionSumHouse: "region-sum-house", 133, Hard;
+    /// Fit increasing digits on a Thermometer together with the rest of one shared house.
+    ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
+    /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
+    KropkiHouseSupport: "kropki-house-support", 48, Medium;
+    /// Reject a candidate using a bounded sequence of Between, pair and house checks.
+    LinkedClueContradiction: "linked-clue-contradiction", 78, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -371,6 +392,20 @@ pub enum VariantEvidence {
     RenbanSum(Box<VariantRenbanSumProof>),
     /// Candidate support from a Little Killer ray, two Renbans, and a house.
     RenbanSumHouse(Box<VariantRenbanSumHouseProof>),
+    /// Repeating groups and an all-different house.
+    GroupLineHouseSupport(Box<VariantGroupLineHouseProof>),
+    /// One or more repeating orders contradict the surrounding clues and houses.
+    GroupOrder(Box<VariantGroupOrderProof>),
+    /// A candidate refuted by a sequence of linked rule and house checks.
+    LinkedClue(Box<VariantLinkedClueProof>),
+    /// A Region Sum line whose parts must each use distinct digits.
+    RegionSumDistinct(Box<VariantRegionSumProof>),
+    /// Several Region Sum line parts must use disjoint digits in one region.
+    RegionSumHouse(Box<VariantRegionSumHouseProof>),
+    /// Increasing Thermometer assignments checked against a shared house.
+    ThermometerHouse(Box<VariantThermometerHouseProof>),
+    /// Assignments of a printed Kropki dot checked against one shared house.
+    KropkiHouse(Box<VariantKropkiHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -696,6 +731,249 @@ pub struct VariantRenbanSumHouseWitness {
     pub restricted_digits: u16,
 }
 
+/// Group assignments to one line and available digits in a shared house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantGroupLineHouseProof {
+    /// Original Entropic or Modular rule index.
+    pub rule: usize,
+    /// Distinct path cells in first-visit order.
+    pub line_cells: Vec<usize>,
+    /// Candidate masks for the distinct path cells.
+    pub line_domains: Vec<u16>,
+    /// Repeating group position of each distinct path cell, from 0 to 2.
+    pub phases: Vec<usize>,
+    /// House where digits must be distinct.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Candidate masks for the house before the deduction.
+    pub domains: [u16; 9],
+    /// All house digits supported by both constraints.
+    pub supported: [u16; 9],
+    /// Group orders consistent with the line's candidates, and the cases the house rejects.
+    pub cases: Vec<VariantGroupLineHouseCase>,
+}
+
+/// One group order and, if impossible, a short count proving the conflict.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseCase {
+    /// Digit mask for each of the three repeating positions.
+    pub groups: [u16; 3],
+    /// Digits with too few locations or cells with too few digits.
+    pub conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A subset of cells and its insufficient digit support, or the reverse.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseConflict {
+    /// House cells involved in the count.
+    pub cells: Vec<usize>,
+    /// Digits involved in the count.
+    pub digits: u16,
+}
+
+/// The rules or house checked under a hypothetical assignment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
+pub enum VariantConstraintScope {
+    /// All-different candidates in a single house.
+    House {
+        /// The house used here.
+        house: VariantHouseKind,
+    },
+    /// A binary clue, including an edge governed by a negative mark rule.
+    Pair {
+        /// Indices of the rules that define the relationship.
+        rules: Vec<usize>,
+    },
+    /// A line rule.
+    Line {
+        /// Index of the line rule.
+        rule: usize,
+    },
+}
+
+/// A checked scope in a group-order proof.
+pub use VariantConstraintScope as VariantGroupOrderScope;
+
+/// The candidates supported by a scope under a hypothetical assignment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantConstraintCheck {
+    /// Scope responsible for this restriction.
+    pub scope: VariantConstraintScope,
+    /// Cells in scope order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before the check.
+    pub domains: Vec<u16>,
+    /// Candidate masks supported by the scope. All zero at a contradiction.
+    pub supported: Vec<u16>,
+}
+
+/// A checked constraint in a group-order proof.
+pub use VariantConstraintCheck as VariantGroupOrderCheck;
+
+/// A candidate that leaves a linked clue or house without an assignment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantLinkedClueProof {
+    /// The candidate assumed to be true.
+    pub assumption: Candidate,
+    /// Checks that narrow candidate masks under the assumption.
+    pub checks: Vec<VariantConstraintCheck>,
+    /// The final scope, which has no valid assignment.
+    pub conflict: VariantConstraintCheck,
+    /// The cells or digits that cannot fit if the final scope is a house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house_conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A repeating order that ends in a contradiction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderRefutation {
+    /// Group masks for the three repeating positions.
+    pub groups: [u16; 3],
+    /// Candidate restrictions in the order they occur.
+    pub checks: Vec<VariantGroupOrderCheck>,
+    /// The scope with no valid assignment under the assumption.
+    pub conflict: VariantGroupOrderCheck,
+    /// A minimal set of cells or digits that cannot fit in a house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house_conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A complete explanation for rejecting some of the available group orders.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderProof {
+    /// Index of the source Entropic or Modular rule.
+    pub rule: usize,
+    /// Distinct source cells in first-visit order.
+    pub cells: Vec<usize>,
+    /// Candidate masks in those cells before testing any order.
+    pub domains: Vec<u16>,
+    /// The repeating position, from zero to two, of each cell.
+    pub phases: Vec<usize>,
+    /// The orders that survive the bounded checks.
+    pub remaining: Vec<[u16; 3]>,
+    /// Contradictions for the orders that have no support.
+    pub rejected: Vec<VariantGroupOrderRefutation>,
+}
+
+/// The valid distinct-digit totals for each part of a Region Sum line.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumProof {
+    /// Rule index of the Region Sum line.
+    pub rule: usize,
+    /// Parts in compiled order. Grouped visits are ordered by region.
+    pub parts: Vec<VariantRegionSumPart>,
+    /// Totals that every part can reach.
+    pub common_totals: Vec<u8>,
+}
+
+/// One part of a Region Sum line, with all its cells in one region.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumPart {
+    /// Cells in this part.
+    pub cells: Vec<usize>,
+    /// Input masks in cell order, including placed digits.
+    pub domains: Vec<u16>,
+    /// Totals reachable with distinct digits.
+    pub totals: Vec<u8>,
+}
+
+/// Matching Region Sum lines using the digits in one common region.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumHouseProof {
+    /// Region shared by the line parts.
+    pub house: VariantHouseKind,
+    /// Lines contributing disjoint parts to the region.
+    pub lines: Vec<VariantRegionSumHouseLine>,
+    /// Other cells in the same region.
+    pub remainder: Vec<usize>,
+    /// Input masks of the other cells.
+    pub remainder_domains: Vec<u16>,
+}
+
+/// One line involved in a shared-region proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumHouseLine {
+    /// Source rule index.
+    pub rule: usize,
+    /// Index of the part in the shared region.
+    pub in_region: usize,
+    /// All parts in compiled order, including those outside the region.
+    pub parts: Vec<VariantRegionSumPart>,
+    /// Totals shared by the parts before checking the region.
+    pub common_totals: Vec<u8>,
+    /// Totals still possible after checking the region.
+    pub remaining_totals: Vec<u8>,
+}
+
+/// Candidate support from one Thermometer and a row, column, or other distinct-digit house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantThermometerHouseProof {
+    /// Index of the source Thermometer rule.
+    pub rule: usize,
+    /// Physical Thermometer cells in bulb-to-tip order.
+    pub line_cells: Vec<usize>,
+    /// Input masks in Thermometer order.
+    pub line_domains: Vec<u16>,
+    /// House shared by at least two of the Thermometer's cells.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Input masks in house order, including placed digits.
+    pub domains: [u16; 9],
+    /// Number of distinct increasing digit sets tested on the shared line cells.
+    pub tested: usize,
+    /// Tested digit sets unable to extend to the whole house.
+    pub rejected: Vec<u16>,
+}
+
+/// Candidate support from a printed Kropki dot and a shared distinct-digit house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantKropkiHouseProof {
+    /// Indices of the rules printing a mark on this edge.
+    pub rules: Vec<usize>,
+    /// Cells joined by the dot.
+    pub pair: [usize; 2],
+    /// House shared by the two dot cells.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Input masks for the house, including placed digits.
+    pub domains: [u16; 9],
+    /// Number of distinct digit pairs tested.
+    pub tested: usize,
+    /// Digits used by the dot in every full house assignment.
+    pub locked: u16,
+    /// Digit pairs that could not extend to the whole house.
+    pub rejected: Vec<u16>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -934,7 +1212,15 @@ impl VariantPosition {
 }
 
 impl VariantDeduction {
-    fn rank(&self) -> (Difficulty, u16, usize, VariantTechnique, HintAction) {
+    fn rank(&self) -> (Difficulty, u16, usize, usize, VariantTechnique, HintAction) {
+        let checks = match &self.evidence {
+            VariantEvidence::GroupOrder(proof) => proof
+                .rejected
+                .iter()
+                .map(|order| order.checks.len() + 1)
+                .sum(),
+            _ => 0,
+        };
         let cells = match &self.evidence {
             VariantEvidence::Single { .. } => 1,
             VariantEvidence::CageSum { cells, .. }
@@ -951,6 +1237,8 @@ impl VariantDeduction {
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::EntropyAreas(proof) => proof.cells.len(),
             VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::KropkiHouse(proof) => proof.cells.len(),
+            VariantEvidence::ThermometerHouse(proof) => proof.cells.len() + proof.line_cells.len(),
             VariantEvidence::RenbanGroupCounts(proof) => {
                 proof.conflict.cells.len() + usize::from(proof.placement.is_some())
             }
@@ -960,6 +1248,12 @@ impl VariantDeduction {
             },
             VariantEvidence::RenbanSum(proof) => proof.cells.len(),
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
+            VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
+            VariantEvidence::GroupOrder(proof) => proof.cells.len(),
+            VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
+            VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
+            VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
+                .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::QuadrupleLock { clues, .. } => clues[0].cells.len() + clues[1].cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -978,6 +1272,7 @@ impl VariantDeduction {
         (
             self.technique.difficulty(),
             self.technique.cost(),
+            checks,
             cells,
             self.technique,
             self.actions[0],
@@ -989,6 +1284,7 @@ pub(super) struct ProofPosition<'a> {
     board: Board,
     pub masks: [u16; CELLS],
     uniqueness: OnceCell<bool>,
+    rectangle_guardians: OnceCell<bool>,
     rectangle_inference: RectangleInferenceCache,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
@@ -1108,8 +1404,17 @@ impl CompiledVariant {
         limit: usize,
     ) -> Result<Vec<VariantDeduction>, VariantPositionError> {
         let position = self.proof_position(entries, eliminations)?;
+        Ok(self.rank_position_hints(&position, enabled, limit))
+    }
+
+    fn rank_position_hints<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
+        enabled: &[VariantTechnique],
+        limit: usize,
+    ) -> Vec<VariantDeduction> {
         if limit == 0 {
-            return Ok(Vec::new());
+            return Vec::new();
         }
         let mut techniques = enabled.to_vec();
         let tier = |technique: &VariantTechnique| (technique.difficulty(), technique.cost());
@@ -1118,19 +1423,19 @@ impl CompiledVariant {
         for group in techniques.chunk_by(|a, b| tier(a) == tier(b)) {
             let mut hints: Vec<_> = group
                 .iter()
-                .flat_map(|&technique| self.explain(&position, technique))
+                .flat_map(|&technique| self.explain(position, technique))
                 .collect();
             hints.sort_by_cached_key(VariantDeduction::rank);
             for hint in hints {
                 if moves.iter().all(|other| other.actions != hint.actions) {
                     moves.push(hint);
                     if moves.len() == limit {
-                        return Ok(moves);
+                        return moves;
                     }
                 }
             }
         }
-        Ok(moves)
+        moves
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
@@ -1212,7 +1517,8 @@ impl CompiledVariant {
         let mut choices: Vec<VariantDeduction> =
             probes.into_iter().map(|(h, _)| h).take(limit).collect();
         if choices.len() < limit {
-            for hint in self.ranked_hints(entries, eliminations, enabled, limit)? {
+            // The fallback examines the same position and can reuse its checks.
+            for hint in self.rank_position_hints(&position, enabled, limit) {
                 if choices.iter().all(|other| other.actions != hint.actions) {
                     choices.push(hint);
                     if choices.len() == limit {
@@ -1289,6 +1595,7 @@ impl CompiledVariant {
             board,
             masks,
             uniqueness: OnceCell::new(),
+            rectangle_guardians: OnceCell::new(),
             rectangle_inference: RectangleInferenceCache::default(),
             overlay: OnceCell::new(),
         }
@@ -1530,6 +1837,13 @@ impl CompiledVariant {
             }
             RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
+            GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
+            GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
+            LinkedClueContradiction => self.linked_clue_proofs(position, &mut proofs),
+            RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
+            RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
+            ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
+            KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));

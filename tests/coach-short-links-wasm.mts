@@ -85,9 +85,9 @@ test('a published mixed Coach short link preserves the title, all rules, help, p
     try { assert.equal(await scan.count('between'), targets.size) } finally { scan.close() }
 
     const path = await puzzleSolution(game)
-    assert.equal(path.steps.length, 62)
-    assert.equal(path.rating.status, 'stalled')
-    assert.notEqual(path.board, between.solution)
+    assert.equal(path.steps.length, 163)
+    assert.deepEqual(path.rating.status, { solved: 'hard' })
+    assert.equal(path.board, between.solution)
     const move = ranked.choices[0].actions
     const applied = applyDeduction(game, move, ranked.candidates!)
     assert.notEqual(applied, game)
@@ -332,9 +332,10 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     try { assert.equal(await scan.count('kropki'), actions.size) } finally { scan.close() }
 
     const walkthrough = await puzzleSolution(game)
-    assert.equal(grade, null)
-    assert.equal(walkthrough.rating.status, 'stalled')
-    assert.ok(walkthrough.steps.length > 0)
+    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 17])
+    assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
+    assert.equal(walkthrough.board, solution)
+    assert.ok(walkthrough.steps.some(step => step.technique === 'kropki-house-support'))
     for (const step of walkthrough.steps) for (const action of step.actions) {
       const candidate = 'place' in action ? action.place : action.eliminate
       assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
@@ -402,7 +403,8 @@ test('220V imports its complete published rules and centered paths through the s
     assertVariantCompletion(game.variant.puzzle, solution)
     const counted = countLineSolutions(game.variant.puzzle)
     assert.deepEqual(counted.solutions, [solution])
-    assert.equal(grade, null)
+    assert.equal(grade?.difficulty, 'medium')
+    assert.equal(grade.points, 3815)
 
     const ranked = await puzzleHints(game)
     assert.ok(ranked.choices.length > 1)
@@ -458,9 +460,10 @@ test('220V imports its complete published rules and centered paths through the s
 
     const path = await puzzleSolution(game)
     assert.ok('rating' in path)
-    assert.equal(path.rating.status, 'stalled')
-    assert.equal(path.steps.length, 32)
-    assert.equal(path.rating.score.points, 1045)
+    assert.deepEqual(path.rating.status, { solved: 'medium' })
+    assert.equal(path.steps.length, 200)
+    assert.equal(path.rating.score.points, 3815)
+    assert.equal(path.rating.score.counts['region-sum-distinct'], 3)
     let played = game
     for (const step of path.steps) {
       for (const action of step.actions) {
@@ -470,7 +473,7 @@ test('220V imports its complete published rules and centered paths through the s
       played = applyDeduction(played, step.actions, variantHouseMasks(game.variant.puzzle, valuesOf(played)))
     }
     assert.equal(valuesOf(played), path.board)
-    assert.notEqual(path.board, solution)
+    assert.equal(path.board, solution)
     const restored = readGame(played.id, JSON.stringify(played))
     assert.deepEqual(restored?.variant, game.variant)
     assert.deepEqual(restored?.position, played.position)

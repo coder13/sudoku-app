@@ -116,6 +116,56 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::GroupLineHouseSupport(proof) => {
+                    assert!(matches!(
+                        position.puzzle.rules[proof.rule],
+                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                    ));
+                    scopes.insert(proof.cells.to_vec());
+                }
+                VariantEvidence::LinkedClue(proof) => {
+                    assert_eq!(exercise.suggestion, HintAction::Eliminate(proof.assumption));
+                    assert!(proof.conflict.supported.contains(&0));
+                    scopes.insert(proof.conflict.cells.to_vec());
+                }
+                VariantEvidence::KropkiHouse(proof) => {
+                    assert!(proof.rules.iter().all(|&rule| {
+                        matches!(position.puzzle.rules[rule], PuzzleRule::Kropki { .. })
+                    }));
+                    assert!(proof.pair.iter().all(|cell| proof.cells.contains(cell)));
+                    scopes.insert(proof.cells.to_vec());
+                }
+                VariantEvidence::ThermometerHouse(proof) => {
+                    let PuzzleRule::Thermometer { cells } = &position.puzzle.rules[proof.rule] else {
+                        panic!("the proof must cite its Thermometer")
+                    };
+                    assert_eq!(cells, &proof.line_cells);
+                    scopes.insert(proof.cells.to_vec());
+                }
+                VariantEvidence::RegionSumHouse(proof) => {
+                    assert!(proof.lines.iter().all(|line| matches!(
+                        position.puzzle.rules[line.rule], PuzzleRule::RegionSum { .. }
+                    )));
+                    let cells = proof.lines.iter().flat_map(|line| &line.parts)
+                        .flat_map(|part| part.cells.iter().copied()).chain(proof.remainder).collect();
+                    scopes.insert(cells);
+                }
+                VariantEvidence::RegionSumDistinct(proof) => {
+                    assert!(matches!(
+                        position.puzzle.rules[proof.rule],
+                        PuzzleRule::RegionSum { .. }
+                    ));
+                    scopes.insert(proof.parts.iter().flat_map(|part| part.cells.clone()).collect());
+                }
+                VariantEvidence::GroupOrder(proof) => {
+                    assert!(matches!(
+                        position.puzzle.rules[proof.rule],
+                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                    ));
+                    for order in proof.rejected {
+                        scopes.insert(order.conflict.cells);
+                    }
+                }
                 VariantEvidence::LineHouses(proof) => {
                     if position.puzzle.rules.len() > 1 {
                         overlaps.insert(technique);
