@@ -2,6 +2,7 @@ import type { AdjacentClues } from './adjacent-clues.ts'
 import { arrowRule, arrowRuleNote, arrowTechnique } from './arrow.ts'
 import { bit, cellLabel, type LatinHint, type LatinRule } from './engine.ts'
 import { extraRegionTechnique } from './extra-regions.ts'
+import { globalEntropyTechnique } from './global-entropy.ts'
 import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, lockoutTechnique } from './endpoint-lines.ts'
 import { renbanRule, renbanRuleNote, renbanTechnique } from './renban.ts'
 import type { WhisperLine } from './whispers.ts'
@@ -23,12 +24,14 @@ export type LatinClues = {
   whispers?: readonly WhisperLine[]
   pathClues?: readonly LatinPathClue[]
   extraRegions?: readonly (readonly number[])[]
+  globalEntropy?: true
 }
 
 export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
 
 export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'extra-region') return extraRegionTechnique
+  if (kind === 'global-entropy') return globalEntropyTechnique
   if (kind && Object.hasOwn(pathClueNames, kind)) return pathClueNames[kind as LatinPathClueType]
 }
 

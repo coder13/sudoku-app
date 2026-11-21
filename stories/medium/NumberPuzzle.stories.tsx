@@ -746,6 +746,53 @@ export const OverlappingExtraRegions: Story = {
   },
 }
 
+const globalEntropyPuzzle = createImportedFutoshiki(9,
+  '623597184748216953915483267369145728804072516402058671186724395571639842257861439',
+  [], { globalEntropy: true })
+
+export const GlobalEntropy: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={globalEntropyPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R5C2, empty$/ })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await expect(grid).not.toHaveAttribute('data-line-clues')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rules = within(await canvas.findByRole('dialog', { name: 'Futoshiki rules' }))
+    await expect(rules.getByText(/^Every 2 × 2 area contains a low digit/)).toBeVisible()
+    await userEvent.click(rules.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(cell)
+    await userEvent.keyboard('9')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const result = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await expect(result.getByText('The highlighted entries conflict with the rules.')).toBeVisible()
+    await expect(grid.querySelector('[data-cell="37"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(result.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Global Entropy' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Global Entropy' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/The 2 × 2 area from R4C2 to R5C3 needs a low, a medium, and a high digit/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="29"]')).toHaveAttribute('data-context', 'true')
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const final = within(await canvas.findByRole('group', { name: 'Futoshiki solution' }))
+    await expect(final.getByRole('button', { name: /^R5C2, 3$/ })).toBeVisible()
+  },
+}
+
 const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
   position: {
     values: [1, ...Array<number>(15).fill(0)],

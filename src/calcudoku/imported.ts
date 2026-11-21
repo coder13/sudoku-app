@@ -104,7 +104,7 @@ export function readCoachCalcudoku(
 }
 
 function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Partial<Record<number, CageOperator>>>): CalcudokuEntry {
-  const { size, givens, colors, annotations, adjacentClues, whispers, pathClues, extraRegions } = source
+  const { size, givens, colors, annotations, adjacentClues, whispers, pathClues, extraRegions, globalEntropy } = source
   const fixed = [...givens].map(Number)
   const labels: Record<number, string> = {}
   const ruleNotes: string[] = []
@@ -131,7 +131,7 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
     if (target && !covered.has(cell)) cages.push({ cells: [cell], target, operator: 'equal' })
   }
   const inequalities = [...(source.inequalities ?? [])].sort((a, b) => a.less - b.less || a.greater - b.greater)
-  const puzzle = createCalcudoku(size, cages, fixed, { allowUncaged: true, inequalities, adjacentClues, whispers, pathClues, extraRegions })
+  const puzzle = createCalcudoku(size, cages, fixed, { allowUncaged: true, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy })
   if (inequalities.length) ruleNotes.push('The point of each inequality sign faces the smaller digit.')
   // Each cell index occupies two base-36 characters.
   const signs = inequalities.map(({ less, greater }) => [less, greater]
@@ -141,7 +141,7 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
   const payload = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
   const progress = withImportedNumberPosition(source.position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
   return {
-    id: `c1.${payload}${rules}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
+    id: `c1.${payload}${rules}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${globalEntropy ? '.e1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
     imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, annotations, ...progress,
   }
 }
@@ -162,7 +162,7 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
   const match = matchImportedCalcudoku(token)
   if (!match) return
   try {
-    const [, payload, signs, adjacent, whisperLines, paths, regions, progress, marks] = match
+    const [, payload, signs, adjacent, whisperLines, paths, regions, entropy, progress, marks] = match
     const bytes = Uint8Array.from(atob(payload.replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
     const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
     if (!Array.isArray(data) || data.length !== 4) return
@@ -187,7 +187,10 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
     const whispers = whisperLines ? readWhispers(whisperLines) : undefined
     const pathClues = paths ? readLatinPathClues(paths) : undefined
     const extraRegions = regions ? readLatinExtraRegions(regions) : undefined
-    const entry = calcudokuImportEntry({ size, givens, cages, colors, inequalities, adjacentClues, whispers, pathClues, extraRegions, position, annotations }, operators)
+    const entry = calcudokuImportEntry({
+      size, givens, cages, colors, inequalities, adjacentClues, whispers, pathClues, extraRegions, position, annotations,
+      globalEntropy: entropy ? true : undefined,
+    }, operators)
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }
 }

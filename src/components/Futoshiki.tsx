@@ -7,7 +7,7 @@ import { whispersTechnique } from '../latin/whispers'
 import { xWingTechnique } from '../latin/x-wing'
 import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
 import { advancedInequalityTechnique, inequalityTechniqueNames, numberPuzzleEdgeClues } from './number-puzzle-edge-clues'
-import { numberPuzzleLines } from './number-puzzle-line-clues'
+import { numberPuzzleClues } from './number-puzzle-line-clues'
 
 function numberHint(hint: LatinHint) {
   const matching = hint.rules.filter(rule => rule.kind === 'inequality-line-matching')
@@ -42,7 +42,7 @@ export const futoshiki = {
   board: ({ puzzle }) => {
     const { size, givens, inequalities, adjacentClues } = puzzle
     const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
-    const lines = numberPuzzleLines(size, inequalities, puzzle)
+    const lines = numberPuzzleClues(size, inequalities, puzzle)
     return {
       width: size,
       height: size,

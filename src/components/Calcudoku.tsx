@@ -12,7 +12,7 @@ import { Button } from './Button'
 import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
 import { SelectControl } from './SelectControl'
 import { advancedInequalityTechnique, inequalityTechniqueNames, inequalityTechniques, numberPuzzleEdgeClues } from './number-puzzle-edge-clues'
-import { numberPuzzleLines } from './number-puzzle-line-clues'
+import { numberPuzzleClues } from './number-puzzle-line-clues'
 
 const lockedCandidates = 'Locked candidates'
 
@@ -51,7 +51,7 @@ export const calcudoku = {
     const { size, cages, givens, inequalities, adjacentClues } = puzzle
     const hasInequalities = inequalities.length > 0
     const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
-    const lines = numberPuzzleLines(size, inequalities, puzzle)
+    const lines = numberPuzzleClues(size, inequalities, puzzle)
     const describeHint = (hint: LatinHint) => numberHint(hint, hasInequalities)
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
     const cells = givens.map((given, cell) => {

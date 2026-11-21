@@ -14,16 +14,16 @@ export { importedFutoshikiToken, isFutoshikiSize, type FutoshikiSize } from './i
 
 export function createImportedFutoshiki(
   size: FutoshikiSize, givens: string, inequalities: readonly Inequality[],
-  { position, annotations, adjacentClues, whispers, pathClues, extraRegions }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
+  { position, annotations, adjacentClues, whispers, pathClues, extraRegions, globalEntropy }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
 ): FutoshikiEntry {
-  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions })
+  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions, globalEntropy })
   // Keep the one-character indices in existing links. Larger boards need two.
   const wide = size > 6
   const encoded = inequalities
     .map(({ less, greater }) => [less, greater].map(cell => cell.toString(36).padStart(wide ? 2 : 1, '0')).join(''))
     .sort().join('')
   const progress = withImportedNumberPosition(position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
-  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
+  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${globalEntropy ? '.e1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
     puzzle, number: 0, difficulty: difficultyBySize[size], imported: true, annotations, ...progress }
 }
 
@@ -38,7 +38,7 @@ export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
 export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined {
   const data = matchImportedFutoshiki(token)
   if (!data) return
-  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, progress, marks } = data
+  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, entropy, progress, marks } = data
   const inequalities: Inequality[] = []
   for (let index = 0; index < edges.length; index += 2 * indexLength) {
     inequalities.push({
@@ -54,6 +54,7 @@ export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined
       position, annotations, adjacentClues, whispers: whispers ? readWhispers(whispers) : undefined,
       pathClues: lines ? readLatinPathClues(lines) : undefined,
       extraRegions: regions ? readLatinExtraRegions(regions) : undefined,
+      globalEntropy: entropy ? true : undefined,
     })
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }

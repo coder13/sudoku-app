@@ -4,8 +4,8 @@ import {
 } from '../number-puzzles/import-token-limits.ts'
 
 export const difficultyBySize = { 3: 'easy', 4: 'easy', 5: 'medium', 6: 'hard', 7: 'hard', 8: 'hard', 9: 'hard' } as const
-const importToken = /^(f[12])\.([0-9]{9,81})\.([0-9a-z]{0,576})(?:\.d([0-9a-z]+))?(?:\.w([0-9a-z]+))?(?:\.l([0-9a-z]+))?(?:\.r([0-9a-z]+))?(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
-const maxDefinitionLength = 3 + 81 + 1 + 576 + 2 + maxAdjacentClueTokenLength + 2 + maxWhisperTokenLength + 2 + maxPathClueTokenLength + 2 + maxExtraRegionTokenLength
+const importToken = /^(f[12])\.([0-9]{9,81})\.([0-9a-z]{0,576})(?:\.d([0-9a-z]+))?(?:\.w([0-9a-z]+))?(?:\.l([0-9a-z]+))?(?:\.r([0-9a-z]+))?(\.e1)?(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
+const maxDefinitionLength = 3 + 81 + 1 + 576 + 2 + maxAdjacentClueTokenLength + 2 + maxWhisperTokenLength + 2 + maxPathClueTokenLength + 2 + maxExtraRegionTokenLength + 3
 
 export type FutoshikiSize = keyof typeof difficultyBySize
 
@@ -18,13 +18,13 @@ export function matchImportedFutoshiki(value: unknown) {
     value.length > maxDefinitionLength + 2 + numberPositionTokenLength + 2 + numberAnnotationTokenLength) return
   const match = importToken.exec(value)
   if (!match) return
-  const [, version, givens, edges, adjacent, whispers, lines, regions, progress, marks] = match
+  const [, version, givens, edges, adjacent, whispers, lines, regions, entropy, progress, marks] = match
   const size = Math.sqrt(givens.length)
-  if (!isFutoshikiSize(size) || (version === 'f2') !== (size > 6) || [...givens].some(digit => Number(digit) > size)) return
+  if (!isFutoshikiSize(size) || (entropy && size !== 9) || (version === 'f2') !== (size > 6) || [...givens].some(digit => Number(digit) > size)) return
   const indexLength = size > 6 ? 2 : 1
   const edgeLength = 2 * indexLength
   if (edges.length % edgeLength || edges.length > 2 * size * (size - 1) * edgeLength) return
-  return { size, givens, edges, indexLength, adjacent, whispers, lines, regions, progress, marks }
+  return { size, givens, edges, indexLength, adjacent, whispers, lines, regions, entropy, progress, marks }
 }
 
 export function importedFutoshikiToken(value: unknown) {

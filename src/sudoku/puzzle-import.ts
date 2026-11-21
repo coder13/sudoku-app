@@ -454,7 +454,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -757,14 +757,26 @@ function readCoachExtraRegions(layer: Record<string, unknown>): number[][] {
   })
 }
 
+function checkCoachGlobalEntropy(layer: Record<string, unknown>) {
+  if (hasData(layer.settings)) throw new Error('This Sudoku Coach puzzle uses unsupported settings for globalEntropy.')
+  if (!Array.isArray(layer.segments) || layer.segments.length) {
+    throw new Error('This Sudoku Coach puzzle uses unsupported cells for globalEntropy.')
+  }
+}
+
 function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
   const extraRegions: number[][] = []
+  let globalEntropy: true | undefined
   for (const layer of layers) {
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
     if (layer.type === 'region') extraRegions.push(...readCoachExtraRegions(layer))
+    if (layer.type === 'globalEntropy') {
+      checkCoachGlobalEntropy(layer)
+      globalEntropy = true
+    }
     const type = layer.type
     if (type === 'betweenLine') {
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
@@ -796,7 +808,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     const pathType = type === 'palindromeLine' ? 'palindrome' : type === 'consecutiveLine' ? 'consecutive' : 'renban'
     for (const line of coachConnectedLines(paths)) pathClues.push({ ...line, type: pathType })
   }
-  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues, ...(extraRegions.length && { extraRegions }) }
+  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues, ...(extraRegions.length && { extraRegions }), globalEntropy }
 }
 
 function coachOutsideRay(side: OutsideSide, index: number) {
@@ -861,7 +873,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage', 'globalEntropy'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -938,10 +950,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       })
       if (!cages.length) throw new Error('This Sudoku Coach puzzle has no Killer cages.')
       rules.push({ type: 'killer-cages', cages })
-    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing' || constraint.type === 'nonconsecutive' || constraint.type === 'globalEntropy') {
+    } else if (constraint.type === 'globalEntropy') {
+      checkCoachGlobalEntropy(constraint)
+      rules.push({ type: 'global-entropy' })
+    } else if (constraint.type === 'diagonalPositive' || constraint.type === 'diagonalNegative' || constraint.type === 'antiKnight' || constraint.type === 'antiKing' || constraint.type === 'nonconsecutive') {
       if (constraint.segments.length) throw new Error(`This Sudoku Coach puzzle uses unsupported cells for ${constraint.type}.`)
-      if (constraint.type === 'globalEntropy') rules.push({ type: 'global-entropy' })
-      else if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
+      if (constraint.type === 'antiKnight') rules.push({ type: 'anti-knight' })
       else if (constraint.type === 'antiKing') rules.push({ type: 'anti-king' })
       else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
