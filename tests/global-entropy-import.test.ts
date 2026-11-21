@@ -173,8 +173,6 @@ test('raw exports preserve their encoded scope while incomplete authored sources
   const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
   await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
   assert.match(ordered.deferred, /order digit groups.*169/)
-  const bento = deferred.find((source: { url: string }) => source.url.endsWith('FLAb'))
-  await assert.rejects(detectPuzzle(bento.code), /unsupported|not supported|region/i)
 })
 
 
@@ -196,13 +194,15 @@ test('the published 7/13 sum export keeps all active rules beside its empty Cons
   assertVariantCompletion(variant.puzzle, source.solution)
 
   const line = { type: 'consecutiveLine', segments: [{ cells: [0, 1, 2], parameters: {} }] }
-  await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [line] })), /not supported yet.*consecutiveLine/)
+  assert.deepEqual((await detectPuzzle(coachCode({ givenConstraints: [line] }))).variant?.puzzle.rules, [
+    { type: 'consecutive-run', cells: [0, 1, 2] },
+  ])
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [
     { ...line, segments: [], settings: { negativeConstraint: true } },
-  ] })), /unsupported settings.*consecutiveLine/)
+  ] })), /Consecutive Line uses unsupported settings/)
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [
     { ...line, segments: [], wholeGrid: true },
-  ] })), /not supported yet.*consecutiveLine/)
+  ] })), /Consecutive Line uses unsupported settings/)
 })
 
 

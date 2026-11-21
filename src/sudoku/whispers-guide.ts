@@ -27,7 +27,7 @@ function minimumDistinct(cells: readonly number[]): number {
 
 /** Minimum number of distinct digits among the adjacent cells on the lines. */
 export function whispersLinkCounts(puzzle: VariantPuzzle): number[] | undefined {
-  if (puzzle.regions?.type === 'jigsaw' || !puzzle.rules?.length) return
+  if ((puzzle.regions && puzzle.regions.type !== 'boxes') || !puzzle.rules?.length) return
   const neighbors = Array.from({ length: 81 }, () => new Set<number>())
   for (const rule of puzzle.rules) {
     if (rule.type !== 'whispers' || rule.minDifference !== 5) return

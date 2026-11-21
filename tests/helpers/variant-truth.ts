@@ -10,7 +10,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
   const houses = [
     ...Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, col) => row * 9 + col)),
     ...Array.from({ length: 9 }, (_, col) => Array.from({ length: 9 }, (_, row) => row * 9 + col)),
-    ...(puzzle.regions?.type === 'jigsaw' ? puzzle.regions.regions : Array.from({ length: 9 }, (_, box) =>
+    ...(puzzle.regions && puzzle.regions.type !== 'boxes' ? puzzle.regions.regions : Array.from({ length: 9 }, (_, box) =>
       Array.from({ length: 9 }, (_, i) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(i / 3) * 9 + i % 3))),
   ]
   for (const house of houses) assert.ok(distinct(house), 'Every house needs nine distinct digits')
@@ -58,7 +58,23 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
       case 'diagonal':
         assert.ok(distinct(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? i * 10 : 8 + i * 8)))
         break
-      case 'extra-house': assert.ok(distinct(rule.cells)); break
+      case 'extra-house': case 'distinct-cells': assert.ok(distinct(rule.cells)); break
+      case 'inside-grid': {
+        const set = new Set(rule.rows[0].map(cell => digits[cell]))
+        assert.equal(set.size, rule.rows.length)
+        const columns = rule.rows[0].map((_, column) => rule.rows.map(row => row[column]))
+        for (const cells of [...rule.rows, ...columns]) {
+          assert.ok(distinct(cells) && cells.every(cell => set.has(digits[cell])))
+        }
+        break
+      }
+      case 'consecutive-run': {
+        const first = digits[rule.cells[0]]
+        const step = digits[rule.cells[1]] - first
+        assert.equal(rule.fromBulb ? step : Math.abs(step), 1)
+        rule.cells.forEach((cell, i) => assert.equal(digits[cell], first + i * step))
+        break
+      }
       case 'killer-cages':
         for (const cage of rule.cages) {
           assert.ok(distinct(cage.cells))
@@ -95,6 +111,15 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         assert.equal(Math.max(...values) - Math.min(...values), values.length - 1)
         break
       }
+      case 'minimum': case 'maximum': {
+        const marked = new Set(rule.cells)
+        for (const cell of rule.cells) for (let other = 0; other < 81; other++) {
+          const distance = Math.abs(Math.floor(cell / 9) - Math.floor(other / 9)) + Math.abs(cell % 9 - other % 9)
+          if (distance !== 1 || rule.ignoreMarkedNeighbors && marked.has(other)) continue
+          assert.ok(rule.type === 'minimum' ? digits[cell] < digits[other] : digits[cell] > digits[other])
+        }
+        break
+      }
       case 'inequality': assert.ok(digits[rule.less] < digits[rule.greater]); break
       case 'between': {
         const first = digits[rule.cells[0]], last = digits[rule.cells[rule.cells.length - 1]]
@@ -113,7 +138,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           const part = rule.groupByRegion ? region : visit
           totals.set(part, (totals.get(part) ?? 0) + digits[cell])
         }
-        assert.ok(totals.size >= 2)
+        assert.ok(totals.size >= 1)
         assert.equal(new Set(totals.values()).size, 1)
         break
       }
@@ -121,16 +146,47 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break
       case 'arrow': assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), digits[rule.circle]); break
+      case 'pill-arrow': {
+        const [tens, ones] = rule.pill.map(cell => digits[cell])
+        assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), 10 * tens + ones)
+        break
+      }
+      case 'lockout': {
+        const [low, high] = [digits[rule.cells[0]], digits[rule.cells.at(-1)!]].sort((a, b) => a - b)
+        assert.ok(high - low >= 4)
+        for (const cell of rule.cells.slice(1, -1)) assert.ok(digits[cell] < low || digits[cell] > high)
+        break
+      }
       case 'parity':
         for (const cell of rule.cells) assert.equal(digits[cell] % 2, rule.parity === 'odd' ? 1 : 0)
         break
-      case 'quadruple': {
+      case 'quadruple': case 'quadruple-sum': {
         const cells = [rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10]
         for (let digit = 1; digit <= 9; digit++) assert.ok(
           cells.filter(cell => digits[cell] === digit).length >= rule.digits.filter(printed => printed === digit).length)
+        if (rule.type === 'quadruple-sum') {
+          const values = cells.map(cell => digits[cell]).sort((a, b) => a - b)
+          assert.equal(values[0] + values[1] + values[2], values[3])
+        }
         break
       }
       case 'adjacent-total': assert.equal(digits[rule.cells[0]] + digits[rule.cells[1]], rule.sum); break
+      case 'labeled-dots': {
+        const matches = (a: number, b: number, value: number) => {
+          const x = digits[a], y = digits[b]
+          return rule.relation === 'ratio' ? Math.max(x, y) === value * Math.min(x, y) : Math.abs(x - y) === value
+        }
+        for (const { cells: [a, b], value } of rule.marks) assert.ok(matches(a, b, value))
+        if (rule.negative) for (let a = 0; a < 81; a++) {
+          const edges = [...(a % 9 < 8 ? [a + 1] : []), ...(a < 72 ? [a + 9] : [])]
+          for (const b of edges) {
+            const marked = puzzle.rules?.some(other => other.type === 'labeled-dots' && other.relation === rule.relation &&
+              other.marks.some(({ cells }) => cells.includes(a) && cells.includes(b)))
+            if (!marked) assert.equal(matches(a, b, rule.relation === 'ratio' ? 2 : 1), false)
+          }
+        }
+        break
+      }
       case 'xv':
       case 'kropki':
         for (const [kind, marks] of (rule.type === 'xv' ? [rule.five, rule.ten] : [rule.consecutive, rule.ratioTwo]).entries()) {

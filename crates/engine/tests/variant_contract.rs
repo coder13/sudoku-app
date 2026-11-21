@@ -1,8 +1,8 @@
 #![cfg(all(feature = "variants"))]
 
 use sudoku_app_engine::{
-    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
-    Parity, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantPositionError,
+    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs,
+    Parity, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind, VariantPositionError,
     VariantPuzzle, analyze, candidates, parse_givens,
 };
 
@@ -12,6 +12,30 @@ const X_SOLUTION: &str =
     "658492731974316582132875694461523978387149256295768143849251367726934815513687429";
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
+
+#[test]
+fn lockout_support_respects_both_ends_and_strict_outside_digits() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::Lockout { cells: vec![0, 40, 80] });
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[0] = 2;
+    entries[80] = 7;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[40], 0b110000001);
+    for digit in 2..=7 {
+        entries[40] = digit;
+        assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    }
+    entries[40] = 0;
+    entries[80] = 5;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    entries[0] = 1;
+    entries[80] = 9;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    puzzle.rules = vec![PuzzleRule::Lockout { cells: vec![0, 80] }];
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}
 
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
@@ -203,6 +227,19 @@ fn jigsaw_and_killer_rules_combine_on_the_same_position() {
 }
 
 #[test]
+fn separated_jigsaw_pieces_share_their_author_defined_house() {
+    let mut regions = irregular_regions();
+    regions[0][0] = 40;
+    *regions[4].iter_mut().find(|cell| **cell == 40).unwrap() = 0;
+    let solution = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let mut givens = solution;
+    givens[40] = 0;
+    let compiled = VariantPuzzle::jigsaw(givens, regions).compile().unwrap();
+    assert!(compiled.peers(40).unwrap().any(|cell| cell == 10));
+    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+}
+
+#[test]
 fn invalid_definitions_report_rule_errors_before_search() {
     let mut puzzle = VariantPuzzle::classic(EMPTY);
     puzzle.version = 2;
@@ -217,10 +254,12 @@ fn invalid_definitions_report_rule_errors_before_search() {
         VariantPuzzle::jigsaw(EMPTY, regions).compile(),
         Err(VariantDefinitionError::OverlappingRegion(1))
     ));
-    let mut regions = irregular_regions();
-    regions[0][0] = 80;
+    let mut partial = VariantPuzzle::classic(EMPTY);
+    let mut region = irregular_regions().remove(0);
+    region[0] = 80;
+    partial.regions = RegionLayout::Partial { regions: vec![region] };
     assert!(matches!(
-        VariantPuzzle::jigsaw(EMPTY, regions).compile(),
+        partial.compile(),
         Err(VariantDefinitionError::DisconnectedRegion(0))
     ));
     let mut puzzle = VariantPuzzle::classic(EMPTY);
@@ -904,7 +943,7 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
         PuzzleRule::Renban { cells: vec![], segments: None },
         PuzzleRule::Between { cells: vec![0, 1] },
         PuzzleRule::RegionSum {
-            cells: vec![0, 1, 2],
+            cells: vec![0, 1, 0],
             group_by_region: false,
             segments: None,
         },
@@ -936,4 +975,141 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
             Err(VariantDefinitionError::InvalidRule(0))
         ));
     }
+}
+
+#[test]
+fn pill_arrow_uses_ordered_digits_and_supports_sums_above_eighty_one() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::PillArrow {
+        pill: [7, 8],
+        cells: vec![16, 17],
+        from_tens: false,
+    }];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[7] = 1;
+    entries[8] = 2;
+    entries[17] = 8;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[16], 0b1000);
+    entries[16] = 3;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    // A long arrow sums to 87. The first pill digit is deliberately in the
+    // later cell index so the engine must use the explicit place-value order.
+    let full = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let cells = [32, 78, 57, 30, 49, 41, 62, 66, 56, 52, 38, 70, 50, 51, 67, 76, 48, 45, 44, 42];
+    assert_eq!(full[5] * 10 + full[4], 87);
+    assert_eq!(cells.iter().map(|&cell| u16::from(full[cell])).sum::<u16>(), 87);
+    puzzle.rules = vec![PuzzleRule::PillArrow { pill: [5, 4], cells: cells.into(), from_tens: true }];
+    assert_eq!(puzzle.compile().unwrap().analyze(&full, &NO_REMOVALS, 100), Ok(Analysis::Unique));
+}
+
+#[test]
+fn one_region_sum_preserves_its_drawing_without_candidate_removals() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::RegionSum {
+        cells: vec![28, 27, 36, 45],
+        group_by_region: false,
+        segments: None,
+    }];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap(), [511; 81]);
+}
+
+#[test]
+fn partial_regions_enforce_only_marked_houses_with_repeated_quadruple_digits() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.regions = RegionLayout::Partial { regions: vec![vec![0, 1, 2, 9, 10, 11, 18, 19, 20]] };
+    puzzle.rules = vec![PuzzleRule::Quadruple { top_left: 30, digits: vec![2, 2] }];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.houses().len(), 19);
+    assert!(!compiled.peers(30).unwrap().any(|cell| cell == 40));
+    assert!(compiled.peers(0).unwrap().any(|cell| cell == 10));
+    let mut entries = EMPTY;
+    entries[30] = 2;
+    entries[40] = 2;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_ok());
+    entries[0] = 3;
+    entries[10] = 3;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    let RegionLayout::Partial { regions } = &mut puzzle.regions else { unreachable!() };
+    regions.push(regions[0].clone());
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::OverlappingRegion(1))));
+}
+
+#[test]
+fn inside_grid_uses_one_digit_set_and_validates_rotated_geometry() {
+    let rows: Vec<Vec<usize>> = (0..5)
+        .map(|row| (0..5).map(|column| 4 + 8 * row + 10 * column).collect())
+        .collect();
+    let solution = parse_givens(
+        "794618235518932764236745981823176549459823176167459328981367452345281697672594813",
+    )
+    .unwrap();
+    let mut givens = EMPTY;
+    for &cell in &rows[0] {
+        givens[cell] = solution[cell];
+    }
+    givens[38] = 5;
+    let mut puzzle = VariantPuzzle::classic(givens);
+    assert!(puzzle.compile().unwrap().candidates(&EMPTY, &NO_REMOVALS).is_ok());
+    puzzle.rules = vec![PuzzleRule::InsideGrid { rows: rows.clone() }];
+    assert!(matches!(
+        puzzle.compile().unwrap().candidates(&EMPTY, &NO_REMOVALS),
+        Err(VariantPositionError::Puzzle(Analysis::Conflict))
+    ));
+    puzzle.givens = solution;
+    assert_eq!(
+        puzzle.compile().unwrap().analyze(&EMPTY, &NO_REMOVALS, 1),
+        Ok(Analysis::Unique)
+    );
+    let mut invalid = rows;
+    invalid[0].swap(0, 1);
+    puzzle.rules = vec![PuzzleRule::InsideGrid { rows: invalid }];
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
+}
+
+#[test]
+fn a_consecutive_thermometer_keeps_its_bulb_direction() {
+    let cells = vec![0, 10, 20];
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::ConsecutiveRun {
+        cells: cells.clone(), color: None, from_bulb: true,
+    });
+    let compiled = puzzle.compile().unwrap();
+    let masks = compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap();
+    assert_eq!([masks[0], masks[10], masks[20]], [0b001111111, 0b011111110, 0b111111100]);
+    let mut entries = EMPTY;
+    entries[0] = 5;
+    entries[10] = 4;
+    assert!(matches!(
+        compiled.candidates(&entries, &NO_REMOVALS),
+        Err(VariantPositionError::Puzzle(Analysis::Conflict))
+    ));
+    puzzle.rules = vec![PuzzleRule::ConsecutiveRun { cells, color: None, from_bulb: false }];
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}
+
+
+#[test]
+fn lettered_quadruples_use_one_key_even_without_a_small_symbol_projection() {
+    let solution = parse_givens(
+        "215468379687239154439751862761895243523146987894372516356917428142683795978524631",
+    ).unwrap();
+    let mut puzzle = VariantPuzzle::classic(solution);
+    let circle = |top_left, letters: &str| LetteredQuadruple { top_left, letters: letters.into() };
+    let key = |clues| PuzzleRule::LetteredQuadruples { clues };
+    puzzle.rules = vec![key(vec![circle(0, "AB"), circle(7, "CD")])];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.solve_unique(&EMPTY, &NO_REMOVALS, 1), Ok(solution));
+
+    puzzle.rules = vec![key(vec![circle(0, "A"), circle(7, "A")])];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.analyze(&EMPTY, &NO_REMOVALS, 10), Ok(Analysis::Conflict));
+
+    puzzle.rules = vec![key(vec![circle(0, "AA")])];
+    assert_eq!(puzzle.compile().unwrap().analyze(&EMPTY, &NO_REMOVALS, 10), Ok(Analysis::Conflict));
+    puzzle.rules = vec![key(vec![circle(0, "a")])];
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
 }

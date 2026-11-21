@@ -5,7 +5,7 @@ use std::{
 };
 
 use super::{
-    CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
+    CompiledVariant, PuzzleRule, Quadruple, RegionLayout, VariantDefinitionError, VariantHouseKind,
     VariantPosition, VariantPositionError, cell_mask, cells_in, digit_sum,
 };
 use crate::{
@@ -25,6 +25,8 @@ const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
+mod forcing;
+pub use forcing::VariantTrialFailure;
 mod pruning;
 mod group_line_houses;
 mod group_order;
@@ -106,6 +108,12 @@ catalog! {
     NonConsecutive: "non-consecutive", 8, Easy;
     /// Apply a marked inequality.
     Inequality: "inequality", 8, Easy;
+    /// Fit an ordered run of consecutive digits along a line.
+    ConsecutiveRun: "consecutive-run", 15, Easy;
+    /// Fit one common digit set into the rows and columns of a rotated grid.
+    InsideGrid: "inside-grid", 40, Medium;
+    /// Fit different digits into a shaded group smaller than a house.
+    DistinctCells: "distinct-cells", 15, Easy;
     /// Match candidates among clone cells.
     Clone: "clone", 17, Easy;
     /// Apply a consecutive or double relation from Kropki marks.
@@ -122,6 +130,8 @@ catalog! {
     NonConsecutiveBivalue: "non-consecutive-bivalue", 22, Easy;
     /// Bound the interior of a line using the two endpoint digits.
     Between: "between", 23, Easy;
+    /// Find possible Lockout endpoints and digits outside their range.
+    Lockout: "lockout", 21, Easy;
     /// A house confines a digit to alternatives spanning three cells with a target.
     NonConsecutiveLockedTriple: "non-consecutive-locked-candidates-3", 24, Easy;
     /// Candidates spanning three consecutive digits exclude their middle digit nearby.
@@ -132,6 +142,8 @@ catalog! {
     Thermometer: "thermometer", 26, Easy;
     /// Require every printed digit occurrence in the four cells touching a circle.
     Quadruple: "quadruple", 27, Medium;
+    /// Use the shared digit key of a puzzle's lettered circles.
+    LetteredQuadruples: "lettered-quadruples", 58, Hard;
     /// Find possible digit differences along a Whispers line.
     Whispers: "whispers", 27, Medium;
     /// Apply the repeating low, medium and high groups along an Entropic line.
@@ -142,6 +154,8 @@ catalog! {
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
     Arrow: "arrow", 36, Easy;
+    /// Match the path sum with the tens and ones digits in a pill.
+    PillArrow: "pill-arrow", 34, Easy;
     /// Check a Whispers line together with the houses shared by its cells.
     WhispersHouseSupport: "whispers-house-support", 39, Medium;
     /// Find consecutive sets that fit a Renban line.
@@ -421,6 +435,17 @@ pub enum VariantEvidence {
         /// Required digit.
         digit: u8,
     },
+    /// Two circles require distinct copies of a digit in the same two houses.
+    QuadrupleLock {
+        /// The circles and their four-cell areas.
+        clues: [VariantClueScope; 2],
+        /// The two disjoint houses that must each contain one copy.
+        houses: [VariantHouseKind; 2],
+        /// Supported locations for the digit in each circle.
+        sites: [Vec<usize>; 2],
+        /// The digit required by both circles.
+        digit: u8,
+    },
     /// Every alternative conflicts with every removed candidate.
     Exclusion {
         /// Cell candidates or house locations, at least one of which must be true.
@@ -429,6 +454,13 @@ pub enum VariantEvidence {
         rules: Vec<usize>,
         /// Houses needed to exclude equal digits in different cells.
         houses: Vec<VariantHouseKind>,
+    },
+    /// A candidate assumption leads to a contradiction under the variant rules.
+    RuleForcing {
+        /// Candidate tried as a placement.
+        assumption: Candidate,
+        /// The first empty cell or missing house digit after applying clue support.
+        contradiction: VariantTrialFailure,
     },
     /// A classic proof that applies to the current rules.
     Classic {
@@ -1278,6 +1310,7 @@ impl VariantDeduction {
             VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
                 .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
+            VariantEvidence::QuadrupleLock { clues, .. } => clues[0].cells.len() + clues[1].cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
                     VariantExclusionPremise::Cell { cell, .. } => vec![*cell],
@@ -1288,6 +1321,7 @@ impl VariantDeduction {
                 cells.dedup();
                 cells.len()
             }
+            VariantEvidence::RuleForcing { .. } => 2,
             VariantEvidence::Classic { proof, .. } => proof.pattern_size(),
         };
         (
@@ -1635,7 +1669,7 @@ impl CompiledVariant {
                 .break_value()
                 .map(overlay_proof)
         } else if technique == VariantTechnique::EntropyQuadruple {
-            self.entropy_quadruple_proofs(position, 1).pop()
+            self.entropy_proofs(position, technique, 1).pop()
         } else if technique == VariantTechnique::MatchingDigitContradiction {
             let mut proofs = Vec::new();
             self.matching_digit_proofs(position, &mut proofs, true);
@@ -1644,7 +1678,18 @@ impl CompiledVariant {
             self.local_proofs(position, technique)
                 .into_iter()
                 .next()
+                .or_else(|| {
+                    if technique == VariantTechnique::Classic(Technique::ForcingChain) {
+                        return self.rule_forcing_proofs(position, 1).pop();
+                    }
+                    None
+                })
                 .or_else(|| self.group_sum_implications(position, technique, 1).into_iter().next())
+                .or_else(|| {
+                    (technique == VariantTechnique::GlobalEntropy)
+                        .then(|| self.entropy_proofs(position, technique, 1).pop())
+                        .flatten()
+                })
         }
     }
 
@@ -1672,7 +1717,13 @@ impl CompiledVariant {
         technique: VariantTechnique,
     ) -> Vec<VariantDeduction> {
         let mut proofs = self.local_proofs(position, technique);
+        if technique == VariantTechnique::Classic(Technique::ForcingChain) {
+            proofs.extend(self.rule_forcing_proofs(position, usize::MAX));
+        }
         proofs.extend(self.group_sum_implications(position, technique, usize::MAX));
+        if technique == VariantTechnique::GlobalEntropy {
+            proofs.extend(self.entropy_proofs(position, technique, usize::MAX));
+        }
         proofs
     }
 
@@ -1750,7 +1801,28 @@ impl CompiledVariant {
                     }
                 }
             }
-            EntropyQuadruple => return self.entropy_quadruple_proofs(position, usize::MAX),
+            LetteredQuadruples => {
+                if let Some(clue) = &self.lettered_quadruples {
+                    let cells: [usize; CELLS] = std::array::from_fn(|cell| cell);
+                    let domains = cells.map(|cell| position.domain(cell));
+                    let supported = clue.hint_support(&domains);
+                    if !supported.contains(&0) {
+                        // A shared key can affect the entire puzzle. Explain
+                        // one cell at a time and retain the domains used by it.
+                        let mut local = domains;
+                        for cell in cells {
+                            local[cell] = supported[cell];
+                            if let Some(proof) = position.explain_constraint(
+                                technique, &[clue.rule], &cells, local.into_iter(),
+                            ) {
+                                proofs.push(proof);
+                            }
+                            local[cell] = domains[cell];
+                        }
+                    }
+                }
+            }
+            EntropyQuadruple => return self.entropy_proofs(position, technique, usize::MAX),
             CageCombinations => {
                 for cage in &self.cages {
                     let domains: Vec<_> = cage
@@ -1832,7 +1904,7 @@ impl CompiledVariant {
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
-            Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
                     let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))
@@ -2076,7 +2148,7 @@ impl CompiledVariant {
                 let eliminations = std::array::from_fn(|cell| {
                     if position.board[cell] == 0 { DIGITS & !position.masks[cell] } else { 0 }
                 });
-                self.solve(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
+                self.solve_for_proof(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
             })
             .flatten();
         let completion_support = (technique == Technique::NestedForcingNet)
@@ -2190,12 +2262,22 @@ impl CompiledVariant {
     }
 
     fn quadruple_locks(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
+        let mut circle_sites: [Vec<(&Quadruple, u128)>; 9] = Default::default();
         for clue in &self.quadruples {
             let domains = clue.cells.map(|cell| position.domain(cell));
             let supported = clue.support(domains);
             let scope = cell_mask(&clue.cells).unwrap();
             for digit in digits(clue.required_digits()) {
                 let bit = digit_bit(digit);
+                let sites = clue
+                    .cells
+                    .iter()
+                    .zip(supported)
+                    .filter(|&(_, mask)| mask & bit != 0)
+                    .fold(0, |sites, (&cell, _)| sites | 1u128 << cell);
+                if sites.count_ones() > 1 {
+                    circle_sites[usize::from(digit - 1)].push((clue, sites));
+                }
                 for (target, &house) in self.houses.iter().zip(&self.house_masks) {
                     let cells: Vec<_> = clue
                         .cells
@@ -2235,6 +2317,60 @@ impl CompiledVariant {
                             target: target.kind,
                             cells,
                             domains: domains.to_vec(),
+                            digit,
+                        },
+                        actions,
+                    });
+                }
+            }
+        }
+        for (index, circles) in circle_sites.iter().enumerate() {
+            let digit = index as u8 + 1;
+            for (i, &(first, a)) in circles.iter().enumerate() {
+                for &(second, b) in &circles[i + 1..] {
+                    if a & b == 0 {
+                        self.quadruple_house_lock(position, digit, [(first, a), (second, b)], proofs);
+                    }
+                }
+            }
+        }
+    }
+
+    fn quadruple_house_lock(
+        &self,
+        position: &ProofPosition<'_>,
+        digit: u8,
+        circles: [(&Quadruple, u128); 2],
+        proofs: &mut Vec<VariantDeduction>,
+    ) {
+        let [(_, a), (_, b)] = circles;
+        let sites = a | b;
+        // Each distinct placement must use one of the two disjoint houses.
+        for &first in &self.memberships[sites.trailing_zeros() as usize] {
+            let left = self.house_masks[first];
+            if ![a, b].into_iter().all(|scope| scope & left != 0 && scope & !left != 0) {
+                continue;
+            }
+            let remaining = sites & !left;
+            for &second in &self.memberships[remaining.trailing_zeros() as usize] {
+                let right = self.house_masks[second];
+                if left & right != 0 || remaining & !right != 0 {
+                    continue;
+                }
+                let actions: Vec<_> = cells_in((left | right) & !sites)
+                    .filter(|&cell| position.masks[cell] & digit_bit(digit) != 0)
+                    .map(|cell| HintAction::Eliminate(Candidate { cell, digit }))
+                    .collect();
+                if !actions.is_empty() {
+                    proofs.push(VariantDeduction {
+                        technique: VariantTechnique::LockedCandidates,
+                        evidence: VariantEvidence::QuadrupleLock {
+                            clues: circles.map(|(clue, _)| VariantClueScope {
+                                rules: vec![clue.rule_index],
+                                cells: clue.cells.to_vec(),
+                            }),
+                            houses: [self.houses[first].kind, self.houses[second].kind],
+                            sites: circles.map(|(_, sites)| cells_in(sites).collect()),
                             digit,
                         },
                         actions,

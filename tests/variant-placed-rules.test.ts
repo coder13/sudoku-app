@@ -221,3 +221,19 @@ test('German Whispers flags distant placements and clears full-path candidates w
   assert.deepEqual(enter(game, [0], 'value', 1, { removeCandidates: false }).position.center, game.position.center)
   assert.deepEqual(fillEntries(game, position([0], [1]), false).position.corner, game.position.corner)
 })
+
+test('Quad-Arrows use the sum in conflict checks and both Pencil modes', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: empty, rules: [{ type: 'quadruple-sum', topLeft: 0, digits: [1] }] }
+  const cells = [0, 1, 9, 10]
+  const values = position(cells, [1, 2, 3, 0])
+  assert.equal(variantPlacedRuleState(puzzle, values)?.allowed[10], 1 << 5)
+  assert.equal(conflictsOf(position(cells, [1, 2, 3, 6]), puzzle).size, 0)
+  assert.deepEqual(conflictsOf(position(cells, [1, 2, 3, 7]), puzzle), new Set(cells))
+
+  const game = { ...makeGame('quad-arrows', 'Quad-Arrows', empty, 'imported'), variant: { id: 'mixed' as const, puzzle } }
+  game.position.center[10] = game.position.corner[10] = 511
+  const played = fillEntries(game, values)
+  assert.equal(played.position.center[10], 1 << 5)
+  assert.equal(played.position.corner[10], 1 << 5)
+  assert.deepEqual(undo(played).position, game.position)
+})

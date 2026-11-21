@@ -1,3 +1,6 @@
+import { validLetteredQuadruples } from './lettered-quadruples.ts'
+import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
+import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
@@ -6,7 +9,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
-import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
+import { connectedGridCells, gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -128,10 +131,26 @@ export const VARIANTS = {
   },
 } as const
 
-export const PUZZLE_VARIANTS = VARIANTS
+export const PUZZLE_VARIANTS = {
+  ...VARIANTS,
+  'pill-arrow': {
+    name: 'Pill Arrows',
+    rule: 'The digits on the arrow add to the two-digit number in the pill.',
+  },
+  lockout: {
+    name: 'Lockout Lines',
+    rule: 'The two diamonds differ by at least 4. Every interior digit is smaller than both diamonds or larger than both.',
+  },
+} as const
 
-export function quadrupleCells(topLeft: number): readonly number[] {
-  return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
+export function isQuadrupleRule(rule: VariantRule | undefined): rule is Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }> {
+  return rule?.type === 'quadruple' || rule?.type === 'quadruple-sum'
+}
+
+export const QUADRUPLE_SUM_RULE = 'The largest digit around a Quad-Arrows circle equals the sum of the other three.'
+
+export function quadrupleCells(topLeft: number, size = 9): readonly [number, number, number, number] {
+  return [topLeft, topLeft + 1, topLeft + size, topLeft + size + 1]
 }
 
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
@@ -186,6 +205,10 @@ const cells = Array.from({ length: 9 }, (_, i) => i)
 const mainDiagonal = cells.map((i) => i * 10)
 const antiDiagonal = cells.map((i) => i * 8 + 8)
 
+export function hasAuthoredRegions(regions: VariantPuzzle['regions']): regions is Extract<VariantPuzzle['regions'], { type: 'jigsaw' | 'partial' }> {
+  return regions?.type === 'jigsaw' || regions?.type === 'partial'
+}
+
 export function regionMembership(regions: readonly (readonly number[])[]) {
   const membership = new Array<number>(81)
   regions.forEach((region, index) => region.forEach((cell) => { membership[cell] = index }))
@@ -200,7 +223,7 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
     const rule = puzzle.rules?.[house.extra]
     return rule?.type === 'extra-house' ? rule.cells : []
   }
-  if (puzzle.regions?.type === 'jigsaw') return puzzle.regions.regions[house.region]
+  if (hasAuthoredRegions(puzzle.regions)) return puzzle.regions.regions[house.region] ?? []
   const top = Math.floor(house.region / 3) * 27 + (house.region % 3) * 3
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
 }
@@ -234,14 +257,22 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
   if ('row' in house) return `row ${house.row + 1}`
   if ('column' in house) return `column ${house.column + 1}`
   if ('diagonal' in house) return house.diagonal === 'main' ? 'top-left to bottom-right diagonal' : 'top-right to bottom-left diagonal'
-  if ('region' in house) return `${puzzle.regions?.type === 'jigsaw' ? 'region' : 'box'} ${house.region + 1}`
+  if ('region' in house) return `${hasAuthoredRegions(puzzle.regions) ? 'region' : 'box'} ${house.region + 1}`
   return extraRegionName(puzzle.rules ?? [], house.extra)
 }
 
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
-  const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
+  const houses: VariantHouse[] = cells.flatMap(i => [{ row: i }, { column: i }])
+  const regionCount = hasAuthoredRegions(puzzle.regions) ? puzzle.regions.regions.length : 9
+  for (let i = 0; i < regionCount; i++) houses.push({ region: i })
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
+    if (rule.type === 'inside-grid') {
+      for (const cells of [...rule.rows, ...insideGridColumns(rule.rows)]) {
+        const used = cells.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
+        for (const cell of cells) masks[cell] &= ~used
+      }
+    }
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
     if (rule.type === 'entropic' || rule.type === 'modular') {
@@ -282,15 +313,19 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
     }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
-    if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'extra-house' || rule.type === 'distinct-cells') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'inside-grid') {
+      const row = rule.rows.find(row => row.includes(a))
+      return row !== undefined && (row.includes(b) || rule.rows.some(other => other[row.indexOf(a)] === b))
+    }
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
-    if (rule.type === 'between' && rule.cells.includes(a) && rule.cells.includes(b)) {
+    if ((rule.type === 'between' || rule.type === 'lockout') && rule.cells.includes(a) && rule.cells.includes(b)) {
       const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
       return ends.includes(a) || ends.includes(b)
     }
-    if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'thermometer' || rule.type === 'renban' || rule.type === 'consecutive-run') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
 }
@@ -316,8 +351,8 @@ export function sumLabel(sum: number) {
   return ROMAN_TOTALS[sum - 3] ?? String(sum)
 }
 
-type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
-type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' }>
+type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'consecutive-run' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
+type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' | 'minimum' | 'maximum' }>
 const noCellExclusions: readonly CellExclusionRule[] = []
 const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
 
@@ -325,14 +360,14 @@ const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof i
 function indexExclusions(rules: readonly VariantRule[]) {
   const byCell = Array<CellExclusionRule[] | undefined>(81)
   const edgeRules: EdgeExclusionRule[] = []
-  const kropki: Extract<VariantRule, { type: 'kropki' }>[] = []
+  const kropki: Extract<VariantRule, { type: 'kropki' | 'labeled-dots' }>[] = []
   let clones: ReturnType<typeof cloneLayout>['at'] | undefined
   for (const rule of rules) {
     switch (rule.type) {
-      case 'kropki': kropki.push(rule); continue
-      case 'xv': case 'non-consecutive': edgeRules.push(rule); continue
+      case 'kropki': case 'labeled-dots': kropki.push(rule); continue
+      case 'xv': case 'non-consecutive': case 'minimum': case 'maximum': edgeRules.push(rule); continue
       case 'clone': clones ??= cloneLayout(rules).at; continue
-      case 'entropic': case 'modular': case 'renban': case 'adjacent-total': case 'palindrome': case 'whispers':
+      case 'entropic': case 'modular': case 'renban': case 'consecutive-run': case 'adjacent-total': case 'palindrome': case 'whispers':
       case 'inequality': {
         const cells = rule.type === 'inequality' ? [rule.less, rule.greater] : new Set(rule.cells)
         for (const cell of cells) (byCell[cell] ??= []).push(rule)
@@ -362,6 +397,15 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     if (rule.type === 'renban' && rule.cells.includes(to)) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
     }
+    if (rule.type === 'consecutive-run' && rule.cells.includes(to)) {
+      const gap = rule.cells.indexOf(to) - rule.cells.indexOf(from)
+      if (rule.fromBulb) {
+        const expected = digit + gap
+        excluded |= expected >= 1 && expected <= 9 ? 511 & ~(1 << (expected - 1)) : 511
+      } else {
+        for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) !== Math.abs(gap)) excluded |= 1 << (other - 1)
+      }
+    }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
       x ||= rule.sum === 10
@@ -386,7 +430,14 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
       x ||= hasMarkedPair(rule.ten?.pairs, from, to)
       negativeV ||= rule.five?.negative === true
       negativeX ||= rule.ten?.negative === true
-    } else if (!hasMarkedPair(rule.except, from, to)) {
+    } else if (rule.type === 'minimum' || rule.type === 'maximum') {
+      const fromMarked = rule.cells.includes(from)
+      const toMarked = rule.cells.includes(to)
+      if (fromMarked && toMarked && !rule.ignoreMarkedNeighbors) return 511
+      if (fromMarked === toMarked) continue
+      const fromIsSmaller = fromMarked === (rule.type === 'minimum')
+      excluded |= fromIsSmaller ? (1 << digit) - 1 : 511 & ~((1 << (digit - 1)) - 1)
+    } else if (rule.type === 'non-consecutive' && !hasMarkedPair(rule.except, from, to)) {
       excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
   }
@@ -402,7 +453,9 @@ export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<V
   const exceptions = rule.except ?? []
   if (!exceptions.length) return PUZZLE_VARIANTS['non-consecutive'].rule
   const marked = exceptions.every(([a, b]) => puzzle.rules?.some(other =>
-    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b)))
+    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b) ||
+    other.type === 'labeled-dots' && other.relation === 'difference' &&
+      other.marks.some(({ cells: [left, right] }) => left === a && right === b || left === b && right === a)))
   const reference = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
   const detail = marked ? 'The white-dot pairs are exempt from this rule.' :
     `These pairs are exempt: ${exceptions.map(([a, b]) => `${reference(a)} and ${reference(b)}`).join('; ')}.`
@@ -414,19 +467,11 @@ function validCells(list: unknown, min: number) {
     new Set(list).size === list.length && list.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < 81)
 }
 
-function validJigsawRegions(regions: unknown): boolean {
-  if (!Array.isArray(regions) || regions.length !== 9 ||
-    !regions.every((region) => validCells(region, 9) && region.length === 9) || new Set(regions.flat()).size !== 81) return false
-  return regions.every((region: number[]) => {
-    const reached = new Set([region[0]])
-    for (const cell of reached) {
-      for (const neighbor of region) {
-        const distance = Math.abs(cell % 9 - neighbor % 9) + Math.abs(Math.floor(cell / 9) - Math.floor(neighbor / 9))
-        if (distance === 1) reached.add(neighbor)
-      }
-    }
-    return reached.size === 9
-  })
+function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
+  if (!Array.isArray(regions) || regions.length > 9 || !partial && regions.length !== 9 ||
+    !regions.every((region) => validCells(region, 9) && region.length === 9) ||
+    new Set(regions.flat()).size !== 9 * regions.length) return false
+  return !partial || regions.every(region => connectedGridCells(region, 9))
 }
 
 function isPlayableRule(rule: VariantRule): boolean {
@@ -442,17 +487,28 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.count) && rule.count >= 1 && rule.count <= 9 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
+    case 'minimum': case 'maximum': return validCells(rule.cells, 1) &&
+      (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean')
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
-    case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
+    case 'quadruple': case 'quadruple-sum': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
+    case 'lettered-quadruples': return Object.keys(rule).length === 2 && validLetteredQuadruples(rule.clues)
     case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
+    case 'inside-grid': return Object.keys(rule).length === 2 && validInsideGridRows(rule.rows)
+    case 'consecutive-run':
+      if (rule.fromBulb !== undefined && typeof rule.fromBulb !== 'boolean') return false
+      return Object.keys(rule).every(key => ['type', 'cells', 'color', 'fromBulb'].includes(key)) &&
+        validCells(rule.cells, 2) && rule.cells.length <= 9 && (rule.color === undefined || isHexColor(rule.color))
+    case 'distinct-cells':
+      return Object.keys(rule).every(key => ['type', 'cells', 'color'].includes(key)) &&
+        validCells(rule.cells, 2) && rule.cells.length <= 8 && (rule.color === undefined || isHexColor(rule.color))
     case 'entropic': case 'modular': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)
     case 'whispers': return Array.isArray(rule.cells) && rule.cells.length >= 2 && rule.cells.length <= 82 &&
@@ -460,6 +516,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
+    case 'lockout': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 2)
     case 'region-sum': return Object.keys(rule).every(key => ['type', 'cells', 'groupByRegion', 'segments'].includes(key)) &&
       validCells(rule.cells, 2) && (rule.groupByRegion === undefined || typeof rule.groupByRegion === 'boolean') &&
       (rule.segments === undefined || Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -472,8 +529,20 @@ function isPlayableRule(rule: VariantRule): boolean {
         path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
       new Set(rule.segments.flat()).size === rule.cells.length)
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
+    case 'pill-arrow': return Object.keys(rule).every(key => ['type', 'pill', 'cells', 'fromTens'].includes(key)) &&
+      Array.isArray(rule.pill) && rule.pill.length === 2 && Array.isArray(rule.cells) && validCells([...rule.pill, ...rule.cells], 3) &&
+      Math.abs(Math.floor(rule.pill[0] / 9) - Math.floor(rule.pill[1] / 9)) <= 1 && Math.abs(rule.pill[0] % 9 - rule.pill[1] % 9) <= 1 &&
+      (rule.fromTens === undefined || typeof rule.fromTens === 'boolean')
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
+    case 'labeled-dots': {
+      if (rule.relation !== 'ratio' && rule.relation !== 'difference' ||
+        rule.negative !== undefined && typeof rule.negative !== 'boolean') return false
+      const ratio = rule.relation === 'ratio'
+      return Array.isArray(rule.marks) && rule.marks.length <= 144 && (rule.marks.length > 0 || rule.negative === true) &&
+        rule.marks.every(mark => validCells(mark?.cells, 2) && mark.cells.length === 2 &&
+          cellsShareEdge(mark.cells[0], mark.cells[1]) && Number.isInteger(mark.value) && mark.value >= (ratio ? 2 : 1) && mark.value <= (ratio ? 9 : 8))
+    }
     case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
@@ -491,6 +560,7 @@ function isPlayableRule(rule: VariantRule): boolean {
 /** Identify a named recipe when all rules belong to that variant. */
 export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
   const rules = puzzle.rules ?? []
+  if (puzzle.regions?.type === 'partial') return 'mixed'
   if (puzzle.regions?.type === 'jigsaw') return rules.length ? 'mixed' : 'jigsaw'
   if (!rules.length) return 'classic'
   const first = rules[0].type
@@ -510,12 +580,14 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): p
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
   if (regions !== undefined && regions?.type !== 'boxes' &&
-    !(regions?.type === 'jigsaw' && validJigsawRegions(regions.regions))) return false
+    !(hasAuthoredRegions(regions) && validAuthoredRegions(regions.regions, regions.type === 'partial'))) return false
   // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
   // The interchange decoders bound the encoded and decoded input sizes.
-  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
+  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule) ||
+    rules.filter(rule => rule.type === 'lettered-quadruples').length > 1)) return false
+  if (regions?.type === 'partial' && rules?.some(rule => rule.type === 'region-sum' &&
+    rule.cells.some((cell: number) => !regions.regions.some(region => region.includes(cell))))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
-  if (rules?.some(rule => rule.type === 'region-sum' && regionSumParts(rule, regions).length < 2)) return false
   return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
 }
 
@@ -533,17 +605,27 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
+  minimum: 'Minimum',
+  maximum: 'Maximum',
+  'labeled-dots': 'Numbered dots',
   'extra-house': 'Extra regions',
+  'distinct-cells': 'Shaded groups',
+  'inside-grid': 'Inside Grid',
+  'lettered-quadruples': 'Lettered Quadruples',
+  'consecutive-run': 'Consecutive Lines',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
   'anti-knight': VARIANTS['anti-knight'].name,
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
+  'pill-arrow': PUZZLE_VARIANTS['pill-arrow'].name,
   kropki: VARIANTS.kropki.name,
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
+  lockout: PUZZLE_VARIANTS.lockout.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
+  'quadruple-sum': 'Quad-Arrows',
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
   'non-consecutive': PUZZLE_VARIANTS['non-consecutive'].name,
@@ -556,19 +638,29 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
   const { rules, regions } = variant.puzzle
   const names = [
-    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : []),
+    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : regions?.type === 'partial' ? ['Latin square'] : []),
     ...(rules?.map(rule => RULE_NAMES[rule.type]) ?? []),
   ]
   return [...new Set(names)].filter(Boolean).join(' + ')
 }
 
-export type VariantRuleSectionId = 'classic' | 'jigsaw' | VariantRule['type']
+export type VariantRuleSectionId = 'classic' | 'jigsaw' | 'partial-regions' | VariantRule['type']
 export type VariantRuleSection = { id: VariantRuleSectionId; title: string; descriptions: string[] }
 
 function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
-  return puzzle.regions?.type === 'jigsaw'
-    ? { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions: [VARIANTS.jigsaw.rule] }
-    : { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
+  if (puzzle.regions?.type === 'partial') {
+    const descriptions = ['Each row and column contains the digits 1–9 once each.']
+    if (puzzle.regions.regions.length) descriptions.push('Each marked region also contains the digits 1–9 once each.')
+    return { id: 'partial-regions', title: 'Latin Square', descriptions }
+  }
+  if (puzzle.regions?.type === 'jigsaw') {
+    const descriptions: string[] = [VARIANTS.jigsaw.rule]
+    if (puzzle.regions.regions.some(region => !connectedGridCells(region, 9))) {
+      descriptions.push('Pieces with the same region color belong to one region.')
+    }
+    return { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions }
+  }
+  return { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
 }
 
 function describedVariantRules(puzzle: VariantPuzzle) {
@@ -609,10 +701,21 @@ function describedVariantRules(puzzle: VariantPuzzle) {
           descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
         }
         break
+      case 'pill-arrow':
+        descriptions.push(PUZZLE_VARIANTS['pill-arrow'].rule)
+        break
+      case 'lockout':
+        descriptions.push(PUZZLE_VARIANTS.lockout.rule)
+        if (lineSkipsCells(rule.cells)) {
+          descriptions.push('A dashed Lockout connector skips cells. Only the endpoint diamonds and cells with a small dot belong to that line.')
+        }
+        break
       case 'region-sum': {
         descriptions.push(VARIANTS['region-sum'].rule)
         const number = puzzle.rules!.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
-        if (rule.segments) {
+        if (regionSumParts(rule, puzzle.regions).length === 1) {
+          descriptions.push('This line stays in one region, so there is only one total.')
+        } else if (rule.segments) {
           const at = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
           descriptions.push(`Region Sum line ${number}: ${regionSumParts(rule, puzzle.regions)
             .map(part => part.map(at).join(' + ')).join(' = ')}. Each listed group has the same total.`)
@@ -623,12 +726,29 @@ function describedVariantRules(puzzle: VariantPuzzle) {
           'A dashed Region Sum connector skips cells. Only cells with a small dot belong to that line.')
         break
       }
+      case 'consecutive-run':
+        descriptions.push(rule.fromBulb
+          ? 'Digits along a Consecutive Thermometer increase by one at each step from the bulb to the tip.'
+          : 'Digits along a Consecutive Line increase by one from one end to the other.')
+        break
+      case 'inside-grid':
+        descriptions.push(`The diamonds form a rotated ${rule.rows.length} × ${rule.rows.length} grid. Every row and column of that grid uses the same set of ${rule.rows.length} different digits.`)
+        break
+      case 'distinct-cells':
+        descriptions.push('The cells in each shaded group contain different digits.')
+        break
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)
         break
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
         break
+      case 'minimum': case 'maximum': {
+        const [label, comparison] = rule.type === 'minimum' ? ['Minimum', 'lower'] : ['Maximum', 'higher']
+        descriptions.push(`A ${label} digit is ${comparison} than every digit in a cell that shares an edge with it.`)
+        if (rule.ignoreMarkedNeighbors) descriptions.push(`Two adjacent cells marked by the same ${label} clue layer skip their shared comparison.`)
+        break
+      }
       case 'adjacent-total':
         descriptions.push(PUZZLE_VARIANTS['adjacent-total'].rule)
         break
@@ -661,14 +781,27 @@ function describedVariantRules(puzzle: VariantPuzzle) {
             return `${at(cell)} with ${at(rule.cells[rule.cells.length - 1 - i])}`
           }))}.`)
         break
-      case 'quadruple':
+      case 'lettered-quadruples':
+        descriptions.push('Each letter stands for the same digit throughout the puzzle. Different letters stand for different digits.',
+          'Each letter in a circle needs a separate cell among the four surrounding cells.')
+        break
+      case 'quadruple': case 'quadruple-sum':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
+        if (rule.type === 'quadruple-sum') descriptions.push(QUADRUPLE_SUM_RULE)
         break
       case 'diagonal':
         descriptions.push(`The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal must also contain the digits 1–9 once each.`)
         break
       case 'extra-house':
         descriptions.push(disjoint.has(index) ? DISJOINT_GROUPS_RULE : 'Each shaded extra region must also contain the digits 1–9 once each.')
+        break
+      case 'labeled-dots':
+        descriptions.push(rule.relation === 'ratio'
+          ? 'Across a numbered black dot, multiply the smaller digit by the number on the dot to get the larger digit. An unnumbered black dot means double.'
+          : 'A numbered white dot gives the difference between its two digits. An unnumbered white dot means the digits are consecutive.')
+        if (rule.negative) descriptions.push(rule.relation === 'ratio'
+          ? 'If an edge has no black dot, neither digit can be twice the other.'
+          : 'If an edge has no white dot, its digits cannot be consecutive.')
         break
       case 'kropki': {
         const marked = [

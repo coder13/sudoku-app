@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://sudoku.coach/en/s/DNVu",
+    "title": "(398) maxes & region-sum-line,quads 25+1",
+    "author": "0123456789ABCDEF",
+    "coach": "SCv7_32_f2e8qlebdq1j047s2ufve41v2tpcrd9nhpagta2op1920acfnqhfouqdkg93bhjb9c8ol64prliscb2nqo7ataeshtivm4iotcv6ovpouvhj9l5ejt3bcvtt6bbr0fev06drsbsuomtflirlef3o13dmtnm1vqudjp7cnfut27caa7napp77ds1nlqrhmf2g9r1i589ed0qir9j18mbktl56qm31dktg9164daojhr8r193b5cd9d2f2ejb8klhbb8mh6oejm17199oja4qapqeugq3927ldk1gq8j9lmjdd0ql4hu1ktt56qmc315amjc6vasapc39u9ujmknfje7bvdgtdeksr9r9i7oa6i2opsond77cdd7frdbn5sn3fceevr32u48s4hvoj40iig2aqgbgm0im0088c2838fvaq0d981k94287g295f0oku7ud5ohsr7r7gefq02lrk88c4lsmhnfe0ft09tog4qhckokvocv565agioamr1i8k1a2coomujn7am2c1l7dhav80f4f2r4f564qoes53dkprr6so6sjk595pvqfm82f1qa4rk7mbbgvve3hvde7plcd3lbba7uhuqv6j0nqeq4rkh1r16mn7a2sb171s47m7rcntg5get0",
+    "solution": "928674513561938472734251968693547281815392746472816395157483629386729154249165837",
+    "hints": [
+      [
+        "inequality",
+        "Maximum clue"
+      ],
+      [
+        "inequality",
+        "Minimum clue"
+      ]
+    ]
+  },
+  {
+    "url": "https://sudoku.coach/en/s/DTJ9",
+    "title": "Entro Caro 4",
+    "author": "CaroBaro",
+    "coach": "SCv7_32_f2e9b51vdu1j0465nu5rnnk0pmfm1llaber8ol860e39s1463b9ikhfptoqmq2l1oii5q44mrquvfevjo504l3fp04vi8i9oi09dv93qdha6fd20ckt94f0f0hpp4k0fh0srali5pal4ihflki66tmgj079cjckmrvde6u1i0pamiju3v469eohq2mvruo6n9auio6q84qlmkv7j77s32c0ehhdaulj8a55i7tf4uqhomok8v1de3ij7aev9caglp8amura31pggp0btf886ogpg1b607ik1op0brfujv09orv0q49j7ml3idci3ee2ssr0m97mpdea5irvcilnfjmsrkndnq1gk09r8vg66al6qurfe8d8h8qeap7618nkdnv24c7fqfapm62huvd1u870gpn5qj9dguauuoel7nk3vt3etg7ikhvlhbmtrifb1m3csgnbfumii8oabg1or6dl45q97g8jptl2qtutme873j2imvospce5a13ps67ap03mtoogq8qhth1e44ui1p2q2rbniuspi65ccvpta5aggm9getc8vqkhrk3cfoctba5gtrlqekbsfs6gspufg7mtvv4",
+    "solution": "198425376243768951576391428719642835352817694684953217935184762427536189861279543",
+    "hints": [
+      [
+        "consecutive-run",
+        "increase by one"
+      ],
+      [
+        "inequality",
+        "Minimum clue"
+      ]
+    ]
+  },
+  {
+    "url": "https://sudoku.coach/en/s/FzrY",
+    "title": "光 (Light)",
+    "author": "hoi",
+    "coach": "SCv7_32_f2e8r4ptdu1j0446vu5ue6vshlgmrhre3mlgoa3mq14m1a11ind2hvttkp4to964mgfb11eunfrrjsvp82d81tglnseaiih01lv3hvsc1l727a88km96d5pqdktav64n73nop6vo4ljof9uuht9qhkef6pngf0kmai60569ugv4431lq8lnk7ntp2vq2s1kdlrktohdselmjn7po0l0je46lk7ndpp22vhsjg7n198gk3s2lgkqa02mg3aq04bankm584ai13f82a50ffgrj7phkk5nl5q2fb4u9a59b13uo1mtlk9203gk0510l540c4g3ijlhb00j80sogtjvkg8h1nnnmm6vm8edub4fq7omr35vh623dotj8g7oanpcsshsm9on9q1hrfrri6hmfrfmp08revacikv2trjg5surti9h8b26cctakoln2hh6vt8e594d088um37v357h096k5oskq84npugjabrtdpkijfqptqo7htl5trvjfg3akrti3m",
+    "solution": "534876192812349756967215384425793861691482573378561249183954627259637418746128935",
+    "hints": [
+      [
+        "inequality",
+        "Minimum clue"
+      ],
+      [
+        "kropki",
+        "3 times"
+      ]
+    ]
+  },
+  {
+    "url": "https://sudoku.coach/en/s/CdP3",
+    "title": "Buffet of Variants",
+    "author": "AndresJonTamin",
+    "coach": "SCv7_32_f2e8r56ddqhj0545rv2uncu0vuc6rdutelcmbg8khdd4k81lkj8kph5rhu4lk8k7ri40qgn66fjtpovbfdgmq36dbfseemf5o3df1rdriuv1nhiogtn1om7lfpgq2o8l5v0cdfu78iov3n5vv3uvtrbkc1g86rofvobvoi6buedk7c837fbb2fnoq73r8t318f1amskqe31gls67j35j1jh13pprpi210t0ggsru9vp948258oj91un5jks6akidqdncsq8s8fbstiundnbkpucid7fj8l4oubvbfefcuf7u5gb7pa6lhn7oqg2987ftbhnnb8lkjqu7bl57hu3vtek5ibigc1is8dk712oieqtosmjkt8cfmct540ma90aoml2ld7qca04mb80ush01jk4bg7pme64eei8r503ka3ksi8852i3n5mr5pghf7hsfcvnrnlugf594kgha906qb8146i3hdk6rnd2tppm1qukmton9n0jrbj7q0oqq239jol5cfck0plt28b1cnt1lfmesa1msk75m9su4gde3aimeakj8lj3t14vn890quun2ct5pbjokllgt8dmkp36qgldglfpvmh95bmflnqnrl1dvk36jvmpr06mm23ht1phlbbk15mm121plc53b9etuifrfsci7s",
+    "solution": "631572498289436517574891362957283146462719835318645279845367921126954783793128654",
+    "hints": [
+      [
+        "kropki",
+        "3 times"
+      ],
+      [
+        "quadruple",
+        "circle"
+      ]
+    ],
+    "description": "Inspired by Aidan’s “variant boxes” puzzle :)"
+  },
+  {
+    "url": "https://sudoku.coach/en/s/FT6c",
+    "title": "Anti-Ratio constraint boxes",
+    "author": "CaroBaro",
+    "coach": "SCv7_32_f2e8r561ea1i0446ru2lttp042g5ssudln3ks3imav5kp8gmm6cjd4rn5v4r8mi262umbt3juvdua9p7q8d5qfvb5si4a3l4qkftgrfqdqqadl4t3l4v2sh2n8j0ajc0r37s2ke4ihbfe168h3mg2vsp1brvnitf3i91r4516jig2b8quvkf9sq1o776em209a0sai7eicct0v55t3na4oldtrden2oebfruk0sn55463jc4quddekf87i57qgrjt2nkaoo3e5483smruqf20ou07383913smn2o0b86otve7ihs9u3pg00l421uihu72v1be46048g4qf6itl9kag7adtf4437khu4bi7c9vdi1dno2jurn0v6jsc83u0t6g15u10cbsu83k8g3iruvu56in7vvml6mcodfc62d86cekmlnv9113ik95upc5ph4lohmd7ea8kbqnqcisamutoii55o1fjv039sjdggh3j21rq76rpafrfkvhjlvtl1kpnlmmjgm6cspnldqd7860lq5kli0kclo5pvruavshgkgcqktuthis14863j3ftb35dbf685567uj2ek30bkq47tku52n540pl0tq333lpvjetbe1qbglm767j21q584243spmiq0q93o82nu75uo50ispt7ucqhst2982n7f4a9rnh7djpreero9e0mhg",
+    "solution": "269145387173968254845327619914532876387416925526789431732654198658291743491873562",
+    "hints": [
+      [
+        "kropki",
+        "There is no black dot"
+      ],
+      [
+        "kropki",
+        "differ by 5"
+      ],
+      [
+        "consecutive-run",
+        "increase by one"
+      ]
+    ]
+  }
+]

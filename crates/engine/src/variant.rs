@@ -1,6 +1,6 @@
 //! Typed rules for a single 9 × 9 grid.
 
-use crate::{Board, CELLS, DIGITS};
+use crate::{Board, CELLS, DIGITS, SizedDotRelation, SizedLabeledDot};
 
 #[cfg(any(feature = "generation", test))]
 mod generation;
@@ -34,7 +34,7 @@ pub use logical::{
     VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
     VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantTrace,
+    VariantSumPairProof, VariantTechnique, VariantTrace, VariantTrialFailure,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
     VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
@@ -51,6 +51,9 @@ pub(crate) use practice::generate_practice_example;
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
+mod lettered_quadruples;
+use lettered_quadruples::LetteredQuadruples;
+pub(crate) use quadruple::QuadrupleSupport;
 pub use search::VariantPositionError;
 pub(crate) use symmetry::SquareTransform;
 pub use symmetry::canonical_variant;
@@ -84,7 +87,7 @@ impl Diagonal {
     }
 }
 
-/// The nine regions used alongside the rows and columns.
+/// Regions used alongside the rows and columns.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
     feature = "wasm-api",
@@ -95,9 +98,14 @@ pub enum RegionLayout {
     /// Standard 3 × 3 boxes in row-major order.
     #[default]
     Boxes,
-    /// Nine orthogonally connected regions that partition the grid.
+    /// Nine regions that partition the grid. An authored region may have separated pieces.
     Jigsaw {
         /// Regions in caller-supplied order, each with nine cell indices.
+        regions: Vec<Vec<usize>>,
+    },
+    /// A Latin square with only the explicitly marked regions.
+    Partial {
+        /// Disjoint, orthogonally connected nine-cell regions.
         regions: Vec<Vec<usize>>,
     },
 }
@@ -182,6 +190,16 @@ impl ClueDirection {
     }
 }
 
+/// One circle in a puzzle-wide letter-to-digit key.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "camelCase", deny_unknown_fields))]
+pub struct LetteredQuadruple {
+    /// Top-left cell touching the circle.
+    pub top_left: usize,
+    /// Each printed letter must occur in a separate cell.
+    pub letters: String,
+}
+
 // One list supplies the wire identifiers and the protocol's supported-rule check.
 macro_rules! rules {
     ($(
@@ -222,6 +240,19 @@ rules! {
         /// Cell indices in the house.
         cells: Vec<usize>,
     }
+    /// Require a shaded group smaller than a house to contain different digits.
+    DistinctCells => "distinct-cells" {
+        /// The cells in the group.
+        cells: Vec<usize>,
+        /// Optional authored shade.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
+    }
+    /// Require all rows and columns of a rotated grid to use the same digit set.
+    InsideGrid => "inside-grid" {
+        /// Ordered rows of the grid, with each cell identified by its outer index.
+        rows: Vec<Vec<usize>>,
+    }
     /// Constrain disjoint cages to given sums and distinct digits.
     KillerCages => "killer-cages" {
         /// The cages, which may have gaps between them in a mixed puzzle.
@@ -232,6 +263,18 @@ rules! {
     }
     /// Require the printed digit occurrences in the four cells touching a circle.
     Quadruple => "quadruple" {
+        /// Top-left cell index of the four-cell area.
+        top_left: usize,
+        /// One to four required digit occurrences, in any order.
+        digits: Vec<u8>,
+    }
+    /// Require a common bijection between printed letters and Sudoku digits.
+    LetteredQuadruples => "lettered-quadruples" {
+        /// All circles using this key.
+        clues: Vec<LetteredQuadruple>,
+    }
+    /// Constrain a Quadruple's largest digit to the sum of the other three.
+    QuadrupleSum => "quadruple-sum" {
         /// Top-left cell index of the four-cell area.
         top_left: usize,
         /// One to four required digit occurrences, in any order.
@@ -267,6 +310,22 @@ rules! {
         /// Cell with the larger digit.
         greater: usize,
     }
+    /// Compare each marked cell with its edge neighbors using strict less-than.
+    Minimum => "minimum" {
+        /// Cells marked by this Minimum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
+    /// Compare each marked cell with its edge neighbors using strict greater-than.
+    Maximum => "maximum" {
+        /// Cells marked by this Maximum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
     /// Constrain adjacent digits using Kropki dots.
     Kropki => "kropki" {
         /// White dots for consecutive digits.
@@ -275,6 +334,16 @@ rules! {
         /// Black dots for a ratio of two.
         #[cfg_attr(feature = "wasm-api", serde(default))]
         ratio_two: MarkedPairs,
+    }
+    /// Constrain adjacent digits using numbered difference or ratio dots.
+    LabeledDots => "labeled-dots" {
+        /// Relationship indicated by this color of dot.
+        relation: SizedDotRelation,
+        /// Positive dots and their printed values.
+        marks: Vec<SizedLabeledDot>,
+        /// Forbid the default relation on edges without a dot of this color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        negative: bool,
     }
     /// Constrain adjacent digits using V and X markers.
     Xv => "xv" {
@@ -323,6 +392,16 @@ rules! {
         /// Distinct cell indices in path order, excluding the circle.
         cells: Vec<usize>,
     }
+    /// Require the path sum to equal the two-digit number in a pill.
+    PillArrow => "pill-arrow" {
+        /// The tens cell followed by the ones cell.
+        pill: [usize; 2],
+        /// Distinct path cells in drawing order, excluding the pill cells.
+        cells: Vec<usize>,
+        /// The arrow leaves the tens cell instead of the ones cell when true.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_tens: bool,
+    }
     /// Require a set of consecutive digits in any order without repetition.
     Renban => "renban" {
         /// Distinct cells in logical order, up to the grid's digit count.
@@ -331,6 +410,17 @@ rules! {
         /// Drawing paths may revisit cells without repeating their digits.
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         segments: Option<Vec<Vec<usize>>>,
+    }
+    /// Require digits to rise or fall by one at every step along the whole path.
+    ConsecutiveRun => "consecutive-run" {
+        /// Distinct cells in path order.
+        cells: Vec<usize>,
+        /// Optional authored line color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
+        /// A bulb fixes the increasing direction to the path order.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_bulb: bool,
     }
     /// Require each three successive positions to use low, medium and high digits.
     Entropic => "entropic" {
@@ -348,6 +438,11 @@ rules! {
     GlobalEntropy => "global-entropy" {}
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
+        /// Cell indices in line order, including both endpoints.
+        cells: Vec<usize>,
+    }
+    /// Endpoints differ by at least four and interior digits lie outside their range.
+    Lockout => "lockout" {
         /// Cell indices in line order, including both endpoints.
         cells: Vec<usize>,
     }
@@ -561,6 +656,7 @@ impl VariantPuzzle {
             disjoint_group_sums: Vec::new(),
             group_sum_chains: Vec::new(),
             quadruples: Vec::new(),
+            lettered_quadruples: None,
             global_entropy: None,
             pair_clues: Vec::new(),
             positive_sums: Vec::new(),
@@ -583,6 +679,7 @@ impl VariantPuzzle {
             )?;
         }
         compiled.add_regions(&self.regions)?;
+        let primary_house_count = compiled.houses.len();
         if !enforce_regions {
             // Keep the region geometry for Region Sum lines and remove only
             // the all-different rule, for uniqueness comparisons in generation.
@@ -625,16 +722,28 @@ impl VariantPuzzle {
                 PuzzleRule::GlobalEntropy {} => {
                     compiled.global_entropy.get_or_insert(index);
                 }
-                PuzzleRule::Quadruple { top_left, digits } => {
-                    let clue =
-                        Quadruple::compile(&compiled, index, *top_left, digits, enforce_regions)?;
+                PuzzleRule::Quadruple { top_left, digits }
+                | PuzzleRule::QuadrupleSum { top_left, digits } => {
+                    let is_sum = matches!(rule, PuzzleRule::QuadrupleSum { .. });
+                    let clue = Quadruple::compile(&compiled, index, *top_left, digits, is_sum, enforce_regions)?;
                     compiled.quadruples.push(clue);
                 }
+                PuzzleRule::LetteredQuadruples { clues } => {
+                    if compiled.lettered_quadruples.is_some() {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    compiled.lettered_quadruples = Some(LetteredQuadruples::compile(self, index, clues, enforce_regions)?);
+                }
                 PuzzleRule::Arrow { .. }
+                | PuzzleRule::PillArrow { .. }
                 | PuzzleRule::Renban { .. }
+                | PuzzleRule::ConsecutiveRun { .. }
+                | PuzzleRule::DistinctCells { .. }
+                | PuzzleRule::InsideGrid { .. }
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }
+                | PuzzleRule::Lockout { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }
                 | PuzzleRule::LittleKiller { .. }
@@ -660,7 +769,7 @@ impl VariantPuzzle {
             .collect();
         compiled.positive_sums = positive_sums(&self.rules);
         compile_line_sums(&mut compiled);
-        compiled.extra_rule_cells = compiled.house_masks[27..]
+        compiled.extra_rule_cells = compiled.house_masks[primary_house_count..]
             .iter()
             .copied()
             .chain(
@@ -689,7 +798,7 @@ impl VariantPuzzle {
             )
             .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
             .fold(0, |cells, scope| cells | scope);
-        if compiled.global_entropy.is_some() {
+        if compiled.global_entropy.is_some() || compiled.lettered_quadruples.is_some() {
             compiled.extra_rule_cells = (1u128 << CELLS) - 1;
         }
         Ok(compiled)
@@ -775,7 +884,7 @@ pub enum VariantDefinitionError {
     InvalidRegionCount,
     /// A house has the wrong size, repeats a cell, or references a cell outside the grid.
     InvalidHouse(VariantHouseKind),
-    /// An irregular region contains disconnected cells.
+    /// One of the marked regions in a partial layout contains disconnected cells.
     DisconnectedRegion(usize),
     /// Two irregular regions share a cell.
     OverlappingRegion(usize),
@@ -811,6 +920,7 @@ pub struct CompiledVariant {
     disjoint_group_sums: Vec<DisjointGroupSum>,
     group_sum_chains: Vec<GroupSumChain>,
     quadruples: Vec<Quadruple>,
+    lettered_quadruples: Option<LetteredQuadruples>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
     positive_sums: Vec<PositiveSum>,
@@ -845,7 +955,16 @@ impl CompiledVariant {
         first != second
             && (first / 9 == second / 9
                 || first % 9 == second % 9
-                || enforce_regions && self.memberships[first][2] == self.memberships[second][2])
+                || enforce_regions && self.primary_region(first).is_some_and(|region| self.primary_region(second) == Some(region)))
+    }
+
+    fn primary_region(&self, cell: usize) -> Option<usize> {
+        let &house = self.memberships[cell].get(2)?;
+        if let VariantHouseKind::Region(region) = self.houses[house].kind {
+            Some(region)
+        } else {
+            None
+        }
     }
 
     /// Original givens of the compiled puzzle.
@@ -875,8 +994,8 @@ impl CompiledVariant {
         self.peers.get(cell).copied().map(cells_in)
     }
 
-    fn add_regions(&mut self, regions: &RegionLayout) -> Result<(), VariantDefinitionError> {
-        match regions {
+    fn add_regions(&mut self, regions_layout: &RegionLayout) -> Result<(), VariantDefinitionError> {
+        match regions_layout {
             RegionLayout::Boxes => {
                 for i in 0..9 {
                     self.add_house(
@@ -887,8 +1006,8 @@ impl CompiledVariant {
                     )?;
                 }
             }
-            RegionLayout::Jigsaw { regions } => {
-                if regions.len() != 9 {
+            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => {
+                if regions.len() > 9 || matches!(regions_layout, RegionLayout::Jigsaw { .. }) && regions.len() != 9 {
                     return Err(VariantDefinitionError::InvalidRegionCount);
                 }
                 let mut covered = 0;
@@ -903,13 +1022,12 @@ impl CompiledVariant {
                     if covered & mask != 0 {
                         return Err(VariantDefinitionError::OverlappingRegion(i));
                     }
-                    if !connected(mask) {
+                    if matches!(regions_layout, RegionLayout::Partial { .. }) && !connected(mask) {
                         return Err(VariantDefinitionError::DisconnectedRegion(i));
                     }
                     covered |= mask;
                     self.add_house(kind, cells)?;
                 }
-                // Nine disjoint regions of nine valid cells necessarily cover the grid.
             }
         }
         Ok(())

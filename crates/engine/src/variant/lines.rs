@@ -1,5 +1,6 @@
 mod group_sums;
 pub(super) mod groups;
+mod inside_grid;
 pub(super) mod ray_houses;
 pub(super) mod renban_sum;
 
@@ -26,10 +27,15 @@ pub(super) struct LineConstraint {
 #[derive(Clone, Debug)]
 enum LineKind {
     EqualSums(Vec<Range<usize>>),
+    PillArrow,
     Sum(u16),
     Renban,
+    ConsecutiveRun { from_bulb: bool },
+    DistinctCells,
+    InsideGrid(inside_grid::InsideGrid),
     ThreeGroups(groups::GroupLine),
     Between,
+    Lockout,
     Outside(OutsideClue),
 }
 
@@ -79,12 +85,41 @@ impl LineConstraint {
                 let ranges = vec![0..1, 1..cells.len()];
                 (cells, LineKind::EqualSums(ranges))
             }
+            PuzzleRule::PillArrow { pill, cells, .. } => {
+                let [tens, ones] = *pill;
+                if cells.is_empty() || (tens / 9).abs_diff(ones / 9) > 1 || (tens % 9).abs_diff(ones % 9) > 1 {
+                    return Err(invalid);
+                }
+                let cells = pill.iter().chain(cells).copied().collect();
+                (cells, LineKind::PillArrow)
+            }
             PuzzleRule::Renban { cells, segments } => {
                 if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban)
+            }
+            PuzzleRule::ConsecutiveRun { cells, color, .. } | PuzzleRule::DistinctCells { cells, color } => {
+                let run = matches!(rule, PuzzleRule::ConsecutiveRun { .. });
+                let maximum = if run { 9 } else { 8 };
+                if !(2..=maximum).contains(&cells.len()) ||
+                    color.as_deref().is_some_and(|color| {
+                        !matches!(color.len(), 4 | 5 | 7 | 9) || !color.starts_with('#') ||
+                            !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
+                    }) {
+                    return Err(invalid);
+                }
+                puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
+                let kind = match rule {
+                    PuzzleRule::ConsecutiveRun { from_bulb, .. } => LineKind::ConsecutiveRun { from_bulb: *from_bulb },
+                    _ => LineKind::DistinctCells,
+                };
+                (cells.clone(), kind)
+            }
+            PuzzleRule::InsideGrid { rows } => {
+                let grid = inside_grid::InsideGrid::compile(puzzle, rows).ok_or(invalid)?;
+                (rows.iter().flatten().copied().collect(), LineKind::InsideGrid(grid))
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
                 let partition = if matches!(rule, PuzzleRule::Entropic { .. }) {
@@ -110,6 +145,12 @@ impl LineConstraint {
                 }
                 (cells.clone(), LineKind::Between)
             }
+            PuzzleRule::Lockout { cells } => {
+                if cells.len() < 2 {
+                    return Err(invalid);
+                }
+                (cells.clone(), LineKind::Lockout)
+            }
             PuzzleRule::RegionSum {
                 cells,
                 group_by_region,
@@ -119,11 +160,13 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 cell_mask(cells).ok_or(invalid)?;
-                let mut cells = cells.clone();
-                let segments = region_sum_ranges(&mut cells, |cell| puzzle.memberships[cell][2], *group_by_region);
-                if segments.len() < 2 {
+                if cells.iter().any(|&cell| puzzle.primary_region(cell).is_none()) {
                     return Err(invalid);
                 }
+                let mut cells = cells.clone();
+                let segments = region_sum_ranges(&mut cells, |cell| puzzle.primary_region(cell).unwrap(), *group_by_region);
+                // A line within one region still has a visible path. Its sole
+                // group already satisfies equality of the group totals.
                 (cells, LineKind::EqualSums(segments))
             }
             PuzzleRule::LittleKiller {
@@ -301,10 +344,27 @@ impl LineConstraint {
                     }
                 }
             }
+            LineKind::PillArrow => pill_arrow_support(domains, support),
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
+            LineKind::ConsecutiveRun { from_bulb } => consecutive_run_support(domains, support, *from_bulb),
+            LineKind::InsideGrid(grid) => grid.support(domains, support),
+            LineKind::DistinctCells => {
+                let union = domains.iter().fold(0, |union, mask| union | mask);
+                let mut set = union;
+                while set != 0 {
+                    if set.count_ones() as usize == domains.len() {
+                        digit_set_support(set, domains, support);
+                        if support == domains {
+                            break;
+                        }
+                    }
+                    set = (set - 1) & union;
+                }
+            }
             LineKind::ThreeGroups(line) => line.support(domains, support),
-            LineKind::Between => between_support(domains, support),
+            LineKind::Between => endpoint_support(domains, support, false),
+            LineKind::Lockout => endpoint_support(domains, support, true),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
             }
@@ -339,6 +399,22 @@ pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16]
                 super::search::record_support(interval, domains, &mut matches, &mut [None; CACHE]);
             }
             support.copy_from_slice(&matches[..len]);
+        }
+    }
+}
+
+/// Support an ordered sequence that can increase from either end.
+fn consecutive_run_support(domains: &[u16], support: &mut [u16], from_bulb: bool) {
+    let length = domains.len();
+    let directions: &[bool] = if from_bulb { &[false] } else { &[false, true] };
+    for first in 0..=9 - length {
+        for &reverse in directions {
+            let digit_at = |i| 1u16 << (first + if reverse { length - 1 - i } else { i });
+            if domains.iter().enumerate().all(|(i, domain)| domain & digit_at(i) != 0) {
+                for (i, mask) in support.iter_mut().enumerate() {
+                    *mask |= digit_at(i);
+                }
+            }
         }
     }
 }
@@ -528,13 +604,36 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
     matched
 }
 
-fn between_support(domains: &[u16], support: &mut [u16]) {
+fn pill_arrow_support(domains: &[u16], support: &mut [u16]) {
+    let ones = u128::from(domains[1]);
+    let shift = |tens: u8| 10 * tens + 1;
+    let totals = digits(domains[0]).fold(0, |totals, tens| totals | (ones << shift(tens)));
+    let [matched] = sum_support_with_prefix(
+        &domains[2..], [totals], &mut support[2..], &mut [[0]; CELLS],
+    );
+    for tens in digits(domains[0]) {
+        let trailing = ((matched >> shift(tens)) & ones) as u16;
+        if trailing != 0 {
+            support[0] |= digit_bit(tens);
+            support[1] |= trailing;
+        }
+    }
+}
+
+fn endpoint_support(domains: &[u16], support: &mut [u16], lockout: bool) {
     let last = domains.len() - 1;
     for left in digits(domains[0]) {
         for right in digits(domains[last]) {
             let lower = left.min(right);
             let upper = left.max(right);
-            let interior = (digit_bit(upper) - 1) & !((1 << lower) - 1);
+            let interior = if lockout {
+                if upper - lower < 4 {
+                    continue;
+                }
+                (digit_bit(lower) - 1) | (DIGITS & !((1 << upper) - 1))
+            } else {
+                (digit_bit(upper) - 1) & !((1 << lower) - 1)
+            };
             if domains[1..last]
                 .iter()
                 .any(|&domain| domain & interior == 0)

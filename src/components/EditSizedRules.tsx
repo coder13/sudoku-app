@@ -26,6 +26,7 @@ const ruleNames = {
   'double-arrow': 'Double Arrow',
   'linked-double-arrow': 'Double Arrow with X-Sum ends',
   'region-sum': 'Region Sum line',
+  quadruple: 'Quadruple circle',
   'extra-house': 'Extra region',
   'killer-cages': 'Killer cages',
 }
@@ -47,7 +48,7 @@ const defaultLinkedEnds: readonly [SizedSumEnd, SizedSumEnd] = [
 const emptyDiamondRule: DiamondRule = { type: 'row-column-sum', pairs: [] }
 const emptyDotLayer: SizedLabeledDotsRule = { type: 'labeled-dots', relation: 'difference', marks: [] }
 
-function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
+function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum' | 'quadruple'>, cells: readonly number[], marks: KropkiMarks, difference: number, groupByRegion: boolean, labeled: SizedLabeledDotsRule, killer: KillerRule): SizedConstraintRule {
   if (kind === 'killer-cages') return killer
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
@@ -68,6 +69,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [editing, setEditing] = useState(-1)
   const [kind, setKind] = useState<RuleChoice>('thermometer')
   const [linkedEnds, setLinkedEnds] = useState(defaultLinkedEnds)
+  const [quadrupleDigits, setQuadrupleDigits] = useState('')
   const [cells, setCells] = useState<readonly number[]>([])
   const [cages, setCages] = useState<KillerRule['cages']>([])
   const [cageIndex, setCageIndex] = useState(-1)
@@ -101,7 +103,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     ? { type: kind, ends: linkedEnds, cells }
     : kind === 'anti-sum' ? { type: kind, sum: forbiddenSum }
       : kind === 'row-column-sum' ? diamonds
-        : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
+        : kind === 'quadruple' ? { type: kind, topLeft: cells[0] ?? -1, digits: [...quadrupleDigits].map(Number) }
+          : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
@@ -109,7 +112,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   }
   const previewRule = kind === 'killer-cages' && !isSizedRuleList([...otherRules, rule], layout) ? killerLayer(cages) : rule
   const preview = isSizedRuleList([...otherRules, previewRule], layout) ? [...otherRules, previewRule] : otherRules
-  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum'
+  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum' || kind === 'quadruple'
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
   const markedDiamond = selectedEdge && diamonds.pairs.some(matchesEdge)
@@ -149,7 +152,9 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setKind(previous ? ruleChoice(previous) : 'thermometer')
     const selected = previous?.type === 'arrow' ? [previous.circle, ...previous.cells]
       : previous?.type === 'double-arrow' ? [previous.ends[0], ...previous.cells, previous.ends[1]]
-        : previous && 'cells' in previous ? previous.cells : []
+        : previous?.type === 'quadruple' ? [previous.topLeft]
+          : previous && 'cells' in previous ? previous.cells : []
+    setQuadrupleDigits(previous?.type === 'quadruple' ? previous.digits.join('') : '')
     setCells(selected)
     setLinkedEnds(previous?.type === 'linked-double-arrow' ? previous.ends : defaultLinkedEnds)
     setCages(previous?.type === 'killer-cages' ? previous.cages : [])
@@ -172,6 +177,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setError('')
     setCells(current => {
       if (current.includes(cell)) return current.filter(item => item !== cell)
+      if (kind === 'quadruple') return [cell]
       if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots' || kind === 'row-column-sum') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
@@ -235,6 +241,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       return
     }
     if (!isSizedRuleList(next, layout)) {
+      if (kind === 'quadruple') {
+        setError(`Select a cell with a neighbor below and a neighbor to its right. Enter 1 to 4 digits from 1 to ${size} for the circle.`)
+        return
+      }
       if (kind === 'row-column-sum') {
         setError('Add a diamond or require an unmarked edge.')
         return
@@ -266,6 +276,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
           {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
+          {rule.type === 'quadruple' ? ` with ${rule.digits.join(', ')} below and to the right of ${cellName(rule.topLeft)}` : ''}
           {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{rule.type === 'anti-sum' ? ` (${rule.sum})` : ''}{rule.type === 'row-column-sum' && rule.pairs.length ? ` · ${rule.pairs.length}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
@@ -285,6 +296,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setLabeled(emptyDotLayer)
         setDotValue(1)
         setGroupByRegion(false)
+        setQuadrupleDigits('')
         setError('')
       }}>
         {Object.entries(ruleNames).filter(([value]) => value !== 'region-sum' || !('noRegions' in layout))
@@ -352,6 +364,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
           }} />
           At least one unmarked edge must also meet its row or column sum
         </label>
+      </>}
+      {kind === 'quadruple' && <>
+        <p id={`${id}-instructions`}>Select the cell just above and to the left of the circle.</p>
+        <label htmlFor={`${id}-quadruple-digits`}>Digits in the circle</label>
+        <input id={`${id}-quadruple-digits`} inputMode="numeric" maxLength={4} value={quadrupleDigits}
+          onChange={event => {
+            setQuadrupleDigits(event.currentTarget.value)
+            setError('')
+          }} />
       </>}
       {kind === 'anti-sum' && <>
         <label htmlFor={`${id}-forbidden-sum`}>Forbidden sum</label>

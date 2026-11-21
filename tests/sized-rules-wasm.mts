@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { sizedRuleHintChoices } from '../src/sudoku/sized-rule-play.ts'
+import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -223,3 +229,94 @@ test('labeled ratios use the digit range and report precise positive and negativ
   assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 1 && step.pair.value === 16))
   assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 2 && step.pair.negative))
 })
+
+const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
+  url: string; title: string; coach: string; solution: string
+}[]
+
+for (const publication of coachSumQuadruples) {
+  test(`Coach ${publication.title} opens with overlapping clues and solves without contradiction`, async ({ mock }) => {
+    const { url, coach, title } = publication
+    const specificSudoku = {
+      sudoku_id: url.split('/').at(-1), sudoku: coach, name: title, description: '', blocked: false, custom_constraints: false,
+    }
+    mock.method(globalThis, 'fetch', async (input: string, init?: RequestInit) => input === url
+      ? new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+      : worker.fetch(new Request(new URL(input, 'https://sudoku.example'), init), {}, {}))
+    const { game } = await prepareImportedPuzzle(url)
+    const { game: pasted } = await prepareImportedPuzzle(coach)
+    assert.equal(game.title, title)
+    assert.deepEqual(game.sized, pasted.sized)
+    specificSudoku.custom_constraints = true
+    specificSudoku.description = 'The author has added a separate rule.'
+    await assert.rejects(prepareImportedPuzzle(url), /has author instructions/)
+    assert.ok(game.sized && game.grid && game.grid.size === 4)
+    assert.equal(game.sized.solution, publication.solution)
+    const { grid, sized, givens } = game
+    const position = sizedRulePosition(grid, sized, givens)
+    const result = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 64 })
+    const overlaps = result?.choices.filter(choice => choice.type === 'quadruple-overlap') ?? []
+    assert.ok(overlaps.some(choice => choice.rules.some(index => sized.rules[index].type === 'region-sum')))
+    if (url.endsWith('/HuRz')) {
+      assert.ok(overlaps.some(choice => choice.rules.every(index => sized.rules[index].type === 'quadruple')))
+    }
+    const box = (cell: number) => 2 * Math.floor(cell / 8) + Math.floor(cell % 4 / 2)
+    const sharesHouse = (a: number, b: number) => Math.floor(a / 4) === Math.floor(b / 4) || a % 4 === b % 4 || box(a) === box(b)
+    for (const overlap of overlaps) {
+      const cells = overlap.cells
+      const supports = cells.map(() => new Set<number>())
+      const selected = overlap.rules.map(index => sized.rules[index])
+      const fits = (board: readonly number[]) => selected.every(rule => {
+        if (rule.type === 'quadruple') {
+          const a = rule.topLeft
+          const values = [a, a + 1, a + 4, a + 5].map(cell => board[cell])
+          return rule.digits.every(digit => values.filter(value => value === digit).length >=
+            rule.digits.filter(value => value === digit).length)
+        }
+        assert.ok(rule.type === 'region-sum' && !rule.groupByRegion)
+        const totals: number[] = []
+        let previous = -1
+        for (const cell of rule.cells) {
+          if (box(cell) !== previous) totals.push(0)
+          previous = box(cell)
+          totals[totals.length - 1] += board[cell]
+        }
+        return new Set(totals).size === 1
+      })
+      const enumerate = (values: number[]) => {
+        const cell = cells[values.length]
+        if (cell === undefined) {
+          const board = Array.from({ length: 16 }, (_, index) => values[cells.indexOf(index)])
+          if (fits(board)) values.forEach((digit, index) => supports[index].add(digit))
+          return
+        }
+        for (const digit of [1, 2, 3, 4]) {
+          if (!values.some((value, index) => value === digit && sharesHouse(cell, cells[index]))) enumerate([...values, digit])
+        }
+      }
+      enumerate([])
+      const expected = cells.flatMap((cell, i) => [1, 2, 3, 4]
+        .filter(digit => !supports[i].has(digit)).map(digit => ({ eliminate: { cell, digit } })))
+      assert.deepEqual(overlap.actions, expected)
+    }
+
+    const hint = (await puzzleHints(game)).choices[0]
+    assert.equal(hint.technique, 'sized-quadruple')
+    assert.ok('variant' in hint.evidence && /Both clues must use the same digits/.test(hint.evidence.variant.description))
+    const finder = await sizedRuleHintChoices(sized, grid, givens)
+    const quadChoices = finder?.choices.filter(choice => choice.technique === 'sized-quadruple')
+    assert.ok(quadChoices?.length)
+    assert.deepEqual((await puzzleHints(game, 'all', 'sized-quadruple')).choices, quadChoices)
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, publication.solution)
+    assert.equal(path.status, 'solved')
+    assert.ok(path.steps.every(step => step.technique !== 'sized-contradiction'))
+    for (const step of path.steps) {
+      for (const action of step.actions) {
+        if ('place' in action) assert.equal(publication.solution[action.place.cell], String(action.place.digit))
+        else assert.notEqual(publication.solution[action.eliminate.cell], String(action.eliminate.digit))
+      }
+    }
+  })
+}

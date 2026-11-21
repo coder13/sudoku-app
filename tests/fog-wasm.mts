@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { inflateSync } from 'node:zlib'
-import { runEngine, type VariantRule, type VariantVisibility } from '../src/sudoku/engine.ts'
+import { runEngine, type VariantPuzzle, type VariantRule, type VariantVisibility } from '../src/sudoku/engine.ts'
 import { fogView, projectFogPuzzle, revealedFogCells } from '../src/sudoku/fog.ts'
 import { EMPTY, completeCandidateMasks, enter, makeGame, puzzleIdentity, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
@@ -206,6 +206,51 @@ test('projected layers hide givens, cut paths at hidden cells, and delay negativ
   assert.deepEqual(later.rules, puzzle.rules)
 })
 
+test('fog keeps visible extrema comparisons and hides incomplete numbered-dot negative evidence', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: EMPTY, rules: [
+    { type: 'minimum', cells: [0, 1], ignoreMarkedNeighbors: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [78, 79], value: 2 }] },
+  ] }
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 3, 4])).rules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }] },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 3, 4, 9])).rules, [
+    { type: 'inequality', less: 0, greater: 9 },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }] },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 9, 10, 78, 79])).rules, puzzle.rules)
+})
+
+test('clipped Quadruples keep the exposed digit slots and their multiplicity', () => {
+  const topLeft = 2
+  const corners = [2, 3, 11, 12]
+  const shown = (digits: number[], indices: number[]) => projectFogPuzzle({
+    version: 1, givens: EMPTY, rules: [{ type: 'quadruple', topLeft, digits }],
+  }, new Set(indices.map(index => corners[index]))).rules
+  assert.deepEqual(shown([4], [0, 1, 2]), [])
+  assert.deepEqual(shown([8, 9], [0, 3]), [])
+  assert.deepEqual(shown([8, 9], [0, 2]), [{ type: 'quadruple', topLeft, digits: [8] }])
+  assert.deepEqual(shown([5, 2, 9], [0, 2]), [{ type: 'quadruple', topLeft, digits: [5] }])
+  assert.deepEqual(shown([5, 2, 9], [2, 3]), [{ type: 'quadruple', topLeft, digits: [9] }])
+  assert.deepEqual(shown([6, 8, 9, 6], [0, 3]), [{ type: 'quadruple', topLeft, digits: [6, 6] }])
+})
+
+test('fog retains separate visible runs and patches without reasoning through covered cells', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: EMPTY, rules: [
+    { type: 'consecutive-run', cells: [0, 1, 2, 3, 4], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [0, 1, 2, 3, 4, 80], color: '#0cd3ed' },
+  ] }
+  const view = projectFogPuzzle(puzzle, new Set([0, 1, 3, 4, 80]))
+  assert.deepEqual(view.rules, [
+    { type: 'consecutive-run', cells: [0, 1], color: '#fc03cf' },
+    { type: 'consecutive-run', cells: [3, 4], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [0, 1], color: '#0cd3ed' },
+    { type: 'distinct-cells', cells: [3, 4], color: '#0cd3ed' },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 80])).rules, puzzle.rules)
+})
+
 test('normal Fog play, paged hints, Technique Finder, reload, sharing, and exact solution agree on the published grid', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()
   mock.method(globalThis, 'fetch', fetcher)
@@ -287,7 +332,7 @@ test('classic Fog hides authored givens until a logical placement starts the rev
   assert.equal(logical.positions.at(-1).givens[54], '8')
 })
 
-test('published mixed Fog imports keep outside totals public and exclude clipped Quadruples from opening proofs', async ({ mock }) => {
+test('published mixed Fog imports keep outside totals and fully exposed Quadruple digits available', async ({ mock }) => {
   const sources = JSON.parse(readFileSync(new URL('./fixtures/fog-coach.json', import.meta.url), 'utf8')) as
     { id: string; url: string; title: string; description: string; code: string; solution: string }[]
   const { sqlite, fetcher } = syncDatabase()
@@ -313,8 +358,24 @@ test('published mixed Fog imports keep outside totals public and exclude clipped
       if (source.id === 'E3xE') {
         assert.equal(view.cells.size, 45)
         assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'quadruple').length, 15)
-        assert.equal(position.puzzle.rules?.filter(rule => rule.type === 'quadruple').length, 6)
-        assert.equal(position.puzzle.rules?.some(rule => rule.type === 'quadruple' && rule.topLeft === 32), false)
+        assert.deepEqual(position.puzzle.rules?.find(rule => rule.type === 'quadruple' && rule.topLeft === 32),
+          { type: 'quadruple', topLeft: 32, digits: [8] })
+        assert.deepEqual(position.puzzle.rules?.find(rule => rule.type === 'quadruple' && rule.topLeft === 21),
+          { type: 'quadruple', topLeft: 21, digits: [9, 7] })
+        const technique = 'entropy-quadruple'
+        const { choices } = await puzzleHints(game, 'all', technique)
+        const removals = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+        assert.ok(removals.size > 0)
+        const scan = watchTechniqueScan(valuesOf(game), undefined, position)
+        try { assert.equal(await scan.count(technique), removals.size) } finally { scan.close() }
+        for (const choice of choices) {
+          assert.ok('variant' in choice.evidence)
+          assert.deepEqual(choice.evidence.variant.source?.puzzle, position.puzzle)
+          for (const action of choice.actions) {
+            assert.ok('eliminate' in action)
+            assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+          }
+        }
       } else {
         assert.equal(view.cells.size, 8)
         const totals = position.puzzle.rules?.filter(rule => rule.type === 'sandwich')
@@ -335,6 +396,78 @@ test('published mixed Fog imports keep outside totals public and exclude clipped
     }
     changedNote = true
     await assert.rejects(prepareImportedPuzzle(sources[1].url), /has author instructions/)
+  } finally { sqlite.close() }
+})
+
+test('Spiral 3 retains its published rules and completes with reveal-aware hints and Finder', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/fog-spiral-coach.json', import.meta.url), 'utf8')) as
+    { id: string; url: string; title: string; description: string; code: string; solution: string }
+  const { sqlite, fetcher } = syncDatabase()
+  let description = source.description
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path !== source.url) return fetcher(path, init)
+    const specificSudoku = { sudoku_id: source.id, name: source.title, sudoku: source.code,
+      description, custom_constraints: false, blocked: false }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(source.url)
+    const variant = game.variant!
+    assert.ok(variant.fog)
+    assert.equal(game.title, source.title)
+    assert.equal(variant.solution, source.solution)
+    assert.deepEqual((await detectPuzzle(source.code)).variant?.puzzle, variant.puzzle)
+    assertVariantCompletion(variant.puzzle, source.solution)
+    assert.deepEqual(variant.puzzle.rules?.filter(rule => rule.type === 'consecutive-run'), [
+      { type: 'consecutive-run', cells: [60, 61], color: '#fc03cf' },
+      { type: 'consecutive-run', cells: [67, 76], color: '#fc03cf' },
+    ])
+    assert.deepEqual(variant.puzzle.rules?.filter(rule => rule.type === 'distinct-cells'), [
+      { type: 'distinct-cells', cells: [68, 77, 79, 80, 65, 78] },
+      { type: 'distinct-cells', cells: [46, 7], color: '#0cd3ed' },
+    ])
+    assert.equal(fogView(variant)?.cells.size, 9)
+    assert.ok((await puzzleHints(game)).choices.some(hint => hint.technique === 'quadruple'))
+    const openingScan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(variant, game.position))
+    try {
+      assert.ok(await openingScan.count('quadruple') > 0)
+      assert.equal(await openingScan.count('distinct-cells'), 0)
+      assert.equal(await openingScan.count('consecutive-run'), 0)
+    } finally { openingScan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.equal(path.exact, undefined)
+    assert.notEqual(path.rating.status, 'stalled')
+    assert.equal(fogView(variant, path.positions?.at(-1)?.entries)?.cells.size, 81)
+    for (const { actions } of path.steps) for (const action of actions) {
+      if ('place' in action) assert.equal(source.solution[action.place.cell], String(action.place.digit))
+      else assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+    }
+    for (const technique of ['consecutive-run', 'distinct-cells']) {
+      const at = path.steps.findIndex(step => step.technique === technique)
+      assert.ok(at >= 0)
+      const { entries, eliminations } = path.positions![at]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const { choices } = await puzzleHints(checkpoint, 'all', technique)
+      assert.ok(choices.length)
+      const position = variantPosition(variant, checkpoint.position)
+      const visible = fogView(variant, entries)!.cells
+      for (const hint of choices) {
+        assert.ok('variant' in hint.evidence)
+        const proof = hint.evidence.variant.source
+        assert.deepEqual(proof?.puzzle, position.puzzle)
+        assert.ok(proof?.deduction.evidence.type === 'constraint')
+        assert.ok(proof.deduction.evidence.cells.every(cell => visible.has(cell)))
+      }
+      const actions = new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, position)
+      try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    }
+    const id = await publishSharedPuzzle(game)
+    assert.deepEqual((await prepareSharedPuzzle(id, [], new AbortController().signal)).game.variant, variant)
+    description += '\nDigits in shaded cells count twice.'
+    await assert.rejects(prepareImportedPuzzle(source.url), /has author instructions/)
   } finally { sqlite.close() }
 })
 
@@ -491,7 +624,53 @@ test('trace boundaries keep the first matching placement and can return only the
   await assert.rejects(runEngine({ ...request, stopAfterPlacementIn: [0, 0] }), { code: 'invalid-placement-boundary' })
 })
 
-test('an exact Fog finish leaves the attempted logical moves as a subtotal and the puzzle unrated', async () => {
+test('Entropy Quad Fog 2 completes without using any covered digits in its deductions', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/fog-coach.json', import.meta.url), 'utf8')) as
+    { id: string; code: string; solution: string }[]
+  const source = sources.find(({ id }) => id === 'E3xE')!
+  const { game, grade } = await prepareImportedPuzzle(source.code)
+  assert.ok(game.variant?.fog)
+  const path = await puzzleSolution(game)
+  assert.equal(path.board, source.solution)
+  assert.equal(path.exact, undefined)
+  assert.notEqual(path.rating.status, 'stalled')
+  assert.equal(grade?.points, path.rating.score.points)
+  assert.equal(path.positions?.length, path.steps.length + 1)
+  const normalized = new Map<string, VariantPuzzle>()
+  const revealed = new Set<number>()
+  for (const [index, step] of path.steps.entries()) {
+    const before = path.positions![index]
+    const view = fogView(game.variant, before.entries)!
+    revealed.add(view.cells.size)
+    if ('variant' in step.evidence) {
+      const key = JSON.stringify(view.puzzle)
+      if (!normalized.has(key)) {
+        normalized.set(key, (await runEngine({ type: 'variant', operation: 'normalize', position: { puzzle: view.puzzle } })).puzzle)
+      }
+      assert.deepEqual(step.evidence.variant.source?.puzzle, normalized.get(key))
+    }
+    for (const action of step.actions) {
+      if ('place' in action) assert.equal(source.solution[action.place.cell], String(action.place.digit))
+      else assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+    }
+  }
+  assert.ok(revealed.size > 10)
+  assert.equal(fogView(game.variant, path.positions?.at(-1)?.entries)?.cells.size, 81)
+  assert.ok(path.steps.some(step => 'variant' in step.evidence &&
+    step.evidence.variant.source?.deduction.evidence.type === 'quadruple-lock'))
+  assert.equal(needsPuzzleGrade({ ...game, fogRatingVersion: 1 }), true)
+  assert.equal(needsPuzzleGrade(game), false)
+})
+
+test('an exact Fog finish leaves the attempted logical moves as a subtotal and the puzzle unrated', async ({ mock }) => {
+  const post = Worker.prototype.postMessage
+  mock.method(Worker.prototype, 'postMessage', function (message) {
+    const { request } = message
+    if (request.type === 'variant' && request.operation === 'trace') {
+      return post.call(this, { ...message, request: { ...request, techniqueOrder: ['locked-candidates'] } })
+    }
+    return post.call(this, message)
+  })
   const sources = JSON.parse(readFileSync(new URL('./fixtures/fog-coach.json', import.meta.url), 'utf8')) as
     { id: string; code: string; solution: string }[]
   const source = sources.find(({ id }) => id === 'E3xE')!
@@ -502,8 +681,8 @@ test('an exact Fog finish leaves the attempted logical moves as a subtotal and t
   assert.equal(solution.exact, true)
   assert.equal(solution.rating.status, 'stalled')
   assert.ok(solution.steps.length > 0)
-  const counts = { 'locked-candidates': 18, 'entropy-quadruple': 5 }
-  assert.equal(solution.steps.length, 23)
+  assert.ok(solution.steps.every(step => step.technique === 'locked-candidates'))
+  const counts = { 'locked-candidates': solution.steps.length }
   assert.deepEqual(solution.rating.score.counts, counts)
   const subtotal = Object.entries(counts).reduce((points, [id, count]) =>
     points + count * catalog.techniques.find(technique => technique.id === id)!.cost, 0)

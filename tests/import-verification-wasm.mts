@@ -2,9 +2,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { STARTER } from '../src/sudoku/formats.ts'
-import { enter, hasUniquenessProof, restartGame, undo } from '../src/sudoku/game.ts'
+import { enter, hasUniquenessProof, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle, PuzzleVerificationError } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -41,6 +44,33 @@ test('the original mixed puzzle is available before the worker returns its uniqu
   assert.ok(hasUniquenessProof(game))
   assert.equal(game.variant?.solution, solution)
   assertVariantCompletion(game.variant.puzzle, solution)
+})
+
+test('the original zero-given Quadruple puzzle returns hints and replays the verified solution', async () => {
+  const { game: imported } = await prepareImportedPuzzle(code)
+  const game = { ...imported, candidatesInitialized: true,
+    position: { ...imported.position, center: Array<number>(81).fill(0x1ff) } }
+  assert.ok(game.variant)
+  assert.ok((await puzzleHints(game)).choices.length)
+  const path = await puzzleSolution(game)
+  assert.equal(path.board, solution)
+  assert.notEqual(path.rating.status, 'stalled')
+  const technique = 'global-entropy'
+  const index = path.steps.findIndex(step => step.technique === technique && 'variant' in step.evidence &&
+    step.evidence.variant.source?.deduction.evidence.type === 'entropy-areas')
+  assert.ok(index >= 0)
+  const { entries, eliminations } = path.positions![index]
+  const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+  const { choices } = await puzzleHints(checkpoint, 'all', technique)
+  assert.ok(choices.some(choice => 'variant' in choice.evidence &&
+    choice.evidence.variant.source?.deduction.evidence.type === 'entropy-areas'))
+  const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+  const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+  try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+  for (const { actions } of path.steps) for (const action of actions) {
+    if ('place' in action) assert.equal(solution[action.place.cell], String(action.place.digit))
+    else assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
+  }
 })
 
 test('only a matching saved proof can be reused, and Play edits preserve it', async ({ mock }) => {

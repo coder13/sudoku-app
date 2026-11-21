@@ -4,7 +4,7 @@ import type { SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.t
 type RegionSum = Extract<VariantRule, { type: 'region-sum' }>
 
 export function regionIndex(cell: number, regions?: VariantPuzzle['regions']) {
-  return regions?.type === 'jigsaw' ? regions.regions.findIndex(cells => cells.includes(cell))
+  return regions && regions.type !== 'boxes' ? regions.regions.findIndex(cells => cells.includes(cell))
     : Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)
 }
 

@@ -143,8 +143,8 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
   for (let index = 0; index < 81; index++) givens[cell(index)] = puzzle.givens[index]
   return {
     ...puzzle, givens: givens.join(''),
-    regions: puzzle.regions?.type === 'jigsaw'
-      ? { type: 'jigsaw', regions: puzzle.regions.regions.map((region) => region.map(cell)) } : puzzle.regions,
+    regions: puzzle.regions && puzzle.regions.type !== 'boxes'
+      ? { ...puzzle.regions, regions: puzzle.regions.regions.map(region => region.map(cell)) } : puzzle.regions,
     rules: puzzle.rules?.map((rule) => {
       switch (rule.type) {
         case 'diagonal': {
@@ -153,8 +153,12 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         }
         case 'killer-cages':
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
-        case 'parity': case 'extra-house': return { ...rule, cells: rule.cells.map(cell) }
-        case 'quadruple': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'parity': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
+        case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
+        case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
+          ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),
+        })) }
+        case 'quadruple': case 'quadruple-sum': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
         case 'little-killer': {
           const [dr, dc] = clueDelta(rule.direction)
           let row = dr, column = dc
@@ -170,12 +174,17 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         }
         case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
         case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
+        case 'minimum': case 'maximum': return { ...rule, cells: rule.cells.map(cell) }
+        case 'labeled-dots': return { ...rule, marks: rule.marks.map(mark => ({
+          ...mark, cells: [cell(mark.cells[0]), cell(mark.cells[1])] as const,
+        })) }
         case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
         case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'palindrome': case 'renban': case 'region-sum': return { ...rule, cells: rule.cells.map(cell),
           ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
-        case 'thermometer': case 'between': return { ...rule, cells: rule.cells.map(cell) }
+        case 'thermometer': case 'between': case 'lockout': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
+        case 'pill-arrow': return { ...rule, pill: [cell(rule.pill[0]), cell(rule.pill[1])], cells: rule.cells.map(cell) }
         case 'kropki': {
           const reflectMarks = (marks: typeof rule.consecutive) =>
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }

@@ -80,7 +80,7 @@ pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{
     ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
-    Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
+    Parity, LetteredQuadruple, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
     VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
     VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,
     VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantLineHouseProof,
@@ -88,7 +88,7 @@ pub use variant::{
     VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
     VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    VariantSumPairProof, VariantTechnique, VariantTrace, VariantTrialFailure, VariantVisibility, VariantVisibilityError,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
     VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,

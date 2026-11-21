@@ -17,6 +17,36 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'lettered-quadruples': {
+      const target = focus[0].cell
+      const remaining = DIGITS.filter(digit => (domains[cells.indexOf(target)] & (1 << (digit - 1))) &&
+        !focus.some(candidate => candidate.digit === digit))
+      return {
+        description: 'Each letter stands for the same digit throughout the puzzle. Different letters stand for different digits.',
+        reason: `Match the letters in the circles against the rows, columns, regions and current candidates. The digit for each letter must appear around every circle that lists it. The possible keys leave ${alternatives.format(remaining.map(String))} in ${at(target)}.`,
+      }
+    }
+    case 'inside-grid':
+      return {
+        description: `Every row and column of the rotated ${rule.rows.length} × ${rule.rows.length} grid uses the same set of different digits.`,
+        reason: 'Test each set that can fill every inside row and column. Remove candidates that cannot be placed in their cell with any of those sets.',
+      }
+    case 'consecutive-run':
+      if (rule.fromBulb) return {
+        description: `Digits increase by one at each step from the bulb at ${at(a)} to the tip at ${at(cells.at(-1)!)}.`,
+        reason: 'Check which starting digits fit every cell along the thermometer. Remove candidates that occur in none of those runs.',
+      }
+      return { description: `Digits increase by one from one end of the Consecutive Line to the other, between ${at(a)} and ${at(cells.at(-1)!)}.`,
+        reason: 'Check both directions. No run that uses a crossed-out candidate fits the other cells on the line.' }
+    case 'distinct-cells': {
+      const candidate = focus.length === 1 ? focus[0] : undefined
+      const fixed = candidate && cells.find((cell, i) => cell !== candidate.cell && onlyCandidate(domains[i]) === candidate.digit)
+      const locations = new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))
+      return { description: `The shaded group at ${locations} needs a different digit in each cell.`,
+        reason: candidate && fixed !== undefined
+          ? `${at(fixed)} must contain ${candidate.digit}. Remove it from ${at(candidate.cell)} in the same shaded group.`
+          : 'No assignment with a crossed-out candidate gives every cell in this group a different digit.' }
+    }
     case 'global-entropy': {
       const names = ['low (1–3)', 'medium (4–6)', 'high (7–9)']
       const groups = [7, 56, 448]
@@ -36,6 +66,11 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
         reason: locks.length ? `${locks.join(' ')} Remove candidates from other groups in those cells.`
           : 'Each group needs a separate cell. A crossed-out candidate leaves no way to fit all three groups in these four cells.' }
     }
+    case 'quadruple-sum':
+      return {
+        description: `The Quad-Arrows circle requires ${rule.digits.join(', ')}. The largest digit equals the sum of the other three.`,
+        reason: 'Remove candidates that cannot fit the sum and every printed digit.',
+      }
     case 'quadruple':
       return { description: `The circle requires ${rule.digits.join(', ')} among its four surrounding cells.`,
         reason: 'Each printed digit needs a separate cell. No arrangement that uses a crossed-out candidate can fit all the printed digits.' }
@@ -53,15 +88,38 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'non-consecutive':
       return { description: `${pair} share an edge. Their digits cannot differ by one.`,
         reason: 'A crossed-out digit has no possible partner across that edge.' }
+    case 'minimum': case 'maximum': {
+      const marked = rule.type === 'minimum' ? a : b
+      const other = rule.type === 'minimum' ? b : a
+      const minimum = rule.type === 'minimum'
+      return {
+        description: `The ${minimum ? 'Minimum' : 'Maximum'} clue in ${at(marked)} requires a ${minimum ? 'smaller' : 'larger'} digit than in ${at(other)}.`,
+        reason: `Remove candidates in either cell that have no partner with ${at(a)} smaller than ${at(b)}.`,
+      }
+    }
     case 'inequality': {
       const smaller = DIGITS.filter(d => domains[cells.indexOf(rule.less)] & (1 << (d - 1)))
       const larger = DIGITS.filter(d => domains[cells.indexOf(rule.greater)] & (1 << (d - 1)))
       return { description: `${at(rule.less)} must be smaller than ${at(rule.greater)}.`,
-        reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner on the correct side of the sign.` }
+        reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner that fits the comparison.` }
     }
     case 'clone':
       return { description: `Clone ${cloneLayout(puzzle.rules).at[a]!.label} links ${new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))}. These cells must contain the same digit.`,
         reason: 'A digit missing from one cell cannot go in any of its copies.' }
+    case 'labeled-dots': {
+      const mark = rule.marks.find(mark => mark.cells.includes(a) && mark.cells.includes(b))
+      const relation = rule.relation === 'ratio' ? 'black' : 'white'
+      if (!mark) return {
+        description: `There is no ${relation} dot between ${pair}.`,
+        reason: rule.relation === 'ratio' ? 'Neither digit can be twice the other.' : 'The two digits cannot be consecutive.',
+      }
+      return {
+        description: rule.relation === 'ratio'
+          ? `The black dot between ${pair} means the larger digit is ${mark.value} times the smaller one.`
+          : `The white dot between ${pair} means the digits differ by ${mark.value}.`,
+        reason: 'Remove a candidate if no digit in the other cell fits the dot rule with it.',
+      }
+    }
     case 'kropki': {
       const dots = rules.filter(r => r?.type === 'kropki')
       const white = dots.some(r => hasMarkedPair(r.consecutive?.pairs, a, b))
@@ -144,9 +202,15 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'whispers':
       return { description: `Neighbors on this line must differ by at least ${rule.minDifference}.`,
         reason: 'A crossed-out digit leaves no way to keep that difference along the line.' }
+    case 'lockout':
+      return { description: `The diamonds at ${at(a)} and ${at(cells.at(-1)!)} need digits at least 4 apart. Interior digits must lie outside their range.`,
+        reason: 'A crossed-out digit fits no pair of endpoints that works for the whole line.' }
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
+    case 'pill-arrow':
+      return { description: `The arrow adds to the two-digit number with tens in ${at(a)} and ones in ${at(b)}.`,
+        reason: 'A crossed-out candidate fits no arrow sum that matches the pill.' }
     case 'entropic': case 'modular': {
       const sumRule = rules[1]
       const sum = sumRule?.type === 'adjacent-total' ? sumRule.sum : sumRule?.type === 'xv'
@@ -437,12 +501,37 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         candidates = [...focus, ...evidence.cells.map(cell => ({ cell, digit }))]
         break
       }
-      const printed = evidence.clue.rules.flatMap(index => {
-        const rule = puzzle.rules?.[index]
-        return rule?.type === 'quadruple' ? rule.digits : []
-      })
-      description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
-      reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
+      const rules = evidence.clue.rules.map(index => puzzle.rules?.[index])
+      const printed = rules.flatMap(rule =>
+        rule?.type === 'quadruple' || rule?.type === 'quadruple-sum' ? rule.digits : [])
+      const sum = rules.some(rule => rule?.type === 'quadruple-sum')
+      description = `The ${sum ? 'Quad-Arrows' : 'Quadruple'} circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
+      reason = sum
+        ? `Every placement that fits the printed digits and the sum puts ${evidence.digit} in ${target}. Remove it from the other cells in ${target}.`
+        : `The other cells in ${target} cannot contain ${evidence.digit}.`
+      break
+    }
+    case 'rule-forcing': {
+      const { assumption, contradiction } = evidence
+      const location = nameCell(assumption.cell)
+      candidates = [assumption]
+      description = `If ${location} is ${assumption.digit}, follow the puzzle's visible clues to update the candidates.`
+      if (contradiction.type === 'empty-cell') {
+        cells = [assumption.cell, contradiction.cell]
+        reason = `That leaves ${nameCell(contradiction.cell)} without a candidate. Remove ${assumption.digit} from ${location}.`
+      } else {
+        cells = [...new Set([assumption.cell, ...variantHouseCells(contradiction.house, puzzle)])]
+        reason = `${contradiction.digit} has no possible cell in ${houseLabel(contradiction.house)}. Remove ${assumption.digit} from ${location}.`
+      }
+      break
+    }
+    case 'quadruple-lock': {
+      const { clues, sites, digit } = evidence
+      cells = [...new Set(clues.flatMap(clue => clue.cells))]
+      candidates = sites.flat().map(cell => ({ cell, digit }))
+      const houses = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      description = `Each highlighted Quadruple needs its own ${digit}. Its possible locations are highlighted in ${houses}.`
+      reason = `The two placements must use one cell in each house. Remove ${digit} from the other cells in ${houses}.`
       break
     }
     case 'exclusion': {
@@ -878,10 +967,11 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       cells = evidence.cells
       const ruleDescriptions = evidence.rules.flatMap(index => {
         const rule = puzzle.rules?.[index]
-        if (rule?.type !== 'quadruple') return []
+        if (rule?.type !== 'quadruple' && rule?.type !== 'quadruple-sum') return []
         const window = evidence.windows.find(window => window[0] === rule.topLeft)
         if (!window) return []
-        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.`]
+        const sum = rule.type === 'quadruple-sum' ? ' Its largest digit equals the sum of the other three.' : ''
+        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.${sum}`]
       })
       const areas = evidence.windows.map(window => `${nameCell(window[0])} to ${nameCell(window[3])}`)
       const groups = areas.length === 1 ? 'This area needs' : `Both areas (${areas.join(' and ')}) need`
@@ -889,7 +979,8 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const restrictions = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
       const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ cell, digit }) => `${digit} in ${nameCell(cell)}`))
       const shared = evidence.windows.length === 2 ? ' Both areas must use the same digits in their shared cells.' : ''
-      reason = `Fit the printed digits and the three groups without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
+      const required = ruleDescriptions.length ? 'the printed digits and the three groups' : 'the three groups in each area'
+      reason = `Fit ${required} without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
       candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
         .map(digit => ({ cell: cells[i], digit })))
       break
@@ -1011,6 +1102,9 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       description = clue.description
       reason = clue.reason
       switch (technique) {
+        case 'lettered-quadruples':
+          cells = [focus[0].cell]
+          break
         case 'parity': {
           const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'parity')
           if (rule?.type === 'parity') {

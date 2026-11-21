@@ -42,18 +42,26 @@ type DiagonalDirection = 'north-east' | 'south-east' | 'south-west' | 'north-wes
 export type VariantRule =
   | { type: 'diagonal'; diagonal: 'main' | 'anti' }
   | { type: 'extra-house'; cells: readonly number[] }
+  | { type: 'distinct-cells'; cells: readonly number[]; color?: string }
+  | { type: 'consecutive-run'; cells: readonly number[]; color?: string; fromBulb?: boolean }
+  | { type: 'inside-grid'; rows: readonly (readonly number[])[] }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
+  | { type: 'lettered-quadruples'; clues: readonly import('./lettered-quadruples.ts').LetteredQuadruple[] }
+  | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
   | { type: 'anti-knight' | 'anti-king' }
   | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
   | { type: 'inequality'; less: number; greater: number }
+  | { type: 'minimum' | 'maximum'; cells: readonly number[]; ignoreMarkedNeighbors?: boolean }
+  | SizedLabeledDotsRule
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
   | { type: 'thermometer'; cells: readonly number[] }
   | { type: 'between'; cells: readonly number[] }
+  | { type: 'lockout'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }
@@ -61,6 +69,7 @@ export type VariantRule =
   | { type: 'global-entropy' }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
+  | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
   | { type: 'sandwich'; direction: ClueDirection; cells: readonly number[]; sum: number }
   | { type: 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
@@ -71,6 +80,7 @@ export type VariantPuzzle = {
   version: 1
   givens: string
   regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
+    | { type: 'partial'; regions: readonly (readonly number[])[] }
   rules?: readonly VariantRule[]
 }
 
@@ -179,7 +189,7 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
 export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
@@ -194,6 +204,7 @@ type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraint
 export type SizedKropkiPair = { cells: [number, number]; relation: 'consecutive' | 'ratio-two'; negative: boolean; value?: number }
 
 export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
+  | { type: 'quadruple-overlap'; rules: [number, number]; cells: number[]; actions: DeductionAction[] }
   | { type: 'rule'; rule: number; actions: DeductionAction[] }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair; actions: DeductionAction[] }
   | { type: 'anti-sum'; rule: number; cells: [number, number]; actions: DeductionAction[] }
@@ -651,8 +662,11 @@ export type VariantDeduction = {
         witness: { candidate: Candidate; sharedDigit: number; containedStart: number | null;
           otherStart: number; restrictedDigits: number } | null }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
+    | { type: 'quadruple-lock'; clues: [{ rules: number[]; cells: number[] }, { rules: number[]; cells: number[] }]; houses: [VariantHouse, VariantHouse]; sites: [number[], number[]]; digit: number }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
+    | { type: 'rule-forcing'; assumption: Candidate; contradiction:
+        { type: 'empty-cell'; cell: number } | { type: 'missing-digit'; house: VariantHouse; digit: number } }
     | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }
     | { type: 'classic'; proof: Evidence; swapCells: number[] }
 }

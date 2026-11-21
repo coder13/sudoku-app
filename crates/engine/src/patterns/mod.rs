@@ -37,6 +37,8 @@ mod single_digit;
 mod sk_loop;
 mod sue_de_coq;
 mod templates;
+#[cfg(feature = "variants")]
+pub(crate) use templates::layouts_in_houses;
 mod tridagon;
 mod uniqueness;
 #[cfg(feature = "variants")]

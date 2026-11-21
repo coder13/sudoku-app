@@ -84,6 +84,8 @@ function declaresCoachXSums(lines) {
 
 function coachAuthoredRule(lines) {
   if (lines.length === 1 && /^All (?:possible )?black dots are given[.!]?$/i.test(lines[0])) return 'all-black-dots'
+  if (lines.length === 1 &&
+    /^Quad[ -]?arrows: One of the four digits around a circle must be the sum of the other three digits around that circle\.?$/i.test(lines[0])) return 'quad-arrows'
   if (declaresCoachXSums(lines)) return 'x-sum'
 }
 
@@ -110,6 +112,17 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['FLAb', '90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936'],
+  ['FWUv', '64d94be814557c8b9e2445e0e6e9118ce7888ae6f0f41a0a2a2ca7d7f4294748'],
+  ['7kvK', '3fc5d6fdf1da8e5517863b670de7ef743337ee7a9e5d6294f00edcca0c464244'],
+  ['DhdV', '7b2a040b11cd623b995c7e2b78d54a0b9aaa0e48ef55b8edaf467d31d2665c2c'],
+  ['HBLt', '371fca2c0cf0997409743bb24497229297638d2632e921ba99f062e915f2c07f'],
+  ['7VAC', '356ebef8107975d494da2efccf6e89eb133d4d90a03d9b7f6a6cbe8236c7c644'],
+  ['9Rji', '0bb9dda666e5938694d17d6c76d10ce39e3823700e1ed161bcbe349afb17c5df'],
+  ['A2s7', '2f1a693b6d99e6598fce81ee680c8930a6027beff58e3bcba49a588f7862abdd'],
+  ['CJhv', '83d660ac6ed3263c26843aaad8fe7cba146fdd832a46a58a60d55b10e79ae7d4'],
+  ['AjZy', '9c921e472d17b801c9c6523a4fb1226fc636ed263b83a861e4f14929fcf1c445'],
+  ['CdP3', '3a867f407b30e98ac7b76e4c33bfa7d372cb785ee4d0cf815468b5c63932f436'],
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
@@ -140,7 +153,16 @@ async function coachPublication(puzzle, id, code) {
   // This publication explains its encoded Renban halves and uses colours to select mirrored pairs.
   const mirroredRenbans = !puzzle.custom_constraints && id === 'Ksy3' &&
     await digest(lines.join('\n')) === 'c5728dc0b34fdb26456e7f7e0ed449cce6c6a0ccfb468fb83880660514f75801'
-  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours'
+  const partialRegions = puzzle.custom_constraints && id === 'JDv2' &&
+    await digest(code) === '349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a' &&
+    await digest(lines.join('\n')) === 'f9ab780aef148150727d073d5cfeb733e2211ad162a2a50e9cb9ac1115af2fc6'
+  const insideGrid = puzzle.custom_constraints && id === '7FCB' &&
+    await digest(code) === 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c' &&
+    await digest(lines.join('\n')) === '084367b723e227b486649f3641a2d4791ae491ca32bd541059cd76faa38b2a85'
+  const letteredQuadruples = puzzle.custom_constraints && id === 'ALYC' &&
+    await digest(code) === 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653' &&
+    await digest(lines.join('\n')) === 'c294c3a30269133929f4ac39c1144372cad5e8daf2dcfb4ad6bf08db5d9d1bdb'
+  const authoredRule = coachAuthoredRule(lines) ?? (letteredQuadruples ? 'lettered-quadruples' : insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
     : mirroredRenbans ? 'mirrored-renban' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
@@ -276,16 +298,24 @@ function jigsawGrid(value) {
   if (size !== 5 && size !== 7) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
-  return value.regions.every(part => {
-    const connected = new Set([part[0]])
-    for (const cell of connected) {
-      for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
-    }
-    return connected.size === size
-  })
+  return value.regions.every(part => connectedRegion(part, size))
+}
+function connectedRegion(part, size) {
+  const connected = new Set([part[0]])
+  for (const cell of connected) {
+    for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
+  }
+  return connected.size === size
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
 const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
+function numberedDotRule(rule, size) {
+  const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
+  const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
+  return fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
+    marks: list(mark, 0, 2 * size * (size - 1)) }, { negative: boolean }) && (rule.marks.length > 0 || rule.negative === true)
+}
+
 function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
@@ -313,9 +343,9 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
-    (fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
-      marks: list(mark => fields(mark, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) }), 0, 2 * size * (size - 1)) },
-      { negative: boolean }) && (rule.marks.length > 0 || rule.negative)) ||
+    (fields(rule, { type: oneOf('quadruple'), topLeft: integer(0, size * (size - 1) - 1), digits: list(integer(1, size), 1, 4) }) &&
+      rule.topLeft % size < size - 1) ||
+    numberedDotRule(rule, size) ||
     fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
     (fields(rule, { type: oneOf('row-column-sum'), pairs: list(pair, 0, 2 * size * (size - 1)) }, { requireUnmarked: boolean }) &&
       (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
@@ -352,7 +382,10 @@ const algebraic = value => fields(value, { sudokuPad: code => typeof code === 's
     new Set(value.rules.flatMap(rule => rule.cells)).size === value.rules.reduce((count, rule) => count + rule.cells.length, 0))
 const cell = integer(0, 80)
 const cells = list(cell, 1, 81)
-const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ||
+const uniqueCells = (minimum, maximum) => value =>
+  list(cell, minimum, maximum)(value) && new Set(value).size === value.length
+const clueColor = value => typeof value === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)
+const cellColor = value => typeof value === 'string' && (clueColor(value) ||
   /^(?:(?:white|grey|lime|blue|purple|red|green|yellow|orange|cyan|magenta)(?:Heavy)?|error)$/.test(value))
 const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
@@ -362,7 +395,10 @@ const artworkCorner = list(integer(0, 9), 2, 2)
 const artworkCenter = list(value => typeof value === 'number' && value >= .5 && value <= 8.5 && Number.isInteger(value - .5), 2, 2)
 const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
   points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
+const artworkDivider = points => list(artworkCorner, 2, 128)(points) &&
+  points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1]))
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
+  fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
     color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }), 1, 81)
 const pairs = list(list(cell, 2, 2), 0)
@@ -370,16 +406,41 @@ const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
-  fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) })
+  (fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) && new Set(value.regions.flat()).size === 81) ||
+  (fields(value, { type: oneOf('partial'), regions: list(uniqueCells(9, 9), 0, 9) }) &&
+    new Set(value.regions.flat()).size === 9 * value.regions.length && value.regions.every(part => connectedRegion(part, 9)))
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
+function insideGridRows(rows) {
+  if (!list(uniqueCells(2, 5), 2, 5)(rows)) return false
+  const size = rows.length
+  if (rows.some(row => row.length !== size) || new Set(rows.flat()).size !== size ** 2) return false
+  const rowOf = cell => Math.floor(cell / 9)
+  const colOf = cell => cell % 9
+  const start = rows[0][0], right = rows[0][1], down = rows[1][0]
+  const dr = rowOf(down) - rowOf(start), dc = colOf(down) - colOf(start)
+  const rr = rowOf(right) - rowOf(start), rc = colOf(right) - colOf(start)
+  return [dr, dc, rr, rc].every(step => Math.abs(step) === 1) && dr * rr + dc * rc === 0 &&
+    rows.every((row, i) => row.every((cell, j) =>
+      rowOf(cell) === rowOf(start) + i * dr + j * rr && colOf(cell) === colOf(start) + i * dc + j * rc))
+}
+const quadrupleCorner = value => cell(value) && value < 72 && value % 9 < 8
+const quadruple = [{ topLeft: quadrupleCorner, digits: list(integer(1, 9), 1, 4) }]
+const letteredCircle = clue => fields(clue, { topLeft: quadrupleCorner,
+  letters: value => typeof value === 'string' && /^[A-Z]{1,4}$/.test(value) })
+const letteredClues = clues => list(letteredCircle, 1, 64)(clues) &&
+  new Set(clues.map(clue => clue.topLeft)).size === clues.length &&
+  new Set(clues.flatMap(clue => [...clue.letters])).size <= 9
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
+  lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
   entropic: [{ cells: list(cell, 1) }],
   'global-entropy': [{}],
   inequality: [{ less: cell, greater: cell }],
+  minimum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
+  maximum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   'little-killer': [{ direction: diagonalDirection, cells: list(cell, 1, 9), sum: integer(1, 81) }],
   modular: [{ cells: list(cell, 1) }],
   palindrome: [{ cells }, { segments }],
@@ -391,25 +452,37 @@ const ruleFields = {
   'anti-king': [{}],
   'anti-knight': [{}],
   arrow: [{ circle: cell, cells }],
+  'pill-arrow': [{ pill: uniqueCells(2, 2), cells: uniqueCells(1, 79) }, { fromTens: boolean }],
   diagonal: [{ diagonal: oneOf('main', 'anti') }],
   'extra-house': [{ cells: house }],
+  'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
+  'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor, fromBulb: boolean }],
+  'inside-grid': [{ rows: insideGridRows }],
   'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }), 1) }, { coverGrid: boolean }],
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],
   parity: [{ cells, parity: oneOf('odd', 'even') }],
-  quadruple: [{ topLeft: cell, digits: list(integer(1, 9), 1, 4) }],
+  quadruple,
+  'lettered-quadruples': [{ clues: letteredClues }],
+  'quadruple-sum': quadruple,
   sandwich: [{ direction, cells: house, sum: integer(0, 35) }],
   skyscrapers: [{ direction, cells: house, count: integer(1, 9) }],
   thermometer: [{ cells: list(cell, 2, 81) }],
 }
 const rule = value => {
+  if (value?.type === 'labeled-dots') return numberedDotRule(value, 9)
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
-  return fields(value, { type: oneOf(value.type), ...required }, optional)
+  if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
+  if (value.type !== 'pill-arrow') return true
+  const [a, b] = value.pill
+  return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) <= 1 && Math.abs(a % 9 - b % 9) <= 1 &&
+    !value.cells.some(cell => value.pill.includes(cell))
 }
+const variantRules = value => list(rule, 0)(value) && value.filter(rule => rule.type === 'lettered-quadruples').length <= 1
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
-  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
+  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: variantRules }),
 }, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }, { cellColors }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),

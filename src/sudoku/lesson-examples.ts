@@ -1,7 +1,7 @@
 import type { LessonExample, PracticeExercise, VariantPracticeExercise, VariantPuzzle } from './engine.ts'
 import { cellName } from './lesson-diagram.ts'
 import { variantHintChoice } from './variant-hints.ts'
-import { nonConsecutiveDescription } from './variants.ts'
+import { nonConsecutiveDescription, quadrupleCells } from './variants.ts'
 
 export type LessonExercise = PracticeExercise & { variantPuzzle?: VariantPuzzle }
 type LessonDiagramExample = Omit<LessonExample, 'practice'> & { practice: LessonExercise; variantPuzzle?: VariantPuzzle }
@@ -45,6 +45,11 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'anti-knight': return ['Cells a knight’s move apart must differ.']
       case 'anti-king': return ['Cells touching at a corner must differ.']
       case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]
+      case 'consecutive-run': return [`${rule.fromBulb ? 'Consecutive Thermometer' : 'Consecutive Line'} · ${path(rule.cells)}`]
+      case 'lettered-quadruples':
+        return rule.clues.map(({ topLeft, letters }) => `Lettered Quadruple ${[...letters].join(', ')} · ${cells(quadrupleCells(topLeft))}`)
+      case 'inside-grid': return [`Inside Grid · ${rule.rows.length} × ${rule.rows.length}`]
+      case 'distinct-cells': return [`Different digits · ${cells(rule.cells)}`]
       case 'inequality': return [`${cellName(rule.less)} < ${cellName(rule.greater)}`]
       case 'adjacent-total': return [`Total ${rule.sum} · ${cells(rule.cells)}`]
       case 'clone': return rule.groups.map((group) => `Same digit · ${cells(group)}`)
@@ -58,6 +63,8 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       ])
       case 'palindrome': return [`Palindrome · ${path(rule.cells)}`]
       case 'between': return [`Between line · ${path(rule.cells)}`]
+      case 'pill-arrow': return [`Pill at ${cells(rule.pill)} · Arrow ${path(rule.cells)}`]
+      case 'lockout': return [`Lockout line · ${path(rule.cells)}`]
       case 'whispers': return [`Whispers line · ${path(rule.cells)}. Minimum difference ${rule.minDifference}.`]
       case 'entropic': return [`Entropic line · ${path(rule.cells)}. Every three positions use low, medium and high digits.`]
       case 'modular': return [`Modular line · ${path(rule.cells)}. Every three positions use one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}.`]

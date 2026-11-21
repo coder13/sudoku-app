@@ -1,3 +1,5 @@
+import { sizedQuadrupleState, validSizedQuadruple } from './sized-quadruple.ts'
+import { PUZZLE_VARIANTS } from './variants.ts'
 import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
 import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
@@ -31,6 +33,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
     if (rule.type === 'killer-cages') return validSizedKillerRule(rule, size, occupiedCages)
+    if (rule.type === 'quadruple') return validSizedQuadruple(rule, size)
     if (rule.type === 'diagonal') {
       return Object.keys(rule).length === 2 && (rule.diagonal === 'main' || rule.diagonal === 'anti')
     }
@@ -171,7 +174,7 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
   }
-  if (sizedKillerState(rules, solution, grid.size)?.conflicts.size) return
+  if (sizedKillerState(rules, solution, grid.size)?.conflicts.size || sizedQuadrupleState(rules, solution, grid.size)?.conflicts.size) return
   if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
     const { size } = grid
     for (let cell = 0; cell < size ** 2; cell++) {
@@ -191,6 +194,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'extra-house') clues.add(`Place each digit from 1 to ${grid.size} once in each marked extra region.`)
     else if (rule.type === 'killer-cages') clues.add('Digits in a cage add to its printed total and cannot repeat.')
+    else if (rule.type === 'quadruple') clues.add(PUZZLE_VARIANTS.quadruple.rule)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion

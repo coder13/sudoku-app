@@ -8,6 +8,7 @@ import type { PuzzleRating } from '../src/sudoku/engine.ts'
 import { isSolved, makeGame } from '../src/sudoku/game.ts'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR } from '../src/sudoku/hints.ts'
 import { PUZZLE_VARIANTS, variantRuleSections, type PuzzleVariantId } from '../src/sudoku/variants.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { describeHint, type CellReferenceStyle } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
@@ -282,3 +283,39 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
     } finally { playSession.getServerSnapshot = previous }
   })
 }
+
+test('the board draws Lockout diamonds and labels the endpoint and interior rules', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Lockout Lines Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'lockout', cells: [0, 40, 80] }] },
+  }))
+  assert.match(html, /class="variant-lockout-endpoints"><path[^>]+><\/path><path/)
+  assert.match(html, /Lockout diamond, difference of at least 4 with row 9, column 9/)
+  assert.match(html, /Lockout interior, digit below both or above both diamonds at row 1, column 1 and row 9, column 9/)
+})
+
+test('the board draws a pill and identifies each place value', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Pill Arrow Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'pill-arrow', pill: [8, 7], cells: [16, 17] }] },
+  }))
+  assert.match(html, /class="variant-arrow-pill"/)
+  assert.match(html, /class="variant-arrow-tens">10s/)
+  assert.match(html, /Pill Arrow tens digit, ones digit at row 1, column 8/)
+  assert.match(html, /Pill Arrow ones digit, tens digit at row 1, column 9/)
+})
+
+test('Bento Preview draws only the marked regions and preserves authored dividers', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-bento.json', import.meta.url), 'utf8'))
+  for (const source of sources) {
+    const { givens, variant, authoredArtwork } = await detectPuzzle(source.coach)
+    const markup = renderToStaticMarkup(createElement(Board, {
+      givens, values: givens, variantPuzzle: variant?.puzzle, authoredArtwork,
+    }))
+    assert.equal(markup.match(/data-authored-divider="true"/g)?.length, source.dividers)
+    assert.doesNotMatch(markup, /data-box-edge="true"/)
+    assert.match(markup, /data-region-bottom="true"/)
+  }
+})

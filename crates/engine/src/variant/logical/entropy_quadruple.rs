@@ -1,45 +1,54 @@
-//! Candidate support for a Quadruple and one or two overlapping entropy areas.
+//! Candidate support for overlapping entropy areas and their Quadruple clues.
 
 use super::*;
-use crate::variant::quadruple::{Quadruple, cells as window_cells};
+use crate::variant::quadruple::{Quadruple, cells as window_cells, satisfies_sum};
+
+const MAX_AREA_CELLS: usize = 7;
 
 impl CompiledVariant {
-    pub(super) fn entropy_quadruple_proofs(
+    pub(super) fn entropy_proofs(
         &self,
         position: &ProofPosition<'_>,
+        technique: VariantTechnique,
         limit: usize,
     ) -> Vec<VariantDeduction> {
         let Some(entropy) = self.global_entropy else {
             return Vec::new();
         };
+        // Limit the extra area search to the mixed Quadruple profile.
         if self.quadruples.is_empty() {
             return Vec::new();
         }
 
+        let include_circles = technique == VariantTechnique::EntropyQuadruple;
         let mut circles = [const { Vec::new() }; CELLS];
-        for clue in &self.quadruples {
-            circles[clue.cells[0]].push(clue);
+        if include_circles {
+            for clue in &self.quadruples {
+                circles[clue.cells[0]].push(clue);
+            }
         }
         let mut proofs = Vec::new();
-        for paired in [false, true] {
+        // Keep single areas and shared edges first, then check shared corners.
+        let offsets: [&[(usize, i8)]; 3] = [&[(0, 0)], &[(0, 1), (1, 0)], &[(1, -1), (1, 1)]];
+        let offsets = if include_circles { &offsets[..] } else { &offsets[1..] };
+        for group in offsets {
             for (_, first) in self.entropy_windows() {
                 let top = first[0];
-                if !paired && circles[top].is_empty() {
-                    continue;
-                }
-                let side = window_cells(top + 1).filter(|side| side[0] / 9 == top / 9);
-                let below = window_cells(top + 9);
-                let neighbors = if paired { [side, below] } else { [None, None] };
-                for second in neighbors.into_iter().take(if paired { 2 } else { 1 }) {
-                    if paired
-                        && !second.is_some_and(|cells| {
-                            !circles[top].is_empty() || !circles[cells[0]].is_empty()
-                        })
-                    {
+                for &(row, column) in *group {
+                    let other_column = (top % 9) as i8 + column;
+                    if !(0..8).contains(&other_column) {
                         continue;
                     }
+                    let other_top = 9 * (top / 9 + row) + other_column as usize;
+                    let Some(other) = window_cells(other_top) else {
+                        continue;
+                    };
+                    if include_circles && circles[top].is_empty() && circles[other_top].is_empty() {
+                        continue;
+                    }
+                    let second = (other_top != top).then_some(other);
                     if let Some(proof) =
-                        self.entropy_area_proof(position, entropy, &circles, first, second)
+                        self.entropy_area_proof(position, technique, entropy, &circles, first, second)
                     {
                         proofs.push(proof);
                         if proofs.len() == limit {
@@ -55,12 +64,13 @@ impl CompiledVariant {
     fn entropy_area_proof(
         &self,
         position: &ProofPosition<'_>,
+        technique: VariantTechnique,
         entropy: usize,
         circles: &[Vec<&Quadruple>; CELLS],
         first: [usize; 4],
         second: Option<[usize; 4]>,
     ) -> Option<VariantDeduction> {
-        let mut cells = [0; 6];
+        let mut cells = [0; MAX_AREA_CELLS];
         cells[..4].copy_from_slice(&first);
         let len = match second {
             Some(second) => {
@@ -69,15 +79,20 @@ impl CompiledVariant {
                     cells[next] = cell;
                     next += 1;
                 }
-                cells.sort_unstable();
-                6
+                cells[..next].sort_unstable();
+                next
             }
             None => 4,
         };
         let cells = &cells[..len];
-        let mut domains = [0; 6];
+        let mut domains = [0; MAX_AREA_CELLS];
         for (i, &cell) in cells.iter().enumerate() {
             domains[i] = position.domain(cell);
+        }
+        if technique == VariantTechnique::GlobalEntropy
+            && domains[..len].iter().all(|&domain| domain == DIGITS)
+        {
+            return None;
         }
         let mut basic = domains;
         let mut rules = vec![entropy];
@@ -105,6 +120,7 @@ impl CompiledVariant {
                 }
                 Area {
                     slots,
+                    is_sum: circles[window[0]].iter().any(|clue| clue.is_sum),
                     required: required
                         .into_iter()
                         .enumerate()
@@ -117,7 +133,7 @@ impl CompiledVariant {
             return None;
         }
 
-        let mut peers = [0u8; 6];
+        let mut peers = [0u8; MAX_AREA_CELLS];
         let mut houses = Vec::new();
         for &index in &self.search_houses {
             let house = &self.houses[index];
@@ -149,7 +165,7 @@ impl CompiledVariant {
         let mut scan = Assignments {
             areas: &areas,
             peers,
-            supported: [0; 6],
+            supported: [0; MAX_AREA_CELLS],
             target: basic,
         };
         scan.visit(basic, (1 << len) - 1);
@@ -165,7 +181,7 @@ impl CompiledVariant {
                 .map(|(supported, domain)| supported | !domain),
         );
         (!actions.is_empty()).then(|| VariantDeduction {
-            technique: VariantTechnique::EntropyQuadruple,
+            technique,
             actions,
             evidence: VariantEvidence::EntropyAreas(Box::new(VariantEntropyAreaProof {
                 rules,
@@ -181,11 +197,12 @@ impl CompiledVariant {
 
 struct Area {
     slots: [usize; 4],
+    is_sum: bool,
     required: Vec<(u8, u8)>,
 }
 
 impl Area {
-    fn can_complete(&self, domains: &[u16; 6], open: u8) -> bool {
+    fn can_complete(&self, domains: &[u16; MAX_AREA_CELLS], open: u8) -> bool {
         let mut groups = 0u16;
         let mut union = 0u16;
         let mut empty = 0;
@@ -201,6 +218,11 @@ impl Area {
         {
             return false;
         }
+        if self.is_sum && empty == 0
+            && !satisfies_sum(self.slots.map(|i| domains[i].trailing_zeros() as u8 + 1))
+        {
+            return false;
+        }
         self.required.iter().all(|&(digit, count)| {
             self.slots
                 .iter()
@@ -213,13 +235,13 @@ impl Area {
 
 struct Assignments<'a> {
     areas: &'a [Area],
-    peers: [u8; 6],
-    supported: [u16; 6],
-    target: [u16; 6],
+    peers: [u8; MAX_AREA_CELLS],
+    supported: [u16; MAX_AREA_CELLS],
+    target: [u16; MAX_AREA_CELLS],
 }
 
 impl Assignments<'_> {
-    fn visit(&mut self, domains: [u16; 6], open: u8) {
+    fn visit(&mut self, domains: [u16; MAX_AREA_CELLS], open: u8) {
         // Every completion of this branch is a subset of its current domains.
         // Stop once the branch can add no support to any cell.
         if domains
@@ -243,7 +265,7 @@ impl Assignments<'_> {
             return;
         }
 
-        let i = (0..6)
+        let i = (0..MAX_AREA_CELLS)
             .filter(|&i| open & (1 << i) != 0)
             .min_by_key(|&i| domains[i].count_ones())
             .unwrap();
@@ -266,7 +288,7 @@ impl Assignments<'_> {
                 affected &= affected - 1;
                 next[peer] &= !bit;
             }
-            if (0..6).all(|i| remaining & (1 << i) == 0 || next[i] != 0) {
+            if (0..MAX_AREA_CELLS).all(|i| remaining & (1 << i) == 0 || next[i] != 0) {
                 self.visit(next, remaining);
             }
             if self.supported == self.target {

@@ -138,7 +138,7 @@ pub(super) fn layouts(allowed: u128) -> Vec<u128> {
 // Every selected cell fulfills each house containing it. Branch on the house
 // with the fewest available cells. Compiled peers include the other cells in
 // those houses and any additional equal-digit exclusions.
-pub(super) fn layouts_in_houses(
+pub(crate) fn layouts_in_houses(
     allowed: u128,
     houses: &[u128],
     peers: &[u128; crate::CELLS],

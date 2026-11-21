@@ -7022,7 +7022,7 @@
     },
     {
       "title": "Arrow",
-      "overview": "The digits along the arrow add to the digit in its circle.",
+      "overview": "The digits along the arrow add to the number in its circle or pill.",
       "variant": true,
       "lessons": [
         {
@@ -7061,6 +7061,45 @@
                 "start": "Find the circle and follow its arrow. Count the cells on the arrow after the circle.",
                 "check": "Try a possible total in the circle. Find a digit for each arrow cell so their sum equals that total.",
                 "reason": "Every part of the sum must fit its own cell. Digits on the arrow can repeat only where the other puzzle rules permit it."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
+          "id": "pill-arrow",
+          "title": "Pill arrows",
+          "summary": "The arrow digits add to the two-digit number in its pill. A pill with 1 in the tens cell and 2 in the ones cell gives a total of 12.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Count the cells on the arrow"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read the pill as a two-digit number. A short arrow can reach only small totals, so start by checking the tens digit.",
+                "If you know some arrow digits, subtract their sum from the pill number. The empty arrow cells must supply the rest."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "pill-arrow",
+              "copy": {
+                "description": "The pill reads 12. The arrow already has 8 in R2C9, so the other arrow cell needs 4. Remove 3 from R2C8."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "pill-arrow", "title": "Pill arrows" }
+              ],
+              "guide": {
+                "start": "Find the two pill cells and follow the shaft to the tip.",
+                "check": "Add the arrow digits. Compare the total with the two-digit number in the pill.",
+                "reason": "Remove a candidate if no matching total uses it in that cell."
               }
             }
           ],
@@ -7655,6 +7694,122 @@
       "variant": true,
       "lessons": [
         {
+          "id": "consecutive-run",
+          "title": "Consecutive Lines",
+          "summary": "A Consecutive Line increases by one at every step from one end to the other. Remove any candidate that cannot fit a complete run.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check both ends"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a placed digit or a cell with few candidates. Check the runs in both directions and keep those that fit every cell on the line. A Consecutive Thermometer already sets the direction. Its digits increase by one starting at the bulb."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "consecutive-run",
+              "copy": {
+                "description": "R3C1 is 8 and R4C1 is 9. The line increases toward R4C1, so R2C2 must be 7. Remove 4 from R2C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "consecutive-run", "title": "Fit the run" }
+              ],
+              "guide": {
+                "start": "Find a placed digit or a cell with few candidates on the highlighted line.",
+                "check": "Check the runs that increase from either end.",
+                "reason": "Remove a candidate if every run that uses it conflicts with another cell on the line."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
+          "id": "inside-grid",
+          "title": "Inside Grid",
+          "summary": "Every row and column of the outlined grid uses the same set of different digits. Find that set to rule out other candidates inside the outline.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Read a complete row inside the outline"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Follow the rows and columns of the outline, which may run diagonally across the main grid. A complete inside row or column shows every digit in the shared set.",
+                "If each inside row and column has empty cells, compare the placed digits and candidates across them. Each digit in the set needs a place in every inside row and column."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "inside-grid",
+              "copy": {
+                "description": "The second inside row runs from R2C4 to R6C8. It contains 9, 4, 6, 1, and 2.",
+                "reason": "R1C5 is inside the outline, so it needs one of those five digits."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "inside-grid", "title": "Find the shared digits" }
+              ],
+              "guide": {
+                "start": "Look for an inside row or column with all five digits placed.",
+                "check": "Compare its digits with the candidates in the highlighted cell.",
+                "reason": "Remove any candidate outside that shared set."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "distinct-cells",
+          "title": "Shaded groups",
+          "summary": "The cells in each shaded group need different digits. A placed digit rules out the same digit in the other cells in its group.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Start with a placed digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a placed digit first. If two cells in the group share the same two candidates, they use both digits and rule them out in the other cells of that group."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "distinct-cells",
+              "copy": {
+                "description": "R1C4 is 6. R1C4 and R2C2 belong to the same shaded group, so remove 6 from R2C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "distinct-cells", "title": "Remove a repeated digit" }
+              ],
+              "guide": {
+                "start": "Find a placed digit in the highlighted shaded group.",
+                "check": "Look for the same digit among the candidates of another cell in the group.",
+                "reason": "The group needs different digits, so remove the duplicate candidate."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "palindrome",
           "title": "Palindrome lines",
           "summary": "A palindrome line reads the same in both directions. Its two ends match, as do the cells one step in from each end. A known digit or a missing candidate in one cell affects its partner.",
@@ -7836,6 +7991,45 @@
           "difficulty": "easy"
         },
         {
+          "id": "lockout",
+          "title": "Lockout lines",
+          "summary": "The digits in the endpoint diamonds differ by at least 4. Each interior digit must be smaller than both endpoints or larger than both.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a gap of at least 4"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Try a candidate in each diamond. Keep the pair only if the difference is at least 4 and every interior cell has a digit outside that range.",
+                "The diamonds cannot be 1 and 9 if the line has an interior cell. No digit is smaller than 1 or larger than 9."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "lockout",
+              "copy": {
+                "description": "The diamonds hold 9 in R1C7 and 2 in R1C9. R1C8 must be below 2 or above 9, so remove 5."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "lockout", "title": "Lockout lines" }
+              ],
+              "guide": {
+                "start": "Read the endpoint diamonds.",
+                "check": "Find a pair at least 4 apart. Find an interior digit outside the range from the lower endpoint to the higher endpoint.",
+                "reason": "Remove a candidate if no valid endpoint pair lets that digit fit."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "whispers",
           "title": "Whispers lines",
           "summary": "A Whispers line requires a minimum difference between neighboring digits. On a German Whispers line with a gap of at least 5, low and high digits alternate. No digit is far enough from 5 to be its neighbor.",
@@ -7940,7 +8134,8 @@
               "paragraphs": [
                 "Inspect four cells that form a 2 × 2 area. Include areas that cross box or region borders. Identify the groups of placed digits and cells whose candidates all belong to one group.",
                 "Each group needs its own cell. If two groups are confined to the same two cells, those cells must provide one from each group. Remove candidates from the third group in those cells.",
-                "A repeated group is required because four cells use three groups. Equal digits can repeat diagonally across box boundaries if all other puzzle rules allow it."
+                "A repeated group is required because four cells use three groups. Equal digits can repeat diagonally across box boundaries if all other puzzle rules allow it.",
+                "In a puzzle with Quadruples, look again after the circles narrow the candidates. Two 2 × 2 areas that share a cell must both cover all three groups with the same digit in that cell."
               ]
             },
             {
@@ -7987,7 +8182,7 @@
               "type": "text",
               "paragraphs": [
                 "Start with a circle that prints two digits from one group. Those digits use two of the four cells, so the other cells must supply one digit from each missing group. A digit printed twice needs two cells.",
-                "If the circle area still has several possible arrangements, check the 2 × 2 area on the other side of an edge. The two shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
+                "If the circle area still has several possible arrangements, check a 2 × 2 area that shares an edge or a corner. The shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
               ]
             },
             {
@@ -8007,7 +8202,7 @@
               ],
               "guide": {
                 "start": "Read the digits in the circle and find the groups they already supply.",
-                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas share an edge, check the same digits in their shared cells.",
+                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas overlap, check that they use the same digits in the shared cells.",
                 "reason": "Remove a candidate when every arrangement that uses it breaks a circle, an entropy area, or a shared house."
               }
             }
@@ -8967,6 +9162,47 @@
             {
               "label": "Sudoku Coach constructor and rule description",
               "href": "https://sudoku.coach/en/construct"
+            }
+          ]
+        },
+        {
+          "id": "lettered-quadruples",
+          "title": "Lettered Quadruples",
+          "summary": "Each letter in a Quadruple circle stands for one digit throughout the puzzle. Compare circles that share a letter to narrow its possible digits and rule out candidates.",
+          "difficulty": "hard",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a letter printed in several circles"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For each circle with that letter, list the digits that can appear in its four surrounding cells. Keep only the digits that appear on every list. For example, if two circles with A can use only {1, 3, 5, 7} and {2, 3, 6, 8}, A must be 3.",
+                "Different letters need different digits. After finding A, remove its digit from the choices for the other letters. In every circle, fit the digits for its letters into separate surrounding cells. Each occurrence of a repeated letter needs its own cell."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "lettered-quadruples"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "lettered-quadruples", "title": "Check the shared letter key" }
+              ],
+              "guide": {
+                "start": "Read the letters in the circles and look for letters that appear more than once.",
+                "check": "Check whether each letter can use the same digit around every circle that lists it.",
+                "reason": "Remove a candidate when it leaves no way to fit the circles using one shared key."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Sandwich Roll by vajrajames",
+              "href": "https://sudoku.coach/en/s/ALYC"
             }
           ]
         }

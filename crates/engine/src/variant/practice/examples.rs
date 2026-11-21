@@ -1,6 +1,6 @@
 use super::{ExampleSeed, seed};
 use crate::{
-    ClueDirection, Diagonal, KillerCage, MarkedPairs, Parity as CellParity, PuzzleRule,
+    ClueDirection, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs, Parity as CellParity, PuzzleRule,
     VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
 };
 
@@ -215,6 +215,71 @@ fn region_sum_house_seed(givens: &'static str, cell: usize, digit: u8, include_f
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        ConsecutiveRun => [
+            seed(
+                "209105307003068050805320609914530876307006025026780431732604090650291003490073560",
+                10, 4, [PuzzleRule::ConsecutiveRun { cells: vec![10, 18, 27], color: None, from_bulb: false }],
+            ),
+            seed(
+                "209140087170960204845327619914032800007400925506789401732654198650291743491870560",
+                14, 5, [PuzzleRule::ConsecutiveRun { cells: vec![13, 23, 14], color: None, from_bulb: false }],
+            ),
+            seed(
+                "209045387173068200005327600900532876387406925500789031732050100608091743490803562",
+                29, 1, [PuzzleRule::ConsecutiveRun { cells: vec![21, 29, 20], color: None, from_bulb: false }],
+            ),
+        ],
+        InsideGrid => {
+            let rows: Vec<Vec<usize>> = (0..5)
+                .map(|row| (0..5).map(|column| 4 + 8 * row + 10 * column).collect())
+                .collect();
+            [
+                seed(
+                    "794608205518902764236745981823176549459823176167459328981367452345281697672594813",
+                    4, 3, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                ),
+                seed(
+                    "794618235018930764236740981823176549459823176167459328981367452345281697672594813",
+                    14, 5, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                ),
+                seed(
+                    "794618235518932764236745981823176549459023176167059320981367452345281697672594813",
+                    48, 8, [PuzzleRule::InsideGrid { rows }],
+                ),
+            ]
+        },
+        DistinctCells => [
+            seed(
+                "534678912002195348198342567859761423426853791713924856901537284287419635345286179",
+                10, 6, [PuzzleRule::DistinctCells { cells: vec![3, 10], color: None }],
+            ),
+            seed(
+                "534678912672195348198342567809761403426853791713924806961537284287419635345286179",
+                34, 5, [PuzzleRule::DistinctCells { cells: vec![0, 34, 1], color: None }],
+            ),
+            seed(
+                "534678912672195348198342567859761423426853791713924856961537284280419630340286179",
+                65, 5, [PuzzleRule::DistinctCells { cells: vec![0, 65, 1, 2], color: None }],
+            ),
+        ],
+        LetteredQuadruples => {
+            let rules = || {
+                let clues = [(9, "AOUG"), (12, "IVGE"), (15, "NEO"), (16, "EVO"), (27, "EVO"),
+                    (31, "AEOR"), (39, "NAI"), (43, "IUN"), (54, "AGE"), (57, "NRU"), (61, "VEUR")]
+                    .into_iter().map(|(top_left, letters)| LetteredQuadruple { top_left, letters: letters.into() }).collect();
+                [
+                    PuzzleRule::LetteredQuadruples { clues },
+                    PuzzleRule::ExtraHouse { cells: vec![1, 14, 28, 40, 49, 48, 50, 43, 2] },
+                    PuzzleRule::Palindrome { cells: vec![19, 29, 39, 48], segments: None },
+                    PuzzleRule::Palindrome { cells: vec![2, 12, 22], segments: None },
+                ]
+            };
+            [
+                seed("015468370687239154430751862761895243523146987894372516356917428142683795078524631", 0, 9, rules()),
+                seed("215468379687239150439751862761895200523146987894372516356917428142683795978524631", 35, 4, rules()),
+                seed("215468379687239154439751862761895243523146987894372506356907408142683795978524630", 61, 1, rules()),
+            ]
+        },
         MatchingDigitContradiction => [
             matching_digit_seed(
                 "400070100010400070000000009006100000000000000000004000000000003000040000000000000",
@@ -884,6 +949,46 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 [PuzzleRule::Between {
                     cells: vec![46, 45, 37, 28, 29],
                 }],
+            ),
+        ],
+        PillArrow => [
+            seed(
+                "534678912672195008198342567859761423426853791713924856961537284287419605345286179",
+                16,
+                3,
+                [PuzzleRule::PillArrow { pill: [7, 8], cells: vec![16, 17], from_tens: false }],
+            ),
+            seed(
+                "534678910672195348198340507859761403426853791713924856961537284287419635345286179",
+                25,
+                2,
+                [PuzzleRule::PillArrow { pill: [32, 33], cells: vec![25, 17], from_tens: false }],
+            ),
+            seed(
+                "534678912670195348198342567859761423400853791713924856961537284287419635345286179",
+                38,
+                2,
+                [PuzzleRule::PillArrow { pill: [46, 47], cells: vec![38, 30], from_tens: false }],
+            ),
+        ],
+        Lockout => [
+            seed(
+                "034678902672195348198342067859761423426853791713924806961537284287419635345286179",
+                7,
+                5,
+                [PuzzleRule::Lockout { cells: vec![6, 7, 8] }],
+            ),
+            seed(
+                "534678912672105048198042567859761423426853791713924856961507284287419635345286179",
+                13,
+                3,
+                [PuzzleRule::Lockout { cells: vec![3, 13, 12] }],
+            ),
+            seed(
+                "534078912672195348198042507859761423426853791713924856961537284287419635345286179",
+                21,
+                6,
+                [PuzzleRule::Lockout { cells: vec![13, 21, 22] }],
             ),
         ],
         Arrow => [

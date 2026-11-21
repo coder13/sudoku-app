@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { createGameId, enter, makeGame, restartGame, type Game } from '../src/sudoku/game.ts'
 import { findSharedAttempt, isSharedPuzzleId, puzzleDefinitionForSharing, sharedPuzzleLink } from '../src/sudoku/puzzle-sharing.ts'
@@ -153,6 +155,67 @@ test('the sharing API validates the common rule contract against a Mini layout',
       { ...definition, sizedRules: [{ type: 'thermometer', cells: [0, 1, 2, 3, 7] }] },
       { ...definition, sizedRules: [{ ...definition.sizedRules[0], solution: '1234341221434321' }] },
     ]) await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
+  } finally { sqlite.close() }
+})
+
+test('shared 9 × 9 puzzles retain published Minimum, Maximum and numbered-dot rules', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8')) as {
+    title: string; coach: string; solution: string
+  }[]
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    for (const source of sources) {
+      const { variant, givens } = await detectPuzzle(source.coach)
+      assert.ok(variant)
+      const game = { ...makeGame(createGameId(), source.title, givens, 'imported'), variant: { ...variant, solution: source.solution } }
+      const definition = puzzleDefinitionForSharing(game)
+      const { id } = await api<{ id: string }>('shares', 'POST', definition)
+      assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+    }
+    const definition = { version: 1, title: 'Invalid clues', givens: STARTER }
+    for (const rule of [
+      { type: 'maximum', cells: [0, 0] },
+      { type: 'minimum', cells: [81] },
+      { type: 'minimum', cells: [0], ignoreMarkedNeighbors: 'yes' },
+      { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [8, 9], value: 3 }] },
+      { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 1 }] },
+      { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 1], value: 9 }] },
+      { type: 'labeled-dots', relation: 'difference', marks: [] },
+    ]) {
+      const variant = { id: 'mixed', puzzle: { version: 1, givens: STARTER, rules: [rule] } }
+      await assert.rejects(api('shares', 'POST', { ...definition, variant }), { status: 400 })
+    }
+  } finally { sqlite.close() }
+})
+
+test('public share links preserve the Quad-Arrows arithmetic', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const source = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-sum.json', import.meta.url), 'utf8'))
+    const { variant, givens } = await detectPuzzle(source.coach)
+    assert.ok(variant?.puzzle.rules?.every(rule => rule.type === 'quadruple-sum'))
+    const game = { ...makeGame(createGameId(), source.title, givens, 'imported'), variant: { ...variant, solution: source.solution } }
+    const definition = puzzleDefinitionForSharing(game)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    const shared = await api(`shares/${id}`)
+    assert.deepEqual(shared, JSON.parse(JSON.stringify(definition)))
+  } finally { sqlite.close() }
+})
+
+test('sharing preserves Pill Arrow place value, Lockout Lines and Fog', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-pill-arrow-lockout.json', import.meta.url), 'utf8'))
+    const source = sources.find(({ url }: { url: string }) => url.endsWith('/DhdV'))
+    const { variant, givens } = await detectPuzzle(source.coach)
+    assert.ok(variant?.fog)
+    const game = { ...makeGame(createGameId(), source.title, givens, 'imported'), variant: { ...variant, solution: source.solution } }
+    const definition = puzzleDefinitionForSharing(game)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
   } finally { sqlite.close() }
 })
 

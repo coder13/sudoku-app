@@ -4,12 +4,14 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
-import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
+import { isHexColor, isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
+import { validLetteredQuadruples } from './lettered-quadruples.ts'
+import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { readReviewedCoachArtwork, reviewedCoachFillTitle, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
-import { coachConnectedLines } from './coach-lines.ts'
+import { coachConnectedLines, coachConsecutiveRuns } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
 import { isCoachWhispersGuide } from './coach-whispers-guide.ts'
 import { decodeLegacyCoach, type LegacyCoachVersion } from './legacy-coach.ts'
@@ -211,7 +213,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows' | 'partial-regions' | 'inside-grid' | 'lettered-quadruples'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -395,6 +397,98 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
+async function coachExportHash(code: string) {
+  if (!globalThis.crypto?.subtle) return
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+// Coach leaves this rule out of a pasted Quad-Arrows export.
+const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
+const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
+const sandwichRollExport = 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653'
+
+// The Rainbow colors repeat the region map. Revival's yellow pattern adds no
+// rule. Match the reviewed exports in full because other colors can encode clues.
+const reviewedCoachColorExports = new Map([
+  ['1be837174e67a43133a677d6f504da74724c35ece725b203f822d299954a91c1', 'Entro Quad Rainbow Jigsaw'],
+  ['2ec5b5abab8e4c9e045a35d0d3a4244213e47e37462c9b598798ee53ba07f28d', 'Revival'],
+])
+
+function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
+  const invalid = new Error('The export does not match its published Inside Grid and Consecutive Thermometers.')
+  const layers = constraints.filter(record)
+  if (layers.length !== constraints.length) throw invalid
+  const ofType = (type: string) => layers.filter(layer => layer.type === type)
+  const regions = readCoachRules(ofType('region'), {})
+  const groups = regions.map(region => region.type === 'distinct-cells' ? region.cells : [])
+  const size = groups[0]?.length ?? 0
+  const rows = groups.slice(0, size)
+  const sameCells = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every(cell => b.includes(cell))
+  if (!validInsideGridRows(rows) || groups.length !== 2 * size ||
+    !insideGridColumns(rows).every(column => groups.slice(size).some(group => sameCells(group, column)))) throw invalid
+
+  const [shape] = ofType('cosmeticShape')
+  const diamonds = Array.isArray(shape?.segments) ? shape.segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
+      !record(segment.parameters) || segment.parameters.shape !== 'rect') throw invalid
+    const [x, y] = segment.cells[0]
+    if (typeof x !== 'number' || typeof y !== 'number' ||
+      ![x, y].every(coordinate => Number.isInteger(coordinate - .5) && coordinate >= .5 && coordinate <= 8.5)) throw invalid
+    return (y - .5) * 9 + x - .5
+  }) : []
+  if (!sameCells(rows.flat(), diamonds) || new Set(diamonds).size !== size * size) throw invalid
+
+  const renbans = readCoachRules(ofType('renban'), {}).filter(rule => rule.type === 'renban')
+  const runs = ofType('thermometer').flatMap(layer => {
+    const color = record(layer.settings) ? layer.settings.colour : undefined
+    if (color !== undefined && !isHexColor(color)) throw invalid
+    return readCoachRules([layer], {}).map((rule): VariantRule => {
+      if (rule.type !== 'thermometer') throw invalid
+      const index = renbans.findIndex(line => sameCells(rule.cells, line.cells))
+      if (index < 0) throw invalid
+      renbans.splice(index, 1)
+      return { type: 'consecutive-run', cells: rule.cells, fromBulb: true, ...(color && { color }) }
+    })
+  })
+  if (renbans.length || !runs.length) throw invalid
+  const other = layers.filter(layer => !['region', 'cosmeticShape', 'thermometer', 'renban'].includes(String(layer.type)))
+  return [{ type: 'inside-grid', rows }, ...runs, ...readCoachRules(other, {})]
+}
+
+function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRule[] {
+  const invalid = new Error('The export does not match its published lettered Quadruples.')
+  const layers = constraints.filter(record)
+  if (layers.length !== constraints.length) throw invalid
+  const captions = layers.find(layer => layer.type === 'cosmeticText' && record(layer.settings) &&
+    layer.settings.gridSnapToCentres === false && layer.settings.gridSnapToEdges === false)
+  const circles = layers.find(layer => layer.type === 'cosmeticShape' && record(layer.settings) &&
+    layer.settings.gridSnapToCorners === true)
+  const corner = (segment: unknown) => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2) throw invalid
+    const [x, y] = segment.cells[0]
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 1 || x > 8 || y < 1 || y > 8) throw invalid
+    return (y - 1) * 9 + x - 1
+  }
+  if (!Array.isArray(captions?.segments) || !Array.isArray(circles?.segments)) throw invalid
+  const clues = captions.segments.map(segment => ({
+    topLeft: corner(segment),
+    letters: record(segment) && record(segment.parameters) ? segment.parameters.text : undefined,
+  }))
+  if (!validLetteredQuadruples(clues)) throw invalid
+  const drawn = new Set(circles.segments.map(segment => {
+    if (!record(segment) || !record(segment.parameters) || segment.parameters.shape !== 'circle') throw invalid
+    return corner(segment)
+  }))
+  if (drawn.size !== clues.length || clues.some(clue => !drawn.has(clue.topLeft))) throw invalid
+  // The original also carries transparent answer letters and decorative
+  // text and shapes. Only the paired circles and their visible labels are clues.
+  const typed = layers.filter(layer => !['cosmeticText', 'cosmeticShape', 'cosmeticLine'].includes(String(layer.type)))
+  return [...readCoachRules(typed, {}), { type: 'lettered-quadruples', clues }]
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -402,8 +496,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     const { givens, grid, rules } = readCoachSized(data)
+    if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
+      throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
+    }
     return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}),
-      ...(fromCollection && publication?.title && { title: publication.title }), format: 'Sudoku Coach' }
+      ...(publication?.title && { title: publication.title }), format: 'Sudoku Coach' }
   }
   if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
@@ -420,15 +517,42 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
   const artwork = await readReviewedCoachArtwork(code, constraints)
-  const regions = readRegions(data.regions)
+  let regions: VariantPuzzle['regions'] = Array.isArray(data.regions) && data.regions.length === 0
+    ? { type: 'partial', regions: [] } : readRegions(data.regions)
+  if (publication?.authoredRule === 'partial-regions' && !artwork?.partialRegions) {
+    throw new Error('The export does not match its published region outlines.')
+  }
   const guideLayers = constraints.every(layer => record(layer) &&
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
     : artwork ? constraints.filter(layer => layer !== artwork.layer) : constraints
-  const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
+  const hasQuadruples = encodedRules.some(layer => record(layer) && layer.type === 'quadruple')
+  const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
+  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
+  const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || !fog && cellColours?.some(Boolean))
+    ? await coachExportHash(code) : undefined
+  const insideGrid = exportHash === codeCrackerExport && (!publication || declaredInsideGrid)
+  const lettered = exportHash === sandwichRollExport && (!publication || declaredLettered)
+  if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
+  if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
+  const rawQuadArrows = !publication && exportHash === quadArrowsExport
+  const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
+    ? reviewedCoachColorExports.get(exportHash) : undefined
+  const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
+  let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
+    : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(encodedRules, { regions, authoredRule })
+  if (artwork?.partialRegions) {
+    const marked = rules.filter(rule => rule.type === 'extra-house')
+    if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')
+    regions = { type: 'partial', regions: marked.map(rule => [...rule.cells].sort((a, b) => a - b)) }
+    rules = rules.filter(rule => rule.type !== 'extra-house')
+  }
+  if (authoredRule === 'quad-arrows' && !rules.some(rule => rule.type === 'quadruple-sum')) {
+    throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
+  }
   const palette = Array.isArray(data.colours) ? data.colours : []
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
     cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
@@ -452,7 +576,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
         const plainCollectionArtwork = !rules.length && (!regions || regions.type === 'boxes') &&
           (fromCollection || LEGACY_COACH_CODE.test(code))
         const fills = readCoachColorNames(remaining, palette)
-        if (fills && !plainCollectionArtwork) fillTitle = await reviewedCoachFillTitle(data, fills)
+        if (fills && !plainCollectionArtwork) fillTitle = reviewedColorTitle ?? await reviewedCoachFillTitle(data, fills)
         if (plainCollectionArtwork || fillTitle) givenCellColors = fills
       }
       if (!givenCellColors) {
@@ -487,7 +611,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? artwork?.title ?? fillTitle
+  const title = publication?.title ?? artwork?.title ?? fillTitle ?? (rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(artwork && { authoredArtwork: artwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
@@ -557,6 +681,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
 } = {}): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
+  const numbered = new Set(constraints.flatMap(constraint => {
+    if (!record(constraint) || constraint.type !== 'ratio' && constraint.type !== 'difference') return []
+    const { type } = constraint
+    const defaultValue = type === 'ratio' ? 2 : 1
+    return readCoachPairMarkers(constraint, type).markers.some(mark => mark.amount !== defaultValue) ? [type] : []
+  }))
   const drawnLines: Record<string, unknown>[] = []
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
@@ -574,8 +704,20 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
-    if (constraint.type === 'odd' || constraint.type === 'even') {
+    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'pillArrow', 'betweenLine', 'lockoutLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (constraint.type === 'minimum' || constraint.type === 'maximum') {
+      const { type, segments } = constraint
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+        throw new Error(`This Sudoku Coach puzzle has an invalid ${type} layer.`)
+      }
+      const cells = segments.map(segment => {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${type} cell.`)
+        }
+        return segment.cells[0]
+      })
+      if (cells.length) rules.push({ type, cells, ignoreMarkedNeighbors: true })
+    } else if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
       const cells: number[] = []
@@ -627,13 +769,17 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         rules.push({ type: 'sandwich', ...coachOutsideRay(side as OutsideSide, Number(index)), sum: Number(value) })
       }
     } else if (constraint.type === 'quadruple') {
+      if (grid && !constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Quadruple clues.')
+      const size = grid?.size ?? 9
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
           !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
-          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) {
+          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits) ||
+          [...segment.parameters.digits].some(digit => Number(digit) > size)) {
           throw new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
         }
-        rules.push({ type: 'quadruple', topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
+        rules.push({ type: authoredRule === 'quad-arrows' ? 'quadruple-sum' : 'quadruple',
+          topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
       }
     } else if (constraint.type === 'cage') {
       const { settings } = constraint
@@ -686,25 +832,58 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type
       const { markers, negative } = readCoachPairMarkers(constraint, kind)
-      const expected = kind === 'difference' ? 1 : 2
-      if (markers.some(({ amount }) => amount !== expected)) {
-        throw new Error(`This Sudoku Coach ${kind} marker is not supported yet.`)
+      if (numbered.has(kind)) {
+        const size = grid?.size ?? 9
+        const min = kind === 'ratio' ? 2 : 1
+        const max = kind === 'ratio' ? size : size - 1
+        const marks = markers.map(({ cells, amount }) => {
+          if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < min || amount > max) {
+            throw new Error(`A ${kind} marker must be a whole number between ${min} and ${max}.`)
+          }
+          return { cells, value: amount }
+        })
+        if (marks.length || negative) rules.push({ type: 'labeled-dots', relation: kind, marks, ...(negative && { negative }) })
+      } else {
+        const marks = { pairs: markers.map(({ cells }) => cells), negative }
+        rules.push(kind === 'difference'
+          ? { type: 'kropki', consecutive: marks }
+          : { type: 'kropki', ratioTwo: marks })
       }
-      const marks = { pairs: markers.map(({ cells }) => cells), negative }
-      rules.push(kind === 'difference'
-        ? { type: 'kropki', consecutive: marks }
-        : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
-      if (unsupportedClueStyling(constraint.settings)) {
+      const settings = constraint.settings
+      if (unsupportedClueStyling(settings)) {
         throw new Error('This Sudoku Coach extra region uses unsupported settings.')
       }
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no extra regions.')
+      const color = record(settings) ? settings.colour : undefined
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
           throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
         }
-        rules.push({ type: 'extra-house', cells: segment.cells })
+        if (grid || segment.cells.length === 9) {
+          rules.push({ type: 'extra-house', cells: segment.cells })
+        } else {
+          if (color !== undefined && !isHexColor(color)) throw new Error('This Sudoku Coach shaded group uses an unsupported color.')
+          rules.push({ type: 'distinct-cells', cells: segment.cells, ...(color && { color }) })
+        }
       }
+    } else if (constraint.type === 'consecutiveLine') {
+      const settings = constraint.settings
+      const color = record(settings) ? settings.colour : undefined
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+        hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key))) ||
+        color !== undefined && !isHexColor(color)) {
+        throw new Error('This Sudoku Coach Consecutive Line uses unsupported settings.')
+      }
+      const size = grid?.size ?? 9
+      const paths = constraint.segments.map((segment: unknown) => {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 2 || hasData(segment.parameters) ||
+          segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Consecutive Line segment.')
+        }
+        return segment.cells as number[]
+      })
+      for (const cells of coachConsecutiveRuns(paths, size)) rules.push({ type: 'consecutive-run', cells, ...(color && { color }) })
     } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban' || constraint.type === 'regionSumLine') {
       const name = constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
       const settings = constraint.settings
@@ -745,18 +924,20 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         }
         rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
       }
-    } else if (constraint.type === 'betweenLine') {
+    } else if (constraint.type === 'betweenLine' || constraint.type === 'lockoutLine') {
+      const lockout = constraint.type === 'lockoutLine'
+      const name = lockout ? 'Lockout' : 'Between'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
         !LINE_STYLING.has(key) && !BULB_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Between line uses unsupported settings.')
+        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
+      if (!constraint.segments.length && !lockout) throw new Error('This Sudoku Coach puzzle has no Between lines.')
       for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < (lockout ? 2 : 3) || hasData(segment.parameters)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} line.`)
         }
-        rules.push({ type: 'between', cells: segment.cells })
+        rules.push({ type: lockout ? 'lockout' : 'between', cells: segment.cells })
       }
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings
@@ -772,6 +953,20 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
           throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
         }
         rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
+      }
+    } else if (constraint.type === 'pillArrow') {
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key) && !BULB_STYLING.has(key) && key !== 'arrowHeadLength'))) {
+        throw new Error('This Sudoku Coach Pill Arrow uses unsupported settings.')
+      }
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Pill Arrow.')
+        }
+        const [first, start, ...cells] = segment.cells
+        // Coach reads its two pill digits in row-major order even when drawn in reverse.
+        const fromTens = start < first
+        rules.push({ type: 'pill-arrow', pill: fromTens ? [start, first] : [first, start], cells, ...(fromTens && { fromTens }) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
       const settings = constraint.settings
@@ -807,13 +1002,13 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       throw new Error('This Sudoku Coach puzzle has multiple X-Sums for the same side of a row or column.')
     }
   }
-  // Coach exempts difference markers from its global relation, independently of rule order.
-  // The positive dot remains a separate rule and still requires a difference of one.
-  const exceptions = [...new Map(rules.flatMap(rule => rule.type === 'kropki'
-    ? (rule.consecutive?.pairs ?? []).filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
-      const pair = [Math.min(a, b), Math.max(a, b)] as const
-      return [pair.join(','), pair] as const
-    }) : [])).values()]
+  // Coach exempts white-dot edges from its global Non-Consecutive rule.
+  const whiteDots = rules.flatMap(rule => rule.type === 'kropki' ? rule.consecutive?.pairs ?? []
+    : rule.type === 'labeled-dots' && rule.relation === 'difference' ? rule.marks.map(mark => mark.cells) : [])
+  const exceptions = [...new Map(whiteDots.filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
+    const pair = [Math.min(a, b), Math.max(a, b)] as const
+    return [pair.join(','), pair] as const
+  })).values()]
   if (exceptions.length) for (const [index, rule] of rules.entries()) {
     if (rule.type === 'non-consecutive') rules[index] = { ...rule, except: exceptions }
   }
@@ -857,7 +1052,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'cage', 'region', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine']
+  const supported = ['diagonalNegative', 'diagonalPositive', 'cage', 'region', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'quadruple']
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
@@ -1130,7 +1325,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', path: strin
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' ||
-        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban') && { authoredRule: coach.authoredRule }),
+        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows' || coach.authoredRule === 'partial-regions' || coach.authoredRule === 'inside-grid' || coach.authoredRule === 'lettered-quadruples') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }

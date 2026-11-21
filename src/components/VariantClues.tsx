@@ -1,7 +1,7 @@
 import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
-import { memo, useId, useMemo } from 'react'
+import { memo, useId, useMemo, type CSSProperties } from 'react'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
-import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
+import { disjointGroupRuleIndices, extraRegionName, isQuadrupleRule, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
@@ -26,12 +26,46 @@ function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?
     x2={diagonal === 'main' ? size : 0} y2={size} />
 }
 
-function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
+function ThermometerClue({ cells, size = 9, consecutive, color }: {
+  cells: readonly number[]; size?: number; consecutive?: boolean; color?: string
+}) {
   const [bulbX, bulbY] = center(cells[0], size)
-  return <g className="variant-thermometer">
+  return <g className="variant-thermometer" data-consecutive-thermometer={consecutive || undefined}
+    style={color ? { '--line-clue-color': color } as CSSProperties : undefined}>
     <polyline points={points(cells, size)} />
     <circle cx={bulbX} cy={bulbY} r=".32" />
   </g>
+}
+
+function InsideGridClue({ rows }: Extract<VariantRule, { type: 'inside-grid' }>) {
+  return <g className="variant-inside-grid">
+    {rows.flatMap(row => row.map(cell => {
+      const [cx, cy] = center(cell)
+      return <rect key={cell} x={cx - .33} y={cy - .33} width=".66" height=".66" rx=".045"
+        transform={`rotate(45 ${cx} ${cy})`} />
+    }))}
+  </g>
+}
+
+function ExtremumMarks({ rules }: { rules: readonly VariantRule[] }) {
+  const marks = new Map<number, Set<'minimum' | 'maximum'>>()
+  for (const rule of rules) if (rule.type === 'minimum' || rule.type === 'maximum') {
+    for (const cell of rule.cells) {
+      const kinds = marks.get(cell) ?? new Set<'minimum' | 'maximum'>()
+      kinds.add(rule.type)
+      marks.set(cell, kinds)
+    }
+  }
+  return [...marks].flatMap(([cell, kinds]) => [...kinds].map(type => {
+    const cx = x(cell) + (type === 'minimum' && kinds.size > 1 ? .57 : .8)
+    const cy = y(cell) + .18
+    const offset = type === 'minimum' ? .068 : -.068
+    const points = `${cx - .09},${cy - offset} ${cx},${cy + offset} ${cx + .09},${cy - offset}`
+    return <g key={`${cell}-${type}`} className="variant-extremum" data-extremum={type} data-extremum-cell={cell}>
+      <polyline className="variant-inequality-halo" points={points} />
+      <polyline className="variant-inequality-sign" points={points} />
+    </g>
+  }))
 }
 
 const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
@@ -43,6 +77,7 @@ const overlapColors: Partial<Record<VariantRule['type'], string>> = {
   entropic: '#bc6c27',
   modular: '#288e93',
   between: 'var(--board-ink)',
+  lockout: 'var(--lockout-ink)',
 }
 
 function RenbanClue({ cells, segments, number, size = 9 }: {
@@ -59,6 +94,13 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
 function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
   const dots = new Map<number, number>()
   for (const rule of rules) {
+    if (rule.type === 'labeled-dots') {
+      const mask = rule.relation === 'ratio' ? 2 : 1
+      for (const { cells: [a, b] } of rule.marks) {
+        const key = pairKey(a, b, size)
+        dots.set(key, (dots.get(key) ?? 0) | mask)
+      }
+    }
     if (rule.type !== 'kropki') continue
     for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
       for (const [a, b] of marks?.pairs ?? []) {
@@ -95,6 +137,21 @@ function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferen
   </g>
 }
 
+function QuadrupleClue({ digits, topLeft, size = 9, sum, lettered }: {
+  digits: readonly (number | string)[]; topLeft: number; size?: number; sum?: boolean; lettered?: boolean
+}) {
+  const cx = x(topLeft, size) + 1
+  const cy = y(topLeft, size) + 1
+  const count = digits.length
+  return <g className="variant-quadruple" data-quadruple-sum={sum || undefined} data-lettered-quadruple={lettered || undefined}>
+    <circle cx={cx} cy={cy} r=".265" />
+    {sum && <text className="quadruple-sum-mark" x={cx + .23} y={cy - .19}>+</text>}
+    {digits.map((digit, index) => <text key={index}
+      x={cx + (count === 1 || count === 3 && index === 2 ? 0 : index % 2 ? .105 : -.105)}
+      y={cy + (count <= 2 ? 0 : Math.floor(index / 2) ? .105 : -.105)}>{digit}</text>)}
+  </g>
+}
+
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const marker = useId()
   let renbanNumber = 0, regionSumNumber = 0
@@ -123,7 +180,6 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
       const values = dotValues.get(edge) ?? []
       values[kind] = value
       dotValues.set(edge, values)
-      dots.set(edge, (dots.get(edge) ?? 0) | 1 << kind)
     }
   }
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
@@ -131,7 +187,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
     {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
       {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
-        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={.1} size={size} />
+        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={cageLabelInset(Math.min(...cells), rules, size)} size={size} />
       </g>)}
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
@@ -173,6 +229,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
         x={cx - side / 2} y={cy - side / 2} width={side} height={side}
         transform={`rotate(45 ${cx} ${cy})`} />
     })}
+    {rules.map((rule, index) => rule.type === 'quadruple' && <QuadrupleClue key={index} {...rule} size={size} />)}
   </svg>
 }
 
@@ -218,6 +275,9 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       for (const cell of rule.cells) labels[cell].add('extra region')
     } else if (rule.type === 'killer-cages') {
       for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
+    } else if (rule.type === 'quadruple') {
+      const description = 'Quadruple circle with ' + rule.digits.join(', ')
+      for (const cell of quadrupleCells(rule.topLeft, size)) labels[cell].add(description)
     } else if (rule.type === 'parity') {
       const odd = rule.parity === 'odd'
       const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
@@ -288,8 +348,8 @@ function pairCenter(a: number, b: number, offset = 0, size = 9) {
 }
 
 /** Reserve the circle at the caption cell's top-left intersection. */
-export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
-  return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
+export function cageLabelInset(cell: number, rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
+  return rules.some(rule => (rule.type === 'quadruple' || rule.type === 'quadruple-sum') && rule.topLeft + size + 1 === cell) ? .34 : .1
 }
 
 function Cage({ cells, captionWidth, captionInset, size = 9 }: {
@@ -353,8 +413,11 @@ function cellBoundary(cells: readonly number[], size = 9) {
   return edge
 }
 
-function ExtraRegion({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
-  return <g className="variant-extra-region">
+function ExtraRegion({ cells, size = 9, color, distinct }: {
+  cells: readonly number[]; size?: number; color?: string; distinct?: true
+}) {
+  return <g className="variant-extra-region" data-distinct-cells={distinct}
+    style={color ? { '--region-clue-color': color } as CSSProperties : undefined}>
     {cells.map((cell) => <rect key={cell} x={x(cell, size)} y={y(cell, size)} width="1" height="1" />)}
     <path d={cellBoundary(cells, size)} />
   </g>
@@ -377,14 +440,28 @@ function arrowHead(marker: string) {
   </defs>
 }
 
-function ArrowClue({ circle, cells, marker, size = 9 }: { circle: number; cells: readonly number[]; marker: string; size?: number }) {
+function ArrowClue({ circle, cells, marker, size = 9, pill }: {
+  circle: number; cells: readonly number[]; marker: string; size?: number; pill?: readonly [number, number]
+}) {
   const [cx, cy] = center(circle, size)
   const [nx, ny] = center(cells[0], size)
   const length = Math.hypot(nx - cx, ny - cy)
   const start = [cx + (nx - cx) * .33 / length, cy + (ny - cy) * .33 / length]
   return <>
     <polyline className="variant-arrow-line" points={`${start.join(',')} ${points(cells, size)}`} markerEnd={`url(#${marker})`} />
-    <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />
+    {pill ? <PillClue cells={pill} /> : <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />}
+  </>
+}
+
+function PillClue({ cells: [tens, ones] }: { cells: readonly [number, number] }) {
+  const [tx, ty] = center(tens)
+  const [ox, oy] = center(ones)
+  const angle = Math.atan2(oy - ty, ox - tx) * 180 / Math.PI
+  return <>
+    <rect className="variant-arrow-pill" x={tx - .33} y={ty - .33}
+      width={Math.hypot(ox - tx, oy - ty) + .66} height=".66" rx=".33"
+      transform={`rotate(${angle} ${tx} ${ty})`} />
+    {tens > ones && <text x={tx} y={ty - .35} className="variant-arrow-tens">10s</text>}
   </>
 }
 
@@ -407,11 +484,18 @@ function EndpointLine({ cells, size = 9 }: { cells: readonly number[]; size?: nu
   return <g className="variant-between"><EndpointPath path={cells.map(cell => center(cell, size))} /></g>
 }
 
-function BetweenClue({ cells, endpoints = false }: { cells: readonly number[]; endpoints?: boolean }) {
-  if (!endpoints) return <EndpointLine cells={cells} />
-  return <g className="variant-between-endpoints">
-    {[cells[0], cells[cells.length - 1]].map(cell =>
-      <circle key={cell} cx={center(cell)[0]} cy={center(cell)[1]} r=".32" />)}
+function EndpointLineClue({ cells, endpoints = false, lockout = false }: {
+  cells: readonly number[]; endpoints?: boolean; lockout?: boolean
+}) {
+  if (!endpoints) return lockout
+    ? <g className="variant-lockout"><EndpointPath path={cells.map(cell => center(cell))} /></g>
+    : <EndpointLine cells={cells} />
+  return <g className={lockout ? 'variant-lockout-endpoints' : 'variant-between-endpoints'}>
+    {[cells[0], cells[cells.length - 1]].map(cell => {
+      const [cx, cy] = center(cell)
+      return lockout ? <path key={cell} d={`M${cx},${cy - .36}l.36,.36l-.36,.36l-.36,-.36Z`} />
+        : <circle key={cell} cx={cx} cy={cy} r=".32" />
+    })}
   </g>
 }
 
@@ -539,7 +623,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
   const clip = useMemo(() => visibleCells && visibleCellPath(visibleCells), [visibleCells])
   const drawing = <VariantClueDrawing rules={rules} marker={marker} />
   return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
-    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {rules.some(rule => rule.type === 'arrow' || rule.type === 'pill-arrow') && arrowHead(marker)}
     {clip === undefined ? drawing : <>
       <defs><clipPath id={clipId}><path d={clip} /></clipPath></defs>
       <g clipPath={`url(#${clipId})`}>{drawing}</g>
@@ -565,14 +649,14 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
+  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'lettered-quadruples' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
+    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
     ...(coloredLanes.has(index) ? [{ rule, index, overlay: 'colored-line' as const, layer: .4 }] : []),
     ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
-    ...(rule.type === 'between' ? [{ rule, index, overlay: 'between-endpoints' as const, layer: .65 }] : []),
+    ...(rule.type === 'between' || rule.type === 'lockout' ? [{ rule, index, overlay: 'endpoints' as const, layer: .65 }] : []),
   ]).sort((a, b) => a.layer - b.layer)
   const dots = kropkiDots(rules)
   const sums = new Map<number, Map<number, SumKind>>()
@@ -593,20 +677,20 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   const markedEdges = new Set([...dots.keys(), ...sums.keys()])
   for (const rule of rules) {
     if (rule.type === 'inequality') markedEdges.add(pairKey(rule.less, rule.greater))
-    if (rule.type === 'quadruple') {
-      const corner = rule.topLeft
-      markedEdges.add(pairKey(corner, corner + 10))
-      markedEdges.add(pairKey(corner + 1, corner + 9))
+    const circles = isQuadrupleRule(rule) ? [rule] : rule.type === 'lettered-quadruples' ? rule.clues : []
+    for (const { topLeft } of circles) {
+      markedEdges.add(pairKey(topLeft, topLeft + 10))
+      markedEdges.add(pairKey(topLeft + 1, topLeft + 9))
     }
   }
   return <>
     {drawingOrder.map(({ rule, index, overlay }) => {
-      if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
+      if (overlay === 'endpoints' && (rule.type === 'between' || rule.type === 'lockout')) return <EndpointLineClue key={`${index}-endpoints`} cells={rule.cells} endpoints lockout={rule.type === 'lockout'} />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
-        const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]]
+        const endpoints = rule.type === 'between' || rule.type === 'lockout' ? [rule.cells[0], rule.cells[rule.cells.length - 1]]
           : rule.type === 'thermometer' ? [rule.cells[0]] : undefined
-        const dashed = rule.type === 'between' && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))
+        const dashed = (rule.type === 'between' || rule.type === 'lockout') && lineSkipsCells(rule.cells) || rule.type === 'region-sum' && (rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))
         const color = rule.type === 'region-sum' ? regionSumColor(index) : overlapColors[rule.type] ?? renbanColor(index)
         return <g key={`${index}-line-overlap`} className={`variant-${rule.type}-overlap`} data-renban={rule.type === 'renban' ? renbanIndices.get(index)! + 1 : undefined}
           data-region-sum={rule.type === 'region-sum' ? regionSumIndices.get(index)! + 1 : undefined}>
@@ -634,19 +718,23 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
-        case 'quadruple': {
-          const cx = x(rule.topLeft) + 1
-          const cy = y(rule.topLeft) + 1
-          const count = rule.digits.length
-          return <g key={index} className="variant-quadruple">
-            <circle cx={cx} cy={cy} r=".265" />
-            {rule.digits.map((digit, i) => <text key={i}
-              x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
-              y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
-          </g>
-        }
+        case 'lettered-quadruples':
+          return <g key={index}>{rule.clues.map(({ topLeft, letters }) =>
+            <QuadrupleClue key={topLeft} topLeft={topLeft} digits={[...letters]} lettered />)}</g>
+        case 'quadruple': case 'quadruple-sum':
+          return <QuadrupleClue key={index} {...rule} sum={rule.type === 'quadruple-sum'} />
         case 'diagonal':
           return <DiagonalClue key={index} diagonal={rule.diagonal} />
+        case 'distinct-cells':
+          return <ExtraRegion key={index} cells={rule.cells} color={rule.color} distinct />
+        case 'inside-grid':
+          return <InsideGridClue key={index} {...rule} />
+        case 'consecutive-run':
+          if (rule.fromBulb) return <ThermometerClue key={index} cells={rule.cells} color={rule.color} consecutive />
+          return <g key={index} className="variant-consecutive-run"
+            style={rule.color ? { '--line-clue-color': rule.color } as CSSProperties : undefined}>
+            <polyline points={points(rule.cells)} />
+          </g>
         case 'extra-house':
           return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
@@ -668,14 +756,26 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
           </g>
         case 'renban':
           return <RenbanClue key={index} {...rule} number={renbanIndices.get(index)! + 1} />
-        case 'between':
-          return <BetweenClue key={index} cells={rule.cells} />
+        case 'between': case 'lockout':
+          return <EndpointLineClue key={index} cells={rule.cells} lockout={rule.type === 'lockout'} />
         case 'region-sum':
           return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} sharedEnds={sumEnds.get(index)} />
         case 'thermometer':
           return <ThermometerClue key={index} cells={rule.cells} />
         case 'arrow':
           return <ArrowClue key={index} {...rule} marker={marker} />
+        case 'pill-arrow':
+          return <g key={index} className="variant-pill-arrow">
+            <ArrowClue circle={rule.pill[rule.fromTens ? 0 : 1]} cells={rule.cells} pill={rule.pill} marker={marker} />
+          </g>
+        case 'labeled-dots': {
+          const kind = rule.relation === 'ratio' ? 1 : 0
+          return <g key={index}>{rule.marks.map(({ cells: [a, b], value }) => {
+            const edge = pairKey(a, b)
+            const paired = dots.get(edge) === 3
+            return renderKropkiDot(a, b, kind, paired, paired && sums.has(edge), 9, value === kind + 1 ? undefined : value)
+          })}</g>
+        }
         case 'kropki':
           return <g key={index}>{[rule.consecutive, rule.ratioTwo].flatMap((marks, kind) =>
             (marks?.pairs ?? []).map(([a, b]) => {
@@ -688,6 +788,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         default: return null
       }
     })}
+    <ExtremumMarks rules={rules} />
     {clones.sets.map(set => <g key={set.label} className="variant-clone-label" data-clone={set.label}>
       {set.cells.map(cell => <g key={cell}>
         <text className="variant-clone-label-halo" x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
@@ -705,6 +806,19 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
     `Clone ${set.label}, same digit as ${set.cells.filter(other => other !== cell).map(reference).join('; ')}`)
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'minimum': case 'maximum': {
+        const minimum = rule.type === 'minimum'
+        const label = minimum ? 'Minimum mark, smaller than its compared edge neighbors' : 'Maximum mark, larger than its compared edge neighbors'
+        for (const cell of rule.cells) labels[cell].push(label)
+        break
+      }
+      case 'labeled-dots':
+        for (const { cells: [a, b], value } of rule.marks) {
+          const clue = rule.relation === 'ratio' ? `black dot, ratio ${value} to 1` : `white dot, difference ${value}`
+          labels[a].push(`${clue} with ${reference(b)}`)
+          labels[b].push(`${clue} with ${reference(a)}`)
+        }
+        break
       case 'inequality':
         labels[rule.less].push(`inequality, smaller than ${reference(rule.greater)}`)
         labels[rule.greater].push(`inequality, larger than ${reference(rule.less)}`)
@@ -734,9 +848,15 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
           ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
           : 'even square, digit must be 2, 4, 6, or 8')
         break
-      case 'quadruple':
+      case 'lettered-quadruples':
+        for (const { topLeft, letters } of rule.clues) for (const cell of quadrupleCells(topLeft)) {
+          labels[cell].push(`Lettered Quadruple ${[...letters].join(', ')}, circle touching ${reference(topLeft)} and its three neighbors`)
+        }
+        break
+      case 'quadruple': case 'quadruple-sum':
         for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
-          `Quadruple ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells`)
+          `${rule.type === 'quadruple-sum' ? 'Quad-Arrows' : 'Quadruple'} ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells` +
+          (rule.type === 'quadruple-sum' ? '; largest digit equals the sum of the other three' : ''))
         break
       case 'diagonal': {
         const main = rule.diagonal === 'main'
@@ -745,6 +865,18 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         }
         break
       }
+      case 'distinct-cells':
+        for (const cell of rule.cells) labels[cell].push('Shaded group, all digits differ')
+        break
+      case 'inside-grid':
+        rule.rows.forEach((row, i) => row.forEach((cell, j) =>
+          labels[cell].push(`Inside Grid row ${i + 1}, column ${j + 1}`)))
+        break
+      case 'consecutive-run':
+        for (const cell of rule.cells) labels[cell].push(rule.fromBulb
+          ? `Consecutive Thermometer from the bulb at ${reference(rule.cells[0])}, digits increase by one at each step`
+          : `Consecutive Line from ${reference(rule.cells[0])} to ${reference(rule.cells.at(-1)!)}, digits increase by one from one end to the other`)
+        break
       case 'extra-house':
         for (const cell of rule.cells) labels[cell].push(`${extraRegionName(rules, index)}, digits 1–9 once each`)
         break
@@ -795,6 +927,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
           : `Between line ${number} interior, digit strictly between the circles at ${ends.map(reference).join(' and ')}`)
         break
       }
+      case 'lockout': {
+        const ends = [rule.cells[0], rule.cells.at(-1)!]
+        for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
+          ? `Lockout diamond, difference of at least 4 with ${reference(ends.find(end => end !== cell)!)}`
+          : `Lockout interior, digit below both or above both diamonds at ${ends.map(reference).join(' and ')}`)
+        break
+      }
       case 'thermometer':
         rule.cells.forEach((cell, index) => {
           labels[cell].push(index === 0 ? 'thermometer bulb' :
@@ -805,6 +944,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         labels[rule.circle].push(`arrow circle, path through ${rule.cells.map(reference).join('; ')}`)
         for (const cell of rule.cells) labels[cell].push(`arrow path from the circle at ${reference(rule.circle)}`)
         break
+      case 'pill-arrow': {
+        const [tens, ones] = rule.pill
+        labels[tens].push(`Pill Arrow tens digit, ones digit at ${reference(ones)}`)
+        labels[ones].push(`Pill Arrow ones digit, tens digit at ${reference(tens)}`)
+        for (const cell of rule.cells) labels[cell].push(`Pill Arrow path, sum equals the two-digit number in ${reference(tens)} and ${reference(ones)}`)
+        break
+      }
       case 'kropki':
         for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
           for (const [a, b] of marks?.pairs ?? []) {

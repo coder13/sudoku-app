@@ -338,7 +338,6 @@
       "solution": "147258369825693471936714825471582936258369147693471582714825693582936714369147258",
       "imageUrl": "https://sudoku.coach/open_graph_images/9ZMr.png",
       "imageSha256": "549821952bc85f867e46de63f85b9eda66af9699fb1adb1613ed1782a8dbbb63",
-      "deferred": "The original thirty-six white circles require a difference of three, not consecutive digits. Preserve that General Difference companion for issue 85.",
       "description": "Est time:  15-30 min. \n\nHint in comments for those new to mod lines. You may find the difficulty \"easy\" if you do a lot of mod or entropy puzzles or the patterns come naturally."
     },
     {
@@ -574,7 +573,6 @@
       "solution": "849125376623947158571836294362798415784351629915462783196573842257684931438219567",
       "imageUrl": "https://sudoku.coach/open_graph_images/GYTv.png",
       "imageSha256": "46e95ba0337fde9f22c772d3f2ebe8d167f60d4ad0d60dc910f28e179be21fb7",
-      "deferred": "Consecutive Lines (issue 89) and seven General Difference circles labelled 3 (issue 85) remain unsupported. Preserve every Modular path and the printed XI total.",
       "description": ""
     },
     {

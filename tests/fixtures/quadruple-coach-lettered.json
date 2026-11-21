@@ -1,0 +1,60 @@
+{
+  "url": "https://sudoku.coach/en/s/ALYC",
+  "title": "Sandwich Roll ;)",
+  "coach": "SCv7_32_f2eaalqdduhj047t5vfamlb17o1e8lila6qt4qljdadhtdmao42oem2b61lq07qrsmvuug0a0hhq1d4s2btorv8offf3pnig4hsnhivv66qf8ccav09knbi4ibip5sh4pv8f5o8du482r2c3a7v9k0ga0kh3nc4s0urnm2nv6755gt306kr60sasvptf0bosnis71dirhh92kaa4604h6rp8lf19ci5i413sfotmbggcuu8iampo322545gvlmt3om1915nbis0if1m460o7k51icjp6tjs37s4sm86a70ff2eqbmdgiime48kp493r0c9ht7gtmg5mhvmouerg8f1adinmhgfqiu5lvedjq36t66bvpc21bp884slit84jd9p5jeu60c9jg9fqiu3709viuo7dh7u7f1bf9lg2v5ds04u3b0ivlds760jvaf1kf7k1mujv05sqvp3cpfj4cpv4r6f77fc60rrorud7p3jhqvepvcfu6u55s7e8kvt9uie4vfffehd1iildvgksao2o022648ig3jqvnc560dal3199h9t12i3nc0t7gd1cav3cf9calh90bvu6fv2d1hh65jgb0hm4jjlkh6b2s1mmp4s5trc0h0bedirma49opcda1nie0ge3jv8inmht51bcvav6s9bjqi135g5odadpqde3tshp7d6dm95opnb9ija2cuf6o1tmt7rpd7gme6skh8841ofjrg49s1q49oo2oomu3fft37esrgveu3jgme0cs8j1dtvch3p0jfe6f8mrd0iaepj08dvr1s7lkqlsh3rnc11tnc17p8j24esl5i6mdn156evh4li541b56bgfgb5gilten2qj52fddoco5mtvjnjjljin4m2unj5pbm0sq7aiml8fpp3pv18lcbk8o8m0820gr0kfcl094b69q457irm74j5g4lglcubr9ijdqd9slvq04d0tltfr38735ok0torv7hne5tnie52nommn8a5j1flfb5gjt98k3u9t2ifl191rir8i7761tkpmquei5mmoomkjlkrqkbejqrf6q6bf5vate89dtldc3bakhsk1b3mqlveanq7d047a4deiquvmfqldbadqqdmmointaspcan4jlaoraklek59ukr9cn89mifacprik3ciurl5l0nemqri64k5ms1r4m0s27sc639astb62t3mbon7eei0odlga14hdej2gb66jd7shvu5hkih2hkas5lbfe5rfh7sac1j7r",
+  "description": "This is a very silly puzzle, but hopefully still decently fun to play. If you avoid the temptation to fill in any digits and only use just the letters provided, you will find a secret message written along the lines. Then you can easily swap in numbers for the solve at the very end.\n\nA few notes: If you're accustomed to using ctrl+# to fill in candidates, doing so with letters might cause you problems, i.e. for me ctrl+N opens a new browser window. To get around this, just select multiple cells at once. Also, letters in quads are in a shuffled order, so trying to determine an order by ordering them isn't a strategy here.",
+  "solution": "215468379687239154439751862761895243523146987894372516356917428142683795978524631",
+  "keyDigits": "453716982",
+  "clues": [
+    {
+      "topLeft": 9,
+      "letters": "AOUG"
+    },
+    {
+      "topLeft": 12,
+      "letters": "IVGE"
+    },
+    {
+      "topLeft": 15,
+      "letters": "NEO"
+    },
+    {
+      "topLeft": 16,
+      "letters": "EVO"
+    },
+    {
+      "topLeft": 27,
+      "letters": "EVO"
+    },
+    {
+      "topLeft": 31,
+      "letters": "AEOR"
+    },
+    {
+      "topLeft": 39,
+      "letters": "NAI"
+    },
+    {
+      "topLeft": 43,
+      "letters": "IUN"
+    },
+    {
+      "topLeft": 54,
+      "letters": "AGE"
+    },
+    {
+      "topLeft": 57,
+      "letters": "NRU"
+    },
+    {
+      "topLeft": 61,
+      "letters": "VEUR"
+    }
+  ],
+  "symbolLayouts": [
+    "952168347684937521137425869465872913293516784871349256326754198519683472748291635",
+    "952168347684937521137425869465872913293516784871349256329654178516783492748291635",
+    "952168347684937521137425869465872913293516784871349256516783492329654178748291635",
+    "952168347684937521137425869465872913293516784871349256519683472326754198748291635"
+  ]
+}

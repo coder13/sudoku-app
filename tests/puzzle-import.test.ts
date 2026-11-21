@@ -270,8 +270,14 @@ test('imports Windoku regions and keeps them through sharing', async () => {
   ] }))
   assert.equal(repeated.variant?.id, 'mixed')
   assert.equal(repeated.variant.puzzle.rules?.length, 5)
+  const short = WINDOKU_REGIONS[0].slice(1)
+  const shaded = await detectPuzzle(coach({ givenConstraints: [{
+    type: 'region', segments: [{ cells: short, parameters: {} }],
+  }] }))
+  assert.equal(shaded.variant?.id, 'mixed')
+  assert.deepEqual(shaded.variant.puzzle.rules, [{ type: 'distinct-cells', cells: short }])
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'region', segments: [
-    { cells: WINDOKU_REGIONS[0].slice(1), parameters: {} },
+    { cells: [...short, short[0]], parameters: {} },
   ] }] })), /unsupported or invalid/)
 })
 
@@ -388,12 +394,22 @@ test('Coach white and black dot layers keep independent negative flags and share
   const rules = variantRuleDescriptions(imported.variant.puzzle)
   assert.ok(rules.includes('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.'))
   assert.ok(!rules.includes('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.'))
+  const numbered = await detectPuzzle(coach({ givenConstraints: [
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }] },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: { negativeConstraint: true } },
+    { type: 'ratio', segments: [{ cells: [18, 19], parameters: { ratio: 2 } }] },
+  ] }))
+  assert.deepEqual(numbered.variant?.puzzle.rules, [
+    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [7, 8], value: 2 }] },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [7, 8], value: 3 }], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [18, 19], value: 2 }] },
+  ])
   for (const constraint of [
-    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
-    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 9 } }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 1 } }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 7], parameters: {} }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 8], parameters: {} }], settings: { negativeConstraint: 'true' } },
-  ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /not supported|invalid|unsupported/)
+  ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /invalid|unsupported|must be a whole number/)
 })
 
 test('every Classic share format round-trips sparse and dense grids without player progress', async () => {
@@ -512,4 +528,26 @@ test('deterministic malformed-input stress run always resolves to a validated gr
     assert.match(imported.givens, /^[0-9]{81}$/)
     if (imported.variant) assert.ok(isPlayablePuzzle(imported.variant.id, imported.variant.puzzle))
   }
+})
+
+test('Coach joins Consecutive Line segments into runs and preserves short shaded groups', async () => {
+  const consecutive = (paths: number[][], colour = '#9a77c4') => ({
+    type: 'consecutiveLine', settings: { colour },
+    segments: paths.map(cells => ({ cells, parameters: {} })),
+  })
+  const input = coach({ givenConstraints: [
+    consecutive([[1, 2], [0, 1], [20, 30]]),
+    { type: 'region', segments: [{ cells: [3, 42], parameters: {} }], settings: { colour: '#0cd3ed' } },
+  ] })
+  const { variant } = await detectPuzzle(input)
+  assert.deepEqual(variant?.puzzle.rules, [
+    { type: 'consecutive-run', cells: [2, 1, 0], color: '#9a77c4' },
+    { type: 'consecutive-run', cells: [20, 30], color: '#9a77c4' },
+    { type: 'distinct-cells', cells: [3, 42], color: '#0cd3ed' },
+  ])
+  for (const paths of [[[0, 1], [1, 2], [2, 0]], [[0, 1], [1, 2], [1, 3]]]) {
+    await assert.rejects(detectPuzzle(coach({ givenConstraints: [consecutive(paths)] })), /must form a path/)
+  }
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [consecutive([[0, 1]], 'var(--line)')] })),
+    /unsupported settings/)
 })

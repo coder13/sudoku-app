@@ -1,3 +1,4 @@
+import { quadrupleCells } from './variants.ts'
 import { linkedDoubleArrowCells } from './sized-linked-double-arrow.ts'
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
@@ -5,7 +6,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -28,11 +29,44 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     pattern: { houses: [], cells: [...step.pair.cells],
       candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
   }
+  if (step.type === 'quadruple-overlap') {
+    const [first, second] = step.rules.map(index => rules[index])
+    if (first?.type !== 'quadruple' || (second?.type !== 'quadruple' && second?.type !== 'region-sum')) {
+      throw new Error('Invalid overlapping Quadruple hint.')
+    }
+    const at = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
+    const list = new Intl.ListFormat('en')
+    const circle = (clue: typeof first) => {
+      const [start, , , end] = quadrupleCells(clue.topLeft, size)
+      return `the ${list.format(clue.digits.map(String))} circle covering ${at(start)} through ${at(end)}`
+    }
+    const other = second.type === 'quadruple' ? circle(second)
+      : `the Region Sum line from ${at(second.cells[0])} to ${at(second.cells.at(-1)!)}`
+    const otherCells = second.type === 'quadruple' ? quadrupleCells(second.topLeft, size) : second.cells
+    const shared = quadrupleCells(first.topLeft, size).filter(cell => otherCells.includes(cell))
+    const lineRule = second.type !== 'region-sum' ? '' : second.groupByRegion
+      ? ' The line cells in each region must have the same total.'
+      : ' The line segments between region borders must have the same total.'
+    const houses = ['rows', 'columns']
+    if (!('noRegions' in grid)) houses.push('regions' in grid ? 'regions' : 'boxes')
+    if (rules.some(rule => rule.type === 'diagonal')) houses.push('marked diagonals')
+    if (rules.some(rule => rule.type === 'extra-house')) houses.push('extra regions')
+    return {
+      actions: step.actions, technique: 'sized-quadruple',
+      evidence: { variant: {
+        description: `Compare ${circle(first)} with ${other}. Both clues must use the same digits in ${list.format(shared.map(at))}.`,
+        reason: `Fit each printed digit in a separate cell.${lineRule} Keep digits distinct in shared ${list.format(houses)}. Remove each candidate that fits no arrangement of both clues.`,
+      } },
+      pattern: { houses: [], cells: step.cells,
+        candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
+    }
+  }
   const { actions, rule: index } = step
   const rule = rules[index]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
   const cells = step.type === 'anti-sum' || step.type === 'row-column-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
+    : rule.type === 'quadruple' ? [...quadrupleCells(rule.topLeft, size)]
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
@@ -47,6 +81,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     reason = 'place' in action
       ? `This is the only cell on the diagonal where ${action.place.digit} can go.`
       : 'A placed digit rules out the same candidate in the other cells on this diagonal.'
+  } else if (rule.type === 'quadruple') {
+    description = `The four cells around the circle must include ${new Intl.ListFormat('en').format(rule.digits.map(String))}.`
+    reason = 'Remove each candidate that leaves no way to fit the printed digits in separate cells while avoiding repeats in shared houses.'
   } else if (rule.type === 'killer-cages') {
     description = cage ? `The digits in this cage add up to ${cage.sum} and cannot repeat.` : 'Digits in a cage add to its total and cannot repeat.'
     reason = 'Remove the candidates that cannot be part of a set of different digits with this total.'
@@ -124,6 +161,9 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else if (rule.type === 'double-arrow') {
       locations.push(rule.ends[0], ...rule.cells, rule.ends[1])
       conflict = 'No total fits the Double Arrow line and its two end circles with different digits in each shared house.'
+    } else if (rule.type === 'quadruple') {
+      locations.push(...quadrupleCells(rule.topLeft, size))
+      conflict = 'There is no way to place all the digits in the circle in separate surrounding cells.'
     } else if (rule.type === 'killer-cages') {
       conflict = 'A cage cannot reach its total with different digits.'
     } else if ('cells' in rule) {

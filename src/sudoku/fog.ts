@@ -1,6 +1,6 @@
 import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
 import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
-import type { VariantGame } from './variants.ts'
+import { cellsShareEdge, quadrupleCells, type VariantGame } from './variants.ts'
 
 export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
@@ -61,6 +61,48 @@ function visibleMarks(marks: MarkedPairs | undefined, visible: ReadonlySet<numbe
   return pairs?.length || negative ? { ...(pairs?.length && { pairs }), ...(negative && { negative }) } : undefined
 }
 
+/** A continuous patch of revealed shading identifies cells in the same group. */
+function visibleShadedGroups(cells: readonly number[], visible: ReadonlySet<number>) {
+  const remaining = new Set(cells.filter(cell => visible.has(cell)))
+  const groups: number[][] = []
+  for (const start of remaining) {
+    const group = [start]
+    remaining.delete(start)
+    for (const cell of group) for (const neighbor of remaining) {
+      if (cellsShareEdge(cell, neighbor)) {
+        remaining.delete(neighbor)
+        group.push(neighbor)
+      }
+    }
+    if (group.length >= 2) groups.push(group)
+  }
+  return groups
+}
+
+/** The printed digits that lie entirely outside the fog. */
+function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }>, visible: ReadonlySet<number>) {
+  const cells = quadrupleCells(rule.topLeft)
+  const count = rule.digits.length
+  if (cells.every(cell => visible.has(cell))) return rule.digits
+  if (count === 1) return []
+  return rule.digits.filter((_, slot) => {
+    // The one- and two-digit layouts are vertically centered. In the
+    // three-digit layout the last digit is centered across the bottom cells.
+    if (count === 2) return visible.has(cells[slot]) && visible.has(cells[slot + 2])
+    if (count === 3 && slot === 2) return visible.has(cells[2]) && visible.has(cells[3])
+    return visible.has(cells[slot])
+  })
+}
+
+function extremaNeighbors(cell: number) {
+  return [cell >= 9 ? cell - 9 : -1, cell < 72 ? cell + 9 : -1,
+    cell % 9 > 0 ? cell - 1 : -1, cell % 9 < 8 ? cell + 1 : -1].filter(other => other >= 0)
+}
+
+function extremaVisible(cells: readonly number[], visible: ReadonlySet<number>) {
+  return cells.every(cell => visible.has(cell) && extremaNeighbors(cell).every(other => visible.has(other)))
+}
+
 /** The puzzle facts the player can use. Exact verification uses the original definition. */
 export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<number>): VariantPuzzle {
   if (visible.size === 81) return puzzle
@@ -90,11 +132,27 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const ratioTwo = visibleMarks(rule.ratioTwo, visible, completeKropki)
         return consecutive || ratioTwo ? [{ type: 'kropki', ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }) }] : []
       }
+      case 'labeled-dots': {
+        const marks = rule.marks.filter(mark => allVisible(mark.cells))
+        const negative = rule.negative && rules.every(other => other.type !== 'labeled-dots' ||
+          other.relation !== rule.relation || other.marks.every(mark => allVisible(mark.cells)))
+        return marks.length || negative ? [{ type: rule.type, relation: rule.relation, marks, ...(negative && { negative }) }] : []
+      }
       case 'xv': {
         const five = visibleMarks(rule.five, visible, completeXv)
         const ten = visibleMarks(rule.ten, visible, completeXv)
         return five || ten ? [{ type: 'xv', ...(five && { five }), ...(ten && { ten }) }] : []
       }
+      case 'lettered-quadruples': {
+        const clues = rule.clues.filter(clue => allVisible(quadrupleCells(clue.topLeft)))
+        return clues.length ? [{ ...rule, clues }] : []
+      }
+      case 'inside-grid': return allVisible(rule.rows.flat()) ? [rule] : []
+      case 'distinct-cells':
+        return allVisible(rule.cells) ? [rule] : visibleShadedGroups(rule.cells, visible).map(cells => ({ ...rule, cells }))
+      case 'consecutive-run':
+        if (rule.fromBulb) return allVisible(rule.cells) ? [rule] : []
+        return visiblePaths(rule.cells, visible).map(cells => ({ ...rule, cells }))
       case 'whispers':
       case 'modular':
       case 'entropic':
@@ -106,12 +164,28 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       }
       case 'diagonal':
         return allVisible(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? 10 * i : 8 * (i + 1))) ? [rule] : []
-      case 'quadruple':
-        return allVisible([rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10]) ? [rule] : []
+      case 'quadruple': case 'quadruple-sum': {
+        const digits = visibleQuadrupleDigits(rule, visible)
+        // Each exposed digit must still occur somewhere in the four cells.
+        return digits.length ? [{ ...rule, digits }] : []
+      }
       case 'inequality':
         return allVisible([rule.less, rule.greater]) ? [rule] : []
+      case 'minimum': case 'maximum': {
+        if (extremaVisible(rule.cells, visible)) return [rule]
+        const skipped = rule.ignoreMarkedNeighbors ? new Set(rule.cells) : undefined
+        const minimum = rule.type === 'minimum'
+        // A comparison needs both cells visible, including any mark that exempts their shared edge.
+        return rule.cells.flatMap(cell => visible.has(cell)
+          ? extremaNeighbors(cell).filter(other => visible.has(other) && !skipped?.has(other)).map(other => ({
+              type: 'inequality', less: minimum ? cell : other, greater: minimum ? other : cell,
+            }))
+          : [])
+      }
       case 'arrow':
         return visible.has(rule.circle) && allVisible(rule.cells) ? [rule] : []
+      case 'pill-arrow':
+        return allVisible(rule.pill) && allVisible(rule.cells) ? [rule] : []
       case 'non-consecutive':
         return !rule.except || rule.except.every(allVisible) ? [rule] : []
       case 'anti-knight':
@@ -132,7 +206,7 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
 }
 
 const lineFragments = {
-  between: 'Between line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
+  between: 'Between line', lockout: 'Lockout Line', 'consecutive-run': 'Consecutive Line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
   renban: 'Renban line', 'region-sum': 'Region Sum line', thermometer: 'thermometer', whispers: 'Whispers line',
 } as const
 
@@ -153,17 +227,38 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
             ? `cage total ${sum}, outline continues under fog` : 'cage outline continues under fog')
         }
         break
-      case 'quadruple': {
-        const cell = rule.topLeft
-        addFragment([cell, cell + 1, cell + 9, cell + 10], 'part of a Quadruple clue')
+      case 'quadruple': case 'quadruple-sum':
+        if (!visibleQuadrupleDigits(rule, visible).length) {
+          addFragment(quadrupleCells(rule.topLeft), rule.type === 'quadruple-sum' ? 'part of a Quad-Arrows clue' : 'part of a Quadruple clue')
+        }
         break
-      }
-      case 'between': case 'entropic': case 'modular': case 'palindrome':
+      case 'between': case 'lockout': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
         break
+      case 'lettered-quadruples':
+        for (const clue of rule.clues) addFragment(quadrupleCells(clue.topLeft), 'part of a lettered Quadruple')
+        break
+      case 'inside-grid':
+        addFragment(rule.rows.flat(), 'part of an Inside Grid')
+        break
+      case 'distinct-cells':
+        addFragment(rule.cells, 'part of a shaded group')
+        break
+      case 'pill-arrow':
+        addFragment([...rule.pill, ...rule.cells], 'part of a Pill Arrow clue')
+        break
       case 'arrow':
         addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')
+        break
+      case 'minimum': case 'maximum':
+        if (!extremaVisible(rule.cells, visible)) {
+          const name = rule.type === 'minimum' ? 'Minimum mark' : 'Maximum mark'
+          for (const cell of rule.cells) if (visible.has(cell)) labels[cell].push(name)
+        }
+        break
+      case 'labeled-dots':
+        for (const mark of rule.marks) addFragment(mark.cells, rule.relation === 'ratio' ? 'part of a black dot' : 'part of a white dot')
         break
       case 'kropki':
         for (const pair of rule.consecutive?.pairs ?? []) addFragment(pair, 'part of a white dot')

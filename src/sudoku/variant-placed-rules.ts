@@ -1,6 +1,7 @@
-import type { VariantPuzzle } from './engine.ts'
+import { permitsLetteredQuadruples } from './lettered-quadruples.ts'
+import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { regionIndex } from './region-sum.ts'
-import { quadrupleCells } from './variants.ts'
+import { isQuadrupleRule, quadrupleCells } from './variants.ts'
 
 const ALL_DIGITS = 511
 const digitMask = (digit: number) => 1 << (digit - 1)
@@ -26,16 +27,44 @@ function thermometerSupport(cells: readonly number[], values: string) {
   return masks
 }
 
+const quadrupleSums = (() => {
+  const assignments: number[][] = []
+  for (let a = 1; a <= 7; a++) for (let b = 1; b <= 8 - a; b++) for (let c = 1; c <= 9 - a - b; c++) {
+    for (let cell = 0; cell < 4; cell++) {
+      const digits = [a, b, c]
+      digits.splice(cell, 0, a + b + c)
+      assignments.push(digits)
+    }
+  }
+  return assignments
+})()
+
 /** Check the printed multiplicities and the primary houses shared by the four cells. */
-function quadrupleSupport(cells: readonly number[], required: readonly number[], values: string, regions: VariantPuzzle['regions']) {
+function quadrupleSupport(cells: readonly number[], required: readonly number[], values: string, regions: VariantPuzzle['regions'], isSum: boolean) {
   const placed = cells.map(cell => Number(values[cell]))
   const region = cells.map(cell => regionIndex(cell, regions))
   const peers = cells.map((cell, i) => cells.flatMap((other, j) => i !== j && (
-    Math.floor(cell / 9) === Math.floor(other / 9) || cell % 9 === other % 9 || region[i] === region[j]
+    Math.floor(cell / 9) === Math.floor(other / 9) || cell % 9 === other % 9 || region[i] >= 0 && region[i] === region[j]
   ) ? [j] : []))
   const support = [0, 0, 0, 0]
 
   if (placed.some((digit, i) => digit && peers[i].some(other => placed[other] === digit))) return
+
+  if (isSum) {
+    for (const digits of quadrupleSums) {
+      if (placed.some((digit, i) => digit && digit !== digits[i]) ||
+        digits.some((digit, i) => peers[i].some(other => digits[other] === digit))) continue
+      const remaining = [...digits]
+      if (!required.every(digit => {
+        const index = remaining.indexOf(digit)
+        if (index < 0) return false
+        remaining.splice(index, 1)
+        return true
+      })) continue
+      for (const [i, digit] of digits.entries()) support[i] |= digitMask(digit)
+    }
+    return support[0] ? support : undefined
+  }
 
   function assign(index: number, used: number) {
     if (index === required.length) {
@@ -61,9 +90,12 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
   return support[0] ? support : undefined
 }
 
+type PlacedRule = Extract<VariantRule, { type: 'parity' | 'thermometer' | 'inside-grid' | 'consecutive-run' | 'quadruple' | 'quadruple-sum' | 'lettered-quadruples' }>
+
 /** Local restrictions from placed digits. Other rules still contribute their own checks. */
 export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const rules = puzzle?.rules?.filter(rule => rule.type === 'parity' || rule.type === 'thermometer' || rule.type === 'quadruple')
+  const rules = puzzle?.rules?.filter((rule): rule is PlacedRule => rule.type === 'parity' || rule.type === 'thermometer' || rule.type === 'inside-grid' || rule.type === 'lettered-quadruples' ||
+    rule.type === 'consecutive-run' && rule.fromBulb || isQuadrupleRule(rule))
   if (!rules?.length) return
   const allowed = Array<number>(81).fill(ALL_DIGITS)
   const conflicts = new Set<number>()
@@ -76,9 +108,42 @@ export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values
       }
       continue
     }
+    if (rule.type === 'lettered-quadruples') {
+      if (!permitsLetteredQuadruples(rule.clues, values)) {
+        for (const clue of rule.clues) for (const cell of quadrupleCells(clue.topLeft)) {
+          if (values[cell] !== '0') conflicts.add(cell)
+        }
+      }
+      continue
+    }
+    if (rule.type === 'inside-grid') {
+      const cells = rule.rows.flat()
+      const placed = cells.filter(cell => values[cell] !== '0')
+      const digits = new Set(placed.map(cell => Number(values[cell])))
+      if (digits.size > rule.rows.length) for (const cell of placed) conflicts.add(cell)
+      else if (digits.size === rule.rows.length) {
+        const mask = [...digits].reduce((mask, digit) => mask | digitMask(digit), 0)
+        for (const cell of cells) if (values[cell] === '0') allowed[cell] &= mask
+      }
+      continue
+    }
+    if (rule.type === 'consecutive-run') {
+      const placed = rule.cells.findIndex(cell => values[cell] !== '0')
+      const first = placed === -1 ? 0 : Number(values[rule.cells[placed]]) - placed
+      const max = 10 - rule.cells.length
+      const invalid = placed !== -1 && (first < 1 || first > max ||
+        rule.cells.some((cell, i) => values[cell] !== '0' && Number(values[cell]) !== first + i))
+      for (const [i, cell] of rule.cells.entries()) {
+        if (invalid && values[cell] !== '0') conflicts.add(cell)
+        else if (!invalid && values[cell] === '0') {
+          allowed[cell] &= placed === -1 ? ((1 << max) - 1) << i : digitMask(first + i)
+        }
+      }
+      continue
+    }
     const cells = rule.type === 'thermometer' ? rule.cells : quadrupleCells(rule.topLeft)
     const support = rule.type === 'thermometer'
-      ? thermometerSupport(cells, values) : quadrupleSupport(cells, rule.digits, values, puzzle?.regions)
+      ? thermometerSupport(cells, values) : quadrupleSupport(cells, rule.digits, values, puzzle?.regions, rule.type === 'quadruple-sum')
     for (const [i, cell] of cells.entries()) {
       if (!support && values[cell] !== '0') conflicts.add(cell)
       else if (support && values[cell] === '0') allowed[cell] &= support[i]

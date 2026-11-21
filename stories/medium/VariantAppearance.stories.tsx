@@ -63,6 +63,15 @@ export const Jigsaw: Story = {
   } } },
 }
 
+export const LockoutLines: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '000000902' + '0'.repeat(72),
+    rules: [{ type: 'lockout', cells: [6, 7, 8] }, { type: 'lockout', cells: [9, 30, 51] }],
+  }, 'Lockout Lines Sudoku grid'),
+  parameters: { gridWidth: 290 },
+}
+
 export const BetweenLines: Story = {
   args: candidateGrid(betweenNewman.puzzle as VariantPuzzle, 'Between Lines Sudoku grid'),
   parameters: { docs: { description: { story: 'Between, the Lines by Philip Newman. Two outlined circles bound each independent path. Every interior digit is strictly between the endpoint digits; interior digits can repeat when the other rules allow it.' } } },
@@ -121,6 +130,15 @@ export const RegionSumClosedAndSeparated: Story = {
     { type: 'region-sum', cells: [28, 30, 38], groupByRegion: true },
   ] }, 'Closed Region Sum path and combined region visits'),
   parameters: { docs: { description: { story: 'The first clue keeps its closing edge. The second clue combines its two visits to the same region. Dashed connectors skip unmarked cells; dots identify the logical cells.' } } },
+}
+
+export const ConsecutiveLinesAndShading: Story = {
+  args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'consecutive-run', cells: [60, 61], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [68, 77, 78, 79, 80], color: '#0cd3ed' },
+    { type: 'quadruple', topLeft: 68, digits: [4, 6] },
+  ] }, 'Consecutive Lines with a shaded group and a Quadruple'),
+  parameters: { gridWidth: 290 },
 }
 
 export const CloneShapes: Story = {
@@ -185,4 +203,13 @@ export const SkyscrapersCompact: Story = { ...Skyscrapers, parameters: { ...Skys
 export const AllOutsideFamilies: Story = {
   args: candidateGrid(skyscrapersMixed.puzzle as VariantPuzzle, 'Jigsaw with all four outside clue families'),
   parameters: { gridWidth: 290, docs: { description: { story: 'S/X/Sk prefixes and the visible legend preserve every outside total and visibility count. Little Killer arrows retain their separate diagonal meaning.' } } },
+}
+
+export const PillArrows: Story = {
+  args: candidateGrid({
+    version: 1,
+    givens: '000000012000000008' + '0'.repeat(63),
+    rules: [{ type: 'pill-arrow', pill: [7, 8], cells: [16, 17] }],
+  }, 'Pill Arrow Sudoku grid'),
+  parameters: { gridWidth: 290 },
 }

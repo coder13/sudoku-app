@@ -1,3 +1,4 @@
+import { sizedQuadrupleState } from './sized-quadruple.ts'
 import { fogView, playVariantPuzzle } from './fog.ts'
 import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-linked-double-arrow.ts'
 import { STARTER } from './formats.ts'
@@ -6,7 +7,8 @@ import { variantPlacedRuleState } from './variant-placed-rules.ts'
 import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
-import { betweenState } from './between.ts'
+import { endpointLineState } from './between.ts'
+import { pillArrowState } from './pill-arrow.ts'
 import { whispersState } from './whispers.ts'
 import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
@@ -256,7 +258,7 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (ar === br || ac === bc) return true
   if (sizedRules?.some(rule => rule.type === 'diagonal' && (rule.diagonal === 'main'
     ? ar === ac && br === bc : ar + ac === grid.size - 1 && br + bc === grid.size - 1))) return true
-  if (puzzle?.regions?.type === 'jigsaw') {
+  if (puzzle?.regions && puzzle.regions.type !== 'boxes') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
   if (sizedRules?.some(rule => rule.type === 'extra-house' && rule.cells.includes(a) && rule.cells.includes(b))) return true
@@ -278,10 +280,11 @@ export function valuesOf(game: Game): string {
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
   const rules = puzzle?.rules ?? sizedRules
   const states = [
-    globalEntropyState(puzzle, values), betweenState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
+    globalEntropyState(puzzle, values), endpointLineState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
-    variantPlacedRuleState(puzzle, values), sizedArrowState(rules, values, grid.size),
+    variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
+    sizedQuadrupleState(sizedRules, values, grid.size),
   ]
     .filter(state => state !== undefined)
   const result = states[0]
@@ -742,7 +745,7 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
   }
   const houses = grid ? DIGITS.slice(0, size).flatMap(digit => [
     gridHouseCells({ row: digit - 1 }, grid), gridHouseCells({ column: digit - 1 }, grid), gridHouseCells({ box: digit - 1 }, grid),
-  ]) : variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
+  ]) : variant?.regions && variant.regions.type !== 'boxes' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
   const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]

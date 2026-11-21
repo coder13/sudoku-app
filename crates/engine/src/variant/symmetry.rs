@@ -138,7 +138,7 @@ impl SquareTransform {
 
     fn puzzle(self, puzzle: &mut VariantPuzzle) {
         puzzle.givens = self.grid(puzzle.givens);
-        if let RegionLayout::Jigsaw { regions } = &mut puzzle.regions {
+        if let RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } = &mut puzzle.regions {
             for region in &mut *regions {
                 self.unordered(region);
             }
@@ -192,13 +192,59 @@ impl SquareTransform {
                 };
             }
             ExtraHouse { cells } | Parity { cells, .. } => self.unordered(cells),
+            DistinctCells { cells, color } => {
+                self.unordered(cells);
+                *color = None;
+            }
+            ConsecutiveRun { cells, color, from_bulb } => {
+                self.path(cells);
+                if !*from_bulb && cells[0] > cells[cells.len() - 1] {
+                    cells.reverse();
+                }
+                *color = None;
+            }
+            InsideGrid { rows } => {
+                for row in rows.iter_mut() {
+                    self.path(row);
+                }
+                // The lowest-index corner comes first. Swapping the inner
+                // rows and columns leaves their common-set rule unchanged.
+                let last = rows.len() - 1;
+                if rows[last][0].min(rows[last][last]) < rows[0][0].min(rows[0][last]) {
+                    rows.reverse();
+                }
+                if rows[0][last] < rows[0][0] {
+                    for row in rows.iter_mut() {
+                        row.reverse();
+                    }
+                }
+                if rows[1][0] < rows[0][1] {
+                    for i in 1..rows.len() {
+                        let (top, bottom) = rows.split_at_mut(i);
+                        for (j, row) in top.iter_mut().enumerate() {
+                            std::mem::swap(&mut row[i], &mut bottom[0][j]);
+                        }
+                    }
+                }
+            }
             KillerCages { cages, .. } => {
                 for cage in &mut *cages {
                     self.unordered(&mut cage.cells);
                 }
                 cages.sort_unstable();
             }
-            Quadruple { top_left, digits } => {
+            LetteredQuadruples { clues } => {
+                for clue in clues.iter_mut() {
+                    let mut cells = super::quadruple::cells(clue.top_left).expect("validated circle");
+                    self.unordered(&mut cells);
+                    clue.top_left = cells[0];
+                    let mut letters: Vec<_> = clue.letters.bytes().collect();
+                    letters.sort_unstable();
+                    clue.letters = String::from_utf8(letters).expect("validated letters");
+                }
+                clues.sort_unstable();
+            }
+            Quadruple { top_left, digits } | QuadrupleSum { top_left, digits } => {
                 let mut cells = super::quadruple::cells(*top_left).expect("validated Quadruple");
                 self.unordered(&mut cells);
                 *top_left = cells[0];
@@ -229,6 +275,13 @@ impl SquareTransform {
                 self.markers(consecutive);
                 self.markers(ratio_two);
             }
+            Minimum { cells, .. } | Maximum { cells, .. } => self.unordered(cells),
+            LabeledDots { marks, .. } => {
+                for mark in &mut *marks {
+                    self.unordered(&mut mark.cells);
+                }
+                marks.sort_unstable();
+            }
             Xv { five, ten } => {
                 self.markers(five);
                 self.markers(ten);
@@ -236,6 +289,10 @@ impl SquareTransform {
             AdjacentTotal { cells, .. } => self.unordered(cells),
             Arrow { circle, cells } => {
                 *circle = self.cell(*circle);
+                self.path(cells);
+            }
+            PillArrow { pill, cells, .. } => {
+                self.path(pill);
                 self.path(cells);
             }
             Palindrome { cells, segments }
@@ -254,6 +311,7 @@ impl SquareTransform {
             | Entropic { cells }
             | Modular { cells }
             | Whispers { cells, .. }
+            | Lockout { cells }
             | Between { cells } => self.path(cells),
             Sandwich {
                 cells, direction, ..

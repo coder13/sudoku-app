@@ -8,7 +8,7 @@ use std::{
 
 use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, cell_mask};
 use crate::{
-    CELLS, DIGITS,
+    CELLS, DIGITS, SizedDotRelation,
     hints::{digit_bit, digits},
 };
 
@@ -157,6 +157,8 @@ pub(super) struct ParityClue {
 pub(super) struct PairCompiler {
     clues: Vec<PairClue>,
     kropki: Markers,
+    labeled_marked: [BTreeSet<[usize; 2]>; 2],
+    labeled_negative: [Option<usize>; 2],
     xv: Markers,
 }
 
@@ -197,7 +199,11 @@ impl PairCompiler {
                 .ok_or(invalid)
         };
         let source = Arc::new(RuleSource {
-            id: rule.id(),
+            id: match rule {
+                PuzzleRule::Minimum { .. } | PuzzleRule::Maximum { .. } => "inequality",
+                PuzzleRule::LabeledDots { .. } => "kropki",
+                _ => rule.id(),
+            },
             indices: vec![index],
         });
         match rule {
@@ -263,6 +269,21 @@ impl PairCompiler {
                 valid_cells(&cells, 2..=2)?;
                 self.clues.push(pair(&source, cells, |a, b| a < b));
             }
+            PuzzleRule::Minimum { cells, ignore_marked_neighbors }
+            | PuzzleRule::Maximum { cells, ignore_marked_neighbors } => {
+                let marked = cell_mask(cells).filter(|&mask| mask != 0).ok_or(invalid)?;
+                let minimum = matches!(rule, PuzzleRule::Minimum { .. });
+                for [a, b] in orthogonal_pairs() {
+                    let a_marked = marked & (1u128 << a) != 0;
+                    let b_marked = marked & (1u128 << b) != 0;
+                    if a_marked && (!*ignore_marked_neighbors || !b_marked) {
+                        self.clues.push(pair(&source, if minimum { [a, b] } else { [b, a] }, |a, b| a < b));
+                    }
+                    if b_marked && (!*ignore_marked_neighbors || !a_marked) {
+                        self.clues.push(pair(&source, if minimum { [b, a] } else { [a, b] }, |a, b| a < b));
+                    }
+                }
+            }
             PuzzleRule::Kropki {
                 consecutive,
                 ratio_two,
@@ -274,6 +295,34 @@ impl PairCompiler {
                     KROPKI,
                     invalid,
                 )?;
+            }
+            PuzzleRule::LabeledDots { relation, marks, negative } => {
+                if marks.len() > 144 || marks.is_empty() && !negative {
+                    return Err(invalid);
+                }
+                let ratio = *relation == SizedDotRelation::Ratio;
+                let kind = usize::from(ratio);
+                if *negative {
+                    self.labeled_negative[kind].get_or_insert(index);
+                }
+                for mark in marks {
+                    let [a, b] = mark.cells;
+                    valid_cells(&mark.cells, 2..=2)?;
+                    if !(a.abs_diff(b) == 9 || a / 9 == b / 9 && a.abs_diff(b) == 1)
+                        || !(if ratio { 2..=9 } else { 1..=8 }).contains(&mark.value)
+                    {
+                        return Err(invalid);
+                    }
+                    let cells = [a.min(b), a.max(b)];
+                    self.labeled_marked[kind].insert(cells);
+                    self.clues.push(pair(&source, cells, |x, y| {
+                        if ratio {
+                            u16::from(x.max(y)) == u16::from(mark.value) * u16::from(x.min(y))
+                        } else {
+                            x.abs_diff(y) == mark.value
+                        }
+                    }));
+                }
             }
             PuzzleRule::Xv { five, ten } => {
                 add_markers(&mut self.xv, index, [five, ten], XV, invalid)?;
@@ -339,6 +388,13 @@ impl PairCompiler {
     pub fn finish(mut self, puzzle: &mut CompiledVariant) {
         puzzle.kropki_marks = finish_markers(&mut self.clues, self.kropki, "kropki", KROPKI);
         finish_markers(&mut self.clues, self.xv, "xv", XV);
+        for (kind, rule) in self.labeled_negative.into_iter().enumerate() {
+            let Some(index) = rule else { continue };
+            let source = Arc::new(RuleSource { id: "kropki", indices: vec![index] });
+            for cells in orthogonal_pairs().filter(|edge| !self.labeled_marked[kind].contains(edge)) {
+                self.clues.push(pair(&source, cells, |a, b| !KROPKI[kind](a, b)));
+            }
+        }
         let mut allowed = BTreeMap::<_, Allowed>::new();
         for clue in &self.clues {
             // The chess rules already contribute to the exact solver's peer table.

@@ -1,7 +1,7 @@
-use super::{CompiledVariant, VariantDefinitionError};
+use super::{CompiledVariant, VariantDefinitionError, cell_mask, search::SearchPosition};
 use crate::{
     DIGITS,
-    hints::{digit_bit, digits},
+    hints::{digit_bit, digits, layouts_in_houses},
 };
 
 /// Four cells around an internal grid intersection, in row-major order.
@@ -15,8 +15,8 @@ pub(super) struct Quadruple {
     pub(super) rule_index: usize,
     pub(super) cells: [usize; 4],
     digits: Vec<u8>,
-    peers: [u8; 4],
-    placements: Vec<[u16; 4]>,
+    pub(super) is_sum: bool,
+    inner: QuadrupleSupport,
 }
 
 impl Quadruple {
@@ -25,6 +25,7 @@ impl Quadruple {
         rule_index: usize,
         top_left: usize,
         digits: &[u8],
+        is_sum: bool,
         enforce_regions: bool,
     ) -> Result<Self, VariantDefinitionError> {
         let invalid = VariantDefinitionError::InvalidRule(rule_index);
@@ -41,16 +42,19 @@ impl Quadruple {
         });
         let mut digits = digits.to_vec();
         digits.sort_unstable();
-        let mut placements = Vec::new();
-        place_required(&digits, [0; 4], &peers, &mut placements);
-        placements.sort_unstable();
-        placements.dedup();
+        let inner = if is_sum {
+            let mut placements = Vec::new();
+            sum_placements(&digits, &peers, &mut placements);
+            QuadrupleSupport::from_placements(peers, placements)
+        } else {
+            QuadrupleSupport::new(&digits, peers)
+        };
         Ok(Self {
             rule_index,
             cells,
             digits,
-            peers,
-            placements,
+            is_sum,
+            inner,
         })
     }
 
@@ -65,18 +69,48 @@ impl Quadruple {
     }
 
     pub(super) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
+        self.inner.support(domains.map(|domain| domain & DIGITS))
+    }
+
+    pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
+        let mut supported = [0; 4];
+        self.inner.scan::<true, true>(domains.map(|domain| domain & DIGITS), &mut supported);
+        supported
+    }
+
+    pub(super) fn has_assignment(&self, domains: [u16; 4]) -> bool {
+        self.inner
+            .has_assignment(domains.map(|domain| domain & DIGITS))
+    }
+}
+
+/// Candidate support for a multiset of printed digits in four cells.
+#[derive(Clone, Debug)]
+pub(crate) struct QuadrupleSupport {
+    peers: [u8; 4],
+    placements: Vec<[u16; 4]>,
+}
+
+impl QuadrupleSupport {
+    pub(crate) fn new(digits: &[u8], peers: [u8; 4]) -> Self {
+        let mut placements = Vec::new();
+        place_required(digits, [0; 4], &peers, &mut placements);
+        Self::from_placements(peers, placements)
+    }
+
+    fn from_placements(peers: [u8; 4], mut placements: Vec<[u16; 4]>) -> Self {
+        placements.sort_unstable();
+        placements.dedup();
+        Self { peers, placements }
+    }
+
+    pub(crate) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
         let mut supported = [0; 4];
         self.scan::<true, false>(domains, &mut supported);
         supported
     }
 
-    pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
-        let mut supported = [0; 4];
-        self.scan::<true, true>(domains, &mut supported);
-        supported
-    }
-
-    pub(super) fn has_assignment(&self, domains: [u16; 4]) -> bool {
+    pub(crate) fn has_assignment(&self, domains: [u16; 4]) -> bool {
         self.scan::<false, false>(domains, &mut [0; 4])
     }
 
@@ -89,7 +123,11 @@ impl Quadruple {
         for placement in &self.placements {
             let restricted = std::array::from_fn(|cell| {
                 let required = placement[cell];
-                domains[cell] & if required == 0 { DIGITS } else { required }
+                if required == 0 {
+                    domains[cell]
+                } else {
+                    domains[cell] & required
+                }
             });
             if assign::<ALL, ENTROPY>(restricted, 0b1111, &self.peers, 0, supported) {
                 if !ALL || *supported == domains {
@@ -99,6 +137,33 @@ impl Quadruple {
             }
         }
         found
+    }
+}
+
+pub(super) fn satisfies_sum(digits: [u8; 4]) -> bool {
+    2 * digits.into_iter().max().unwrap() == digits.into_iter().sum::<u8>()
+}
+
+fn sum_placements(required: &[u8], peers: &[u8; 4], placements: &mut Vec<[u16; 4]>) {
+    // Three positive addends must have a single-digit sum.
+    for a in 1..=7 {
+        for b in 1..=8 - a {
+            for c in 1..=9 - a - b {
+                for sum_cell in 0..4 {
+                    let mut assignment = [a, b, c, a + b + c];
+                    assignment[sum_cell..].rotate_right(1);
+                    if (0..4).any(|i| (0..i).any(|j| peers[i] & (1 << j) != 0 && assignment[i] == assignment[j])) {
+                        continue;
+                    }
+                    let mut unclaimed = assignment;
+                    if required.iter().all(|digit| {
+                        unclaimed.iter_mut().find(|other| **other == *digit).map(|other| *other = 0).is_some()
+                    }) {
+                        placements.push(assignment.map(digit_bit));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -187,6 +252,65 @@ fn assign<const ALL: bool, const ENTROPY: bool>(
     found
 }
 
+impl CompiledVariant {
+    /// In exact verification, one digit must fit every house and every
+    /// occurrence printed by the circles. Candidate and hint APIs never use
+    /// these implicit removals as part of the player's starting position.
+    pub(super) fn restrict_quadruple_layouts(&self, position: &mut SearchPosition) -> bool {
+        let houses: Vec<_> = self
+            .search_houses
+            .iter()
+            .map(|&index| self.house_masks[index])
+            .collect();
+        for digit in 1..=9 {
+            let clues: Vec<_> = self
+                .quadruples
+                .iter()
+                .filter_map(|clue| {
+                    let count = u32::from(clue.occurrences(digit));
+                    (count != 0).then(|| (cell_mask(&clue.cells).unwrap(), count))
+                })
+                .collect();
+            if clues.is_empty() {
+                continue;
+            }
+            let bit = digit_bit(digit);
+            let (mut allowed, mut fixed) = (0, 0);
+            for (cell, &placed) in position.board.iter().enumerate() {
+                if placed == digit {
+                    fixed |= 1u128 << cell;
+                } else if position.masks[cell] & bit != 0 {
+                    allowed |= 1u128 << cell;
+                }
+            }
+            allowed |= fixed;
+            let (mut possible, mut forced) = (0, allowed);
+            for layout in layouts_in_houses(allowed, &houses, &self.peers) {
+                if fixed & !layout == 0
+                    && clues
+                        .iter()
+                        .all(|&(scope, count)| (layout & scope).count_ones() >= count)
+                {
+                    possible |= layout;
+                    forced &= layout;
+                }
+            }
+            if possible == 0 {
+                return false;
+            }
+            for (cell, mask) in position.masks.iter_mut().enumerate() {
+                let site = 1u128 << cell;
+                if forced & site != 0 {
+                    *mask &= bit;
+                } else if possible & site == 0 {
+                    *mask &= !bit;
+                }
+            }
+        }
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,13 +320,15 @@ mod tests {
     fn support_matches_direct_assignment_counts_and_house_rules() {
         let puzzle = VariantPuzzle::classic([0; 81]).compile().unwrap();
         let mut random = Random::from_seed(9124);
-        for (top_left, required) in [
-            (0, &[1][..]),
-            (19, &[2, 4, 7, 9]),
-            (21, &[2, 2, 6]),
-            (0, &[2, 2]),
+        for (top_left, required, is_sum) in [
+            (0, &[1][..], false),
+            (19, &[2, 4, 7, 9], false),
+            (21, &[2, 2, 6], false),
+            (0, &[2, 2], false),
+            (0, &[1, 2], true),
+            (21, &[2, 2], true),
         ] {
-            let clue = Quadruple::compile(&puzzle, 0, top_left, required, true).unwrap();
+            let clue = Quadruple::compile(&puzzle, 0, top_left, required, is_sum, true).unwrap();
             let mut counts = [0; 10];
             for &digit in required {
                 counts[usize::from(digit)] += 1;
@@ -236,7 +362,9 @@ mod tests {
                                                 .any(|peer| peer == clue.cells[second])
                                     })
                                 });
-                                if repeats_in_house {
+                                if repeats_in_house || is_sum && !(0..4).any(|target| {
+                                    placed[target] == (0..4).filter(|&i| i != target).map(|i| placed[i]).sum::<u8>()
+                                }) {
                                     continue;
                                 }
                                 let mut present = [0; 10];
