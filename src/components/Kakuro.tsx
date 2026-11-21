@@ -10,7 +10,7 @@ function describeCandidates(mask: number) {
   return candidateList.format(digits.filter(digit => mask & (1 << (digit - 1))).map(String))
 }
 
-const kakuro: NumberGameConfig<KakuroEntry> = {
+export const kakuro = {
   game: 'kakuro',
   name: 'Kakuro',
   rules: 'Fill each white cell with a digit from 1 to 9. Use each digit only once per run. The digits must add up to the clue.',
@@ -58,7 +58,7 @@ const kakuro: NumberGameConfig<KakuroEntry> = {
       </details>,
     })),
   }),
-}
+} satisfies NumberGameConfig<KakuroEntry>
 
 export function KakuroDifficultyPage() {
   return <NumberGameDifficulty config={kakuro} />

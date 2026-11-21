@@ -5,7 +5,7 @@ import type { NumberPuzzleDifficulty } from './catalog.ts'
 import {
   decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, generatedNumberToken, RECENT_GENERATED_PUZZLE_LIMIT,
 } from './generated.ts'
-import { readCalcudokuSessions, readRequest, transactionDone, type GeneratedIdentity } from './generated-storage.ts'
+import { readGeneratedSessions, readRequest, transactionDone, type GeneratedIdentity } from './generated-storage.ts'
 import { olderCalcudoku, retrySeed, selectCalcudokuPlay, type GenerationOptions } from './generation.ts'
 
 type Layout = {
@@ -153,7 +153,7 @@ export async function generateIndexedCalcudoku(
     for (let attempt = 0; attempt < 3; attempt++) {
       const read = db.transaction(checkpointStore)
       const checkpoint: GeneratedIdentity | undefined = await readRequest(read.objectStore(checkpointStore).get(checkpointKey))
-      const { reset, sessions } = await readCalcudokuSessions(checkpoint)
+      const { reset, sessions } = await readGeneratedSessions('calcudoku', checkpoint)
       const additions = summarizeLayouts(sessions)
       const last = sessions.at(-1)
       const rebuild = !checkpoint || reset
@@ -173,7 +173,7 @@ export async function generateIndexedCalcudoku(
       const selection = selectCalcudokuPlay(request, recent, history)
       let recipe = selection.recipe
       if (!recipe) {
-        const { sessions: history } = await readCalcudokuSessions()
+        const { sessions: history } = await readGeneratedSessions('calcudoku')
         recipe = olderCalcudoku(difficulty, history.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
       }
       await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))

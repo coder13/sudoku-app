@@ -17,7 +17,7 @@ import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { calcudokuCatalog } from '../../src/calcudoku/catalog'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
 import { hidatoCatalog } from '../../src/hidato/catalog'
-import type { NumberGame } from '../../src/components/NumberPuzzle'
+import type { NumberGame } from '../../src/number-puzzles/catalog'
 
 export const noop = () => {}
 
@@ -60,6 +60,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     const syncStep = createRoute({ getParentRoute: () => sync, path: '$step' })
     const importPuzzle = createRoute({ getParentRoute: () => root, path: 'import', component: ImportRoute.options.component })
     const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
+    const browse = createRoute({ getParentRoute: () => puzzles, path: 'browse' })
     const standalone = { standalonePuzzlePage: true }
     const gameTypes = createRoute({
       getParentRoute: () => puzzles, path: 'games',
@@ -103,7 +104,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     return createRouter({
       routeTree: root.addChildren([
         index, settings.addChildren([settingsSection]), sync.addChildren([syncStep]), importPuzzle,
-        puzzles.addChildren([newPuzzle.addChildren([difficulty]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
+        puzzles.addChildren([newPuzzle.addChildren([difficulty]), browse, gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
       ]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,

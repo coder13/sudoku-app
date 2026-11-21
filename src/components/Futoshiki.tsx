@@ -3,7 +3,7 @@ import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engi
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 import './futoshiki.css'
 
-const futoshiki: NumberGameConfig<FutoshikiEntry> = {
+export const futoshiki = {
   game: 'futoshiki',
   name: 'Futoshiki',
   rules: 'Use every number from 1 to the grid size once in each row and column. Each arrow points to the smaller number.',
@@ -48,7 +48,7 @@ const futoshiki: NumberGameConfig<FutoshikiEntry> = {
       })),
     }
   },
-}
+} satisfies NumberGameConfig<FutoshikiEntry>
 
 export function FutoshikiDifficultyPage() {
   return <NumberGameDifficulty config={futoshiki} />

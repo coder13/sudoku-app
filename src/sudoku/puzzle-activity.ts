@@ -1,3 +1,4 @@
+import type { NumberGame, NumberPuzzleDifficulty } from '../number-puzzles/catalog.ts'
 import { isSolved, type Game } from './game.ts'
 import type { Difficulty } from './engine.ts'
 import { gameVariantId, type GameVariantId } from './new-puzzle.ts'
@@ -12,14 +13,18 @@ export function lastPlayed(game: Game, storage?: Storage) {
   } catch { return Number.isFinite(new Date(fallback).getTime()) ? fallback : 0 }
 }
 
-export function inProgress(games: readonly Game[], storage?: Storage) {
+export function activeHistory(games: readonly Game[], storage?: Storage) {
   return games.filter(game => !game.archived && !game.savedForLater && !isSolved(game))
     .map(game => ({ game, playedAt: lastPlayed(game, storage) }))
     .sort((a, b) => b.playedAt - a.playedAt || b.game.created - a.game.created || a.game.id.localeCompare(b.game.id))
-    .map(({ game }) => game)
+}
+
+export function inProgress(games: readonly Game[], storage?: Storage) {
+  return activeHistory(games, storage).map(({ game }) => game)
 }
 
 export type SolvedPuzzleFilters = {
+  game?: 'sudoku' | NumberGame
   variant?: GameVariantId
   difficulty?: Difficulty | 'unrated'
   from?: string
@@ -50,10 +55,26 @@ export function solveDate(timestamp: number) {
     String(date.getDate()).padStart(2, '0')].join('-')
 }
 
-export function matchesSolvedFilters({ game, solvedAt }: { game: Game; solvedAt: number }, filters: SolvedPuzzleFilters) {
-  const { variant, difficulty, from, to } = filters
-  if (variant && gameVariantId(game) !== variant) return false
-  if (difficulty && (game.difficulty ?? 'unrated') !== difficulty) return false
+function matchesSolvedDate(solvedAt: number | undefined, { from, to }: SolvedPuzzleFilters) {
+  if (!from && !to) return true
+  if (solvedAt === undefined) return false
   const day = solveDate(solvedAt)
   return (!from || day >= from) && (!to || day <= to)
+}
+
+export function matchesSolvedFilters({ game, solvedAt }: { game: Game; solvedAt: number }, filters: SolvedPuzzleFilters) {
+  const { game: gameType, variant, difficulty } = filters
+  if (gameType && gameType !== 'sudoku') return false
+  if (variant && gameVariantId(game) !== variant) return false
+  if (difficulty && (game.difficulty ?? 'unrated') !== difficulty) return false
+  return matchesSolvedDate(solvedAt, filters)
+}
+
+export function matchesSolvedNumberFilters(
+  { game, difficulty, lastPlayed }: { game: NumberGame; difficulty: NumberPuzzleDifficulty; lastPlayed?: number },
+  filters: SolvedPuzzleFilters,
+) {
+  if (filters.variant || filters.game && filters.game !== game) return false
+  if (filters.difficulty && filters.difficulty !== difficulty) return false
+  return matchesSolvedDate(lastPlayed, filters)
 }

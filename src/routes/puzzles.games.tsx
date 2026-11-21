@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import { Calculator, ChevronLeft, ChevronRight, Grid3X3, Hash, MoveHorizontal, Route as PathIcon, Sigma } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import type { NumberGame } from '../components/NumberPuzzle'
+import type { NumberGame } from '../number-puzzles/catalog'
 import { iconButtonClassName } from '../components/Button'
 import '../components/puzzle-games.css'
 
@@ -73,5 +73,6 @@ declare module '@tanstack/history' {
     fromPuzzleGameTypes?: boolean
     fromKakuroDifficulty?: boolean
     fromNumberDifficulty?: NumberGame
+    fromNumberPuzzleLibrary?: true | 'solved'
   }
 }

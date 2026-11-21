@@ -68,7 +68,8 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           to: `/puzzles/${game}/$puzzle`,
           params: { puzzle: 'generated' },
           search: { board },
-          state: { fromNumberDifficulty: game },
+          state: previous => replace && previous.fromNumberPuzzleLibrary
+            ? { fromNumberPuzzleLibrary: previous.fromNumberPuzzleLibrary } : { fromNumberDifficulty: game },
           replace,
         }).then(() => {
           if (data?.indexPending) {
@@ -79,11 +80,9 @@ export function useNumberPuzzleGeneration(game: GeneratedNumberGame | null, repl
           setPending(null)
         }, fail)
       }
-      if (game === 'calcudoku') {
-        void prepareGeneratedHistory(game).then(() => {
-          if (workerRef.current === worker) worker.postMessage(request)
-        }).catch(() => { if (workerRef.current === worker) sendFullHistory() })
-      } else sendFullHistory()
+      void prepareGeneratedHistory(game).then(() => {
+        if (workerRef.current === worker) worker.postMessage(request)
+      }).catch(() => { if (workerRef.current === worker) sendFullHistory() })
     } catch {
       fail()
     }
