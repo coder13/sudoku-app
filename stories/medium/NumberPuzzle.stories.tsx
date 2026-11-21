@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
-import { expect, within } from 'storybook/test'
+import { expect, waitFor, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
 import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
 import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'

@@ -1,5 +1,5 @@
 import { generateIndexedCalcudoku } from './calcudoku-layout-index.ts'
-import { readCalcudokuSessions, readGeneratedRecords } from './generated-storage.ts'
+import { readGeneratedSessions } from './generated-storage.ts'
 import { generateNumberPuzzle, type GenerationRequest } from './generation.ts'
 
 let boardOpened: (() => void) | undefined
@@ -18,17 +18,17 @@ async function generate(request: GenerationRequest) {
   if (request.previous) {
     self.postMessage(generateNumberPuzzle({ ...request, previous: request.previous }))
   } else if (request.game === 'kakuro') {
-    const history = await readGeneratedRecords(request.game).catch(() => undefined)
+    const history = await readGeneratedSessions(request.game).catch(() => undefined)
     if (!history) {
       self.postMessage({ readHistory: true })
       return
     }
-    self.postMessage(generateNumberPuzzle({ ...request, previous: history.map(({ id }) => id) }))
+    self.postMessage(generateNumberPuzzle({ ...request, previous: history.sessions.map(({ id }) => id) }))
   } else {
     try {
       await generateIndexedCalcudoku(request, publish)
     } catch {
-      const history = await readCalcudokuSessions().catch(() => undefined)
+      const history = await readGeneratedSessions('calcudoku').catch(() => undefined)
       if (!history) {
         self.postMessage({ readHistory: true })
         return
