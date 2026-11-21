@@ -96,6 +96,38 @@ test('3D Medusa location marks only cells in the coloring proof', () => {
   assert.equal(clue.annotations.links, undefined)
 })
 
+test('3D Medusa highlights the outside cell that loses all its candidates', () => {
+  const candidates = Array(81).fill(0)
+  candidates[0] = mask(2, 7, 8)
+  candidates[1] = mask(2, 5)
+  candidates[9] = mask(2, 5)
+  const a = { cell: 0, digit: 2 }
+  const b = { cell: 1, digit: 2 }
+  const c = { cell: 1, digit: 5 }
+  const deduction: Deduction = {
+    technique: '3d-medusa', actions: [{ eliminate: a }, { eliminate: c }],
+    evidence: { coloring: {
+      colors: [[a, c], [b]],
+      links: [
+        { from: a, to: b, source: { house: { row: 0 } }, strength: 'strong' },
+        { from: b, to: c, source: { cell: 1 }, strength: 'strong' },
+      ],
+      reason: { 'emptied-cell': 9 },
+    } },
+  }
+
+  const { annotations, reason, results } = lessonDiagram({ deduction, candidates }, undefined, { cellReferenceStyle: 'concise' })
+  assert.equal(annotations.cells?.get(9)?.label, 'contradiction cell')
+  assert.notEqual(annotations.cells?.get(9)?.fill, annotations.cells?.get(0)?.fill)
+  assert.equal(annotations.cells?.get(0)?.label, 'pattern cell')
+  assert.equal(annotations.candidates?.has(9), false)
+  assert.equal(annotations.candidates?.get(1)?.get(5)?.mark, 'strike')
+  assert.match(reason, /If all blue candidates are true, r2c1 has no candidate left/)
+  assert.match(reason, /2 in r1c1 rules out 2 there because both cells share column 1/)
+  assert.match(reason, /5 in r1c2 rules out 5 there because both cells share box 1/)
+  assert.deepEqual(results, ['Remove 2 from r1c1.', 'Remove 5 from r1c2.'])
+})
+
 test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfilled', () => {
   const candidates = Array(81).fill(0)
   candidates[33] = mask(5, 8)
