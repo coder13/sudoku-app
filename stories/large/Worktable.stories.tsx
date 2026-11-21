@@ -939,7 +939,7 @@ export const Solved: Story = {
 
     await userEvent.keyboard(' ')
     await expect(toggle).toHaveAccessibleName('View grid')
-    await expect(canvas.getByRole('heading', { name: 'Puzzle solved' })).toBeVisible()
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Puzzle solved' })).toBeVisible())
     await expect(layout()).toEqual(before)
   },
 }
@@ -1001,6 +1001,7 @@ export const DesktopPanelsAfterSolve: Story = {
   beforeEach: ({ args }) => {
     playSession.set(args.game.id, 'toolPanels', { open: ['colors', 'chains'], active: 'chains' })
   },
+  render: (args) => <WorktableExample {...args} withTopbar resizable={args.workspaceMode === 'standard'} />,
   play: async ({ args, canvas, canvasElement, userEvent }) => {
     if (canvasElement.querySelector('.mobile-panel-layout')) return
     const advanced = args.workspaceMode === 'advanced'
@@ -1008,12 +1009,38 @@ export const DesktopPanelsAfterSolve: Story = {
     const chains = canvas.getByRole('tab', { name: 'Chains' })
     const panel = advanced ? chains.closest('.dv-groupview')! : canvas.getByRole('region', { name: 'Puzzle insights' })
     await expect(chains).toHaveAttribute('aria-selected', 'true')
+    await canvasElement.ownerDocument.fonts.ready
+    const inputLayout = () => [
+      canvas.getByRole('region', { name: 'Sudoku controls' }),
+      canvas.getByRole('group', { name: 'Digit pad' }),
+      canvas.getByRole('button', { name: /^Undo$/ }),
+      canvas.getByRole('button', { name: /^Redo$/ }),
+      canvas.getByRole('button', { name: 'Pencil mode' }),
+      panel,
+    ].map(element => element.getBoundingClientRect().toJSON())
+    const initialInputLayout = !advanced ? inputLayout() : undefined
     const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 4, empty/ })
     await userEvent.click(cell)
     await userEvent.keyboard(solvedValues[3])
     await canvas.findByRole('heading', { name: 'Puzzle solved' })
     await expect(panel).toBeVisible()
-    if (!advanced) await expect(panel).toHaveAttribute('data-presence', 'open')
+    if (!advanced) {
+      await expect(panel).toHaveAttribute('data-presence', 'open')
+      expect(inputLayout()).toEqual(initialInputLayout)
+      await userEvent.click(canvas.getByRole('button', { name: /^Undo$/ }))
+      const grid = await canvas.findByRole('grid', { name: 'Sudoku grid' })
+      const editableGrid = grid.getBoundingClientRect().toJSON()
+      expect(inputLayout()).toEqual(initialInputLayout)
+      await expect(canvas.getByRole('button', { name: 'Actions' })).toBeVisible()
+      await userEvent.click(canvas.getByRole('button', { name: /^Redo$/ }))
+      await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 4, digit 6/ })).toBeVisible()
+      expect(grid.getBoundingClientRect().toJSON()).toEqual(editableGrid)
+      expect(inputLayout()).toEqual(initialInputLayout)
+      await expect(canvas.queryByRole('button', { name: 'Actions' })).not.toBeInTheDocument()
+      await userEvent.click(canvas.getByRole('button', { name: 'View results' }))
+      await canvas.findByRole('heading', { name: 'Puzzle solved' })
+      expect(inputLayout()).toEqual(initialInputLayout)
+    }
     await expect(chains).toHaveAttribute('aria-selected', 'true')
     await userEvent.click(colors)
     await expect(colors).toHaveAttribute('aria-selected', 'true')
@@ -1024,6 +1051,16 @@ export const DesktopPanelsAfterSolve: Story = {
 export const AdvancedPanelsAfterSolve: Story = {
   ...DesktopPanelsAfterSolve,
   args: { ...DesktopPanelsAfterSolve.args, workspaceMode: 'advanced' },
+}
+
+export const DesktopPanelsAfterSolveWithGuides: Story = {
+  ...DesktopPanelsAfterSolve,
+  args: { ...DesktopPanelsAfterSolve.args, appearance: { ...DEFAULT_APPEARANCE, showGuides: true } },
+}
+
+export const DesktopPanelsAfterSolveWithBottomControls: Story = {
+  ...DesktopPanelsAfterSolve,
+  args: { ...DesktopPanelsAfterSolve.args, appearance: { ...DEFAULT_APPEARANCE, puzzleControlsPosition: 'bottom' } },
 }
 
 export const UndoCompletedPuzzle: Story = {

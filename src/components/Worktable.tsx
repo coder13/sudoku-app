@@ -2699,7 +2699,8 @@ export function Worktable({
     const inputStack = inputRef.current?.closest<HTMLElement>('.standard-input-stack')
     const stage = puzzleStageRef.current
     if (!desktop || advancedWorkspace || !puzzle || !puzzleStack || !inputStack || !stage) return
-    const gridBoundary = () => stage.querySelector(game.paused && !placeholder ? '.puzzle-paused' : '.board-body') ?? stage
+    const gridBoundary = () => stage.querySelector(game.paused && !placeholder
+      ? '.puzzle-paused' : '.board-body, .completion-frame > .completion') ?? stage
     const alignInput = () => {
       const page = puzzleStack.closest<HTMLElement>('.standard-workspace-page')
       const previewScale = page?.closest('.desktop-play-resizable')?.hasAttribute('data-layout-resizing')
@@ -2742,6 +2743,11 @@ export function Worktable({
       Catch up <ArrowRight size={14} aria-hidden="true" />
     </Button>}
   </div>
+  const viewToggleBesideMenu = desktop && !advancedWorkspace && puzzleControlsBelow
+  const viewToggle = completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
+    aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={pauseKeys.join(' ')} onClick={toggleSolvedView}>
+    {showSolvedGrid ? 'View results' : 'View grid'}
+  </Button>
   const puzzleUtilityActions = <>
     {puzzleZoom.zoomed && <IconButton variant="quiet" className="puzzle-zoom-reset"
       aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
@@ -2755,10 +2761,7 @@ export function Worktable({
       aria-label={grid ? `${sizedName} rules` : `${variantName(variant)} Sudoku rules`} aria-haspopup="dialog">
       <Info size={16} aria-hidden="true" />{grid ? sizedName : variantName(variant)}
     </Button>}
-    {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
-      aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={pauseKeys.join(' ')} onClick={toggleSolvedView}>
-      {showSolvedGrid ? 'View results' : 'View grid'}
-    </Button>}
+    {!viewToggleBesideMenu && viewToggle}
   </>
   const puzzleActions = <div key="actions" className="puzzle-actions">
     {presentationDraft ? (
@@ -2772,6 +2775,7 @@ export function Worktable({
     ) : (
       <>
         {!puzzleControlsBelow && puzzleUtilityActions}
+        {viewToggleBesideMenu && viewToggle}
         {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
           aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
           title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
@@ -2815,7 +2819,7 @@ export function Worktable({
       </div> : puzzlePlayLayers
     ) : livePuzzleStage}
   </div>
-  const puzzleTopActions = puzzleControlsBelow && (puzzleZoom.zoomed || variant || grid || completed && !previewing)
+  const puzzleTopActions = puzzleControlsBelow && (puzzleZoom.zoomed || variant || grid || (!viewToggleBesideMenu && viewToggle))
     ? <div key="top-actions" className="puzzle-actions puzzle-top-actions">{puzzleUtilityActions}</div> : null
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
@@ -2865,6 +2869,7 @@ export function Worktable({
           historyDisabled={historyDisabled}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
+          reserveSolvingSlots={desktop && !advancedWorkspace && solved && !previewing}
           actionsMenu={!mobile && !advancedWorkspace ? desktopActionsMenu : undefined}
           onActions={!presentationDraft && !solved && (mobile || !advancedWorkspace) ? () => {
             setPuzzleMenuOpen(false)
