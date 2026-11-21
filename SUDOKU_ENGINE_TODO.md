@@ -178,6 +178,7 @@ Track app-ready variants individually in [the integration issue](https://github.
 - [x] Decode SCv3 through SCv6 9×9 puzzle records with supported rules and default playing state. Preserve Classic cell fills through preview, play, reload and sharing. Verify the original Butterfly, Swallows and Number 0 codes and retain the 2j53 Global Entropy regression. [Legacy imports](https://github.com/coder13/sudoku-app/issues/417)
 - [x] Resolve Sudoku Coach collection links through the public collection index. Preserve supported exports for unlisted entries, including Pumpkin 2024, Halloween Candy 1 and mixed-rule puzzles. [Collection imports](https://github.com/coder13/sudoku-app/issues/416)
 - [x] Import plain 81-digit Classic grids from matching Sudoku Coach publication records, including Jellyfish Example puzzle #2. Keep the same checks for author instructions as encoded publications. [Classic publication imports](https://github.com/coder13/sudoku-app/issues/436)
+- [x] Preserve separated cells in authored 9×9 Jigsaw regions. Import the original XXIV color legend, three Killer cages, and Little Killer ray. Verify the unique published answer, hints, Finder, its 118-step walkthrough, reload, and sharing. Keep connected regions for generation. [Coach import issue](https://github.com/coder13/sudoku-app/issues/420)
 - [x] Preserve the reviewed 9×9 artwork in Windoku I and Khachkar through Preview, Play, restart, reload and sharing. Retain all typed regions and line rules, and reject altered exports that rely on unreviewed artwork. [Authored markings](https://github.com/coder13/sudoku-app/issues/421)
 - [x] Verify the zero-given Traffic import with one bounded uniqueness attempt in the Wasm worker. Keep search-limit feedback distinct from invalid givens. [Traffic import](https://github.com/coder13/sudoku-app/issues/431)
 - [x] Open a verified import preview before rating completes. Keep rating in a cancelable worker and preserve the exact solution, full proof order, and scoring version on Sieve No. 4, Sieve No. 6, Anti-royal arithmetic, and the zero-given Arrow import. [Sparse ratings](https://github.com/coder13/sudoku-app/issues/435) · [Arrow preview](https://github.com/coder13/sudoku-app/issues/411)
@@ -789,12 +790,12 @@ Start with single 9×9 grids. A constraint is a rule that limits which digits ca
 - [x] Make candidate calculation, conflict checking, exact solving, and solution counting use the same rules. Distinguish an invalid definition, a direct conflict, no solution, multiple solutions, and a search limit.
 - [x] Keep puzzle rules separate from the techniques that explain deductions. Enforce all active rules even when the solver profile disables a technique.
 
-The structured format uses version 1, stable rule IDs, and 81-cell grid strings. Definition validation covers region connectivity, cell indices, cage overlaps, line lengths, and outside clue direction. Native, Wasm, and batch requests use the same compiled rules for exact analysis. [Format and examples](crates/engine/README.md#rule-based-variant-puzzles)
+The structured format uses version 1, stable rule IDs, and 81-cell grid strings. Definition validation covers region membership, cell indices, cage overlaps, line lengths, and outside clue direction. Jigsaw generation also requires connected regions. Native, Wasm, and batch requests use the same compiled rules for exact analysis. [Format and examples](crates/engine/README.md#rule-based-variant-puzzles)
 
 ## 10. Support X Sudoku, Jigsaw, and Killer
 
 - [x] Add X Sudoku with both main diagonals as extra houses. Allow either diagonal on its own in mixed puzzles.
-- [x] Add Jigsaw with nine connected regions of nine cells each. Make sure that each cell belongs to exactly one region. Use these regions in place of the standard boxes.
+- [x] Add Jigsaw with nine regions of nine cells each. Every cell belongs to exactly one region. Use these regions in place of the standard boxes. Authored regions can have separated cells.
 - [x] Add Killer cages with a target sum and no repeated digits. Validate feasible totals. Allow cells outside cages in mixed puzzles and enforce full coverage only when the preset requires it.
 - [x] Explain Killer deductions from possible cage sums and the digits that can occupy each cage cell. Use the sum of a complete house to explain deductions in cages that cross its boundary.
 - [x] Test all three variants through validation, candidates, exact solving, ranked hints, trace replay, ratings, practice, and generation. Include a mixed Jigsaw and Killer puzzle.

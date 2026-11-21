@@ -114,8 +114,39 @@ export function jigsawMembership(grid: JigsawGrid) {
   return regions
 }
 
+export function hasDisconnectedRegion(membership: readonly number[], size: number) {
+  const visited = new Uint8Array(membership.length)
+  const regions = new Set<number>()
+  for (const [first, region] of membership.entries()) {
+    if (visited[first]) continue
+    if (regions.has(region)) return true
+    regions.add(region)
+    visited[first] = 1
+    const pending = [first]
+    for (const cell of pending) {
+      const column = cell % size
+      const neighbors = [
+        cell - size, cell + size,
+        column > 0 ? cell - 1 : -1, column < size - 1 ? cell + 1 : -1,
+      ]
+      for (const other of neighbors) {
+        if (membership[other] !== region || visited[other]) continue
+        visited[other] = 1
+        pending.push(other)
+      }
+    }
+  }
+  return false
+}
+
 export function jigsawRegionColors(membership: readonly number[], size: number) {
   const regions = [...new Set(membership)]
+  const colors: number[] = []
+  if (hasDisconnectedRegion(membership, size)) {
+    // A color identifies an entire region when its cells are separated.
+    regions.forEach((region, index) => { colors[region] = index + 1 })
+    return colors
+  }
   const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
   membership.forEach((region, cell) => {
     const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]
@@ -127,7 +158,6 @@ export function jigsawRegionColors(membership: readonly number[], size: number) 
   })
 
   // Connected regions form a planar graph, so four colors suffice.
-  const colors: number[] = []
   function assign(index: number): boolean {
     if (index === regions.length) return true
     const region = regions[index]

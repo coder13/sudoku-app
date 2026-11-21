@@ -3,7 +3,7 @@ use std::{collections::HashSet, ops::RangeInclusive};
 use super::{
     CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, MarkedPairs, PuzzleRule, RegionLayout,
     VariantDefinitionError, VariantPosition, VariantPuzzle, VariantRating, VariantTechnique,
-    symmetry,
+    cell_mask, connected, symmetry,
 };
 use crate::{
     Analysis, Board, CELLS, GenerationRating, GenerationSearch, Random, SolveStatus,
@@ -23,6 +23,7 @@ pub struct VariantGenerationOptions {
     /// Maximum nodes in each exact solve or uniqueness check.
     pub max_nodes: u32,
     /// Fixed rules and any givens used to constrain the initial solved grid.
+    /// Jigsaw generation templates require connected regions.
     pub template: VariantPuzzle,
     /// Clues to construct from the sampled solution.
     pub derived_clues: Vec<VariantClueLayout>,
@@ -161,6 +162,13 @@ pub fn start_variant_generation(
         options.technique_order.sort_by_key(|t| t.difficulty());
     }
     let base = options.template.compile().map_err(Definition)?;
+    if let RegionLayout::Jigsaw { regions } = &options.template.regions {
+        for (index, region) in regions.iter().enumerate() {
+            if !cell_mask(region).is_some_and(connected) {
+                return Err(Definition(VariantDefinitionError::DisconnectedRegion(index)));
+            }
+        }
+    }
     layouts::validate(&options.template, &options.derived_clues)?;
     base.prepare(&[0; CELLS], &[0; CELLS])
         .map_err(|_| ConflictingTemplate)?;

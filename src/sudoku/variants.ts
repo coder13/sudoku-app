@@ -6,7 +6,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
-import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
+import { gridDiagonalCells, hasDisconnectedRegion, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -415,18 +415,9 @@ function validCells(list: unknown, min: number) {
 }
 
 function validJigsawRegions(regions: unknown): boolean {
-  if (!Array.isArray(regions) || regions.length !== 9 ||
-    !regions.every((region) => validCells(region, 9) && region.length === 9) || new Set(regions.flat()).size !== 81) return false
-  return regions.every((region: number[]) => {
-    const reached = new Set([region[0]])
-    for (const cell of reached) {
-      for (const neighbor of region) {
-        const distance = Math.abs(cell % 9 - neighbor % 9) + Math.abs(Math.floor(cell / 9) - Math.floor(neighbor / 9))
-        if (distance === 1) reached.add(neighbor)
-      }
-    }
-    return reached.size === 9
-  })
+  return Array.isArray(regions) && regions.length === 9 &&
+    regions.every((region) => validCells(region, 9) && region.length === 9) &&
+    new Set(regions.flat()).size === 81
 }
 
 function isPlayableRule(rule: VariantRule): boolean {
@@ -566,9 +557,14 @@ export type VariantRuleSectionId = 'classic' | 'jigsaw' | VariantRule['type']
 export type VariantRuleSection = { id: VariantRuleSectionId; title: string; descriptions: string[] }
 
 function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
-  return puzzle.regions?.type === 'jigsaw'
-    ? { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions: [VARIANTS.jigsaw.rule] }
-    : { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
+  if (puzzle.regions?.type !== 'jigsaw') {
+    return { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
+  }
+  const descriptions = [VARIANTS.jigsaw.rule]
+  if (hasDisconnectedRegion(regionMembership(puzzle.regions.regions), 9)) {
+    descriptions.push('Cells with the same region color belong to one region, even across gaps.')
+  }
+  return { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions }
 }
 
 function describedVariantRules(puzzle: VariantPuzzle) {

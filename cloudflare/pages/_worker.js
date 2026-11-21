@@ -371,6 +371,21 @@ const direction = oneOf('north', 'east', 'south', 'west')
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
   fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) })
+const givenCellColors = (value, variant) => {
+  if (!cellColors(value)) return false
+  if (variant === undefined) return true
+  const layout = variant?.puzzle?.regions
+  if (variant?.fog || layout?.type !== 'jigsaw' || !regions(layout) ||
+    new Set(layout.regions.flat()).size !== 81 || Object.keys(value).length !== 81) return false
+  const legend = new Set()
+  for (const group of layout.regions) {
+    const shade = value[group[0]]?.[0]
+    if (!shade || legend.has(shade) || group.some(site =>
+      value[site]?.length !== 1 || value[site]?.[0] !== shade)) return false
+    legend.add(shade)
+  }
+  return legend.size === 9
+}
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
 const ruleFields = {
@@ -434,7 +449,7 @@ async function sharePuzzle(request, db, path) {
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection,
-      givenCellColors: value => data.grid === undefined && data.variant === undefined && cellColors(value),
+      givenCellColors: value => data.grid === undefined && givenCellColors(value, data.variant),
       authoredArtwork: value => data.grid === undefined && data.variant && data.variant.fog === undefined && authoredArtwork(value),
       whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {

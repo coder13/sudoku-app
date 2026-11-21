@@ -6,7 +6,7 @@ import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { isSizedSudokuPadCode } from './sized-sudoku-pad.ts'
 import { isPlayablePuzzle, isPuzzleVariantId, type VariantGame } from './variants.ts'
 import { whispersLinkCounts } from './whispers-guide.ts'
-import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
+import { validGivenCellColors, type ImportedCellColors } from './imported-colors.ts'
 import { validAuthoredArtwork, type AuthoredMark } from './authored-artwork.ts'
 
 export type SharedPuzzleDefinition = {
@@ -107,7 +107,7 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||
     (whispersGuide !== undefined && (whispersGuide !== true || variant?.id !== 'whispers' || !whispersLinkCounts(variant.puzzle))) ||
-    (givenCellColors !== undefined && (grid !== undefined || variant !== undefined || !validImportedCellColors(givenCellColors))) ||
+    (givenCellColors !== undefined && (grid !== undefined || !validGivenCellColors(givenCellColors, variant))) ||
     (authoredArtwork !== undefined && (grid !== undefined || !variant || variant.fog !== undefined || !validAuthoredArtwork(authoredArtwork))) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')

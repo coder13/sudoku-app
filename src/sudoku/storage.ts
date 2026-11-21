@@ -18,7 +18,7 @@ import {
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
-import { isImportedColor, validImportedCellColors } from './imported-colors.ts'
+import { isImportedColor, validGivenCellColors, validImportedCellColors } from './imported-colors.ts'
 import { validImportedDrawings } from './imported-drawings.ts'
 import { validAuthoredArtwork } from './authored-artwork.ts'
 
@@ -113,7 +113,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
       (value.whispersGuide === undefined || value.whispersGuide === true && value.variant?.id === 'whispers') &&
-      (value.givenCellColors === undefined || !draft && !value.grid && !value.variant && validImportedCellColors(value.givenCellColors)) &&
+      (value.givenCellColors === undefined || !draft && !value.grid && validGivenCellColors(value.givenCellColors, value.variant)) &&
       (value.authoredArtwork === undefined || !draft && !value.grid && value.variant && !value.variant.fog && validAuthoredArtwork(value.authoredArtwork)) &&
       validPosition(value.position, grid, draft, cageDraft) &&
       Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, draft, cageDraft)) &&
