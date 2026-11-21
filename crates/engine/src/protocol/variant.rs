@@ -97,6 +97,8 @@ pub(super) struct Options {
     prefer_progress: bool,
     difficulty: Option<Difficulty>,
     step_index: Option<usize>,
+    stop_after_placement_in: Option<Vec<usize>>,
+    include_steps: Option<bool>,
     #[cfg(feature = "teaching")]
     action: Option<HintAction>,
     visibility: Option<Box<VariantVisibility>>,
@@ -238,16 +240,12 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Some(_)
             if matches!(
                 operation,
-                Operation::Analyze
-                    | Operation::Solve
-                    | Operation::SolveUnique
-                    | Operation::Candidates
-                    | Operation::SolveSingles
+                Operation::Analyze | Operation::Solve | Operation::SolveUnique
             ) =>
         {
             return Err((
                 "invalid-visibility",
-                "Use a visible position to analyze only the visible clues.",
+                "Exact search requires the full puzzle definition.",
             ));
         }
         Some(visibility) => position.visible(visibility).map_err(visibility_error)?,
@@ -271,7 +269,17 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
     }
     match operation {
         Operation::Rate => return Ok(json!(position.rate(&order()?).map_err(logical_error)?)),
-        Operation::Trace => return Ok(json!(trace()?)),
+        Operation::Trace => {
+            let stop = crate::variant::cell_mask(
+                options.stop_after_placement_in.as_deref().unwrap_or_default(),
+            )
+            .ok_or(("invalid-placement-boundary", "Choose distinct cells between 0 and 80."))?;
+            return Ok(json!(
+                position
+                    .trace_with_boundary(&order()?, stop, options.include_steps.unwrap_or(true))
+                    .map_err(logical_error)?
+            ));
+        }
         Operation::ReplayStep => {
             let step = options
                 .step_index

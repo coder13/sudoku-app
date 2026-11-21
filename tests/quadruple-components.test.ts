@@ -12,7 +12,8 @@ const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.jso
 let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
-let Board: Component, MobilePanelLayout: Component, VariantClues: Component, SharePuzzle: Component, CompletedPuzzle: Component
+let Board: Component, MobilePanelLayout: Component, VariantClues: Component, SharePuzzle: Component, CompletedPuzzle: Component, VariantPreview: Component
+let renderNewPuzzle: (path: string) => Promise<string>
 
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom',
@@ -24,6 +25,8 @@ before(async () => {
   ;({ MobilePanelLayout } = await server.ssrLoadModule('/src/components/MobilePanelLayout.tsx'))
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
 
@@ -54,7 +57,7 @@ test('Quadruple circles occupy the intended internal intersections and retain re
     { type: 'quadruple', topLeft: 63, digits: [2, 2, 6] },
     { type: 'quadruple', topLeft: 70, digits: [1, 3, 7, 9] },
   ]
-  const tree = capture(VariantClues, { rules })
+  const tree = renderedElements(VariantClues, { rules })
   const groups = tree.filter(({ props }) => props.className === 'variant-quadruple')
   assert.equal(groups.length, 4)
   for (const [index, group] of groups.entries()) {
@@ -92,12 +95,12 @@ test('Killer totals and their border gaps leave room for every Quadruple circle 
       const start = Number.parseFloat((total.props.style as { insetInlineStart: string }).insetInlineStart) / 100
       assert.ok(start > .28, 'The total must start beyond the circle and its stroke')
       assert.ok(start + .3 < .925, 'A two-digit total must fit inside the cage cell')
-      const clueTree = capture(VariantClues, { rules })
-      const cageComponent = clueTree.find(({ type }) => typeof type === 'function' && type.name === 'Cage')!
-      const circle = clueTree.find(({ props }) => props.className === 'variant-quadruple')!
-      assert.ok(clueTree.indexOf(circle) > clueTree.indexOf(cageComponent), 'Circle symbols must paint above cage edges in either source order')
-      const edges = capture(cageComponent.type as Component, cageComponent.props)
-      const top = String(edges.find(({ type }) => type === 'path')!.props.d)
+      const svg = renderToStaticMarkup(createElement(VariantClues, { rules }))
+      const topEdge = /<path class="variant-cage-edge" d="([^"]+)"/.exec(svg)
+      assert.ok(topEdge)
+      assert.ok(svg.indexOf('class="variant-quadruple"') > topEdge.index,
+        'Circle symbols must paint above cage edges in either source order')
+      const top = topEdge[1]
       const gapEnd = Number(/^M([^,]+)/.exec(top)![1]) - 3
       assert.ok(Math.abs(gapEnd - (start + .3)) < 1e-9, 'The border gap must match the moved total')
     }
@@ -135,16 +138,25 @@ test('the real share dialog posts the starting definition only after Create link
   }
 })
 
-test('a completed imported Quadruple chooses another puzzle without calling an uncalibrated generator', () => {
+test('New Puzzle shows the repeated circle and offers the calibrated Medium level', async () => {
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'quadruple' }))
+  assert.match(preview, /data-variant="quadruple" aria-hidden="true"/)
+  assert.deepEqual([...preview.matchAll(/<text[^>]*>(\d)<\/text>/g)].map(match => match[1]), ['2', '2', '6'])
+  const choice = await renderNewPuzzle('/puzzles/new?variant=quadruple')
+  assert.match(choice, /\/puzzles\/new\/difficulty\?variant=quadruple/)
+  assert.match(choice, /A repeated printed digit needs that many separate cells/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=quadruple')
+  assert.match(difficulty, /Start medium puzzle/)
+  assert.doesNotMatch(difficulty, />Easy<|>Hard</)
+})
+
+test('a completed imported Quadruple offers another Medium puzzle', () => {
   const current = game()
   current.position.entries = [...fixture.solution].map((digit, cell) => current.givens[cell] === '0' ? digit : '0').join('')
-  let chosen = 0
   const tree = capture(CompletedPuzzle, { game: current, games: [current], preferredDifficulty: 'medium',
-    ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() { chosen++ } })
+    ratingPending: false, shortcutEnabled: false, showGuides: true, onChooseDifficulty() {}, onChooseVariant() {} })
   const next = tree.find(({ type, props }) => type === 'button' && String(props.className).includes('completion-next'))!
   assert.ok(next)
   assert.equal(next.props.disabled, false)
-  assert.match(renderToStaticMarkup(createElement('span', null, next.props.children as ReactNode)), /Choose another puzzle/)
-  ;(next.props.onClick as () => void)()
-  assert.equal(chosen, 1)
+  assert.match(renderToStaticMarkup(createElement('span', null, next.props.children as ReactNode)), /Next medium puzzle/)
 })

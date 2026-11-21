@@ -71,6 +71,91 @@ function boardTree(props: Record<string, unknown>) {
   return tree
 }
 
+test('imported cell colors retain each named shade and yield to conflicts and hidden player visuals', () => {
+  const position = { center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedCellColors: { 0: ['blueHeavy', 'yellow'], 1: ['cyan'], 2: ['green'] } }
+  const cells = (showPlayerColors: boolean) => boardTree({ position, showPlayerColors, selected: [0], errors: new Set([2]) })
+    .filter(({ props }) => props.role === 'gridcell')
+  const [multi, single, conflict] = cells(true).map(({ props }) => props)
+  assert.match(String(multi['aria-label']), /Cell colors deep blue, yellow/)
+  assert.match(String(multi.className), /imported-colors.*selected/)
+  assert.match((multi.style as { '--imported-cell-colors': string })['--imported-cell-colors'], /#a1d5f7.*0% 50%.*#f7f7c5.*50% 100%/)
+  assert.equal((single.style as { '--tone': string })['--tone'], '#c5f7f5')
+  assert.equal(conflict.style, undefined)
+  assert.match(String(conflict.className), /conflict/)
+  assert.doesNotMatch(String(cells(false)[0].props['aria-label']), /Cell colors/)
+  const importedOnly = boardTree({ position: { ...position, colors: [0, 0, 0, 2] }, showPlayerColors: false, showImportedAnnotations: true })
+    .filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(importedOnly[0].props['aria-label']), /Cell colors/)
+  assert.doesNotMatch(String(importedOnly[3].props['aria-label']), /Peach/)
+})
+
+test('Fog shows authored cell colors only after reveal and player colors can cover them', () => {
+  const entries = '0'.repeat(81)
+  const puzzle = { version: 1, givens: entries }
+  const position = { center: Array(81).fill(0), corner: Array(81).fill(0), importedCellColors: { 1: ['yellow'] } }
+  const cells = (revealed: boolean, showImportedAnnotations = true) => boardTree({
+    variantPuzzle: puzzle, position, showImportedAnnotations,
+    fog: { entries, puzzle, cells: new Set(revealed ? [0, 1] : [0]), cellColors: { 0: ['grey'], 1: ['red'] } },
+  }).filter(({ props }) => props.role === 'gridcell').map(({ props }) => props)
+
+  const [grey, covered] = cells(false)
+  assert.match(String(grey['aria-label']), /Cell colors grey/)
+  assert.equal((grey.style as { '--tone': string })['--tone'], '#e2e2e2')
+  assert.match(String(covered['aria-label']), /covered by fog/)
+  assert.doesNotMatch(String(covered['aria-label']), /\b(?:grey|red|yellow)\b|Cell colors/)
+  assert.equal(covered.style, undefined)
+
+  const [, playerFill] = cells(true)
+  assert.match(String(playerFill['aria-label']), /Cell colors yellow/)
+  const [, authoredFill] = cells(true, false)
+  assert.match(String(authoredFill['aria-label']), /Cell colors red/)
+  assert.equal((authoredFill.style as { '--tone': string })['--tone'], '#f7c5c5')
+})
+
+test('imported candidate colors label and shade visible digits in read-only and painting views', () => {
+  const position = { center: [2, ...Array(80).fill(0)], corner: [0, 16, ...Array(79).fill(0)],
+    importedCandidateColors: { 0: { 2: 'blueHeavy', 9: 'orangeHeavy' }, 1: { 5: 'cyan' } } }
+  const props = { position, candidates: undefined, candidateLayout: 'center-corner', showPlayerColors: false, showImportedAnnotations: true }
+  const readOnly = boardTree(props)
+  const shaded = readOnly.filter(({ props }) => String(props.className).includes('imported-candidate-color'))
+  assert.deepEqual(shaded.map(({ props }) => props.children), [2, 5])
+  assert.deepEqual(shaded.map(({ props }) => (props.style as { '--imported-candidate-tone': string })['--imported-candidate-tone']),
+    ['#a1d5f7', '#c5f7f5'])
+  assert.match(String(readOnly.find(({ props }) => props.role === 'gridcell')?.props['aria-label']), /2 deep blue/)
+
+  const painted = boardTree({ ...props, onPaintCandidate() {} })
+  const buttons = painted.filter(({ props }) => String(props.className).includes('paint-candidate'))
+  assert.deepEqual(buttons.map(({ props }) => props['aria-label']), ['2 in row 1, column 1, deep blue', '5 in row 1, column 2, cyan'])
+  assert.ok(buttons.every(({ props }) => String((props.children as ReactElement<{ className: string }>).props.className).includes('imported-candidate-color')))
+  assert.ok(!boardTree({ ...props, showImportedAnnotations: false }).some(({ props }) => String(props.className).includes('imported-candidate-color')))
+})
+
+test('Quick Draw keeps lines and symbols aligned with the imported grid and its crop', () => {
+  const position = {
+    center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedDrawings: [
+      { shape: 'line', from: [.5, .5], to: [2, 3], color: 'blueHeavy' },
+      { shape: 'cross', at: [1, 1.5], color: 'redHeavy' },
+      { shape: 'circle', at: [2.5, 2.5], color: 'cyan' },
+      { shape: 'square', at: [4.5, 4.5], color: 'green' },
+    ],
+  }
+  const draw = (props = {}) => renderToStaticMarkup(createElement(Board, {
+    givens: '0'.repeat(81), values: '0'.repeat(81), position, showGuides: true, ...props,
+  }))
+  const full = draw()
+  assert.match(full, /class="board-quick-draw" viewBox="0 0 9 9"[^>]*role="img" aria-label="Imported Quick Draw annotations"/)
+  assert.match(full, /deep blue line from row 1, column 1 to grid coordinates 2, 3/)
+  assert.match(full, /<line x1="0.5" y1="0.5" x2="2" y2="3"/)
+  assert.match(full, /<path d="M 0.9 1.4 L 1.1 1.6 M 0.9 1.6 L 1.1 1.4"/)
+  assert.match(full, /<circle cx="2.5" cy="2.5" r=".3"/)
+  assert.match(full, /<rect x="4.2" y="4.2" width=".6" height=".6"/)
+  assert.match(draw({ region: { row: 1, column: 2, rows: 3, columns: 4 } }), /class="board-quick-draw" viewBox="2 1 4 3" data-cropped="true"/)
+  assert.doesNotMatch(draw({ showImportedAnnotations: false }), /board-quick-draw/)
+  assert.match(draw({ overlay: { content: 'Paused', visible: true } }), /class="board-quick-draw"[^>]*aria-hidden="true"/)
+})
+
 test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {
   const tree = boardTree({
     grid: { size: 4, boxRows: 2, boxColumns: 2 },

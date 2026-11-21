@@ -138,9 +138,12 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
             digits[a] === digits[b] * 2 || digits[b] === digits[a] * 2
           for (const [a, b] of marks?.pairs ?? []) assert.ok(matches(a, b))
           if (marks?.negative) {
-            const pairs = rule.type === 'xv' ? puzzle.rules!.flatMap(other => other.type === 'xv'
-              ? (kind === 0 ? other.five?.pairs : other.ten?.pairs) ?? []
-              : other.type === 'adjacent-total' && (other.sum === 5 || other.sum === 10) ? [other.cells] : []) : marks.pairs
+            const pairs = puzzle.rules!.flatMap(other => {
+              if (rule.type === 'kropki') return other.type === 'kropki'
+                ? [...other.consecutive?.pairs ?? [], ...other.ratioTwo?.pairs ?? []] : []
+              if (other.type === 'xv') return [...other.five?.pairs ?? [], ...other.ten?.pairs ?? []]
+              return other.type === 'adjacent-total' && (other.sum === 5 || other.sum === 10) ? [other.cells] : []
+            })
             for (const [a, b] of adjacent) if (!marked(pairs, a, b)) assert.ok(!matches(a, b))
           }
         }

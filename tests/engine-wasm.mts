@@ -2386,8 +2386,8 @@ test('variant hints, ratings, replay, and practice use the same cage proofs', as
   assert.equal(invalid.code, 'invalid-technique')
 })
 
-test('fog hints and replay use only the revealed rules and player knowledge', async () => {
-  const { run } = engineRequests()
+test('fog play, hints, and replay use only the revealed rules and player knowledge', async () => {
+  const { run, raw } = engineRequests()
   const givens = Array<string>(81).fill('0')
   givens[12] = '6'
   givens[40] = '2'
@@ -2416,6 +2416,26 @@ test('fog hints and replay use only the revealed rules and player knowledge', as
   assert.equal(revealed.entries[40], '8')
   assert.equal(revealed.eliminations[10], 0)
   assert.deepEqual(revealed.puzzle.rules, position.puzzle.rules.slice(1))
+  const candidates = await run({ ...request, operation: 'candidates', visibility })
+  assert.deepEqual(candidates, await run({ ...request, operation: 'candidates', position: revealed }))
+  const knownRemovals = Array<number>(81).fill(0)
+  const evenDigit = 1 << 1
+  knownRemovals[50] = evenDigit
+  const limited = await run({ ...request, operation: 'candidates', visibility: { ...visibility, knownRemovals } })
+  assert.equal(candidates[50] & evenDigit, evenDigit)
+  assert.equal(limited[50] & evenDigit, 0)
+  assert.equal(await run({ ...request, operation: 'solve-singles', visibility }),
+    await run({ ...request, operation: 'solve-singles', position: revealed }))
+  for (const operation of ['analyze', 'solve', 'solve-unique'] as const) {
+    const error = await raw({ ...request, operation, visibility })
+    assert.ok('error' in error)
+    assert.equal(error.code, 'invalid-visibility')
+  }
+  for (const operation of ['candidates', 'solve-singles'] as const) {
+    const error = await raw({ ...request, operation, visibility: { cells: [81], rules: [] } })
+    assert.ok('error' in error)
+    assert.equal(error.code, 'invalid-visibility')
+  }
   const hints = await run({ ...request, visibility, operation: 'hints', techniqueOrder: ['thermometer', 'parity'] })
   assert.deepEqual(hints, await run({ ...request, operation: 'hints', position: revealed, techniqueOrder: ['thermometer', 'parity'] }))
   assert.equal(hints.length, 2)
@@ -2465,7 +2485,7 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 8)
+  assert.equal(catalog.scoringVersion, 9)
   const expectedIds = new Set([...catalog.defaultOrder, ...classic.techniques.map(technique => technique.id)])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
@@ -2554,7 +2574,9 @@ test('every playable variant generates its supported difficulties with a unique 
         assert.deepEqual(trace.rating, rating)
 
         const ruleStep = trace.steps.findIndex(({ evidence }) => {
-          if (id !== 'diagonal' && id !== 'jigsaw' && id !== 'windoku') return evidence.type === 'constraint' || evidence.type === 'cage-sum'
+          if (id !== 'diagonal' && id !== 'jigsaw' && id !== 'windoku') {
+            return evidence.type === 'constraint' || evidence.type === 'cage-sum' || evidence.type === 'sum-pair'
+          }
           const house = id === 'jigsaw' ? 'region' : id === 'windoku' ? 'extra' : 'diagonal'
           return evidence.type === 'single' && evidence.house && house in evidence.house ||
             evidence.type === 'intersection' && (house in evidence.source || house in evidence.target)

@@ -47,7 +47,10 @@ export function continueStrongLinkColors(
   for (const [node, color] of colors) {
     const candidate = chainCandidate(node)
     const existing = colorAt(candidate)
-    if (!existing) marks.push({ ...candidate, color })
+    const imported = target === 'cell' ? position.importedCellColors?.[candidate.cell]
+      : position.importedCandidateColors?.[candidate.cell]?.[candidate.digit]
+    if (imported) conflicts.push(candidate)
+    else if (!existing) marks.push({ ...candidate, color })
     else if (existing !== color) conflicts.push(candidate)
   }
   // Never partially fill a group whose existing marks disagree with the starting mark.

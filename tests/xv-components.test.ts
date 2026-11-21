@@ -20,6 +20,8 @@ const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${nam
 const corpus = JSON.parse(readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8')) as Record<string, EngineLessonExample>
 let server: ViteDevServer
 type Component = (props: Record<string, unknown>) => ReactNode
+let VariantPreview: Component, CompletedPuzzle: Component
+let renderNewPuzzle: (path: string, preference?: { variant: string; difficulty: string }) => Promise<string>
 let Board: Component, MobilePanelLayout: Component, SharePuzzle: Component, HintCard: Component, SolutionPath: Component
 before(async () => {
   server = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false, watch: null }, optimizeDeps: { noDiscovery: true, include: [] } })
@@ -28,6 +30,9 @@ before(async () => {
   ;({ SharePuzzle } = await server.ssrLoadModule('/src/components/PuzzleDialogs.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ SolutionPath } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ VariantPreview } = await server.ssrLoadModule('/src/components/VariantPreview.tsx'))
+  ;({ CompletedPuzzle } = await server.ssrLoadModule('/src/components/CompletedPuzzle.tsx'))
+  ;({ renderNewPuzzle } = await server.ssrLoadModule('/tests/helpers/new-puzzle-render.tsx'))
 })
 after(async () => { await server?.close() })
 
@@ -124,4 +129,36 @@ test('independent XV replay rejects a supported removal and hints name the house
     assert.match(hint.evidence.variant.reason, new RegExp(other === 1 ? 'row 1' : 'column 1'))
     assert.match(hint.evidence.variant.reason, /neither cell can be 5/)
   }
+})
+
+test('New Puzzle offers XV with both marks and its calibrated levels', async () => {
+  const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'xv' }))
+  assert.match(preview, /viewBox="3 3 2 2"/)
+  assert.match(preview, /class="variant-xv-mark" data-sum="5".*?>V<\/text>/)
+  assert.match(preview, /class="variant-xv-mark" data-sum="10".*?>X<\/text>/)
+  const selection = await renderNewPuzzle('/puzzles/new?variant=xv')
+  assert.match(selection, /\/puzzles\/new\/difficulty\?variant=xv/)
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=xv')
+  assert.match(difficulty, /Easy/)
+  assert.match(difficulty, /Medium/)
+  assert.doesNotMatch(difficulty, />Hard</)
+  assert.match(selection, /sum to 5/)
+  assert.match(difficulty, /Start medium puzzle/)
+})
+
+test('a solved pure XV puzzle offers another puzzle at its chosen difficulty', () => {
+  const { puzzle, solution } = load('xv-clover')
+  const game = {
+    ...makeGame('finished-xv', 'XV', puzzle.givens, 'generated'),
+    variant: { id: 'xv' as const, puzzle, solution },
+    difficulty: 'medium' as const,
+  }
+  game.position.entries = [...solution].map((digit, cell) => game.givens[cell] === '0' ? digit : '0').join('')
+  const completed = renderToStaticMarkup(createElement(CompletedPuzzle, {
+    game, games: [game], preferredDifficulty: 'medium',
+    ratingPending: false, shortcutEnabled: false, showGuides: true,
+    onResumePuzzle() {}, onChooseDifficulty() {}, onChooseVariant() {},
+  }))
+  assert.match(completed, /Next medium puzzle/)
+  assert.match(completed, /Choose difficulty/)
 })

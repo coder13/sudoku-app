@@ -1,7 +1,7 @@
 import type { DifficultyPreference } from './difficulty.ts'
 import type { Game } from './game.ts'
 import { rectangularLayouts, type RectangularBoxRows, type SizedGrid } from './grid.ts'
-import { generationVariant, isPuzzleVariantId, isVariantId, VARIANTS, type PuzzleVariantId, type VariantId } from './variants.ts'
+import { generationVariant, isPuzzleVariantId, isVariantId, type PuzzleVariantId, type VariantId } from './variants.ts'
 
 export const MINI_NAME = 'Mini Sudoku'
 export const FIVE_JIGSAW_NAME = '5 × 5 Jigsaw Sudoku'
@@ -18,14 +18,21 @@ export const ALGEBRAIC_CAGES_RULE = 'Digits in each cage are distinct and add to
 export const MINI_RULE = 'Place each digit from 1 to 4 once in every row, column, and 2 × 2 box.'
 export const miniDifficulties = ['easy', 'medium'] as const
 export type MiniDifficulty = typeof miniDifficulties[number]
-type SizedPuzzleId = 'mini' | 'algebraic-cages' | 'jigsaw-five' | 'six' | 'jigsaw-seven' | 'eight'
+export type SizedPuzzleId = 'mini' | 'algebraic-cages' | 'jigsaw-five' | 'six' | 'jigsaw-seven' | 'eight'
 export type NewPuzzleId = VariantId | SizedPuzzleId
 export type GameVariantId = PuzzleVariantId | SizedPuzzleId | 'boxless-seven'
 
-export const newPuzzleVariants: NewPuzzleId[] = ['classic', 'mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages', ...(Object.keys(VARIANTS) as VariantId[]).filter(id => id !== 'classic')]
+export const sizedPuzzleOptions = {
+  mini: { name: MINI_NAME, rule: MINI_RULE },
+  'jigsaw-five': { name: FIVE_JIGSAW_NAME, rule: FIVE_JIGSAW_RULE },
+  six: { name: SIX_NAME, rule: SIX_RULE },
+  'jigsaw-seven': { name: SEVEN_JIGSAW_NAME, rule: SEVEN_JIGSAW_RULE },
+  eight: { name: EIGHT_NAME, rule: EIGHT_RULE },
+  'algebraic-cages': { name: ALGEBRAIC_CAGES_NAME, rule: ALGEBRAIC_CAGES_RULE },
+} satisfies Record<SizedPuzzleId, { name: string; rule: string }>
 
 export function isSizedPuzzleId(value: unknown): value is SizedPuzzleId {
-  return value === 'mini' || value === 'algebraic-cages' || value === 'jigsaw-five' || value === 'six' || value === 'jigsaw-seven' || value === 'eight'
+  return typeof value === 'string' && Object.hasOwn(sizedPuzzleOptions, value)
 }
 
 export function rectangularPuzzleSize(variant: unknown) {

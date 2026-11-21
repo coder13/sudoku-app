@@ -9,6 +9,7 @@ import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sud
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { assertEntropicProof } from './helpers/entropic-truth.ts'
+import { assertSumPairProof } from './helpers/adjacent-total-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -20,12 +21,12 @@ const clover = load('clover') as { puzzle: VariantPuzzle; solution: string }
 const share = (puzzle: VariantPuzzle) =>
   '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 const expected = [
-  ['clover', 626, 73, 1036, 73, true, true],
+  ['clover', 680, 75, 1090, 75, true, true],
   ['EoGB', 452, 69, 982, 69, true, true],
-  ['BSEJ', 89, 5, 1573, 92, false, true],
-  ['Hyk5', 180, 9, 1680, 12, false, false],
-  ['Hafj', 107, 5, 107, 5, false, false],
-  ['Ksy3', 2340, 159, 2680, 159, true, true],
+  ['BSEJ', 116, 6, 1600, 93, false, true],
+  ['Hyk5', 180, 9, 2871, 28, false, false],
+  ['Hafj', 444, 18, 444, 18, false, false],
+  ['Ksy3', 2390, 162, 2730, 162, true, true],
 ] as const
 for (const [
   id,
@@ -93,6 +94,7 @@ for (const [
           assert.equal(Number(source.solution[c.cell]) === c.digit, 'place' in action)
         }
         if (proof.technique === 'entropic') assertEntropicProof(puzzle, proof)
+        if (proof.evidence.type === 'sum-pair') assertSumPairProof(puzzle, proof)
         played = applyDeduction(played, proof.actions, variantHouseMasks(puzzle, valuesOf(played)))
       }
       assert.equal(isSolved(played), complete)
@@ -111,6 +113,7 @@ for (const [
     }
     assert.ok((await puzzleHints(game, 10)).choices.length > 1)
     const path = await puzzleSolution(game)
+    assert.ok('rating' in path)
     assert.equal(path.steps.length, appSteps)
     if (appComplete) assert.equal(path.board, source.solution)
     else {

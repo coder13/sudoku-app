@@ -22,17 +22,20 @@ The [versioned Coach compiler](https://sudoku.coach/js/jCfXtZs-1776367508519.js)
 
 ## Encoded scope and authored rules
 
-A complete encoded rule list can still omit instructions on the author's published page. The `custom` flag does not establish completeness. Keep the original source and distinguish decoding its payload from supporting its full authored meaning. Current short links explicitly ask the player to open Coach and use Copy → Puzzle; a future resolver must preserve the full author context.
+A complete encoded rule list can still omit instructions on the author's published page. The `custom` flag does not establish completeness. Keep the original source and distinguish decoding its payload from supporting its full authored meaning. The short-link resolver checks the matching publication and verifies that any recognized legend matches the encoded rules.
 
 | Preserved source | Remaining gap |
 | --- | --- |
 | [LEjN, Entropic Spiral](https://sudoku.coach/en/s/LEjN) | The export encodes Global Entropy and eighteen positive paths. Its author also forbids connections at spiral breaks. [Issue 168](https://github.com/coder13/sudoku-app/issues/168) tracks that mathematical rule. Decoding the positive payload does not establish complete authored support. |
 | [7nms, Entropic Order](https://sudoku.coach/en/s/7nms) | Seven outside L/M/H letters order the specified group's digits from the clue direction. They are stored as cosmetic text and remain an explicit import error. [Issue 169](https://github.com/coder13/sudoku-app/issues/169) tracks the rule. |
-| [K95q, That’s 3 in the corner](https://sudoku.coach/en/s/K95q) | The author states that all black dots are given; the encoded ratio settings omit the negative flag. Its positive payload cannot represent that complete instruction. |
-| [HqJ9, Entropic 7/13 sums](https://sudoku.coach/en/s/HqJ9) | An empty Consecutive Line layer remains unverified. Do not drop it or guess that it means Renban. |
 | [FLAb, AJT’s Bento: Entropy](https://sudoku.coach/en/s/FLAb) | Region geometry, Pill Arrows and cosmetic geometry remain unsupported. |
 | [Hu9m, Entropy 7/13](https://sudoku.coach/en/s/Hu9m) | Modular Lines remain unsupported. Retain the global rule, every sum, thermometer and ratio marker. |
-| [2j53, Coach Entropy collection](https://sudoku.coach/en/s/2j53) | The original export uses SCv4. Preserve it for the generic legacy decoder. |
+
+Both the short link and the raw HqJ9 code now preserve all twenty-seven sums, Global Entropy and both black dots. The versioned Coach compiler constructs Consecutive Line constraints only from paths and cell pairs, so the empty layer supplies no rule. A nonempty layer still requires support for Consecutive Lines. The short link checks that the Roman-numeral legend and Global Entropy note agree with the encoded rules. The import matches the published completion and gives a 196-step Medium walkthrough worth 4,148 points. [Published puzzle](https://sudoku.coach/en/s/HqJ9) · [Coach compiler](https://sudoku.coach/js/jCfXtZs-1776367508519.js)
+
+The K95q short link reads the published instruction that all black dots are given and activates the negative black-dot constraint. The 24 printed dots match every doubling pair in the published completion. The import preserves both diagonals, Non-Consecutive, Global Entropy and Dutch Whispers. It matches the published exact solution and offers ten ranked opening hints. Its human walkthrough stalls after 28 steps for 536 points. The raw code represents only the positive dot constraints. [Published puzzle](https://sudoku.coach/en/s/K95q)
+
+The original 2j53 SCv4 code imports its givens and Global Entropy rule through the same engine path as current exports. The raw code, solver link and published short link agree. The game matches the published completion and has a full 60-step Easy walkthrough worth 860 points. [Published puzzle](https://sudoku.coach/en/s/2j53)
 
 AdoP is a useful contrary control: its custom Disjoint Group rule is fully encoded as nine explicit houses, despite their zero-opacity source styling. The app retains and explains all nine houses. No puzzle-specific denylist, uniqueness inference or automatic deletion of unsupported content resolves these gaps. [Issue 7](https://github.com/coder13/sudoku-app/issues/7) stays open.
 

@@ -47,7 +47,7 @@ const publicPuzzleSources = {
     url: id => `https://sudoku.coach/en/s/${id}`,
     maxBytes: 512 * 1024,
     code(text) {
-      const codes = new Set(text.match(/\bSCv7_32_[0-9a-v]+\b/gi) ?? [])
+      const codes = new Set(text.match(/\bSCv(?:7_32_[0-9a-v]+\b|[456]_[0-9a-z_()[\]+.-]+)/gi) ?? [])
       return codes.size === 1 ? codes.values().next().value : undefined
     },
   },
@@ -60,6 +60,87 @@ const publicPuzzleSources = {
       return /^(?:scl|ctc|fpuzzles|fpuz|scf)[A-Za-z0-9+/=_-]+$/i.test(value) ? value : undefined
     },
   },
+}
+
+const coachRatingNote = /^SE \d{1,3}(?:\.\d{1,3})?$/i
+
+// Recognize a complete authored declaration, including the optional credit and rating.
+function declaresCoachXSums(lines) {
+  lines = [...lines]
+  if (/^Special request by [\w-]{1,32} :D$/i.test(lines[0])) lines.shift()
+  if (/^(?:Normal|Standard) Sudoku rules apply\.$/i.test(lines[0])) lines.shift()
+  if (coachRatingNote.test(lines.at(-1))) lines.pop()
+  return lines.length === 3 &&
+    /^Variant Rules \(X[ -]Sums\):$/i.test(lines[0]) &&
+    /^- Clues outside the grid indicate the sum of the first X digits in the corresponding direction\.$/i.test(lines[1]) &&
+    /^- X is the first digit in the corresponding direction\.$/i.test(lines[2])
+}
+
+function coachAuthoredRule(lines) {
+  if (lines.length === 1 && /^All (?:possible )?black dots are given[.!]?$/i.test(lines[0])) return 'all-black-dots'
+  if (declaresCoachXSums(lines)) return 'x-sum'
+}
+
+// A published legend can refer to fully encoded rules. The app checks those
+// rules against the export before it accepts the publication.
+function coachTypedDeclaration(lines) {
+  const requirements = [
+    /^VII\s*=\s*7[.!]?$/i, /^XIII\s*=\s*13[.!]?$/i, /^Note global entropy[.!]?$/i,
+  ]
+  const commentary = /^(?:This is my first (?:little )?experiment with these constraints(?: so it is (?:fairly )?straightforward)?, I hope you like it|Colou?ring is your friend)[.!]$/i
+  const declared = lines.filter(line => !commentary.test(line))
+  if (declared.length === requirements.length && requirements.every(pattern => declared.some(line => pattern.test(line)))) {
+    return { globalEntropy: true, adjacentTotals: [7, 13] }
+  }
+}
+
+const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s go)[.!]?$/i
+
+// These descriptions cover construction, the author's solve, or where to ask
+// for hints. Bind the full note to its publication so added rules stay visible.
+const reviewedCoachNotes = new Map([
+  ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
+  ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
+  ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
+])
+
+// Coach publishes the puzzle code and its author instructions separately.
+async function coachPublication(html, id, code) {
+  const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
+  if (scripts.length !== 1) return
+  let puzzle
+  try {
+    puzzle = JSON.parse(scripts[0][1])?.specificSudoku
+  } catch {
+    return
+  }
+  if (puzzle?.sudoku_id !== id || puzzle.sudoku !== code || puzzle.blocked !== false ||
+      typeof puzzle.custom_constraints !== 'boolean' || typeof puzzle.description !== 'string') return
+  const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
+  const lines = puzzle.description.split(/\r?\n/).map(line => line.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)
+  const declaredRules = puzzle.custom_constraints ? undefined : coachTypedDeclaration(lines)
+  // 220V uses offsets to separate drawn lines. The reconstruction applies to this verified export.
+  const colouredLines = !puzzle.custom_constraints && id === '7rs9' && lines.length === 1 &&
+    /^Orange = entropy, brown = modular, blue = regional sum \(including the cosmetic lines\)\.?$/i.test(lines[0]) &&
+    await digest(code) === 'a454bc2435d4d69950db865205e3cd117bd3ab325bd6c528a8d6944007f357d4'
+  // This publication explains its encoded Renban halves and uses colours to select mirrored pairs.
+  const mirroredRenbans = !puzzle.custom_constraints && id === 'Ksy3' &&
+    await digest(lines.join('\n')) === 'c5728dc0b34fdb26456e7f7e0ed449cce6c6a0ccfb468fb83880660514f75801'
+  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours'
+    : mirroredRenbans ? 'mirrored-renban' : undefined)
+  // The published Whispers lesson explains the encoded rules and its digit guide.
+  const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
+    await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
+  const reviewedNote = reviewedCoachNotes.get(id)
+  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
+    (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
+  return {
+    hasAuthorInstructions,
+    ...(authoredRule && { authoredRule }),
+    ...(declaredRules && { declaredRules }),
+    ...(whispersGuide && { whispersGuide: true }),
+    ...(title && { title }),
+  }
 }
 
 async function loadPublicPuzzle(request, path) {
@@ -98,11 +179,13 @@ async function loadPublicPuzzle(request, path) {
     if (error instanceof HttpError) throw error
     throw new HttpError(502, 'The puzzle source is unavailable.')
   }
-  const code = source.code(content + decoder.decode())
+  content += decoder.decode()
+  const code = source.code(content)
   if (!code || code.length > maximumPuzzleCodeLength) {
     throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   }
-  return json({ code })
+  const coach = provider === 'sudoku-coach' ? await coachPublication(content, id, code) : undefined
+  return json({ code, ...(coach && { coach }) })
 }
 
 // The public API accepts a versioned puzzle definition. Check each nested field
@@ -205,6 +288,11 @@ const algebraic = value => fields(value, { sudokuPad: code => typeof code === 's
     new Set(value.rules.flatMap(rule => rule.cells)).size === value.rules.reduce((count, rule) => count + rule.cells.length, 0))
 const cell = integer(0, 80)
 const cells = list(cell, 1, 81)
+const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ||
+  /^(?:(?:white|grey|lime|blue|purple|red|green|yellow|orange|cyan|magenta)(?:Heavy)?|error)$/.test(value))
+const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
+  Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
+    list(cellColor, 1, 62)(shades) && new Set(shades).size === shades.length)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -250,7 +338,7 @@ const rule = value => {
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
   puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
-})
+}, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }, { cellColors }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),
   puzzleId: id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id),
@@ -273,7 +361,8 @@ async function sharePuzzle(request, db, path) {
       sizedRules: value => sizedGrid(data.grid) &&
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
-      variant: value => data.grid === undefined && variant(value, data.givens), collection }) ||
+      variant: value => data.grid === undefined && variant(value, data.givens), collection,
+      whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
     }

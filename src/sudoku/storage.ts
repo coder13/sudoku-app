@@ -1,3 +1,4 @@
+import { readCustomModeDefinition } from './custom-modes.ts'
 import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix } from './puzzle-activity.ts'
 import { validVariantSave } from './variants.ts'
@@ -17,6 +18,8 @@ import {
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
+import { isImportedColor, validImportedCellColors } from './imported-colors.ts'
+import { validImportedDrawings } from './imported-drawings.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
@@ -49,14 +52,14 @@ function publish(next: Room) {
   listeners.forEach((listener) => listener())
 }
 
-function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
+function validCandidateColors(value: unknown, grid: PlayGrid, validShade: (shade: unknown) => boolean): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   return Object.entries(value).every(([key, colors]) => {
     const index = Number(key)
     return Number.isInteger(index) && index >= 0 && index < grid.size ** 2 && String(index) === key &&
       colors && typeof colors === 'object' && !Array.isArray(colors) &&
       Object.entries(colors).every(([digit, color]) => /^[1-9]$/.test(digit) && Number(digit) <= grid.size &&
-        typeof color === 'number' && Number.isInteger(color) && color >= 1 && color <= COLORS.length)
+        validShade(color))
   })
 }
 
@@ -68,7 +71,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, candidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
     const layout = { size: grid.size, regions: draftRegions }
     if (!isJigsawGrid(layout)) return false
@@ -82,7 +85,11 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     (draftSizedRules === undefined ? !(draft && grid.size !== 4 && grid.size !== 9) :
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
-    (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
+    (importedCellColors === undefined || !draft && grid.size === 9 && validImportedCellColors(importedCellColors)) &&
+    (candidateColors === undefined || validCandidateColors(candidateColors, grid, shade =>
+      typeof shade === 'number' && Number.isInteger(shade) && shade >= 1 && shade <= COLORS.length)) &&
+    (importedCandidateColors === undefined || !draft && grid.size === 9 && validCandidateColors(importedCandidateColors, grid, isImportedColor)) &&
+    (importedDrawings === undefined || !draft && grid.size === 9 && validImportedDrawings(importedDrawings)) &&
     (eliminations === undefined || validDigits(eliminations, mask)) &&
     (chainSketch == null || validChainSketchState(chainSketch))
 }
@@ -104,6 +111,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       value.id === id && typeof value.title === 'string' && value.title.length <= 72 &&
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
+      (value.whispersGuide === undefined || value.whispersGuide === true && value.variant?.id === 'whispers') &&
       validPosition(value.position, grid, draft, cageDraft) &&
       Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, draft, cageDraft)) &&
       Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, draft, cageDraft)) &&
@@ -141,6 +149,11 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
       if (value.pendingSave !== true || !shouldOfferPuzzleSave(value)) delete value.pendingSave
+      if (value.customMode !== undefined) {
+        const definition = value.source === 'generated' && value.variant ? readCustomModeDefinition(value.customMode) : undefined
+        if (definition) value.customMode = definition
+        else delete value.customMode
+      }
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||

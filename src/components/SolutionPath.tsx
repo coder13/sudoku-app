@@ -33,7 +33,8 @@ export function solutionStatus(trace: SolutionTrace) {
   return 'rating' in trace ? trace.rating.status : trace.status
 }
 
-export function solutionEndSummary(status: PuzzleRating['status'] | 'solved'): PuzzleHint {
+export function solutionEndSummary(status: PuzzleRating['status'] | 'solved', exact?: true): PuzzleHint {
+  if (exact) return { title: 'Exact solution', text: 'Visible clues did not yield a complete logical path.' }
   return status === 'stalled'
     ? { title: 'Last position', text: 'The solver reached the end of its available moves.' }
     : { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
@@ -64,7 +65,8 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const trace = state.status === 'ready' ? state.trace : undefined
   const count = trace?.steps.length ?? 0
   const status = trace && solutionStatus(trace)
-  const last = status && solutionEndSummary(status)
+  const exact = trace && 'exact' in trace && trace.exact
+  const last = status && solutionEndSummary(status, exact || undefined)
   const moveAvailability = trace && 'moveAvailability' in trace ? trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
 
@@ -73,8 +75,8 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   }, [embedded])
 
   useLayoutEffect(() => {
-    if (count > 0) onReveal?.()
-  }, [count, onReveal])
+    if (count > 0 || exact) onReveal?.()
+  }, [count, exact, onReveal])
 
   useEffect(() => {
     const viewport = list.current

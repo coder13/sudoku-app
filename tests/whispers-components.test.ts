@@ -11,6 +11,7 @@ import { describeHint, techniqueLabel } from '../src/sudoku/hints.ts'
 import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { assertLineHouseProof } from './helpers/line-house-truth.ts'
 import { isVariantId, variantDifficulties } from '../src/sudoku/variants.ts'
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/whispers-brain-zaps.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
@@ -56,6 +57,87 @@ test('nonstandard minimum differences are printed on their lines and conflicts r
   const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: values.join(''), errors: conflictsOf(values.join(''), puzzle) }))
   assert.match(html, /data-min-difference="4"/); assert.match(html, /class="variant-whispers-gap"[^>]*>≥4<\/text>/)
   for (const cell of [0, 10]) assert.match(html.match(new RegExp(`data-cell="${cell}" class="([^"]+)"`))![1], /\bconflict\b/)
+})
+
+test('Whispers and Thermometer share an edge in separate lanes with the bulb exposed', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'thermometer', cells: [1, 2, 3] },
+    { type: 'whispers', cells: [1, 2, 11], minDifference: 2 },
+    { type: 'whispers', cells: [20, 29], minDifference: 5 },
+  ] }
+  const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: puzzle.givens }))
+  assert.match(html, /class="variant-thermometer"><polyline points="1\.5,0\.5 2\.5,0\.5 3\.5,0\.5"><\/polyline><circle cx="1\.5" cy="0\.5" r="\.32"/)
+  assert.match(html, /class="variant-thermometer-overlap"><line x1="1\.82" y1="0\.45" x2="2\.5" y2="0\.45" stroke="currentColor"/)
+  assert.match(html, /class="variant-whispers-overlap"><line x1="1\.5" y1="0\.55" x2="2\.5" y2="0\.55" stroke="#72a54e"/)
+  assert.equal(html.split('class="variant-whispers-overlap"').length - 1, 1)
+  assert.match(html, /class="variant-whispers-gap"[^>]*>≥2<\/text>/)
+})
+
+test('a Whispers minimum label moves off a Quadruple circle and points back to the path', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'whispers', cells: [0, 10], minDifference: 2 },
+    { type: 'quadruple', topLeft: 0, digits: [1] },
+  ] }
+  const html = renderToStaticMarkup(createElement(Board, { variantPuzzle: puzzle, givens: puzzle.givens, values: puzzle.givens }))
+  assert.match(html, /class="variant-whispers-label-leader" x1="1" y1="1"/)
+  const [, x, y] = html.match(/class="variant-whispers-gap" x="([^"]+)" y="([^"]+)">≥2<\/text>/)!
+  assert.ok(Math.hypot(Number(x) - 1, Number(y) - 1) > .5)
+  assert.match(html, /class="variant-quadruple"><circle cx="1" cy="1" r="\.265"/)
+})
+
+test('the imported Cmdt board renders every region, diagonal, cage total and line family', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
+  const source = examples.find(source => source.url.endsWith('/Cmdt'))!
+  const { variant, givens } = await detectPuzzle(source.code)
+  const board = createElement(Board, { variantPuzzle: variant?.puzzle, givens, values: givens })
+  const mobile = createElement(MobilePanelLayout, { puzzleId: 'coach-cmdt', rearranging: false, blocked: false,
+    onRearrangingChange() {}, withHint: false, panels: { puzzle: { title: 'Puzzle', content: board } } })
+  for (const node of [board, mobile]) {
+    const html = renderToStaticMarkup(node)
+    const expected: [string, number][] = [
+      ['variant-extra-region', 5], ['variant-cage-total', 10],
+      ['variant-quadruple', 21], ['variant-thermometer', 18], ['variant-whispers', 16],
+    ]
+    for (const [clue, count] of expected) assert.equal(html.split(`class="${clue}"`).length - 1, count, clue)
+    const filledCells = [...html.matchAll(/data-cell="(\d+)"[^>]*data-house-fill="true"/g)].map(([, index]) => Number(index))
+    const diagonalCells = Array.from({ length: 81 }, (_, index) => index)
+      .filter(index => index % 10 === 0 || (index > 0 && index < 80 && index % 8 === 0))
+    assert.deepEqual(filledCells, diagonalCells)
+    assert.equal(html.split('data-min-difference="2"').length - 1, 16)
+    assert.equal(html.split('class="variant-whispers-gap"').length - 1, 16)
+    assert.equal(html.split('class="variant-whispers-label-leader"').length - 1, 2)
+    const corners = variant!.puzzle.rules!.filter(rule => rule.type === 'quadruple').map(({ topLeft }) =>
+      [topLeft % 9 + 1, Math.floor(topLeft / 9) + 1])
+    for (const [, labelX, labelY] of html.matchAll(/class="variant-whispers-gap" x="([^"]+)" y="([^"]+)"/g)) {
+      assert.ok(corners.every(([x, y]) => Math.hypot(Number(labelX) - x, Number(labelY) - y) > .45))
+    }
+    for (const type of ['thermometer', 'whispers']) {
+      const groups = [...html.matchAll(new RegExp(`class="variant-${type}-overlap">([^]*?)<\\/g>`, 'g'))]
+      const strokes = groups.reduce((total, [, markup]) => total + markup.split('<line ').length - 1, 0)
+      assert.equal(strokes, 31, type)
+    }
+    const overlap = html.match(/data-cell="4"[^>]*aria-label="([^"]+)"/)![1]
+    assert.match(overlap, /extra region 1.*extra region 2/i)
+  }
+})
+
+test('the imported Whispers lesson renders its link-count guide in desktop and mobile', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
+  const source = examples.find(fixture => fixture.url.endsWith('/B5mt'))!
+  const { variant, givens, whispersGuide } = await detectPuzzle(source.code)
+  const props = { variantPuzzle: variant?.puzzle, givens, values: givens }
+  const board = createElement(Board, { ...props, whispersGuide })
+  const mobile = createElement(MobilePanelLayout, { puzzleId: 'coach-guide', rearranging: false, blocked: false,
+    onRearrangingChange() {}, withHint: false, panels: { puzzle: { title: 'Puzzle', content: board } } })
+  for (const node of [board, mobile]) {
+    const html = renderToStaticMarkup(node)
+    assert.match(html, /<ul aria-label="Whispers neighbors">/)
+    assert.match(html, /1 distinct digit<\/strong><span>1–4 or 6–9/)
+    assert.match(html, /4 distinct digits<\/strong><span>1 or 9/)
+    assert.equal([...html.matchAll(/data-cell="[^"]+"[^>]*data-whispers-links=/g)].length, 44)
+    assert.match(html, /data-cell="11"[^>]+Whispers neighbors need at least 4 distinct digits[^>]+data-whispers-links="4"/)
+  }
+  assert.equal(renderToStaticMarkup(createElement(Board, props)).includes('whispers-guide'), false)
 })
 
 test('sharing a progressed Whispers puzzle retains its complete starting definition', async () => {

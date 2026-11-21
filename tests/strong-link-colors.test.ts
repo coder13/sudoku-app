@@ -96,6 +96,22 @@ for (const target of ['cell', 'candidate'] as const) {
   })
 }
 
+test('continuing a cell color group protects an imported mark on a linked cell', () => {
+  const masks = masksFor([0, 4, 36, 40])
+  const { position } = paintCells(gameFor(masks), [{ cell: 0, color: 5 }])
+  const colored = { ...position, importedCellColors: { 4: ['blue', 'yellow'] } }
+  const result = continueStrongLinkColors(masks, { cell: 0, digit: 1 }, colored, 'cell')
+  assert.deepEqual(result, { status: 'color-conflict', marks: [], conflicts: [{ cell: 4, digit: 1 }] })
+})
+
+test('candidate continuation protects an imported shade of the digit without blocking other digits', () => {
+  const masks = masksFor([0, 4, 36, 40])
+  const { position } = paintCandidate(gameFor(masks), { cell: 0, digit: 1 }, 5)
+  const colored = { ...position, importedCandidateColors: { 4: { 1: 'blue' }, 36: { 2: 'yellow' } } }
+  const result = continueStrongLinkColors(masks, { cell: 0, digit: 1 }, colored, 'candidate')
+  assert.deepEqual(result, { status: 'color-conflict', marks: [], conflicts: [{ cell: 4, digit: 1 }] })
+})
+
 test('variant houses create strong links; knight conflicts alone do not', () => {
   const masks = masksFor([0, 40])
   const start = { cell: 0, digit: 1 }

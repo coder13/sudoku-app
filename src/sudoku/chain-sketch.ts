@@ -1,3 +1,4 @@
+import { playVariantPuzzle } from './fog.ts'
 import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, makeChainGraph, sameEdge, type ChainEdge } from './chains.ts'
 import type { DeductionAction } from './engine.ts'
 import { applyDeduction, conflictsOf, fillEntries, hasCandidate, move, valuesOf, type Game } from './game.ts'
@@ -155,7 +156,7 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
       values[cell] = String(digit)
     }
     const filled = values.join('')
-    if (conflictsOf(filled, game.variant?.puzzle, game.grid, game.sized?.rules).size) return game
+    if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
     position = fillEntries(eliminated, filled, removeCandidates).position
   }
 
@@ -273,7 +274,7 @@ export function pruneChainsAfterMove(previous: Game, next: Game,
   // The graph before the edit still contains the eliminated candidates.
   const masks = next.future.length === 0 && (entries !== old.entries || eliminations !== old.eliminations || removed.some(Boolean))
     ? candidateMasks?.(previous) : null
-  const graph = masks ? makeChainGraph(masks, previous.variant?.puzzle) : null
+  const graph = masks ? makeChainGraph(masks, playVariantPuzzle(previous.variant, previous.position.entries)) : null
   const chainSketch = removeUnavailableChains(state, unavailable, graph ? edges => {
     if (!edges.length) return false
     const targets = [...analyzeChainPaths(graph, edges), ...analyzeMedusa(graph, edges)]

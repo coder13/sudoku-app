@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { test } from 'node:test'
+import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
+import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantDigitExclusions, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
   needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
@@ -429,4 +430,49 @@ test('Windoku peers, conflicts, and saved games include all four extra regions',
   assert.deepEqual(variantHouseCells({ extra: 0 }, mixed), [])
   collision[30] = '0'
   assert.equal(variantHouseMasks(mixed, collision.join(''))[30] & (1 << 4), 0)
+})
+
+test('9×9 Kropki checks every positive and negative pairing, including split marker layers', () => {
+  const givens = '0'.repeat(81)
+  for (let positive = 0; positive < 4; positive++) for (let negative = 0; negative < 4; negative++) {
+    const puzzle: VariantPuzzle = { version: 1, givens, rules: [
+      { type: 'kropki', consecutive: { negative: Boolean(negative & 1), pairs: positive & 1 ? [[0, 1]] : [] } },
+      { type: 'kropki', ratioTwo: { negative: Boolean(negative & 2), pairs: positive & 2 ? [[1, 0]] : [] } },
+    ] }
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) {
+      const consecutive = Math.abs(a - b) === 1
+      const double = Math.max(a, b) === 2 * Math.min(a, b)
+      const permitted = positive ? (!(positive & 1) || consecutive) && (!(positive & 2) || double)
+        : (!(negative & 1) || !consecutive) && (!(negative & 2) || !double)
+      assert.equal(hasCandidate(variantDigitExclusions(puzzle, 0, 1, a), b), !permitted,
+        `positive=${positive} negative=${negative} digits=${a},${b}`)
+      assert.equal(hasCandidate(variantDigitExclusions(puzzle, 1, 0, b), a), !permitted)
+    }
+    assert.equal(variantDigitExclusions(puzzle, 0, 80, 1), 0)
+  }
+})
+
+test('Kropki placement highlights only actual conflicts and cleans both Pencil modes with undo', () => {
+  const givens = '0'.repeat(81)
+  const puzzle: VariantPuzzle = { version: 1, givens, rules: [
+    { type: 'kropki', consecutive: { negative: true } },
+    { type: 'kropki', ratioTwo: { pairs: [[0, 1]] } },
+  ] }
+  const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
+  const game = { ...makeGame('kropki', 'Kropki', givens, 'imported'), variant: { id: 'kropki' as const, puzzle, solution } }
+  let prepared = game
+  for (const mode of ['center', 'corner'] as const) {
+    for (const digit of [2, 3]) prepared = enter(prepared, [1, 9], mode, digit)
+  }
+  const next = enter(prepared, [0], 'value', 1)
+  for (const mask of [next.position.center, next.position.corner]) {
+    assert.equal(mask[1], 1 << 1)
+    assert.equal(mask[9], 1 << 2)
+  }
+  assert.deepEqual(undo(next).position, prepared.position)
+  assert.deepEqual(redo(undo(next)).position, next.position)
+  assert.deepEqual(fillEntries(prepared, valuesOf(next)).position, next.position)
+  assert.deepEqual(conflictsOf('12' + '0'.repeat(79), puzzle), new Set())
+  assert.deepEqual(conflictsOf('13' + '0'.repeat(79), puzzle), new Set([0, 1]))
+  assert.deepEqual(conflictsOf('1' + '0'.repeat(8) + '2' + '0'.repeat(71), puzzle), new Set([0, 9]))
 })

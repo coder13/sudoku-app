@@ -57,13 +57,13 @@ Run `npm run dev:lessons` and open [the local lesson editor](http://127.0.0.1:51
 
 The editor runs on its own local preview server. Set `LESSON_EDITOR_PORT` to use another port. It uses the generated engine files from `npm run build:wasm` and builds them on first launch if they are missing.
 
-## Play, create, and share
+## Play, import, and share
 
-The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a variant and a difficulty. Jigsaw offers Easy through Hard. The other variants offer Easy through Extreme. The variant name above the grid opens its rules. The engine checks that the variant rule is needed for a unique solution, then rates a full logical solve using that rule. Hints explain the active rules and show the candidates or cells involved.
+The grid accepts keyboard or touch input. It supports two types of candidates, cell colors, multi-select, undo, and redo. Open **Puzzles → New puzzle** to choose a Sudoku mode and a difficulty. **Generate a custom puzzle** lets you choose rules for the generator and save the combination as a mode. The variant name above the grid opens its rules. The engine checks that generated Sudoku puzzles have a unique solution and rates their logical walkthroughs. Hints explain the active rules and show the candidates or cells involved.
 
 On mobile, press and hold a card for five seconds to rearrange the cards. Drag a card to move it. The hint card also appears in this mode so you can choose its position. The puzzle and timer stop while you rearrange cards. Press **X** to return to play. The browser saves the card order across refreshes and app updates.
 
-Use **Create by hand** to enter givens for Classic Sudoku. Givens are the fixed starting digits. The app saves a hand-made puzzle for play after it finds exactly one solution.
+To play a puzzle made in another app, open **Import puzzle** and paste its link or puzzle code. Use an external puzzle editor to set givens and draw variant clues, then import its export here.
 
 Open **Puzzles → Collections** to browse Nikoli Classics (100 handmade puzzles) or Sudoku Exchange Selection (60 generated puzzles). Choose a difficulty, then play the next puzzle or preview a grid and save it for later. Opening a puzzle you already have resumes that game. After you finish, choose **Next puzzle in collection** to continue at the same difficulty. You can also change the collection difficulty or return to Puzzles to choose a different puzzle. The app includes both collections in its offline download and shows creator credits and reuse terms. Random generation remains available under **New puzzle**. See the [collection sources and update steps](src/sudoku/collections/README.md).
 
@@ -77,7 +77,7 @@ Mini Sudoku can also be copied as 16 givens or a four-line grid. Classic puzzles
 
 Native and shared puzzles can combine all 27 supported rule types with Jigsaw regions, including line, Clone and outside-clue families. Supported Coach and f-puzzles imports preserve their encoded rules; unsupported encoded rules reject explicitly. White and black dots keep separate negative-rule settings, and Coach Non-Consecutive puzzles preserve their white-dot exceptions. New Puzzle offers only calibrated levels for each released family. See the [family inventory and generation status](SUDOKU_ENGINE_UI_PARITY.md) for current choices and remaining recipes.
 
-Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared; after completion, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. When you import a Sudoku Coach Current State code or a HoDoKu library line, you get the starting puzzle. Your progress stays in your browser.
+Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared. After completing one, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. A 9×9 Sudoku Coach Current State code restores placed digits, center and corner candidates, player cell and candidate colors, and Quick Draw annotations. A HoDoKu library line opens the starting puzzle.
 
 ### Player rating and Auto difficulty
 
@@ -93,7 +93,7 @@ Open Puzzles, then Statistics to see your rating, next Auto difficulty, and prog
 
 TanStack Start prerenders the app to static pages and assets in `dist/client`. Netlify or any static file server can publish that directory. The deployed app does not need an API or application server.
 
-The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A browser worker runs it off the UI thread. The engine generates puzzles, counts solutions up to two, and lists legal candidates. The build caches the page, assets, and engine so that play, generation, authoring, and import work offline after the first load.
+The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A browser worker runs it off the UI thread. The engine generates puzzles, counts solutions up to two, and lists legal candidates. The build caches the page, assets, and engine so that play, generation, and import from puzzle codes work offline after the first load.
 
 See the [engine guide](crates/engine/README.md) for Rust, WebAssembly, and batch usage. Run `cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open` to browse the API reference.
 

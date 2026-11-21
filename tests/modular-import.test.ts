@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, fillEntries, makeGame, undo, redo, type Game } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import {
   generationVariant,
@@ -166,8 +167,8 @@ test('malformed paths and unknown parameters reject without partial imports', as
 
 test('incomplete source exports stay explicit rather than losing unsupported companion rules', async () => {
   const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
-  assert.equal(deferred.length, 6)
-  for (const source of deferred) await assert.rejects(detectPuzzle(source.code), /unsupported|not supported|version|rectangular boxes|region|difference|cosmetic|9 × 9/i, source.url)
+  assert.equal(deferred.length, 5)
+  for (const source of deferred) await assert.rejects(prepareImportedPuzzle(source.code), /unsupported|not supported|version|rectangular boxes|region|difference|cosmetic|9 × 9/i, source.url)
   assert.match(deferred.find((source: { url: string }) => source.url.endsWith('9ZMr')).deferred, /difference.*three.*85/i)
 })
 

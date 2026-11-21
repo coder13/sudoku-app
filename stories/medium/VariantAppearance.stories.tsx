@@ -6,11 +6,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import benchmarks from '../../crates/engine/benches/fixtures/variants.json'
 import betweenNewman from '../../tests/fixtures/between-newman.json'
 import regionSumNewman from '../../tests/fixtures/region-sum-newman.json'
+import modularCoach from '../../tests/fixtures/modular-coach.json'
+import whispersCoach from '../../tests/fixtures/whispers-coach.json'
 import littleKillerMurphy from '../../tests/fixtures/little-killer-murphy.json'
 import littleKillerNewman from '../../tests/fixtures/little-killer-newman.json'
 import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
 import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
+import { detectPuzzle } from '../../src/sudoku/puzzle-import'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../../src/sudoku/variant-generation'
 import { variantHouseMasks } from '../../src/sudoku/variants'
@@ -83,6 +86,33 @@ export const RegionSumLines: Story = {
 export const RegionSumLinesCompact: Story = {
   ...RegionSumLines,
   parameters: { ...RegionSumLines.parameters, gridWidth: 290 },
+}
+
+const regionSum220V = modularCoach.examples.find(source => source.url.endsWith('/7rs9'))!.publishedPuzzle as VariantPuzzle
+
+export const RegionSumContacts: Story = {
+  args: { label: '220V Sudoku grid', variantPuzzle: regionSum220V, givens: regionSum220V.givens, values: regionSum220V.givens },
+}
+
+export const RegionSumContactsCompact: Story = {
+  args: candidateGrid(regionSum220V, '220V Sudoku grid with candidates'),
+  parameters: { gridWidth: 290 },
+}
+
+export const WhispersWithThermometers: Story = {
+  args: { label: 'Cmdt Sudoku grid', givens: '0'.repeat(81), values: '0'.repeat(81) },
+  loaders: [async () => {
+    const source = whispersCoach.examples.find(example => example.url.endsWith('/Cmdt'))!
+    const imported = await detectPuzzle(source.code)
+    return { puzzle: imported.variant!.puzzle }
+  }],
+  render: (args, { loaded }) => <Board {...args} variantPuzzle={loaded.puzzle}
+    givens={loaded.puzzle.givens} values={loaded.puzzle.givens} />,
+}
+
+export const WhispersWithThermometersCompact: Story = {
+  ...WhispersWithThermometers,
+  parameters: { gridWidth: 290 },
 }
 
 export const RegionSumClosedAndSeparated: Story = {

@@ -54,6 +54,7 @@ test('the unmodified published sum-15 source preserves its complete definition a
     if (step.technique === 'adjacent-total') assertAdjacentTotalProof(puzzle, step)
   }
   const path = await puzzleSolution(game)
+  assert.ok('rating' in path)
   assert.equal(path.steps.length, trace.steps.length); assert.equal(path.rating.score!.points, trace.rating.points)
   const hints = await puzzleHints(game, 10)
   assert.ok(hints.choices.length > 1)

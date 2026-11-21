@@ -118,16 +118,16 @@ type VariantRequest = {
   type: 'variant'
   position: VariantPosition
 } & (
-  | { operation: 'candidates' }
-  | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
   | { operation: 'analyze'; maxNodes?: number }
   | { operation: 'solve'; maxNodes?: number; seed?: number }
   | { operation: 'solve-unique'; maxNodes?: number }
   | ({ visibility?: VariantVisibility } & (
     | { operation?: 'normalize' }
+    | { operation: 'candidates' }
+    | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
     | { operation: 'hints'; collection?: number; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
     | { operation: 'rate'; techniqueOrder?: readonly string[] }
-    | { operation: 'trace'; techniqueOrder?: readonly string[] }
+    | { operation: 'trace'; techniqueOrder?: readonly string[]; stopAfterPlacementIn?: readonly number[]; includeSteps?: boolean }
     | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
     | { operation: 'practice-position'; techniqueOrder?: readonly string[]; technique: string }
     | { operation: 'check-practice-move'; technique: string; action: DeductionAction }
@@ -536,6 +536,8 @@ export type LogicalSolution = {
   rating: PuzzleRating
   positions?: SolvePosition[]
   moveAvailability?: MoveAvailability[]
+  /** The final grid comes from exact verification when logical play has stalled. */
+  exact?: true
 }
 export type PathComparison = { withTechnique: LogicalSolution; withoutTechnique: LogicalSolution }
 export type AlternatePath =
@@ -574,12 +576,28 @@ export type VariantHouse = { row: number } | { column: number } | { region: numb
 export type VariantExclusionPremise =
   | { type: 'cell'; cell: number; domain: number }
   | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
+export type VariantGroupSumLink = {
+  candidate: Candidate
+  domain: number
+  source:
+    | { type: 'line'; rule: number; anchor: [number, number] | null }
+    | { type: 'sum'; rule: number; total: number }
+    | { type: 'house'; house: VariantHouse }
+}
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
   evidence:
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
+    | { type: 'sum-pair'; rules: [number, number]; cells: [number, number, number, number]; totals: [number, number]; domains: [number, number, number, number]; house: VariantHouse; houses: VariantHouse[] }
+    | { type: 'group-line-phase-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; total: number; house: VariantHouse }
+    | { type: 'group-sum-implication'; assumption: Candidate; links: VariantGroupSumLink[]; conflict: VariantHouse }
+    | { type: 'group-line-house-triplet'; rule: number; house: VariantHouse; cells: [number, number, number, number]; domains: [number, number, number, number] }
+    | { type: 'group-line-disjoint-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; houses: VariantHouse[]; total: number }
+    | { type: 'group-line-sum-chain'; rules: [number, number, number]; house?: VariantHouse; houses?: VariantHouse[]; cells: [number, number, number, number]; domains: [number, number, number, number]; totals: [number, number]; supported: [number, number, number, number]; locked: number }
+    | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
+    | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
@@ -815,6 +833,40 @@ export function runEngine<T extends EngineRequest>(request: T, options: EngineRu
   return sendRequest(connectionFor(request, options), request, options)
 }
 
+let idleGenerationConnection: EngineConnection | undefined
+
+/** Give a search exclusive use of a worker so cancellation can stop active Wasm. */
+export async function withGenerationWorker<Result>(
+  signal: AbortSignal,
+  search: (run: <T extends EngineRequest>(request: T) => Promise<EngineResult<T>>) => Promise<Result>,
+): Promise<Result> {
+  signal.throwIfAborted()
+  const connection: EngineConnection = idleGenerationConnection ?? { pending: new Map() }
+  idleGenerationConnection = undefined
+  let cancel!: () => void
+  const cancelled = new Promise<never>((_, reject) => {
+    cancel = () => {
+      closeConnection(connection, signal.reason)
+      reject(signal.reason)
+    }
+  })
+  signal.addEventListener('abort', cancel, { once: true })
+  try {
+    const result = await Promise.race([search(request => {
+      signal.throwIfAborted()
+      return sendRequest(connection, request)
+    }), cancelled])
+    signal.throwIfAborted()
+    return result
+  } finally {
+    signal.removeEventListener('abort', cancel)
+    if (connection.worker) {
+      if (!connection.pending.size && !idleGenerationConnection) idleGenerationConnection = connection
+      else closeConnection(connection, new DOMException('Generation worker closed.', 'AbortError'))
+    }
+  }
+}
+
 /** Own a worker for a cancelable workflow. Keep paged hint calls in the same session. */
 export function createEngineSession({ prepared = false }: { prepared?: boolean } = {}) {
   const connection: EngineConnection = { pending: new Map(), owned: true, prepared }
@@ -834,7 +886,9 @@ export type EngineSession = ReturnType<typeof createEngineSession>
 // an in-flight forcing search without cancelling another board or action history.
 let idleCountConnection: EngineConnection | undefined
 
-export function createCountWorker(values: string, eliminations: readonly number[] | undefined, position?: VariantPosition) {
+export function createCountWorker(values: string, eliminations: readonly number[] | undefined,
+  position?: VariantPosition, visibility?: VariantVisibility,
+) {
   let connection: EngineConnection | undefined
   return {
     count(technique: string) {
@@ -844,7 +898,8 @@ export function createCountWorker(values: string, eliminations: readonly number[
       }
       if (!position) return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
       return sendRequest(connection, { type: 'variant', operation: 'hints',
-        position: { ...position, eliminations }, techniqueOrder: [technique], limit: 0xffff_ffff,
+        position: { ...position, eliminations }, ...(visibility && { visibility }),
+        techniqueOrder: [technique], limit: 0xffff_ffff,
       }).then((hints) => new Set(hints.flatMap(({ actions }) => actions.map((action) => {
         const { cell, digit } = 'place' in action ? action.place : action.eliminate
         return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`

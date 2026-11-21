@@ -18,8 +18,8 @@ use crate::{
 #[path = "logical_tests.rs"]
 mod tests;
 
-/// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 8;
+/// Version of the rating behavior for structured puzzles.
+pub const VARIANT_SCORING_VERSION: u32 = 9;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -27,6 +27,8 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod sum_pairs;
+mod group_sum_implications;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -112,7 +114,7 @@ catalog! {
     Whispers: "whispers", 27, Medium;
     /// Apply the repeating low, medium and high groups along an Entropic line.
     Entropic: "entropic", 27, Medium;
-    /// Apply the repeating remainder groups along a Modular line.
+    /// Apply the repeating remainder groups along a Modular line, including when a two-cell sum fixes or excludes a group.
     Modular: "modular", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
     CageCombinations: "cage-combinations", 34, Easy;
@@ -233,6 +235,80 @@ pub enum VariantEvidence {
         /// Candidate masks, including singleton masks for placed digits.
         domains: Vec<u16>,
     },
+    /// Two positive sums force a digit into one of their two outside endpoints.
+    SumPair(Box<VariantSumPairProof>),
+    /// A chain of line, sum, and house implications repeats a digit.
+    GroupSumImplication {
+        /// Candidate that starts and contradicts the chain.
+        assumption: Candidate,
+        /// Ordered consequences, beginning at the assumed candidate.
+        links: Vec<VariantGroupSumLink>,
+        /// House linking the final consequence and the assumption.
+        conflict: VariantHouseKind,
+    },
+    /// Two cells in the same group on a line also share a house.
+    GroupLineHouse {
+        /// Index of the Entropic or Modular rule in the puzzle definition.
+        rule: usize,
+        /// House requiring the cells to contain different digits.
+        house: VariantHouseKind,
+        /// Cells in the same repeating group, in first-visit order.
+        cells: [usize; 2],
+        /// Current candidate masks, including placed digits.
+        domains: [u16; 2],
+    },
+    /// Two line cells would exhaust the candidates of a third cell in their house.
+    GroupLineHouseTriplet {
+        /// Index of the Entropic or Modular rule.
+        rule: usize,
+        /// House shared by the last three cells.
+        house: VariantHouseKind,
+        /// The target and its two different-phase line cells, then the off-line cell.
+        cells: [usize; 4],
+        /// Current candidate masks in cell order, including placed digits.
+        domains: [u16; 4],
+    },
+    /// A repeating group and a two-cell sum force a repeat in a shared house.
+    GroupLineSumHouse {
+        /// Indices of the line and positive sum rules, in that order.
+        rules: [usize; 2],
+        /// Shared house of the first and last cells.
+        house: VariantHouseKind,
+        /// Candidate cell, its same-group partner, and the other sum endpoint.
+        cells: [usize; 3],
+        /// Input candidate masks in the same order, including placed digits.
+        domains: [u16; 3],
+        /// Positive sum on the edge between the last two cells.
+        total: u8,
+    },
+    /// A fixed line phase and a positive sum force a repeat across two other phases.
+    GroupLinePhaseSum {
+        /// Group line and positive sum rule indices.
+        rules: [usize; 2],
+        /// Sum endpoint, sum partner, other-phase line cell, and fixed-phase line cell.
+        cells: [usize; 4],
+        /// Input masks in cell order, including any placed digits.
+        domains: [u16; 4],
+        /// Sum of the first two cells.
+        total: u8,
+        /// House linking the second and third cells.
+        house: VariantHouseKind,
+    },
+    /// A same-group pair and a separate two-cell sum are linked by shared houses.
+    GroupLineDisjointSum {
+        /// Indices of the line and positive sum rules, in that order.
+        rules: [usize; 2],
+        /// The line cells, followed by the two sum endpoints.
+        cells: [usize; 4],
+        /// Input candidate masks in cell order, including placed digits.
+        domains: [u16; 4],
+        /// Houses connecting these cells.
+        houses: Vec<VariantHouseKind>,
+        /// Positive sum on the last two cells.
+        total: u8,
+    },
+    /// A repeating line group and two linked sums restrict digits across shared houses.
+    GroupLineSumChain(Box<VariantGroupSumChainProof>),
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
@@ -280,6 +356,85 @@ pub enum VariantEvidence {
         #[cfg_attr(feature = "wasm-api", serde(rename = "swapCells"))]
         swap_cells: Vec<usize>,
     },
+}
+
+/// One forced placement in a variant implication chain.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupSumLink {
+    /// Candidate forced by the preceding placement.
+    pub candidate: Candidate,
+    /// Candidate mask at this cell before assuming any placement in the chain.
+    pub domain: u16,
+    /// Rule or house that supplies the link.
+    pub source: VariantGroupSumLinkSource,
+}
+
+/// The local premise that links two candidate placements.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(tag = "type", rename_all = "kebab-case"))]
+pub enum VariantGroupSumLinkSource {
+    /// A same-phase link or a different-phase link with a fixed third group.
+    Line {
+        /// Index of the Entropic or Modular rule.
+        rule: usize,
+        /// Fixed-phase cell and its domain when the link uses different phases.
+        anchor: Option<(usize, u16)>,
+    },
+    /// A positive sum forces its other endpoint.
+    Sum {
+        /// Index of the positive sum rule.
+        rule: usize,
+        /// Total on the edge.
+        total: u8,
+    },
+    /// Equal digits are excluded from a shared house.
+    House {
+        /// The house shared by the two cells.
+        house: VariantHouseKind,
+    },
+}
+
+/// Candidate support from two disjoint positive sums connected by a house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantSumPairProof {
+    /// The two source rule indices.
+    pub rules: [usize; 2],
+    /// Anchor and partner of the first sum, then anchor and partner of the second.
+    pub cells: [usize; 4],
+    /// The two positive sums.
+    pub totals: [u8; 2],
+    /// Candidate masks for the four cells in proof order, including placed digits.
+    pub domains: [u16; 4],
+    /// House enforcing different anchor digits.
+    pub house: VariantHouseKind,
+    /// Houses through which targets see the two partners.
+    pub houses: Vec<VariantHouseKind>,
+}
+
+/// Replayable support for two linked sums and a same-group line pair.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupSumChainProof {
+    /// The group line followed by the two positive sum rules.
+    pub rules: [usize; 3],
+    /// The three cells along the sum chain followed by the other line cell.
+    pub cells: [usize; 4],
+    /// The house containing all four cells, when they share one.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house: Option<VariantHouseKind>,
+    /// Houses supplying separate equal-digit exclusions when there is no common house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub houses: Vec<VariantHouseKind>,
+    /// The sum on each of the first two edges.
+    pub totals: [u8; 2],
+    /// Candidate masks for the four cells, including placed digits.
+    pub domains: [u16; 4],
+    /// Candidates occurring in at least one assignment satisfying the premises.
+    pub supported: [u16; 4],
+    /// Digits newly guaranteed to occur among the four cells.
+    pub locked: u16,
 }
 
 /// Replayable support for a binary line and its shared houses.
@@ -408,8 +563,21 @@ impl VariantPosition {
         &self,
         order: &[VariantTechnique],
     ) -> Result<VariantTrace, VariantLogicalError> {
+        self.trace_with_boundary(order, 0, true)
+    }
+
+    pub(crate) fn trace_with_boundary(
+        &self,
+        order: &[VariantTechnique],
+        stop_after_placement_in: u128,
+        include_steps: bool,
+    ) -> Result<VariantTrace, VariantLogicalError> {
         let mut steps = Vec::new();
-        let (end, rating) = self.logical_run(order, |step| steps.push(step))?;
+        let (end, rating) = self.logical_run(order, stop_after_placement_in, |step| {
+            if include_steps {
+                steps.push(step);
+            }
+        })?;
         Ok(VariantTrace {
             start: self.clone(),
             end,
@@ -420,25 +588,37 @@ impl VariantPosition {
 
     /// Rate the logical path without retaining its proof trace.
     pub fn rate(&self, order: &[VariantTechnique]) -> Result<VariantRating, VariantLogicalError> {
-        self.logical_run(order, |_| {}).map(|(_, rating)| rating)
+        self.logical_run(order, 0, |_| {}).map(|(_, rating)| rating)
     }
 
     fn logical_run(
         &self,
         order: &[VariantTechnique],
+        stop_after_placement_in: u128,
         receive: impl FnMut(VariantDeduction),
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let compiled = self
             .puzzle
             .compile()
             .map_err(VariantLogicalError::Definition)?;
-        self.run_with_compiled(&compiled, order, receive)
+        self.run_with_boundary(&compiled, order, stop_after_placement_in, receive)
     }
 
+    #[cfg(any(feature = "generation", test))]
     pub(super) fn run_with_compiled(
         &self,
         compiled: &CompiledVariant,
         order: &[VariantTechnique],
+        receive: impl FnMut(VariantDeduction),
+    ) -> Result<(Self, VariantRating), VariantLogicalError> {
+        self.run_with_boundary(compiled, order, 0, receive)
+    }
+
+    fn run_with_boundary(
+        &self,
+        compiled: &CompiledVariant,
+        order: &[VariantTechnique],
+        stop_after_placement_in: u128,
         mut receive: impl FnMut(VariantDeduction),
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let mut position = compiled
@@ -489,7 +669,23 @@ impl VariantPosition {
                 }
             }
             end.record_actions(&step.actions);
+            if stop_after_placement_in != 0
+                && position.board.contains(&0)
+                && step.actions.iter().any(|action| {
+                    matches!(action, HintAction::Place(candidate) if stop_after_placement_in & (1 << candidate.cell) != 0)
+                })
+            {
+                receive(step);
+                break;
+            }
+            let overlay = position.overlay.take();
             position = compiled.house_position(position.board, &end.eliminations);
+            if let Some(mut overlay) = overlay
+                && overlay.get_mut().has_cached_support()
+            {
+                overlay.get_mut().update_position(&position.board, &position.masks);
+                position.overlay = OnceCell::from(overlay);
+            }
             receive(step);
         }
         Ok((end, rating))
@@ -503,6 +699,14 @@ impl VariantDeduction {
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineHouseTriplet { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
+            VariantEvidence::GroupLinePhaseSum { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineDisjointSum { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineSumChain(proof) => proof.cells.len(),
+            VariantEvidence::SumPair(proof) => proof.cells.len(),
+            VariantEvidence::GroupSumImplication { links, .. } => links.len() + 1,
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -849,7 +1053,10 @@ impl CompiledVariant {
                 .break_value()
                 .map(overlay_proof)
         } else {
-            self.explain(position, technique).into_iter().next()
+            self.local_proofs(position, technique)
+                .into_iter()
+                .next()
+                .or_else(|| self.group_sum_implications(position, technique, 1).into_iter().next())
         }
     }
 
@@ -872,6 +1079,16 @@ impl CompiledVariant {
     }
 
     pub(super) fn explain<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
+        technique: VariantTechnique,
+    ) -> Vec<VariantDeduction> {
+        let mut proofs = self.local_proofs(position, technique);
+        proofs.extend(self.group_sum_implications(position, technique, usize::MAX));
+        proofs
+    }
+
+    fn local_proofs<'a>(
         &'a self,
         position: &ProofPosition<'a>,
         technique: VariantTechnique,
@@ -1005,9 +1222,18 @@ impl CompiledVariant {
                         proofs.push(proof);
                     }
                 }
+                if matches!(technique, Xv | AdjacentTotal) {
+                    self.sum_pair_proofs(position, technique, &mut proofs);
+                }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+                let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
+                    let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
+                    let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))
+                        .fold(0, |mask, (cell, _)| mask | (1u128 << cell));
+                    (domains, narrow)
+                });
                 for line in self
                     .lines
                     .iter()
@@ -1027,6 +1253,174 @@ impl CompiledVariant {
                         supported[..len].iter().copied(),
                     ) {
                         proofs.push(proof);
+                    }
+                    line.visit_group_house_removals(
+                        self,
+                        &domains[..len],
+                        &supported[..len],
+                        |house, cells, domains, removals| {
+                            let actions = position.removals(
+                                &cells,
+                                removals.into_iter().map(|mask| DIGITS & !mask),
+                            );
+                            if !actions.is_empty() {
+                                proofs.push(VariantDeduction {
+                                    technique,
+                                    actions,
+                                    evidence: VariantEvidence::GroupLineHouse {
+                                        rule: line.rule_index,
+                                        house,
+                                        cells,
+                                        domains,
+                                    },
+                                });
+                            }
+                        },
+                    );
+                    if let Some((domains, narrow)) = &triplet_inputs {
+                        line.visit_group_house_triplets(self, domains, &supported[..len], *narrow,
+                            |house, cells, domains, removals| {
+                                let removed = position.masks[cells[0]] & removals;
+                                if removed != 0 {
+                                    proofs.push(VariantDeduction {
+                                        technique,
+                                        actions: digits(removed)
+                                            .map(|digit| HintAction::Eliminate(Candidate { cell: cells[0], digit }))
+                                            .collect(),
+                                        evidence: VariantEvidence::GroupLineHouseTriplet {
+                                            rule: line.rule_index,
+                                            house,
+                                            cells,
+                                            domains,
+                                        },
+                                    });
+                                }
+                            });
+                    }
+                }
+                for clue in self.group_sum_houses.iter().filter(|clue| clue.technique == technique.id()) {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let removed = position.masks[clue.cells[0]] & clue.removals(domains);
+                    if removed != 0 {
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions: digits(removed)
+                                .map(|digit| HintAction::Eliminate(Candidate { cell: clue.cells[0], digit }))
+                                .collect(),
+                            evidence: VariantEvidence::GroupLineSumHouse {
+                                rules: clue.rules,
+                                house: clue.house,
+                                cells: clue.cells,
+                                domains,
+                                total: clue.total,
+                            },
+                        });
+                    }
+                }
+                for clue in self.disjoint_group_sums.iter().filter(|clue| clue.technique == technique.id()) {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let removals = clue.removals(domains);
+                    for (&cell, mask) in clue.cells.iter().zip(removals) {
+                        let removed = position.masks[cell] & mask;
+                        if removed != 0 {
+                            proofs.push(VariantDeduction {
+                                technique,
+                                actions: digits(removed)
+                                    .map(|digit| HintAction::Eliminate(Candidate { cell, digit }))
+                                    .collect(),
+                                evidence: VariantEvidence::GroupLineDisjointSum {
+                                    rules: clue.rules,
+                                    cells: clue.cells,
+                                    domains,
+                                    houses: clue.houses.clone(),
+                                    total: clue.total,
+                                },
+                            });
+                        }
+                    }
+                }
+                for clue in self
+                    .group_sum_chains
+                    .iter()
+                    .filter(|clue| clue.technique == technique.id())
+                {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let Some(support) = clue.support(domains) else {
+                        continue;
+                    };
+                    let house = clue.house.map(|index| &self.houses[index]);
+                    let actions = if let Some(house) = house {
+                        let allowed = house.cells.iter().map(|cell| {
+                            let removed = clue
+                                .cells
+                                .iter()
+                                .position(|site| site == cell)
+                                .map_or(support.locked, |index| support.removed[index]);
+                            DIGITS & !removed
+                        });
+                        position.removals(&house.cells, allowed)
+                    } else {
+                        position.removals(&clue.cells, support.removed.map(|mask| DIGITS & !mask))
+                    };
+                    if !actions.is_empty() {
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions,
+                            evidence: VariantEvidence::GroupLineSumChain(Box::new(
+                                VariantGroupSumChainProof {
+                                    rules: clue.rules,
+                                    house: house.map(|house| house.kind),
+                                    houses: clue.houses.clone(),
+                                    cells: clue.cells,
+                                    domains,
+                                    totals: clue.totals,
+                                    supported: support.supported,
+                                    locked: support.locked,
+                                },
+                            )),
+                        });
+                    }
+                }
+                for clue in self
+                    .group_sum_phases
+                    .iter()
+                    .filter(|clue| clue.technique == technique.id())
+                {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let Some((removed, anchor, fixed)) =
+                        clue.removals(domains, |cell| position.domain(cell))
+                    else {
+                        continue;
+                    };
+                    let actions = position.removals(&clue.cells, removed.map(|mask| DIGITS & !mask));
+                    if !actions.is_empty() {
+                        let [endpoint, partner, target] = clue.cells;
+                        let [a, b, c] = domains;
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions,
+                            evidence: VariantEvidence::GroupLinePhaseSum {
+                                rules: clue.rules,
+                                cells: [endpoint, partner, target, anchor],
+                                domains: [a, b, c, fixed],
+                                total: clue.total,
+                                house: clue.house,
+                            },
+                        });
+                    }
+                }
+                if technique == Modular {
+                    for clue in &self.modular_sums {
+                        let supported = clue
+                            .cells
+                            .iter()
+                            .zip(&clue.allowed)
+                            .map(|(&cell, &mask)| position.domain(cell) & mask);
+                        if let Some(proof) =
+                            position.explain_constraint(technique, &clue.rules, &clue.cells, supported)
+                        {
+                            proofs.push(proof);
+                        }
                     }
                 }
             }

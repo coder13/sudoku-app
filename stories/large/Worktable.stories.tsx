@@ -8,7 +8,7 @@ import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPl
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates } from '../../src/sudoku/game'
+import { EMPTY, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates, type Game } from '../../src/sudoku/game'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
@@ -32,7 +32,7 @@ const meta = {
     cellReferenceStyle: DEFAULT_CELL_REFERENCE_STYLE,
     multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
     beginResize: fn(), toggleMulti: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
-    onNewPuzzle: fn(), onCreatePuzzle: fn(), onEditPuzzle: fn(),
+    onNewPuzzle: fn(), onImportPuzzle: fn(),
     showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
     puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
   },
@@ -54,6 +54,27 @@ const mixedRulesGame = {
 }
 
 export const Starter: Story = {}
+const importedDrawingGame: Game = {
+  ...inProgress, id: 'story-imported-drawings', source: 'imported',
+  position: { ...inProgress.position, importedDrawings: [
+    { shape: 'line', from: [.5, .5], to: [2.5, 2.5], color: 'blueHeavy' },
+    { shape: 'cross', at: [2, 1.5], color: 'redHeavy' },
+  ] },
+}
+
+export const ClearImportedDrawings: Story = {
+  args: { game: importedDrawingGame, games: [importedDrawingGame] },
+  play: async ({ canvas, userEvent }) => {
+    const label = 'Imported Quick Draw annotations'
+    await expect(await canvas.findByRole('img', { name: label })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Clear imported drawings' }))
+    await waitFor(() => expect(canvas.queryByRole('img', { name: label })).not.toBeInTheDocument())
+    await userEvent.click(canvas.getByRole('button', { name: /^Undo$/ }))
+    await expect(await canvas.findByRole('img', { name: label })).toBeVisible()
+  },
+}
+
 export const CycleHighlightedDigit: Story = {
   args: {
     game: fillEntries(starter, [...solved.position.entries].map(digit => '139'.includes(digit) ? digit : '0').join('')),

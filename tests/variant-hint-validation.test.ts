@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EngineError, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
-import { makeGame } from '../src/sudoku/game.ts'
-import { puzzleHints, variantHintProblem } from '../src/sudoku/puzzle-help.ts'
+import { enter, makeGame, valuesOf } from '../src/sudoku/game.ts'
+import { matchesHintPosition, puzzleHints, variantHintProblem } from '../src/sudoku/puzzle-help.ts'
 
 const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
 function game() {
@@ -44,4 +44,21 @@ test('a complete displayed candidate grid cannot silently omit the solution digi
   current.position.center[2] &= ~(1 << (Number(solution[2]) - 1))
   assert.equal(current.position.eliminations, undefined)
   await assert.rejects(puzzleHints(current), { code: 'invalid-eliminations' })
+})
+
+test('hint results are only current for the same rules, digits and candidate edits', () => {
+  const current = game()
+  const snapshot = {
+    ...current.position, gameId: current.id, givens: current.givens, values: valuesOf(current),
+    puzzle: current.variant.puzzle,
+  }
+  const puzzle: VariantPuzzle = { ...current.variant.puzzle, rules: [{ type: 'anti-knight' }] }
+  const changedRules = { ...current, variant: { ...current.variant, puzzle } }
+  assert.equal(changedRules.position, current.position)
+  assert.equal(valuesOf(changedRules), snapshot.values)
+  assert.equal(matchesHintPosition(changedRules, snapshot), false)
+  assert.equal(matchesHintPosition(enter(current, [2], 'value', 4), snapshot), false)
+  assert.equal(matchesHintPosition(enter(current, [2], 'corner', 4), snapshot), false)
+  assert.equal(matchesHintPosition(enter(current, [2], 'center', 4), snapshot), false)
+  assert.equal(matchesHintPosition({ ...current, elapsed: 35, title: 'New title' }, snapshot), true)
 })

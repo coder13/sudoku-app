@@ -1,3 +1,4 @@
+import { fogFragmentLabels, type FogView } from '../sudoku/fog'
 import { cloneElement, memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
@@ -8,22 +9,26 @@ import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sud
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, variantHouseFillCells, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
+import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '../sudoku/whispers-guide'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
-import { BoardLinks, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
+import { BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
+import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors'
 
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  fog?: FogView
+  whispersGuide?: true
   highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
   sizedRules?: readonly SizedConstraintRule[]
   givens: string
   values: string
-  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors'>>
+  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>>
   errors?: ReadonlySet<number>
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
@@ -31,6 +36,7 @@ type Props = {
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
   showPlayerColors?: boolean
+  showImportedAnnotations?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -104,6 +110,7 @@ type CellGeometry = {
   regionAtCell?: number
   regionColor?: number
   houseFill: boolean
+  whispersLinks?: number
   boxEdge: boolean
   regionRight: boolean
   regionBottom: boolean
@@ -115,6 +122,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   geometry: CellGeometry
   value: number
   fixed: boolean
+  fogged: boolean
   center: number
   corner: number
   centerMask: number
@@ -124,7 +132,9 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   annotatedSlots: boolean
   preview?: Props['candidatePreview']
   candidateColors?: Record<number, number>
+  importedCandidateColors?: Record<number, string>
   color?: number
+  importedColors?: readonly string[]
   cellAnnotation?: CellAnnotation
   candidateAnnotations?: ReadonlyMap<number, CandidateAnnotation>
   selected: boolean
@@ -149,11 +159,16 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   onCandidateFocus: (candidate: CandidateSlot) => void
 }
 
+function candidateColorClass(color: number | undefined, imported: string | undefined, mark: CandidateAnnotation['mark']) {
+  if (mark === 'emphasized' || mark === 'strike') return ''
+  return color ? `candidate-color color-${color}` : imported ? 'candidate-color imported-candidate-color' : ''
+}
+
 // A cell receives its own values and visual flags, never the whole board selection
 // or position. An edit can therefore leave unrelated cells and their marks intact.
 const BoardCell = memo(function BoardCell({
-  geometry, value, fixed, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
-  preview, candidateColors, color, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
+  geometry, value, fixed, fogged, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
+  preview, candidateColors, importedCandidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
   linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted,
   onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
@@ -172,24 +187,38 @@ const BoardCell = memo(function BoardCell({
   const visibleCenterMask = centerMask | (previewAction === 'add' && !previewSlotted ? 1 << (previewDigit! - 1) : 0)
   const visibleGridCandidates = useMemo(() => marksOf(visibleGridMask), [visibleGridMask])
   const visibleCenterCandidates = useMemo(() => marksOf(visibleCenterMask), [visibleCenterMask])
-  const cellStyle = useMemo(() => cellAnnotation && {
-    '--cell-fill': error ? undefined : cellAnnotation.fill,
-    color: error ? undefined : cellAnnotation.ink,
-  } as CSSProperties, [cellAnnotation, error])
-  const candidateLabel = useMemo(() => (candidateAnnotations || candidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
+  const cellStyle = useMemo(() => {
+    if (error) return
+    if (cellAnnotation) return { '--cell-fill': cellAnnotation.fill, color: cellAnnotation.ink } as CSSProperties
+    if (!importedColors || color) return
+    const fills = importedColors.map(importedColorFill)
+    const stripes = fills.map((fill, index) => {
+      const start = index * 100 / fills.length, end = (index + 1) * 100 / fills.length
+      return `color-mix(in srgb, ${fill} var(--imported-color-weight), var(--board-selected-bg)) ${start}% ${end}%`
+    })
+    return { '--tone': fills[0],
+      '--imported-cell-colors': fills.length > 1 ? `linear-gradient(90deg, ${stripes.join(', ')})` : undefined,
+    } as CSSProperties
+  }, [cellAnnotation, error, color, importedColors])
+  const candidateLabel = useMemo(() => (candidateAnnotations || candidateColors || importedCandidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
     .map((digit) => {
       const color = candidateColors?.[digit]
-      const note = candidateAnnotations?.get(digit)?.label ?? (color ? COLORS[color - 1].toLowerCase() : undefined)
+      const imported = importedCandidateColors?.[digit]
+      const note = candidateAnnotations?.get(digit)?.label ?? (color ? COLORS[color - 1].toLowerCase()
+        : imported ? importedColorLabel(imported) : undefined)
       return note && `${digit} ${note}`
-    }).filter(Boolean).join(', '), [candidateAnnotations, candidateColors, gridCandidates, centerCandidates])
+    }).filter(Boolean).join(', '), [candidateAnnotations, candidateColors, importedCandidateColors, gridCandidates, centerCandidates])
   const label = [
     `Row ${row}, column ${col}`,
+    fogged && 'covered by fog',
     value ? (fixed ? `given ${value}` : `digit ${value}`) : 'empty',
     !value && gridCandidates.length ? `${digitSlots ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
     !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
     color ? COLORS[color - 1] : '',
+    !color && importedColors?.length && `Cell colors ${importedColors.map(importedColorLabel).join(', ')}`,
     regionAtCell !== undefined && `region ${regionAtCell + 1}`,
     cellAnnotation?.label,
+    geometry.whispersLinks ? `Whispers neighbors need at least ${geometry.whispersLinks} distinct digit${geometry.whispersLinks === 1 ? '' : 's'}` : '',
     geometry.clues,
     !value && candidateLabel,
     highlightLabel,
@@ -199,7 +228,8 @@ const BoardCell = memo(function BoardCell({
   ].filter(Boolean).join(', ')
   const classes = [
     'cell', canSelectLinkCandidate ? 'chain-cell-target' : '', fixed ? 'given' : 'entry', related ? 'peer' : '', matching ? 'matching' : '',
-    cellHighlight, countHighlighted ? 'candidate-count-match' : '', color ? `colored color-${color}` : '',
+    cellHighlight, countHighlighted ? 'candidate-count-match' : '',
+    color ? `colored color-${color}` : importedColors && !cellAnnotation ? 'colored imported-colors' : '',
     error ? 'conflict' : '', selected ? 'selected' : '',
   ].join(' ')
 
@@ -209,17 +239,19 @@ const BoardCell = memo(function BoardCell({
     new Map(digits.map(digit => {
       const annotation = candidateAnnotations?.get(digit)
       const color = candidateColors?.[digit]
-      const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
+      const imported = importedCandidateColors?.[digit]
+      const colorClass = candidateColorClass(color, imported, annotation?.mark)
       const style = {
         gridArea: group === 0 ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
         opacity: annotation?.opacity,
         '--annotation-color': annotation?.color,
+        '--imported-candidate-tone': imported && !color ? importedColorFill(imported) : undefined,
       } as CSSProperties
       const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
       const normal = <span key={digit} className={className} style={style}
         data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}>{digit}</span>
       return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const
-    }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, boxColumns])
+    }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, importedCandidateColors, boxColumns])
 
   const selectCandidate = useCallback((digit: number, slotted: boolean) => {
     onCandidateFocus({ cell: index, digit, slotted })
@@ -236,18 +268,20 @@ const BoardCell = memo(function BoardCell({
     }
     const annotation = candidateAnnotations?.get(digit)
     const color = candidateColors?.[digit]
-    const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
+    const imported = importedCandidateColors?.[digit]
+    const colorClass = candidateColorClass(color, imported, annotation?.mark)
     const style = {
       gridArea: slotted ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
       opacity: annotation?.opacity,
       '--annotation-color': annotation?.color,
+      '--imported-candidate-tone': imported && !color ? importedColorFill(imported) : undefined,
     } as CSSProperties
     const highlightClass = highlighted ? 'candidate-match' : undefined
     if (candidateAction) {
       const candidate = { cell: index, digit }
       const pending = selectedCandidateDigit === digit
       const linkTarget = hasCandidate(linkTargetMask, digit)
-      const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color && COLORS[color - 1],
+      const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color ? COLORS[color - 1] : imported && importedColorLabel(imported),
         highlighted && 'highlighted', linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
       const classes = `board-candidate candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`
       return <button type="button" key={digit} className={classes} style={style}
@@ -268,7 +302,7 @@ const BoardCell = memo(function BoardCell({
     return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
       style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
-  }, [readOnlyCandidates, candidateAnnotations, candidateColors, previewDigit, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
+  }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewDigit, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
     candidateAction, index, row, col, selectedCandidateDigit, linkTargetMask, onPaintCandidate, onCandidate,
     tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus, selectCandidate])
 
@@ -288,9 +322,9 @@ const BoardCell = memo(function BoardCell({
     ...cellItems,
   ], [cageTotal, geometry.cageStyle, cellItems])
 
-  return <Cell role="gridcell" data-cell={index} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
+  return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
-    data-pointer-focused={pointerFocused || undefined}
+    data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
     data-rule-highlighted={ruleHighlighted || undefined}
@@ -314,10 +348,10 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle: fullPuzzle, fog, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
@@ -325,7 +359,19 @@ export function Board({
   const slotsAcross = Math.ceil(Math.sqrt(gridSize))
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
+  const variantPuzzle = fog?.puzzle ?? fullPuzzle
+  const givens = fog?.puzzle.givens ?? fullGivens
   const variantRules = variantPuzzle?.rules
+  const clipCells = fog && fog.cells.size < 81 ? fog.cells : undefined
+  const drawingRules = useMemo(() => {
+    if (!clipCells || !fullPuzzle?.rules) return variantRules
+    if (!fullPuzzle.rules.some(rule => rule.type === 'clone')) return fullPuzzle.rules
+    // Keep lettered Clone clues in the same order as the rules and hints.
+    const visibleClones = variantRules?.filter(rule => rule.type === 'clone') ?? []
+    return [...fullPuzzle.rules.filter(rule => rule.type !== 'clone'), ...visibleClones]
+  }, [clipCells, fullPuzzle?.rules, variantRules])
+  const linkCounts = useMemo(() => whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined,
+    [whispersGuide, variantPuzzle])
   const houseFills = useMemo(() => new Set(variantRules?.flatMap(variantHouseFillCells)), [variantRules])
   const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
     ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
@@ -350,9 +396,14 @@ export function Board({
   const regionColors = useMemo(() => regionsAt && jigsawRegionColors(regionsAt, gridSize), [regionsAt, gridSize])
   const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
+  const fragments = useMemo(() => clipCells && drawingRules ? fogFragmentLabels(drawingRules, clipCells) : undefined,
+    [clipCells, drawingRules])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
-  const cageTotals = useMemo(() => new Map((variantRules ?? sizedRules)?.flatMap((rule) => rule.type === 'killer-cages'
-    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules, sizedRules])
+  const cageTotals = useMemo(() => new Map((drawingRules ?? sizedRules)?.flatMap(rule => rule.type === 'killer-cages'
+    ? rule.cages.flatMap(({ cells, sum }) => {
+      const corner = Math.min(...cells)
+      return !clipCells || clipCells.has(corner) ? [[corner, sum] as const] : []
+    }) : [])), [clipCells, drawingRules, sizedRules])
   const algebraicLabels = useMemo(() => {
     const captions = new Map<number, string>()
     const descriptions = new Map<number, string[]>()
@@ -372,12 +423,13 @@ export function Board({
     for (const cell of [...cageTotals.keys(), ...algebraicLabels.captions.keys()]) insets.set(cell, { top: .3, bottom: insets.get(cell)?.bottom ?? .07 })
     return insets
   }, [clones, cageTotals, algebraicLabels])
-  const variantClues = useMemo(() => {
-    const rules = variantRules?.filter(rule => rule.type === highlightedRule || !variantHouseFillCells(rule).length)
-    return rules?.length
-      ? [<div className="board-variant-clues" key={JSON.stringify(rules)}><VariantClues rules={rules} /></div>]
-      : NO_MARKS
-  }, [highlightedRule, variantRules])
+  const clueDrawing = useMemo(() => {
+    const rules = drawingRules?.filter(rule => rule.type === highlightedRule || !variantHouseFillCells(rule).length)
+    return rules?.length ? { rules, key: JSON.stringify(rules) } : undefined
+  }, [highlightedRule, drawingRules])
+  const variantClues = useMemo(() => clueDrawing
+    ? [<div className="board-variant-clues" key={clueDrawing.key}><VariantClues rules={clueDrawing.rules} visibleCells={clipCells} /></div>]
+    : NO_MARKS, [clueDrawing, clipCells])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const highlightedDigits = useMemo(() => marksOf(highlightedDigitMask), [highlightedDigitMask])
   const matchAnyDigit = highlightedDigitMatch === 'any' && highlightedDigitMask !== 0
@@ -435,14 +487,15 @@ export function Board({
     return {
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
       regionColor: regionAtCell === undefined ? undefined : regionColors?.[regionAtCell], houseFill: houseFills.has(index),
-      cageStyle: cageTotal !== undefined && variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined,
+      whispersLinks: linkCounts?.[index] || undefined,
+      cageStyle: cageTotal !== undefined && drawingRules ? { insetInlineStart: `${cageLabelInset(index, drawingRules) * 100}%` } : undefined,
       boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
       regionBottom: Boolean(regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize]),
       alternateBox: rectangularBoxes && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
-      clues: [cellClues?.[index]?.join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
+      clues: [cellClues?.[index]?.join(', '), fragments?.[index].join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
     }
-  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, rectangularBoxes, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
+  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, linkCounts, rectangularBoxes, cageTotals, algebraicLabels, clones, drawingRules, cellClues, fragments, sizedLabels])
 
   // Parent timers and fresh event closures do not change the grid. Event wrappers
   // read the latest committed callbacks even when this element tree is reused.
@@ -450,16 +503,18 @@ export function Board({
     <div className="grid-row" role="row" data-box-edge={rectangularBoxes && row % boxRows === 0 || undefined} key={row}>
       {columns.map((col) => {
         const index = (row - 1) * gridSize + col - 1
-        const value = Number(values[index])
-        const center = position?.center[index] ?? 0, corner = position?.corner[index] ?? 0
+        const fogged = Boolean(fog && !fog.cells.has(index))
+        const value = Number(fogged ? fog!.entries[index] : values[index])
+        const center = fogged ? 0 : position?.center[index] ?? 0
+        const corner = fogged ? 0 : position?.corner[index] ?? 0
         const digitSlots = layout === 'grid' || Boolean(annotationSlots?.has(index))
         const centerMarks = digitSlots ? 0 : center
-        const gridMarks = candidates?.[index] ?? (corner | (digitSlots ? center : 0))
-        const linkedDigits = annotationSlots?.get(index)
+        const gridMarks = fogged ? 0 : candidates?.[index] ?? (corner | (digitSlots ? center : 0))
+        const linkedDigits = fogged ? undefined : annotationSlots?.get(index)
         let displayedGridMarks = gridMarks
         for (const digit of linkedDigits?.keys() ?? []) displayedGridMarks |= 1 << (digit - 1)
-        const candidateMask = candidates?.[index] ?? (center | corner)
-        const preview = !value && candidatePreview?.cell === index ? candidatePreview : undefined
+        const candidateMask = fogged ? 0 : candidates?.[index] ?? (center | corner)
+        const preview = !fogged && !value && candidatePreview?.cell === index ? candidatePreview : undefined
         const visibleCandidateMask = displayedGridMarks | centerMarks | (preview ? 1 << (preview.digit - 1) : 0)
         let linkTargetMask = 0
         if (isLinkTarget && !value) for (const digit of marksOf(visibleCandidateMask)) {
@@ -485,14 +540,17 @@ export function Board({
             : highlightsFocusDigit ? `candidate ${focusDigit} highlighted` : ''
         const countLabel = candidateCountMatches ? highlightCandidateCells ? `${highlightCandidateCount}-candidate cell highlighted`
           : `all ${highlightCandidateCount} candidates highlighted` : ''
-        return <BoardCell key={col} geometry={geometry[index]} value={value} fixed={givens[index] !== '0'}
+        return <BoardCell key={col} geometry={geometry[index]} value={value} fixed={givens[index] !== '0'} fogged={fogged}
           center={center} corner={corner} centerMask={centerMarks} gridMask={gridMarks} displayedGridMask={displayedGridMarks}
           digitSlots={digitSlots} annotatedSlots={Boolean(linkedDigits)} preview={preview}
           candidateColors={showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined}
-          color={showPlayerColors ? position?.colors?.[index] : undefined}
+          importedCandidateColors={showImportedAnnotations && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
+          color={!fogged && showPlayerColors ? position?.colors?.[index] : undefined}
+          importedColors={!fogged ? (showImportedAnnotations ? position?.importedCellColors?.[index] : undefined)
+            ?? fog?.cellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
-          error={Boolean(errors?.has(index))} related={relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
+          error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
           ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
           cellHighlight={highlightsLinkTargetCell || (highlightsCell && !matchesWithExtras) ? 'candidate-highlight-cell'
             : highlightsCell ? 'candidate-highlight-light' : ''}
@@ -509,10 +567,10 @@ export function Board({
       })}
     </div>
   )), [
-    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
-    position?.center, position?.corner, position?.candidateColors, position?.colors, candidates, candidatePreview,
+    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, layout, annotationSlots,
+    position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
-    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors,
+    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidate?.cell, selectedCandidate?.digit, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
     setCandidateFocus, boardEvents, Boolean(onCell), Boolean(onCellDoubleClick), Boolean(onCellPointerDown),
@@ -569,12 +627,26 @@ export function Board({
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} />}
         {linkedDoubleArrows.length > 0 && <MemoLinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
+        {showImportedAnnotations && position?.importedDrawings && <BoardQuickDraw drawings={position.importedDrawings}
+          region={visibleRegion} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
         {modeBadge}
       </div>
       {outside.legend.length > 0 && <div className="outside-clue-legend" aria-hidden={overlay?.visible || undefined}>{outside.legend.join(' · ')}</div>}
+      {linkCounts && <div className="whispers-guide" aria-hidden={overlay?.visible || undefined}>
+        <p>The colors show the minimum number of distinct digits in linked cells. Each range shows what can go in the colored cell.</p>
+        <ul aria-label="Whispers neighbors">
+          {WHISPERS_GUIDE_COUNTS.map(count => {
+            const ranges = whispersGuideDigits(count).map(digits => digits.length === 1 ? digits : `${digits[0]}–${digits.at(-1)}`)
+            return <li key={count} data-whispers-links={count}>
+              <strong>{count} distinct {count === 1 ? 'digit' : 'digits'}</strong>
+              <span>{ranges.join(' or ')}</span>
+            </li>
+          })}
+        </ul>
+      </div>}
     </div>
   )
 }

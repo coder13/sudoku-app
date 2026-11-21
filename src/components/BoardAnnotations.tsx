@@ -1,7 +1,9 @@
-import { useId, useMemo } from 'react'
+import { memo, useId, useMemo } from 'react'
 import { boardLinkRoutes, type BoardPoint, type CandidateInsets } from '../sudoku/board-link-geometry'
 import type { Candidate } from '../sudoku/engine'
 import { BoardMarks, type BoardMark } from './BoardMarks'
+import { importedColorLabel, importedColorValue } from '../sudoku/imported-colors'
+import type { ImportedDrawing } from '../sudoku/imported-drawings'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
 
@@ -69,3 +71,42 @@ export function BoardLinks({ links = NO_LINKS, region, candidateInsets, onSelect
   const group = useMemo(() => <svg aria-hidden="true" className="board-links" viewBox={viewBox} />, [viewBox])
   return <BoardMarks items={items} group={group} />
 }
+
+function drawingLocation([x, y]: readonly [number, number]): string {
+  return x >= 0 && x < 9 && y >= 0 && y < 9 && !Number.isInteger(x) && !Number.isInteger(y)
+    ? `row ${y + .5}, column ${x + .5}`
+    : `grid coordinates ${x}, ${y}`
+}
+
+/** Restore imported marks at their original positions, independently of chain links. */
+export const BoardQuickDraw = memo(function BoardQuickDraw({ drawings, region, hidden }: {
+  drawings: readonly ImportedDrawing[]
+  region?: BoardRegion
+  hidden?: boolean
+}) {
+  const descriptionId = useId()
+  const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
+  const descriptions = drawings.map(drawing => {
+    const color = importedColorLabel(drawing.color)
+    return drawing.shape === 'line'
+      ? `${color} line from ${drawingLocation(drawing.from)} to ${drawingLocation(drawing.to)}`
+      : `${color} ${drawing.shape} at ${drawingLocation(drawing.at)}`
+  })
+  return <svg className="board-quick-draw" viewBox={bounds} data-cropped={Boolean(region) || undefined}
+    role="img" aria-label="Imported Quick Draw annotations" aria-describedby={descriptionId} aria-hidden={hidden || undefined}>
+    <desc id={descriptionId}>{descriptions.join('. ')}</desc>
+    {drawings.map((drawing, index) => {
+      const stroke = `color-mix(in srgb, ${importedColorValue(drawing.color)} 58%, var(--board-ink))`
+      if (drawing.shape === 'line') return <line key={index} x1={drawing.from[0]} y1={drawing.from[1]}
+        x2={drawing.to[0]} y2={drawing.to[1]} stroke={stroke} strokeWidth=".1" strokeLinecap="round" />
+      const [x, y] = drawing.at
+      if (drawing.shape === 'circle') return <circle key={index} cx={x} cy={y} r=".3" stroke={stroke} strokeWidth=".1" fill="none" />
+      if (drawing.shape === 'square') return <rect key={index} x={x - .3} y={y - .3} width=".6" height=".6"
+        stroke={stroke} strokeWidth=".1" fill="none" />
+      const edge = Number.isInteger(x) || Number.isInteger(y)
+      const radius = edge ? .1 : .3
+      return <path key={index} d={`M ${x - radius} ${y - radius} L ${x + radius} ${y + radius} M ${x - radius} ${y + radius} L ${x + radius} ${y - radius}`}
+        stroke={stroke} strokeWidth={edge ? '.05' : '.1'} fill="none" strokeLinecap="round" />
+    })}
+  </svg>
+})
