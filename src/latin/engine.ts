@@ -1,8 +1,15 @@
-export type LatinRule = {
+type RuleEvidence = {
   label: string
-  kind?: 'line'
   cells: readonly number[]
-  support: (domains: readonly number[]) => readonly number[] | null
+  // A hint can highlight fewer cells than its proof needs.
+  sourceCells?: readonly number[]
+}
+
+export type LatinRule = RuleEvidence & {
+  kind?: 'line' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'renban' | 'lockout' | 'between' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
+  // Derived rules are used for solving and hints. The board check uses the basic rules.
+  afterBasic?: true
+  support: (domains: readonly number[], explain?: (evidence: RuleEvidence) => void) => readonly number[] | null
 }
 
 export type LatinPuzzle = {
@@ -21,8 +28,24 @@ const counts = Uint8Array.from({ length: 512 }, (_, mask) => {
   return count
 })
 
+export function candidateCount(mask: number) {
+  return counts[mask]
+}
+
 function valueOf(single: number) {
   return 32 - Math.clz32(single)
+}
+
+export function latinPairSupport(left: number, right: number, allowed: readonly number[]): number[] | null {
+  let supportedLeft = 0, supportedRight = 0
+  for (let digits = left; digits; digits &= digits - 1) {
+    const mask = digits & -digits
+    const partners = allowed[valueOf(mask)] & right
+    if (!partners) continue
+    supportedLeft |= mask
+    supportedRight |= partners
+  }
+  return supportedLeft ? [supportedLeft, supportedRight] : null
 }
 
 export function cellLabel(cell: number, size: number) {
@@ -57,14 +80,14 @@ function lineSupport(cells: readonly number[], domains: readonly number[], all: 
   return supported.includes(0) ? null : supported
 }
 
-export function createLatinPuzzle(size: number, givens: readonly number[], extra: readonly LatinRule[]): LatinPuzzle {
-  if (!Number.isInteger(size) || size < 3 || size > 9 || givens.length !== size * size ||
-    givens.some(value => !Number.isInteger(value) || value < 0 || value > size)) {
-    throw new Error('Invalid Latin puzzle size or givens.')
-  }
+const linesBySize: (readonly LatinRule[])[] = []
+
+export function latinLineRules(size: number): readonly LatinRule[] {
+  const cached = linesBySize[size]
+  if (cached) return cached
   const all = (1 << size) - 1
   const indices = Array.from({ length: size }, (_, i) => i)
-  const rules: LatinRule[] = [...extra]
+  const rules: LatinRule[] = []
   for (const [axis, at] of [
     ['Row', (line: number, offset: number) => line * size + offset],
     ['Column', (line: number, offset: number) => offset * size + line],
@@ -74,7 +97,16 @@ export function createLatinPuzzle(size: number, givens: readonly number[], extra
       rules.push({ kind: 'line', label: `${axis} ${line + 1}`, cells, support: domains => lineSupport(cells, domains, all) })
     }
   }
-  return { size, givens, rules }
+  linesBySize[size] = rules
+  return rules
+}
+
+export function createLatinPuzzle(size: number, givens: readonly number[], extra: readonly LatinRule[]): LatinPuzzle {
+  if (!Number.isInteger(size) || size < 3 || size > 9 || givens.length !== size * size ||
+    givens.some(value => !Number.isInteger(value) || value < 0 || value > size)) {
+    throw new Error('Invalid Latin puzzle size or givens.')
+  }
+  return { size, givens, rules: [...extra, ...latinLineRules(size)] }
 }
 
 function initialDomains(puzzle: LatinPuzzle, values: readonly number[]) {
@@ -88,81 +120,234 @@ function initialDomains(puzzle: LatinPuzzle, values: readonly number[]) {
 
 export function checkLatin(puzzle: LatinPuzzle, values: readonly number[]) {
   const domains = initialDomains(puzzle, values)
-  const conflicts = puzzle.rules.filter(rule => rule.support(domains) === null)
+  const conflicts = puzzle.rules.filter(rule => !rule.afterBasic && rule.support(domains) === null)
   return {
     conflicts,
     complete: conflicts.length === 0 && domains.every(mask => counts[mask] === 1),
   }
 }
 
-type RuleChanged = (cell: number, rule: LatinRule, depth: number) => void
+type LatinReason = Omit<LatinRule, 'support'>
+type RuleChanged = (cell: number, rule: LatinReason, depth: number, mask: number) => void
 
 function propagate(puzzle: LatinPuzzle, domains: number[], onChange?: RuleChanged) {
   for (let depth = 1; ; depth++) {
     let changed = false
+    let solved: boolean | undefined
     for (const rule of puzzle.rules) {
-      const supported = rule.support(domains)
-      if (!supported) return false
+      if (rule.afterBasic && (changed || (solved ??= domains.every(mask => counts[mask] === 1)))) continue
+      let reason: LatinReason = rule
+      const supported = rule.support(domains, rule.afterBasic && onChange ? evidence => {
+        reason = { ...evidence, kind: rule.kind, afterBasic: true }
+      } : undefined)
+      if (!supported) return rule
       rule.cells.forEach((cell, index) => {
         if (domains[cell] === supported[index]) return
         domains[cell] = supported[index]
-        onChange?.(cell, rule, depth)
+        onChange?.(cell, reason, depth, supported[index])
         changed = true
       })
     }
-    if (!changed) return true
+    if (!changed) return
   }
 }
 
-export type LatinHint = { cell: number; value: number; rules: LatinRule[]; depth: number }
+export type LatinHint = {
+  cell: number; value: number; rules: LatinReason[]; depth: number
+  trace?: { assumption: string; steps: string[]; conclusion: string }[]
+}
 
 export function findLatinHint(puzzle: LatinPuzzle, values: readonly number[]): LatinHint | null {
   return findLatinHints(puzzle, values, 1)[0] ?? null
 }
 
 export function findLatinHints(puzzle: LatinPuzzle, values: readonly number[], limit = Infinity): LatinHint[] {
+  return collectLatinHints(puzzle, values, limit, false)
+}
+
+/** Return placements in order, with each earlier placement visible during the next step. */
+export function findLatinSolutionHints(puzzle: LatinPuzzle, values: readonly number[]): LatinHint[] {
+  return collectLatinHints(puzzle, values, Infinity, true)
+}
+
+function collectLatinHints(
+  puzzle: LatinPuzzle, values: readonly number[], limit: number, replaying: boolean,
+): LatinHint[] {
   const domains = initialDomains(puzzle, values)
-  const dependencies: Array<Set<LatinRule> | undefined> = []
+  const dependencies: Array<Set<LatinReason> | undefined> = []
   const hints: LatinHint[] = []
-  const valid = propagate(puzzle, domains, (cell, rule, depth) => {
+  const conflict = propagate(puzzle, domains, (cell, rule, depth) => {
     if (hints.length >= limit) return
     const reasons = new Set([rule])
-    for (const peer of rule.cells) {
+    for (const peer of rule.sourceCells ?? rule.cells) {
       for (const reason of dependencies[peer] ?? []) reasons.add(reason)
     }
+    // A derived rule can cite only the cells that support the deduction.
+    if (rule.afterBasic) for (const prior of dependencies[cell] ?? []) reasons.add(prior)
     dependencies[cell] = reasons
     if (!puzzle.givens[cell] && !values[cell] && counts[domains[cell]] === 1) {
       hints.push({ cell, value: valueOf(domains[cell]), rules: [...reasons], depth })
+      // The next step can cite the placed digit without repeating its proof.
+      if (replaying) dependencies[cell] = undefined
     }
   })
-  return valid ? hints : []
+  if (conflict) return []
+  if (hints.length || limit <= 0 || !puzzle.rules.some(isForcingLine)) return hints
+  const forced = tryCandidatePlacements(puzzle, domains, dependencies)
+  return forced ? [forced] : []
 }
 
-// Search starts from a fixed point at every child. Recheck only rules that
-// touch a changed cell, then queue their neighbors as domains shrink.
+function isForcingLine({ kind }: LatinReason) {
+  return kind === 'whispers' || kind === 'palindrome' || kind === 'consecutive' ||
+    kind === 'thermometer' || kind === 'arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between'
+}
+
+export const latinContradictionTechnique = 'Contradiction'
+
+type TrialChange = {
+  cell: number; rule: LatinReason; mask: number; order: number; causes: TrialChange[]
+}
+
+function tryCandidatePlacements(puzzle: LatinPuzzle, domains: readonly number[], dependencies: readonly (Set<LatinReason> | undefined)[]) {
+  // Limit the extra work when none of the direct rules gives a placement.
+  let trials = 16
+  const maxCandidates = puzzle.rules.some(rule => rule.kind === 'palindrome' || rule.kind === 'consecutive') ? 3 : 2
+  for (let count = 2; count <= maxCandidates; count++) for (const [cell, mask] of domains.entries()) {
+    if (counts[mask] !== count) continue
+    let remaining = mask
+    const cases: NonNullable<LatinHint['trace']> = []
+    const failed = new Set<number>([cell])
+    const name = cellLabel(cell, puzzle.size)
+    const setup = `${name} has candidates ${digitsInMask(mask, puzzle.size).join(', ')}.`
+    const reasons = [...(dependencies[cell] ?? [])].map(reasonSentence)
+    for (let digits = mask; digits && counts[remaining] > 1; digits &= digits - 1) {
+      if (!trials--) return
+      const tested = digits & -digits
+      const result = trialConflict(puzzle, domains, cell, tested)
+      if (!result) continue
+      result.cells.forEach(peer => failed.add(peer))
+      remaining ^= tested
+      cases.push({
+        assumption: `If ${name} is ${valueOf(tested)}, the rules lead to a conflict.`,
+        steps: [...reasons, setup, ...result.steps],
+        conclusion: result.label,
+      })
+    }
+    if (counts[remaining] === 1) {
+      const value = valueOf(remaining)
+      return {
+        cell, value, depth: 1,
+        rules: [
+          { kind: 'contradiction', cells: [...failed], label: cases.length === 1 ? cases[0].assumption : setup },
+          ...cases.map(({ conclusion }) => ({ kind: 'contradiction' as const, cells: [...failed], label: conclusion })),
+        ],
+        trace: cases,
+      } satisfies LatinHint
+    }
+  }
+}
+
+function trialConflict(puzzle: LatinPuzzle, domains: readonly number[], cell: number, tested: number) {
+  const trial = domains.slice()
+  trial[cell] = tested
+  const changes: Array<TrialChange | undefined> = []
+  let order = 0
+  const conflict = propagate(puzzle, trial, (changed, rule, _depth, supported) => {
+    const causes = new Set([...(rule.sourceCells ?? rule.cells), changed].flatMap(peer => changes[peer] ?? []))
+    changes[changed] = { cell: changed, rule, mask: supported, order: order++, causes: [...causes] }
+  })
+  if (!conflict) return
+
+  const result = describeTrialConflict(puzzle.size, conflict, trial)
+  const proof = new Set(result.cells.flatMap(peer => changes[peer] ?? []))
+  for (const change of proof) for (const prior of change.causes) proof.add(prior)
+  if (!isForcingLine(conflict) && ![...proof].some(change => isForcingLine(change.rule))) return
+  const steps = [...proof].sort((a, b) => a.order - b.order).map(change => {
+    const choices = digitsInMask(change.mask, puzzle.size)
+    const target = cellLabel(change.cell, puzzle.size)
+    const next = choices.length === 1 ? `${target} must be ${choices[0]}.` : `${target} has candidates ${choices.join(', ')}.`
+    return `${reasonSentence(change.rule)} ${next}`
+  })
+  return { ...result, steps }
+}
+
+function digitsInMask(mask: number, size: number) {
+  return Array.from({ length: size }, (_, index) => index + 1).filter(digit => mask & bit(digit))
+}
+
+function reasonSentence(rule: LatinReason) {
+  return rule.kind === 'line' ? `${rule.label} must use each digit once.` : rule.label.replace(/([^.])$/, '$1.')
+}
+
+function describeTrialConflict(size: number, conflict: LatinReason, domains: readonly number[]) {
+  const { label, cells, kind } = conflict
+  if (kind !== 'line') return { cells, label: `These candidates cannot satisfy the rule. ${reasonSentence(conflict)}` }
+  const seen = new Map<number, number>()
+  let digits = 0
+  for (const cell of cells) {
+    const mask = domains[cell]
+    if (!mask) return { cells: [cell], label: `${cellLabel(cell, size)} has no candidate.` }
+    digits |= mask
+    if (counts[mask] !== 1) continue
+    const duplicate = seen.get(mask)
+    if (duplicate !== undefined) return {
+      cells: [duplicate, cell],
+      label: `${cellLabel(duplicate, size)} and ${cellLabel(cell, size)} both need ${valueOf(mask)} in ${label.toLowerCase()}.`,
+    }
+    seen.set(mask, cell)
+  }
+  const missing = ((1 << size) - 1) & ~digits
+  return {
+    cells,
+    label: missing ? `${label} has no cell for ${valueOf(missing & -missing)}.` : `${label} cannot use each digit once.`,
+  }
+}
+
+type ExactQueue = { basic: number[]; advanced: number[]; queued: Uint8Array }
+
+// Search starts from a fixed point at every child. Recheck rules that
+// touch changed cells and finish the basic rules before any advanced rule.
 function propagateExact(
-  puzzle: LatinPuzzle, domains: number[], rulesByCell: readonly number[][], first: readonly number[],
+  rules: readonly LatinRule[], domains: number[], rulesByCell: readonly number[][], first: readonly number[],
+  { basic, advanced, queued }: ExactQueue,
 ) {
-  const queue = [...first]
-  const queued = new Uint8Array(puzzle.rules.length)
-  for (const rule of queue) queued[rule] = 1
-  for (let front = 0; front < queue.length; front++) {
-    const index = queue[front]
+  basic.length = 0
+  advanced.length = 0
+  queued.fill(0)
+  for (const index of first) {
+    queued[index] = 1
+    const queue = rules[index].afterBasic ? advanced : basic
+    queue.push(index)
+  }
+
+  let basicFront = 0
+  let advancedFront = 0
+  let checkSolved = true
+  while (true) {
+    let index: number
+    if (basicFront < basic.length) index = basic[basicFront++]
+    else {
+      if (advancedFront === advanced.length || (checkSolved && domains.every(mask => counts[mask] === 1))) return true
+      checkSolved = false
+      index = advanced[advancedFront++]
+    }
     queued[index] = 0
-    const rule = puzzle.rules[index]
+    const rule = rules[index]
     const support = rule.support(domains)
     if (!support) return false
-    rule.cells.forEach((cell, offset) => {
-      if (domains[cell] === support[offset]) return
+    for (let offset = 0; offset < rule.cells.length; offset++) {
+      const cell = rule.cells[offset]
+      if (domains[cell] === support[offset]) continue
       domains[cell] = support[offset]
+      checkSolved = true
       for (const next of rulesByCell[cell]) {
         if (queued[next]) continue
         queued[next] = 1
+        const queue = rules[next].afterBasic ? advanced : basic
         queue.push(next)
       }
-    })
+    }
   }
-  return true
 }
 
 export function solveLatin(puzzle: LatinPuzzle, values: readonly number[] = [], limit = 20_000) {
@@ -173,13 +358,14 @@ export function solveLatin(puzzle: LatinPuzzle, values: readonly number[] = [], 
   puzzle.rules.forEach((rule, index) => {
     for (const cell of rule.cells) rulesByCell[cell].push(index)
   })
+  const work: ExactQueue = { basic: [], advanced: [], queued: new Uint8Array(puzzle.rules.length) }
   function visit(domains: number[], pending: readonly number[]) {
     if (nodes >= limit) {
       limited = true
       return
     }
     nodes++
-    if (!propagateExact(puzzle, domains, rulesByCell, pending)) return
+    if (!propagateExact(puzzle.rules, domains, rulesByCell, pending, work)) return
     let branch = -1
     let smallest = puzzle.size + 1
     for (let i = 0; i < domains.length; i++) {

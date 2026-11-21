@@ -1,5 +1,6 @@
 import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../sudoku/imported-colors.ts'
 import { validImportedDrawings, type ImportedDrawing } from '../sudoku/imported-drawings.ts'
+import { numberAnnotationTokenLength } from './import-token-limits.ts'
 
 export type NumberImportAnnotations = {
   givenColors?: ImportedCellColors
@@ -8,8 +9,6 @@ export type NumberImportAnnotations = {
   candidateColors?: CandidateColors<string>
   drawings?: readonly ImportedDrawing[]
 }
-
-export const numberAnnotationTokenLength = 11_000
 
 export function hasPlayerNumberAnnotations(annotations?: NumberImportAnnotations) {
   return Boolean(annotations?.cellColors || annotations?.candidateColors || annotations?.drawings)

@@ -53,9 +53,11 @@ type BoardCell = {
   endpoint?: boolean
 }
 
-type Hint = { cell: number; value: number; marked: number[]; technique: string } & (
-  | { reasons: string[]; renderExplanation?: never }
-  | { renderExplanation: (cellName: (index: number) => string) => ReactNode; reasons?: never }
+type Hint = {
+  cell: number; value: number; marked: number[]; technique: string; supportingTechniques?: readonly string[]
+} & (
+  | { reasons: string[]; trace?: Parameters<typeof DeductionExplanation>[0]['trace']; renderExplanation?: never }
+  | { renderExplanation: (cellName: (index: number) => string) => ReactNode; reasons?: never; trace?: never }
 )
 
 export type NumberBoard = {
@@ -63,11 +65,14 @@ export type NumberBoard = {
   height: number
   maxValue: number
   cells: readonly BoardCell[]
+  lineClues?: ReactNode
   ruleNotes?: readonly string[]
+  extraTechniques?: readonly string[]
   cellChoices?: { labels: readonly string[]; off: number }
   mirrorEdgeClues?: boolean
   check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
   hints: (values: readonly number[], limit?: number) => readonly Hint[]
+  solutionHints?: (values: readonly number[]) => readonly Hint[]
   solve: () => readonly number[] | null
 }
 
@@ -320,16 +325,25 @@ function numberCellName(index: number, width: number) {
 }
 
 /** Use for a standalone board preview that shares Play's cells and clues. */
-export function NumberPuzzlePreview({ board, game, label, position, annotations }: {
+export function NumberPuzzlePreview({ board, game, label, position, annotations, rules }: {
   board: NumberBoard; game: NumberGame; label: string; position?: NumberPosition; annotations?: NumberImportAnnotations
+  rules?: string
 }) {
   const digits = useMemo(() => position ? Array.from({ length: board.maxValue }, (_, i) => i + 1) : [], [board.maxValue, position])
-  return <div className="number-puzzle-grid number-puzzle-preview" data-game={game} role="group" aria-label={label}
-    style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
-    <NumberPuzzleCells board={board} digits={digits} values={position?.values}
-      noteMasks={position?.notes} cornerMasks={position?.cornerNotes} separateNotes={Boolean(position)}
-      annotations={annotations} showPlayerAnnotations />
-  </div>
+  return <>
+    <div className="number-puzzle-grid number-puzzle-preview" data-game={game} data-line-clues={Boolean(board.lineClues) || undefined} role="group" aria-label={label}
+      style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
+      <NumberPuzzleCells board={board} digits={digits} values={position?.values}
+        noteMasks={position?.notes} cornerMasks={position?.cornerNotes} separateNotes={Boolean(position)}
+        annotations={annotations} showPlayerAnnotations />
+    </div>
+    {rules && <>
+      <p>{rules}</p>
+      {Boolean(board.ruleNotes?.length) && <ul className="import-preview-rules">
+        {board.ruleNotes?.map(note => <li key={note}>{note}</li>)}
+      </ul>}
+    </>}
+  </>
 }
 
 function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, cornerMasks, separateNotes, annotations, showPlayerAnnotations,
@@ -431,6 +445,7 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, c
     {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
       ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
       : board.cells.map(renderCell)}
+    {board.lineClues}
     {annotations?.givenDrawings && <BoardQuickDraw drawings={annotations.givenDrawings} region={drawingRegion} />}
     {showPlayerAnnotations && annotations?.drawings && <BoardQuickDraw drawings={annotations.drawings}
       region={drawingRegion} />}
@@ -811,13 +826,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function explanation(hint: Hint) {
-    return <><DeductionExplanation explanationSteps={hint.reasons} />{hint.renderExplanation?.(cellName)}</>
+    return <><DeductionExplanation explanationSteps={hint.reasons} trace={hint.trace}
+      collapseExplanation={Boolean(hint.trace?.length)} />{hint.renderExplanation?.(cellName)}</>
   }
 
   function renderGrid(preview?: { values: readonly number[]; hint: Hint | null }) {
     const shownHint = preview ? preview.hint : depth >= 2 ? hint : undefined
     return <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
-      role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
+      data-line-clues={Boolean(board.lineClues) || undefined} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
       style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
       onKeyDown={preview ? undefined : onGridKey}>
       <NumberPuzzleCells board={board} selection={selection} values={preview?.values ?? position.values}
@@ -860,14 +876,21 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     onRetry: () => setSolution(numberSolution(board, editable)), onClose: () => closeInsight('solution'),
   }
   const counts = new Map<string, number>()
-  for (const move of found) counts.set(move.technique, (counts.get(move.technique) ?? 0) + 1)
+  for (const move of found) {
+    counts.set(move.technique, (counts.get(move.technique) ?? 0) + 1)
+    for (const technique of move.supportingTechniques ?? []) {
+      if (technique !== move.technique) counts.set(technique, (counts.get(technique) ?? 0) + 1)
+    }
+  }
   const analysisProps = {
-    title: name, techniques: config.techniques, counts, solved: result.complete,
+    title: name, techniques: board.extraTechniques ? [...config.techniques, ...board.extraTechniques] : config.techniques,
+    counts, solved: result.complete,
     unit: cellChoices ? 'Choices' : undefined,
     problem: techniqueReport?.conflict === 'rules' ? conflictMessage
       : techniqueReport?.conflict === 'solution' ? solutionConflictMessage : undefined,
     onSelectTechnique: (technique: string) => {
-      const choices = found.filter(move => move.technique === technique)
+      const choices = found.flatMap(move => move.technique === technique ? [move]
+        : move.supportingTechniques?.includes(technique) ? [{ ...move, technique }] : [])
       if (!choices.length) return
       setHint({ choices, index: 0, depth: 0 })
     },

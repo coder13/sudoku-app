@@ -1,10 +1,18 @@
-import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
+import { adjacentClueRules } from '../latin/adjacent-clues.ts'
+import { inequalityRules, type Inequality } from '../futoshiki/inequality-rules.ts'
+import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle, type LatinRule } from '../latin/engine.ts'
+import { lineSubsetRules } from '../latin/line-subsets.ts'
+import { latinPathRules, type LatinClues } from '../latin/path-clues.ts'
+import { whispersRules } from '../latin/whispers.ts'
+import { xWingRule } from '../latin/x-wing.ts'
+import { cageLineRules } from './cage-line.ts'
+import { tupleSupport } from './tuple-support.ts'
 
 export const operatorSymbol = { equal: '', add: '+', multiply: '×', subtract: '−', divide: '÷' } as const
 export type CageOperator = keyof typeof operatorSymbol
 export type Cage = { target: number; operator: CageOperator; cells: readonly number[]; distinct?: true }
 
-export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[] }
+export type CalcudokuPuzzle = LatinPuzzle & LatinClues & { cages: readonly Cage[]; inequalities: readonly Inequality[] }
 
 const tupleTables = new Map<string, Uint16Array>()
 
@@ -87,13 +95,78 @@ function checkCages(size: number, cages: readonly Cage[]) {
     }
     if (reached.size !== cells.length) throw new Error('A Calcudoku cage must connect along cell edges.')
   }
-  if (covered.size !== size * size) throw new Error('Every Calcudoku cell needs exactly one cage.')
+  return covered.size === size * size
 }
 
-export function createCalcudoku(size: number, cages: readonly Cage[], fixed?: readonly number[]): CalcudokuPuzzle {
+function fixedCageSum({ cells, operator, target }: Cage, tuples: Uint16Array) {
+  if (operator === 'equal' || operator === 'add') return target
+  let expected = 0
+  for (let offset = 0; offset < tuples.length; offset += cells.length) {
+    let sum = 0
+    for (let i = 0; i < cells.length; i++) sum += 32 - Math.clz32(tuples[offset + i])
+    if (offset === 0) expected = sum
+    else if (sum !== expected) return undefined
+  }
+  return expected
+}
+
+function lineTotalRules(puzzle: LatinPuzzle, sums: readonly (readonly [Cage, number])[]): LatinRule[] {
+  if (!sums.some(([cage]) => cage.cells.length > 1)) return []
+  const { size } = puzzle
+  const total = size * (size + 1) / 2
+  const rules: LatinRule[] = []
+  for (const line of puzzle.rules) {
+    if (line.kind !== 'line') continue
+    const contained = sums.filter(([cage]) => cage.cells.every(cell => line.cells.includes(cell)))
+    if (!contained.some(([cage]) => cage.cells.length > 1)) continue
+    const covered = new Set(contained.flatMap(([cage]) => cage.cells))
+    const remaining = line.cells.filter(cell => !covered.has(cell))
+    const accounted = contained.reduce((sum, [, cageSum]) => sum + cageSum, 0)
+    if (!remaining.length) {
+      if (accounted !== total) rules.push({
+        kind: 'line-total',
+        label: `${line.label} must total ${total}. Its cages add up to ${accounted}.`,
+        cells: line.cells,
+        support: () => null,
+      })
+      continue
+    }
+    // In a 3 × 3 grid, each two-digit sum already identifies its only pair.
+    // Keep each remainder small so the sum table stays cheap to build and scan.
+    if (size === 3 || remaining.length > 4) continue
+    const target = total - accounted
+    const support = tupleSupport(remaining, cageTuples(size, { cells: remaining, target, operator: 'add' }))
+    const accountedNames = line.cells.filter(cell => covered.has(cell)).map(cell => cellLabel(cell, size)).join(', ')
+    const names = remaining.map(cell => cellLabel(cell, size)).join(', ')
+    const placement = remaining.length === 1 ? `${names} must be ${target}.` : `${names} must add up to ${target}.`
+    rules.push({
+      kind: 'line-total',
+      label: `${line.label} totals ${total}. ${accountedNames} add up to ${accounted}. ${placement}`,
+      cells: line.cells,
+      support(domains) {
+        const result = support(domains)
+        return result && line.cells.map(cell => {
+          const index = remaining.indexOf(cell)
+          return index === -1 ? domains[cell] : result[index]
+        })
+      },
+    })
+  }
+  return rules
+}
+
+export function createCalcudoku(
+  size: number, cages: readonly Cage[], fixed?: readonly number[],
+  {
+    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues,
+  }: LatinClues & { allowUncaged?: boolean; inequalities?: readonly Inequality[] } = {},
+): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
-  checkCages(size, cages)
+  const coversGrid = checkCages(size, cages)
+  if (!coversGrid && !allowUncaged) throw new Error('Every Calcudoku cell needs exactly one cage.')
   const givens = fixed ? [...fixed] : Array<number>(size * size).fill(0)
+  const sums: [Cage, number][] = []
+  const locks: LatinRule[] = []
   const rules = cages.map(cage => {
     const { cells, operator, target } = cage
     const tuples = cageTuples(size, cage)
@@ -102,32 +175,40 @@ export function createCalcudoku(size: number, cages: readonly Cage[], fixed?: re
       if (givens[cells[0]] && givens[cells[0]] !== target) throw new Error('A Calcudoku given conflicts with its cage.')
       givens[cells[0]] = target
     }
-    const length = cells.length
-    const cache = new Map<number, readonly number[] | null>()
-    return {
+    const sum = fixedCageSum(cage, tuples)
+    if (sum !== undefined) sums.push([cage, sum])
+    const rule = {
       label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}${cage.distinct ? ' with no repeats' : ''}`,
       cells,
-      support(domains: readonly number[]) {
-        const masks = cells.map(cell => domains[cell])
-        // A digit mask uses nine bits. Five masks fit in an exact JS number.
-        const key = masks.reduce((encoded, mask) => encoded * 512 + mask, 0)
-        const cached = cache.get(key)
-        if (cached !== undefined) return cached
-
-        const supported = masks.map(() => 0)
-        tuple: for (let offset = 0; offset < tuples.length; offset += length) {
-          for (let i = 0; i < length; i++) {
-            if (!(masks[i] & tuples[offset + i])) continue tuple
-          }
-          for (let i = 0; i < length; i++) supported[i] |= tuples[offset + i]
-          if (supported.every((mask, i) => mask === masks[i])) break
-        }
-        const result = supported[0] ? supported : null
-        if (cache.size >= 128) cache.clear()
-        cache.set(key, result)
-        return result
-      },
+      support: tupleSupport(cells, tuples),
     }
+    locks.push(...cageLineRules(size, rule, tuples))
+    return rule
   })
-  return { ...createLatinPuzzle(size, givens, rules), cages }
+  const comparisons = inequalities.length ? inequalityRules(size, inequalities) : undefined
+  if (comparisons) rules.push(...comparisons.basic)
+  if (adjacentClues) rules.push(...adjacentClueRules(size, adjacentClues))
+  const lines = whispers?.length ? whispersRules(size, whispers) : undefined
+  if (lines) rules.push(...lines.basic)
+  rules.push(...latinPathRules(size, pathClues))
+  const puzzle = createLatinPuzzle(size, givens, rules)
+  // The rows and the cages each partition the grid into known totals.
+  if (coversGrid && sums.length === cages.length) {
+    const accounted = sums.reduce((total, [, sum]) => total + sum, 0)
+    const total = size * size * (size + 1) / 2
+    if (accounted !== total) {
+      const conflict: LatinRule = {
+        kind: 'line-total',
+        label: `The grid must total ${total}. Its cages add up to ${accounted}.`,
+        cells: givens.map((_, cell) => cell),
+        support: () => null,
+      }
+      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues }
+    }
+  }
+  const derived = [...(lines?.advanced ?? []), ...lineTotalRules(puzzle, sums), ...lineSubsetRules(size), ...locks]
+  if (comparisons) derived.push(...comparisons.sharedBounds, ...comparisons.lineRules)
+  if (size >= 4) derived.push(xWingRule(size))
+  if (comparisons) derived.push(...comparisons.lineMatching)
+  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues }
 }

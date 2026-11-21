@@ -2,23 +2,64 @@ import { useState } from 'react'
 import { calcudokuCatalog, generatedCalcudokuEntry, type CalcudokuEntry } from '../calcudoku/catalog'
 import { calcudokuImportOperators, importedOperatorNames, prepareImportedCalcudoku, type CalcudokuImport } from '../calcudoku/imported'
 import { operatorSymbol, type CageOperator } from '../calcudoku/engine'
-import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
+import { adjacentClueNotes, adjacentClueTechnique } from '../latin/adjacent-clues'
+import { cellLabel, checkLatin, findLatinHints, findLatinSolutionHints, latinContradictionTechnique, solveLatin, type LatinHint } from '../latin/engine'
+import { subsetTechnique, subsetTechniques } from '../latin/line-subsets'
+import { pathClueTechnique, supportingPathClueTechniques } from '../latin/path-clues'
+import { whispersTechnique } from '../latin/whispers'
+import { xWingTechnique } from '../latin/x-wing'
 import { Button } from './Button'
 import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
 import { SelectControl } from './SelectControl'
+import { advancedInequalityTechnique, inequalityTechniqueNames, inequalityTechniques, numberPuzzleEdgeClues } from './number-puzzle-edge-clues'
+import { numberPuzzleLines } from './number-puzzle-line-clues'
+
+const lockedCandidates = 'Locked candidates'
+
+function numberHint(hint: LatinHint, hasInequalities: boolean) {
+  const comparison = hasInequalities
+    ? hint.rules.some(rule => rule.kind === 'inequality-line-matching')
+      ? inequalityTechniqueNames['inequality-line-matching']
+      : advancedInequalityTechnique(hint) ?? (hint.rules[0].kind === 'inequality' ? inequalityTechniqueNames.inequality : undefined)
+    : undefined
+  return {
+    cell: hint.cell,
+    value: hint.value,
+    technique: hint.rules.some(rule => rule.kind === 'x-wing') ? xWingTechnique
+      : hint.rules[0].kind === 'contradiction' ? latinContradictionTechnique
+      : hint.rules[0].kind === 'whispers' ? whispersTechnique
+      : hint.rules[0].kind === 'adjacent-clue' ? adjacentClueTechnique
+      : pathClueTechnique(hint.rules[0].kind) ?? comparison ??
+        (hint.rules.some(rule => rule.kind === 'cage-line') ? lockedCandidates
+          : subsetTechnique(hint) ?? (hint.rules[0].kind === 'line-total' ? 'Line totals'
+            : hint.rules[0].kind === 'line' ? 'Row and column' : 'Cage arithmetic')),
+    supportingTechniques: supportingPathClueTechniques(hint.rules),
+    marked: hint.rules.flatMap(rule => rule.cells),
+    reasons: hint.rules.map(rule => rule.label),
+    trace: hint.trace,
+  }
+}
 
 export const calcudoku = {
   game: 'calcudoku',
   name: 'Calcudoku',
   rules: 'Use every number from 1 to the grid size once in each row and column. Each cage’s numbers must match its target and operation.',
-  techniques: ['Row and column', 'Cage arithmetic'],
+  techniques: ['Row and column', 'Cage arithmetic', 'Line totals', ...subsetTechniques, lockedCandidates, xWingTechnique],
   entries: calcudokuCatalog,
   generatedEntry: generatedCalcudokuEntry,
   board: ({ puzzle, cageLabels, cellColors, ruleNotes }) => {
-    const { size, cages, givens } = puzzle
+    const { size, cages, givens, inequalities, adjacentClues } = puzzle
+    const hasInequalities = inequalities.length > 0
+    const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
+    const lines = numberPuzzleLines(size, inequalities, puzzle)
+    const describeHint = (hint: LatinHint) => numberHint(hint, hasInequalities)
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
     const cells = givens.map((given, cell) => {
-      const cage = cageAt.get(cell)!
+      const cage = cageAt.get(cell)
+      const clue = clues.get(cell)
+      const labels = [...(clue?.labels ?? []), ...(lines?.labels.get(cell) ?? [])]
+      const color = cellColors?.[cell] || undefined
+      if (!cage) return { given, color, label: labels.join(', '), decoration: clue?.signs }
       const anchor = Math.min(...cage.cells)
       const sourceLabel = cageLabels?.[anchor]
       const symbol = operatorSymbol[cage.operator]
@@ -29,13 +70,14 @@ export const calcudoku = {
         cell % size === 0 || cageAt.get(cell - 1) !== cage ? 'l' : '',
       ].join('')
       const operation = { add: 'plus', subtract: 'minus', multiply: 'times', divide: 'divided by', equal: '' }[cage.operator]
+      const cageLabel = given && !sourceLabel ? undefined
+        : `${cage.target}${operation ? ` ${operation}` : ''} cage at ${cellLabel(anchor, size)}${cage.distinct ? ', no repeats' : ''}`
+      const label = (cageLabel ? [cageLabel, ...labels] : labels).join(', ')
+      const decoration = cell === anchor && (sourceLabel || !given)
+        ? <span key="cage" className="number-puzzle-cell-label" aria-hidden="true">{sourceLabel ?? `${cage.target}${symbol}`}</span> : undefined
       return {
-        given,
-        edges,
-        color: cellColors?.[cell] || undefined,
-        label: given && !sourceLabel ? undefined : `${cage.target}${operation ? ` ${operation}` : ''} cage at ${cellLabel(anchor, size)}${cage.distinct ? ', no repeats' : ''}`,
-        decoration: cell === anchor && (sourceLabel || !given)
-          ? <span className="number-puzzle-cell-label" aria-hidden="true">{sourceLabel ?? `${cage.target}${symbol}`}</span> : undefined,
+        given, edges, color, label,
+        decoration: clue?.signs.length ? [decoration, ...clue.signs] : decoration,
       }
     })
 
@@ -43,8 +85,17 @@ export const calcudoku = {
       width: size,
       height: size,
       maxValue: size,
+      lineClues: lines?.drawing,
       cells,
-      ruleNotes,
+      ruleNotes: [
+        ...(ruleNotes ?? []), ...(adjacentClues ? adjacentClueNotes(adjacentClues) : []),
+        ...(lines?.notes ?? []),
+      ],
+      extraTechniques: [
+        ...(hasInequalities ? inequalityTechniques : []),
+        ...(adjacentClues ? [adjacentClueTechnique] : []),
+        ...(lines ? [...lines.techniques, latinContradictionTechnique] : []),
+      ],
       check: values => {
         const { complete, conflicts } = checkLatin(puzzle, values)
         return { complete, marked: conflicts.flatMap(rule => rule.cells.filter(cell => values[cell] || givens[cell])) }
@@ -53,13 +104,8 @@ export const calcudoku = {
         const result = solveLatin(puzzle)
         return result.status === 'unique' ? result.solution : null
       },
-      hints: (values, limit) => findLatinHints(puzzle, values, limit).map(hint => ({
-        cell: hint.cell,
-        value: hint.value,
-        technique: hint.rules[0].kind === 'line' ? 'Row and column' : 'Cage arithmetic',
-        marked: hint.rules.flatMap(rule => rule.cells),
-        reasons: hint.rules.map(rule => rule.label),
-      })),
+      hints: (values, limit) => findLatinHints(puzzle, values, limit).map(describeHint),
+      solutionHints: values => findLatinSolutionHints(puzzle, values).map(describeHint),
     }
   },
 } satisfies NumberGameConfig<CalcudokuEntry>
@@ -100,13 +146,8 @@ export function CalcudokuImportChoices({ source, onResolve }: {
 }
 
 export function CalcudokuImportPreview({ entry }: { entry: CalcudokuEntry }) {
-  return <>
-    <NumberPuzzlePreview board={calcudoku.board(entry)} game="calcudoku" label="Calcudoku puzzle preview" position={entry.initialPosition} annotations={entry.annotations} />
-    <p>{calcudoku.rules}</p>
-    {Boolean(entry.ruleNotes?.length) && <ul className="import-preview-rules">
-      {entry.ruleNotes?.map(rule => <li key={rule}>{rule}</li>)}
-    </ul>}
-  </>
+  return <NumberPuzzlePreview board={calcudoku.board(entry)} game="calcudoku" label="Calcudoku puzzle preview"
+    position={entry.initialPosition} annotations={entry.annotations} rules={calcudoku.rules} />
 }
 
 export function CalcudokuDifficultyPage() {

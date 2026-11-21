@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { createCalcudoku } from '../src/calcudoku/engine.ts'
 import { prepareImportedCalcudoku, readImportedCalcudoku } from '../src/calcudoku/imported.ts'
-import { bit, solveLatin } from '../src/latin/engine.ts'
+import { createFutoshiki } from '../src/futoshiki/engine.ts'
+import { bit, checkLatin, findLatinHints, findLatinSolutionHints, solveLatin } from '../src/latin/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { preparePlayableImport } from '../src/sudoku/puzzle-preview.ts'
 import { coachCode } from './helpers/coach-code.ts'
@@ -20,9 +21,7 @@ test('the original Sudoku Coach export keeps the givens, cage labels and colors'
   ))
   assert.deepEqual(calcudoku.colors, fixture.cellColors.map((index: string) => index === '' ? '' : fixture.palette[Number(index)]))
 
-  const preview = await preparePlayableImport('https://sudoku.coach/en/play/' + fixture.code, [], {
-    onDecoded: () => assert.fail('Unsigned cages require their own preview.'),
-  })
+  const preview = await preparePlayableImport('https://sudoku.coach/en/play/' + fixture.code)
   assert.ok('calcudokuSource' in preview)
   assert.deepEqual(preview.calcudokuSource.cages.filter(cage => !cage.operator), [
     { label: '6', cells: [8, 14, 15], operator: undefined },
@@ -43,6 +42,7 @@ test('the original Sudoku Coach export keeps the givens, cage labels and colors'
     assert.equal(reopened.puzzle.givens.join(''), fixture.givens)
     assert.equal(solveLatin(reopened.puzzle).status, 'unique')
     assert.equal(solveLatin(reopened.puzzle).solution?.join(''), solution)
+    assert.equal(findLatinSolutionHints(reopened.puzzle, []).length, 35)
   }
 
   const domains = Array(36).fill(63)
@@ -81,6 +81,67 @@ test('a fully specified export can skip cage selection without dropping rules', 
   assert.equal(readImportedCalcudoku(prepared.calcudoku.id + 'x'), undefined)
 })
 
+test('a boxless Coach puzzle can need both cages and inequalities to solve', async () => {
+  const givens = '000100000'
+  const cage = { type: 'cosmeticCage', segments: [{ cells: [0, 1], parameters: { sum: '5+' } }] }
+  const sign = { type: 'greaterLess', segments: [{ cells: [1, 4] }] }
+  const data = { gridSize: 3, regions: [], givenDigits: givens }
+  const inequalities = [{ less: 1, greater: 4 }]
+  const fixed = [...givens].map(Number)
+  await assert.rejects(preparePlayableImport(coachCode({ ...data, givenConstraints: [cage] })), /more than one solution/)
+  assert.equal(solveLatin(createFutoshiki(3, fixed, inequalities)).status, 'multiple')
+  assert.throws(() => createCalcudoku(3, [{ target: 5, operator: 'add', cells: [0, 1] }], fixed), /exactly one cage/)
+
+  const prepared = await preparePlayableImport(coachCode({
+    ...data, givenConstraints: [cage, sign],
+    userDigits: '020100000',
+    colours: ['green'], userColours: ',,0,,,,,,',
+  }))
+  assert.ok('calcudoku' in prepared)
+  const { id, puzzle, initialPosition, annotations } = prepared.calcudoku
+  assert.deepEqual(puzzle.inequalities, inequalities)
+  const result = solveLatin(puzzle)
+  assert.equal(result.status, 'unique')
+  assert.equal(result.solution?.join(''), '321132213')
+  assert.ok(checkLatin(puzzle, result.solution!).complete)
+  assert.ok(checkLatin(puzzle, [0, 3]).conflicts.some(rule => rule.kind === 'inequality'))
+  assert.ok(findLatinHints(puzzle, []).some(hint => hint.rules.some(rule => rule.kind === 'inequality')))
+  assert.equal(findLatinSolutionHints(puzzle, []).length, 8)
+  assert.equal(initialPosition?.values[1], 2)
+  assert.deepEqual(annotations?.cellColors, { 2: ['green'] })
+
+  const reopened = readImportedCalcudoku(id)
+  assert.deepEqual(reopened?.puzzle.inequalities, inequalities)
+  assert.deepEqual(reopened?.initialPosition, initialPosition)
+  assert.deepEqual(reopened?.annotations, annotations)
+  assert.deepEqual(solveLatin(reopened!.puzzle), result)
+  assert.equal(readImportedCalcudoku(id.replace('.i0104', '.i0203')), undefined)
+  assert.equal(readImportedCalcudoku(id.replace('.i0104', '.i01040401')), undefined)
+
+  for (const segments of [[{ cells: [1, '4'] }], [{ cells: [1, 4], parameters: { amount: 2 } }]]) {
+    await assert.rejects(preparePlayableImport(coachCode({
+      ...data, givenConstraints: [cage, { ...sign, segments }],
+    })), /invalid inequality sign/)
+  }
+})
+
+test('boxless 7 × 7 Coach puzzles can combine typed cages and inequalities', async () => {
+  const size = 7
+  const solved = Array.from({ length: size ** 2 }, (_, cell) => (cell % size + Math.floor(cell / size)) % size + 1).join('')
+  const givens = solved.slice(0, 48) + '0'
+  const prepared = await preparePlayableImport(coachCode({
+    gridSize: size, regions: [], givenDigits: givens,
+    givenConstraints: [
+      { type: 'cage', segments: [{ cells: [47, 48], parameters: { sum: 11 } }] },
+      { type: 'greaterLess', segments: [{ cells: [47, 48] }] },
+    ],
+  }))
+  assert.ok('calcudoku' in prepared)
+  const reopened = readImportedCalcudoku(prepared.calcudoku.id)
+  assert.deepEqual(reopened?.puzzle.inequalities, [{ less: 47, greater: 48 }])
+  assert.equal(solveLatin(reopened!.puzzle).solution?.join(''), solved)
+})
+
 test('cage-only 7 × 7 Coach exports still use the boxless Sudoku rules', async () => {
   const imported = await detectPuzzle(coachCode({
     gridSize: 7, regions: [], givenDigits: '0'.repeat(49),
@@ -100,6 +161,16 @@ test('Coach color indices use capital letters before lowercase letters', async (
   }))
   assert.ok('calcudoku' in prepared)
   assert.deepEqual(prepared.calcudoku.cellColors?.slice(0, 2), ['blue', 'purple'])
+})
+
+test('portable links retain older CSS colors and Coach palette names', async () => {
+  const { calcudoku } = await detectPuzzle(fixture.code)
+  assert.ok(calcudoku)
+  const colors = [...calcudoku.colors]
+  colors[0] = 'teal'
+  colors[1] = 'blueHeavy'
+  const entry = prepareImportedCalcudoku({ ...calcudoku, colors }, { 8: 'add' })
+  assert.deepEqual(readImportedCalcudoku(entry.id)?.cellColors, colors)
 })
 
 test('Current State survives the choice of an unsigned cage operation and reopening the portable board', async () => {

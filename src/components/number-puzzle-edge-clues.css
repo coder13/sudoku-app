@@ -1,0 +1,60 @@
+.number-puzzle-edge-clues {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: .08em;
+  transform: translate(-50%, -50%);
+  font-size: clamp(.65rem, calc(28cqi / var(--number-puzzle-columns)), 1.05rem);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.number-puzzle-edge-clues[data-side="right"] {
+  top: 50%;
+  left: 100%;
+  flex-direction: column;
+}
+
+.number-puzzle-edge-clues[data-side="bottom"] {
+  top: 100%;
+  left: 50%;
+}
+
+.number-puzzle-edge-clues[data-multiple="true"] {
+  font-size: min(.85rem, calc(17cqi / var(--number-puzzle-columns)));
+}
+
+.futoshiki-sign,
+.number-puzzle-edge-clue {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 1.25em;
+  height: 1.25em;
+  color: var(--ink);
+  background: var(--board-bg);
+}
+
+.number-puzzle-edge-clues[data-side="bottom"] .futoshiki-sign {
+  transform: rotate(90deg);
+}
+
+.number-puzzle-edge-clue[data-kind="difference"],
+.number-puzzle-edge-clue[data-kind="ratio"] {
+  border-color: #777;
+  border-radius: 50%;
+  background: #fff;
+  color: #151515;
+}
+
+.number-puzzle-edge-clue[data-kind="ratio"] {
+  background: #151515;
+  color: #fff;
+}
+
+.number-puzzle-edge-clue[data-kind="sum"] {
+  padding-inline: .1em;
+  font-weight: 700;
+}

@@ -6,6 +6,11 @@ import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedR
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
+import { ArrowClue, ArrowMarker } from './ArrowClue'
+import { EndpointPath } from './EndpointPath'
+import { PuzzlePathClue } from './PuzzlePathClue'
+import { RenbanClue, renbanClueColor } from './RenbanClue'
+import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 const x = (cell: number, size = 9) => cell % size
 const y = (cell: number, size = 9) => Math.floor(cell / size)
@@ -26,15 +31,6 @@ function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?
     x2={diagonal === 'main' ? size : 0} y2={size} />
 }
 
-function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
-  const [bulbX, bulbY] = center(cells[0], size)
-  return <g className="variant-thermometer">
-    <polyline points={points(cells, size)} />
-    <circle cx={bulbX} cy={bulbY} r=".32" />
-  </g>
-}
-
-const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
 const regionSumColors = ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0']
 const regionSumEndGap = .28
 const overlapColors: Partial<Record<VariantRule['type'], string>> = {
@@ -43,17 +39,6 @@ const overlapColors: Partial<Record<VariantRule['type'], string>> = {
   entropic: '#bc6c27',
   modular: '#288e93',
   between: 'var(--board-ink)',
-}
-
-function RenbanClue({ cells, segments, number, size = 9 }: {
-  cells: readonly number[]; segments?: readonly (readonly number[])[]; number: number; size?: number
-}) {
-  const color = renbanColors[(number - 1) % renbanColors.length]
-  return <g className="variant-renban" data-renban={number} stroke={color} fill={color}>
-    {(segments ?? [cells]).map((path, part) => path.length === 1
-      ? <circle key={part} cx={center(path[0], size)[0]} cy={center(path[0], size)[1]} r=".12" />
-      : <polyline key={part} points={points(path, size)} />)}
-  </g>
 }
 
 function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
@@ -103,7 +88,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     number: number
     color: string
   }>(rule => {
-    if (rule.type === 'renban') return [{ rule, number: ++renbanNumber, color: renbanColors[(renbanNumber - 1) % renbanColors.length] }]
+    if (rule.type === 'renban') return [{ rule, number: ++renbanNumber, color: renbanClueColor(renbanNumber) }]
     if (rule.type === 'region-sum') return [{ rule, number: ++regionSumNumber, color: regionSumColors[(regionSumNumber - 1) % regionSumColors.length] }]
     return []
   })
@@ -127,7 +112,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     }
   }
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
-    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {rules.some(rule => rule.type === 'arrow') && <ArrowMarker id={marker} />}
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
     {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
       {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
@@ -136,7 +121,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
-    {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
+    {rules.map((rule, index) => rule.type === 'thermometer' && <PuzzlePathClue key={index} line={rule} size={size} />)}
     {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
       ? <RenbanClue key={index} {...rule} number={number} size={size} />
       : <RegionSumClue key={index} rule={rule} color={color} number={number} size={size} />)}
@@ -368,41 +353,6 @@ function CloneClue({ groups, color }: { groups: readonly (readonly number[])[]; 
   </g>
 }
 
-function arrowHead(marker: string) {
-  return <defs>
-    <marker id={marker} viewBox="0 0 1 1" refX=".9" refY=".5" markerWidth=".29" markerHeight=".29"
-      markerUnits="userSpaceOnUse" orient="auto">
-      <path className="variant-arrow-head" d="M.08 .08L.9 .5L.08 .92" />
-    </marker>
-  </defs>
-}
-
-function ArrowClue({ circle, cells, marker, size = 9 }: { circle: number; cells: readonly number[]; marker: string; size?: number }) {
-  const [cx, cy] = center(circle, size)
-  const [nx, ny] = center(cells[0], size)
-  const length = Math.hypot(nx - cx, ny - cy)
-  const start = [cx + (nx - cx) * .33 / length, cy + (ny - cy) * .33 / length]
-  return <>
-    <polyline className="variant-arrow-line" points={`${start.join(',')} ${points(cells, size)}`} markerEnd={`url(#${marker})`} />
-    <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />
-  </>
-}
-
-function EndpointPath({ path }: { path: readonly (readonly [number, number])[] }) {
-  const gap = ([x1, y1]: readonly [number, number], [x2, y2]: readonly [number, number]) =>
-    Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) > 1
-  if (!path.slice(1).some((point, index) => gap(path[index], point))) {
-    return <polyline points={path.map(point => point.join(',')).join(' ')} />
-  }
-  return <>
-    {path.slice(1).map(([x2, y2], index) => {
-      const [x1, y1] = path[index]
-      return <line key={index} className={gap([x1, y1], [x2, y2]) ? 'variant-between-jump' : undefined} {...{ x1, y1, x2, y2 }} />
-    })}
-    {path.slice(1, -1).map(([cx, cy], index) => <circle key={index} className="variant-between-node" {...{ cx, cy }} r=".11" />)}
-  </>
-}
-
 function EndpointLine({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
   return <g className="variant-between"><EndpointPath path={cells.map(cell => center(cell, size))} /></g>
 }
@@ -476,29 +426,6 @@ function ColoredLineLane({ cells, lane, count, color, endpoints, sharedEnds, das
     stroke={color} strokeWidth={Math.min(.075, .2 / count)} strokeDasharray={dashed ? '.1 .08' : undefined} />
 }
 
-function whispersLabelPoint(a: number, b: number, marked: boolean) {
-  const [ax, ay] = center(a), [bx, by] = center(b)
-  const cx = (ax + bx) / 2, cy = (ay + by) / 2
-  if (!marked) return [cx, cy] as const
-  const length = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / length, uy = (by - ay) / length
-  // Move beside the marked edge, then along it to clear signs and sum text.
-  const candidates = [1, -1].map(side => [cx - uy * .5 * side + ux * .3, cy + ux * .5 * side + uy * .3] as const)
-  return candidates.find(([x, y]) => x >= .25 && x <= 8.75 && y >= .15 && y <= 8.85)
-    ?? [Math.max(.25, Math.min(8.75, candidates[0][0])), Math.max(.15, Math.min(8.85, candidates[0][1]))] as const
-}
-
-function WhispersLabel({ rule, markedEdges }: { rule: Extract<VariantRule, { type: 'whispers' }>; markedEdges: ReadonlySet<number> }) {
-  const edges = rule.cells.slice(1).map((b, i) => [rule.cells[i], b] as const)
-  const [a, b] = edges.find(([a, b]) => !markedEdges.has(pairKey(a, b))) ?? edges[0]
-  const marked = markedEdges.has(pairKey(a, b)), [lx, ly] = whispersLabelPoint(a, b, marked)
-  return <g className="variant-whispers-label">
-    {marked && <line className="variant-whispers-label-leader"
-      x1={(x(a) + x(b) + 1) / 2} y1={(y(a) + y(b) + 1) / 2} x2={lx} y2={ly} />}
-    <text className="variant-whispers-gap-halo" x={lx} y={ly}>≥{rule.minDifference}</text>
-    <text className="variant-whispers-gap" x={lx} y={ly}>≥{rule.minDifference}</text>
-  </g>
-}
-
 function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [number, SumKind][]; dots: number }) {
   return <g className={sums.every(([, kind]) => kind === 'xv') ? 'variant-xv' : 'variant-adjacent-total'} data-cell-a={a} data-cell-b={b}>
     {sums.map(([sum, kind], index) => {
@@ -539,7 +466,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
   const clip = useMemo(() => visibleCells && visibleCellPath(visibleCells), [visibleCells])
   const drawing = <VariantClueDrawing rules={rules} marker={marker} />
   return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
-    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {rules.some(rule => rule.type === 'arrow') && <ArrowMarker id={marker} />}
     {clip === undefined ? drawing : <>
       <defs><clipPath id={clipId}><path d={clip} /></clipPath></defs>
       <g clipPath={`url(#${clipId})`}>{drawing}</g>
@@ -560,7 +487,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   const sumEnds = useMemo(() => sharedRegionSumEnds(rules), [rules])
   const renbanIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
-  const renbanColor = (index: number) => renbanColors[renbanIndices.get(index)! % renbanColors.length]
+  const renbanColor = (index: number) => renbanClueColor(renbanIndices.get(index)! + 1)
   const regionSumIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
@@ -602,7 +529,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   return <>
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
-      if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
+      if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLineLabel key={`${index}-whispers-label`} line={rule} markedEdges={markedEdges} />
       if (overlay === 'colored-line') {
         const endpoints = rule.type === 'between' ? [rule.cells[0], rule.cells[rule.cells.length - 1]]
           : rule.type === 'thermometer' ? [rule.cells[0]] : undefined
@@ -652,15 +579,9 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         case 'killer-cages':
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} cells={cage.cells} captionWidth={cage.sum < 10 ? .17 : .3}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
-        case 'whispers': {
-          return <g key={index} className="variant-whispers" data-min-difference={rule.minDifference}>
-            <polyline points={points(rule.cells)} />
-          </g>
-        }
+        case 'whispers': return <WhispersLineClue key={index} line={rule} />
         case 'palindrome':
-          return <g key={index} className="variant-palindrome">
-            {(rule.segments ?? [rule.cells]).map((path, part) => <polyline key={part} points={points(path)} />)}
-          </g>
+          return <PuzzlePathClue key={index} line={rule} />
         case 'entropic': case 'modular':
           return <g key={index} className={`variant-${rule.type}`}>
             {rule.cells.length === 1 ? <circle cx={center(rule.cells[0])[0]} cy={center(rule.cells[0])[1]} r=".12" />
@@ -673,7 +594,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         case 'region-sum':
           return <RegionSumClue key={index} rule={rule} color={regionSumColor(index)} number={regionSumIndices.get(index)! + 1} sharedEnds={sumEnds.get(index)} />
         case 'thermometer':
-          return <ThermometerClue key={index} cells={rule.cells} />
+          return <PuzzlePathClue key={index} line={rule} />
         case 'arrow':
           return <ArrowClue key={index} {...rule} marker={marker} />
         case 'kropki':

@@ -1,3 +1,6 @@
+import type { AdjacentClue, AdjacentClues } from '../latin/adjacent-clues.ts'
+import type { LatinClues, LatinPathClue } from '../latin/path-clues.ts'
+import type { WhisperLine } from '../latin/whispers.ts'
 import type { NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
 import type { NumberPosition } from '../number-puzzles/progress.ts'
 import type { CalcudokuImport } from '../calcudoku/imported.ts'
@@ -450,6 +453,16 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
   }
 }
 
+function isCoachBoxlessOnlyLayer(layer: unknown) {
+  return record(layer) && (layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+    (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
+}
+
+function isCoachBoxlessRuleLayer(layer: unknown) {
+  return isCoachBoxlessOnlyLayer(layer) || record(layer) && (layer.type === 'difference' || layer.type === 'ratio' ||
+    layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban')
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   const futoshiki = await readCoachFutoshiki(data, Boolean(publication))
@@ -457,17 +470,21 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     checkStandaloneCoachPublication(publication)
     return futoshiki
   }
-  if (typeof data.gridSize === 'number' && Number.isInteger(data.gridSize) && data.gridSize >= 3 && data.gridSize <= 9 &&
-    Array.isArray(data.regions) && data.regions.length === 0 && Array.isArray(data.givenConstraints) &&
-    data.givenConstraints.some(layer => record(layer) && (layer.type === 'cosmeticCage' || data.gridSize !== 7 && layer.type === 'cage'))) {
+  const { gridSize: size, regions: encodedRegions, givenConstraints: layers } = data
+  if (typeof size === 'number' && Number.isInteger(size) && size >= 3 && size <= 9 &&
+    Array.isArray(encodedRegions) && encodedRegions.length === 0 && Array.isArray(layers) &&
+    layers.some(layer => record(layer) && (layer.type === 'cosmeticCage' || layer.type === 'cage' &&
+      (size !== 7 || layers.some(isCoachBoxlessOnlyLayer))))) {
     checkStandaloneCoachPublication(publication)
-    const annotations = readCoachNumberAnnotations(data, data.gridSize, Boolean(publication))
+    const annotations = readCoachNumberAnnotations(data, size, Boolean(publication))
     const { givenColors, ...otherAnnotations } = annotations ?? {}
     // Keep the same portable definition for the existing single-color cages.
     const colors = givenColors && Object.values(givenColors).every(shades => shades?.length === 1)
-      ? Array.from({ length: data.gridSize ** 2 }, (_, cell) => givenColors[cell]?.[0] ?? '') : []
+      ? Array.from({ length: size ** 2 }, (_, cell) => givenColors[cell]?.[0] ?? '') : []
     const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
-    const calcudoku = readCoachCalcudoku(data, colors)
+    const cages = layers.filter(layer => !isCoachBoxlessRuleLayer(layer))
+    const calcudoku = readCoachCalcudoku({ ...data, givenConstraints: cages }, colors,
+      readCoachInequalities(layers), readCoachLatinClues(layers, size))
     const position = readCoachNumberPosition(data, calcudoku.givens, calcudoku.size)
     if (position) calcudoku.position = position
     const retainedAnnotations = colors.length ? otherAnnotations : annotations
@@ -569,36 +586,43 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
 async function readCoachFutoshiki(data: Record<string, unknown>, published: boolean): Promise<ImportedPuzzle | undefined> {
   if (!Array.isArray(data.regions) || data.regions.length !== 0) return
   const constraints = data.givenConstraints ?? []
-  if (!Array.isArray(constraints) || constraints.some(layer => !record(layer) || layer.type !== 'greaterLess')) return
+  if (!Array.isArray(constraints) || constraints.some(layer => !isCoachBoxlessRuleLayer(layer))) return
   const size = data.gridSize
-  // Keep the existing Sudoku route for 7 × 7 boxless grids without an inequality layer.
-  if (size === 7 && !constraints.length) return
+  // Keep the existing Sudoku route for 7 × 7 boxless grids with its supported rules.
+  if (size === 7 && !constraints.some(isCoachBoxlessOnlyLayer)) return
 
   const { createImportedFutoshiki, isFutoshikiSize } = await import('../futoshiki/imported.ts')
   if (!isFutoshikiSize(size)) return
+  const inequalities = readCoachInequalities(constraints)
   const givens = data.givenDigits === undefined ? '0'.repeat(size ** 2) : data.givenDigits
   if (typeof givens !== 'string' || givens.length !== size ** 2 || !/^\d+$/.test(givens) ||
     [...givens].some(digit => Number(digit) > size)) {
     throw new Error('This Sudoku Coach puzzle has invalid givens.')
   }
 
+  const position = readCoachNumberPosition(data, givens, size)
+  const annotations = readCoachNumberAnnotations(data, size, published)
+  const clues = readCoachLatinClues(constraints, size)
+  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, { position, annotations, ...clues }) }
+}
+
+function readCoachInequalities(layers: readonly unknown[]): Inequality[] {
   const inequalities: Inequality[] = []
-  for (const layer of constraints) {
+  for (const layer of layers) {
+    if (!record(layer) || layer.type !== 'greaterLess') continue
     if (hasData(layer.settings) || !Array.isArray(layer.segments)) {
-      throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality layer.')
+      throw new Error('This Sudoku Coach puzzle has an invalid inequality layer.')
     }
     for (const segment of layer.segments) {
       if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
         !segment.cells.every(Number.isInteger) || hasData(segment.parameters)) {
-        throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality sign.')
+        throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
       }
       const [less, greater] = segment.cells
       inequalities.push({ less, greater })
     }
   }
-  const position = readCoachNumberPosition(data, givens, size)
-  const annotations = readCoachNumberAnnotations(data, size, published)
-  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, position, annotations) }
+  return inequalities
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
@@ -618,6 +642,138 @@ function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'differ
     return { cells: segment.cells as [number, number], amount: amount === undefined ? (kind === 'difference' ? 1 : 2) : amount }
   })
   return { markers, negative: record(settings) && settings.negativeConstraint === true }
+}
+
+function readCoachTwoCellSums(constraint: Record<string, unknown>, size: number) {
+  if (!Array.isArray(constraint.segments) || !constraint.segments.length) {
+    throw new Error('This Sudoku Coach puzzle has no two-cell sum clues.')
+  }
+  const maximum = 2 * size - 1
+  return constraint.segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+      !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'sum')) {
+      throw new Error('This Sudoku Coach puzzle has an invalid two-cell sum clue.')
+    }
+    const sum = segment.parameters.sum
+    if (typeof sum !== 'number' || !Number.isInteger(sum) || sum < 3 || sum > maximum) {
+      throw new Error(`This Sudoku Coach two-cell sum must be an integer from 3 through ${maximum}.`)
+    }
+    return { type: 'sum' as const, cells: segment.cells as [number, number], value: sum }
+  })
+}
+
+function readCoachAdjacentClues(layers: readonly unknown[], size: number): AdjacentClues | undefined {
+  const marks: AdjacentClue[] = []
+  let negativeDifference = false
+  let negativeRatio = false
+  for (const layer of layers) {
+    if (!record(layer)) continue
+    const type = layer.type
+    if (type === 'difference' || type === 'ratio') {
+      const { markers, negative } = readCoachPairMarkers(layer, type)
+      for (const { cells, amount } of markers) {
+        if (typeof amount !== 'number') throw new Error(`This Sudoku Coach puzzle has an invalid ${type} marker.`)
+        marks.push({ cells, type, value: amount })
+      }
+      if (negative && type === 'difference') negativeDifference = true
+      if (negative && type === 'ratio') negativeRatio = true
+    } else if (type === 'twoCellSum') {
+      if (hasData(layer.settings)) throw new Error('This Sudoku Coach puzzle uses unsupported settings for twoCellSum.')
+      marks.push(...readCoachTwoCellSums(layer, size))
+    }
+  }
+  if (marks.length || negativeDifference || negativeRatio) {
+    return { marks, ...(negativeDifference && { negativeDifference: true }), ...(negativeRatio && { negativeRatio: true }) }
+  }
+}
+
+function readCoachWhispers(layer: Record<string, unknown>, size: number): (WhisperLine & { cells: number[] })[] {
+  const { settings, segments } = layer
+  if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => key !== 'difference' && !LINE_STYLING.has(key)))) {
+    throw new Error('This Sudoku Coach Whispers line uses unsupported settings.')
+  }
+  const difference = record(settings) ? settings.difference ?? 5 : 5
+  if (!Number.isInteger(difference) || Number(difference) < 1 || Number(difference) >= size ||
+    !Array.isArray(segments) || !segments.length) {
+    throw new Error('This Sudoku Coach Whispers line has an unsupported minimum difference or no cells.')
+  }
+  return segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
+      throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
+    }
+    return { cells: segment.cells, minDifference: Number(difference) }
+  })
+}
+
+function readCoachDirectedPaths(constraint: Record<string, unknown>): number[][] {
+  const { settings, segments, type } = constraint
+  const supportsStyle = (key: string) => LINE_STYLING.has(key) ||
+    (type === 'thermometer' ? key === 'bulbSize' : BULB_STYLING.has(key) || type === 'arrow' && key === 'arrowHeadLength')
+  if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !supportsStyle(key)))) {
+    throw new Error(`This Sudoku Coach ${type} uses unsupported settings.`)
+  }
+  if (!Array.isArray(segments) || !segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${type}.`)
+  return segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
+      throw new Error(`This Sudoku Coach puzzle has an unsupported ${type}.`)
+    }
+    return segment.cells
+  })
+}
+
+function readCoachBetweenPaths(constraint: Record<string, unknown>): number[][] {
+  const { settings, segments } = constraint
+  if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
+    !LINE_STYLING.has(key) && !BULB_STYLING.has(key)))) {
+    throw new Error('This Sudoku Coach Between line uses unsupported settings.')
+  }
+  if (!Array.isArray(segments) || !segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
+  return segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
+      throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
+    }
+    return segment.cells
+  })
+}
+
+function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
+  const whispers: WhisperLine[] = []
+  const pathClues: LatinPathClue[] = []
+  for (const layer of layers) {
+    if (!record(layer)) continue
+    if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
+    const type = layer.type
+    if (type === 'betweenLine') {
+      if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
+        for (const cells of readCoachBetweenPaths(layer)) pathClues.push({ type: 'between', cells })
+      }
+      continue
+    }
+    if (type === 'thermometer' || type === 'arrow' || type === 'lockoutLine') {
+      // Each segment is its own constraint, even when paths share an endpoint.
+      const pathType = type === 'lockoutLine' ? 'lockout' : type
+      if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
+        for (const cells of readCoachDirectedPaths(layer)) pathClues.push({ type: pathType, cells })
+      }
+      continue
+    }
+    if (type !== 'palindromeLine' && type !== 'consecutiveLine' && type !== 'renban') continue
+    const { segments, settings } = layer
+    if (!Array.isArray(segments) || hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key)))) {
+      throw new Error('This Sudoku Coach line uses unsupported settings.')
+    }
+    if (type === 'renban' && !segments.length) throw new Error('This Sudoku Coach puzzle has no Renban cells.')
+    const paths = segments.map(segment => {
+      if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
+        segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2)) {
+        throw new Error('This Sudoku Coach puzzle has an invalid line segment.')
+      }
+      return segment.cells as number[]
+    })
+    const pathType = type === 'palindromeLine' ? 'palindrome' : type === 'consecutiveLine' ? 'consecutive' : 'renban'
+    for (const line of coachConnectedLines(paths)) pathClues.push({ ...line, type: pathType })
+  }
+  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues }
 }
 
 function coachOutsideRay(side: OutsideSide, index: number) {
@@ -767,19 +923,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       else if (constraint.type === 'nonconsecutive') rules.push({ type: 'non-consecutive' })
       else rules.push({ type: 'diagonal', diagonal: constraint.type === 'diagonalNegative' ? 'main' : 'anti' })
     } else if (constraint.type === 'twoCellSum') {
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no two-cell sum clues.')
       const five: [number, number][] = [], ten: [number, number][] = []
       const totals: Extract<VariantRule, { type: 'adjacent-total' }>[] = []
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
-          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'sum')) {
-          throw new Error('This Sudoku Coach puzzle has an invalid two-cell sum clue.')
-        }
-        const sum = segment.parameters.sum
-        if (typeof sum !== 'number' || !Number.isInteger(sum) || sum < 3 || sum > 17) throw new Error('This Sudoku Coach two-cell sum must be an integer from 3 through 17.')
-        if (sum === 5) five.push(segment.cells as [number, number])
-        else if (sum === 10) ten.push(segment.cells as [number, number])
-        else totals.push({ type: 'adjacent-total', cells: segment.cells as [number, number], sum })
+      for (const { cells, value: sum } of readCoachTwoCellSums(constraint, 9)) {
+        if (sum === 5) five.push(cells)
+        else if (sum === 10) ten.push(cells)
+        else totals.push({ type: 'adjacent-total', cells, sum })
       }
       if (five.length || ten.length) rules.push({ type: 'xv', ...(five.length > 0 && { five: { pairs: five } }), ...(ten.length > 0 && { ten: { pairs: ten } }) })
       rules.push(...totals)
@@ -854,48 +1003,15 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
       }
     } else if (constraint.type === 'betweenLine') {
-      const settings = constraint.settings
-      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
-        !LINE_STYLING.has(key) && !BULB_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Between line uses unsupported settings.')
-      }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
-        }
-        rules.push({ type: 'between', cells: segment.cells })
-      }
+      for (const cells of readCoachBetweenPaths(constraint)) rules.push({ type: 'between', cells })
     } else if (constraint.type === 'whisper') {
-      const settings = constraint.settings
-      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => key !== 'difference' && !LINE_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Whispers line uses unsupported settings.')
-      }
-      const difference = record(settings) ? settings.difference ?? 5 : 5
-      if (!Number.isInteger(difference) || Number(difference) < 1 || Number(difference) > 8 || !constraint.segments.length) {
-        throw new Error('This Sudoku Coach Whispers line has an unsupported minimum difference or no cells.')
-      }
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
-        }
-        rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
-      }
+      for (const line of readCoachWhispers(constraint, 9)) rules.push({ type: 'whispers', ...line })
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
-      const settings = constraint.settings
-      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
-        !LINE_STYLING.has(key) && (constraint.type === 'thermometer'
-          ? key !== 'bulbSize' : !BULB_STYLING.has(key) && key !== 'arrowHeadLength')))) {
-        throw new Error(`This Sudoku Coach ${constraint.type} uses unsupported settings.`)
-      }
-      if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${constraint.type}.`)
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
-          throw new Error(`This Sudoku Coach puzzle has an unsupported ${constraint.type}.`)
-        }
-        if (constraint.type === 'thermometer') rules.push({ type: 'thermometer', cells: segment.cells })
+      const thermometer = constraint.type === 'thermometer'
+      for (const path of readCoachDirectedPaths(constraint)) {
+        if (thermometer) rules.push({ type: 'thermometer', cells: path })
         else {
-          const [circle, ...cells] = segment.cells
+          const [circle, ...cells] = path
           rules.push({ type: 'arrow', circle, cells })
         }
       }

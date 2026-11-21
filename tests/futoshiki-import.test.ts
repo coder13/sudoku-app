@@ -16,9 +16,7 @@ for (const [name, { code, givens, edges }] of Object.entries(fixtures)) {
     assert.ok(futoshiki)
     assert.equal(futoshiki.puzzle.givens.join(''), givens)
     assert.deepEqual(futoshiki.puzzle.inequalities, edges.map(([less, greater]) => ({ less, greater })))
-    const preview = await preparePlayableImport(`https://sudoku.coach/en/play/${code}`, [], {
-      onDecoded: () => assert.fail('Standalone puzzles use their own preview.'),
-    })
+    const preview = await preparePlayableImport(`https://sudoku.coach/en/play/${code}`)
     assert.ok('futoshiki' in preview)
     assert.equal(preview.futoshiki.id, futoshiki.id)
     const reopened = readImportedFutoshiki(futoshiki.id)
@@ -126,7 +124,11 @@ test('the standalone importer rejects invalid, ambiguous and unhandled rules', a
   await assert.rejects(preparePlayableImport(coachCode({ ...base, givenDigits: '1150000000000000' })), /invalid givens/)
   await assert.rejects(preparePlayableImport(coachCode({ ...base, givenDigits: '1100000000000000' })), /no solution/)
   await assert.rejects(preparePlayableImport(coachCode({
-    ...base, givenConstraints: [...withEdges([0, 1]).givenConstraints, { type: 'cage', segments: [{ cells: [2, 3], parameters: { sum: 3 } }] }],
+    ...base, givenConstraints: [
+      ...withEdges([0, 1]).givenConstraints,
+      { type: 'cage', segments: [{ cells: [2, 3], parameters: { sum: 3 } }] },
+      { type: 'antiKnight', segments: [] },
+    ],
   })), /unsupported rule/)
 })
 
