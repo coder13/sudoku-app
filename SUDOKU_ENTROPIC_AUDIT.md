@@ -51,7 +51,7 @@ The app preserves paths through import, transformations, sharing, actual storage
 | Hafj | 107 / 5 | Stalled | 107 / 5 | Stalled |
 | Ksy3 | 2,340 / 159 | Solved Medium | 2,680 / 159 | Solved Medium |
 
-Tests replay every action against the independent completion. Positive Entropic proofs receive the separate sliding-window check. Partial paths remain explicitly partial in app walkthroughs. [Issue 162](https://github.com/coder13/sudoku-app/issues/162) tracks the Hyk5/Hafj reasoning gap. Slow Hyk5 rating remains in the broader performance audit. Exact search already verifies their unique completions.
+Tests replay every action against the independent completion. Positive Entropic proofs receive the separate sliding-window check. The table records the original release. The results below record the completed app paths from [issue 162](https://github.com/coder13/sudoku-app/issues/162).
 
 ## Integration gates
 
@@ -69,3 +69,26 @@ All checks passed on reviewed head `49d54c1` in [run 44361287093](https://github
 
 
 The passed deployment serves the new Learn article and its Entropic diagrams. Direct checks of its deployed Wasm preserve Clover and Ksy3 uniqueness, printed completions and complete native traces. The deployed artifact has 3,402,659 raw bytes and SHA-256 `af2d32ac241bb9ee3b932199dec7adec123c487f0845cab1fc9361ae01580b12`. The local paired benchmark controls retain their separately recorded hashes. HTTP and direct-Wasm checks do not replace live viewport interaction review.
+
+
+## Mixed rules reasoning release
+
+Scoring version 12 adds two selectable deductions to the Entropic app profile. **Repeating groups and houses** costs 64 points at Medium. It fits each order of the three groups into a shared house, then removes candidates that fit none of the remaining assignments. **Group order contradiction** costs 89 points at Hard. It records which pair clue, house, or repeating line makes an order impossible. The rejected order uses a bounded sequence of local checks.
+
+| Source | App path before | App path after |
+| --- | --- | --- |
+| Hyk5 | 28 steps, 2,871 points, partial | 144 steps, 3,345 points, Hard |
+| Hafj | 18 steps, 444 points, partial | 169 steps, 4,081 points, Hard |
+| HCHW | 202 steps, 4,665 points, Medium | 202 steps, 4,665 points, Medium |
+
+The new proof types record source rule indices, phase order, candidate masks, and the houses or pair clues used to rule out each order. Independent digit enumeration checks each new proof on the published walkthroughs. The same evidence is available in selected and paged hints, Technique Finder, replay, Learn, and three practice exercises per technique. The unscoped app paths and the default native paths keep their earlier logical results. API profiles can request the new deductions on Modular lines.
+
+Five warmed paired app Wasm samples gave these median CPU times. The shared high-water measurement includes the opening hint and walkthrough requests. It measures WebAssembly linear memory.
+
+| Source | Exact uniqueness before and after | App rating before and after | Ranked hints before and after |
+| --- | ---: | ---: | ---: |
+| Hyk5 | 7.04 → 6.83 ms | 783.38 → 2.80 ms | 3.91 → 4.47 ms |
+| Hafj | 0.89 → 0.93 ms | 98.67 → 5.67 ms | 3.74 → 1.66 ms |
+| HCHW | 0.18 → 0.19 ms | 4.67 → 4.60 ms | 0.17 → 0.17 ms |
+
+Hyk5 reached 6.75 MiB of Wasm linear memory before and 2.31 MiB after. The measured application Wasm grew by about 91 KiB. The generation checks retain thirty Medium Entropic and thirty Medium Modular recipes and their recorded scores. Hyk5 and Hafj retain both published exact completions. [Existing performance tracker](https://github.com/coder13/sudoku-app/issues/88)

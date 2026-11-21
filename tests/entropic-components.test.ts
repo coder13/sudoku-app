@@ -13,6 +13,7 @@ import { lessonExample, type EngineLessonExample } from '../src/sudoku/lesson-ex
 import { lessonRoutes } from '../src/sudoku/lessons.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { generationVariant, isVariantId, variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { assertGroupOrderProof } from './helpers/group-order-truth.ts'
 import { assertEntropicProof } from './helpers/entropic-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
@@ -209,6 +210,39 @@ test('the real lesson and hint/solution components explain an independently chec
   assert.throws(() => assertEntropicProof(source.position.puzzle, wrong))
 })
 
+
+test('the group-order lesson shows its candidate-count contradiction in both help views', () => {
+  const corpus = JSON.parse(
+    readFileSync(new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8')
+  ) as Record<string, EngineLessonExample>
+  const technique = 'group-order-contradiction'
+  const source = corpus[technique]
+  assert.ok('position' in source)
+  assertGroupOrderProof(source.position.puzzle, source.position.puzzle.givens, source.position.eliminations, source.deduction)
+  assert.ok(lessonRoutes.get(technique))
+  const view = lessonExample(source)
+  const options = { cellReferenceStyle: 'verbose' as const, difficulty: 'hard' as const }
+  const diagram = lessonDiagram(view, view.pattern, options)
+  const html = renderToStaticMarkup(createElement(HintCard, {
+    hint: describeHint(view.deduction, options),
+    explanation: [diagram.description, diagram.reason],
+    lesson: { id: technique, title: 'Group order contradiction' },
+    onClose() {},
+  }))
+  assert.match(html, /learn\/group-order-contradiction/)
+  assert.match(html, /black dot/)
+  assert.match(html, /Each digit needs its own cell/)
+  assert.match(renderToStaticMarkup(createElement(SolutionPath, {
+    state: { status: 'ready', trace: { steps: [view.deduction], rating: { status: { solved: 'hard' } } } },
+    index: 0,
+    cellReferenceStyle: 'verbose',
+    techniqueDifficulties: { [technique]: 'hard' },
+    grid: null,
+    onSelect() {},
+    onRetry() {},
+    onClose() {},
+  })), /Group order contradiction/)
+})
 
 test('New Puzzle offers Medium Entropic Lines with complete published preview paths and actual navigation', async () => {
   assert.ok(isVariantId('entropic'))

@@ -35,6 +35,8 @@ pub use logical::{
     VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
     VariantSumPairProof, VariantTechnique, VariantTrace,
+    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
 };
 use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(

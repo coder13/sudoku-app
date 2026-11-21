@@ -19,13 +19,15 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 11;
+pub const VARIANT_SCORING_VERSION: u32 = 12;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
 mod pruning;
+mod group_line_houses;
+mod group_order;
 mod line_houses;
 mod entropy_quadruple;
 mod sum_pairs;
@@ -170,6 +172,10 @@ catalog! {
     RenbanSum: "renban-sum", 66, Medium;
     /// Fit a Renban and diagonal sum against another Renban in a shared house.
     RenbanSumHouse: "renban-sum-house", 88, Hard;
+    /// Fit the repeated phases of an Entropic or Modular line inside one house.
+    GroupLineHouseSupport: "group-line-house-support", 64, Medium;
+    /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
+    GroupOrderContradiction: "group-order-contradiction", 89, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -357,6 +363,10 @@ pub enum VariantEvidence {
     RenbanSum(Box<VariantRenbanSumProof>),
     /// Candidate support from a Little Killer ray, two Renbans, and a house.
     RenbanSumHouse(Box<VariantRenbanSumHouseProof>),
+    /// Repeating groups and an all-different house.
+    GroupLineHouseSupport(Box<VariantGroupLineHouseProof>),
+    /// One or more repeating orders contradict the surrounding clues and houses.
+    GroupOrder(Box<VariantGroupOrderProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -664,6 +674,130 @@ pub struct VariantRenbanSumHouseWitness {
     pub restricted_digits: u16,
 }
 
+/// Group assignments to one line and available digits in a shared house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantGroupLineHouseProof {
+    /// Original Entropic or Modular rule index.
+    pub rule: usize,
+    /// Distinct path cells in first-visit order.
+    pub line_cells: Vec<usize>,
+    /// Candidate masks for the distinct path cells.
+    pub line_domains: Vec<u16>,
+    /// Repeating group position of each distinct path cell, from 0 to 2.
+    pub phases: Vec<usize>,
+    /// House where digits must be distinct.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Candidate masks for the house before the deduction.
+    pub domains: [u16; 9],
+    /// All house digits supported by both constraints.
+    pub supported: [u16; 9],
+    /// Group orders consistent with the line's candidates, and the cases the house rejects.
+    pub cases: Vec<VariantGroupLineHouseCase>,
+}
+
+/// One group order and, if impossible, a short count proving the conflict.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseCase {
+    /// Digit mask for each of the three repeating positions.
+    pub groups: [u16; 3],
+    /// Digits with too few locations or cells with too few digits.
+    pub conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A subset of cells and its insufficient digit support, or the reverse.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupLineHouseConflict {
+    /// House cells involved in the count.
+    pub cells: Vec<usize>,
+    /// Digits involved in the count.
+    pub digits: u16,
+}
+
+/// The rules or house whose support is recorded for a hypothetical group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
+pub enum VariantGroupOrderScope {
+    /// All-different candidates in a single house.
+    House {
+        /// The house used here.
+        house: VariantHouseKind,
+    },
+    /// A binary clue, including an edge governed by a negative mark rule.
+    Pair {
+        /// Indices of the rules that define the relationship.
+        rules: Vec<usize>,
+    },
+    /// Another Entropic or Modular line.
+    Line {
+        /// Index of the repeating group rule.
+        rule: usize,
+    },
+}
+
+/// The candidates supported by a scope under an assumed group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderCheck {
+    /// Scope responsible for this restriction.
+    pub scope: VariantGroupOrderScope,
+    /// Cells in scope order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before the check.
+    pub domains: Vec<u16>,
+    /// Candidate masks supported by the scope. All zero at a contradiction.
+    pub supported: Vec<u16>,
+}
+
+/// A repeating order that ends in a contradiction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderRefutation {
+    /// Group masks for the three repeating positions.
+    pub groups: [u16; 3],
+    /// Candidate restrictions in the order they occur.
+    pub checks: Vec<VariantGroupOrderCheck>,
+    /// The scope with no valid assignment under the assumption.
+    pub conflict: VariantGroupOrderCheck,
+    /// A minimal set of cells or digits that cannot fit in a house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house_conflict: Option<VariantGroupLineHouseConflict>,
+}
+
+/// A complete explanation for rejecting some of the available group orders.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
+pub struct VariantGroupOrderProof {
+    /// Index of the source Entropic or Modular rule.
+    pub rule: usize,
+    /// Distinct source cells in first-visit order.
+    pub cells: Vec<usize>,
+    /// Candidate masks in those cells before testing any order.
+    pub domains: Vec<u16>,
+    /// The repeating position, from zero to two, of each cell.
+    pub phases: Vec<usize>,
+    /// The orders that survive the bounded checks.
+    pub remaining: Vec<[u16; 3]>,
+    /// Contradictions for the orders that have no support.
+    pub rejected: Vec<VariantGroupOrderRefutation>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -902,7 +1036,15 @@ impl VariantPosition {
 }
 
 impl VariantDeduction {
-    fn rank(&self) -> (Difficulty, u16, usize, VariantTechnique, HintAction) {
+    fn rank(&self) -> (Difficulty, u16, usize, usize, VariantTechnique, HintAction) {
+        let checks = match &self.evidence {
+            VariantEvidence::GroupOrder(proof) => proof
+                .rejected
+                .iter()
+                .map(|order| order.checks.len() + 1)
+                .sum(),
+            _ => 0,
+        };
         let cells = match &self.evidence {
             VariantEvidence::Single { .. } => 1,
             VariantEvidence::CageSum { cells, .. }
@@ -928,6 +1070,8 @@ impl VariantDeduction {
             },
             VariantEvidence::RenbanSum(proof) => proof.cells.len(),
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
+            VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
+            VariantEvidence::GroupOrder(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -944,6 +1088,7 @@ impl VariantDeduction {
         (
             self.technique.difficulty(),
             self.technique.cost(),
+            checks,
             cells,
             self.technique,
             self.actions[0],
@@ -1458,6 +1603,8 @@ impl CompiledVariant {
             }
             RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
+            GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
+            GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));

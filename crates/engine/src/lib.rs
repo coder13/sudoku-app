@@ -89,6 +89,8 @@ pub use variant::{
     VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
     VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]
