@@ -9,6 +9,7 @@ type Pattern = {
   houses?: House[]
   otherHouses?: House[]
   cells?: number[]
+  contradictionCells?: number[]
   candidates: Candidate[]
   mainLabel?: string
   accent?: { candidates: Candidate[]; label: string }
@@ -23,6 +24,7 @@ const patternColor = 'var(--lesson-pattern)'
 const accentColor = 'var(--lesson-accent)'
 const resultColor = 'var(--lesson-result)'
 const removalColor = 'var(--lesson-removal)'
+const contradictionFill = `color-mix(in srgb, ${removalColor} 24%, var(--board-bg))`
 const list = new Intl.ListFormat('en')
 const either = new Intl.ListFormat('en', { type: 'disjunction' })
 export const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
@@ -418,6 +420,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const accent = { candidates: amber, label: 'Amber group' }
     const group = (candidate: Candidate) => blue.some(({ cell, digit }) => cell === candidate.cell && digit === candidate.digit) ? 'blue' : 'amber'
     let explanation: string
+    let contradictionCells: number[] | undefined
     if (reason === 'both-colors') {
       const a = blue.find((candidate) => candidatesConflict(candidate, first))
       const b = amber.find((candidate) => candidatesConflict(candidate, first))
@@ -426,15 +429,31 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
         : `${capital(nameCandidate(first))} conflicts with a candidate of each color. One of those colors must be placed.`
     } else if ('same-color-conflict' in reason) {
       const [a, b] = reason['same-color-conflict']
+      contradictionCells = [...new Set([a.cell, b.cell])]
       explanation = `The ${group(a)} candidates include ${nameCandidate(a)} and ${nameCandidate(b)}. The two conflict ${a.cell === b.cell ? 'in the same cell' : `in ${houseName(sharedHouse([a.cell, b.cell])!)}`}. Remove every ${group(a)} candidate in this connected set.`
     } else if ('emptied-cell' in reason) {
-      explanation = `Placing the ${group(first)} candidates leaves ${nameCell(reason['emptied-cell'])} with no digit. Remove that color throughout this connected set.`
+      const cell = reason['emptied-cell']
+      const color = group(first)
+      const placements = color === 'blue' ? blue : amber
+      const blockers = marks([cell], DIGITS).flatMap(target => {
+        const blocker = placements.find(candidate => candidatesConflict(candidate, target))
+        if (!blocker) return []
+        const house = blocker.cell === cell ? undefined : sharedHouse([blocker.cell, cell])
+        return [`The ${nameCandidate(blocker)} rules out ${target.digit} there${house ? ` because both cells share ${houseName(house)}` : ''}.`]
+      })
+      contradictionCells = [cell]
+      explanation = [
+        `If all ${color} candidates are true, ${nameCell(cell)} has no candidate left.`,
+        ...blockers,
+        `Remove every ${color} candidate in this connected set.`,
+      ].join(' ')
     } else {
       const { house, digit } = reason['emptied-house']
+      contradictionCells = marks(houseCells(house), [digit]).map(({ cell }) => cell)
       explanation = `Placing the ${group(first)} candidates leaves ${houseName(house)} with no place for ${digit}. Remove that color throughout this connected set.`
     }
     return {
-      candidates: blue, mainLabel, accent, cells: [...blue, ...amber].map(({ cell }) => cell),
+      candidates: blue, mainLabel, accent, cells: [...blue, ...amber].map(({ cell }) => cell), contradictionCells,
       links: links.map(({ from, to }) => ({ from, to, color: patternColor })),
       description: 'Exactly one candidate on each colored link is true. Within this connected set, either all blue candidates or all amber candidates are true.',
       reason: explanation,
@@ -780,6 +799,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   tint(pattern.otherHouses, 'var(--lesson-secondary-fill)')
   tint(pattern.houses, 'var(--lesson-area-fill)')
   for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
+  for (const cell of pattern.contradictionCells ?? []) cells.set(cell, { fill: contradictionFill, label: 'contradiction cell' })
   for (const candidate of pattern.candidates) mark(candidate, patternColor, pattern.mainLabel ?? 'in the pattern')
   if (pattern.accent) {
     for (const candidate of pattern.accent.candidates) mark(candidate, accentColor, pattern.accent.label)
@@ -796,7 +816,8 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   const results = deductionResults(deduction.actions, displayOptions)
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
   const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
-  const focus = [...candidateMarks.keys(), ...('house' in deduction.evidence ? houseCells(deduction.evidence.house, grid) : [])]
+  const focus = [...candidateMarks.keys(), ...(pattern.contradictionCells ?? []),
+    ...('house' in deduction.evidence ? houseCells(deduction.evidence.house, grid) : [])]
   return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()], grid.size), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
 
