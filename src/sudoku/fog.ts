@@ -1,6 +1,6 @@
 import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
 import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
-import type { VariantGame } from './variants.ts'
+import { quadrupleCells, type VariantGame } from './variants.ts'
 
 export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
@@ -61,6 +61,21 @@ function visibleMarks(marks: MarkedPairs | undefined, visible: ReadonlySet<numbe
   return pairs?.length || negative ? { ...(pairs?.length && { pairs }), ...(negative && { negative }) } : undefined
 }
 
+/** The printed digits that lie entirely outside the fog. */
+function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' }>, visible: ReadonlySet<number>) {
+  const cells = quadrupleCells(rule.topLeft)
+  const count = rule.digits.length
+  if (cells.every(cell => visible.has(cell))) return rule.digits
+  if (count === 1) return []
+  return rule.digits.filter((_, slot) => {
+    // The one- and two-digit layouts are vertically centered. In the
+    // three-digit layout the last digit is centered across the bottom cells.
+    if (count === 2) return visible.has(cells[slot]) && visible.has(cells[slot + 2])
+    if (count === 3 && slot === 2) return visible.has(cells[2]) && visible.has(cells[3])
+    return visible.has(cells[slot])
+  })
+}
+
 /** The puzzle facts the player can use. Exact verification uses the original definition. */
 export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<number>): VariantPuzzle {
   if (visible.size === 81) return puzzle
@@ -106,8 +121,11 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       }
       case 'diagonal':
         return allVisible(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? 10 * i : 8 * (i + 1))) ? [rule] : []
-      case 'quadruple':
-        return allVisible([rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10]) ? [rule] : []
+      case 'quadruple': {
+        const digits = visibleQuadrupleDigits(rule, visible)
+        // Each exposed digit must still occur somewhere in the four cells.
+        return digits.length ? [{ ...rule, digits }] : []
+      }
       case 'inequality':
         return allVisible([rule.less, rule.greater]) ? [rule] : []
       case 'arrow':
@@ -153,11 +171,11 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
             ? `cage total ${sum}, outline continues under fog` : 'cage outline continues under fog')
         }
         break
-      case 'quadruple': {
-        const cell = rule.topLeft
-        addFragment([cell, cell + 1, cell + 9, cell + 10], 'part of a Quadruple clue')
+      case 'quadruple':
+        if (!visibleQuadrupleDigits(rule, visible).length) {
+          addFragment(quadrupleCells(rule.topLeft), 'part of a Quadruple clue')
+        }
         break
-      }
       case 'between': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)

@@ -222,7 +222,7 @@ const BoardCell = memo(function BoardCell({
     regionAtCell !== undefined && `region ${regionAtCell + 1}`,
     cellAnnotation?.label,
     geometry.whispersLinks ? `Whispers neighbors need at least ${geometry.whispersLinks} distinct digit${geometry.whispersLinks === 1 ? '' : 's'}` : '',
-    geometry.clues,
+    !fogged && geometry.clues,
     !value && candidateLabel,
     highlightLabel,
     highlightsLinkTargetCell && 'has candidates that can link to the selected candidate',

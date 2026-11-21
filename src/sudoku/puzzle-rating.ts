@@ -7,24 +7,32 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
-const ENTROPY_QUADRUPLE_RATING_VERSION = 10
+const FOG_QUADRUPLE_RATING_VERSION = 2
 const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
+const QUADRUPLE_RATING_VERSION = 12
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  const quadruples = rules?.filter(rule => rule.type === 'quadruple').length ?? 0
+  if (quadruples > 1 || quadruples === 1 && rules?.some(rule => rule.type === 'global-entropy')) {
+    return QUADRUPLE_RATING_VERSION
+  }
   if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
     return RENBAN_AND_LITTLE_KILLER_RATING_VERSION
   }
-  if (rules?.some(rule => rule.type === 'global-entropy') && rules.some(rule => rule.type === 'quadruple')) {
-    return ENTROPY_QUADRUPLE_RATING_VERSION
-  }
+}
+
+function fogRatingVersion(variant: Game['variant']) {
+  if (!variant?.fog) return
+  return variant.puzzle.rules?.some(rule => rule.type === 'quadruple') ? FOG_QUADRUPLE_RATING_VERSION : FOG_RATING_VERSION
 }
 
 export function puzzleGradeIsStale(game: GradedPuzzle) {
   const version = variantRatingVersion(game.variant)
-  return Boolean(game.variant?.fog && game.fogRatingVersion !== FOG_RATING_VERSION) ||
+  const fogVersion = fogRatingVersion(game.variant)
+  return fogVersion !== undefined && game.fogRatingVersion !== fogVersion ||
     version !== undefined && game.variantRatingVersion !== version
 }
 
@@ -51,9 +59,10 @@ export function applyPuzzleGrade(game: Game, grade: PuzzleGrade | null): Game {
   }
   const stale = puzzleGradeIsStale(game)
   const version = variantRatingVersion(game.variant)
+  const fogVersion = fogRatingVersion(game.variant)
   return {
     ...game, ratingAttempt,
-    ...(game.variant?.fog && { fogRatingVersion: FOG_RATING_VERSION }),
+    ...(fogVersion !== undefined && { fogRatingVersion: fogVersion }),
     ...(version !== undefined && { variantRatingVersion: version }),
     difficulty: stale || game.difficulty === undefined ? grade?.difficulty ?? null : game.difficulty,
     score: stale || game.score === undefined ? grade?.points ?? null : game.score,

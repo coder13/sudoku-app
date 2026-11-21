@@ -50,8 +50,9 @@ function directSupport(evidence: EntropyEvidence, windows: readonly (readonly nu
 }
 
 /** Enumerate actual digit tuples with the printed rules and named houses. */
-export function assertEntropyQuadrupleProof(puzzle: VariantPuzzle, proof: VariantDeduction, independentlyNecessary = false) {
-  assert.equal(proof.technique, 'entropy-quadruple')
+export function assertEntropyAreaProof(puzzle: VariantPuzzle, proof: VariantDeduction, independentlyNecessary = false) {
+  assert.ok(proof.technique === 'entropy-quadruple' || proof.technique === 'global-entropy')
+  const includesCircles = proof.technique === 'entropy-quadruple'
   assert.equal(proof.evidence.type, 'entropy-areas')
   const evidence = proof.evidence
   const { cells, domains, rules, windows } = evidence
@@ -61,13 +62,17 @@ export function assertEntropyQuadrupleProof(puzzle: VariantPuzzle, proof: Varian
     assert.ok(top >= 0 && top < 72 && top % 9 < 8)
     assert.deepEqual(rest, [top + 1, top + 9, top + 10])
   }
-  assert.equal(cells.length, windows.length === 2 ? 6 : 4)
-  if (windows.length === 2) assert.ok([1, 9].includes(windows[1][0] - windows[0][0]))
+  if (windows.length === 2) {
+    const shared = windows[0].filter(cell => windows[1].includes(cell))
+    assert.ok(shared.length === 1 || shared.length === 2)
+  }
   assert.deepEqual(cells, [...new Set(windows.flat())].sort((a, b) => a - b))
   const houses = evidence.houses.map(house => houseCells(puzzle, house))
   for (const house of houses) assert.ok(cells.filter(cell => house.includes(cell)).length >= 2)
-  const circleRules = puzzle.rules!.flatMap((rule, index) => rule.type === 'quadruple' && windows.some(window => window[0] === rule.topLeft) ? [{ rule, index }] : [])
-  assert.ok(circleRules.length)
+  const circleRules = includesCircles ? puzzle.rules!.flatMap((rule, index) =>
+    rule.type === 'quadruple' && windows.some(window => window[0] === rule.topLeft) ? [{ rule, index }] : []) : []
+  if (includesCircles) assert.ok(circleRules.length)
+  else assert.equal(windows.length, 2)
   assert.deepEqual(rules.slice(1).sort((a, b) => a - b), circleRules.map(({ index }) => index))
   const circles = circleRules.map(({ rule }) => ({
     indices: windows.find(window => window[0] === rule.topLeft)!.map(cell => cells.indexOf(cell)),

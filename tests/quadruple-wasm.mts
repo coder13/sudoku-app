@@ -74,6 +74,28 @@ test('repeated printed digits work in practice and locked-digit evidence names i
   assert.match(hint.evidence.variant.reason, /other cells in row 1 cannot contain 2/)
 })
 
+test('paired Quadruples lock two distinct placements into the same two houses', async () => {
+  const rules: VariantRule[] = [
+    { type: 'quadruple', topLeft: 0, digits: [1] },
+    { type: 'quadruple', topLeft: 3, digits: [1] },
+  ]
+  const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules }
+  const find = async (puzzle: VariantPuzzle) => (await runEngine({ type: 'variant', operation: 'hints',
+    position: { puzzle }, techniqueOrder: ['locked-candidates'], limit: 100 }))
+    .find(proof => proof.evidence.type === 'quadruple-lock')
+  const proof = await find(puzzle)
+  assert.ok(proof?.evidence.type === 'quadruple-lock')
+  assert.deepEqual(proof.evidence.houses, [{ row: 0 }, { row: 1 }])
+  assert.deepEqual(proof.evidence.sites, [[0, 1, 9, 10], [3, 4, 12, 13]])
+  assert.deepEqual(proof.actions, [2, 5, 6, 7, 8, 11, 14, 15, 16, 17].map(cell => ({ eliminate: { cell, digit: 1 } })))
+  const hint = variantHintChoice(proof, puzzle)
+  assert.ok('variant' in hint.evidence)
+  assert.match(hint.evidence.variant.description, /row 1 and row 2/)
+  assert.equal(hint.pattern?.candidates.length, 8)
+  assert.equal(await find({ ...puzzle, rules: [rules[0], { type: 'quadruple', topLeft: 1, digits: [1] }] }), undefined)
+  assert.equal(await find({ ...puzzle, rules: [rules[0], { type: 'quadruple', topLeft: 3, digits: [2] }] }), undefined)
+})
+
 test('real Coach mixed export and actual imported-game save/reload retain the repeated circle', async () => {
   const { game } = await prepareImportedPuzzle(real.coach)
   assert.equal(game.variant?.id, 'mixed')

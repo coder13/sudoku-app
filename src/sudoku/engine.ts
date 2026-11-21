@@ -615,6 +615,7 @@ export type VariantDeduction = {
         witness: { candidate: Candidate; sharedDigit: number; containedStart: number | null;
           otherStart: number; restrictedDigits: number } | null }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
+    | { type: 'quadruple-lock'; clues: [{ rules: number[]; cells: number[] }, { rules: number[]; cells: number[] }]; houses: [VariantHouse, VariantHouse]; sites: [number[], number[]]; digit: number }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
     | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }

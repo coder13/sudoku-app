@@ -259,6 +259,15 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
     }
+    case 'quadruple-lock': {
+      const { clues, sites, digit } = evidence
+      cells = [...new Set(clues.flatMap(clue => clue.cells))]
+      candidates = sites.flat().map(cell => ({ cell, digit }))
+      const houses = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      description = `Each highlighted Quadruple needs its own ${digit}. Its possible locations are highlighted in ${houses}.`
+      reason = `The two placements must use one cell in each house. Remove ${digit} from the other cells in ${houses}.`
+      break
+    }
     case 'exclusion': {
       const { premise } = evidence
       const cases = premise.type === 'cell'
@@ -583,7 +592,8 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const restrictions = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
       const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ cell, digit }) => `${digit} in ${nameCell(cell)}`))
       const shared = evidence.windows.length === 2 ? ' Both areas must use the same digits in their shared cells.' : ''
-      reason = `Fit the printed digits and the three groups without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
+      const required = ruleDescriptions.length ? 'the printed digits and the three groups' : 'the three groups in each area'
+      reason = `Fit ${required} without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
       candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
         .map(digit => ({ cell: cells[i], digit })))
       break

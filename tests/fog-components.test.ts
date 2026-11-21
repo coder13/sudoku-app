@@ -79,7 +79,7 @@ test('published Fog renders outside totals and shows only the public text of cli
   const quads = await renderSource('E3xE')
   assert.match(quads, /<svg class="variant-clues"[^>]*aria-hidden="true"/)
   assert.match(quads, /<clipPath/)
-  assert.match(quads, /data-cell="32"[^>]*aria-label="[^"]*part of a Quadruple clue/)
+  assert.match(quads, /data-cell="32"[^>]*aria-label="[^"]*Quadruple 8, circle/)
   assert.doesNotMatch(quads, /data-cell="32"[^>]*aria-label="[^"]*Quadruple 8, 9/)
   assert.doesNotMatch(quads, /data-cell="33"[^>]*aria-label="[^"]*Quadruple/)
 })

@@ -7752,7 +7752,8 @@
               "paragraphs": [
                 "Inspect four cells that form a 2 × 2 area. Include areas that cross box or region borders. Identify the groups of placed digits and cells whose candidates all belong to one group.",
                 "Each group needs its own cell. If two groups are confined to the same two cells, those cells must provide one from each group. Remove candidates from the third group in those cells.",
-                "A repeated group is required because four cells use three groups. Equal digits can repeat diagonally across box boundaries if all other puzzle rules allow it."
+                "A repeated group is required because four cells use three groups. Equal digits can repeat diagonally across box boundaries if all other puzzle rules allow it.",
+                "In a puzzle with Quadruples, look again after the circles narrow the candidates. Two 2 × 2 areas that share a cell must both cover all three groups with the same digit in that cell."
               ]
             },
             {
@@ -7799,7 +7800,7 @@
               "type": "text",
               "paragraphs": [
                 "Start with a circle that prints two digits from one group. Those digits use two of the four cells, so the other cells must supply one digit from each missing group. A digit printed twice needs two cells.",
-                "If the circle area still has several possible arrangements, check the 2 × 2 area on the other side of an edge. The two shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
+                "If the circle area still has several possible arrangements, check a 2 × 2 area that shares an edge or a corner. The shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
               ]
             },
             {
@@ -7819,7 +7820,7 @@
               ],
               "guide": {
                 "start": "Read the digits in the circle and find the groups they already supply.",
-                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas share an edge, check the same digits in their shared cells.",
+                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas overlap, check that they use the same digits in the shared cells.",
                 "reason": "Remove a candidate when every arrangement that uses it breaks a circle, an entropy area, or a shared house."
               }
             }

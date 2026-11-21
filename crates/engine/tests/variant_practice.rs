@@ -134,7 +134,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                         position.puzzle.rules[*entropy],
                         PuzzleRule::GlobalEntropy {}
                     ));
-                    assert!(!circles.is_empty());
+                    if technique == VariantTechnique::EntropyQuadruple {
+                        assert!(!circles.is_empty());
+                    } else {
+                        assert_eq!(technique, VariantTechnique::GlobalEntropy);
+                        assert_eq!(proof.windows.len(), 2);
+                    }
                     for &rule in circles {
                         let PuzzleRule::Quadruple { top_left, .. } = &position.puzzle.rules[rule] else {
                             panic!("the proof must cite a printed circle");
@@ -185,6 +190,16 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                             .all(|&rule| position.puzzle.rules.get(rule).is_some())
                     );
                     scopes.insert(clue.cells);
+                }
+                VariantEvidence::QuadrupleLock { clues, sites, digit, .. } => {
+                    for (clue, sites) in clues.iter().zip(sites) {
+                        assert!(clue.rules.iter().all(|&rule| matches!(
+                            &position.puzzle.rules[rule],
+                            PuzzleRule::Quadruple { digits, .. } if digits.contains(&digit)
+                        )));
+                        assert!(sites.iter().all(|site| clue.cells.contains(site)));
+                    }
+                    scopes.insert(clues.into_iter().flat_map(|clue| clue.cells).collect());
                 }
                 VariantEvidence::CageSum { cells, .. }
                 | VariantEvidence::Intersection { cells, .. } => {
