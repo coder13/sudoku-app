@@ -1,5 +1,5 @@
-import { createGeneratedNumberResultCollector, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
-import { generatedNumberHistory, prepareGeneratedHistory } from './generated-storage.ts'
+import { addGeneratedHistoryRow, createGeneratedNumberResultCollector, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
+import { generatedNumberHistory, prepareGeneratedHistory, readGeneratedPickerHistory } from './generated-storage.ts'
 
 export function requestGeneratedNumberResults(request: NumberHistoryRequest, publish: (result: GeneratedNumberResults) => void) {
   const { game } = request
@@ -11,31 +11,37 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
     if (cancelled) return
     worker?.terminate()
     worker = undefined
-    void generatedNumberHistory(game).then(records => {
-      if (cancelled) return
-      const result: GeneratedNumberResults = { entries: [], totals: new Map() }
-      if (!records.length) {
-        publish(result)
-        return
-      }
-
-      const collect = createGeneratedNumberResultCollector(result, request)
-      let cursor = 0
-      const channel = queue = new MessageChannel()
-      channel.port1.onmessage = () => {
-        const deadline = performance.now() + 6
-        do {
-          collect(records[cursor++])
-        } while (cursor < records.length && performance.now() < deadline)
-        if (cursor < records.length) channel.port2.postMessage(null)
-        else {
-          channel.port1.close()
-          channel.port2.close()
+    void prepareGeneratedHistory(game).then(() => readGeneratedPickerHistory(game))
+      .catch(async () => ({ records: await generatedNumberHistory(game) }))
+      .then(history => {
+        if (cancelled) return
+        const result: GeneratedNumberResults = { entries: [], totals: new Map() }
+        const length = 'rows' in history ? history.rows.length : history.records.length
+        if (!length) {
           publish(result)
+          return
         }
-      }
-      channel.port2.postMessage(null)
-    })
+
+        const fromSave = createGeneratedNumberResultCollector(result, request)
+        const collect = 'rows' in history
+          ? (index: number) => addGeneratedHistoryRow(result, request.status, history.rows[index])
+          : (index: number) => fromSave(history.records[index])
+        let cursor = 0
+        const channel = queue = new MessageChannel()
+        channel.port1.onmessage = () => {
+          const deadline = performance.now() + 6
+          do {
+            collect(cursor++)
+          } while (cursor < length && performance.now() < deadline)
+          if (cursor < length) channel.port2.postMessage(null)
+          else {
+            channel.port1.close()
+            channel.port2.close()
+            publish(result)
+          }
+        }
+        channel.port2.postMessage(null)
+      })
   }
 
   const frame = window.requestAnimationFrame(() => {

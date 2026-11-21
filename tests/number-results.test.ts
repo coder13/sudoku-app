@@ -5,7 +5,9 @@ import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 import { solveKakuro } from '../src/kakuro/engine.ts'
 import { kakuroRecipeFromPuzzle } from '../src/kakuro/generator.ts'
 import { solveLatin } from '../src/latin/engine.ts'
-import { createGeneratedNumberResultCollector, type GeneratedNumberResults } from '../src/number-puzzles/generated-results.ts'
+import {
+  addGeneratedHistoryRow, createGeneratedHistoryReader, createGeneratedNumberResultCollector, type GeneratedNumberResults,
+} from '../src/number-puzzles/generated-results.ts'
 import { encodeGeneratedNumberPuzzle, type GeneratedNumberPuzzle } from '../src/number-puzzles/generated.ts'
 import type { SavedNumberProgress } from '../src/number-puzzles/progress.ts'
 import { summarizeDifficultySolves } from '../src/sudoku/difficulty-statistics.ts'
@@ -30,8 +32,11 @@ for (const { board, values } of [
     wrong[first] = wrong[first] === 1 ? 2 : 1
     const results: GeneratedNumberResults = { totals: new Map(), entries: [] }
     const completed: GeneratedNumberResults = { totals: new Map(), entries: [] }
+    const indexedActive: GeneratedNumberResults = { totals: new Map(), entries: [] }
+    const indexedSolved: GeneratedNumberResults = { totals: new Map(), entries: [] }
     const collectActive = createGeneratedNumberResultCollector(results, { game: board.game, status: 'started' })
     const collectSolved = createGeneratedNumberResultCollector(completed, { game: board.game, status: 'solved' })
+    const summarize = createGeneratedHistoryReader(board.game)
     const progress: SavedNumberProgress[] = [
       { values, notes: blank },
       { values, notes: blank, clock: { elapsed: 42, finished: true }, lastPlayed: 1_790_100_000_000 },
@@ -47,6 +52,11 @@ for (const { board, values } of [
       const record = { game: board.game, id: ids[index], number: index + 1, progress: save }
       collectActive(record)
       collectSolved(record)
+      const row = summarize(record)
+      if (!row) return
+      assert.equal(row.game, board.game)
+      addGeneratedHistoryRow(indexedActive, 'started', structuredClone(row))
+      addGeneratedHistoryRow(indexedSolved, 'solved', structuredClone(row))
     })
     for (const collect of [collectActive, collectSolved]) {
       collect({ game: board.game, id: 'v1.invalid', number: 8, progress: progress[0] })
@@ -62,5 +72,7 @@ for (const { board, values } of [
       { id: ids[1], number: 2, difficulty: 'easy', generated: true, lastPlayed: 1_790_100_000_000, elapsed: 42 },
     ])
     assert.deepEqual(completed.totals, results.totals)
+    assert.deepEqual(indexedActive, results)
+    assert.deepEqual(indexedSolved, completed)
   })
 }

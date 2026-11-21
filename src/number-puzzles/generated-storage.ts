@@ -1,4 +1,5 @@
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
+import { createGeneratedHistoryReader, type GeneratedHistoryRow } from './generated-results.ts'
 import {
   advanceNumberClock, numberProgressWithClock, parseSavedNumberProgress, readNumberClock, saveNumberClock,
   saveNumberProgress, type NumberProgress, type SavedNumberProgress,
@@ -14,7 +15,13 @@ export type GeneratedIdentity = Pick<GeneratedRecord, 'id' | 'number'>
 
 const storeName = 'generated'
 const tokenIndex = 'token'
+const historyStore = 'history'
 const migrationBatchSize = 256
+type HistoryCheckpoint = { game: GeneratedNumberGame; number: 0; through: number; ready: boolean }
+const historyReaders = {
+  kakuro: createGeneratedHistoryReader('kakuro'),
+  calcudoku: createGeneratedHistoryReader('calcudoku'),
+}
 let database: Promise<IDBDatabase> | undefined
 const migrations = new Map<GeneratedNumberGame, Promise<void>>()
 type LocalPosition = { raw: string; progress: SavedNumberProgress }
@@ -82,10 +89,17 @@ function nextTask() {
 
 function openDatabase() {
   database ??= new Promise<IDBDatabase>((resolve, reject) => {
-    const open = indexedDB.open('sudoku-number-puzzles', 1)
-    open.onupgradeneeded = () => {
-      const store = open.result.createObjectStore(storeName, { keyPath: ['game', 'number'] })
-      store.createIndex(tokenIndex, ['game', 'id'], { unique: true })
+    const open = indexedDB.open('sudoku-number-puzzles', 2)
+    open.onupgradeneeded = ({ oldVersion }) => {
+      const db = open.result
+      const history = db.createObjectStore(historyStore, { keyPath: ['game', 'number'] })
+      if (oldVersion === 0) {
+        const store = db.createObjectStore(storeName, { keyPath: ['game', 'number'] })
+        store.createIndex(tokenIndex, ['game', 'id'], { unique: true })
+        for (const game of ['kakuro', 'calcudoku'] as const) {
+          history.put({ game, number: 0, through: 0, ready: true } satisfies HistoryCheckpoint)
+        }
+      }
     }
     open.onsuccess = () => {
       const db = open.result
@@ -111,10 +125,19 @@ export function readRequest<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
-async function runTransaction<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore) => Promise<T>) {
+async function runTransaction<T>(
+  mode: IDBTransactionMode,
+  operation: (store: IDBObjectStore, history: IDBObjectStore) => Promise<T>,
+  options?: IDBTransactionOptions,
+) {
   const db = await openDatabase()
-  const transaction = db.transaction(storeName, mode)
-  const [, result] = await Promise.all([transactionDone(transaction), operation(transaction.objectStore(storeName))])
+  const transaction = db.transaction([storeName, historyStore], mode, options)
+  const finished = transactionDone(transaction)
+  const work = operation(transaction.objectStore(storeName), transaction.objectStore(historyStore)).catch(error => {
+    try { transaction.abort() } catch { /* The transaction can already be closed. */ }
+    throw error
+  })
+  const [, result] = await Promise.all([finished, work])
   return result
 }
 
@@ -129,6 +152,12 @@ function gameRange(game: GeneratedNumberGame) {
   return IDBKeyRange.bound([game, 1], [game, Infinity])
 }
 
+function saveHistoryRow(history: IDBObjectStore, record: GeneratedRecord) {
+  const row = historyReaders[record.game](record)
+  if (row) history.put(row)
+  else if (record.progress) history.delete([record.game, record.number])
+}
+
 async function migrateLegacy(game: GeneratedNumberGame) {
   const legacy = await readLegacy(game)
   if (legacy.ids.size === 0) return
@@ -138,7 +167,7 @@ async function migrateLegacy(game: GeneratedNumberGame) {
   }
 
   const copied = new Map<string, string>()
-  await runTransaction('readwrite', async store => {
+  await runTransaction('readwrite', async (store, history) => {
     const existing: GeneratedRecord[] = await readRequest(store.getAll(gameRange(game)))
     const known = new Map(existing.map(record => [record.id, record]))
     let number = existing.at(-1)?.number ?? 0
@@ -155,10 +184,12 @@ async function migrateLegacy(game: GeneratedNumberGame) {
       if (previous && (current || !saved?.progress || same)) copied.set(numberPositionKey(game, id), previous.raw)
       if (current) copied.set(pendingKey, current.raw)
       if (saved && !current && (saved.progress || !progress)) continue
-      store.put({
+      const record: GeneratedRecord = {
         game, id, number: saved?.number ?? ++number,
         progress: progress && numberProgressWithClock(progress, saved?.progress),
-      } satisfies GeneratedRecord)
+      }
+      store.put(record)
+      saveHistoryRow(history, record)
       // Let the browser handle input between batches while this transaction stays open.
       if (++writes % migrationBatchSize === 0) await readRequest(store.get([game, 0]))
     }
@@ -190,6 +221,33 @@ export function readGeneratedRecords(game: GeneratedNumberGame): Promise<Generat
   return runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
 }
 
+export function readGeneratedPickerHistory(game: GeneratedNumberGame): Promise<{ rows: GeneratedHistoryRow[] } | { records: GeneratedRecord[] }> {
+  return runTransaction('readonly', async (store, history) => {
+    const checkpoint = await readRequest<HistoryCheckpoint | undefined>(history.get([game, 0]))
+    const range = gameRange(game)
+    if (checkpoint?.ready) return { rows: await readRequest(history.getAll(range)) }
+    return { records: await readRequest(store.getAll(range)) }
+  })
+}
+
+export async function indexGeneratedPickerHistory(game: GeneratedNumberGame) {
+  async function indexBatch() {
+    return runTransaction('readwrite', async (store, history) => {
+      const checkpoint = await readRequest<HistoryCheckpoint | undefined>(history.get([game, 0]))
+      if (checkpoint?.ready) return true
+      const through = checkpoint?.through ?? 0
+      const range = IDBKeyRange.bound([game, through], [game, Infinity], true)
+      const records = await readRequest<GeneratedRecord[]>(store.getAll(range, migrationBatchSize))
+      for (const record of records) saveHistoryRow(history, record)
+      const ready = records.length < migrationBatchSize
+      history.put({ game, number: 0, through: records.at(-1)?.number ?? through, ready } satisfies HistoryCheckpoint)
+      return ready
+    }, { durability: 'relaxed' })
+  }
+  // Each batch reads the current saves and commits their results with the checkpoint.
+  while (!await indexBatch()) await nextTask()
+}
+
 export async function generatedNumberHistory(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
   try {
     await prepareGeneratedHistory(game)
@@ -218,7 +276,7 @@ export async function readCalcudokuSessions(checkpoint?: GeneratedIdentity) {
 
 async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progress?: SavedNumberProgress, staged?: string) {
   const key = pendingPositionKey(game, id)
-  const { record, consumed } = await runTransaction('readwrite', async store => {
+  const { record, consumed } = await runTransaction('readwrite', async (store, history) => {
     const existing: GeneratedRecord | undefined = await readRequest(store.index(tokenIndex).get([game, id]))
     const pending = localValue(key)
     const superseded = staged !== undefined && staged !== pending
@@ -231,6 +289,7 @@ async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progr
     }
     const record: GeneratedRecord = { game, id, number, progress: next && numberProgressWithClock(next, existing?.progress) }
     store.put(record)
+    saveHistoryRow(history, record)
     return { record, consumed: next ? pending : null }
   })
   removeLocalVersion(key, consumed)
@@ -277,12 +336,16 @@ export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id:
 export async function saveGeneratedNumberClock(game: GeneratedNumberGame, id: string, change: number | 'untimed') {
   try {
     await prepareGeneratedHistory(game)
-    return await runTransaction('readwrite', async store => {
+    return await runTransaction('readwrite', async (store, history) => {
       const record: GeneratedRecord | undefined = await readRequest(store.index(tokenIndex).get([game, id]))
       if (!record?.progress) return
       const previous = readNumberClock(record.progress.clock)
       const clock = advanceNumberClock(previous, change)
-      if (clock !== previous) store.put({ ...record, progress: { ...record.progress, clock } })
+      if (clock !== previous) {
+        const updated = { ...record, progress: { ...record.progress, clock } }
+        store.put(updated)
+        saveHistoryRow(history, updated)
+      }
       return clock
     })
   } catch {

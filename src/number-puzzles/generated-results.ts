@@ -33,14 +33,23 @@ type ProgressRules = {
 
 export function recordNumberResult(
   totals: DifficultyTotals<NumberPuzzleDifficulty>, difficulty: NumberPuzzleDifficulty,
+  saved: SavedNumberProgress, rules: ProgressRules,
+): NumberResultStatus | null {
+  const status = numberResultStatus(saved, rules)
+  if (status === 'solved') {
+    const clock = readNumberClock(saved.clock)
+    recordDifficultySolve(totals, difficulty, clock === 'untimed' ? undefined : clock?.elapsed)
+  }
+  return status
+}
+
+function numberResultStatus(
   saved: SavedNumberProgress, { editable, maxValue, complete }: ProgressRules,
 ): NumberResultStatus | null {
   if (!Array.isArray(saved.values) || !Array.isArray(saved.notes)) return null
   const progress = parseNumberProgress(saved, editable, maxValue)
   if (!progress || !hasNumberMoves(progress)) return null
-  if (!complete(progress.position.values)) return 'started'
-  recordDifficultySolve(totals, difficulty, progress.clock === 'untimed' ? undefined : progress.clock?.elapsed)
-  return 'solved'
+  return complete(progress.position.values) ? 'solved' : 'started'
 }
 
 type GeneratedProgressRules = ProgressRules & { difficulty: NumberPuzzleDifficulty }
@@ -74,13 +83,12 @@ function generatedProgressRules(game: GeneratedNumberGame, payload: string): Gen
 }
 
 export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus }
+export type GeneratedHistoryRow = NumberHistoryEntry & { game: GeneratedNumberGame; status: NumberResultStatus }
 
-export function createGeneratedNumberResultCollector(
-  result: GeneratedNumberResults, { game, status }: NumberHistoryRequest,
-) {
+export function createGeneratedHistoryReader(game: GeneratedNumberGame) {
   // Replays share clues, but each play keeps its own progress and result.
   const cached = new Map<string, GeneratedProgressRules | null>()
-  return ({ id, number, progress }: GeneratedRecord) => {
+  return ({ id, number, progress }: GeneratedRecord): GeneratedHistoryRow | undefined => {
     if (!progress) return
     const payload = generatedNumberPayload(id)
     if (!payload) return
@@ -94,9 +102,24 @@ export function createGeneratedNumberResultCollector(
     } else if (previous === null) {
       cached.set(payload, rules)
     }
-    const { difficulty } = rules
-    if (recordNumberResult(result.totals, difficulty, progress, rules) === status) {
-      result.entries.push(numberHistoryEntry({ id, number, difficulty, generated: true }, progress))
-    }
+    const status = numberResultStatus(progress, rules)
+    if (status) return { ...numberHistoryEntry({ id, number, difficulty: rules.difficulty, generated: true }, progress), game, status }
+  }
+}
+
+export function addGeneratedHistoryRow(
+  result: GeneratedNumberResults, match: NumberResultStatus, { game: _game, status, ...entry }: GeneratedHistoryRow,
+) {
+  if (status === 'solved') recordDifficultySolve(result.totals, entry.difficulty, entry.elapsed)
+  if (status === match) result.entries.push(entry)
+}
+
+export function createGeneratedNumberResultCollector(
+  result: GeneratedNumberResults, { game, status }: NumberHistoryRequest,
+) {
+  const read = createGeneratedHistoryReader(game)
+  return (record: GeneratedRecord) => {
+    const row = read(record)
+    if (row) addGeneratedHistoryRow(result, status, row)
   }
 }
