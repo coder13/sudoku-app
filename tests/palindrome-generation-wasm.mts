@@ -24,7 +24,7 @@ function gameOf(result: GeneratedVariant, id = 'palindrome-generated'): Game {
 function verify(value: GeneratedVariant, difficulty: 'easy' | 'medium') {
   assert.ok(value.puzzle.rules!.every(rule => rule.type === 'palindrome'))
   assert.ok(geometry.patterns.some(pattern => JSON.stringify(pattern.lines) === JSON.stringify(value.puzzle.rules!.map(rule => rule.type === 'palindrome' ? rule.cells : []))))
-  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 12)
+  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 13)
   assert.ok(value.rating.counts.palindrome)
   assert.ok(value.givens >= (difficulty === 'medium' ? 14 : 0) && value.givens <= (difficulty === 'medium' ? 24 : 30))
   const independent = countLineSolutions(value.puzzle)

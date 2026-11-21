@@ -4,12 +4,14 @@ import { test } from 'node:test'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { generatePlayableVariant, getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
+import { assertRegionSumDistinctProof } from './helpers/region-sum-distinct-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -21,7 +23,15 @@ const coach = JSON.parse(readFileSync(new URL('./fixtures/region-sum-coach.json'
 const mixed = coach[0]
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
-for (const [source, points, steps, complete] of [[published, 986, 68, true], [mixed, 2262, 67, false], [coach[1], 4058, 185, true], [coach[2], 1272, 55, false], [coach[3], 48, 1, false]] as const) {
+const distinctTechnique = 'region-sum-distinct'
+const appResults = [
+  [published, 986, 68, true, 0],
+  [mixed, 3830, 156, true, 6],
+  [coach[1], 2815, 219, true, 1],
+  [coach[2], 3218, 146, true, 4],
+  [coach[3], 881, 22, false, 5],
+] as const
+for (const [source, points, steps, complete, newProofs] of appResults) {
   test(`complete source ${source.title} imports with checked rules, retained hints and an honest solution path`, async () => {
     const { game } = await prepareImportedPuzzle(source === published ? share(source.puzzle) : source.code)
     assert.deepEqual(game.variant!.puzzle, source.puzzle)
@@ -33,28 +43,36 @@ for (const [source, points, steps, complete] of [[published, 986, 68, true], [mi
     const candidates = await playCandidates(game)
     candidates!.forEach((mask, cell) => { if (game.givens[cell] === '0') assert.ok(mask & 1 << (Number(source.solution[cell]) - 1)) })
     const hints = await puzzleHints(game)
-    assert.ok(hints.choices.length >= 1)
-    if (source !== coach[3]) assert.ok(hints.choices.length > 1)
+    assert.ok(hints.choices.length > 1)
+    if (source === coach[3]) {
+      assert.equal(hints.choices.length, 3)
+      assert.equal(hints.choices.filter(hint => hint.technique === distinctTechnique).length, 2)
+    }
     const solution = await puzzleSolution(game)
+    assert.equal(solution.rating.scoringVersion, 13)
     assert.equal(solution.rating.score.points, points)
+    assert.equal(solution.rating.score.counts[distinctTechnique] ?? 0, newProofs)
     assert.equal(solution.steps.length, steps)
     assert.equal(solution.rating.status === 'stalled', !complete)
     assert.equal(solution.board === source.solution, complete)
     let play = game
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: await getVariantPlayOrder() })
+    const position = variantPosition(game.variant!)
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: await getVariantPlayOrder(position.puzzle) })
     for (const step of trace.steps) {
       for (const action of step.actions) {
         if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
         else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
       }
       const before = play
-      play = applyDeduction(play, step.actions, variantHouseMasks(game.variant!.puzzle, valuesOf(play), play.position.eliminations))
+      const values = valuesOf(play)
+      const masks = variantHouseMasks(position.puzzle, values, play.position.eliminations)
+      if (step.technique === distinctTechnique) assertRegionSumDistinctProof(position.puzzle, values, masks, step)
+      play = applyDeduction(play, step.actions, masks)
       assert.deepEqual(undo(play).position, before.position)
       assert.deepEqual(redo(undo(play)).position, play.position)
     }
     assert.equal(isSolved(play), complete)
     assert.equal(valuesOf(play), solution.board)
-    const position = variantPosition(game.variant!)
     assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position, maxNodes: 20_000 }), source === coach[3] ? 'search-limit' : 'unique')
     assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position }), 'unique')
     assert.equal(await runEngine({ type: 'variant', operation: 'solve', position }), source.solution)
@@ -62,6 +80,83 @@ for (const [source, points, steps, complete] of [[published, 986, 68, true], [mi
     assert.equal((await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder: [] })).points, 0)
   })
 }
+
+test('an imported Region Sum puzzle refreshes its saved score after the logical profile changes', async () => {
+  const { game } = await prepareImportedPuzzle(mixed.code)
+  assert.equal(game.variantRatingVersion, 13)
+  const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 12 }
+  assert.equal(needsPuzzleGrade(legacy), true)
+  const updated = await prepareImportedPuzzle(mixed.code, [legacy])
+  assert.equal(updated.game.score, 3830)
+  assert.equal(updated.game.difficulty, 'medium')
+  assert.equal(needsPuzzleGrade(updated.game), false)
+})
+
+test('distinct-digit Region Sum previews retain every selected proof in paging and Finder', async () => {
+  const { game } = await prepareImportedPuzzle(mixed.code)
+  assert.ok(game.variant)
+  const position = variantPosition(game.variant)
+  const values = valuesOf(game)
+  const masks = variantHouseMasks(position.puzzle, values)
+  const raw = await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: [distinctTechnique], limit: 0xffff_ffff,
+  })
+  for (const proof of raw) assertRegionSumDistinctProof(position.puzzle, values, masks, proof)
+  const full = await puzzleHints(game, 'all', distinctTechnique)
+  assert.equal(full.choices.length, 9)
+  const collection = 824
+  const first = await puzzleHints(game, 'all', distinctTechnique, collection)
+  assert.ok(first.choices.length < first.available)
+  const next = await puzzleHintPage(game.variant, collection, first.choices.length)
+  assert.deepEqual([...first.choices, ...next.choices], full.choices)
+  const scan = watchTechniqueScan(values, game.position.eliminations, position)
+  try {
+    const keys = new Set(raw.flatMap(proof => proof.actions.map(action => JSON.stringify(action))))
+    assert.equal(await scan.count(distinctTechnique), keys.size)
+  } finally {
+    scan.close()
+    await runEngine({ type: 'release-hints', collection })
+  }
+})
+
+test('three practice positions and a fresh drill have independently valid distinct-digit totals', async () => {
+  const technique = distinctTechnique
+  const examples = await runEngine({ type: 'practice-examples', variant: true, technique })
+  assert.equal(examples.length, 3)
+  const fresh = await runEngine({
+    type: 'generate-practice-example', variant: true, technique, seed: 9137, exclude: examples[0].position.puzzle.givens,
+  })
+  assert.ok(fresh)
+  assert.notEqual(fresh.position.puzzle.givens, examples[0].position.puzzle.givens)
+  for (const exercise of [...examples, fresh]) {
+    const { position, candidates, deduction, suggestion } = exercise
+    assertRegionSumDistinctProof(position.puzzle, position.puzzle.givens, candidates, deduction)
+    assert.deepEqual(await runEngine({
+      type: 'variant', operation: 'check-practice-move', position, technique, action: suggestion,
+    }), deduction)
+  }
+})
+
+test('grouped repeat visits retain their distinct-digit proof when interleaved', async () => {
+  const [exercise] = await runEngine({ type: 'practice-examples', variant: true, technique: distinctTechnique })
+  assert.ok(exercise)
+  const rule = exercise.position.puzzle.rules![0]
+  assert.equal(rule.type, 'region-sum')
+  const [first, second, third, ...rest] = rule.cells
+  const puzzle: VariantPuzzle = {
+    ...exercise.position.puzzle,
+    rules: [{ type: 'region-sum', cells: [first, third, second, ...rest], groupByRegion: true }],
+  }
+  const position = { puzzle }
+  const proofs = await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: [distinctTechnique], limit: 10,
+  })
+  assert.equal(proofs.length, 1)
+  assert.deepEqual(proofs[0].actions, exercise.deduction.actions)
+  assertRegionSumDistinctProof(puzzle, puzzle.givens, exercise.candidates, proofs[0])
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position }),
+    await runEngine({ type: 'variant', operation: 'solve-unique', position: exercise.position }))
+})
 
 test('all eight square transformations move every line and companion with its printed completion', async () => {
   for (const source of [published, ...coach]) {
@@ -109,7 +204,7 @@ test('closed drawing geometry survives native round trips, transforms and genera
     assert.deepEqual(result.rules, changed.rules)
     assert.equal(result.points, 0)
   }
-  const order = await getVariantPlayOrder()
+  const order = await getVariantPlayOrder(published.puzzle)
   const request = variantGenerationRequest('region-sum', 'medium', variantSeeds['region-sum'].medium![0], order, 1)
   const generated = await runEngine({ ...request, template: { ...request.template, rules: puzzle.rules } })
   assert.deepEqual(generated.puzzle.rules!.at(-1), loop)
@@ -119,7 +214,7 @@ test('closed drawing geometry survives native round trips, transforms and genera
 })
 
 test('the real New Puzzle generation path offers a unique Medium puzzle that needs Region Sum Lines', async () => {
-  const order = await getVariantPlayOrder()
+  const order = await getVariantPlayOrder(published.puzzle)
   const distinct = new Set<string>()
   for (const seed of [1, 7, 15]) {
     const generated = await generatePlayableVariant('region-sum', 'medium', seed, [])

@@ -664,6 +664,20 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
       break
     }
+    case 'region-sum-distinct': {
+      cells = evidence.parts.flatMap(part => part.cells)
+      const shared = alternatives.format(evidence.commonTotals.map(String))
+      const smallest = [...evidence.parts].sort((a, b) => a.totals.length - b.totals.length).slice(0, 2)
+      const examples = smallest.map(part => {
+        const totals = alternatives.format(part.totals.map(String))
+        return `The part starting at ${nameCell(part.cells[0])} can total ${totals} with distinct digits.`
+      })
+      const rule = puzzle.rules?.[evidence.rule]
+      const start = rule?.type === 'region-sum' ? rule.cells[0] : cells[0]
+      description = `The Region Sum line starts at ${nameCell(start)}. Each part has the same total, and its cells share a region, so its digits must be distinct.`
+      reason = `${examples.join(' ')} All parts can reach only ${shared}. None of the assignments for those totals uses the crossed-out candidates.`
+      break
+    }
     case 'group-order': {
       const explanation = explainGroupOrder(evidence, puzzle, nameCell, houseLabel)
       cells = [...new Set([...explanation.cells, ...focus.map(({ cell }) => cell)])]

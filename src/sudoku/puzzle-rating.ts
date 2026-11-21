@@ -7,6 +7,7 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
+const REGION_SUM_LINE_RATING_VERSION = 13
 const ENTROPIC_LINE_RATING_VERSION = 12
 const ENTROPY_QUADRUPLE_RATING_VERSION = 10
 const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
@@ -15,6 +16,7 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  if (rules?.some(rule => rule.type === 'region-sum')) return REGION_SUM_LINE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'entropic')) return ENTROPIC_LINE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
     return RENBAN_AND_LITTLE_KILLER_RATING_VERSION

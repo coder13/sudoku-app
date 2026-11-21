@@ -8178,6 +8178,54 @@
           "difficulty": "hard"
         },
         {
+          "id": "region-sum-distinct",
+          "title": "Region Sum with distinct digits",
+          "summary": "Find totals that every part of a Region Sum line can make without repeating a digit inside a part.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the digits inside each part"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Each part of a Region Sum line lies in one box or Jigsaw region. Its cells must use different digits. Start with the shortest part and list the totals its candidates can make.",
+                "Check which of those totals the other parts can make with distinct digits. A candidate can stay only if some assignment in its part uses it and reaches a shared total."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "region-sum-distinct",
+              "copy": {
+                "description": "R6C7 is the only cell in its part and gives a total of 8.",
+                "reason": "If R9C7 were 3, R8C7 and R7C7 would need 1 and 4 or 2 and 3 to make the remaining 5. Neither cell can contain 4. Using 2 and 3 repeats 3 in box 9. Remove 3 from R9C7."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "region-sum-distinct",
+                  "title": "Region Sum with distinct digits"
+                }
+              ],
+              "guide": {
+                "start": "Find the shortest part of the line and check its possible totals.",
+                "check": "Check which totals all parts can make with different digits inside each part.",
+                "reason": "A crossed-out candidate cannot reach a shared total using distinct digits in its part."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Region Sum lines",
+              "href": "/learn/region-sum"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "region-sum",
           "title": "Region Sum lines",
           "summary": "A Region Sum line has the same total in each part defined by the region boundaries and the puzzle’s rules. A part with just one cell can set the total for all the others.",
