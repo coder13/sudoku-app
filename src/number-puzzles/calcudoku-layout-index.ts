@@ -1,54 +1,31 @@
-import {
-  calcudokuCandidateSignatures, calcudokuRecipeKey, calcudokuRecipeSignature,
-} from '../calcudoku/generator.ts'
+import { calcudokuRecipeKeys } from '../calcudoku/generator.ts'
 import type { NumberPuzzleDifficulty } from './catalog.ts'
 import {
-  decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, generatedNumberToken, RECENT_GENERATED_PUZZLE_LIMIT,
+  decodeGeneratedNumberPayload, encodeGeneratedNumberPuzzle, generatedNumberPayload, RECENT_GENERATED_PUZZLE_LIMIT,
 } from './generated.ts'
-import { readCalcudokuSessions, readRequest, transactionDone, type GeneratedIdentity } from './generated-storage.ts'
-import { olderCalcudoku, retrySeed, selectCalcudokuPlay, type GenerationOptions } from './generation.ts'
+import { readGeneratedSessions, readRequest, type GeneratedIdentity } from './generated-storage.ts'
+import {
+  findFreshCalcudoku, olderCalcudoku, selectCalcudokuPlay, selectCalcudokuReplay, type GenerationOptions,
+} from './generation.ts'
+import { layoutsStore, openLayoutIndex, readLayoutCheckpoint, readRecentLayouts, saveLayouts, type PuzzleLayout } from './layout-index.ts'
 
-type Layout = {
-  difficulty: NumberPuzzleDifficulty
-  signature: string
-  latest: number
-  orientations: string[]
-}
-
-const layoutsStore = 'layouts'
-const checkpointStore = 'checkpoints'
-const recentIndex = 'recent'
-const checkpointKey = 'latest'
-
-function openLayoutIndex(): Promise<IDBDatabase> {
-  const open = indexedDB.open('sudoku-calcudoku-layouts', 1)
-  open.onupgradeneeded = () => {
-    const layouts = open.result.createObjectStore(layoutsStore, { keyPath: ['difficulty', 'signature'] })
-    layouts.createIndex(recentIndex, ['difficulty', 'latest'])
-    open.result.createObjectStore(checkpointStore)
-  }
-  return readRequest(open)
-}
+type Layout = PuzzleLayout & { orientations: string[] }
 
 function summarizeLayouts(sessions: readonly GeneratedIdentity[]): Layout[] {
   const layouts = new Map<string, { difficulty: NumberPuzzleDifficulty; latest: number; orientations: Set<string> }>()
   // Exact replays share a payload. Decode and compare the clues once each.
-  const payloads = new Map<string, { difficulty: NumberPuzzleDifficulty; signature: string; key: string }>()
+  const payloads = new Map<string, { difficulty: NumberPuzzleDifficulty; signature: string; key: string } | null>()
   for (const { id, number } of sessions) {
+    const payload = generatedNumberPayload(id)
+    if (!payload) continue
     try {
-      const [, payload] = id.split('.', 2)
       let layout = payloads.get(payload)
-      if (layout && !generatedNumberToken(id)) continue
-      if (!layout) {
-        const stored = decodeGeneratedNumberPuzzle(id, 'calcudoku')
-        if (!stored) continue
-        layout = {
-          difficulty: stored.difficulty,
-          signature: calcudokuRecipeSignature(stored.recipe),
-          key: calcudokuRecipeKey(stored.recipe),
-        }
+      if (layout === undefined) {
+        const stored = decodeGeneratedNumberPayload(payload, 'calcudoku')
+        layout = stored ? { difficulty: stored.difficulty, ...calcudokuRecipeKeys(stored.recipe) } : null
         payloads.set(payload, layout)
       }
+      if (!layout) continue
       let summary = layouts.get(layout.signature)
       if (!summary) {
         summary = { difficulty: layout.difficulty, latest: number, orientations: new Set() }
@@ -56,80 +33,40 @@ function summarizeLayouts(sessions: readonly GeneratedIdentity[]): Layout[] {
       }
       summary.latest = number
       summary.orientations.add(layout.key)
-    } catch { /* Ignore invalid saved cages. */ }
+    } catch {
+      // Skip every replay of invalid saved cages.
+      payloads.set(payload, null)
+    }
   }
   return Array.from(layouts, ([signature, { difficulty, latest, orientations }]) =>
     ({ difficulty, signature, latest, orientations: [...orientations] }))
 }
 
-async function saveLayouts(
-  db: IDBDatabase,
-  checkpoint: GeneratedIdentity | undefined,
-  last: GeneratedIdentity | undefined,
-  additions: Layout[],
-  rebuild: boolean,
-) {
-  const write = db.transaction([layoutsStore, checkpointStore], 'readwrite', { durability: 'relaxed' })
-  const finish = transactionDone(write)
-  const apply = async () => {
-    try {
-      const markers = write.objectStore(checkpointStore)
-      const current: GeneratedIdentity | undefined = await readRequest(markers.get(checkpointKey))
-      // A second worker can finish while this worker reads the saved sessions.
-      if (current?.number !== checkpoint?.number || current?.id !== checkpoint?.id) return false
-      const layouts = write.objectStore(layoutsStore)
-      if (rebuild) layouts.clear()
-      await Promise.all(additions.map(async entry => {
-        const previous: Layout | undefined = !rebuild
-          ? await readRequest(layouts.get([entry.difficulty, entry.signature])) : undefined
-        if (previous) entry.orientations = [...new Set([...previous.orientations, ...entry.orientations])]
-        layouts.put(entry)
-      }))
-      if (last) markers.put(last, checkpointKey)
-      else markers.delete(checkpointKey)
-      return true
-    } catch (error) {
-      try { write.abort() } catch { /* IndexedDB may have already aborted the write. */ }
-      throw error
-    }
-  }
-  const [updated] = await Promise.all([apply(), finish])
-  return updated
+function mergeOrientations(previous: Layout, addition: Layout): Layout {
+  return { ...addition, orientations: [...new Set([...previous.orientations, ...addition.orientations])] }
 }
 
-function readRecent(store: IDBObjectStore, difficulty: NumberPuzzleDifficulty): Promise<Map<string, number>> {
-  const range = IDBKeyRange.bound([difficulty, 1], [difficulty, Infinity])
-  const request = store.index(recentIndex).openCursor(range, 'prev')
-  return new Promise((resolve, reject) => {
-    const recent = new Map<string, number>()
-    request.onsuccess = () => {
-      const cursor = request.result
-      if (!cursor) {
-        resolve(recent)
-        return
-      }
-      const { signature, latest }: Layout = cursor.value
-      recent.set(signature, latest)
-      if (recent.size === RECENT_GENERATED_PUZZLE_LIMIT) resolve(recent)
-      else cursor.continue()
-    }
-    request.onerror = () => reject(request.error)
-  })
-}
-
-async function readCandidateHistory(db: IDBDatabase, { difficulty, seed }: GenerationOptions) {
-  const candidates = new Set([
-    ...calcudokuCandidateSignatures(difficulty, seed),
-    ...calcudokuCandidateSignatures(difficulty, retrySeed(seed)),
-  ])
+async function selectIndexedCalcudoku(db: IDBDatabase, request: GenerationOptions) {
+  const { difficulty } = request
   const transaction = db.transaction(layoutsStore)
   const layouts = transaction.objectStore(layoutsStore)
-  const [recent, matches] = await Promise.all([
-    readRecent(layouts, difficulty),
-    Promise.all(Array.from(candidates, signature =>
-      readRequest<Layout | undefined>(layouts.get([difficulty, signature])))),
-  ])
-  return { recent, history: selectionHistory(matches) }
+  const search = findFreshCalcudoku(request)
+  const matches = new Map<string, Layout>()
+  let candidate = search.next()
+  while (!candidate.done) {
+    const batch = await Promise.all(candidate.value.map(signature =>
+      readRequest<Layout | undefined>(layouts.get([difficulty, signature]))))
+    for (const layout of batch) if (layout) matches.set(layout.signature, layout)
+    candidate = search.next(matches)
+  }
+  if (candidate.value) return candidate.value
+
+  const recentLayouts = await readRecentLayouts<Layout>(layouts, difficulty, RECENT_GENERATED_PUZZLE_LIMIT)
+  const recent = new Map(recentLayouts.map(({ signature, latest }) => [signature, latest]))
+  const selection = selectCalcudokuReplay(request, recent, selectionHistory([...matches.values()]))
+  if (selection.recipe) return selection.recipe
+  const { sessions } = await readGeneratedSessions('calcudoku')
+  return olderCalcudoku(difficulty, sessions.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
 }
 
 function selectionHistory(layouts: readonly (Layout | undefined)[]) {
@@ -147,35 +84,26 @@ export async function generateIndexedCalcudoku(
   request: GenerationOptions,
   publish: (token: string, indexPending?: boolean) => Promise<void>,
 ) {
-  const db = await openLayoutIndex()
+  const db = await openLayoutIndex('calcudoku')
   try {
     const { difficulty } = request
     for (let attempt = 0; attempt < 3; attempt++) {
-      const read = db.transaction(checkpointStore)
-      const checkpoint: GeneratedIdentity | undefined = await readRequest(read.objectStore(checkpointStore).get(checkpointKey))
-      const { reset, sessions } = await readCalcudokuSessions(checkpoint)
+      const checkpoint = await readLayoutCheckpoint(db)
+      const { reset, sessions } = await readGeneratedSessions('calcudoku', checkpoint)
       const additions = summarizeLayouts(sessions)
       const last = sessions.at(-1)
       const rebuild = !checkpoint || reset
       if (rebuild) {
         const group = additions.filter(layout => layout.difficulty === difficulty).sort((a, b) => b.latest - a.latest)
         const recent = new Map(group.slice(0, RECENT_GENERATED_PUZZLE_LIMIT).map(({ signature, latest }) => [signature, latest]))
-        const selection = selectCalcudokuPlay(request, recent, selectionHistory(group))
-        const recipe = selection.recipe ??
-          olderCalcudoku(difficulty, sessions.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
+        const recipe = selectCalcudokuPlay(request, recent, selectionHistory(group), sessions.map(({ id }) => id))
         // Let the board open before the index writes compete with the session save.
         await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()), Boolean(last || reset))
         if (last || reset) await saveLayouts(db, checkpoint, last, additions, true).catch(() => {})
         return
       }
-      if (last && !await saveLayouts(db, checkpoint, last, additions, false)) continue
-      const { recent, history } = await readCandidateHistory(db, request)
-      const selection = selectCalcudokuPlay(request, recent, history)
-      let recipe = selection.recipe
-      if (!recipe) {
-        const { sessions: history } = await readCalcudokuSessions()
-        recipe = olderCalcudoku(difficulty, history.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
-      }
+      if (last && !await saveLayouts(db, checkpoint, last, additions, false, mergeOrientations)) continue
+      const recipe = await selectIndexedCalcudoku(db, request)
       await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))
       return
     }

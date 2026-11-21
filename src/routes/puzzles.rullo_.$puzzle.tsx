@@ -3,6 +3,7 @@ import { RulloPlay } from '../components/Rullo'
 import { rulloCatalog } from '../rullo/catalog'
 
 export const Route = createFileRoute('/puzzles/rullo_/$puzzle')({
+  codeSplitGroupings: [['loader', 'component']],
   staticData: { standalonePuzzlePage: true },
   head: () => ({ meta: [{ title: 'Play Rullo' }] }),
   loader: ({ params }) => {

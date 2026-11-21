@@ -7,11 +7,14 @@ import {
   DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
-import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
+import { activeHistory, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
   coreModeLimit, coreSudokuModes, customModeDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
   selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
+import { isNumberGame, numberGameNames, numberPuzzleDestination, numberPuzzleDifficultyLabels } from '../number-puzzles/catalog'
+import type { NumberResultStatus } from '../number-puzzles/generated-results'
+import type { NumberPuzzleHistoryRow, NumberPuzzleActivity, NumberPuzzleQuery, openNumberPuzzleHistory } from './number-puzzle-activity'
 import { techniqueLabel } from '../sudoku/hints'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
@@ -56,12 +59,39 @@ function puzzleStatus(game: Game) {
   return 'Not started'
 }
 
-function PuzzleRows({ puzzles, active, manage }: {
-  puzzles: readonly Game[]; active: string | null; manage?: (id: string) => void
+const puzzleRowBatchSize = 24
+
+type PuzzleListPage = { limit: number; hasMore: boolean; loading: boolean; showMore: () => void }
+
+function PuzzleRows({ puzzles, active, manage, page, numberLibrary = true }: {
+  puzzles: readonly (Game | NumberPuzzleHistoryRow)[]
+  active: string | null
+  manage?: (id: string) => void
+  numberLibrary?: true | 'solved'
+  page?: PuzzleListPage
 }) {
   const List = manage ? 'ul' : 'ol'
-  return <List className="game-list main-puzzle-list" role="list">
-      {puzzles.map(game => {
+  const visible = page?.limit ?? puzzleRowBatchSize
+  const firstNewLink = useRef<HTMLAnchorElement>(null)
+  const limit = page && puzzles.some(puzzle => 'game' in puzzle) ? visible : puzzles.length
+  useEffect(() => { firstNewLink.current?.focus() }, [visible])
+  return <>
+    <List className="game-list main-puzzle-list" role="list">
+      {puzzles.slice(0, limit).map((game, index) => {
+        const ref = visible > puzzleRowBatchSize && index === visible - puzzleRowBatchSize ? firstNewLink : undefined
+        if ('game' in game) {
+          const title = `${game.name} · ${game.imported ? 'Imported' : numberPuzzleDifficultyLabels[game.difficulty]} ${game.number}`
+          const time = game.elapsed === undefined ? undefined : formatTime(game.elapsed)
+          const status = numberLibrary === 'solved' ? (time ? `Solved in ${time}` : 'Solved') : time
+          const detail = [game.generated && 'Generated puzzle', status].filter(Boolean).join(' · ')
+          return <li key={`${game.game}:${game.id}`}>
+            <Link ref={ref} className="game-row" {...numberPuzzleDestination(game.game, game)} state={{ fromNumberPuzzleLibrary: numberLibrary }}>
+              <Grid3X3 size={24} aria-hidden="true" />
+              <span className="game-row-copy"><strong>{title}</strong>{detail && <small>{detail}</small>}</span>
+              <ChevronRight className="row-arrow" size={18} aria-hidden="true" />
+            </Link>
+          </li>
+        }
         const manageable = manage && game.source !== 'draft'
         const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
         const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
@@ -74,7 +104,7 @@ function PuzzleRows({ puzzles, active, manage }: {
           ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
-          <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
+          <Link ref={ref} className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
             <MiniGrid values={valuesOf(game)} size={game.grid?.size} />
             <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
             {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
@@ -83,7 +113,60 @@ function PuzzleRows({ puzzles, active, manage }: {
             aria-label={`Options for ${name}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}
         </li>
       })}
-  </List>
+    </List>
+    {page && (limit < puzzles.length || page.hasMore) && <Button aria-disabled={page.loading || undefined}
+      onClick={() => { if (!page.loading) page.showMore() }}>Show more puzzles</Button>}
+  </>
+}
+
+function useNumberPuzzleHistory(status: NumberResultStatus, filters?: SolvedPuzzleFilters) {
+  const { game, variant, difficulty, from, to } = filters ?? {}
+  const filterKey = JSON.stringify([game, variant, difficulty, from, to])
+  const [requested, setRequested] = useState({ filterKey, limit: puzzleRowBatchSize })
+  const limit = requested.filterKey === filterKey ? requested.limit : puzzleRowBatchSize
+  const query = useMemo(() => ({ filterKey, filters: { game, variant, difficulty, from, to }, limit }),
+    [filterKey, game, variant, difficulty, from, to, limit])
+  const [activity, setActivity] = useState<NumberPuzzleActivity>()
+  const [unavailable, setUnavailable] = useState(false)
+  const latest = useRef<NumberPuzzleQuery>(query)
+  const history = useRef<Awaited<ReturnType<typeof openNumberPuzzleHistory>>>(undefined)
+  useEffect(() => {
+    let disposed = false
+    void import('./number-puzzle-activity').then(({ openNumberPuzzleHistory }) => {
+      if (!disposed) return openNumberPuzzleHistory(status, setActivity)
+    }).then(opened => {
+      if (disposed || !opened) return
+      history.current = opened
+      history.current.query(latest.current)
+    }).catch(() => { if (!disposed) setUnavailable(true) })
+    return () => {
+      disposed = true
+      history.current?.close()
+      history.current = undefined
+    }
+  }, [status])
+  useEffect(() => {
+    setRequested(previous => previous.filterKey === filterKey ? previous : { filterKey, limit: puzzleRowBatchSize })
+  }, [filterKey])
+  useEffect(() => {
+    latest.current = query
+    history.current?.query(query)
+  }, [query])
+
+  const matching = activity?.query.filterKey === filterKey ? activity : undefined
+  const loading = !unavailable && (matching?.query !== query || matching.pending === true)
+  return {
+    entries: matching?.entries,
+    saved: activity?.saved,
+    hasAny: activity?.hasAny,
+    filterKey,
+    page: {
+      limit: Math.min(matching?.query.limit ?? puzzleRowBatchSize, limit),
+      hasMore: matching?.hasMore ?? false,
+      loading,
+      showMore: () => { setRequested({ filterKey, limit: limit + puzzleRowBatchSize }) },
+    },
+  }
 }
 
 function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active: string | null; loading: boolean }) {
@@ -92,8 +175,16 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
   const [datesOpen, setDatesOpen] = useState(false)
   const filters = solvedRoute.useSearch()
   const navigate = solvedRoute.useNavigate()
-  const history = useMemo(() => solvedHistory(games), [games])
-  const filtered = history.filter(puzzle => matchesSolvedFilters(puzzle, filters))
+  const { entries: numberPuzzles, hasAny, page, filterKey } = useNumberPuzzleHistory('solved', filters)
+  const sudoku = useMemo(() => solvedHistory(games), [games])
+  const filteredSudoku = useMemo(() => sudoku.filter(puzzle => matchesSolvedFilters(puzzle, filters)), [sudoku, filters])
+  const filtered = useMemo(() => {
+    if (!numberPuzzles?.length) return filteredSudoku.map(({ game }) => game)
+    return [
+      ...filteredSudoku.slice(0, page.limit + 1).map(({ game, solvedAt }) => ({ puzzle: game, solvedAt })),
+      ...numberPuzzles.map(puzzle => ({ puzzle, solvedAt: puzzle.lastPlayed ?? 0 })),
+    ].sort((a, b) => b.solvedAt - a.solvedAt).map(({ puzzle }) => puzzle)
+  }, [filteredSudoku, numberPuzzles, page.limit])
   const dateActive = Boolean(filters.from || filters.to)
   const dateLabel = dateActive ? 'Date range (active)' : 'Date range'
   const invalidRange = Boolean(filters.from && filters.to && filters.to < filters.from)
@@ -104,19 +195,29 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
 
   return <div className="main-menu-section puzzle-library solved-puzzles">
     <div className="solved-filter-bar" role="group" aria-label="Solved puzzle filters">
-      <SelectControl aria-label="Variant" value={filters.variant ?? ''} onChange={({ currentTarget: { value } }) => {
-        setFilters({ ...filters, variant: isGameVariantId(value) ? value : undefined })
+      <SelectControl aria-label="Game or variant" value={filters.variant ?? filters.game ?? ''} onChange={({ currentTarget: { value } }) => {
+        setFilters({
+          ...filters,
+          game: value === 'sudoku' || isNumberGame(value) ? value : undefined,
+          variant: isGameVariantId(value) ? value : undefined,
+        })
       }}>
-        <option value="">{filters.variant ? 'All variants' : 'Variant'}</option>
-        {Object.entries(PUZZLE_VARIANTS).map(([id, variant]) => <option key={id} value={id}>{variant.name}</option>)}
-        <option value="mini">{MINI_NAME}</option>
-        <option value="six">{SIX_NAME}</option>
-        <option value="jigsaw-five">{FIVE_JIGSAW_NAME}</option>
-        <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
-        <option value="eight">{EIGHT_NAME}</option>
-        <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>
-        <option value="algebraic-cages">{ALGEBRAIC_CAGES_NAME}</option>
-        <option value="mixed">Mixed rules</option>
+        <option value="">All games</option>
+        <option value="sudoku">All Sudoku variants</option>
+        <optgroup label="Sudoku variants">
+          {Object.entries(PUZZLE_VARIANTS).map(([id, variant]) => <option key={id} value={id}>{variant.name}</option>)}
+          <option value="mini">{MINI_NAME}</option>
+          <option value="six">{SIX_NAME}</option>
+          <option value="jigsaw-five">{FIVE_JIGSAW_NAME}</option>
+          <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
+          <option value="eight">{EIGHT_NAME}</option>
+          <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>
+          <option value="algebraic-cages">{ALGEBRAIC_CAGES_NAME}</option>
+          <option value="mixed">Mixed rules</option>
+        </optgroup>
+        <optgroup label="Other puzzle games">
+          {Object.entries(numberGameNames).map(([game, name]) => <option key={game} value={game}>{name}</option>)}
+        </optgroup>
       </SelectControl>
       <SelectControl aria-label="Difficulty" value={filters.difficulty ?? ''} onChange={({ currentTarget: { value } }) => {
         setFilters({ ...filters, difficulty: isDifficulty(value) || value === 'unrated' ? value : undefined })
@@ -144,9 +245,10 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
       }}>Clear dates</Button>}
     </fieldset>
     {invalidRange ? <p className="main-menu-empty" role="status" id={`${id}-dates`}>Choose an end date on or after the start date.</p>
-      : filtered.length > 0 ? <PuzzleRows puzzles={filtered.map(({ game }) => game)} active={active} />
-        : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
-          : <p className="main-menu-empty" role="status">{history.length ? 'No solved puzzles match these filters.' : 'No solved puzzles yet.'}</p>}
+      : filtered.length > 0 ? <PuzzleRows key={filterKey} puzzles={filtered} active={active} page={page} numberLibrary="solved" />
+        : loading || page.loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+          : <p className="main-menu-empty" role="status">{sudoku.length || hasAny
+            ? 'No solved puzzles match these filters.' : 'No solved puzzles yet.'}</p>}
   </div>
 }
 
@@ -154,14 +256,21 @@ function PuzzleLibrary({ games, active, manage, loading }: {
   games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean
 }) {
   const title = useId()
-
-  const activePuzzles = inProgress(games)
-  const saved = games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived))
+  const { entries: numberPuzzles, saved: savedNumberPuzzles, page } = useNumberPuzzleHistory('started')
+  const sudoku = useMemo(() => activeHistory(games), [games])
+  const activePuzzles = useMemo(() => {
+    if (!numberPuzzles?.length) return sudoku.map(({ game }) => game)
+    return [
+      ...sudoku.slice(0, page.limit + 1).map(({ game, playedAt }) => ({ puzzle: game, playedAt })),
+      ...numberPuzzles.map(puzzle => ({ puzzle, playedAt: puzzle.lastPlayed ?? 0 })),
+    ].sort((a, b) => b.playedAt - a.playedAt).map(({ puzzle }) => puzzle)
+  }, [sudoku, numberPuzzles, page.limit])
+  const saved = [...games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived)), ...(savedNumberPuzzles ?? [])]
   return <div className="main-menu-section puzzle-library">
     {activePuzzles.length > 0 ? <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
       <h2 id={`${title}-active`}>Active Puzzles</h2>
-      <PuzzleRows puzzles={activePuzzles} active={active} manage={manage} />
-    </section> : loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
+      <PuzzleRows puzzles={activePuzzles} active={active} manage={manage} page={page} />
+    </section> : loading || page.loading ? <p className="main-menu-empty" role="status">Loading puzzles…</p>
       : <Link className={buttonClassName('primary', 'puzzle-empty-action')} to="/puzzles/new">
         <Dices size={18} aria-hidden="true" />Start a new puzzle
       </Link>}

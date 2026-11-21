@@ -18,21 +18,21 @@ function samePoint(a: Point, b: Point): boolean {
   return a[0] === b[0] && a[1] === b[1]
 }
 
-function isCellCenter([x, y]: Point): boolean {
-  return x >= 0 && x < 9 && y >= 0 && y < 9 && !Number.isInteger(x) && !Number.isInteger(y)
+function isCellCenter([x, y]: Point, size: number): boolean {
+  return x >= 0 && x < size && y >= 0 && y < size && !Number.isInteger(x) && !Number.isInteger(y)
 }
 
 function isEdgeMidpoint([x, y]: Point): boolean {
   return Number.isInteger(x) !== Number.isInteger(y)
 }
 
-export function validImportedDrawings(value: unknown): value is readonly ImportedDrawing[] {
+export function validImportedDrawings(value: unknown, size = 9): value is readonly ImportedDrawing[] {
   return Array.isArray(value) && value.length > 0 && value.every(drawing => {
     if (!record(drawing) || !isImportedColor(drawing.color)) return false
     if (drawing.shape === 'line') return isPoint(drawing.from) && isPoint(drawing.to) && !samePoint(drawing.from, drawing.to)
     if (!isPoint(drawing.at)) return false
-    return drawing.shape === 'cross' ? isCellCenter(drawing.at) || isEdgeMidpoint(drawing.at)
-      : (drawing.shape === 'circle' || drawing.shape === 'square') && isCellCenter(drawing.at)
+    return drawing.shape === 'cross' ? isCellCenter(drawing.at, size) || isEdgeMidpoint(drawing.at)
+      : (drawing.shape === 'circle' || drawing.shape === 'square') && isCellCenter(drawing.at, size)
   })
 }
 
@@ -58,7 +58,7 @@ function readPoint(key: string): Point | undefined {
 }
 
 /** Coach uses grid coordinates for lines and edge crosses, and cell indices for cell symbols. */
-export function readCoachQuickDraw(data: Record<string, unknown>): readonly ImportedDrawing[] | undefined {
+export function readCoachQuickDraw(data: Record<string, unknown>, size = 9): readonly ImportedDrawing[] | undefined {
   const result: ImportedDrawing[] = []
   const invalid = () => new Error('This Sudoku Coach progress has invalid or unsupported Quick Draw annotations.')
   for (const field of ['quickDrawLineSegments', 'quickDrawSymbols', 'cells']) {
@@ -67,6 +67,10 @@ export function readCoachQuickDraw(data: Record<string, unknown>): readonly Impo
     if (!record(marks)) throw invalid()
     for (const [key, value] of Object.entries(marks)) {
       if (!record(value)) throw invalid()
+      // Coach can save a pencil mask with no grid coordinate. It has no cell to annotate.
+      if (field === 'cells' && key === 'NaN,NaN' && Object.keys(value).length === 1 &&
+        typeof value.cellCandidates === 'number' && Number.isInteger(value.cellCandidates) &&
+        value.cellCandidates >= 0 && value.cellCandidates < (1 << size)) continue
       if (field === 'quickDrawLineSegments') {
         const ends = key.split('=>')
         const from = readPoint(ends[0]), to = readPoint(ends[1] ?? '')
@@ -81,10 +85,10 @@ export function readCoachQuickDraw(data: Record<string, unknown>): readonly Impo
           if (!at || !isEdgeMidpoint(at) || symbol.shape !== 'cross') throw invalid()
           result.push({ shape: 'cross', at, color: symbol.colour })
         } else {
-          if (Object.keys(value).length !== 1 || !/^(?:[0-9]|[1-7][0-9]|80)$/.test(key) ||
+          if (Object.keys(value).length !== 1 || !/^(?:0|[1-9][0-9]?)$/.test(key) || Number(key) >= size ** 2 ||
             (symbol.shape !== 'circle' && symbol.shape !== 'square' && symbol.shape !== 'cross')) throw invalid()
           const cell = Number(key)
-          result.push({ shape: symbol.shape, at: [cell % 9 + .5, Math.floor(cell / 9) + .5], color: symbol.colour })
+          result.push({ shape: symbol.shape, at: [cell % size + .5, Math.floor(cell / size) + .5], color: symbol.colour })
         }
       }
     }

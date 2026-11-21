@@ -4,7 +4,7 @@ import type { Candidate } from '../sudoku/engine'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 import { importedColorLabel, importedColorValue } from '../sudoku/imported-colors'
 import type { ImportedDrawing } from '../sudoku/imported-drawings'
-import type { AuthoredMark } from '../sudoku/authored-artwork'
+import type { AuthoredCornerPath, AuthoredMark } from '../sudoku/authored-artwork'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
 
@@ -79,18 +79,26 @@ function drawingLocation([x, y]: readonly [number, number]): string {
     : `grid coordinates ${x}, ${y}`
 }
 
-/** Render the artwork saved in the puzzle definition in full-board coordinates. */
+const artworkStroke = (color: string) => color === '#000000' ? 'var(--board-ink)' : color
+
+/** Render artwork from the puzzle definition. Pass the visible grid bounds for a crop or standalone puzzle. */
 export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
-  artwork: readonly AuthoredMark[]
+  artwork: readonly (AuthoredMark | AuthoredCornerPath)[]
   region?: BoardRegion
 }) {
   const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
   return <svg className="board-authored-artwork" viewBox={bounds} aria-hidden="true">
-    {artwork.map((mark, index) => mark.type === 'outline'
-      ? <polyline key={index} points={mark.points.map(([x, y]) => `${x},${y}`).join(' ')}
+    {artwork.map((mark, index) => {
+      if (mark.type === 'disc') return <circle key={index} cx={mark.center[0]} cy={mark.center[1]} r={mark.radius}
+        fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />
+      const points = mark.points.map(([x, y]) => `${x},${y}`).join(' ')
+      if (mark.type === 'outline') return <polyline key={index} points={points}
         fill="none" stroke="var(--board-ink)" strokeWidth={mark.thickness} strokeLinejoin="round" />
-      : <circle key={index} cx={mark.center[0]} cy={mark.center[1]} r={mark.radius}
-        fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />)}
+      return <g key={index} opacity={mark.opacity} fill="none" strokeLinejoin="round" strokeLinecap="round">
+        {mark.border && <polyline points={points} stroke={artworkStroke(mark.border.color)} strokeWidth={mark.thickness} />}
+        <polyline points={points} stroke={artworkStroke(mark.color)} strokeWidth={mark.thickness - (mark.border?.thickness ?? 0)} />
+      </g>
+    })}
   </svg>
 })
 

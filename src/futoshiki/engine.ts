@@ -1,33 +1,37 @@
-import { cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
+import { latinAntiKingRules, latinAntiKnightRules } from '../latin/chess-rules.ts'
+import { latinMinMaxRules } from '../latin/min-max.ts'
+import { latinDiagonalRules } from '../latin/diagonals.ts'
+import { adjacentClueRules } from '../latin/adjacent-clues.ts'
+import { createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
+import { latinExtraRegionRules, latinUnnumberedCageRules } from '../latin/extra-regions.ts'
+import { latinGlobalEntropyRules } from '../latin/global-entropy.ts'
+import { lineSubsetRules } from '../latin/line-subsets.ts'
+import { latinParityRules } from '../latin/parity.ts'
+import { latinPathRules, type LatinClues } from '../latin/path-clues.ts'
+import { latinQuadrupleRules } from '../latin/quadruples.ts'
+import { whispersRules } from '../latin/whispers.ts'
+import { xWingRule } from '../latin/x-wing.ts'
+import { inequalityRules, type Inequality } from './inequality-rules.ts'
 
-export type Inequality = { less: number; greater: number }
-export type FutoshikiPuzzle = LatinPuzzle & { inequalities: readonly Inequality[] }
+export type { Inequality } from './inequality-rules.ts'
+export type FutoshikiPuzzle = LatinPuzzle & LatinClues & { inequalities: readonly Inequality[] }
 
-export function createFutoshiki(size: number, givens: readonly number[], inequalities: readonly Inequality[]): FutoshikiPuzzle {
-  const edges = new Set<string>()
-  const extra = inequalities.map(({ less, greater }) => {
-    const valid = (cell: number) => Number.isInteger(cell) && cell >= 0 && cell < size * size
-    const distance = Math.abs(less % size - greater % size)
-      + Math.abs(Math.floor(less / size) - Math.floor(greater / size))
-    if (!valid(less) || !valid(greater) || distance !== 1) throw new Error('An inequality must join two adjacent cells.')
-    const edge = `${Math.min(less, greater)}-${Math.max(less, greater)}`
-    if (edges.has(edge)) throw new Error('Use one inequality per cell edge.')
-    edges.add(edge)
-
-    return {
-      label: `${cellLabel(less, size)} is less than ${cellLabel(greater, size)}`,
-      cells: [less, greater],
-      support(domains: readonly number[]) {
-        const a = domains[less]
-        const b = domains[greater]
-        if (!a || !b) return null
-        const lastB = 1 << (31 - Math.clz32(b))
-        const firstA = a & -a
-        const allowedA = a & (lastB - 1)
-        const allowedB = b & ~(2 * firstA - 1)
-        return allowedA && allowedB ? [allowedA, allowedB] : null
-      },
-    }
-  })
-  return { ...createLatinPuzzle(size, givens, extra), inequalities }
+export function createFutoshiki(
+  size: number, givens: readonly number[], inequalities: readonly Inequality[],
+  { adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals, minMax }: LatinClues = {},
+): FutoshikiPuzzle {
+  const puzzle = createLatinPuzzle(size, givens, [])
+  const adjacent = adjacentClues ? adjacentClueRules(size, adjacentClues) : []
+  const lines = whispers?.length ? whispersRules(size, whispers) : undefined
+  const { basic, sharedBounds, lineRules, lineMatching } = inequalityRules(size, inequalities)
+  return {
+    ...puzzle,
+    rules: [
+      ...latinParityRules(size, parity), ...(antiKnight ? latinAntiKnightRules(size) : []), ...(antiKing ? latinAntiKingRules(size) : []), ...latinDiagonalRules(size, diagonals), ...latinMinMaxRules(size, minMax), ...basic, ...adjacent, ...(lines?.basic ?? []), ...latinPathRules(size, pathClues),
+      ...latinExtraRegionRules(size, extraRegions), ...latinUnnumberedCageRules(size, unnumberedCages), ...latinGlobalEntropyRules(size, globalEntropy),
+      ...latinQuadrupleRules(size, quadruples, extraRegions, unnumberedCages), ...puzzle.rules,
+      ...(lines?.advanced ?? []), ...sharedBounds, ...lineSubsetRules(size), ...lineRules, xWingRule(size), ...lineMatching,
+    ],
+    inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals, minMax,
+  }
 }

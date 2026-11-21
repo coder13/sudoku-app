@@ -773,3 +773,24 @@ test('short links reject unknown and authored rules even when the numeric grid w
     await assert.rejects(detectPuzzle('sudoku.coach/s/Unknown'), /not supported yet.*globalModularity/)
   } finally { sqlite.close() }
 })
+
+test('a published Futoshiki drawing stays with the puzzle definition', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const code = coachCode({
+    gridSize: 4, regions: [], givenDigits: '0034234134124123',
+    givenConstraints: [{ type: 'greaterLess', segments: [{ cells: [0, 1] }] }],
+    cells: { 4: { quickSymbol: { shape: 'circle', colour: 'blueHeavy' } } },
+  })
+  const url = 'https://sudoku.coach/en/s/Art4'
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('Art4', code, 'Futoshiki with artwork')))
+    : fetcher(path, init))
+  try {
+    const { futoshiki } = await detectPuzzle(url)
+    assert.ok(futoshiki)
+    assert.equal(futoshiki.initialPosition, undefined)
+    assert.deepEqual(futoshiki.annotations, {
+      givenDrawings: [{ shape: 'circle', at: [.5, 1.5], color: 'blueHeavy' }],
+    })
+  } finally { sqlite.close() }
+})

@@ -1,3 +1,6 @@
+import type { CalcudokuEntry } from '../calcudoku/catalog.ts'
+import type { CalcudokuImport } from '../calcudoku/imported.ts'
+import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
 import { createEngineSession, runEngine, type Analysis, type EngineRunner } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
 import { sameImportedDrawings } from './imported-drawings.ts'
@@ -51,12 +54,49 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
     puzzleIdentity(saved) === identity)
 }
 
+export type ImportPreviewOptions = {
+  deferRating?: boolean
+  onDecoded?: (puzzle: ImportedPuzzle) => void
+  signal?: AbortSignal
+}
+
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
-export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], {
-  deferRating = false, onDecoded, signal,
-}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal } = {}): Promise<PuzzlePreview> {
+export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], options?: ImportPreviewOptions) {
+  return prepareDecodedSudoku(await detectPuzzle(input), games, options)
+}
+
+export type PlayableImport = PuzzlePreview
+  | { futoshiki: FutoshikiEntry; format: PuzzlePreview['format'] }
+  | { calcudoku: CalcudokuEntry; format: PuzzlePreview['format'] }
+  | { calcudokuSource: CalcudokuImport; format: PuzzlePreview['format'] }
+
+/** Prepare either a Sudoku board or a standalone puzzle for the import screen. */
+export async function preparePlayableImport(
+  input: string, games: readonly Game[] = [], options?: ImportPreviewOptions,
+): Promise<PlayableImport> {
   const imported = await detectPuzzle(input)
+  const signal = options?.signal
   signal?.throwIfAborted()
+  if (imported.futoshiki) {
+    const { verifiedImportedFutoshiki } = await import('../futoshiki/imported.ts')
+    signal?.throwIfAborted()
+    return { futoshiki: verifiedImportedFutoshiki(imported.futoshiki), format: imported.format }
+  }
+  if (imported.calcudoku) {
+    if (imported.calcudoku.cages.some(cage => !cage.operator)) return { calcudokuSource: imported.calcudoku, format: imported.format }
+    const { prepareImportedCalcudoku } = await import('../calcudoku/imported.ts')
+    signal?.throwIfAborted()
+    return { calcudoku: prepareImportedCalcudoku(imported.calcudoku), format: imported.format }
+  }
+  return prepareDecodedSudoku(imported, games, options)
+}
+
+function prepareDecodedSudoku(
+  imported: ImportedPuzzle, games: readonly Game[], { deferRating = false, onDecoded, signal }: ImportPreviewOptions = {},
+) {
+  signal?.throwIfAborted()
+  if (imported.futoshiki) throw new Error('Open this puzzle in Futoshiki.')
+  if (imported.calcudoku) throw new Error('Open this puzzle in Calcudoku.')
   // The 9 × 9 board can show its complete layout before it receives a proof.
   if (!imported.grid) onDecoded?.(imported)
   return verifyPreview(imported, games, signal, deferRating)

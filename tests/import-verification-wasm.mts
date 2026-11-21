@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { enter, hasUniquenessProof, restartGame, undo } from '../src/sudoku/game.ts'
-import { prepareImportedPuzzle, PuzzleVerificationError } from '../src/sudoku/puzzle-preview.ts'
+import { prepareImportedPuzzle, preparePlayableImport, PuzzleVerificationError } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -24,7 +24,7 @@ test('the original mixed puzzle is available before the worker returns its uniqu
       held.resolve(() => post.call(this, request))
     } else post.call(this, request)
   })
-  const checking = prepareImportedPuzzle(code, [], {
+  const checking = preparePlayableImport(code, [], {
     signal: new AbortController().signal,
     deferRating: true,
     onDecoded: puzzle => {
@@ -36,7 +36,9 @@ test('the original mixed puzzle is available before the worker returns its uniqu
   })
   const release = await held.promise
   release()
-  const { game, ratingPending } = await checking
+  const result = await checking
+  assert.ok('game' in result)
+  const { game, ratingPending } = result
   assert.equal(ratingPending, true)
   assert.ok(hasUniquenessProof(game))
   assert.equal(game.variant?.solution, solution)
@@ -98,7 +100,7 @@ test('editing a decoded preview aborts its verification', async ({ mock }) => {
   const running = Promise.withResolvers<void>()
   mock.method(Worker.prototype, 'postMessage', () => running.resolve())
   const controller = new AbortController()
-  const checking = prepareImportedPuzzle(STARTER, [], { signal: controller.signal })
+  const checking = preparePlayableImport(STARTER, [], { signal: controller.signal })
   await running.promise
   controller.abort()
   await assert.rejects(checking, { name: 'AbortError' })

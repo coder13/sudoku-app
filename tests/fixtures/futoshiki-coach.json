@@ -1,0 +1,110 @@
+{
+  "fourByFour": {
+    "code": "SCv7_32_f2e7r3lh1r130324vv2r71oom681ahhmoql46h1dpd91nah48a1ahvsegddb386ucjtpsvde414of6tu37u128dht0hmds2thsgflp3oa78m40rgbu8tm11be0rbt950m58lq18to29k6a5fr5ndku8egn9pastmhn635sa6rpshomq5t0m6q3h99hmah3fambgcufp0tnt9ctmq0s4eijq4rvv2ihd3ljuv40fl9hcia",
+    "givens": "0000001000000000",
+    "edges": [
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        10,
+        9
+      ],
+      [
+        11,
+        10
+      ]
+    ]
+  },
+  "sixBySix": {
+    "code": "SCv7_32_f2e8qkhthf1j037t5ud3bm3iq8r5jru6doroc3l12l3d1pkacc5df47vbocl4rhplj9u03ttkujifoo5ca9cn5ps37t1qgn253ft637te118hsn0t59q4p2dg05kt8p99flhpdbe1fdfc0m3arqa26hphkp9bij106sk1rot8bvbiqovdn4m7pjkshstd2kpse6tvj1jbunubd27ls7esooqdum58j9dte5bue71k657e1ne3d9s0esbq3b5m47qc2cr066tfsqekfl88nfta68ed5bme42ivmuqggta7dahuhkn82j8u0uinqn12j26cf6q4fm23upppiivplcqde6tqsbme70g64",
+    "givens": "030000400005002500000000200000003000",
+    "edges": [
+      [
+        7,
+        1
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        9,
+        8
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        9,
+        10
+      ],
+      [
+        9,
+        15
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        14,
+        13
+      ],
+      [
+        19,
+        13
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        25,
+        19
+      ],
+      [
+        20,
+        26
+      ],
+      [
+        22,
+        28
+      ],
+      [
+        29,
+        23
+      ],
+      [
+        25,
+        26
+      ],
+      [
+        32,
+        26
+      ],
+      [
+        28,
+        27
+      ],
+      [
+        33,
+        27
+      ],
+      [
+        34,
+        28
+      ],
+      [
+        32,
+        33
+      ]
+    ]
+  }
+}

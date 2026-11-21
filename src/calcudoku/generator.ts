@@ -2,10 +2,11 @@ import { createCalcudoku, type Cage, type CalcudokuPuzzle } from './engine.ts'
 import { solveLatin } from '../latin/engine.ts'
 import type { NumberPuzzleDifficulty } from '../number-puzzles/catalog.ts'
 import { seededIndex, shuffled, type PickIndex } from '../number-puzzles/generation-random.ts'
+import { makeCalcudokuSolution } from './solution.ts'
 
 export type CalcudokuRecipe = { size: number; cages: Cage[] }
 
-const sizes = { easy: 3, medium: 4, hard: 5 } satisfies Record<NumberPuzzleDifficulty, number>
+const sizes = { easy: 3, medium: 4, hard: 5 } as const satisfies Record<NumberPuzzleDifficulty, number>
 
 function neighbors(cell: number, size: number): number[] {
   const row = Math.floor(cell / size)
@@ -18,11 +19,8 @@ function neighbors(cell: number, size: number): number[] {
   ]
 }
 
-function addCage(cells: number[], values: readonly number[], pick: PickIndex): Cage {
-  cells.sort((a, b) => a - b)
+function cluesForCage(cells: readonly number[], values: readonly number[]): Cage[] {
   const digits = cells.map(cell => values[cell])
-  if (digits.length === 1) return { cells, operator: 'equal', target: digits[0] }
-
   const choices: Cage[] = [
     { cells, operator: 'add', target: digits.reduce((sum, digit) => sum + digit, 0) },
     { cells, operator: 'multiply', target: digits.reduce((product, digit) => product * digit, 1) },
@@ -32,22 +30,19 @@ function addCage(cells: number[], values: readonly number[], pick: PickIndex): C
     choices.push({ cells, operator: 'subtract', target: large - small })
     if (large % small === 0) choices.push({ cells, operator: 'divide', target: large / small })
   }
-  return choices[pick(choices.length)]
+  return choices
 }
 
-function makeRecipe(size: number, pick: PickIndex): CalcudokuRecipe {
-  const indices = Array.from({ length: size }, (_, i) => i)
-  const rows = shuffled(indices, pick)
-  const columns = shuffled(indices, pick)
-  const digits = shuffled(indices.map(i => i + 1), pick)
-  const values = rows.flatMap(row => columns.map(column => digits[(row + column) % size]))
+function makeRecipe(size: typeof sizes[NumberPuzzleDifficulty], pick: PickIndex, firstCageLength?: number) {
+  const values = makeCalcudokuSolution(size, pick)
   const available = new Set(shuffled(values.map((_, i) => i), pick))
   const cages: Cage[] = []
   for (const start of available) {
     const cells = [start]
     available.delete(start)
     // Easy boards can also use four-cell cages, as in the starter catalog.
-    const length = 2 + pick(size === sizes.medium ? 2 : 3)
+    const length = !cages.length && firstCageLength !== undefined
+      ? firstCageLength : 2 + pick(size === sizes.medium ? 2 : 3)
     while (cells.length < length) {
       const nearby = [...new Set(cells.flatMap(cell => neighbors(cell, size)).filter(cell => available.has(cell)))]
       if (!nearby.length) break
@@ -55,10 +50,15 @@ function makeRecipe(size: number, pick: PickIndex): CalcudokuRecipe {
       cells.push(next)
       available.delete(next)
     }
-    cages.push(addCage(cells, values, pick))
+    cells.sort((a, b) => a - b)
+    if (cells.length === 1) cages.push({ cells, operator: 'equal', target: values[start] })
+    else {
+      const clues = cluesForCage(cells, values)
+      cages.push(clues[pick(clues.length)])
+    }
   }
   cages.sort((a, b) => a.cells[0] - b.cells[0])
-  return { size, cages }
+  return { recipe: { size, cages }, values }
 }
 
 const symmetries = Array.from({ length: 10 }, (_, size) => {
@@ -79,33 +79,71 @@ const symmetries = Array.from({ length: 10 }, (_, size) => {
   return images
 })
 
-function orientedCageKey(cages: readonly Cage[], cells: readonly number[]): string {
-  const membership = Array<number>(cells.length)
-  const clues: string[] = []
-  for (const cage of cages) {
+function cageMembership(
+  cages: readonly Cage[],
+  cells: readonly number[],
+  membership: number[],
+  starts: number[],
+): string {
+  membership.fill(0)
+  for (let index = 0; index < cages.length; index++) {
+    const cageCells = cages[index].cells
     let first = cells.length
-    for (const cell of cage.cells) first = Math.min(first, cells[cell])
+    for (const cell of cageCells) first = Math.min(first, cells[cell])
     // The first cell identifies its cage. Reserve zero for uncovered cells.
-    for (const cell of cage.cells) membership[cells[cell]] = first + 1
-    clues[first] = cage.operator + cage.target
+    for (const cell of cageCells) membership[cells[cell]] = first + 1
+    starts[index] = first
   }
-  return String.fromCharCode(...membership) + '|' + clues.join('|')
+  return String.fromCharCode(...membership)
+}
+
+function cageClues(cages: readonly Cage[], starts: readonly number[]): string {
+  const clues: string[] = []
+  for (let index = 0; index < cages.length; index++) {
+    const { operator, target } = cages[index]
+    clues[starts[index]] = operator + target
+  }
+  return clues.join('|')
 }
 
 type CageLayout = Pick<CalcudokuPuzzle, 'size' | 'cages'>
 
 export function calcudokuRecipeKey({ size, cages }: CageLayout): string {
-  return size + '|' + orientedCageKey(cages, symmetries[size][0])
+  const starts = Array<number>(cages.length)
+  const membership = cageMembership(cages, symmetries[size][0], Array<number>(size * size), starts)
+  return size + '|' + membership + '|' + cageClues(cages, starts)
+}
+
+function recipeSignature({ size, cages }: CageLayout, recordKey?: (key: string) => void): string {
+  const membership = Array<number>(size * size)
+  const starts = Array<number>(cages.length)
+  const images = symmetries[size]
+  let bestShape = cageMembership(cages, images[0], membership, starts)
+  let bestClues = cageClues(cages, starts)
+  recordKey?.(size + '|' + bestShape + '|' + bestClues)
+  for (let i = 1; i < images.length; i++) {
+    const shape = cageMembership(cages, images[i], membership, starts)
+    // The membership comes first in the key. Compare clues only for this shape or a smaller one.
+    if (shape > bestShape) continue
+    const clues = cageClues(cages, starts)
+    if (shape !== bestShape || clues < bestClues) {
+      bestShape = shape
+      bestClues = clues
+    }
+  }
+  return size + '|' + bestShape + '|' + bestClues
 }
 
 /** Identify equivalent cages after any rotation or reflection of the grid. */
-export function calcudokuRecipeSignature({ size, cages }: CageLayout): string {
-  let key: string | undefined
-  for (const cells of symmetries[size]) {
-    const transformed = orientedCageKey(cages, cells)
-    if (key === undefined || transformed < key) key = transformed
-  }
-  return size + '|' + key
+export function calcudokuRecipeSignature(recipe: CageLayout): string {
+  return recipeSignature(recipe)
+}
+
+/** Get the saved orientation and the canonical signature in one pass. */
+export function calcudokuRecipeKeys(recipe: CageLayout) {
+  let key = ''
+  const signature = recipeSignature(recipe, orientation => { key = orientation })
+  return { key, signature }
 }
 
 export type CalcudokuGenerationHistory = {
@@ -113,13 +151,39 @@ export type CalcudokuGenerationHistory = {
   recipes: ReadonlySet<string>
 }
 
-function* calcudokuCandidates(difficulty: NumberPuzzleDifficulty, seed: number) {
+export function* calcudokuCandidates(
+  difficulty: NumberPuzzleDifficulty, seed: number, { largerCage = false }: { largerCage?: boolean } = {},
+) {
   const pick = seededIndex(seed)
   const size = sizes[difficulty]
+  const firstCageLength = largerCage ? (size === sizes.medium ? 4 : 5) : undefined
+  // The Easy catalog already uses up to two single-cell cages.
+  const maxGivens = largerCage && size === sizes.easy ? 2 : Math.floor(size / 2)
   for (let attempt = 0; attempt < 128; attempt++) {
-    const recipe = makeRecipe(size, pick)
-    if (recipe.cages.filter(cage => cage.operator === 'equal').length <= Math.floor(size / 2)) {
+    const { recipe } = makeRecipe(size, pick, firstCageLength)
+    if (recipe.cages.filter(cage => cage.operator === 'equal').length <= maxGivens) {
       yield { recipe, signature: calcudokuRecipeSignature(recipe) }
+    }
+  }
+}
+
+export function* calcudokuClueVariants(difficulty: NumberPuzzleDifficulty, seed: number) {
+  const pick = seededIndex(seed)
+  const size = sizes[difficulty]
+  const maxGivens = Math.floor(size / 2)
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const { recipe, values } = makeRecipe(size, pick)
+    if (recipe.cages.filter(cage => cage.operator === 'equal').length > maxGivens) continue
+    for (const [index, cage] of recipe.cages.entries()) {
+      if (cage.operator === 'equal') continue
+      // Keep the fill and cage shapes. A different operator can make a new puzzle.
+      for (const clue of cluesForCage(cage.cells, values)) {
+        if (clue.operator === cage.operator) continue
+        const cages = recipe.cages.slice()
+        cages[index] = clue
+        const candidate = { size, cages }
+        yield { recipe: candidate, signature: calcudokuRecipeSignature(candidate) }
+      }
     }
   }
 }

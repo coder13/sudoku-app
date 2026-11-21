@@ -5,10 +5,14 @@ import { Modal } from './Modal'
 
 export type DialogResult = CheckResult & { title: 'Puzzle check' | 'Puzzle action' }
 
-export function PuzzleCheckResult({ result, onClose }: { result: DialogResult; onClose: () => void }) {
+export function PuzzleCheckResult({ result, onClose, returnFocus }: {
+  result: DialogResult
+  onClose: () => void
+  returnFocus?: () => HTMLElement | null
+}) {
   const Icon = result.tone === 'success' ? CircleCheck : result.tone === 'error' ? CircleX : Info
   return (
-    <Modal title={result.title} onClose={onClose} className="check-dialog">
+    <Modal title={result.title} onClose={onClose} returnFocus={returnFocus} className="check-dialog">
       <div className={`check-result ${result.tone}`}>
         <span className="check-result-icon" aria-hidden="true"><Icon size={30} /></span>
         <p>{result.text}</p>

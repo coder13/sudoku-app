@@ -27,10 +27,11 @@ export function DifficultySelector({ value, recommended, variant, disabled = fal
 }
 
 /** Use for the shared difficulty list on desktop and stepper on small screens. */
-export function DifficultyOptions<Level extends Difficulty>({ levels, selected, statistics, disabled = false, auto, onChange }: {
+export function DifficultyOptions<Level extends Difficulty>({ levels, selected, statistics, descriptions, disabled = false, auto, onChange }: {
   levels: readonly Level[]
   selected: Level
   statistics: ReadonlyMap<Level, DifficultyStatistics> | null
+  descriptions?: Readonly<Partial<Record<Level, string>>>
   disabled?: boolean
   auto?: { active: boolean; onChange: (active: boolean) => void }
   onChange: (level: Level) => void
@@ -39,6 +40,7 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
   const index = levels.indexOf(selected)
   const loading = statistics === null
   const selectedStats = statistics?.get(selected)
+  const selectedDescription = descriptions?.[selected]
 
   function averageTime(level: Level) {
     const seconds = statistics?.get(level)?.averageSeconds
@@ -52,20 +54,28 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
   return <fieldset className="difficulty-selector" disabled={disabled}>
     <legend>Difficulty</legend>
     <div className="difficulty-list">
-      {levels.map((level) => <label key={level}>
-        <input type="radio" name={id} value={level} checked={!auto?.active && selected === level}
-          aria-labelledby={`${id}-${level}-label`} aria-describedby={`${id}-${level}-stats`}
-          onChange={() => onChange(level)} />
-        <span id={`${id}-${level}-label`}>{DIFFICULTY_LABELS[level]}</span>
-        <span className="difficulty-list-stats" id={`${id}-${level}-stats`} aria-busy={loading}>
-          {loading ? <span>Loading results…</span> : <>
-            <span>{statistics.get(level)?.solved ?? 0} solved</span>
-            <span aria-label={averageTime(level) === '–' ? 'No average time yet' : `Average time ${averageTime(level)}`}>
-              Avg {averageTime(level)}
-            </span>
-          </>}
-        </span>
-      </label>)}
+      {levels.map(level => {
+        const levelId = `${id}-${level}`
+        const description = descriptions?.[level]
+        const describedBy = description ? `${levelId}-description ${levelId}-stats` : `${levelId}-stats`
+        return <label key={level}>
+          <input type="radio" name={id} value={level} checked={!auto?.active && selected === level}
+            aria-labelledby={levelId + '-label'} aria-describedby={describedBy}
+            onChange={() => onChange(level)} />
+          <span className="difficulty-list-level">
+            <span id={levelId + '-label'}>{DIFFICULTY_LABELS[level]}</span>
+            {description && <span className="difficulty-level-description" id={levelId + '-description'}>{description}</span>}
+          </span>
+          <span className="difficulty-list-stats" id={levelId + '-stats'} aria-busy={loading}>
+            {loading ? <span>Loading results…</span> : <>
+              <span>{statistics.get(level)?.solved ?? 0} solved</span>
+              <span aria-label={averageTime(level) === '–' ? 'No average time yet' : `Average time ${averageTime(level)}`}>
+                Avg {averageTime(level)}
+              </span>
+            </>}
+          </span>
+        </label>
+      })}
     </div>
     <div className="difficulty-mobile">
       <div className="difficulty-stepper-control" onKeyDown={(event) => {
@@ -83,6 +93,7 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
         <div className="difficulty-stepper-value" id={`${id}-value`} role="status" aria-live="polite" aria-atomic="true">
           <strong>{DIFFICULTY_LABELS[selected]}</strong>
           <small>{index + 1} of {levels.length}</small>
+          {selectedDescription && <span className="difficulty-level-description">{selectedDescription}</span>}
         </div>
         <IconButton type="button" aria-label="Increase difficulty"
           aria-describedby={`${id}-value`} disabled={disabled || index >= levels.length - 1} onClick={() => move(1)}>

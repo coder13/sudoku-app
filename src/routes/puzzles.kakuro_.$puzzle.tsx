@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { KakuroPlay } from '../components/Kakuro'
 import { kakuroCatalog, generatedKakuroEntry } from '../kakuro/catalog'
-import { generatedNumberToken } from '../number-puzzles/generated'
+import { generatedNumberToken } from '../number-puzzles/generated-token'
 
 export const Route = createFileRoute('/puzzles/kakuro_/$puzzle')({
+  codeSplitGroupings: [['loader', 'component']],
   staticData: { standalonePuzzlePage: true },
   head: () => ({ meta: [{ title: 'Play Kakuro' }] }),
   validateSearch: (search): { board?: string } => ({ board: generatedNumberToken(search.board) }),

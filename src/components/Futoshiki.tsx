@@ -1,36 +1,73 @@
 import { futoshikiCatalog, type FutoshikiEntry } from '../futoshiki/catalog'
-import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
-import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
-import './futoshiki.css'
+import { adjacentClueNotes, adjacentClueTechnique, adjacentClueTechniques } from '../latin/adjacent-clues'
+import { checkLatin, findLatinHints, findLatinSolutionHints, latinContradictionTechnique, solveLatin, type LatinHint } from '../latin/engine'
+import { subsetTechnique, subsetTechniques } from '../latin/line-subsets'
+import { latinClueTechnique, supportingLatinClueTechniques } from '../latin/path-clues'
+import { whispersTechnique } from '../latin/whispers'
+import { xWingTechnique } from '../latin/x-wing'
+import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
+import { advancedInequalityTechnique, inequalityTechniqueNames, numberPuzzleEdgeClues } from './number-puzzle-edge-clues'
+import { numberPuzzleClues } from './number-puzzle-line-clues'
 
-const futoshiki: NumberGameConfig<FutoshikiEntry> = {
+function numberHint(hint: LatinHint) {
+  const matching = hint.rules.filter(rule => rule.kind === 'inequality-line-matching')
+  return {
+    cell: hint.cell,
+    value: hint.value,
+    technique: matching.length ? inequalityTechniqueNames['inequality-line-matching']
+      : hint.rules.some(rule => rule.kind === 'x-wing') ? xWingTechnique
+      : hint.rules[0].kind === 'contradiction' ? latinContradictionTechnique
+      : hint.rules[0].kind === 'whispers' ? whispersTechnique
+      : hint.rules[0].kind === 'adjacent-clue' ? adjacentClueTechnique
+      : latinClueTechnique(hint.rules[0].kind) ??
+        advancedInequalityTechnique(hint) ?? subsetTechnique(hint) ??
+        (hint.rules[0].kind === 'line' ? 'Row and column' : inequalityTechniqueNames.inequality),
+    supportingTechniques: supportingLatinClueTechniques(hint.rules),
+    marked: (matching.length ? matching : hint.rules).flatMap(rule => rule.cells),
+    reasons: hint.rules.map(rule => rule.label),
+    trace: hint.trace,
+  }
+}
+
+export const futoshiki = {
   game: 'futoshiki',
   name: 'Futoshiki',
-  rules: 'Use every number from 1 to the grid size once in each row and column. Each arrow points to the smaller number.',
-  techniques: ['Row and column', 'Inequality'],
+  difficultyDescriptions: {
+    easy: '4 × 4 grid',
+    medium: '5 × 5 grid',
+    hard: '6 × 6 grid',
+  },
+  rules: 'Use every number from 1 to the grid size once in each row and column.',
+  techniques: [
+    'Row and column', inequalityTechniqueNames.inequality, ...subsetTechniques, inequalityTechniqueNames['inequality-line'],
+    inequalityTechniqueNames['inequality-bound'], inequalityTechniqueNames['inequality-chain-line'],
+    inequalityTechniqueNames['line-digit-bound'], xWingTechnique, inequalityTechniqueNames['inequality-line-matching'],
+  ],
   entries: futoshikiCatalog,
-  board: ({ puzzle }) => {
-    const { size, givens, inequalities } = puzzle
+  board: ({ puzzle, annotations }) => {
+    const { size, givens, inequalities, adjacentClues } = puzzle
+    const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
+    const lines = numberPuzzleClues(size, inequalities, puzzle, annotations?.authoredPaths)
     return {
       width: size,
       height: size,
       maxValue: size,
-      cells: givens.map((given, cell) => {
-        const adjacent = inequalities.filter(edge => edge.less === cell || edge.greater === cell)
-        const decoration = adjacent.flatMap(({ less, greater }) => {
-          if (Math.min(less, greater) !== cell) return []
-          const other = Math.max(less, greater)
-          return [<span key={other} className="futoshiki-sign"
-            data-side={other - cell === size ? 'bottom' : 'right'} aria-hidden="true">
-            {less === cell ? '<' : '>'}
-          </span>]
-        })
-        return {
-          given,
-          label: adjacent.map(({ less, greater }) => `${cellLabel(less, size)} is less than ${cellLabel(greater, size)}`).join(', '),
-          decoration: decoration.length ? decoration : undefined,
-        }
-      }),
+      lineClues: lines?.drawing,
+      ruleNotes: [
+        ...(inequalities.length ? ['The point of each inequality sign faces the smaller digit.'] : []),
+        ...(adjacentClues ? adjacentClueNotes(adjacentClues) : []),
+        ...(lines?.notes ?? []),
+      ],
+      extraTechniques: [
+        ...adjacentClueTechniques(adjacentClues),
+        ...(lines?.techniques ?? []),
+        ...(lines || adjacentClues?.nonConsecutive ? [latinContradictionTechnique] : []),
+      ],
+      cells: givens.map((given, cell) => ({
+        given,
+        label: [...(clues.get(cell)?.labels ?? []), ...(lines?.labels.get(cell) ?? [])].join(', '),
+        decoration: clues.get(cell)?.signs,
+      })),
       check: values => {
         const { complete, conflicts } = checkLatin(puzzle, values)
         return { complete, marked: conflicts.flatMap(rule => rule.cells) }
@@ -39,19 +76,19 @@ const futoshiki: NumberGameConfig<FutoshikiEntry> = {
         const result = solveLatin(puzzle)
         return result.status === 'unique' ? result.solution : null
       },
-      hints: (values, limit) => findLatinHints(puzzle, values, limit).map(hint => ({
-        cell: hint.cell,
-        value: hint.value,
-        technique: hint.rules[0].kind === 'line' ? 'Row and column' : 'Inequality',
-        marked: hint.rules.flatMap(rule => rule.cells),
-        reasons: hint.rules.map(rule => rule.label),
-      })),
+      hints: (values, limit) => findLatinHints(puzzle, values, limit).map(numberHint),
+      solutionHints: values => findLatinSolutionHints(puzzle, values).map(numberHint),
     }
   },
-}
+} satisfies NumberGameConfig<FutoshikiEntry>
 
 export function FutoshikiDifficultyPage() {
   return <NumberGameDifficulty config={futoshiki} />
+}
+
+export function FutoshikiImportPreview({ entry }: { entry: FutoshikiEntry }) {
+  return <NumberPuzzlePreview board={futoshiki.board(entry)} game="futoshiki" label="Futoshiki puzzle preview"
+    position={entry.initialPosition} annotations={entry.annotations} rules={futoshiki.rules} />
 }
 
 export function FutoshikiPlay({ entry }: { entry: FutoshikiEntry }) {
