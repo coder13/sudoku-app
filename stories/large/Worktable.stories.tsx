@@ -974,6 +974,36 @@ const penultimateMove = recordAction(beforeFinalMoves, enter(beforeFinalMoves, [
 const solvedWithHistory = recordAction(penultimateMove, enter(penultimateMove, [3], 'value', Number(solvedValues[3])),
   'edit', { technique: 'naked-single' })
 
+export const DesktopPanelsAfterSolve: Story = {
+  args: { game: penultimateMove, games: [penultimateMove] },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['colors', 'chains'], active: 'chains' })
+  },
+  play: async ({ args, canvas, canvasElement, userEvent }) => {
+    if (canvasElement.querySelector('.mobile-panel-layout')) return
+    const advanced = args.workspaceMode === 'advanced'
+    const colors = await canvas.findByRole('tab', { name: 'Colors' })
+    const chains = canvas.getByRole('tab', { name: 'Chains' })
+    const panel = advanced ? chains.closest('.dv-groupview')! : canvas.getByRole('region', { name: 'Puzzle insights' })
+    await expect(chains).toHaveAttribute('aria-selected', 'true')
+    const cell = canvas.getByRole('gridcell', { name: /^Row 1, column 4, empty/ })
+    await userEvent.click(cell)
+    await userEvent.keyboard(solvedValues[3])
+    await canvas.findByRole('heading', { name: 'Puzzle solved' })
+    await expect(panel).toBeVisible()
+    if (!advanced) await expect(panel).toHaveAttribute('data-presence', 'open')
+    await expect(chains).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(colors)
+    await expect(colors).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('button', { name: 'Light mint' })).toBeDisabled()
+  },
+}
+
+export const AdvancedPanelsAfterSolve: Story = {
+  ...DesktopPanelsAfterSolve,
+  args: { ...DesktopPanelsAfterSolve.args, workspaceMode: 'advanced' },
+}
+
 export const UndoCompletedPuzzle: Story = {
   args: { game: solvedWithHistory, games: [solvedWithHistory] },
   play: async ({ canvas, userEvent }) => {
