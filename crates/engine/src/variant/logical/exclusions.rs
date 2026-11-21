@@ -20,7 +20,7 @@ impl CompiledVariant {
         proofs: &mut Vec<VariantDeduction>,
     ) {
         use VariantTechnique::*;
-        if !self.pair_clues.iter().any(|clue| clue.source.id == NonConsecutive.id()) {
+        if !self.pair_clues.iter().any(|clue| clue.source.technique == NonConsecutive) {
             return;
         }
         match technique {
@@ -114,7 +114,7 @@ impl CompiledVariant {
             .iter()
             .fold(0, |neighbors, &index| {
                 let clue = &self.pair_clues[index];
-                if clue.source.id == VariantTechnique::NonConsecutive.id() {
+                if clue.source.technique == VariantTechnique::NonConsecutive {
                     neighbors | (1 << clue.cells[usize::from(clue.cells[0] == cell)])
                 } else {
                     neighbors
@@ -140,7 +140,7 @@ impl CompiledVariant {
             .iter()
             .find_map(|&index| {
                 let clue = &self.pair_clues[index];
-                if clue.source.id != VariantTechnique::NonConsecutive.id() {
+                if clue.source.technique != VariantTechnique::NonConsecutive {
                     return None;
                 }
                 let relation = clue.binary_relation()?;

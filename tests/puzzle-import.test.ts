@@ -424,6 +424,23 @@ test('every Classic share format round-trips sparse and dense grids without play
   }
 })
 
+test('native fragments take precedence over provider codes and provider domains match exactly', async () => {
+  const imported = { givens: STARTER, format: 'Puzzle link' }
+  const fragment = '#puzzle=' + STARTER
+  for (const input of [
+    'https://f-puzzles.com/?load=unreadable' + fragment,
+    'www.Sudoku.Coach/en/play/SCv6_32_0000' + fragment,
+    'https://sudokupad.app/sclunsupported' + fragment,
+  ]) {
+    assert.deepEqual(await detectPuzzle(input), imported)
+  }
+  await assert.rejects(
+    detectPuzzle('https://sudoku.coach.example/en/play/' + STARTER),
+    /link format is not supported/,
+  )
+  await assert.rejects(detectPuzzle('{"puzzle":"other-format"}'), /Enter exactly 81 cells/)
+})
+
 test('supported SudokuPad hosts, compact codes, and encoded f-puzzles exports preserve givens', async () => {
   const grid = Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, column) => {
     const value = Number(STARTER[row * 9 + column])

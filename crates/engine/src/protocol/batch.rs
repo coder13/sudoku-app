@@ -1,10 +1,11 @@
 use std::io::{self, BufRead, Write};
 
 use super::{
-    GenerationOutput, GenerationProfile, GenerationStep, Request, ResponseValue, ResultValue,
-    SCORING_VERSION, Technique, execute, grid_string, puzzle_error, rate_puzzle, start_generation,
+    Request, ResponseValue, ResultValue, SCORING_VERSION, Technique, execute,
+    generation::{GenerationOutput, GenerationProfile, start_generation},
+    grid_string, puzzle_error, rate_puzzle,
 };
-use crate::{VARIANT_SCORING_VERSION, VariantTechnique};
+use crate::{GenerationStep, VARIANT_SCORING_VERSION, VariantTechnique};
 use serde_json::{Value, json};
 
 /// Operation applied to each record by [`run_batch`].

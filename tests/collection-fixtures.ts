@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
+import { BUNDLED_COLLECTIONS } from '../src/sudoku/collection-files.ts'
 import { COLLECTIONS, type CollectionPuzzle } from '../src/sudoku/collections.ts'
 
 // Source grids are test/build inputs only, never client imports.
-export const fullCollections = COLLECTIONS.map((collection, index) => {
-  const file = index === 0 ? 'nikoli-100' : 'sudoku-exchange'
+export const fullCollections = BUNDLED_COLLECTIONS.map(({ file, header }) => {
+  const collection = COLLECTIONS.find(({ id }) => id === header.id)!
   const source = JSON.parse(readFileSync(new URL(`../src/sudoku/collections/${file}.json`, import.meta.url), 'utf8')) as CollectionPuzzle[]
   return { ...collection, puzzles: collection.puzzles.map(info => ({ ...info, givens: source.find(puzzle => puzzle.id === info.id)!.givens })) }
 })

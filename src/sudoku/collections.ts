@@ -2,6 +2,7 @@ import index from './generated/collection-index.json' with { type: 'json' }
 import type { Difficulty } from './engine.ts'
 import { DIFFICULTY_LABELS } from './difficulty.ts'
 import { isSolved, type Game } from './game.ts'
+import { BUNDLED_COLLECTIONS } from './collection-files.ts'
 import { collectionGridHash } from './collection-integrity.ts'
 
 export type CollectionPuzzle = {
@@ -31,31 +32,14 @@ export type PuzzleCollection = {
   puzzles: readonly CollectionPuzzleInfo[]
 }
 
-export const COLLECTIONS: readonly PuzzleCollection[] = [
-  {
-    id: 'nikoli-classics', title: 'Nikoli Classics', creator: 'Nikoli',
-    description: 'Handmade classics by Nikoli.',
-    sourceUrl: 'https://huggingface.co/datasets/SakanaAI/sudoku-bench-nikoli',
-    sourceRevision: '9034906b4ec06ab1e08daf110c6b562ef72859fd',
-    license: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
-    changes: 'Original givens and titles retained. Difficulty ratings added by this app.',
-    kind: 'handmade',
-    puzzles: index['nikoli-classics'] as CollectionPuzzleInfo[],
-  },
-  {
-    id: 'sudoku-exchange', title: 'Sudoku Exchange Selection', creator: 'Grant McLean / Sudoku Exchange',
-    description: 'A selection of generated classic puzzles across our difficulty levels.',
-    sourceUrl: 'https://github.com/grantm/sudoku-exchange-puzzle-bank',
-    sourceRevision: 'd8c8ebaee0c08c412cfba96af1923dfa61c83317',
-    license: 'Public domain', licenseUrl: 'https://github.com/grantm/sudoku-exchange-puzzle-bank/blob/d8c8ebaee0c08c412cfba96af1923dfa61c83317/LICENSE.txt',
-    changes: 'Original givens retained. Selection, titles, and difficulty ratings added by this app.',
-    kind: 'generated',
-    puzzles: index['sudoku-exchange'] as CollectionPuzzleInfo[],
-  },
-]
+export const COLLECTIONS: readonly PuzzleCollection[] = BUNDLED_COLLECTIONS.map(({ header }) => ({
+  ...header,
+  puzzles: (index as Record<string, CollectionPuzzleInfo[]>)[header.id] ?? [],
+}))
+const collectionsById = new Map(COLLECTIONS.map(collection => [collection.id, collection]))
 
 export function getCollection(id: string | undefined) {
-  return COLLECTIONS.find(collection => collection.id === id)
+  return id === undefined ? undefined : collectionsById.get(id)
 }
 
 export function getCollectionPuzzle(collectionId: string | undefined, puzzleId: string | undefined) {
@@ -69,19 +53,48 @@ export function getGameCollection(game: Game) {
   return entry && matchesCollectionPuzzle(entry.puzzle, game) ? entry : undefined
 }
 
+function collectionGameHash(game: Game) {
+  if (game.source === 'draft' || game.variant) return
+  return collectionGridHash(game.givens)
+}
+
 export function matchesCollectionPuzzle(puzzle: CollectionPuzzleInfo, game: Game) {
-  return game.source !== 'draft' && !game.variant && collectionGridHash(game.givens) === puzzle.givensHash
+  return collectionGameHash(game) === puzzle.givensHash
+}
+
+// Bulk operations reuse one lookup for the saved games that match each puzzle.
+export function indexCollectionGames(games: readonly Game[]) {
+  const matches = new Map<string, Game[]>()
+  for (const game of games) {
+    const hash = collectionGameHash(game)
+    if (hash === undefined) continue
+    const matching = matches.get(hash)
+    if (matching) matching.push(game)
+    else matches.set(hash, [game])
+  }
+  const empty: readonly Game[] = []
+  const matching = (puzzle: CollectionPuzzleInfo) => matches.get(puzzle.givensHash) ?? empty
+  return {
+    find: (puzzle: CollectionPuzzleInfo) => preferredCollectionGame(matching(puzzle)),
+    status: (puzzle: CollectionPuzzleInfo) => matchingGamesStatus(matching(puzzle)),
+  }
 }
 
 export function findCollectionGame(puzzle: CollectionPuzzleInfo, games: readonly Game[]) {
-  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
+  return preferredCollectionGame(games.filter(game => matchesCollectionPuzzle(puzzle, game)))
+}
+
+function preferredCollectionGame(matching: readonly Game[]) {
   return matching.find(game => game.started && !isSolved(game)) ?? matching.find(isSolved) ?? matching[0]
 }
 
 export type CollectionPuzzleStatus = 'unplayed' | 'in-progress' | 'solved'
 
 export function collectionPuzzleStatus(puzzle: CollectionPuzzleInfo, games: readonly Game[]): CollectionPuzzleStatus {
-  const matching = games.filter(game => matchesCollectionPuzzle(puzzle, game))
+  return matchingGamesStatus(games.filter(game => matchesCollectionPuzzle(puzzle, game)))
+}
+
+function matchingGamesStatus(matching: readonly Game[]): CollectionPuzzleStatus {
   if (matching.some(isSolved)) return 'solved'
   return matching.some(game => game.started) ? 'in-progress' : 'unplayed'
 }
@@ -97,8 +110,9 @@ export function collectionPuzzles(collection: PuzzleCollection, difficulty: Diff
 
 export function collectionProgress(collection: PuzzleCollection, games: readonly Game[], difficulty?: Difficulty) {
   const puzzles = difficulty ? collectionPuzzles(collection, difficulty) : collection.puzzles
+  const { status } = indexCollectionGames(games)
   return puzzles.reduce((counts, puzzle) => {
-    counts[collectionPuzzleStatus(puzzle, games)]++
+    counts[status(puzzle)]++
     return counts
   }, { unplayed: 0, 'in-progress': 0, solved: 0 })
 }
@@ -106,11 +120,12 @@ export function collectionProgress(collection: PuzzleCollection, games: readonly
 // Wrap to earlier unfinished puzzles without switching difficulty or replaying a solve.
 export function nextCollectionPuzzle(collection: PuzzleCollection, games: readonly Game[], difficulty: Difficulty, afterId?: string, available?: ReadonlySet<string>) {
   const puzzles = collectionPuzzles(collection, difficulty, available)
+  const { status } = indexCollectionGames(games)
   if (!afterId) {
-    return puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'in-progress')
-      ?? puzzles.find(puzzle => collectionPuzzleStatus(puzzle, games) === 'unplayed')
+    return puzzles.find(puzzle => status(puzzle) === 'in-progress')
+      ?? puzzles.find(puzzle => status(puzzle) === 'unplayed')
   }
   const index = puzzles.findIndex(puzzle => puzzle.id === afterId)
   const remaining = index < 0 ? puzzles : [...puzzles.slice(index + 1), ...puzzles.slice(0, index)]
-  return remaining.find(puzzle => collectionPuzzleStatus(puzzle, games) !== 'solved')
+  return remaining.find(puzzle => status(puzzle) !== 'solved')
 }

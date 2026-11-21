@@ -5,8 +5,8 @@ use std::{
 };
 
 use super::{
-    CompiledVariant, PuzzleRule, Quadruple, RegionLayout, VariantDefinitionError, VariantHouseKind,
-    VariantPosition, VariantPositionError, cell_mask, cells_in, digit_sum,
+    CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
+    VariantPosition, VariantPositionError, cells_in,
 };
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
@@ -24,6 +24,10 @@ const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
+mod cages;
+mod quadruples;
+mod rule_proofs;
+pub(super) use rule_proofs::RuleProofIndex;
 mod exclusions;
 mod forcing;
 pub use forcing::VariantTrialFailure;
@@ -1788,19 +1792,7 @@ impl CompiledVariant {
                     }
                 }
             }
-            Quadruple => {
-                for clue in &self.quadruples {
-                    let domains = clue.cells.map(|cell| position.domain(cell));
-                    if let Some(proof) = position.explain_constraint(
-                        technique,
-                        &[clue.rule_index],
-                        &clue.cells,
-                        clue.support(domains).into_iter(),
-                    ) {
-                        proofs.push(proof);
-                    }
-                }
-            }
+            Quadruple => self.quadruple_proofs(position, &mut proofs),
             LetteredQuadruples => {
                 if let Some(clue) = &self.lettered_quadruples {
                     let cells: [usize; CELLS] = std::array::from_fn(|cell| cell);
@@ -1823,27 +1815,7 @@ impl CompiledVariant {
                 }
             }
             EntropyQuadruple => return self.entropy_proofs(position, technique, usize::MAX),
-            CageCombinations => {
-                for cage in &self.cages {
-                    let domains: Vec<_> = cage
-                        .cells
-                        .iter()
-                        .map(|&cell| position.domain(cell))
-                        .collect();
-                    let support = cage.support(&domains);
-                    if let Some(proof) = cage_proof(
-                        position,
-                        cage.cells.clone(),
-                        domains,
-                        &support,
-                        cage.sum,
-                        None,
-                        vec![cage.reference],
-                    ) {
-                        proofs.push(proof);
-                    }
-                }
-            }
+            CageCombinations => self.cage_combinations(position, &mut proofs),
             CageHouseSum => self.cage_house_sums(position, &mut proofs),
             LockedCandidates => {
                 self.locked_candidates(position, &mut proofs);
@@ -1865,28 +1837,7 @@ impl CompiledVariant {
                 }));
             }
             AntiKing | AntiKnight | Clone | Inequality | Kropki | NonConsecutive | Palindrome
-            | Thermometer | Whispers | Xv | AdjacentTotal => {
-                let domains = std::array::from_fn(|cell| position.domain(cell));
-                for clue in self
-                    .pair_clues
-                    .iter()
-                    .filter(|clue| clue.source.id == technique.id())
-                {
-                    let mut supported = domains;
-                    clue.restrict(&mut supported);
-                    if let Some(proof) = position.explain_constraint(
-                        technique,
-                        &clue.source.indices,
-                        &clue.cells,
-                        clue.cells.iter().map(|&cell| supported[cell]),
-                    ) {
-                        proofs.push(proof);
-                    }
-                }
-                if matches!(technique, Xv | AdjacentTotal) {
-                    self.sum_pair_proofs(position, technique, &mut proofs);
-                }
-            }
+            | Thermometer | Whispers | Xv | AdjacentTotal => self.direct_pair_proofs(position, technique, &mut proofs),
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             RenbanLockedDigit => self.renban_locks(position, &mut proofs),
             RenbanGroupCounts => self.renban_group_counts(position, &mut proofs),
@@ -1904,202 +1855,9 @@ impl CompiledVariant {
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
-            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
-                let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
-                    let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
-                    let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))
-                        .fold(0, |mask, (cell, _)| mask | (1u128 << cell));
-                    (domains, narrow)
-                });
-                for line in self
-                    .lines
-                    .iter()
-                    .filter(|line| line.rule_id == technique.id())
-                {
-                    let len = line.cells.len();
-                    let mut domains = [0; CELLS];
-                    for (slot, &cell) in domains.iter_mut().zip(&line.cells) {
-                        *slot = position.domain(cell);
-                    }
-                    let mut supported = [0; CELLS];
-                    line.support(&domains[..len], &mut supported[..len]);
-                    if let Some(proof) = position.explain_constraint(
-                        technique,
-                        &[line.rule_index],
-                        &line.cells,
-                        supported[..len].iter().copied(),
-                    ) {
-                        proofs.push(proof);
-                    }
-                    line.visit_group_house_removals(
-                        self,
-                        &domains[..len],
-                        &supported[..len],
-                        |house, cells, domains, removals| {
-                            let actions = position.removals(
-                                &cells,
-                                removals.into_iter().map(|mask| DIGITS & !mask),
-                            );
-                            if !actions.is_empty() {
-                                proofs.push(VariantDeduction {
-                                    technique,
-                                    actions,
-                                    evidence: VariantEvidence::GroupLineHouse {
-                                        rule: line.rule_index,
-                                        house,
-                                        cells,
-                                        domains,
-                                    },
-                                });
-                            }
-                        },
-                    );
-                    if let Some((domains, narrow)) = &triplet_inputs {
-                        line.visit_group_house_triplets(self, domains, &supported[..len], *narrow,
-                            |house, cells, domains, removals| {
-                                let removed = position.masks[cells[0]] & removals;
-                                if removed != 0 {
-                                    proofs.push(VariantDeduction {
-                                        technique,
-                                        actions: digits(removed)
-                                            .map(|digit| HintAction::Eliminate(Candidate { cell: cells[0], digit }))
-                                            .collect(),
-                                        evidence: VariantEvidence::GroupLineHouseTriplet {
-                                            rule: line.rule_index,
-                                            house,
-                                            cells,
-                                            domains,
-                                        },
-                                    });
-                                }
-                            });
-                    }
-                }
-                for clue in self.group_sum_houses.iter().filter(|clue| clue.technique == technique.id()) {
-                    let domains = clue.cells.map(|cell| position.domain(cell));
-                    let removed = position.masks[clue.cells[0]] & clue.removals(domains);
-                    if removed != 0 {
-                        proofs.push(VariantDeduction {
-                            technique,
-                            actions: digits(removed)
-                                .map(|digit| HintAction::Eliminate(Candidate { cell: clue.cells[0], digit }))
-                                .collect(),
-                            evidence: VariantEvidence::GroupLineSumHouse {
-                                rules: clue.rules,
-                                house: clue.house,
-                                cells: clue.cells,
-                                domains,
-                                total: clue.total,
-                            },
-                        });
-                    }
-                }
-                for clue in self.disjoint_group_sums.iter().filter(|clue| clue.technique == technique.id()) {
-                    let domains = clue.cells.map(|cell| position.domain(cell));
-                    let removals = clue.removals(domains);
-                    for (&cell, mask) in clue.cells.iter().zip(removals) {
-                        let removed = position.masks[cell] & mask;
-                        if removed != 0 {
-                            proofs.push(VariantDeduction {
-                                technique,
-                                actions: digits(removed)
-                                    .map(|digit| HintAction::Eliminate(Candidate { cell, digit }))
-                                    .collect(),
-                                evidence: VariantEvidence::GroupLineDisjointSum {
-                                    rules: clue.rules,
-                                    cells: clue.cells,
-                                    domains,
-                                    houses: clue.houses.clone(),
-                                    total: clue.total,
-                                },
-                            });
-                        }
-                    }
-                }
-                for clue in self
-                    .group_sum_chains
-                    .iter()
-                    .filter(|clue| clue.technique == technique.id())
-                {
-                    let domains = clue.cells.map(|cell| position.domain(cell));
-                    let Some(support) = clue.support(domains) else {
-                        continue;
-                    };
-                    let house = clue.house.map(|index| &self.houses[index]);
-                    let actions = if let Some(house) = house {
-                        let allowed = house.cells.iter().map(|cell| {
-                            let removed = clue
-                                .cells
-                                .iter()
-                                .position(|site| site == cell)
-                                .map_or(support.locked, |index| support.removed[index]);
-                            DIGITS & !removed
-                        });
-                        position.removals(&house.cells, allowed)
-                    } else {
-                        position.removals(&clue.cells, support.removed.map(|mask| DIGITS & !mask))
-                    };
-                    if !actions.is_empty() {
-                        proofs.push(VariantDeduction {
-                            technique,
-                            actions,
-                            evidence: VariantEvidence::GroupLineSumChain(Box::new(
-                                VariantGroupSumChainProof {
-                                    rules: clue.rules,
-                                    house: house.map(|house| house.kind),
-                                    houses: clue.houses.clone(),
-                                    cells: clue.cells,
-                                    domains,
-                                    totals: clue.totals,
-                                    supported: support.supported,
-                                    locked: support.locked,
-                                },
-                            )),
-                        });
-                    }
-                }
-                for clue in self
-                    .group_sum_phases
-                    .iter()
-                    .filter(|clue| clue.technique == technique.id())
-                {
-                    let domains = clue.cells.map(|cell| position.domain(cell));
-                    let Some((removed, anchor, fixed)) =
-                        clue.removals(domains, |cell| position.domain(cell))
-                    else {
-                        continue;
-                    };
-                    let actions = position.removals(&clue.cells, removed.map(|mask| DIGITS & !mask));
-                    if !actions.is_empty() {
-                        let [endpoint, partner, target] = clue.cells;
-                        let [a, b, c] = domains;
-                        proofs.push(VariantDeduction {
-                            technique,
-                            actions,
-                            evidence: VariantEvidence::GroupLinePhaseSum {
-                                rules: clue.rules,
-                                cells: [endpoint, partner, target, anchor],
-                                domains: [a, b, c, fixed],
-                                total: clue.total,
-                                house: clue.house,
-                            },
-                        });
-                    }
-                }
-                if technique == Modular {
-                    for clue in &self.modular_sums {
-                        let supported = clue
-                            .cells
-                            .iter()
-                            .zip(&clue.allowed)
-                            .map(|(&cell, &mask)| position.domain(cell) & mask);
-                        if let Some(proof) =
-                            position.explain_constraint(technique, &clue.rules, &clue.cells, supported)
-                        {
-                            proofs.push(proof);
-                        }
-                    }
-                }
+            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells
+            | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+                self.direct_line_proofs(position, technique, &mut proofs);
             }
         }
         proofs
@@ -2260,226 +2018,4 @@ impl CompiledVariant {
             }
         }
     }
-
-    fn quadruple_locks(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
-        let mut circle_sites: [Vec<(&Quadruple, u128)>; 9] = Default::default();
-        for clue in &self.quadruples {
-            let domains = clue.cells.map(|cell| position.domain(cell));
-            let supported = clue.support(domains);
-            let scope = cell_mask(&clue.cells).unwrap();
-            for digit in digits(clue.required_digits()) {
-                let bit = digit_bit(digit);
-                let sites = clue
-                    .cells
-                    .iter()
-                    .zip(supported)
-                    .filter(|&(_, mask)| mask & bit != 0)
-                    .fold(0, |sites, (&cell, _)| sites | 1u128 << cell);
-                if sites.count_ones() > 1 {
-                    circle_sites[usize::from(digit - 1)].push((clue, sites));
-                }
-                for (target, &house) in self.houses.iter().zip(&self.house_masks) {
-                    let cells: Vec<_> = clue
-                        .cells
-                        .iter()
-                        .zip(supported)
-                        .filter_map(|(&cell, mask)| {
-                            (house & (1 << cell) != 0 && mask & bit != 0).then_some(cell)
-                        })
-                        .collect();
-                    if cells.len() < 2 {
-                        continue;
-                    }
-                    let actions: Vec<_> = cells_in(house & !scope)
-                        .filter(|&cell| position.masks[cell] & bit != 0)
-                        .map(|cell| HintAction::Eliminate(Candidate { cell, digit }))
-                        .collect();
-                    if actions.is_empty() {
-                        continue;
-                    }
-                    let without = std::array::from_fn(|i| {
-                        if house & (1 << clue.cells[i]) != 0 {
-                            domains[i] & !bit
-                        } else {
-                            domains[i]
-                        }
-                    });
-                    if clue.has_assignment(without) {
-                        continue;
-                    }
-                    proofs.push(VariantDeduction {
-                        technique: VariantTechnique::LockedCandidates,
-                        evidence: VariantEvidence::LockedDigit {
-                            clue: VariantClueScope {
-                                rules: vec![clue.rule_index],
-                                cells: clue.cells.to_vec(),
-                            },
-                            target: target.kind,
-                            cells,
-                            domains: domains.to_vec(),
-                            digit,
-                        },
-                        actions,
-                    });
-                }
-            }
-        }
-        for (index, circles) in circle_sites.iter().enumerate() {
-            let digit = index as u8 + 1;
-            for (i, &(first, a)) in circles.iter().enumerate() {
-                for &(second, b) in &circles[i + 1..] {
-                    if a & b == 0 {
-                        self.quadruple_house_lock(position, digit, [(first, a), (second, b)], proofs);
-                    }
-                }
-            }
-        }
-    }
-
-    fn quadruple_house_lock(
-        &self,
-        position: &ProofPosition<'_>,
-        digit: u8,
-        circles: [(&Quadruple, u128); 2],
-        proofs: &mut Vec<VariantDeduction>,
-    ) {
-        let [(_, a), (_, b)] = circles;
-        let sites = a | b;
-        // Each distinct placement must use one of the two disjoint houses.
-        for &first in &self.memberships[sites.trailing_zeros() as usize] {
-            let left = self.house_masks[first];
-            if ![a, b].into_iter().all(|scope| scope & left != 0 && scope & !left != 0) {
-                continue;
-            }
-            let remaining = sites & !left;
-            for &second in &self.memberships[remaining.trailing_zeros() as usize] {
-                let right = self.house_masks[second];
-                if left & right != 0 || remaining & !right != 0 {
-                    continue;
-                }
-                let actions: Vec<_> = cells_in((left | right) & !sites)
-                    .filter(|&cell| position.masks[cell] & digit_bit(digit) != 0)
-                    .map(|cell| HintAction::Eliminate(Candidate { cell, digit }))
-                    .collect();
-                if !actions.is_empty() {
-                    proofs.push(VariantDeduction {
-                        technique: VariantTechnique::LockedCandidates,
-                        evidence: VariantEvidence::QuadrupleLock {
-                            clues: circles.map(|(clue, _)| VariantClueScope {
-                                rules: vec![clue.rule_index],
-                                cells: clue.cells.to_vec(),
-                            }),
-                            houses: [self.houses[first].kind, self.houses[second].kind],
-                            sites: circles.map(|(_, sites)| cells_in(sites).collect()),
-                            digit,
-                        },
-                        actions,
-                    });
-                }
-            }
-        }
-    }
-
-    fn cage_house_sums(&self, position: &ProofPosition<'_>, proofs: &mut Vec<VariantDeduction>) {
-        let cage_masks: Vec<_> = self
-            .cages
-            .iter()
-            .map(|cage| cell_mask(&cage.cells).unwrap())
-            .collect();
-        for (house, &house_mask) in self.houses.iter().zip(&self.house_masks) {
-            let mut interior = house_mask;
-            let mut interior_total = 45;
-            let mut refs_inside = Vec::new();
-            let mut covered = 0;
-            let mut covering_total = 0;
-            let mut refs_covering = Vec::new();
-            for (cage, &mask) in self.cages.iter().zip(&cage_masks) {
-                if mask & house_mask == 0 {
-                    continue;
-                }
-                if mask & !house_mask == 0 {
-                    interior &= !mask;
-                    interior_total -= i32::from(cage.sum);
-                    refs_inside.push(cage.reference);
-                }
-                covered |= mask;
-                covering_total += i32::from(cage.sum);
-                refs_covering.push(cage.reference);
-            }
-            let outside = covered & !house_mask;
-            let innies = (interior, interior_total, refs_inside, true);
-            let outies = (outside, covering_total - 45, refs_covering, false);
-            for (residue, sum, cages, inside) in [innies, outies] {
-                if cages.is_empty()
-                    || !(1..=9).contains(&residue.count_ones())
-                    || !(1..=81).contains(&sum)
-                    || !inside && covered & house_mask != house_mask
-                {
-                    continue;
-                }
-                let cells: Vec<_> = cells_in(residue).collect();
-                let domains: Vec<_> = cells.iter().map(|&cell| position.domain(cell)).collect();
-                let mut support = [0; 9];
-                let sum = sum as u16;
-                if inside {
-                    for set in (1..=DIGITS).filter(|&set| {
-                        set.count_ones() as usize == cells.len() && digit_sum(set) == sum
-                    }) {
-                        super::search::record_support(
-                            set,
-                            &domains,
-                            &mut support,
-                            &mut [None; 512],
-                        );
-                    }
-                } else {
-                    super::lines::sum_support(&domains, 1 << sum, &mut support);
-                }
-                if let Some(proof) = cage_proof(
-                    position,
-                    cells,
-                    domains,
-                    &support,
-                    sum,
-                    Some(house.kind),
-                    cages,
-                ) {
-                    proofs.push(proof);
-                }
-            }
-        }
-    }
-}
-
-fn cage_proof(
-    position: &ProofPosition<'_>,
-    cells: Vec<usize>,
-    domains: Vec<u16>,
-    support: &[u16],
-    sum: u16,
-    house: Option<VariantHouseKind>,
-    cages: Vec<[usize; 2]>,
-) -> Option<VariantDeduction> {
-    if support[0] == 0 {
-        return None;
-    }
-    let actions = position.removals(&cells, support.iter().copied());
-    if actions.is_empty() {
-        return None;
-    }
-    Some(VariantDeduction {
-        technique: if house.is_some() {
-            VariantTechnique::CageHouseSum
-        } else {
-            VariantTechnique::CageCombinations
-        },
-        evidence: VariantEvidence::CageSum {
-            house,
-            cages,
-            sum,
-            cells,
-            domains,
-        },
-        actions,
-    })
 }

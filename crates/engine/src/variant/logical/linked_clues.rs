@@ -66,7 +66,7 @@ impl CompiledVariant {
             .lines
             .iter()
             .enumerate()
-            .filter_map(|(index, line)| (line.rule_id == "between").then_some(Scope::Line(index)))
+            .filter_map(|(index, line)| (line.technique.id() == "between").then_some(Scope::Line(index)))
             .collect();
         if lines.is_empty() {
             return;
@@ -119,7 +119,7 @@ impl CompiledVariant {
             .pair_clues
             .iter()
             .enumerate()
-            .filter(|(_, clue)| matches!(clue.source.id, "palindrome" | "clone"))
+            .filter(|(_, clue)| matches!(clue.source.technique.id(), "palindrome" | "clone"))
             .flat_map(|(clue, source)| {
                 (0..source.links().len()).map(move |link| Scope::Pair(clue, link))
             })

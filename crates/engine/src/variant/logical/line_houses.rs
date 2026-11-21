@@ -13,7 +13,7 @@ impl CompiledVariant {
         for clue in self
             .pair_clues
             .iter()
-            .filter(|clue| clue.source.id == "whispers")
+            .filter(|clue| clue.source.technique.id() == "whispers")
         {
             let scope = clue
                 .cells

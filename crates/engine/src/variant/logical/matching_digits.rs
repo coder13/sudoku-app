@@ -17,7 +17,7 @@ impl MatchingCells {
         let mut links = puzzle
             .pair_clues
             .iter()
-            .filter(|clue| matches!(clue.source.id, "palindrome" | "clone"))
+            .filter(|clue| matches!(clue.source.technique.id(), "palindrome" | "clone"))
             .flat_map(|clue| clue.links())
             .peekable();
         links.peek()?;

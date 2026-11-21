@@ -1,17 +1,8 @@
 use std::cell::RefCell;
-#[cfg(feature = "generation")]
-use std::collections::HashMap;
-#[cfg(feature = "generation")]
-use std::{
-    borrow::Cow,
-    collections::{HashSet, hash_map::Entry},
-};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-#[cfg(feature = "generation")]
-use super::generation::{MatchedPath, start_builtin_pool, start_matching_path, start_targeted_path};
 use super::hints::technique_counts::TechniqueCountScan;
 use super::hints::{checked_position, classify_actions, rank_position, rank_useful_position};
 use super::{
@@ -23,11 +14,6 @@ use super::{
     prove_rank_at, rank_deductions_at, rank_proof_effort_at, rate_puzzle, replay_rank_proof_at,
     search_alternate_path, solve_position, solve_position_with_rank,
 };
-#[cfg(feature = "generation")]
-use super::{
-    GeneratedPuzzle, GenerationConflict, GenerationCriteria, GenerationError, GenerationRating,
-    GenerationSearch, GenerationStep, GenerationTarget, TechniqueTargetMode,
-};
 #[cfg(feature = "teaching")]
 use super::{Random, technique_deductions_at};
 #[cfg(feature = "teaching")]
@@ -35,6 +21,8 @@ use crate::{check_practice_move, permutation::puzzle_permutation};
 
 #[cfg(feature = "cli")]
 pub(crate) mod batch;
+#[cfg(feature = "generation")]
+mod generation;
 mod hint_pages;
 mod sized;
 #[cfg(feature = "variants")]
@@ -280,7 +268,7 @@ enum Request {
     GenerateTargeted {
         seed: u32,
         max_attempts: u32,
-        target: Target,
+        target: generation::Target,
         #[serde(default)]
         include_rating: bool,
         #[serde(default)]
@@ -289,12 +277,12 @@ enum Request {
     #[cfg(feature = "generation")]
     GenerateConstrained {
         #[serde(flatten)]
-        options: MatchingRequest,
+        options: generation::MatchingRequest,
         #[serde(default)]
         templates: Vec<String>,
     },
     #[cfg(feature = "generation")]
-    GenerateFromPool(MatchingRequest),
+    GenerateFromPool(generation::MatchingRequest),
     #[cfg(all(feature = "generation", feature = "variants"))]
     GenerateVariant(Box<variant::GenerationRequest>),
     #[cfg(feature = "generation")]
@@ -310,23 +298,6 @@ enum Request {
     GenerationCancel {
         job: u32,
     },
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg(feature = "generation")]
-struct MatchingRequest {
-    #[serde(default)]
-    include_rating: bool,
-    seed: u32,
-    max_attempts: u32,
-    clues: ClueCount,
-    score: Option<[u32; 2]>,
-    difficulty: Option<Difficulty>,
-    technique: Option<TechniqueRequest>,
-    technique_order: Option<Vec<String>>,
-    #[serde(default)]
-    exclude: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -349,62 +320,6 @@ impl HintWithPattern {
         let pattern = ProofPattern::from_evidence(&hint.evidence, hint.actions[0].candidate(), masks);
         Self { hint, pattern }
     }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-#[cfg(feature = "generation")]
-enum ClueCount {
-    Exact(usize),
-    Range([usize; 2]),
-}
-
-#[cfg(feature = "generation")]
-impl ClueCount {
-    fn range(self) -> std::ops::RangeInclusive<usize> {
-        match self {
-            Self::Exact(count) => count..=count,
-            Self::Range([min, max]) => min..=max,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-#[cfg(feature = "generation")]
-enum TechniqueRequest {
-    Id(String),
-    WithMode {
-        id: String,
-        mode: TechniqueTargetMode,
-    },
-}
-
-#[cfg(feature = "generation")]
-impl TechniqueRequest {
-    fn parts(self) -> (String, TechniqueTargetMode) {
-        match self {
-            Self::Id(id) => (id, TechniqueTargetMode::Anywhere),
-            Self::WithMode { id, mode } => (id, mode),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(
-    tag = "type",
-    rename_all = "kebab-case",
-    rename_all_fields = "camelCase"
-)]
-#[cfg(feature = "generation")]
-enum Target {
-    Difficulty {
-        level: Difficulty,
-        technique_order: Option<Vec<String>>,
-    },
-    Opening {
-        technique: String,
-    },
 }
 
 type ResultValue<T = Value> = Result<T, (&'static str, &'static str)>;
@@ -731,282 +646,8 @@ fn puzzle_error(analysis: Analysis) -> (&'static str, &'static str) {
     }
 }
 
-#[cfg(feature = "generation")]
-fn generation_error(error: GenerationError) -> (&'static str, &'static str) {
-    match error {
-        GenerationError::InvalidClueCount => (
-            "invalid-clue-count",
-            "Choose a clue count or an ordered range between 17 and 81.",
-        ),
-        GenerationError::InvalidScoreRange => (
-            "invalid-score-range",
-            "The minimum score must be at most the maximum score.",
-        ),
-        GenerationError::IncompatibleTargets(conflict) => (
-            "incompatible-targets",
-            match conflict {
-                GenerationConflict::CompetingOpening {
-                    target: Technique::FullHouse,
-                    competitor: Technique::NakedSingle,
-                } => "A Full House also gives a Naked Single. Choose another exclusive opening.",
-                GenerationConflict::CompetingOpening { .. } => {
-                    "The requested opening always has a competing proof."
-                }
-                GenerationConflict::DisabledTechnique(_) => {
-                    "Enable the target technique in the solver profile."
-                }
-                GenerationConflict::TechniqueOnFilledGrid => {
-                    "A technique target needs at least one empty cell."
-                }
-                GenerationConflict::RatingBelowTechnique(_) => {
-                    "Raise the score ceiling or difficulty to include the target technique."
-                }
-                GenerationConflict::EmptySolverProfile => {
-                    "Enable a technique to rate a puzzle with empty cells."
-                }
-            },
-        ),
-        GenerationError::SearchLimit => (
-            "search-limit",
-            "The generator reached its limit before finding a matching puzzle.",
-        ),
-    }
-}
-
-#[cfg(feature = "generation")]
-fn rating_target(
-    score: Option<[u32; 2]>,
-    difficulty: Option<Difficulty>,
-) -> ResultValue<Option<GenerationRating>> {
-    Ok(match (score, difficulty) {
-        (Some(_), Some(_)) => {
-            return Err((
-                "invalid-rating-target",
-                "Choose either a score range or a difficulty.",
-            ));
-        }
-        (Some([min, max]), None) => Some(GenerationRating::Score(min..=max)),
-        (None, Some(level)) => Some(GenerationRating::Difficulty(level)),
-        (None, None) => None,
-    })
-}
-
-#[cfg(feature = "generation")]
-impl MatchingRequest {
-    fn start(
-        self,
-        templates: Option<Vec<String>>,
-    ) -> ResultValue<(SolverProfile, ActiveGeneration)> {
-        let rating = rating_target(self.score, self.difficulty)?;
-        let (technique, mode) = match self.technique {
-            None => (None, TechniqueTargetMode::Anywhere),
-            Some(technique) => {
-                let (id, mode) = technique.parts();
-                (
-                    Some(Technique::from_id(&id).ok_or(INVALID_TECHNIQUE)?),
-                    mode,
-                )
-            }
-        };
-        let profile = profile(self.technique_order)?;
-        let criteria = GenerationCriteria {
-            clues: self.clues.range(),
-            rating,
-            technique,
-            technique_order: profile.technique_order(),
-        };
-        if let Some(templates) = templates {
-            let templates = templates
-                .iter()
-                .map(|text| board(text))
-                .collect::<Result<Vec<_>, _>>()?;
-            let search = start_matching_path(
-                self.seed,
-                &criteria,
-                mode,
-                Cow::Owned(templates),
-                self.max_attempts,
-            )
-            .map_err(generation_error)?;
-            let search = generation_output(search, self.include_rating, &profile);
-            return Ok((profile, exclude_puzzles(search, self.exclude)?));
-        }
-        let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
-            .map_err(generation_error)?;
-        Ok((
-            profile,
-            exclude_puzzles(search.map(GenerationOutput::Rated), self.exclude)?,
-        ))
-    }
-}
-
-#[cfg(feature = "generation")]
-enum GenerationOutput {
-    Board(Board),
-    Rated(GeneratedPuzzle),
-    #[cfg(feature = "variants")]
-    Variant(Box<crate::GeneratedVariant>),
-}
-
-#[cfg(feature = "generation")]
-impl GenerationOutput {
-    fn into_wire(self) -> Value {
-        match self {
-            Self::Board(board) => json!(grid_string(board)),
-            Self::Rated(puzzle) => {
-                json!({ "board": grid_string(puzzle.board), "rating": puzzle.rating })
-            }
-            #[cfg(feature = "variants")]
-            Self::Variant(puzzle) => json!(puzzle),
-        }
-    }
-}
-
-#[cfg(feature = "generation")]
-type ActiveGeneration = GenerationSearch<'static, GenerationOutput>;
-
-#[cfg(feature = "generation")]
-fn generation_output(
-    search: GenerationSearch<'static, (Board, MatchedPath)>,
-    rated: bool,
-    profile: &SolverProfile,
-) -> ActiveGeneration {
-    if !rated {
-        return search.map(|(board, _)| GenerationOutput::Board(board));
-    }
-    let order = profile.technique_order().to_vec();
-    search.filter_map(move |(board, path)| path.rated(board, &order).map(GenerationOutput::Rated))
-}
-
 thread_local! {
-    #[cfg(feature = "generation")]
-    static GENERATION: RefCell<HashMap<u32, ActiveGeneration>> = RefCell::new(HashMap::new());
     static TECHNIQUE_COUNTS: RefCell<TechniqueCountScan> = RefCell::default();
-    #[cfg(feature = "generation")]
-    static PUZZLE_KEYS: RefCell<HashMap<Board, Board>> = RefCell::new(HashMap::new());
-}
-
-#[cfg(feature = "generation")]
-fn puzzle_key(board: Board) -> Board {
-    PUZZLE_KEYS.with_borrow_mut(|keys| {
-        if let Some(key) = keys.get(&board) {
-            return *key;
-        }
-        let key = crate::canonical_puzzle(&board);
-        if keys.len() >= 8192 {
-            keys.clear();
-        }
-        keys.insert(board, key);
-        key
-    })
-}
-
-#[cfg(feature = "generation")]
-fn exclude_puzzles(
-    search: ActiveGeneration,
-    exclude: Vec<String>,
-) -> ResultValue<ActiveGeneration> {
-    if exclude.is_empty() {
-        return Ok(search);
-    }
-    let excluded = exclude
-        .iter()
-        .map(|text| board(text).map(puzzle_key))
-        .collect::<Result<HashSet<_>, _>>()?;
-    Ok(search.filter(move |candidate| match candidate {
-        GenerationOutput::Board(board) => !excluded.contains(&puzzle_key(*board)),
-        GenerationOutput::Rated(puzzle) => !excluded.contains(&puzzle_key(puzzle.board)),
-        #[cfg(feature = "variants")]
-        GenerationOutput::Variant(_) => true,
-    }))
-}
-
-#[cfg_attr(not(feature = "cli"), allow(dead_code))]
-#[cfg(feature = "generation")]
-enum GenerationProfile {
-    Classic(SolverProfile),
-    #[cfg(feature = "variants")]
-    Variant(Vec<crate::VariantTechnique>),
-}
-
-#[cfg(feature = "generation")]
-fn start_generation(request: Request) -> ResultValue<(GenerationProfile, ActiveGeneration)> {
-    match request {
-        Request::GenerateTargeted {
-            seed,
-            max_attempts,
-            target,
-            include_rating,
-            exclude,
-        } => {
-            let (profile, search) = match target {
-                Target::Difficulty {
-                    level,
-                    technique_order,
-                } => {
-                    let profile = profile(technique_order)?;
-                    let search = start_targeted_path(
-                        seed,
-                        GenerationTarget::Difficulty {
-                            level,
-                            technique_order: profile.technique_order(),
-                        },
-                        max_attempts,
-                    );
-                    (profile, search)
-                }
-                Target::Opening { technique } => {
-                    let technique = Technique::from_id(&technique).ok_or(INVALID_PROFILE)?;
-                    (
-                        SolverProfile::default(),
-                        start_targeted_path(seed, GenerationTarget::Opening(technique), max_attempts),
-                    )
-                }
-            };
-            let search = generation_output(search.map_err(generation_error)?, include_rating, &profile);
-            Ok((GenerationProfile::Classic(profile), exclude_puzzles(search, exclude)?))
-        }
-        Request::GenerateConstrained { options, templates } => options
-            .start(Some(templates))
-            .map(|(profile, search)| (GenerationProfile::Classic(profile), search)),
-        Request::GenerateFromPool(options) => options
-            .start(None)
-            .map(|(profile, search)| (GenerationProfile::Classic(profile), search)),
-        #[cfg(feature = "variants")]
-        Request::GenerateVariant(options) => options.start(),
-        _ => Err(("invalid-request", "Choose a targeted generation request.")),
-    }
-}
-
-#[cfg(feature = "generation")]
-fn generation_update(job: u32, cancel: bool) -> ResultValue {
-    GENERATION.with_borrow_mut(|jobs| {
-        let search = jobs
-            .get_mut(&job)
-            .ok_or(("unknown-generation", "This generation request has ended."))?;
-        let step = (if cancel {
-            search.cancel()
-        } else {
-            search.advance()
-        })
-        .expect("closed searches are removed from the active jobs");
-        let value = match step {
-            GenerationStep::Pending { attempts } => {
-                return Ok(json!({ "status": "pending", "attempts": attempts }));
-            }
-            GenerationStep::Matched { attempts, puzzle } => {
-                json!({ "status": "matched", "attempts": attempts, "puzzle": puzzle.into_wire() })
-            }
-            GenerationStep::Exhausted { attempts } => {
-                json!({ "status": "exhausted", "attempts": attempts })
-            }
-            GenerationStep::Cancelled { attempts } => {
-                json!({ "status": "cancelled", "attempts": attempts })
-            }
-        };
-        jobs.remove(&job);
-        Ok(value)
-    })
 }
 
 fn trace_value(trace: &super::LogicalSolve) -> Value {
@@ -1080,7 +721,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         #[cfg(feature = "generation")]
         Request::CanonicalPuzzles { values } => values
             .iter()
-            .map(|text| board(text).map(|board| grid_string(puzzle_key(board))))
+            .map(|text| board(text).map(|board| grid_string(generation::puzzle_key(board))))
             .collect::<Result<Vec<_>, _>>()
             .map(|keys| json!(keys)),
         #[cfg(feature = "variants")]
@@ -1493,40 +1134,20 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         #[cfg(feature = "generation")]
         request @ (Request::GenerateTargeted { .. }
         | Request::GenerateConstrained { .. }
-        | Request::GenerateFromPool(_)) => finish_generation(request),
+        | Request::GenerateFromPool(_)) => generation::finish_generation(request),
         #[cfg(all(feature = "generation", feature = "variants"))]
-        request @ Request::GenerateVariant(_) => finish_generation(request),
+        request @ Request::GenerateVariant(_) => generation::finish_generation(request),
         #[cfg(all(feature = "teaching", not(feature = "variants")))]
         Request::PracticeExamples { variant: true, .. }
         | Request::GeneratePracticeExample { variant: true, .. } => Err(unsupported("variants")),
         #[cfg(feature = "generation")]
-        Request::GenerationStart { job, request } => {
-            GENERATION.with_borrow_mut(|jobs| match jobs.entry(job) {
-                Entry::Occupied(_) => Err((
-                    "generation-active",
-                    "This generation request is already active.",
-                )),
-                Entry::Vacant(slot) => {
-                    slot.insert(start_generation(*request)?.1);
-                    Ok(json!({ "status": "pending", "attempts": 0 }))
-                }
-            })
-        }
+        Request::GenerationStart { job, request } => generation::start_job(job, *request),
         #[cfg(feature = "generation")]
-        Request::GenerationAdvance { job } => generation_update(job, false),
+        Request::GenerationAdvance { job } => generation::update_job(job, false),
         #[cfg(feature = "generation")]
-        Request::GenerationCancel { job } => generation_update(job, true),
+        Request::GenerationCancel { job } => generation::update_job(job, true),
     };
     result.map(ResponseValue::Json)
-}
-
-#[cfg(feature = "generation")]
-fn finish_generation(request: Request) -> ResultValue {
-    start_generation(request)?
-        .1
-        .finish()
-        .map(GenerationOutput::into_wire)
-        .map_err(generation_error)
 }
 
 #[cfg(test)]

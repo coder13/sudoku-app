@@ -5,8 +5,8 @@ import { createPortal } from 'react-dom'
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { BookOpen, Bookmark, Check, ChevronLeft, ChevronRight, Download, Play } from 'lucide-react'
 import {
-  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles, collectionPuzzleStatus,
-  findCollectionGame, getCollection, getGameCollection, nextCollectionPuzzle, type CollectionPuzzleInfo, type PuzzleCollection,
+  COLLECTIONS, collectionDifficulties, collectionProgress, collectionPuzzles,
+  findCollectionGame, getCollection, getGameCollection, indexCollectionGames, nextCollectionPuzzle, type CollectionPuzzleInfo, type PuzzleCollection,
 } from '../sudoku/collections'
 import { collectionDownloadBytes, collectionDownloads, fetchCollectionGrid, formatCollectionBytes } from '../sudoku/collection-downloads'
 import { openCollectionPuzzle } from '../sudoku/collection-play'
@@ -281,7 +281,8 @@ export function PuzzleCollections({ games }: { games: Game[] }) {
 
   const progress = collectionProgress(collection, games, difficulty)
   const all = collectionPuzzles(collection, difficulty, available)
-  const puzzles = all.filter(puzzle => !search.status || collectionPuzzleStatus(puzzle, games) === search.status)
+  const matching = indexCollectionGames(games)
+  const puzzles = all.filter(puzzle => !search.status || matching.status(puzzle) === search.status)
   const next = nextCollectionPuzzle(collection, games, difficulty, undefined, available)
 
   return <section className="main-menu-section collection-section" aria-labelledby={`${id}-title`}>
@@ -295,7 +296,7 @@ export function PuzzleCollections({ games }: { games: Game[] }) {
         <progress value={progress.solved} max={all.length} aria-label={`${DIFFICULTY_LABELS[difficulty]} puzzles completed`} /></div>
       {next ? <Button type="button" disabled={opening} onClick={() => void open(next.id, true)} variant="primary">
         <Play size={16} aria-hidden="true" /> {opening ? 'Loading puzzle…'
-          : collectionPuzzleStatus(next, games) === 'in-progress' ? 'Continue collection' : 'Play next puzzle'}
+          : matching.status(next) === 'in-progress' ? 'Continue collection' : 'Play next puzzle'}
       </Button> : <span className="collection-complete"><Check size={18} aria-hidden="true" /> {online ? 'Difficulty complete' : 'Offline puzzles complete'}</span>}
     </div>}
     {message && <p role="status" className="dialog-status">{message}</p>}
@@ -310,8 +311,8 @@ export function PuzzleCollections({ games }: { games: Game[] }) {
     </div>}
     {puzzles.length ? <ol className="collection-puzzle-list">
       {puzzles.map(puzzle => {
-        const status = collectionPuzzleStatus(puzzle, games)
-        const existing = findCollectionGame(puzzle, games)
+        const status = matching.status(puzzle)
+        const existing = matching.find(puzzle)
         return <li key={puzzle.id}>
           <Link to="/puzzles/collections" search={{ ...groupSearch, puzzle: puzzle.id }}>
             <span className="collection-puzzle-copy"><strong>{puzzle.title}</strong><small>{existing?.savedForLater ? 'Saved for later' : statusLabels[status]}</small></span>

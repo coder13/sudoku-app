@@ -1,12 +1,13 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { BUNDLED_COLLECTIONS } from '../src/sudoku/collection-files.ts'
 import { collectionGridHash } from '../src/sudoku/collection-integrity.ts'
 
 // Only this build step reads grids. The client imports the small metadata index.
 const output = new URL('../public/collections/', import.meta.url)
 await rm(output, { recursive: true, force: true })
 const index = {}
-for (const [id, filename] of [['nikoli-classics', 'nikoli-100'], ['sudoku-exchange', 'sudoku-exchange']]) {
-  const puzzles = JSON.parse(await readFile(new URL(`../src/sudoku/collections/${filename}.json`, import.meta.url), 'utf8'))
+for (const { file, header: { id } } of BUNDLED_COLLECTIONS) {
+  const puzzles = JSON.parse(await readFile(new URL(`../src/sudoku/collections/${file}.json`, import.meta.url), 'utf8'))
   await mkdir(new URL(`${id}/`, output), { recursive: true })
   index[id] = []
   for (const { givens, ...puzzle } of puzzles) {

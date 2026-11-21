@@ -17,7 +17,7 @@ impl CompiledVariant {
         for line in self
             .lines
             .iter()
-            .filter(|line| line.rule_id == "renban" && line.cells.len() > 1)
+            .filter(|line| line.technique.id() == "renban" && line.cells.len() > 1)
         {
             let mut domains = [0; 9];
             let domains = &mut domains[..line.cells.len()];

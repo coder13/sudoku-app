@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises'
+import { BUNDLED_COLLECTIONS } from '../src/sudoku/collection-files.ts'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 
 // Run after build:wasm whenever the engine's grading rules change.
@@ -16,7 +17,8 @@ async function run(request) {
 const { difficultyOrder } = await run({ type: 'techniques' })
 const output = []
 const seen = new Set()
-for (const filename of ['nikoli-100.json', 'sudoku-exchange.json']) {
+for (const { file } of BUNDLED_COLLECTIONS) {
+  const filename = file + '.json'
   const url = new URL('../src/sudoku/collections/' + filename, import.meta.url)
   const puzzles = JSON.parse(await readFile(url, 'utf8'))
   for (const puzzle of puzzles) {

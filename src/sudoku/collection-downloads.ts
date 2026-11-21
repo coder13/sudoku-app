@@ -1,4 +1,4 @@
-import { COLLECTIONS, findCollectionGame, type CollectionPuzzleInfo, type PuzzleCollection } from './collections.ts'
+import { COLLECTIONS, indexCollectionGames, type CollectionPuzzleInfo, type PuzzleCollection } from './collections.ts'
 import { collectionGridHash } from './collection-integrity.ts'
 import type { Game } from './game.ts'
 
@@ -78,8 +78,10 @@ export function createCollectionDownloadStore(storage: () => Pick<Storage, 'getI
     grids(collection: PuzzleCollection, games: readonly Game[] = []): Grids {
       const grids = { ...snapshot[collection.id] }
       // Keep puzzles from earlier app versions and matching imports playable offline.
+      if (!games.length) return grids
+      const { find } = indexCollectionGames(games)
       for (const puzzle of collection.puzzles) {
-        const existing = findCollectionGame(puzzle, games)
+        const existing = find(puzzle)
         if (existing) grids[puzzle.id] = existing.givens
       }
       return grids
