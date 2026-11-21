@@ -12,6 +12,7 @@ import { GAME_PREFIX } from '../src/sudoku/storage.ts'
 import { createSyncEngine, syncRequest } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from '../tests/helpers/memory-storage.ts'
 import { syncDatabase } from '../tests/helpers/sync-database.ts'
+import { savedPuzzles, waitForSavedPuzzle } from '../tests/helpers/browser-puzzle-saves.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const option = flag => {
@@ -50,11 +51,12 @@ const sourceFiles = [
   'src/components/Workspace.tsx', 'src/components/DesktopPlayLayout.tsx', 'src/components/Worktable.tsx',
   'src/components/CompletedPuzzle.tsx', 'src/components/PuzzlesPage.tsx', 'src/components/SyncConnectionStatus.tsx',
   'src/routes/__root.tsx', 'src/routes/index.tsx', 'src/styles.css', 'src/sudoku/storage.ts',
-  'src/sudoku/device-sync.ts', 'src/sudoku/sync-engine.ts', 'src/sudoku/sync-settings.ts',
+  'src/sudoku/device-sync.ts', 'src/sudoku/sync-engine.ts', 'src/sudoku/sync-settings.ts', 'src/sudoku/puzzle-saves.ts',
   'src/sudoku/sync-connectivity.ts', 'src/sudoku/sync-socket.ts', 'src/sudoku/puzzle-activity.ts',
   'src/sudoku/preferences.ts', 'src/sudoku/puzzle-timing.ts', 'src/sudoku/game.ts',
   'src/sudoku/generated/engine.wasm', 'cloudflare/pages/_worker.js', 'vite.config.ts',
   'scripts/check-startup-loading.mjs', 'tests/helpers/sync-database.ts', 'tests/helpers/memory-storage.ts',
+  'tests/helpers/browser-puzzle-saves.mjs',
   'package-lock.json', 'tools/react-board-performance/package-lock.json',
 ]
 async function hashes() {
@@ -227,7 +229,7 @@ async function board(page, check, expectedId = game.id) {
   check.equal(await page.locator('#sudoku-workspace .sudoku-grid').first().getByRole('gridcell').count(), 81)
   check.equal(await page.locator('.startup-progress, .startup-loading').count(), 0, 'Cached or ready play must not show a blocking loader')
   check.equal(await page.locator('#completion-title').count(), 0)
-  const stored = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), GAME_PREFIX + expectedId)
+  const stored = await waitForSavedPuzzle(page, saved => saved.id === expectedId)
   check.equal(stored?.id, expectedId)
   if (expectedId === game.id) check.equal(stored.givens, STARTER)
   return geometry(page)
@@ -311,7 +313,7 @@ const cases = [
   { name: 'delayed-library', hold: () => gate('changes'), async run({ page, check, holds, sockets, profile }) {
     await waitForGate(holds[0])
     const before = await pending(page, check)
-    check.equal(await page.evaluate(key => localStorage.getItem(key), GAME_PREFIX + game.id), null)
+    check.equal((await savedPuzzles(page)).some(saved => saved.id === game.id), false)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await frames(page)
     const reducedMotion = await page.locator('.startup-progress > span').evaluate(element => ({
@@ -348,7 +350,7 @@ const cases = [
   { name: 'downloaded-puzzle-waits-for-settings', options: { remoteMode: 'advanced' }, hold: () => gate('settings', 'PATCH'), async run({ page, check, holds, requests, profile }) {
     await waitForGate(holds[0])
     check.ok(requests.some(item => item.path === 'puzzles/' + game.id && item.status === 200), 'The puzzle download must finish before the settings gate')
-    check.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key))?.id, GAME_PREFIX + game.id), game.id)
+    check.equal((await savedPuzzles(page)).find(saved => saved.id === game.id)?.id, game.id)
     check.equal(await page.evaluate(() => localStorage.getItem('sudoku-app:v1:workspace-mode')), 'standard')
     const before = await pending(page, check)
     holds[0].release()
@@ -364,6 +366,8 @@ const cases = [
     await waitForGate(holds[0])
     const before = await board(page, check)
     check.equal(holds[0].released, false, 'The cached board must appear before sync completes')
+    check.equal(await page.evaluate(key => localStorage.getItem(key), GAME_PREFIX + game.id), null,
+      'The legacy save must be removed after the IndexedDB migration')
     check.equal(await page.locator('.topbar .sync-connection-label .loading-spinner').count(), 1)
     await capture(page, profile, 'cached-game-during-sync')
     holds[0].release()
@@ -390,8 +394,7 @@ const cases = [
     await settled(page)
     check.equal(new URL(page.url()).searchParams.get('puzzle'), game.id, 'Remote completion must keep the selected puzzle route')
     check.equal(await page.locator('.startup-progress, .puzzles-page').count(), 0)
-    const saved = await page.evaluate(prefix => Object.keys(localStorage).filter(key => key.startsWith(prefix))
-      .map(key => JSON.parse(localStorage.getItem(key))), GAME_PREFIX)
+    const saved = await savedPuzzles(page)
     check.equal(saved.length, 1, 'Opening an unchanged cached puzzle must not create a conflict copy')
     check.equal(saved[0].id, game.id)
     check.ok(isSolved(saved[0]), 'The saved remote revision must also be solved')
@@ -432,8 +435,8 @@ const cases = [
   } },
   { name: 'first-unlinked-launch', options: { linked: false, firstVisit: true }, async run({ page, check, requests }) {
     await page.locator('#sudoku-workspace .sudoku-grid').first().waitFor({ state: 'visible' })
-    const saved = await page.evaluate(prefix => Object.keys(localStorage).filter(key => key.startsWith(prefix))
-      .map(key => JSON.parse(localStorage.getItem(key))), GAME_PREFIX)
+    await waitForSavedPuzzle(page, saved => saved.source === 'generated')
+    const saved = await savedPuzzles(page)
     check.equal(saved.length, 1, 'A first unlinked visit must create exactly one first puzzle')
     check.equal(saved[0].source, 'generated')
     await board(page, check, saved[0].id)

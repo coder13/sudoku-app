@@ -1850,6 +1850,7 @@ svg { flex-shrink: 0; }
 }
 .side-actions .puzzle-check-button { display: none; }
 .controls-actions-wrap { position: relative; display: grid; }
+.controls-actions-space { block-size: var(--mode-button-size); }
 .input-tools > .icon-button { width: 44px; min-height: 44px; }
 .input-tools-menu {
   position: fixed;
