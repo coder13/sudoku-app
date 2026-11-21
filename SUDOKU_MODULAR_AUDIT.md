@@ -367,6 +367,28 @@ R1C3 and R6C3 hold 7 and 9 in some order in column 3. If R2C2 were 7, box 1 forc
 
 Applying the R4C4 removals manually opens three more verified steps. The R2C2 removals open one. Applying both sets opens four steps and reaches another stall without a placement.
 
+The new detector proves both removals with two adjacent sums. To exclude a digit, it checks what each sum would require if its outside partner avoided the digit. The avoidance would make both anchors use the same digit in their shared house. A cell that sees both partners can therefore lose that candidate. The detector also handles positive V or X marks and totals that differ. A control pairs a V with an X to make the partners reserve 1, and checks the same proof across an Adjacent Total and an X.
+
+At the saved HCHW position, two 13 sums share their anchors in box 2 and reserve 7 and 9 for R2C6 and R1C3. Both partners see R2C1 and R2C2, so those cells lose 7 and 9. The two 7 sums prove the four removals from R4C4 and R5C4. This gives two ranked Play choices and eight distinct Finder actions. Independent enumeration checks all cited sums, forced repeats, and target houses, including the simpler proof for R2C2. The archived tests verify applying the hint, undo, and redo.
+
+The app uses five of the new proofs from the givens. HCHW moves from 83 steps and 6,875 points to 128 steps and 19,692 points. It reaches 18 correct placements, up from eight, and still stalls. The native default still stalls after 36 steps at 841 points with no placements. The authored XV Clover app path solves in 140 steps and 2,358 points, compared with 151 and 4,538. Entropy 7/13 shortens by one step in both profiles. The Ksy3 Entropic and Renban puzzle still solves and now exposes three sum pair proofs. The nine published Modular and Entropic controls retain their exact answers and opening candidate masks.
+
+Across five alternating warm Wasm pairs, ranked Play at the archived HCHW position falls from 225 to 115 ms median CPU while gaining both choices. The complete HCHW app walkthrough rises from 515 to 835 ms with 45 additional steps. App Wasm changes from 4,056,700 to 4,091,729 raw bytes and from 1,084,133 to 1,089,850 gzip bytes.
+
+The published XV Clover walkthrough fell from 16.08 to 2.65 ms median CPU in eight paired samples. On the 144-clue control, opening candidate medians were 0.301 and 0.303 ms. Exact uniqueness medians were 0.456 and 0.463 ms across 50 pairs, with identical replies. The current scoring invalidated one single-attempt Medium recipe per sum family. The Two-cell sums seed changes from 17 to 57 and the XV seed from 16 to 46. The checked recipe lists retain their layouts, clue counts, target difficulty, and distinct, independently verified unique solutions.
+
+### Combine a sum with different line phases
+
+At the 128-step stall, R8C7 holds 8 and fixes its Modular phase to the remainder-2 group. R8C5 and R8C6 therefore use the other two groups in some order. If R8C6 is 4, its phase has remainder 1, so R8C5 must be 9. The 13 sum also makes R7C6 9, repeating 9 in box 8. If R8C6 is 6, the same reasoning repeats 7 in box 8.
+
+Independent enumeration of the Modular Line, the 13 sum, and their shared houses removes 4 and 6 from R8C6 and 7 and 9 from R7C6. Applying those four removals manually opens 38 app steps with seven correct placements before another stall.
+
+### Finish the replay with two Modular Lines and two sums
+
+After the different-phase removals and the resulting 38 steps, R2C2 holds 1 or 3. If it were 3, the first Modular Line would make R3C2 a 7. Box 1 then forces R1C3 to be 9, and its 13 sum makes R1C4 a 4. Box 2 forces R3C6 to be 6, and its 13 sum makes R2C6 a 7. On the second Modular Line, R2C6 and the placed 2 in R2C8 fix the two other phases. R2C7 must belong to the remainder-0 group. Its candidates are 1, 3, and 7, so it must be 3. That repeats the assumed 3 in row 2.
+
+Independent enumeration of the two lines and the two positive sums confirms this removal. Applying only the removal of 3 in R2C2 lets the existing app profile finish in 61 additional steps, placing the remaining 56 digits. Every action matches the published answer. The detectors for the different-phase deduction and this two-line argument are still pending.
+
 ## Reproduce
 
 ```sh

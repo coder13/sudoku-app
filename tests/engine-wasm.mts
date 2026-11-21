@@ -2552,7 +2552,9 @@ test('every playable variant generates its supported difficulties with a unique 
         assert.deepEqual(trace.rating, rating)
 
         const ruleStep = trace.steps.findIndex(({ evidence }) => {
-          if (id !== 'diagonal' && id !== 'jigsaw' && id !== 'windoku') return evidence.type === 'constraint' || evidence.type === 'cage-sum'
+          if (id !== 'diagonal' && id !== 'jigsaw' && id !== 'windoku') {
+            return evidence.type === 'constraint' || evidence.type === 'cage-sum' || evidence.type === 'sum-pair'
+          }
           const house = id === 'jigsaw' ? 'region' : id === 'windoku' ? 'extra' : 'diagonal'
           return evidence.type === 'single' && evidence.house && house in evidence.house ||
             evidence.type === 'intersection' && (house in evidence.source || house in evidence.target)

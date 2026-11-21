@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict'
 import type { VariantDeduction, VariantPuzzle } from '../../src/sudoku/engine.ts'
+import { assertSumPairProof } from './adjacent-total-truth.ts'
 
 /** Enumerate allowed sums from the stated digits and all cited XV layers. */
 export function assertXvProof(puzzle: VariantPuzzle, proof: VariantDeduction) {
   assert.equal(proof.technique, 'xv')
+  if (proof.evidence.type === 'sum-pair') {
+    assertSumPairProof(puzzle, proof)
+    return
+  }
   assert.equal(proof.evidence.type, 'constraint')
   const evidence = proof.evidence
   assert.equal(evidence.cells.length, 2)

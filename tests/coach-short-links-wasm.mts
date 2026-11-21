@@ -558,7 +558,7 @@ test('the published Ksy3 link imports Mirrored Renbans and every encoded compani
     assert.deepEqual(game.variant, (await prepareImportedPuzzle(code)).game.variant)
     assert.equal(game.variant.solution, solution)
     assertVariantCompletion(puzzle, solution)
-    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2680])
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2730])
     assert.ok((await puzzleHints(game)).choices.length > 1)
     const selected = await puzzleHints(game, 'all', 'adjacent-total')
     const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))

@@ -294,6 +294,37 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'sum-pair': {
+      const { cells: [anchor, partner, otherAnchor, otherPartner], totals: [left, right], domains } = evidence
+      const house = houseLabel(evidence.house)
+      description = `${nameCell(anchor)} and ${nameCell(partner)} add to ${left}. ${nameCell(otherAnchor)} and ${nameCell(otherPartner)} add to ${right}.`
+      const locked = [...new Set(focus.map(({ digit }) => digit))]
+      const exclusions = locked.map(digit => {
+        const repeated = DIGITS.find(value => {
+          const other = left - value
+          return other !== digit && other !== value && DIGITS.includes(other) &&
+            (domains[0] & (1 << (value - 1))) && (domains[1] & (1 << (other - 1)))
+        })
+        return `If neither ${nameCell(partner)} nor ${nameCell(otherPartner)} used ${digit}, ${nameCell(anchor)} and ${nameCell(otherAnchor)} would both be ${repeated}. That repeats ${repeated} in ${house}.`
+      })
+      const targets = [...new Set(focus.map(({ cell }) => cell))]
+      const sites = evidence.houses.map(house => ({ house, cells: variantHouseCells(house, puzzle) }))
+      const connection = (from: number, to: number) => houseLabel(sites.find(({ cells }) =>
+        cells.includes(from) && cells.includes(to))!.house)
+      const conjunction = new Intl.ListFormat('en', { type: 'conjunction' })
+      const cell = targets[0]
+      const digits = conjunction.format(focus.filter(candidate => candidate.cell === cell).map(({ digit }) => String(digit)))
+      reason = exclusions.join(' ') +
+        ` ${nameCell(cell)} shares ${connection(cell, partner)} with ${nameCell(partner)} and ${connection(cell, otherPartner)} with ${nameCell(otherPartner)}. Remove ${digits} from ${nameCell(cell)}.`
+      if (targets.length > 1) reason += ' The other marked cells also share houses with both sum partners.'
+      cells = [...evidence.cells, ...targets]
+      candidates = [
+        ...domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+          .map(digit => ({ cell: evidence.cells[i], digit }))),
+        ...focus,
+      ]
+      break
+    }
     case 'group-line-house-triplet': {
       cells = evidence.cells
       const [target, first, second, other] = evidence.cells

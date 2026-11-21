@@ -1,14 +1,15 @@
 //! Positive two-cell sums that interact with repeating digit groups.
 
 use super::{
-    CompiledVariant, LineConstraint, LineKind, PuzzleRule, VariantHouseKind, groups::DigitGroups,
+    super::pairs::PositiveSum, CompiledVariant, LineConstraint, LineKind, VariantHouseKind,
+    groups::DigitGroups,
 };
 use crate::{
     CELLS, DIGITS,
     hints::{digit_bit, digits},
 };
 
-pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules: &[PuzzleRule]) {
+pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant) {
     let mut group_lines = puzzle
         .lines
         .iter()
@@ -18,19 +19,14 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
         return;
     }
 
-    let mut sums = Vec::new();
-    for (index, rule) in rules.iter().enumerate() {
-        match rule {
-            PuzzleRule::AdjacentTotal { cells, sum } => sums.push((index, *cells, *sum)),
-            PuzzleRule::Xv { five, ten } => {
-                sums.extend(five.pairs.iter().map(|&cells| (index, cells, 5)));
-                sums.extend(ten.pairs.iter().map(|&cells| (index, cells, 10)));
-            }
-            _ => {}
-        }
-    }
     let mut incident: [Vec<_>; CELLS] = std::array::from_fn(|_| Vec::new());
-    for &(rule, [a, b], total) in &sums {
+    for &PositiveSum {
+        rule,
+        cells: [a, b],
+        total,
+        ..
+    } in &puzzle.positive_sums
+    {
         incident[a].push((rule, b, total));
         incident[b].push((rule, a, total));
     }
@@ -39,7 +35,13 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
     let mut disjoint = Vec::new();
     let mut chains = Vec::new();
     for line in group_lines {
-        for &(rule, pair, sum) in &sums {
+        for &PositiveSum {
+            rule,
+            cells: pair,
+            total: sum,
+            ..
+        } in &puzzle.positive_sums
+        {
             if let Some(joined) = ModularSum::for_pair(line, rule, pair, sum) {
                 modular.push(joined);
             }

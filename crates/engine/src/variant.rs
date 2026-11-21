@@ -30,9 +30,9 @@ pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
     VariantGroupSumChainProof, VariantLineHouseProof,
-    VariantLogicalError, VariantRating, VariantReplay, VariantTechnique, VariantTrace,
+    VariantLogicalError, VariantRating, VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace,
 };
-use pairs::{PairClue, PairCompiler, ParityClue};
+use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(
     feature = "teaching",
     feature = "wasm-api",
@@ -553,6 +553,7 @@ impl VariantPuzzle {
             quadruples: Vec::new(),
             global_entropy: None,
             pair_clues: Vec::new(),
+            positive_sums: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
             extra_rule_cells: 0,
@@ -646,7 +647,8 @@ impl VariantPuzzle {
                 }).then_some(index)
             })
             .collect();
-        compile_line_sums(&mut compiled, &self.rules);
+        compiled.positive_sums = positive_sums(&self.rules);
+        compile_line_sums(&mut compiled);
         compiled.extra_rule_cells = compiled.house_masks[27..]
             .iter()
             .copied()
@@ -799,6 +801,7 @@ pub struct CompiledVariant {
     quadruples: Vec<Quadruple>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
+    positive_sums: Vec<PositiveSum>,
     pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,
     extra_rule_cells: u128,

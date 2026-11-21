@@ -11,6 +11,40 @@ use crate::{
     hints::{digit_bit, digits},
 };
 
+#[derive(Clone, Copy, Debug)]
+pub(super) struct PositiveSum {
+    pub rule: usize,
+    pub cells: [usize; 2],
+    pub total: u8,
+    pub xv: bool,
+}
+
+pub(super) fn positive_sums(rules: &[PuzzleRule]) -> Vec<PositiveSum> {
+    let mut sums = Vec::new();
+    for (rule, clue) in rules.iter().enumerate() {
+        match clue {
+            PuzzleRule::AdjacentTotal { cells, sum } => sums.push(PositiveSum {
+                rule,
+                cells: *cells,
+                total: *sum,
+                xv: false,
+            }),
+            PuzzleRule::Xv { five, ten } => {
+                for (marks, total) in [(five, 5), (ten, 10)] {
+                    sums.extend(marks.pairs.iter().map(|&cells| PositiveSum {
+                        rule,
+                        cells,
+                        total,
+                        xv: true,
+                    }));
+                }
+            }
+            _ => {}
+        }
+    }
+    sums
+}
+
 type Allowed = [u16; 9];
 type Relation = fn(u8, u8) -> bool;
 

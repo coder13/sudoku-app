@@ -84,7 +84,7 @@ pub use variant::{
     VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEvidence, VariantExclusionPremise,
     VariantGroupSumChainProof, VariantHouse, VariantHouseKind, VariantLineHouseProof,
     VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
-    VariantReplay, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]

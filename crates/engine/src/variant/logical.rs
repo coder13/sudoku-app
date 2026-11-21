@@ -27,6 +27,7 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod sum_pairs;
 
 macro_rules! catalog {
     ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
@@ -233,6 +234,8 @@ pub enum VariantEvidence {
         /// Candidate masks, including singleton masks for placed digits.
         domains: Vec<u16>,
     },
+    /// Two positive sums force a digit into one of their two outside endpoints.
+    SumPair(Box<VariantSumPairProof>),
     /// Two cells in the same group on a line also share a house.
     GroupLineHouse {
         /// Index of the Entropic or Modular rule in the puzzle definition.
@@ -330,6 +333,24 @@ pub enum VariantEvidence {
         #[cfg_attr(feature = "wasm-api", serde(rename = "swapCells"))]
         swap_cells: Vec<usize>,
     },
+}
+
+/// Candidate support from two disjoint positive sums connected by a house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantSumPairProof {
+    /// The two source rule indices.
+    pub rules: [usize; 2],
+    /// Anchor and partner of the first sum, then anchor and partner of the second.
+    pub cells: [usize; 4],
+    /// The two positive sums.
+    pub totals: [u8; 2],
+    /// Candidate masks for the four cells in proof order, including placed digits.
+    pub domains: [u16; 4],
+    /// House enforcing different anchor digits.
+    pub house: VariantHouseKind,
+    /// Houses through which targets see the two partners.
+    pub houses: Vec<VariantHouseKind>,
 }
 
 /// Replayable support for two linked sums and a same-group line pair.
@@ -589,6 +610,7 @@ impl VariantDeduction {
             VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
             VariantEvidence::GroupLineDisjointSum { cells, .. } => cells.len(),
             VariantEvidence::GroupLineSumChain(proof) => proof.cells.len(),
+            VariantEvidence::SumPair(proof) => proof.cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -1090,6 +1112,9 @@ impl CompiledVariant {
                     ) {
                         proofs.push(proof);
                     }
+                }
+                if matches!(technique, Xv | AdjacentTotal) {
+                    self.sum_pair_proofs(position, technique, &mut proofs);
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
