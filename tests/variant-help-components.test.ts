@@ -195,7 +195,7 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
 
 test('solution previews and walkthroughs distinguish a stalled path from a completed grid', () => {
   const cases = [
-    { status: 'stalled', title: 'Last position', text: 'The solver reached the end of its available moves.' },
+    { status: 'stalled', title: 'Last position', text: 'The walkthrough ends before the puzzle is solved.' },
     { status: { solved: 'easy' }, title: 'Final grid', text: 'The solution is complete. The final grid is shown.' },
   ] satisfies { status: PuzzleRating['status']; title: string; text: string }[]
   for (const { status, title, text } of cases) {
@@ -216,6 +216,40 @@ test('solution previews and walkthroughs distinguish a stalled path from a compl
       assert.ok(html.includes(text))
       assert.ok(!html.includes(status === 'stalled' ? 'Final grid' : 'Last position'))
     }
+  }
+})
+
+test('partial status comes before the logical steps, even when the solver has no step', () => {
+  const step = { technique: 'inequality', actions: [{ eliminate: { cell: 2, digit: 1 } }] }
+  for (const steps of [[], [step]]) {
+    const state = { status: 'ready', trace: { steps, rating: { status: 'stalled' } } }
+    const props = { state, index: 0, onSelect() {}, onRetry() {}, onClose() {} }
+    const surfaces = [
+      renderToStaticMarkup(createElement(SolutionPath, props)),
+      renderToStaticMarkup(createElement(SolutionPath, { ...props, embedded: true })),
+      renderToStaticMarkup(createElement(SolutionDialog, { ...props, grid: null, explanation: null })),
+    ]
+    for (const html of surfaces) {
+      assert.match(html, /aria-label="Partial solution"/)
+      const notice = html.indexOf('This walkthrough ends with an incomplete grid.')
+      assert.ok(notice >= 0 && notice < html.indexOf('aria-label="Solving steps"'))
+      assert.match(html, /Last position/)
+      assert.doesNotMatch(html, /Final grid/)
+    }
+    assert.match(surfaces[0], /<h2>Partial solution<\/h2>/)
+    assert.match(surfaces[2], /<h2[^>]*>Partial solution<\/h2>/)
+  }
+})
+
+test('an exact fallback identifies the logical gap and keeps the exact endpoint', () => {
+  const state = { status: 'ready', trace: { steps: [], rating: { status: 'stalled' }, exact: true } }
+  const props = { state, index: 0, onSelect() {}, onRetry() {}, onClose() {} }
+  for (const Component of [SolutionPath, SolutionDialog]) {
+    const html = renderToStaticMarkup(createElement(Component, { ...props, grid: null, explanation: null }))
+    assert.match(html, /<h2[^>]*>Solution<\/h2>/)
+    assert.match(html, /The logical walkthrough ends before the exact solution/)
+    assert.match(html, /Exact solution/)
+    assert.doesNotMatch(html, /Partial solution|Last position/)
   }
 })
 

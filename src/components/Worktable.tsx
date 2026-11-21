@@ -2556,7 +2556,7 @@ export function Worktable({
     highlighting: highlightMode, penciling: pencilActive,
   })
   const badgeMode = disabled || showResults || draft || (solved && !showSolvedGrid) ? undefined : gridInputMode
-  const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleGridBorderRef} boundaryLabel="puzzle grid border"
+  const modeBadge = badgeMode && <ModeBadge mode={badgeMode} descriptionId={modeBadgeId} cardRef={puzzleGridBorderRef} boundaryLabel="puzzle edge"
           position={modeBadgePosition} onPosition={setModeBadgePosition} onActivate={() => {
             if (badgeMode === 'chain') {
               if (sketch.drawing) stopDrawingAndFocusGrid()

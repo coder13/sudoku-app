@@ -921,14 +921,14 @@ svg { flex-shrink: 0; }
 .desktop-dock :is(.puzzle, .board-body)[data-input-mode],
 :root[data-theme="andoku"] :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-border-inset: 0px; }
 .desktop-dock :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-corner-radius: 0px; }
-:is(.puzzle, .board-body):is([data-input-mode="pen"], [data-input-mode="chain"]) { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
-:is(.puzzle, .board-body)[data-input-mode="pencil"] {
+:is(.puzzle, .board-body, .board-frame):is([data-input-mode="pen"], [data-input-mode="chain"]) { --puzzle-mode-accent: light-dark(#365e83, #a7cef3); }
+:is(.puzzle, .board-body, .board-frame)[data-input-mode="pencil"] {
   --puzzle-mode-accent: light-dark(#684a99, #c8aff8);
   --puzzle-mode-border: dashed;
 }
-:is(.puzzle, .board-body)[data-input-mode="highlight"] { --puzzle-mode-accent: light-dark(#82560d, #f1ca75); }
-:is(.puzzle, .board-body)[data-input-mode="color"] { --puzzle-mode-accent: light-dark(#176c5e, #83dac6); }
-:is(.puzzle, .board-body)[data-input-mode="erase"] {
+:is(.puzzle, .board-body, .board-frame)[data-input-mode="highlight"] { --puzzle-mode-accent: light-dark(#82560d, #f1ca75); }
+:is(.puzzle, .board-body, .board-frame)[data-input-mode="color"] { --puzzle-mode-accent: light-dark(#176c5e, #83dac6); }
+:is(.puzzle, .board-body, .board-frame)[data-input-mode="erase"] {
   --puzzle-mode-accent: light-dark(#a63852, #f4a8b5);
   --puzzle-mode-border: dotted;
 }
@@ -1303,7 +1303,7 @@ svg { flex-shrink: 0; }
   padding-inline-end: var(--board-guide-gap);
 }
 .board-body { grid-area: board; position: relative; container-type: inline-size; }
-.board-frame[data-overlay="true"] > :is(.col-labels, .row-labels),
+.board-frame[data-overlay="true"] > :is(.col-labels, .row-labels, .puzzle-mode-tab),
 .board-frame[data-overlay="true"] > .board-body > :not(.board-overlay),
 .board-frame[data-overlay="false"] > .board-body > .board-overlay { opacity: 0; }
 .board-overlay { position: absolute; inset: 0; z-index: 4; transition: opacity var(--board-shape-motion); }
@@ -3800,6 +3800,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), 100dvh));
     }
   }
+  @media (orientation: portrait) {
+    .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle:has(.has-outside-clues) {
+      /* The measured space includes the frame and its outside clues. */
+      --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), 100dvh));
+    }
+  }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle-column {
     box-sizing: content-box;
     display: grid;
@@ -4900,6 +4906,12 @@ a.game-row { text-decoration: none; color: inherit; }
   grid-template-columns: var(--board-guide-width, 20px) minmax(0, var(--outside-left-track)) minmax(0, var(--board-outside-grid-track, 9fr)) minmax(0, var(--outside-right-track));
   grid-template-rows: var(--board-guide-height, 19px) auto auto auto auto;
   grid-template-areas: ". . columns ." ". . top ." "rows left board right" ". . bottom ." ". legend legend legend";
+}
+.board-frame.has-outside-clues[data-input-mode] {
+  position: relative;
+  --puzzle-mode-border-width: 0px;
+  --puzzle-mode-border-inset: 0px;
+  --puzzle-mode-corner-radius: var(--grid-corner-radius);
 }
 .outside-clue-legend { grid-area: legend; padding-block-start: 6px; text-align: center; font-size: 12px; color: var(--board-ink); }
 .board-frame[data-overlay="true"] > .outside-clue-legend { visibility: hidden; }
