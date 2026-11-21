@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build, preview } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -36,7 +36,7 @@ assert.ok(Number.isFinite(cpuRate) && cpuRate >= 1)
 const temporary = await mkdtemp(resolve(tmpdir(), 'sudoku-desktop-resize-'))
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
-  'src/components/DesktopPlayLayout.tsx', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
+  'src/components/DesktopPlayLayout.tsx', 'src/components/desktop-resize-preview.ts', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
   'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/Controls.tsx', 'src/components/ModeBadge.tsx', 'src/components/Modal.tsx',
   'src/components/ResizeStepControls.tsx', 'src/components/Presence.tsx', 'src/components/usePlayPreference.ts',
@@ -56,7 +56,7 @@ const report = {
   notes: [
     'Production React fixture with real DesktopPlayLayout, PlayWorkspace, PlayLayout, Board, Controls, ModeBadge, dialog, and preference store.',
     'The fixture mirrors Worktable play layers and its input-alignment ResizeObserver. It excludes Worktable state, routing, WASM, syncing, and the clock.',
-    'Baseline uses the pinned DesktopPlayLayout controller and complete stylesheet. All other components and theme tokens are shared current sources. This compares the desktop fix, not whole app releases.',
+    'Baseline uses the pinned DesktopPlayLayout controller, Board renderer, and complete stylesheet. Other components and theme tokens are shared current sources. This compares the desktop fix, not whole app releases.',
     'Normal notes are precomputed for the starter puzzle. The dense stress board has nine candidates in every cell. Neither case invokes the solver.',
     'Mouse drags use native Chromium input. Only queued pointer lifecycle checks dispatch synthetic pointer events to exercise events within one task.',
     'Style/layout counters and animation-frame gaps do not measure paint latency or INP. Headless Chromium does not establish performance on the user desktop.',
@@ -83,7 +83,8 @@ async function snapshot(page) {
     const badgeBox = box('.puzzle-mode-tab')
     const styleSelectors = ['.desktop-play-resizable', '.standard-workspace-page', '.workspace',
       '.standard-puzzle-stack', '.puzzle-column', '.puzzle', '.puzzle-stage', '.puzzle-play-layers',
-      '.puzzle-live-layer', '.board-frame', '.board-body', '.standard-input-stack', '.controls', '.desktop-layout-edges']
+      '.puzzle-live-layer', '.board-frame', '.board-body', '.board-grid-surface', '.board-resize-font-metric',
+      '.standard-input-stack', '.controls', '.desktop-layout-edges']
     const styles = Object.fromEntries(styleSelectors.map(selector => {
       const element = document.querySelector(selector)
       return [selector, element ? Object.fromEntries([...element.style].sort().map(name => [name, element.style.getPropertyValue(name)])) : null]
@@ -99,6 +100,10 @@ async function snapshot(page) {
         const { x, y, width, height } = clue.getBoundingClientRect()
         return { type: clue.dataset.outsideClue, x, y, width, height }
       }),
+      links: [...document.querySelectorAll('.board-links polyline:not(.board-link-target)')].map(link => {
+        const { x, y, width, height } = link.getBoundingClientRect()
+        return { points: link.getAttribute('points'), x, y, width, height }
+      }),
       handles: Object.fromEntries([...document.querySelectorAll('.desktop-layout-edge, .desktop-layout-divider')].map(handle => [
         handle.dataset.edge ? `${handle.dataset.edge}-edge` : 'divider', {
           width: Number(handle.getAttribute('aria-valuenow')), min: Number(handle.getAttribute('aria-valuemin')),
@@ -108,6 +113,10 @@ async function snapshot(page) {
       scale: Number(layoutStyle.getPropertyValue('--desktop-layout-scale')) || 1,
       contentWidth: parseFloat(layoutStyle.getPropertyValue('--desktop-layout-content-width')) || 1128,
       resizing: Boolean(document.querySelector('[data-layout-resizing]')), styles,
+      glyphStyles: Object.fromEntries([...document.querySelectorAll('.cell-value')].map(glyph => [
+        glyph.closest('[data-cell]')?.getAttribute('data-cell'),
+        Object.fromEntries([...glyph.style].sort().map(name => [name, glyph.style.getPropertyValue(name)])),
+      ])),
       preferences: JSON.parse(localStorage.getItem(key)), writes: window.desktopResizeProbe.writes.length,
       candidates: window.desktopResizeFixture.candidates,
     }
@@ -126,6 +135,7 @@ function assertGeometry(state, label) {
   assert.ok(Math.abs(state.grid.y - state.input.y) < 2,
     `${label}: input must align with grid top (${state.input.y}px input, ${state.grid.y}px grid)`)
   if (!state.solvedStyle) assert.ok(state.badgeReachable, `${label}: mode badge must remain reachable above resize handles`)
+  for (const link of state.links) assert.ok(contains(state.grid, link), `${label}: chain links must remain aligned inside the grid`)
   if (state.outsideClues.length) {
     assert.equal(state.outsideClues.length, 4, `${label}: every outside clue must remain mounted`)
     for (const clue of state.outsideClues) assert.ok(clue.width > 0 && clue.height > 0 && contains(state.frame, clue),
@@ -138,6 +148,48 @@ function assertSameGeometry(before, after, label, tolerance = 2) {
     for (const property of ['x', 'y', 'width', 'height']) {
       assert.ok(Math.abs(before[name][property] - after[name][property]) <= tolerance,
         `${label}: ${name}.${property} moved from ${before[name][property]} to ${after[name][property]}`)
+    }
+  }
+  assert.equal(after.links.length, before.links.length, `${label}: chain links must remain mounted`)
+  for (let index = 0; index < before.links.length; index++) {
+    assert.equal(after.links[index].points, before.links[index].points, `${label}: chain path must stay unchanged`)
+    for (const property of ['x', 'y', 'width', 'height']) {
+      assert.ok(Math.abs(before.links[index][property] - after.links[index][property]) <= tolerance,
+        `${label}: chain ${index} ${property} must not jump`)
+    }
+  }
+}
+
+async function glyphSnapshot(page) {
+  return page.evaluate(() => {
+    const selectors = {
+      given: '.cell.given .cell-value',
+      candidate: '.candidate-marks .board-candidate, .center-marks .board-candidate',
+    }
+    return Object.entries(selectors).flatMap(([kind, selector]) => {
+      const elements = [...document.querySelectorAll(selector)]
+      return [...new Set([0, Math.floor(elements.length / 2), elements.length - 1])].filter(index => elements[index]).map(index => {
+        const element = elements[index]
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        const { x, y, width, height } = range.getBoundingClientRect()
+        return { kind, cell: element.closest('[data-cell]')?.getAttribute('data-cell'), text: element.textContent,
+          x, y, width, height, fontSize: getComputedStyle(element).fontSize }
+      })
+    })
+  })
+}
+
+function assertSameGlyphs(before, after, label) {
+  assert.ok(before.some(glyph => glyph.kind === 'given') && before.some(glyph => glyph.kind === 'candidate'),
+    `${label}: fixture must contain given digits and notes`)
+  assert.equal(after.length, before.length)
+  for (let index = 0; index < before.length; index++) {
+    const previous = before[index], next = after[index]
+    assert.deepEqual([next.kind, next.cell, next.text], [previous.kind, previous.cell, previous.text])
+    for (const property of ['x', 'y', 'width', 'height']) {
+      assert.ok(previous.width > 0 && previous.height > 0 && Math.abs(previous[property] - next[property]) <= 1.5,
+        `${label}: ${previous.kind} ${previous.text} in cell ${previous.cell} ${property} changed from ${previous[property]} to ${next[property]}`)
     }
   }
 }
@@ -241,6 +293,7 @@ async function checkDragAndSave(page, handle, expandFirst = false) {
   assert.equal(committed.writes, initial.writes + 1, 'release must save exactly once')
   assert.equal(committed.handles[handle.name].width, preview.handles[handle.name].width, 'release must preserve the preview width')
   assertSameGeometry(preview, committed, 'release must not snap')
+  assert.deepEqual(committed.glyphStyles, initial.glyphStyles, 'release must clear temporary glyph styles')
   assert.equal(committed.resizing, false)
   assert.equal(await page.getByRole('dialog').count(), 0, 'a drag must not open the width dialog')
   await page.reload()
@@ -289,6 +342,7 @@ async function checkInterruption(page, handle, kind) {
   assert.deepEqual(restored.preferences, initial.preferences, `${kind}: saved widths must not change`)
   assertSameGeometry(initial, restored, `${kind}: old dimensions must return`)
   assert.deepEqual(restored.styles, initial.styles, `${kind}: temporary inline styles must be restored`)
+  assert.deepEqual(restored.glyphStyles, initial.glyphStyles, `${kind}: temporary glyph scales must be restored`)
   assertGeometry(restored, kind)
 }
 
@@ -317,6 +371,7 @@ async function checkQueuedFinish(page, handle, kind) {
     assert.equal(final.writes, initial.writes, 'canceled queued preview must not save')
     assert.deepEqual(final.preferences, initial.preferences)
     assert.deepEqual(final.styles, initial.styles, 'canceled queued frame must not restore preview styles later')
+    assert.deepEqual(final.glyphStyles, initial.glyphStyles, 'canceled queued frame must not leave glyph scales')
     assertSameGeometry(initial, final, 'canceled queued preview')
   }
   assertGeometry(final, `queued ${kind}`)
@@ -350,9 +405,48 @@ async function checkKeyboard(page, handle) {
     assert.equal((await snapshot(page)).handles.divider.width, 420)
     await dialog.getByRole('button', { name: 'Reset size', exact: true }).click()
     await dialog.press('Escape')
-    await dialog.waitFor({ state: 'hidden' })
+    // The role locator stops matching as soon as the exit sets aria-hidden.
+    // Focus returns after that animation and the real dialog unmounts.
+    await page.locator('dialog.resize-options-dialog').waitFor({ state: 'detached' })
+    await page.waitForFunction(selector => document.activeElement === document.querySelector(selector), handle.selector)
     assert.ok(await locator.evaluate(element => document.activeElement === element), 'closing size options must return focus to the divider')
   }
+}
+
+async function checkDividerLimits(page) {
+  const handle = handles.find(handle => !handle.outer)
+  const records = []
+  const initialWidth = (await snapshot(page)).handles.divider.width
+  for (const limit of ['min', 'max', 'min', 'initial']) {
+    const before = await snapshot(page)
+    const target = limit === 'initial' ? initialWidth : before.handles.divider[limit]
+    const start = await startDrag(page, handle)
+    // The center divider grows the input when moved left. A small overshoot
+    // checks both clamps without depending on the location of the old handle.
+    const distance = (before.handles.divider.width - target) * before.scale + (limit === 'min' ? 24 : limit === 'max' ? -24 : 0)
+    await moveDrag(page, start, distance, 18)
+    await frames(page, 2)
+    const preview = await snapshot(page)
+    const previewGlyphs = await glyphSnapshot(page)
+    assert.equal(preview.handles.divider.width, target, `divider must reach ${limit} width`)
+    assert.equal(preview.writes, before.writes, 'limit preview must not persist')
+    assertGeometry(preview, `divider ${limit} preview`)
+    await page.mouse.up()
+    await frames(page, 4)
+    const committed = await snapshot(page)
+    const committedGlyphs = await glyphSnapshot(page)
+    assert.equal(committed.writes, before.writes + 1, 'limit release must save once')
+    assertSameGeometry(preview, committed, `divider ${limit} release`)
+    assertSameGlyphs(previewGlyphs, committedGlyphs, `divider ${limit} release`)
+    assert.deepEqual(committed.glyphStyles, before.glyphStyles, 'committing a limit must restore glyph styles')
+    for (const selector of ['.board-body', '.board-grid-surface', '.board-resize-font-metric']) {
+      assert.deepEqual(committed.styles[selector], before.styles[selector], `committing a limit must restore ${selector} styles`)
+    }
+    assertGeometry(committed, `divider ${limit} committed`)
+    records.push({ limit, width: target, previewGrid: preview.grid, committedGrid: committed.grid,
+      previewGlyphs, committedGlyphs, links: committed.links.length })
+  }
+  return { limits: records }
 }
 
 async function ready(page) {
@@ -413,22 +507,25 @@ async function runCheck(name, query, check) {
 
 try {
   let baselineModule = resolve(root, 'src/components/DesktopPlayLayout.tsx')
+  let baselineBoard = resolve(root, 'src/components/Board.tsx')
   let baselineCss = resolve(root, 'src/styles.css')
   if (!regressionOnly) {
     if (baselineRoot) assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: resolve(baselineRoot), encoding: 'utf8',
     }).trim(), BASELINE, 'Baseline checkout must match the pinned revision')
-    for (const name of ['src/components/DesktopPlayLayout.tsx', 'src/styles.css']) {
+    for (const name of ['src/components/DesktopPlayLayout.tsx', 'src/components/Board.tsx', 'src/styles.css']) {
       let source
       try { source = baselineRoot ? await readFile(resolve(baselineRoot, name), 'utf8')
         : execFileSync('git', ['show', `${BASELINE}:${name}`], { cwd: root, encoding: 'utf8' }) }
       catch { throw new Error(`Pinned desktop baseline is missing. Run: git fetch --depth=1 origin ${BASELINE}`) }
       report.baselineHashes[name] = sha256(source)
       if (name.endsWith('.tsx')) {
-        baselineModule = resolve(temporary, 'DesktopPlayLayout.tsx')
+        const destination = resolve(temporary, basename(name))
         const rewritten = source.replace(/from\s+(['"])(\.[^'"]+)\1/g, (_, quote, path) =>
           `from ${quote}${resolve(root, 'src/components', path)}${quote}`)
-        await writeFile(baselineModule, rewritten)
+        await writeFile(destination, rewritten)
+        if (name.endsWith('/Board.tsx')) baselineBoard = destination
+        else baselineModule = destination
       } else {
         baselineCss = resolve(temporary, 'baseline.css')
         await writeFile(baselineCss, source)
@@ -439,6 +536,7 @@ try {
     configFile: false, root: resolve(root, 'tests/browser/desktop-resize'), logLevel: 'warn',
     plugins: [react()], resolve: { dedupe: ['react', 'react-dom', 'lucide-react'], alias: {
       'virtual:desktop-resize-baseline': baselineModule, 'virtual:desktop-resize-baseline.css': baselineCss,
+      'virtual:desktop-resize-baseline-board': baselineBoard,
     } },
     build: { outDir: resolve(temporary, 'dist'), emptyOutDir: true },
   })
@@ -470,7 +568,7 @@ try {
       await runCheck(`${handle.name}-drag-save-reload`, '', page => checkDragAndSave(page, handle))
       await runCheck(`${handle.name}-keyboard`, '', page => checkKeyboard(page, handle))
       for (const kind of ['cancel', 'lost-capture', 'disable', 'unmount', 'viewport']) {
-        await runCheck(`${handle.name}-${kind}`, '', page => checkInterruption(page, handle, kind))
+        await runCheck(`${handle.name}-${kind}`, handle.outer ? '' : 'normal=1', page => checkInterruption(page, handle, kind))
       }
       for (const kind of ['release', 'cancel', 'lost-capture']) {
         await runCheck(`${handle.name}-queued-${kind}`, '', page => checkQueuedFinish(page, handle, kind))
@@ -495,6 +593,12 @@ try {
         assertGeometry(await snapshot(page), `badge at ${edge}`)
       }
     })
+    for (const [name, query] of [
+      ['divider-limits', 'normal=1'],
+      ['divider-limits-andoku', 'normal=1&andoku=1'],
+      ['divider-limits-center-notes', 'normal=1&center=1'],
+      ['divider-limits-chain-outside', 'normal=1&chains=1&outside=1'],
+    ]) await runCheck(name, query, checkDividerLimits)
     assert.deepEqual(report.browserErrors, [], 'resize must not produce browser or ResizeObserver errors')
     assert.equal(report.checks.filter(check => check.status === 'failed').length, 0, 'desktop resize behavior must pass')
     report.status = 'passed'

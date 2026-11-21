@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Board } from '../../../src/components/Board'
+import { Board as BaselineBoard } from 'virtual:desktop-resize-baseline-board'
+import type { BoardAnnotations } from '../../../src/components/BoardAnnotations'
 import { Button, IconButton } from '../../../src/components/Button'
 import { Controls } from '../../../src/components/Controls'
 import { DesktopPlayLayout, PlayWorkspace } from '../../../src/components/DesktopPlayLayout'
@@ -16,12 +18,15 @@ import '@fontsource-variable/dm-sans/wght.css'
 
 const query = new URLSearchParams(location.search)
 await (query.has('baseline') ? import('virtual:desktop-resize-baseline.css') : import('../../../src/styles.css'))
-applyTheme(document.documentElement, DEFAULT_APPEARANCE.lightTheme, 'light')
-document.documentElement.dataset.theme = DEFAULT_APPEARANCE.lightTheme
+const theme = query.has('andoku') ? 'andoku' : DEFAULT_APPEARANCE.lightTheme
+applyTheme(document.documentElement, theme, 'light')
+document.documentElement.dataset.theme = theme
 document.documentElement.dataset.colorMode = 'light'
 
 const Layout = query.has('baseline') ? BaselineDesktopPlayLayout : DesktopPlayLayout
 const Workspace = query.has('baseline') ? BaselinePlayWorkspace : PlayWorkspace
+const PuzzleBoard = query.has('baseline') ? BaselineBoard : Board
+const candidateLayout = query.has('center') ? 'center-corner' : 'grid'
 const noop = () => {}
 const empty = '0'.repeat(81)
 const givens = query.has('normal') ? STARTER : empty
@@ -42,6 +47,17 @@ const center = [...givens].map((value, cell) => {
   return mask
 })
 const position = { center, corner: Array(81).fill(0), colors: Array(81).fill(0) }
+const annotations: BoardAnnotations | undefined = query.has('chains') ? {
+  candidates: new Map([
+    [2, new Map([[2, { color: '#5d72e4', mark: 'ring' as const }], [4, { color: '#e45d77', mark: 'emphasized' as const }]])],
+    [3, new Map([[2, { color: '#5d72e4', mark: 'ring' as const }]])],
+    [11, new Map([[4, { color: '#e45d77', mark: 'emphasized' as const }]])],
+  ]),
+  links: [
+    { from: { cell: 2, digit: 2 }, to: { cell: 3, digit: 2 }, color: '#5d72e4' },
+    { from: { cell: 2, digit: 4 }, to: { cell: 11, digit: 4 }, color: '#e45d77', dashed: true },
+  ],
+} : undefined
 const outsidePuzzle: VariantPuzzle | undefined = query.has('outside') ? {
   version: 1, givens, rules: [
     { type: 'sandwich', direction: 'south', cells: [0, 9, 18, 27, 36, 45, 54, 63, 72], sum: 15 },
@@ -99,7 +115,8 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
       <div className="puzzle-actions"><IconButton className="puzzle-menu-trigger" aria-label="Puzzle options">⋯</IconButton></div>
       <div className="puzzle-stage" ref={stage}>
         <div className="puzzle-play-layers"><div className="puzzle-play-layer puzzle-live-layer">
-          <Board givens={givens} values={givens} position={position} variantPuzzle={outsidePuzzle} showGuides onCell={noop}
+          <PuzzleBoard givens={givens} values={givens} position={position} variantPuzzle={outsidePuzzle}
+            candidateLayout={candidateLayout} annotations={annotations} showGuides onCell={noop}
             modeBorder={query.has('solved') ? undefined : 'pencil'} modeBoundaryRef={boundary}
             modeBadge={!query.has('solved') && <ModeBadge mode="pencil" descriptionId="desktop-resize-mode" cardRef={boundary}
               position={badge} onPosition={setBadge} onActivate={noop} boundaryLabel="Sudoku grid" />} />
@@ -112,7 +129,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
   </div>
   const inputPanel = <div ref={input} className="workspace-controls"><Controls
     mode="candidate" pencil togglePencil={noop} candidateKind="center" setCandidateKind={noop}
-    advancedModes={DEFAULT_ADVANCED_MODES} colorMode={false} colorTarget="cell" setColorTarget={noop}
+    advancedModes={{ ...DEFAULT_ADVANCED_MODES, candidateLayout }} colorMode={false} colorTarget="cell" setColorTarget={noop}
     onSwitchShade={noop} eraseMode={false} toggleEraseMode={noop} highlightMode={false} toggleHighlightMode={noop}
     selectedDigit={null} hasCellSelection={false} values={givens} input={noop} undo={noop} redo={noop}
     canUndo={false} canRedo={false} disabled={false} draft={false} inputSize={210} panelHeight={280}

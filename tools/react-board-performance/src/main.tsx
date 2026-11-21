@@ -77,12 +77,20 @@ function replacedHouseClues(): Set<Element> {
 function snapshot(includeFades = false): NormalNode[] {
   const ids = new Map([...root.querySelectorAll('[id]')].map((element, index) => [element.id, `local-id-${index}`]))
   const replaced = implementation === 'baseline' ? replacedHouseClues() : new Set<Element>()
+  // The desktop resize surface adds no content or interaction. Compare all of
+  // its descendants against the older Board's direct children. Extra attributes
+  // still fail parity instead of hiding a future semantic change to the wrapper.
+  const childrenOf = (node: Node) => [...node.childNodes].flatMap(child =>
+    child instanceof HTMLElement && child.className === 'board-grid-surface' && child.attributes.length === 1
+      ? [...child.childNodes] : [child])
   function normalize(node: Node): NormalNode | null {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || null
     if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return null
+    if (node.classList.contains('board-resize-font-metric') && node.getAttribute('aria-hidden') === 'true'
+      && node.attributes.length === 2 && !node.childNodes.length) return null
     if (replaced.has(node)) return null
     if (!includeFades && node.getAttribute('data-board-fade') === 'exit') return null
-    const children = [...node.childNodes].map(normalize).filter((item): item is NormalNode => item !== null)
+    const children = childrenOf(node).map(normalize).filter((item): item is NormalNode => item !== null)
     if (!includeFades && node.classList.contains('candidate-marks') && !children.length) return null
     const attributes: Record<string, string> = {}
     for (const attr of [...node.attributes].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -97,7 +105,7 @@ function snapshot(includeFades = false): NormalNode[] {
     }
     return { tag: node.tagName.toLowerCase(), attributes, children }
   }
-  return [...root.childNodes].map(normalize).filter((node): node is NormalNode => node !== null)
+  return childrenOf(root).map(normalize).filter((node): node is NormalNode => node !== null)
 }
 
 function checkVariantFills(key: string) {

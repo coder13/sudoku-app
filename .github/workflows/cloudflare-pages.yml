@@ -49,6 +49,7 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             src/components/DesktopPlayLayout.tsx
+            src/components/Board.tsx
             src/styles.css
 
       - name: Check board, startup, resize, and solver lifecycles

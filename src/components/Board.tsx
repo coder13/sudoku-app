@@ -556,20 +556,23 @@ export function Board({
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}${houseFills.size ? ' shaded-houses-board' : ''}`}
         data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={modeBoundaryRef}>
-        <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
-          aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
-          aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
-          onKeyDown={candidateAction ? navigateCandidates : onGridKeyDown}
-          onPointerLeave={onGridPointerLeave}
-          onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
-          {gridRows}
+        <div className="board-grid-surface">
+          <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
+            aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
+            aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
+            onKeyDown={candidateAction ? navigateCandidates : onGridKeyDown}
+            onPointerLeave={onGridPointerLeave}
+            onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
+            {gridRows}
+          </div>
+          <BoardMarks items={variantClues} />
+          {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><MemoSizedRuleClues rules={sizedRules} size={gridSize} /></div>}
+          {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
+          {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} />}
+          {linkedDoubleArrows.length > 0 && <MemoLinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
+          <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />
         </div>
-        <BoardMarks items={variantClues} />
-        {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><MemoSizedRuleClues rules={sizedRules} size={gridSize} /></div>}
-        {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
-        {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} />}
-        {linkedDoubleArrows.length > 0 && <MemoLinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
-        <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />
+        <span className="board-resize-font-metric" aria-hidden="true" />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
         {modeBadge}

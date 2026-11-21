@@ -8,6 +8,7 @@ import { Button } from './Button'
 import { Modal } from './Modal'
 import { RESIZE_STEP, ResizeStepControls } from './ResizeStepControls'
 import { usePlayPreference } from './usePlayPreference'
+import { previewDesktopBoards, rememberInlineStyles } from './desktop-resize-preview'
 
 const HANDLE_CARD_GAP = 6
 const DRAG_SLOP = 4
@@ -34,18 +35,6 @@ function clampWidth(width: number, min: number, max: number) {
 function describeWidth(element: HTMLElement | null, width: number) {
   element?.setAttribute('aria-valuenow', String(width))
   element?.setAttribute('aria-valuetext', `${width} pixels`)
-}
-
-function rememberStyles(element: HTMLElement, names: string[]) {
-  const properties = names.map(name => ({
-    name, value: element.style.getPropertyValue(name), priority: element.style.getPropertyPriority(name),
-  }))
-  return () => {
-    for (const { name, value, priority } of properties) {
-      if (value) element.style.setProperty(name, value, priority)
-      else element.style.removeProperty(name)
-    }
-  }
 }
 
 function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset }: {
@@ -235,8 +224,8 @@ export function DesktopPlayLayout({ enabled, className, children }: {
     const scale = scaleAtWidth(width)
     const height = page.getBoundingClientRect().height / scale
     if (!(scale > 0 && height > 0)) return null
-    const restorePage = rememberStyles(page, ['scale', 'transform-origin', 'will-change', 'height', 'flex'])
-    const restoreEdges = rememberStyles(edges, ['--desktop-layout-scale'])
+    const restorePage = rememberInlineStyles(page, ['scale', 'transform-origin', 'will-change', 'height', 'flex'])
+    const restoreEdges = rememberInlineStyles(edges, ['--desktop-layout-scale'])
     const handles = edges.querySelectorAll<HTMLElement>('.desktop-layout-edge')
     layout.setAttribute('data-layout-resizing', '')
     page.style.transformOrigin = 'center top'
@@ -340,7 +329,8 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
   function beginPreview(): WidthPreview | null {
     const workspace = workspaceRef.current
     if (!workspace) return null
-    const restore = rememberStyles(workspace, ['--play-input-width', '--play-input-scale'])
+    const restore = rememberInlineStyles(workspace, ['--play-input-width', '--play-input-scale'])
+    const clearBoards = previewDesktopBoards(workspace)
     workspace.setAttribute('data-layout-resizing', '')
     const update = (input: number) => {
       workspace.style.setProperty('--play-input-width', `${input}px`)
@@ -349,6 +339,7 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     return {
       update,
       clear(nextWidth) {
+        clearBoards()
         restore()
         // React may have committed a new preference while the preview was live.
         if (nextWidth !== width) update(nextWidth)
