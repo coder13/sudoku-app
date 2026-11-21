@@ -251,6 +251,37 @@ fn verified_unique_positions_keep_every_positive_uniqueness_exercise() {
 
 #[cfg(feature = "teaching")]
 #[test]
+fn rectangle_graphs_keep_valid_proofs_with_an_unrelated_parity_clue() {
+    for technique in [
+        Technique::UniqueRectangleAic,
+        Technique::UniqueRectangleDiscontinuousNiceLoop,
+        Technique::UniqueRectangleContinuousNiceLoop,
+    ] {
+        for example in technique.practice_examples() {
+            let source = example.position().unwrap();
+            let mut puzzle = VariantPuzzle::classic(source.givens);
+            let compiled = puzzle.compile().unwrap();
+            let variant = VariantTechnique::Classic(technique);
+            let expected = compiled
+                .deductions(&source.entries, &source.eliminations, variant)
+                .unwrap();
+            assert!(expected.iter().any(|hint| hint.actions == example.expected_actions));
+            let cell = source.givens.iter().position(|&digit| digit != 0).unwrap();
+            let parity = if source.givens[cell] % 2 == 0 { crate::Parity::Even } else { crate::Parity::Odd };
+            puzzle.rules.push(PuzzleRule::Parity { cells: vec![cell], parity });
+            let compiled = puzzle.compile().unwrap();
+            let position = compiled.proof_position(&source.entries, &source.eliminations).unwrap();
+
+            assert!(!compiled.classic_search_is_empty(&position, technique));
+            assert_eq!(position.rectangle_guardians.get(), Some(&true));
+            assert_eq!(position.uniqueness.get(), Some(&true));
+            assert_eq!(compiled.explain(&position, variant), expected);
+        }
+    }
+}
+
+#[cfg(feature = "teaching")]
+#[test]
 fn candidate_removals_cannot_supply_a_uniqueness_assumption() {
     let example = Technique::UniqueRectangle1.practice_example();
     let source = example.position().unwrap();
@@ -347,6 +378,40 @@ fn an_exhausted_uniqueness_probe_does_not_reclassify_a_unique_puzzle() {
         !compiled
             .explain(&position, VariantTechnique::WhispersHouseSupport)
             .is_empty()
+    );
+}
+
+#[cfg(feature = "wasm-api")]
+#[test]
+fn thermo_sandwich_skips_rectangle_graphs_with_only_two_unblocked_cells() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/sandwich-coach-9VLq.json"
+    ))
+    .unwrap();
+    let puzzle: VariantPuzzle = serde_json::from_value(fixture["puzzle"].clone()).unwrap();
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.extra_rule_cells.count_ones(), 79);
+    let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
+
+    for technique in [
+        Technique::UniqueRectangleAic,
+        Technique::UniqueRectangleDiscontinuousNiceLoop,
+        Technique::UniqueRectangleContinuousNiceLoop,
+    ] {
+        assert!(compiled.classic_search_is_empty(&position, technique));
+        assert!(
+            compiled
+                .explain(&position, VariantTechnique::Classic(technique))
+                .is_empty()
+        );
+    }
+    assert_eq!(position.rectangle_guardians.get(), Some(&false));
+    assert!(position.uniqueness.get().is_none());
+
+    let expected = parse_givens(fixture["solution"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        compiled.solve(&[0; CELLS], &[0; CELLS], 20_000),
+        Ok(expected)
     );
 }
 

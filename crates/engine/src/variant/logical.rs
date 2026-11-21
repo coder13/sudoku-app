@@ -1194,6 +1194,7 @@ pub(super) struct ProofPosition<'a> {
     board: Board,
     pub masks: [u16; CELLS],
     uniqueness: OnceCell<bool>,
+    rectangle_guardians: OnceCell<bool>,
     rectangle_inference: RectangleInferenceCache,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
@@ -1504,6 +1505,7 @@ impl CompiledVariant {
             board,
             masks,
             uniqueness: OnceCell::new(),
+            rectangle_guardians: OnceCell::new(),
             rectangle_inference: RectangleInferenceCache::default(),
             overlay: OnceCell::new(),
         }

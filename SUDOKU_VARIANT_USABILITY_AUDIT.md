@@ -233,3 +233,22 @@ Nine alternating, warmed Wasm samples on Darwin arm64 measured the median thread
 | Thermo Sandwich | 634.057 → 67.196 | 238.103 → 244.454 |
 
 The lower-tier generation check treats the new deduction as a Medium move. Five former recipes could no longer reach their advertised difficulty. Checked replacements cover the same difficulty range and include two distinct Extreme recipes. The new Extreme recipes have 17 and 21 givens.
+
+
+## Skip impossible Unique Rectangle searches
+
+Thermo Sandwich's Sandwich clues and Thermometers touch 79 cells. The remaining two cells cannot form a four-corner rectangle. Unique Rectangle AIC and both Unique Rectangle Nice Loops now check for an eligible two-box rectangle using the live candidates and added rule scopes. They skip the 4,096-node uniqueness check and graph construction when every rectangle is excluded. If an eligible rectangle exists, the normal bounded uniqueness check and proof filters still apply.
+
+Across 116 archived 9×9 definitions, 912 paired Wasm replies matched in full. The comparisons include ranked hints, the three unbounded searches used by Technique Finder before and after a move, eight full trace replies, retained hint pages, and 26 seeded generation results. All nine positive rectangle-chain exercises kept their complete proof lists with and without an unrelated parity clue. The variant scoring version remains 15.
+
+The table reports median thread CPU time in milliseconds from nine alternating, warmed measurements on Darwin arm64. Hint requests used the rated puzzle's actual tier. The two timings for Finder use the complete selected Unique Rectangle AIC search.
+
+| Published puzzle | Ranked opening hints before → after | Unique Rectangle AIC before → after | Rating before → after |
+| --- | --- | --- | --- |
+| Thermo Sandwich | 187.072 → 17.413 | 174.254 → 9.397 | 64.968 → 65.708 |
+| American Food | 51.937 → 52.436 | 10.751 → 10.686 | 1.601 → 1.610 |
+| Leftovers | 1.253 → 1.267 | 5.262 → 0.952 | 2.169 → 2.138 |
+| Brain Zaps | 4.388 → 4.380 | 3.631 → 3.630 | 0.458 → 0.457 |
+| Sudoku Spider | 0.960 → 0.946 | 4.096 → 4.534 | 0.569 → 0.737 |
+
+Thermo Sandwich kept all eight opening hints, its 163-step Very Hard walkthrough, and the published exact grid. It continues to report zero Unique Rectangle chain moves at the opening position.
