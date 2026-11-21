@@ -8,6 +8,7 @@ import { createServer } from 'vite'
 import { chromium } from '../tools/react-board-performance/node_modules/playwright/index.mjs'
 import { makeGame } from '../src/sudoku/game.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
+import { savedPuzzles, waitForSavedPuzzle } from '../tests/helpers/browser-puzzle-saves.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const option = flag => {
@@ -24,7 +25,8 @@ const mixedImport = JSON.parse(await readFile(resolve(root, 'tests/fixtures/glob
 const gameKey = 'sudoku-app:v1:game:' + game.id
 const sourceFiles = [
   'src/components/Worktable.tsx', 'src/components/usePuzzleGeneration.ts', 'src/sudoku/engine.ts',
-  'src/sudoku/puzzle-revision.ts', 'src/sudoku/storage.ts', 'scripts/check-worktable-lifecycle.mjs',
+  'src/sudoku/puzzle-revision.ts', 'src/sudoku/storage.ts', 'src/sudoku/puzzle-saves.ts',
+  'scripts/check-worktable-lifecycle.mjs', 'tests/helpers/browser-puzzle-saves.mjs',
   'src/components/ImportPuzzle.tsx', 'src/sudoku/puzzle-preview.ts', 'tests/fixtures/global-entropy-quadruple-preview.json',
   'package-lock.json', 'tools/react-board-performance/package-lock.json',
 ]
@@ -129,11 +131,9 @@ async function enabled(page, title) {
     .some(button => button.title === title && !button.disabled), title)
 }
 async function boardSnapshot(page) {
-  return page.evaluate(key => {
-    const saved = JSON.parse(localStorage.getItem(key))
-    if (!saved) return null
-    return { position: saved.position, past: saved.past, future: saved.future, actionHistory: saved.actionHistory ?? [] }
-  }, gameKey)
+  const saved = (await savedPuzzles(page)).find(item => item.id === game.id)
+  if (!saved) return null
+  return { position: saved.position, past: saved.past, future: saved.future, actionHistory: saved.actionHistory ?? [] }
 }
 async function arm(page, type) { return page.evaluate(type => window.workerProbe.arm({ type }), type) }
 async function held(page, id) {
@@ -247,10 +247,7 @@ const checks = [
     await held(page, reply)
     await page.locator('.sudoku-grid [data-cell="2"]').click()
     await page.keyboard.press('Control+4')
-    await page.waitForFunction(key => {
-      const { center, corner } = JSON.parse(localStorage.getItem(key)).position
-      return (center[2] | corner[2]) !== 0
-    }, gameKey)
+    await waitForSavedPuzzle(page, saved => saved.id === game.id && (saved.position.center[2] | saved.position.corner[2]) !== 0)
     const edited = await boardSnapshot(page)
     assert.equal(edited.position.entries, before.position.entries, 'the user entered a note, not a digit')
     assert.ok(edited.past.length > before.past.length)
@@ -273,7 +270,7 @@ const checks = [
     await page.locator('.sudoku-grid [data-cell="2"]').click()
     await page.keyboard.press('c')
     await page.getByRole('button', { name: 'Light rose', exact: true }).click()
-    await page.waitForFunction(key => JSON.parse(localStorage.getItem(key)).position.colors[2] === 1, gameKey)
+    await waitForSavedPuzzle(page, saved => saved.id === game.id && saved.position.colors[2] === 1)
     const colored = await boardSnapshot(page)
     assert.equal(colored.position.entries, before.position.entries)
     assert.deepEqual(colored.position.center, before.position.center)
@@ -297,10 +294,7 @@ const checks = [
     await page.getByRole('button', { name: 'Stop coloring', exact: true }).click()
     await page.locator('.sudoku-grid [data-cell="2"]').click()
     await page.keyboard.press('Control+4')
-    await page.waitForFunction(key => {
-      const { center, corner } = JSON.parse(localStorage.getItem(key)).position
-      return (center[2] | corner[2]) !== 0
-    }, gameKey)
+    await waitForSavedPuzzle(page, saved => saved.id === game.id && (saved.position.center[2] | saved.position.corner[2]) !== 0)
     await terminated(page, hint.workerId)
     assert.equal(await page.getByRole('button', { name: 'Close hint', exact: true }).count(), 0,
       'a semantic note edit must hide the old hint and close its collection')
@@ -313,7 +307,7 @@ const checks = [
     await page.locator('.sudoku-grid [data-cell="2"]').click()
     await page.keyboard.press('c')
     await page.getByRole('button', { name: 'Light rose', exact: true }).click()
-    await page.waitForFunction(key => JSON.parse(localStorage.getItem(key)).position.colors[2] === 1, gameKey)
+    await waitForSavedPuzzle(page, saved => saved.id === game.id && saved.position.colors[2] === 1)
     await terminated(page, hint.workerId)
     await enabled(page, 'Generate candidates')
     assert.equal(await page.getByRole('button', { name: 'Close hint', exact: true }).count(), 0,
@@ -390,7 +384,7 @@ const checks = [
     return { assertions: 10 }
   }],
   ['leave-generation', '/puzzles/new/difficulty?variant=mini', async page => {
-    const savedIds = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('sudoku-app:v1:game:')).sort())
+    const savedIds = async () => (await savedPuzzles(page)).map(saved => saved.id).sort()
     const before = await savedIds()
     const reply = await arm(page, 'generate-mini')
     await page.getByRole('button', { name: /^Start .*puzzle$/ }).click()

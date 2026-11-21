@@ -1,7 +1,8 @@
 import { syncSettings, type SettingsValues } from './sync-settings.ts'
 import type { Game } from './game.ts'
-import { activityPrefix, lastPlayed } from './puzzle-activity.ts'
-import { GAME_PREFIX, readGame } from './storage.ts'
+import { lastPlayed } from './puzzle-activity.ts'
+import { readGame } from './storage.ts'
+import { legacyPuzzleSaves, type PuzzleSaves, type PuzzleVersion } from './puzzle-saves.ts'
 
 export class SyncError extends Error {
   status: number
@@ -63,84 +64,88 @@ function matchesProgress(base: Base, save: { hash: string; progressHash: string 
   return base.hash === save.hash || base.progressHash === save.progressHash
 }
 
-export function createSyncEngine(storage: Storage, deviceId: string, request: SyncRequest, notify: (id: string, copiedFrom?: string) => void) {
+export function createSyncEngine(storage: Storage, deviceId: string, request: SyncRequest,
+  notify: (id: string, copiedFrom?: string) => void | Promise<void>, saves: PuzzleSaves = legacyPuzzleSaves(storage)) {
   const prefix = 'sudoku-app:sync:' + deviceId + ':'
   const basePrefix = prefix + 'base:'
   const cursorKey = prefix + 'cursor'
-  const cache = new Map<string, { raw: string; game: Game; hash: string; progressHash: string }>()
+  const cache = new Map<string, { version: PuzzleVersion; game: Game; hash: string; progressHash: string }>()
   const baseFor = (id: string): Base => JSON.parse(storage.getItem(basePrefix + id) ?? 'null') ?? empty
   const remember = (id: string, base: Base) => storage.setItem(basePrefix + id, JSON.stringify(base))
 
   async function local(id: string) {
     for (;;) {
-      const raw = storage.getItem(GAME_PREFIX + id)
-      if (raw === null) { cache.delete(id); return { raw, game: null, hash: 'deleted', progressHash: 'deleted' } }
+      const record = await saves.read(id)
+      if (!record || record.value === null) {
+        cache.delete(id)
+        return { version: record?.version, game: null, hash: 'deleted', progressHash: 'deleted', played: undefined }
+      }
       const cached = cache.get(id)
-      if (cached?.raw === raw) return cached
-      const game = readGame(id, raw)
+      if (cached?.version === record.version) return { ...cached, played: record.played }
+      const game = readGame(id, record.value)
       if (!game) throw new SyncError(422, 'A local puzzle could not be read.')
       const [hash, progressHash] = await Promise.all([fingerprint(game), progressFingerprint(game)])
-      const entry = { raw, game, hash, progressHash }
-      if (storage.getItem(GAME_PREFIX + id) === raw) { cache.set(id, entry); return entry }
+      const entry = { version: record.version, game, hash, progressHash }
+      if ((await saves.read(id))?.version === record.version) {
+        cache.set(id, entry)
+        return { ...entry, played: record.played }
+      }
     }
   }
 
-  function install(id: string, game: Game | null, played: number, copiedFrom?: string) {
-    if (game) {
-      storage.setItem(activityPrefix + id, String(played))
-      storage.setItem(GAME_PREFIX + id, JSON.stringify(game))
-    } else {
-      storage.removeItem(GAME_PREFIX + id)
-      storage.removeItem('gridroom:v1:game:' + id)
-      storage.removeItem(activityPrefix + id)
-    }
-    notify(id, copiedFrom)
-  }
-
-  function fork(game: Game, hash: string, played: number) {
-    // Stable across retries after a quota error, tab close or lost reply.
+  function conflictCopy(game: Game, hash: string, played: number) {
+    // A stable ID lets a retry reuse an existing copy.
     const id = 'copy-' + hash
-    if (storage.getItem(GAME_PREFIX + id) === null) {
-      install(id, { ...game, id, title: game.title.slice(0, 56) + ' (conflict copy)', ratingAttempt: undefined }, played, game.id)
-    }
-    return id
+    return { game: { ...game, id, title: game.title.slice(0, 56) + ' (conflict copy)', ratingAttempt: undefined }, played }
   }
 
   async function pull(id: string, copies: Map<string, string>) {
     const remote = await request<Remote>('puzzles/' + encodeURIComponent(id))
-    const game = remote.game === null ? null : readGame(id, JSON.stringify(remote.game))
+    const game = remote.game === null ? null : readGame(id, remote.game)
     if (game === undefined || (game ? await fingerprint(game) : 'deleted') !== remote.hash) {
       throw new Error('A downloaded puzzle could not be verified. Your local progress is safe.')
     }
     const progressHash = game ? await progressFingerprint(game) : 'deleted'
     const base = baseFor(id)
     if (remote.revision <= base.revision) return false
-    const here = await local(id)
-    // No await between reading the local save and recording the merged result.
     const oursReachedServer = base.pending === remote.hash && remote.revision === base.revision + 1
-    const modified = !matchesProgress(base, here)
-    if (matchesProgress({ ...remote, progressHash }, here)) {
-      if (game && here.game && game.elapsed > here.game.elapsed) {
-        install(id, { ...here.game, elapsed: game.elapsed }, Math.max(remote.played, lastPlayed(here.game, storage)))
+    for (;;) {
+      const here = await local(id)
+      const modified = !matchesProgress(base, here)
+      const playedHere = here.game ? here.played ?? lastPlayed(here.game, storage) : 0
+      let next = game
+      let played = remote.played
+      let copy: ReturnType<typeof conflictCopy> | undefined
+      if (matchesProgress({ ...remote, progressHash }, here)) {
+        if (!game || !here.game || game.elapsed <= here.game.elapsed) break
+        next = { ...here.game, elapsed: game.elapsed }
+        played = Math.max(played, playedHere)
+      } else if (oursReachedServer || (modified && matchesProgress(base, { ...remote, progressHash }))) {
+        // Only our pending save or the other device's timer changed.
+        break
+      } else if (!here.game && base.revision && modified && game) {
+        copy = conflictCopy(game, remote.hash, played)
+        next = null
+      } else if (modified && here.game) {
+        copy = conflictCopy(here.game, here.hash, playedHere)
       }
-    } else if (oursReachedServer || (modified && matchesProgress(base, { ...remote, progressHash }))) {
-      // Only our pending save or the other device's timer changed. Keep working locally.
-    } else if (!here.game && base.revision && modified && game) {
-      copies.set(id, fork(game, remote.hash, remote.played))
-      // Preserve the pending local deletion. The next push advances the tombstone.
-    } else {
-      if (modified && here.game) copies.set(id, fork(here.game, here.hash, lastPlayed(here.game, storage)))
-      install(id, game, remote.played)
+      const result = await saves.change(id, here.version, next, played, copy)
+      if (!result.saved) continue
+      if (copy) {
+        copies.set(id, copy.game.id)
+        if (result.copied) await notify(copy.game.id, id)
+      }
+      await notify(id)
+      break
     }
     remember(id, { revision: remote.revision, hash: remote.hash, elapsed: remote.elapsed, progressHash })
     return true
   }
 
-  function puzzleIds() {
-    const ids = new Set<string>()
+  async function puzzleIds() {
+    const ids = new Set(await saves.ids())
     for (let index = 0; index < storage.length; index++) {
       const key = storage.key(index) ?? ''
-      if (key.startsWith(GAME_PREFIX)) ids.add(key.slice(GAME_PREFIX.length))
       if (key.startsWith(basePrefix)) ids.add(key.slice(basePrefix.length))
     }
     return ids
@@ -157,7 +162,7 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
 
   async function pendingIds() {
     const ids = new Set<string>()
-    for (const id of puzzleIds()) {
+    for (const id of await puzzleIds()) {
       if (await pending(id).catch(error => {
         if (error instanceof SyncError && error.status === 422) return true
         throw error
@@ -193,7 +198,7 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
       if (changes.length < 100) break
     }
     onPuzzlesLoaded?.()
-    for (const id of uploads ?? puzzleIds()) {
+    for (const id of uploads ?? await puzzleIds()) {
       const base = baseFor(id)
       const here = await local(id).catch(error => {
         if (!(error instanceof SyncError) || error.status !== 422) throw error
@@ -204,7 +209,7 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
       const elapsed = here.game?.elapsed ?? 0
       if (matchesProgress(base, here) && !(includeElapsed && elapsed > base.elapsed) && !base.pending) continue
       if (!here.game && !base.revision && !base.pending) continue
-      const played = here.game ? lastPlayed(here.game, storage) : Date.now()
+      const played = here.game ? here.played ?? lastPlayed(here.game, storage) : Date.now()
       const game = here.game && { ...here.game, pendingSave: undefined }
       remember(id, { ...base, pending: here.hash })
       try {

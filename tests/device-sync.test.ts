@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { test } from 'node:test'
+import { IDBFactory } from 'fake-indexeddb'
 import { makeGame, EMPTY, enter, isSolved, setGamePaused, undo, type Game } from '../src/sudoku/game.ts'
-import { GAME_PREFIX } from '../src/sudoku/storage.ts'
+import { createIndexedPuzzleSaves, GAME_PREFIX } from '../src/sudoku/puzzle-saves.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
@@ -206,6 +207,47 @@ test('two devices resume full independent saves, order by play, and retain both 
     b.write(enter(b.read('two')!, [4], 'value', 5)); await b.run(); await a.run()
     assert.equal(a.read('two'), null)
     assert.ok(a.games().some(game => game.title.startsWith('Second (conflict copy)') && game.position.entries[4] === '5'))
+  } finally { sqlite.close() }
+})
+
+test('linked devices sync IndexedDB saves, including simultaneous offline moves', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    function indexedClient(device: Credentials, api: ReturnType<typeof syncRequest>) {
+      const storage = new MemoryStorage()
+      const saves = createIndexedPuzzleSaves(new IDBFactory(), () => storage)
+      const engine = createSyncEngine(storage, device.id, api, () => {}, saves)
+      return { ...engine, saves, storage }
+    }
+    const first = indexedClient(creator, phone)
+    const secondDevice = indexedClient(second, computer)
+    const game = makeGame('indexed-sync', 'Indexed sync', EMPTY, 'imported')
+    const { record } = await first.saves.change(game.id, undefined, game)
+    assert.deepEqual(await first.pendingIds(), new Set([game.id]))
+    await first.run()
+    await secondDevice.run()
+    const downloaded = await secondDevice.saves.read(game.id)
+    assert.deepEqual(downloaded?.value, game)
+    assert.equal(secondDevice.storage.getItem(GAME_PREFIX + game.id), null)
+
+    const firstMove = enter(game, [0], 'value', 1)
+    const secondMove = enter(game, [0], 'value', 2)
+    await first.saves.change(game.id, record?.version, firstMove)
+    await secondDevice.saves.change(game.id, downloaded?.version, secondMove)
+    await first.run()
+    const result = await secondDevice.run()
+    const copyId = result.copies.get(game.id)
+    assert.ok(copyId)
+    await first.run()
+    assert.deepEqual((await first.saves.read(game.id))?.value, firstMove)
+    const copy = (await first.saves.read(copyId))?.value
+    assert.equal(typeof copy === 'object' && copy?.position.entries[0], '2')
+
+    const current = await first.saves.read(game.id)
+    await first.saves.change(game.id, current?.version, null)
+    await first.run()
+    await secondDevice.run()
+    assert.equal((await secondDevice.saves.read(game.id))?.value, null)
   } finally { sqlite.close() }
 })
 
