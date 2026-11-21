@@ -103,6 +103,11 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       case 'anti-knight':
       case 'anti-king':
       case 'global-entropy':
+      case 'sandwich':
+      case 'little-killer':
+      case 'x-sum':
+      case 'skyscrapers':
+        // The fog covers the grid. Outside labels and their directions are public.
         return [rule]
       default:
         return allVisible(rule.cells) ? [rule] : []
@@ -112,6 +117,57 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
   return { ...puzzle, givens, rules: shown }
 }
 
+const lineFragments = {
+  between: 'Between line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
+  renban: 'Renban line', 'region-sum': 'Region Sum line', thermometer: 'thermometer', whispers: 'Whispers line',
+} as const
+
+/** Describe visible fragments without inferring the clues' covered digits or cells. */
+export function fogFragmentLabels(rules: readonly VariantRule[], visible: ReadonlySet<number>) {
+  const labels: string[][] = Array.from({ length: 81 }, () => [])
+  const addFragment = (cells: readonly number[], description: string) => {
+    if (cells.every(cell => visible.has(cell))) return
+    for (const cell of new Set(cells)) if (visible.has(cell)) labels[cell].push(description)
+  }
+  for (const rule of rules) {
+    switch (rule.type) {
+      case 'killer-cages':
+        for (const { cells, sum } of rule.cages) {
+          if (cells.every(cell => visible.has(cell))) continue
+          const corner = Math.min(...cells)
+          for (const cell of cells) if (visible.has(cell)) labels[cell].push(cell === corner
+            ? `cage total ${sum}, outline continues under fog` : 'cage outline continues under fog')
+        }
+        break
+      case 'quadruple': {
+        const cell = rule.topLeft
+        addFragment([cell, cell + 1, cell + 9, cell + 10], 'part of a Quadruple clue')
+        break
+      }
+      case 'between': case 'entropic': case 'modular': case 'palindrome':
+      case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
+        addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
+        break
+      case 'arrow':
+        addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')
+        break
+      case 'kropki':
+        for (const pair of rule.consecutive?.pairs ?? []) addFragment(pair, 'part of a white dot')
+        for (const pair of rule.ratioTwo?.pairs ?? []) addFragment(pair, 'part of a black dot')
+        break
+      case 'xv':
+        for (const pair of [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])]) addFragment(pair, 'part of a sum clue')
+        break
+      case 'adjacent-total':
+        addFragment(rule.cells, 'part of a sum clue')
+        break
+      case 'inequality':
+        addFragment([rule.less, rule.greater], 'part of an inequality sign')
+        break
+    }
+  }
+  return labels
+}
 
 export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle }
 const fogViews = new WeakMap<VariantGame, FogView>()

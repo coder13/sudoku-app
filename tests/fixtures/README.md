@@ -1524,6 +1524,8 @@ The [Global Entropy audit](../../SUDOKU_GLOBAL_ENTROPY_AUDIT.md) records the sou
 
 ## Modular Lines native and app integration
 
+`fog-coach.json` records the original Sudoku Coach codes, publication notes, and published completions for *Entropy Quad Fog 2* and *Entropic Spiral 3*. The imports preserve partial Quadruple shapes and outside Sandwich totals. The independent counter and Wasm both verify a unique completion for each. The Fnxt control remains in `modular-coach.json`. [Entropy Quad Fog 2](https://sudoku.coach/en/s/E3xE) · [Entropic Spiral 3](https://sudoku.coach/en/s/DD1N)
+
 `modular-newman.json` records both inspected PDFs for Philip Newman's eighteen-given Birbs of Paradise, its six independent Entropic paths, six independent Modular paths and printed completion. `modular-coach.json` retains eight original sources, their descriptions, solutions, image hashes and the compiler's original nine-cell-wide demonstration. Three complete 9 × 9 sources have independent unique completions; removing either line family from the published puzzle yields multiple completions. Six companion/grid gaps stay explicit. The two zero-given imports preserve every sum and marker, including HCHW's printed XI total. [Source rules, app contracts, package sizes, measurements and limits](../../SUDOKU_MODULAR_AUDIT.md)
 
 ## X-Sums app integration

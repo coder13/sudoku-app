@@ -57,7 +57,7 @@ test('Quadruple circles occupy the intended internal intersections and retain re
     { type: 'quadruple', topLeft: 63, digits: [2, 2, 6] },
     { type: 'quadruple', topLeft: 70, digits: [1, 3, 7, 9] },
   ]
-  const tree = capture(VariantClues, { rules })
+  const tree = renderedElements(VariantClues, { rules })
   const groups = tree.filter(({ props }) => props.className === 'variant-quadruple')
   assert.equal(groups.length, 4)
   for (const [index, group] of groups.entries()) {
@@ -95,12 +95,12 @@ test('Killer totals and their border gaps leave room for every Quadruple circle 
       const start = Number.parseFloat((total.props.style as { insetInlineStart: string }).insetInlineStart) / 100
       assert.ok(start > .28, 'The total must start beyond the circle and its stroke')
       assert.ok(start + .3 < .925, 'A two-digit total must fit inside the cage cell')
-      const clueTree = capture(VariantClues, { rules })
-      const cageComponent = clueTree.find(({ type }) => typeof type === 'function' && type.name === 'Cage')!
-      const circle = clueTree.find(({ props }) => props.className === 'variant-quadruple')!
-      assert.ok(clueTree.indexOf(circle) > clueTree.indexOf(cageComponent), 'Circle symbols must paint above cage edges in either source order')
-      const edges = capture(cageComponent.type as Component, cageComponent.props)
-      const top = String(edges.find(({ type }) => type === 'path')!.props.d)
+      const svg = renderToStaticMarkup(createElement(VariantClues, { rules }))
+      const topEdge = /<path class="variant-cage-edge" d="([^"]+)"/.exec(svg)
+      assert.ok(topEdge)
+      assert.ok(svg.indexOf('class="variant-quadruple"') > topEdge.index,
+        'Circle symbols must paint above cage edges in either source order')
+      const top = topEdge[1]
       const gapEnd = Number(/^M([^,]+)/.exec(top)![1]) - 3
       assert.ok(Math.abs(gapEnd - (start + .3)) < 1e-9, 'The border gap must match the moved total')
     }

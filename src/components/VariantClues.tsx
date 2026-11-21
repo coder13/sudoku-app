@@ -1,5 +1,5 @@
 import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
-import { useId, useMemo } from 'react'
+import { memo, useId, useMemo } from 'react'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
@@ -517,12 +517,44 @@ function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [n
   </g>
 }
 
-export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly VariantRule[]; viewBox?: string }) {
+function visibleCellPath(cells: ReadonlySet<number>) {
+  const runs: string[] = []
+  for (let row = 0; row < 9; row++) {
+    for (let column = 0; column < 9; column++) {
+      if (!cells.has(row * 9 + column)) continue
+      const first = column
+      while (column < 8 && cells.has(row * 9 + column + 1)) column++
+      const width = column - first + 1
+      runs.push(`M${first} ${row}h${width}v1h-${width}z`)
+    }
+  }
+  return runs.join(' ')
+}
+
+export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
+  rules: readonly VariantRule[]; viewBox?: string; visibleCells?: ReadonlySet<number>
+}) {
+  const marker = useId()
+  const clipId = `${marker}-fog`
+  const clip = useMemo(() => visibleCells && visibleCellPath(visibleCells), [visibleCells])
+  const drawing = <VariantClueDrawing rules={rules} marker={marker} />
+  return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
+    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+    {clip === undefined ? drawing : <>
+      <defs><clipPath id={clipId}><path d={clip} /></clipPath></defs>
+      <g clipPath={`url(#${clipId})`}>{drawing}</g>
+    </>}
+  </svg>
+}
+
+// A reveal changes the clip path while the authored geometry stays in place.
+const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
+  rules: readonly VariantRule[]; marker: string
+}) {
   const clones = cloneLayout(rules)
   const cloneIndices = new Map<number, number>()
   rules.forEach((rule, index) => { if (rule.type === 'clone') cloneIndices.set(index, cloneIndices.size) })
   const disjoint = useMemo(() => disjointGroupRuleIndices(rules), [rules])
-  const marker = useId()
   const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
   const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
   const sumEnds = useMemo(() => sharedRegionSumEnds(rules), [rules])
@@ -567,8 +599,7 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
       markedEdges.add(pairKey(corner + 1, corner + 9))
     }
   }
-  return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
-    {rules.some(rule => rule.type === 'arrow') && arrowHead(marker)}
+  return <>
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'between-endpoints' && rule.type === 'between') return <BetweenClue key={`${index}-endpoints`} cells={rule.cells} endpoints />
       if (overlay === 'whispers-label' && rule.type === 'whispers') return <WhispersLabel key={`${index}-whispers-label`} rule={rule} markedEdges={markedEdges} />
@@ -663,8 +694,8 @@ export function VariantClues({ rules, viewBox = '0 0 9 9' }: { rules: readonly V
         <text className="variant-clone-label-mark" data-clone-label-cell={cell} x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
       </g>)}
     </g>)}
-  </svg>
-}
+  </>
+})
 
 const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
 

@@ -1,6 +1,8 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Board } from '../../src/components/Board'
+import type { VariantPuzzle } from '../../src/sudoku/engine'
+import { projectFogPuzzle } from '../../src/sudoku/fog'
 import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
 import { fiveJigsawForSeed, MINI_GRID, SEVEN_BOXLESS_GRID } from '../../src/sudoku/grid'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
@@ -131,6 +133,25 @@ export const AlgebraicCageCaptions: Story = {
   },
   decorators: [(Story) => <Width width={320}><Story /></Width>],
 }
+const fogPuzzle = {
+  version: 1,
+  givens: '0'.repeat(81),
+  rules: [
+    { type: 'killer-cages', cages: [{ cells: [45, 46, 47], sum: 12 }] },
+    { type: 'whispers', cells: [63, 64, 65], minDifference: 5 },
+    { type: 'sandwich', cells: [79, 70, 61, 52, 43, 34, 25, 16, 7], direction: 'north', sum: 17 },
+  ],
+} satisfies VariantPuzzle
+const fogCells = new Set([45, 46, 54, 55, 63, 64, 72, 73])
+const fogEntries = '0'.repeat(54) + '8' + '0'.repeat(8) + '1' + '0'.repeat(17)
+export const FogFragments: Story = {
+  args: {
+    variantPuzzle: fogPuzzle, fog: { entries: fogEntries, cells: fogCells, puzzle: projectFogPuzzle(fogPuzzle, fogCells) },
+    givens: fogPuzzle.givens, values: fogEntries, selected: [54],
+  },
+  decorators: [(Story) => <Width width={340}><Story /></Width>],
+}
+
 export const WithoutGuides: Story = { args: { showGuides: false } }
 export const CellSelection: Story = { render: (args) => <SelectableGrid {...args} /> }
 const candidateExample = enter(enter(inProgress, [3, 5], 'center', 6), [2, 5], 'color', 4)

@@ -285,3 +285,54 @@ test('classic Fog hides authored givens until a logical placement starts the rev
   assert.equal(logical.positions[0].givens[54], '0')
   assert.equal(logical.positions.at(-1).givens[54], '8')
 })
+
+test('published mixed Fog imports keep outside totals public and exclude clipped Quadruples from opening proofs', async ({ mock }) => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/fog-coach.json', import.meta.url), 'utf8')) as
+    { id: string; url: string; title: string; description: string; code: string; solution: string }[]
+  const { sqlite, fetcher } = syncDatabase()
+  let changedNote = false
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    const source = sources.find(item => item.url === path)
+    if (!source) return fetcher(path, init)
+    const specificSudoku = { sudoku_id: source.id, name: source.title, sudoku: source.code,
+      description: changedNote ? source.description + '\nDigits in shaded cells count twice.' : source.description,
+      custom_constraints: false, blocked: false }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    for (const source of sources) {
+      const preview = await prepareImportedPuzzle(source.url)
+      const { game } = preview
+      assert.ok(game.variant?.fog)
+      assert.equal(game.title, source.title)
+      assert.equal(game.variant.solution, source.solution)
+      assertVariantCompletion(game.variant.puzzle, source.solution)
+      const position = variantPosition(game.variant, game.position)
+      const view = fogView(game.variant)!
+      if (source.id === 'E3xE') {
+        assert.equal(view.cells.size, 45)
+        assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'quadruple').length, 15)
+        assert.equal(position.puzzle.rules?.filter(rule => rule.type === 'quadruple').length, 6)
+        assert.equal(position.puzzle.rules?.some(rule => rule.type === 'quadruple' && rule.topLeft === 32), false)
+      } else {
+        assert.equal(view.cells.size, 8)
+        const totals = position.puzzle.rules?.filter(rule => rule.type === 'sandwich')
+        assert.deepEqual(totals?.map(rule => [rule.direction, rule.sum]), [['north', 17], ['west', 12]])
+        assert.ok(totals?.[1].cells.every(cell => !view.cells.has(cell)))
+        const candidates = await playCandidates(game)
+        assert.equal(candidates?.[34], 0xff)
+        const withoutOutside = await runEngine({ type: 'variant', operation: 'candidates', position: {
+          ...position, puzzle: { ...position.puzzle, rules: position.puzzle.rules?.filter(rule => rule.type !== 'sandwich') },
+        } })
+        assert.equal(withoutOutside[34], 0x1ff)
+      }
+      const hints = await puzzleHints(game)
+      assert.ok(hints.choices.length >= 2)
+      for (const hint of hints.choices) {
+        if ('variant' in hint.evidence) assert.deepEqual(hint.evidence.variant.source?.puzzle, position.puzzle)
+      }
+    }
+    changedNote = true
+    await assert.rejects(prepareImportedPuzzle(sources[1].url), /has author instructions/)
+  } finally { sqlite.close() }
+})

@@ -1,4 +1,4 @@
-import type { FogView } from '../sudoku/fog'
+import { fogFragmentLabels, type FogView } from '../sudoku/fog'
 import { cloneElement, memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
@@ -362,6 +362,14 @@ export function Board({
   const variantPuzzle = fog?.puzzle ?? fullPuzzle
   const givens = fog?.puzzle.givens ?? fullGivens
   const variantRules = variantPuzzle?.rules
+  const clipCells = fog && fog.cells.size < 81 ? fog.cells : undefined
+  const drawingRules = useMemo(() => {
+    if (!clipCells || !fullPuzzle?.rules) return variantRules
+    if (!fullPuzzle.rules.some(rule => rule.type === 'clone')) return fullPuzzle.rules
+    // Keep lettered Clone clues in the same order as the rules and hints.
+    const visibleClones = variantRules?.filter(rule => rule.type === 'clone') ?? []
+    return [...fullPuzzle.rules.filter(rule => rule.type !== 'clone'), ...visibleClones]
+  }, [clipCells, fullPuzzle?.rules, variantRules])
   const linkCounts = useMemo(() => whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined,
     [whispersGuide, variantPuzzle])
   const houseFills = useMemo(() => new Set(variantRules?.flatMap(variantHouseFillCells)), [variantRules])
@@ -388,9 +396,14 @@ export function Board({
   const regionColors = useMemo(() => regionsAt && jigsawRegionColors(regionsAt, gridSize), [regionsAt, gridSize])
   const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
+  const fragments = useMemo(() => clipCells && drawingRules ? fogFragmentLabels(drawingRules, clipCells) : undefined,
+    [clipCells, drawingRules])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
-  const cageTotals = useMemo(() => new Map((variantRules ?? sizedRules)?.flatMap((rule) => rule.type === 'killer-cages'
-    ? rule.cages.map(({ cells, sum }) => [Math.min(...cells), sum] as const) : [])), [variantRules, sizedRules])
+  const cageTotals = useMemo(() => new Map((drawingRules ?? sizedRules)?.flatMap(rule => rule.type === 'killer-cages'
+    ? rule.cages.flatMap(({ cells, sum }) => {
+      const corner = Math.min(...cells)
+      return !clipCells || clipCells.has(corner) ? [[corner, sum] as const] : []
+    }) : [])), [clipCells, drawingRules, sizedRules])
   const algebraicLabels = useMemo(() => {
     const captions = new Map<number, string>()
     const descriptions = new Map<number, string[]>()
@@ -410,12 +423,13 @@ export function Board({
     for (const cell of [...cageTotals.keys(), ...algebraicLabels.captions.keys()]) insets.set(cell, { top: .3, bottom: insets.get(cell)?.bottom ?? .07 })
     return insets
   }, [clones, cageTotals, algebraicLabels])
-  const variantClues = useMemo(() => {
-    const rules = variantRules?.filter(rule => rule.type === highlightedRule || !variantHouseFillCells(rule).length)
-    return rules?.length
-      ? [<div className="board-variant-clues" key={JSON.stringify(rules)}><VariantClues rules={rules} /></div>]
-      : NO_MARKS
-  }, [highlightedRule, variantRules])
+  const clueDrawing = useMemo(() => {
+    const rules = drawingRules?.filter(rule => rule.type === highlightedRule || !variantHouseFillCells(rule).length)
+    return rules?.length ? { rules, key: JSON.stringify(rules) } : undefined
+  }, [highlightedRule, drawingRules])
+  const variantClues = useMemo(() => clueDrawing
+    ? [<div className="board-variant-clues" key={clueDrawing.key}><VariantClues rules={clueDrawing.rules} visibleCells={clipCells} /></div>]
+    : NO_MARKS, [clueDrawing, clipCells])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const highlightedDigits = useMemo(() => marksOf(highlightedDigitMask), [highlightedDigitMask])
   const matchAnyDigit = highlightedDigitMatch === 'any' && highlightedDigitMask !== 0
@@ -474,14 +488,14 @@ export function Board({
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
       regionColor: regionAtCell === undefined ? undefined : regionColors?.[regionAtCell], houseFill: houseFills.has(index),
       whispersLinks: linkCounts?.[index] || undefined,
-      cageStyle: cageTotal !== undefined && variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined,
+      cageStyle: cageTotal !== undefined && drawingRules ? { insetInlineStart: `${cageLabelInset(index, drawingRules) * 100}%` } : undefined,
       boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
       regionBottom: Boolean(regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize]),
       alternateBox: rectangularBoxes && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
-      clues: [cellClues?.[index]?.join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
+      clues: [cellClues?.[index]?.join(', '), fragments?.[index].join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
     }
-  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, linkCounts, rectangularBoxes, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
+  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, linkCounts, rectangularBoxes, cageTotals, algebraicLabels, clones, drawingRules, cellClues, fragments, sizedLabels])
 
   // Parent timers and fresh event closures do not change the grid. Event wrappers
   // read the latest committed callbacks even when this element tree is reused.

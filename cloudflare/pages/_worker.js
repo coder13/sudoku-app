@@ -94,9 +94,10 @@ function coachTypedDeclaration(lines) {
 
 const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s go)[.!]?$/i
 
-// These full descriptions concern construction or the author's solve. Bind
-// each reviewed description to its publication so added instructions are visible.
+// These descriptions cover construction, the author's solve, or where to ask
+// for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
 ])
