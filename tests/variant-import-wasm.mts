@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
-import { applyDeduction, EMPTY, enter, isSolved, needsInitialCandidates, paintCells, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, clearCandidateColors, EMPTY, enter, isSolved, needsInitialCandidates, paintCandidate, paintCells, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -54,6 +54,7 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
     userBoxCandidates: ['0', '256', ...Array(79).fill('0')].join('-'),
     colours: ['blue', 'yellowHeavy', 'grey'],
     userColours: ['10', '2', ...Array(79).fill('')].join(','),
+    userCellCandidatesColours: '1+4+0-1+8+1-2+3+2',
   }
   const input = coachCode(state)
   const plain = (await prepareImportedPuzzle(fixture.coach)).game
@@ -69,6 +70,7 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   assert.equal(game.position.center[1], 8)
   assert.equal(game.position.corner[1], 128)
   assert.deepEqual(game.position.importedCellColors, { 0: ['blue', 'yellowHeavy'], 1: ['grey'] })
+  assert.deepEqual(game.position.importedCandidateColors, { 1: { 4: 'blue', 8: 'yellowHeavy' }, 2: { 3: 'grey' } })
   assert.equal(game.started, true)
   assert.equal(game.timeUntracked, true)
   assert.equal(needsInitialCandidates(game), false)
@@ -89,11 +91,36 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   assert.equal(cleared.position.colors[0], 0)
   assert.deepEqual(redo(undo(cleared)).position, cleared.position)
   const reordered = await prepareImportedPuzzle(coachCode({ ...state, colours: ['grey', 'yellowHeavy', 'blue'],
-    userColours: ['21', '0', ...Array(79).fill('')].join(',') }), [plain])
+    userColours: ['21', '0', ...Array(79).fill('')].join(','),
+    userCellCandidatesColours: '2+3+0-1+8+1-1+4+2' }), [plain])
   assert.equal(findImportAttempt([restored], reordered), restored)
   const different = await prepareImportedPuzzle(coachCode({ ...state,
     userColours: ['1', '2', ...Array(79).fill('')].join(',') }), [plain])
   assert.equal(findImportAttempt([restored], different), undefined)
+  const differentCandidateShade = await prepareImportedPuzzle(coachCode({ ...state,
+    userCellCandidatesColours: '1+4+1-1+8+1-2+3+2' }), [plain])
+  assert.equal(findImportAttempt([restored], differentCandidateShade), undefined)
+
+  const erasedCandidateShade = paintCandidate(restored, { cell: 1, digit: 8 }, 0)
+  assert.equal(erasedCandidateShade.position.importedCandidateColors?.[1][8], undefined)
+  assert.equal(erasedCandidateShade.position.corner[1], 128)
+  const recolored = paintCandidate(erasedCandidateShade, { cell: 1, digit: 4 }, 2)
+  assert.equal(recolored.position.candidateColors?.[1][4], 2)
+  assert.equal(recolored.position.importedCandidateColors?.[1], undefined)
+  const recoloredReloaded = readGame(recolored.id, JSON.stringify(recolored))
+  assert.ok(recoloredReloaded)
+  assert.deepEqual(undo(undo(recoloredReloaded)).position, restored.position)
+  const removed = enter(restored, [1], 'corner', 8)
+  assert.equal(removed.position.importedCandidateColors?.[1][8], undefined)
+  assert.deepEqual(undo(removed).position, restored.position)
+  const shown = enter(removed, [2], 'center', 3)
+  assert.equal(shown.position.importedCandidateColors?.[2][3], 'grey')
+  assert.equal(enter(shown, [2], 'value', 3).position.importedCandidateColors?.[2], undefined)
+  const clearedCandidates = clearCandidateColors(recolored)
+  assert.equal(clearedCandidates.position.importedCandidateColors, undefined)
+  assert.equal(clearedCandidates.position.candidateColors, undefined)
+  assert.deepEqual(clearedCandidates.position.importedCellColors, recolored.position.importedCellColors)
+  assert.deepEqual(redo(undo(clearedCandidates)).position, clearedCandidates.position)
   const colorsOnly = await prepareImportedPuzzle(coachCode({ ...state,
     userDigits: undefined, userCellCandidates: undefined, userBoxCandidates: undefined }), [plain])
   assert.equal(colorsOnly.hasProgress, true)
@@ -102,6 +129,7 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   const restarted = restartGame(restored)
   assert.equal(restarted.position.entries, EMPTY)
   assert.equal(restarted.position.importedCellColors, undefined)
+  assert.equal(restarted.position.importedCandidateColors, undefined)
   assert.equal(restarted.givens, fixture.puzzle.givens)
   assert.equal(needsInitialCandidates(restarted), true)
   const cached = await prepareImportedPuzzle(input, [plain])

@@ -2252,7 +2252,7 @@ export function Worktable({
   )
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
-      hasColors={colorTarget === 'cell' ? Boolean(game.position.importedCellColors) || game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
+      hasColors={colorTarget === 'cell' ? Boolean(game.position.importedCellColors) || game.position.colors.some(Boolean) : Boolean(game.position.candidateColors || game.position.importedCandidateColors)}
       canContinueGroup={canContinueColorGroup} groupMessage={colorGroupMessage} onContinueGroup={continueColorGroup}
       disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
       onStop={() => setColorBrush(null)} onClear={clearColors} />

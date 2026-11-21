@@ -4,7 +4,7 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
-import { isImportedCellColor, type ImportedCellColors } from './imported-cell-colors.ts'
+import { isImportedColor, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
@@ -58,7 +58,7 @@ export type ImportedPuzzle = {
   title?: string
   sharedPuzzleId?: string
   collection?: CollectionReference
-  progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors'>
+  progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors'>
   whispersGuide?: true
 }
 
@@ -230,7 +230,7 @@ function readCoachPlayerColors(data: Record<string, unknown>): ImportedCellColor
   for (const [cell, shades] of cells.entries()) {
     if (!shades) continue
     const names = [...shades].map(shade => palette[COACH_BASE62.indexOf(shade)])
-    if (!names.every(isImportedCellColor) || new Set(names).size !== names.length) {
+    if (!names.every(isImportedColor) || new Set(names).size !== names.length) {
       throw new Error('This Sudoku Coach progress has invalid or unsupported cell colors.')
     }
     colors[cell] = names.sort()
@@ -238,9 +238,28 @@ function readCoachPlayerColors(data: Record<string, unknown>): ImportedCellColor
   return Object.keys(colors).length ? colors : undefined
 }
 
+function readCoachCandidateColors(palette: unknown, encoded: unknown): CandidateColors<string> | undefined {
+  if (encoded === undefined || encoded === '') return
+  const marks = typeof encoded === 'string' ? encoded.split('-') : []
+  const invalid = () => new Error('This Sudoku Coach progress has invalid or unsupported candidate colors.')
+  if (!marks.length || marks.length > 81 * 9 || !Array.isArray(palette) || palette.length > COACH_BASE62.length) throw invalid()
+  const colors: CandidateColors<string> = {}
+  for (const mark of marks) {
+    // Coach stores one color for each cell and digit, using a base62 palette index.
+    const match = /^([1-7]\d|80|\d)\+([1-9])\+([0-9A-Za-z])$/.exec(mark)
+    if (!match) throw invalid()
+    const cell = Number(match[1]), digit = Number(match[2]), shade = palette[COACH_BASE62.indexOf(match[3])]
+    if (!isImportedColor(shade) || colors[cell]?.[digit] !== undefined) throw invalid()
+    const cellColors = colors[cell] ??= {}
+    cellColors[digit] = shade
+  }
+  return colors
+}
+
 function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours].some(hasData)) return
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
   const importedCellColors = readCoachPlayerColors(data)
+  const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours)
   const digits = data.userDigits === undefined || data.userDigits === '' ? EMPTY : data.userDigits
   if (typeof digits !== 'string' || !/^[0-9]{81}$/.test(digits)) {
     throw new Error('This Sudoku Coach progress has invalid placed digits.')
@@ -251,8 +270,8 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   const entries = [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
   const center = readCoachCandidateMasks(data.userCellCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   const corner = readCoachCandidateMasks(data.userBoxCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
-  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors) {
-    return { entries, center, corner, ...(importedCellColors && { importedCellColors }) }
+  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors || importedCandidateColors) {
+    return { entries, center, corner, ...(importedCellColors && { importedCellColors }), ...(importedCandidateColors && { importedCandidateColors }) }
   }
 }
 

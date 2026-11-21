@@ -143,11 +143,15 @@ export const CandidatesAndColor: Story = {
     highlightedDigit: 2,
   },
 }
-export const ImportedCellColors: Story = {
+export const ImportedColors: Story = {
   render: args => <SelectableGrid {...args} />,
   args: {
     values: valuesOf(inProgress),
-    position: { ...inProgress.position, importedCellColors: { 2: ['blueHeavy', 'yellow'], 3: ['cyan'], 5: ['lime', 'magenta', 'orange'] } },
+    position: {
+      ...enter(enter(inProgress, [3], 'center', 6), [5], 'corner', 2).position,
+      importedCellColors: { 2: ['blueHeavy', 'yellow'], 3: ['cyan'], 5: ['lime', 'magenta', 'orange'] },
+      importedCandidateColors: { 3: { 6: 'purpleHeavy' }, 5: { 2: 'orangeHeavy' } },
+    },
     candidateLayout: 'center-corner',
   },
   decorators: [(Story) => <Width width={320}><Story /></Width>],

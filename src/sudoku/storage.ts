@@ -18,7 +18,7 @@ import {
   type PlayerRating, type RatingAttempt, type RatingEvent, type RatingFinish,
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
-import { validImportedCellColors } from './imported-cell-colors.ts'
+import { isImportedColor, validImportedCellColors } from './imported-colors.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
@@ -51,14 +51,14 @@ function publish(next: Room) {
   listeners.forEach((listener) => listener())
 }
 
-function validCandidateColors(value: unknown, grid: PlayGrid): boolean {
+function validCandidateColors(value: unknown, grid: PlayGrid, validShade: (shade: unknown) => boolean): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   return Object.entries(value).every(([key, colors]) => {
     const index = Number(key)
     return Number.isInteger(index) && index >= 0 && index < grid.size ** 2 && String(index) === key &&
       colors && typeof colors === 'object' && !Array.isArray(colors) &&
       Object.entries(colors).every(([digit, color]) => /^[1-9]$/.test(digit) && Number(digit) <= grid.size &&
-        typeof color === 'number' && Number.isInteger(color) && color >= 1 && color <= COLORS.length)
+        validShade(color))
   })
 }
 
@@ -70,7 +70,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, importedCellColors, candidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
     const layout = { size: grid.size, regions: draftRegions }
     if (!isJigsawGrid(layout)) return false
@@ -85,7 +85,9 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
     (importedCellColors === undefined || !draft && grid.size === 9 && validImportedCellColors(importedCellColors)) &&
-    (candidateColors === undefined || validCandidateColors(candidateColors, grid)) &&
+    (candidateColors === undefined || validCandidateColors(candidateColors, grid, shade =>
+      typeof shade === 'number' && Number.isInteger(shade) && shade >= 1 && shade <= COLORS.length)) &&
+    (importedCandidateColors === undefined || !draft && grid.size === 9 && validCandidateColors(importedCandidateColors, grid, isImportedColor)) &&
     (eliminations === undefined || validDigits(eliminations, mask)) &&
     (chainSketch == null || validChainSketchState(chainSketch))
 }

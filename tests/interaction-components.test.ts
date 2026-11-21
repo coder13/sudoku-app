@@ -90,6 +90,24 @@ test('imported cell colors retain each named shade and yield to conflicts and hi
   assert.doesNotMatch(String(importedOnly[3].props['aria-label']), /Peach/)
 })
 
+test('imported candidate colors label and shade visible digits in read-only and painting views', () => {
+  const position = { center: [2, ...Array(80).fill(0)], corner: [0, 16, ...Array(79).fill(0)],
+    importedCandidateColors: { 0: { 2: 'blueHeavy', 9: 'orangeHeavy' }, 1: { 5: 'cyan' } } }
+  const props = { position, candidates: undefined, candidateLayout: 'center-corner', showPlayerColors: false, showImportedColors: true }
+  const readOnly = boardTree(props)
+  const shaded = readOnly.filter(({ props }) => String(props.className).includes('imported-candidate-color'))
+  assert.deepEqual(shaded.map(({ props }) => props.children), [2, 5])
+  assert.deepEqual(shaded.map(({ props }) => (props.style as { '--imported-candidate-tone': string })['--imported-candidate-tone']),
+    ['#a1d5f7', '#c5f7f5'])
+  assert.match(String(readOnly.find(({ props }) => props.role === 'gridcell')?.props['aria-label']), /2 deep blue/)
+
+  const painted = boardTree({ ...props, onPaintCandidate() {} })
+  const buttons = painted.filter(({ props }) => String(props.className).includes('paint-candidate'))
+  assert.deepEqual(buttons.map(({ props }) => props['aria-label']), ['2 in row 1, column 1, deep blue', '5 in row 1, column 2, cyan'])
+  assert.ok(buttons.every(({ props }) => String((props.children as ReactElement<{ className: string }>).props.className).includes('imported-candidate-color')))
+  assert.ok(!boardTree({ ...props, showImportedColors: false }).some(({ props }) => String(props.className).includes('imported-candidate-color')))
+})
+
 test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {
   const tree = boardTree({
     grid: { size: 4, boxRows: 2, boxColumns: 2 },

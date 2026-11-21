@@ -21,7 +21,7 @@ import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
 import type { CustomModeDefinition } from './custom-modes.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
-import type { ImportedCellColors } from './imported-cell-colors.ts'
+import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -36,7 +36,8 @@ export type Position = {
   corner: number[]
   colors: number[]
   importedCellColors?: ImportedCellColors
-  candidateColors?: Record<number, Record<number, number>>
+  candidateColors?: CandidateColors<number>
+  importedCandidateColors?: CandidateColors<string>
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
   draftSizedRules?: SizedRuleGame['rules']
@@ -343,30 +344,43 @@ export function move(game: Game, position: Position): Game {
     ...game, ...(grid !== game.grid && { grid }),
     candidatesInitialized: candidatesInitialized || undefined,
     position: entries === position.entries && center === position.center && corner === position.corner
-      ? position : retainVisibleCandidateColors(game.givens, position),
+      ? position : retainCandidateColors(game.givens, game.position, position),
     past: [...game.past.slice(1 - HISTORY_SIZE), game.position],
     future: [],
     started: true,
   }
 }
 
-function retainVisibleCandidateColors(givens: string, position: Position): Position {
-  const { candidateColors, entries, center, corner } = position
-  if (!candidateColors) return position
-
-  const visible: NonNullable<Position['candidateColors']> = {}
+function filterCandidateColors<Shade>(colors: CandidateColors<Shade> | undefined, maskFor: (cell: number) => number) {
+  if (!colors) return
+  const kept: CandidateColors<Shade> = {}
   let removed = false
-  for (const [key, colors] of Object.entries(candidateColors)) {
+  for (const [key, marks] of Object.entries(colors)) {
     const cell = Number(key)
-    const mask = givens[cell] === '0' && entries[cell] === '0' ? center[cell] | corner[cell] : 0
-    const marks = Object.entries(colors)
-    const kept = marks.filter(([digit]) => hasCandidate(mask, Number(digit)))
-    if (kept.length) visible[cell] = Object.fromEntries(kept)
-    if (kept.length !== marks.length) removed = true
+    const mask = maskFor(cell)
+    const entries = Object.entries(marks)
+    const allowed = entries.filter(([digit]) => hasCandidate(mask, Number(digit)))
+    if (allowed.length) kept[cell] = Object.fromEntries(allowed)
+    if (allowed.length !== entries.length) removed = true
   }
-  if (!removed) return position
-  const next: Position = { ...position, candidateColors: visible }
-  if (!Object.keys(visible).length) delete next.candidateColors
+  if (!removed) return colors
+  return Object.keys(kept).length ? kept : undefined
+}
+
+function retainCandidateColors(givens: string, previous: Position, position: Position): Position {
+  const { candidateColors, importedCandidateColors, entries, center, corner, eliminations } = position
+  if (!candidateColors && !importedCandidateColors) return position
+  const empty = (cell: number) => givens[cell] === '0' && entries[cell] === '0'
+  const native = filterCandidateColors(candidateColors, cell => empty(cell) ? center[cell] | corner[cell] : 0)
+  // A Coach export can carry a shade for a digit that its candidate lists do not show.
+  // Keep that shade until the player removes the candidate, places a digit, or clears the colors.
+  const imported = filterCandidateColors(importedCandidateColors, cell => empty(cell)
+    ? ((center[cell] | corner[cell]) | ~(previous.center[cell] | previous.corner[cell])) & ~(eliminations?.[cell] ?? 0)
+    : 0)
+  if (native === candidateColors && imported === importedCandidateColors) return position
+  const next = { ...position, candidateColors: native, importedCandidateColors: imported }
+  if (!native) delete next.candidateColors
+  if (!imported) delete next.importedCandidateColors
   return next
 }
 
@@ -399,14 +413,23 @@ export function paintCells(game: Game, marks: readonly { cell: number; color: nu
 }
 
 export function paintCandidates(game: Game, marks: readonly (Candidate & { color: number })[]): Game {
-  const { candidateColors, entries, center, corner } = game.position
+  const { candidateColors, importedCandidateColors, entries, center, corner } = game.position
   const next = { ...candidateColors }
+  let imported = importedCandidateColors
   let changed = false
   for (const { cell, digit, color } of marks) {
     if (!Number.isInteger(color) || color < 0 || color > COLORS.length || !DIGITS.includes(digit) ||
       game.givens[cell] !== '0' || entries[cell] !== '0' || !hasCandidate(center[cell] | corner[cell], digit)) continue
     const current = next[cell]
-    if ((current?.[digit] ?? 0) === color) continue
+    const source = imported?.[cell]
+    if ((current?.[digit] ?? 0) === color && !source?.[digit]) continue
+    if (imported && source?.[digit]) {
+      if (imported === importedCandidateColors) imported = { ...imported }
+      const remaining = { ...source }
+      delete remaining[digit]
+      if (Object.keys(remaining).length) imported[cell] = remaining
+      else delete imported[cell]
+    }
     const colors = { ...current }
     if (color) colors[digit] = color
     else delete colors[digit]
@@ -417,13 +440,16 @@ export function paintCandidates(game: Game, marks: readonly (Candidate & { color
   if (!changed) return game
   const position: Position = { ...game.position, candidateColors: next }
   if (!Object.keys(next).length) delete position.candidateColors
+  if (imported && Object.keys(imported).length) position.importedCandidateColors = imported
+  else delete position.importedCandidateColors
   return move(game, position)
 }
 
 export function clearCandidateColors(game: Game): Game {
-  if (!game.position.candidateColors) return game
+  if (!game.position.candidateColors && !game.position.importedCandidateColors) return game
   const position = { ...game.position }
   delete position.candidateColors
+  delete position.importedCandidateColors
   return move(game, position)
 }
 
@@ -566,7 +592,7 @@ export function replaceCandidates(game: Game, masks: readonly number[], options:
   ) return game
   const position = { ...game.position, center, corner }
   return options.recordHistory === false
-    ? { ...game, candidatesInitialized: true, position: retainVisibleCandidateColors(game.givens, position), future: [] }
+    ? { ...game, candidatesInitialized: true, position: retainCandidateColors(game.givens, game.position, position), future: [] }
     : move(game, position)
 }
 

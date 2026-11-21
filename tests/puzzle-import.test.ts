@@ -176,6 +176,23 @@ test('Coach Current State keeps multiple player colors separate from the authore
     /invalid or unsupported cell colors/)
 })
 
+test('Coach Current State decodes candidate colors without changing either candidate style', async () => {
+  const palette = ['blueHeavy', 'orangeHeavy', ...Array(8).fill('blue'), '#542aff']
+  const masks = [4, 32, ...Array(79).fill(0)].join('-')
+  const data = { colours: palette, userCellCandidates: masks, userBoxCandidates: masks, userCellCandidatesColours: '0+2+0-1+5+1-80+9+A' }
+  const { progress } = await detectPuzzle(coach(data))
+  assert.deepEqual(progress?.importedCandidateColors, { 0: { 2: 'blueHeavy' }, 1: { 5: 'orangeHeavy' }, 80: { 9: '#542aff' } })
+  assert.deepEqual(progress?.center, [2, 16, ...Array(79).fill(0)])
+  assert.deepEqual(progress?.corner, progress?.center)
+  assert.deepEqual((await detectPuzzle(coach({ colours: palette, userCellCandidatesColours: '80+9+A' }))).progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0), importedCandidateColors: { 80: { 9: '#542aff' } },
+  })
+  for (const userCellCandidatesColours of ['81+2+0', '0+0+0', '0+2+B', '0+2+0-0+2+1', '0+2+0-', '00+2+0']) {
+    await assert.rejects(detectPuzzle(coach({ ...data, userCellCandidatesColours })), /invalid or unsupported candidate colors/)
+  }
+  await assert.rejects(detectPuzzle(coach({ ...data, colours: ['var(--bad)'] })), /invalid or unsupported candidate colors/)
+})
+
 test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
   const emptyMasks = Array(81).fill('0').join('-')
   assert.deepEqual(await detectPuzzle(coach({

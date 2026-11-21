@@ -47,7 +47,9 @@ export function continueStrongLinkColors(
   for (const [node, color] of colors) {
     const candidate = chainCandidate(node)
     const existing = colorAt(candidate)
-    if (target === 'cell' && position.importedCellColors?.[candidate.cell]) conflicts.push(candidate)
+    const imported = target === 'cell' ? position.importedCellColors?.[candidate.cell]
+      : position.importedCandidateColors?.[candidate.cell]?.[candidate.digit]
+    if (imported) conflicts.push(candidate)
     else if (!existing) marks.push({ ...candidate, color })
     else if (existing !== color) conflicts.push(candidate)
   }

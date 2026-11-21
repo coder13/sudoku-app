@@ -1574,6 +1574,10 @@ svg { flex-shrink: 0; }
   background: var(--tone);
   color-scheme: light;
 }
+.candidate-color.imported-candidate-color {
+  --tone: var(--imported-candidate-tone);
+  --tone-ink: #24375a;
+}
 .center-marks :is(.board-candidate:not(.candidate-button), .candidate-glyph):is(.candidate-color, .candidate-match:where(:not([data-mark]))) {
   --candidate-shape-size: 1em;
   border-radius: .2em;
