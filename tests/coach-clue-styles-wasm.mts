@@ -1,0 +1,107 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { test } from 'node:test'
+import { inflateSync } from 'node:zlib'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { playCandidates } from '../src/sudoku/variant-play.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
+
+const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-clue-styles.json', import.meta.url), 'utf8')) as
+  { id: string; url: string; title: string; description: string; code: string; solution: string }[]
+const source = (id: string) => sources.find(puzzle => puzzle.id === id)!
+
+type Layer = { type: string; settings?: Record<string, unknown>; segments: { cells: number[]; parameters: Record<string, unknown> }[] }
+function publishedData(code: string): { gridSize: number; givenConstraints: Layer[] } {
+  const bits = [...code.slice('SCv7_32_'.length)].map(char => Number.parseInt(char, 32).toString(2).padStart(5, '0')).join('')
+  const bytes = Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))
+  return JSON.parse(inflateSync(bytes).toString('utf8'))
+}
+
+function withSettings(id: string, type: string, settings: Record<string, unknown>) {
+  const data = publishedData(source(id).code)
+  return coachCode({
+    ...data,
+    givenConstraints: data.givenConstraints.map(layer => layer.type === type ? { ...layer, settings } : layer),
+  })
+}
+
+test('published ordinary Arrow styling preserves the circle, ordered shaft and sum', async () => {
+  const layers = ['HQXe', 'HBLt'].map(id => publishedData(source(id).code).givenConstraints.find(layer => layer.type === 'arrow')!)
+  assert.deepEqual(layers.map(layer => layer.settings?.bulbSize), [85, 85])
+  for (const layer of layers) {
+    const { variant } = await detectPuzzle(coachCode({ givenConstraints: [layer] }))
+    assert.deepEqual(variant?.puzzle.rules, layer.segments.map(({ cells: [circle, ...cells] }) => ({ type: 'arrow', circle, cells })))
+  }
+  await assert.rejects(detectPuzzle(source('HQXe').code), /consecutiveLine/)
+  await assert.rejects(detectPuzzle(source('HBLt').code), /pillArrow/)
+
+  // Apply the published drawing settings to an independently verified ordinary Arrow puzzle.
+  const styled = withSettings('Lq4f', 'arrow', layers[0].settings!)
+  const original = await detectPuzzle(source('Lq4f').code)
+  const { game } = await prepareImportedPuzzle(styled)
+  assert.deepEqual(game.variant?.puzzle, original.variant?.puzzle)
+  assert.equal(game.variant?.puzzle.rules?.length, 16)
+  assert.equal(game.variant?.solution, source('Lq4f').solution)
+  assertVariantCompletion(game.variant!.puzzle, source('Lq4f').solution)
+
+  const candidates = await playCandidates(game)
+  assert.equal(candidates?.length, 81)
+  candidates?.forEach((mask, cell) => assert.ok(mask & (1 << (Number(source('Lq4f').solution[cell]) - 1))))
+  await assert.rejects(detectPuzzle(withSettings('Lq4f', 'arrow', { ...layers[0].settings, sumMultiplier: 2 })), /arrow uses unsupported settings/)
+})
+
+test('published Thermometer and cage styles retain their complete mixed puzzles through both import paths', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  let badCageDeclaration = false
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    const puzzle = sources.find(puzzle => path === puzzle.url)
+    if (!puzzle) return fetcher(path, init)
+    const specificSudoku = { sudoku_id: puzzle.id, sudoku: puzzle.code, name: puzzle.title, custom_constraints: false, blocked: false,
+      description: badCageDeclaration ? 'All cages are 6 or 12.' : puzzle.description }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    const expectedTypes = {
+      '5uF2': ['entropic', 'whispers', 'whispers', 'thermometer', 'thermometer', 'xv'],
+      '5uuR': ['thermometer', 'between', 'renban', 'renban', 'renban', 'parity', 'extra-house', 'kropki'],
+      '5wyn': ['killer-cages', 'quadruple', 'quadruple', 'quadruple', 'quadruple', 'quadruple'],
+    }
+    for (const [id, types] of Object.entries(expectedTypes)) {
+      const puzzle = source(id)
+      const { game } = await prepareImportedPuzzle(puzzle.url)
+      const pasted = await detectPuzzle(puzzle.code)
+      assert.equal(game.title, puzzle.title)
+      assert.deepEqual(game.variant?.puzzle, pasted.variant?.puzzle)
+      assert.deepEqual(game.variant?.puzzle.rules?.map(rule => rule.type), types)
+      assert.equal(game.variant?.solution, puzzle.solution)
+      assertVariantCompletion(game.variant!.puzzle, puzzle.solution)
+
+      const layers = publishedData(puzzle.code).givenConstraints
+      const rules = game.variant!.puzzle.rules!
+      const thermo = layers.find(layer => layer.type === 'thermometer')
+      if (thermo) {
+        assert.equal(thermo.settings?.bulbSize, id === '5uF2' ? 80 : 82)
+        assert.deepEqual(rules.filter(rule => rule.type === 'thermometer'),
+          thermo.segments.map(({ cells }) => ({ type: 'thermometer', cells })))
+      } else {
+        const cage = layers.find(layer => layer.type === 'cage')!
+        assert.equal(cage.settings?.horizontalOffset, 23)
+        assert.equal(cage.segments.length, 22)
+        assert.deepEqual(rules[0], { type: 'killer-cages',
+          cages: cage.segments.map(({ cells, parameters }) => ({ cells, sum: parameters.sum })) })
+      }
+    }
+    badCageDeclaration = true
+    await assert.rejects(detectPuzzle(source('5wyn').url), /cage totals do not match the published description/)
+  } finally {
+    sqlite.close()
+  }
+  await assert.rejects(detectPuzzle(withSettings('5uF2', 'thermometer', { bulbSize: 80, allowEquality: true })),
+    /thermometer uses unsupported settings/)
+})

@@ -85,6 +85,7 @@ function hasData(value: unknown) {
 
 const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
 const LINE_STYLING = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
+const BULB_STYLING = new Set(['bulbSize', 'bulbBorderThickness', 'bulbBorderColour', 'bulbFillColour'])
 function unsupportedClueStyling(settings: unknown) {
   return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
 }
@@ -200,6 +201,7 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
 }
 
 type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7, 13] }
+  | { cageTotals: readonly [number, number] }
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
@@ -209,7 +211,12 @@ type CoachPublication = {
 }
 
 function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration {
-  return record(value) && Object.keys(value).length === 2 && value.globalEntropy === true &&
+  if (!record(value)) return false
+  if (Object.keys(value).length === 1 && Array.isArray(value.cageTotals) && value.cageTotals.length === 2) {
+    const [first, second] = value.cageTotals
+    return [first, second].every(sum => Number.isInteger(sum) && sum >= 1 && sum <= 45) && first !== second
+  }
+  return Object.keys(value).length === 2 && value.globalEntropy === true &&
     Array.isArray(value.adjacentTotals) && value.adjacentTotals.length === 2 &&
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
@@ -441,10 +448,14 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     }
     black.ratioTwo = { ...black.ratioTwo, negative: true }
   }
-  if (publication?.declaredRules && (
-    !rules.some(rule => rule.type === 'global-entropy') ||
-    !publication.declaredRules.adjacentTotals.every(sum => rules.some(rule => rule.type === 'adjacent-total' && rule.sum === sum))
-  )) {
+  const declaration = publication?.declaredRules
+  if (declaration && 'cageTotals' in declaration) {
+    const cages = rules.flatMap(rule => rule.type === 'killer-cages' ? rule.cages : [])
+    if (!cages.length || cages.some(cage => !declaration.cageTotals.includes(cage.sum))) {
+      throw new Error('The Sudoku Coach cage totals do not match the published description.')
+    }
+  } else if (declaration && (!rules.some(rule => rule.type === 'global-entropy') ||
+    !declaration.adjacentTotals.every(sum => rules.some(rule => rule.type === 'adjacent-total' && rule.sum === sum)))) {
     throw new Error('The Sudoku Coach export is missing rules from the published description.')
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
@@ -534,7 +545,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -708,7 +719,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
     } else if (constraint.type === 'betweenLine') {
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
-        !LINE_STYLING.has(key) && key !== 'bulbSize' && key !== 'bulbBorderThickness'))) {
+        !LINE_STYLING.has(key) && !BULB_STYLING.has(key)))) {
         throw new Error('This Sudoku Coach Between line uses unsupported settings.')
       }
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
@@ -734,9 +745,11 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
-      if (constraint.type === 'thermometer' && hasData(constraint.settings) && (!record(constraint.settings) ||
-        Object.keys(constraint.settings).some(key => !LINE_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach thermometer uses unsupported settings.')
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
+        !LINE_STYLING.has(key) && (constraint.type === 'thermometer'
+          ? key !== 'bulbSize' : !BULB_STYLING.has(key) && key !== 'arrowHeadLength')))) {
+        throw new Error(`This Sudoku Coach ${constraint.type} uses unsupported settings.`)
       }
       if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no cells for ${constraint.type}.`)
       for (const segment of constraint.segments) {
