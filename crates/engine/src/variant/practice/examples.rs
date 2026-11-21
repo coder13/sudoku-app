@@ -87,17 +87,36 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         ConsecutiveRun => [
             seed(
                 "209105307003068050805320609914530876307006025026780431732604090650291003490073560",
-                10, 4, [PuzzleRule::ConsecutiveRun { cells: vec![10, 18, 27], color: None }],
+                10, 4, [PuzzleRule::ConsecutiveRun { cells: vec![10, 18, 27], color: None, from_bulb: false }],
             ),
             seed(
                 "209140087170960204845327619914032800007400925506789401732654198650291743491870560",
-                14, 5, [PuzzleRule::ConsecutiveRun { cells: vec![13, 23, 14], color: None }],
+                14, 5, [PuzzleRule::ConsecutiveRun { cells: vec![13, 23, 14], color: None, from_bulb: false }],
             ),
             seed(
                 "209045387173068200005327600900532876387406925500789031732050100608091743490803562",
-                29, 1, [PuzzleRule::ConsecutiveRun { cells: vec![21, 29, 20], color: None }],
+                29, 1, [PuzzleRule::ConsecutiveRun { cells: vec![21, 29, 20], color: None, from_bulb: false }],
             ),
         ],
+        InsideGrid => {
+            let rows: Vec<Vec<usize>> = (0..5)
+                .map(|row| (0..5).map(|column| 4 + 8 * row + 10 * column).collect())
+                .collect();
+            [
+                seed(
+                    "794608205518902764236745981823176549459823176167459328981367452345281697672594813",
+                    4, 3, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                ),
+                seed(
+                    "794618235018930764236740981823176549459823176167459328981367452345281697672594813",
+                    14, 5, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                ),
+                seed(
+                    "794618235518932764236745981823176549459023176167059320981367452345281697672594813",
+                    48, 8, [PuzzleRule::InsideGrid { rows }],
+                ),
+            ]
+        },
         DistinctCells => [
             seed(
                 "534678912002195348198342567859761423426853791713924856901537284287419635345286179",

@@ -4196,7 +4196,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   pointer-events: none;
 }
 .variant-preview .variant-cage-edge { stroke-width: .11; }
-.variant-thermometer { color: var(--board-ink); opacity: .28; }
+.variant-thermometer { color: var(--line-clue-color, var(--board-ink)); opacity: .28; }
+.variant-thermometer[data-consecutive-thermometer] { opacity: .64; }
 .variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
 .variant-thermometer circle { fill: currentColor; }
 .variant-thermometer-overlap { color: var(--board-ink); opacity: .5; }
@@ -4475,6 +4476,19 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-ruleset-selector small { font-size: .8rem; color: var(--muted); }
 .variant-ruleset-selector:disabled label { cursor: default; opacity: .65; }
 
+.variant-inside-grid rect {
+  fill: color-mix(in srgb, var(--board-ink) 4%, transparent);
+  stroke: color-mix(in srgb, var(--board-ink) 37%, transparent);
+  stroke-width: .032;
+}
+.board-body[data-highlighted-rule="inside-grid"] .variant-inside-grid rect {
+  fill: color-mix(in srgb, var(--rule-accent) 18%, transparent);
+  stroke: var(--rule-accent);
+}
+.board-body[data-highlighted-rule="consecutive-run"] .variant-thermometer[data-consecutive-thermometer] {
+  color: var(--rule-accent);
+  opacity: .85;
+}
 .variant-consecutive-run polyline { fill: none; stroke: var(--line-clue-color, #8055ad); stroke-width: .16; stroke-linecap: round; stroke-linejoin: round; opacity: .78; }
 .board-body[data-highlighted-rule="consecutive-run"] .variant-consecutive-run polyline { stroke: var(--rule-accent); opacity: 1; }
 .board-body[data-highlighted-rule="distinct-cells"] [data-distinct-cells] rect { fill: var(--rule-accent); opacity: .25; }

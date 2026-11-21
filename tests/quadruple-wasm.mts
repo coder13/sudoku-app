@@ -608,3 +608,128 @@ test('reviewed Quadruple publications preserve colors, author-defined regions an
     await assert.rejects(detectPuzzle(sources[1].url), /unsupported authored markings/)
   } finally { sqlite.close() }
 })
+
+test('Code Cracker keeps its Inside Grid, Consecutive Thermometers and Quadruple proofs', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-inside-grid.json', import.meta.url), 'utf8')) as {
+    url: string; title: string; coach: string; description: string; solution: string; rows: number[][]
+    thermometers: number[][]; clues: { topLeft: number; digits: number[] }[]
+  }
+  const { sqlite, fetcher } = syncDatabase()
+  const specificSudoku = { sudoku_id: '7FCB', sudoku: source.coach, name: source.title, blocked: false,
+    description: source.description, custom_constraints: true }
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
+    if (url === source.url) return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+    if (url.startsWith('/api/v1/shares')) return fetcher(url, init)
+    return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {})
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+    assert.ok(game.variant)
+    const { puzzle, solution } = game.variant
+    assert.equal(game.title, source.title)
+    assert.equal(solution, source.solution)
+    assertVariantCompletion(puzzle, source.solution)
+    assert.deepEqual(puzzle.rules, [
+      { type: 'inside-grid', rows: source.rows },
+      ...source.thermometers.map(cells => ({ type: 'consecutive-run', cells, fromBulb: true, color: '#ff00ff' })),
+      ...source.clues.map(clue => ({ type: 'quadruple', ...clue })),
+    ])
+    const pasted = await detectPuzzle(source.coach)
+    assert.deepEqual(pasted.variant?.puzzle, puzzle)
+    const progressed = enter(game, [4], 'value', Number(solution[4]))
+    assert.deepEqual(readGame(game.id, JSON.stringify(progressed))?.variant, game.variant)
+    assert.deepEqual((await downloadSharedPuzzle(await publishSharedPuzzle(progressed))).variant?.puzzle, puzzle)
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+    for (const step of path.steps) for (const action of step.actions) {
+      if ('place' in action) assert.equal(action.place.digit, Number(solution[action.place.cell]))
+      else assert.notEqual(action.eliminate.digit, Number(solution[action.eliminate.cell]))
+    }
+
+    for (const [technique, proofText] of [
+      ['consecutive-run', /one at each step from the bulb/],
+      ['quadruple', /circle requires/],
+      ['inside-grid', /uses the same set/],
+    ] as const) {
+      const index = path.steps.findIndex(step => step.technique === technique)
+      assert.ok(index >= 0, `Missing ${technique}`)
+      const { entries, eliminations } = path.positions![index]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const hints = await puzzleHints(checkpoint, 'all', technique)
+      assert.ok(hints.choices.some(choice => 'variant' in choice.evidence && proofText.test(choice.evidence.variant.description)))
+      const moves = new Set(hints.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+      try { assert.equal(await scan.count(technique), moves.size) } finally { scan.close() }
+    }
+
+    for (const step of path.steps.filter(step => step.technique === 'inside-grid')) {
+      assert.ok('variant' in step.evidence)
+      const proof = step.evidence.variant.source?.deduction.evidence
+      assert.ok(proof?.type === 'constraint')
+      const support = insideGridTruth(source.rows, proof.cells, proof.domains)
+      for (const action of step.actions) {
+        assert.ok('eliminate' in action)
+        const { cell, digit } = action.eliminate
+        assert.equal(support[cell] & 1 << (digit - 1), 0)
+      }
+    }
+    const drills = await runEngine({ type: 'practice-examples', technique: 'inside-grid', variant: true })
+    assert.equal(drills.length, 3)
+    assert.ok(drills.every(drill => drill.deduction.technique === 'inside-grid'))
+
+    specificSudoku.description += '\nAll diamond digits are odd.'
+    await assert.rejects(detectPuzzle(source.url), /author instructions/)
+  } finally { sqlite.close() }
+})
+
+// Enumerate complete placements by choosing the five digits and a disjoint
+// layout for each. A layout visits every inside row and column and respects
+// the outer Sudoku houses. This does not use the engine's matching routine.
+function insideGridTruth(rows: number[][], proofCells: readonly number[], domains: readonly number[]) {
+  const side = rows.length
+  const cells = rows.flat()
+  const domainAt = new Map(proofCells.map((cell, i) => [cell, domains[i]]))
+  const support = Array<number>(81).fill(0)
+  const full = (1 << cells.length) - 1
+  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const layouts = digits.map(digit => {
+    const result: number[] = []
+    function place(row: number, used: number, cols: number, outerRows: number, outerCols: number, boxes: number) {
+      if (row === side) {
+        result.push(used)
+        return
+      }
+      for (const [column, cell] of rows[row].entries()) {
+        const cb = 1 << column, rb = 1 << Math.floor(cell / 9), ob = 1 << (cell % 9)
+        const bb = 1 << (Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3))
+        if (!(cols & cb || outerRows & rb || outerCols & ob || boxes & bb) &&
+          ((domainAt.get(cell) ?? 0) & (1 << (digit - 1)))) {
+          place(row + 1, used | (1 << (row * side + column)), cols | cb, outerRows | rb, outerCols | ob, boxes | bb)
+        }
+      }
+    }
+    place(0, 0, 0, 0, 0, 0)
+    return result
+  })
+  const chosen: [number, number][] = []
+  function combine(first: number, used: number) {
+    if (used === full) {
+      for (const [digit, layout] of chosen) {
+        cells.forEach((cell, i) => { if (layout & 1 << i) support[cell] |= 1 << (digit - 1) })
+      }
+      return
+    }
+    for (let i = first; i <= digits.length - (side - chosen.length); i++) {
+      for (const layout of layouts[i]) if (!(used & layout)) {
+        chosen.push([digits[i], layout])
+        combine(i + 1, used | layout)
+        chosen.pop()
+      }
+    }
+  }
+  combine(0, 0)
+  assert.ok(cells.every(cell => support[cell] !== 0))
+  return support
+}

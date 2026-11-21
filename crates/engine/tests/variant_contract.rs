@@ -1037,3 +1037,56 @@ fn partial_regions_enforce_only_marked_houses_with_repeated_quadruple_digits() {
     regions.push(regions[0].clone());
     assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::OverlappingRegion(1))));
 }
+
+#[test]
+fn inside_grid_uses_one_digit_set_and_validates_rotated_geometry() {
+    let rows: Vec<Vec<usize>> = (0..5)
+        .map(|row| (0..5).map(|column| 4 + 8 * row + 10 * column).collect())
+        .collect();
+    let solution = parse_givens(
+        "794618235518932764236745981823176549459823176167459328981367452345281697672594813",
+    )
+    .unwrap();
+    let mut givens = EMPTY;
+    for &cell in &rows[0] {
+        givens[cell] = solution[cell];
+    }
+    givens[38] = 5;
+    let mut puzzle = VariantPuzzle::classic(givens);
+    assert!(puzzle.compile().unwrap().candidates(&EMPTY, &NO_REMOVALS).is_ok());
+    puzzle.rules = vec![PuzzleRule::InsideGrid { rows: rows.clone() }];
+    assert!(matches!(
+        puzzle.compile().unwrap().candidates(&EMPTY, &NO_REMOVALS),
+        Err(VariantPositionError::Puzzle(Analysis::Conflict))
+    ));
+    puzzle.givens = solution;
+    assert_eq!(
+        puzzle.compile().unwrap().analyze(&EMPTY, &NO_REMOVALS, 1),
+        Ok(Analysis::Unique)
+    );
+    let mut invalid = rows;
+    invalid[0].swap(0, 1);
+    puzzle.rules = vec![PuzzleRule::InsideGrid { rows: invalid }];
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::InvalidRule(0))));
+}
+
+#[test]
+fn a_consecutive_thermometer_keeps_its_bulb_direction() {
+    let cells = vec![0, 10, 20];
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::ConsecutiveRun {
+        cells: cells.clone(), color: None, from_bulb: true,
+    });
+    let compiled = puzzle.compile().unwrap();
+    let masks = compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap();
+    assert_eq!([masks[0], masks[10], masks[20]], [0b001111111, 0b011111110, 0b111111100]);
+    let mut entries = EMPTY;
+    entries[0] = 5;
+    entries[10] = 4;
+    assert!(matches!(
+        compiled.candidates(&entries, &NO_REMOVALS),
+        Err(VariantPositionError::Puzzle(Analysis::Conflict))
+    ));
+    puzzle.rules = vec![PuzzleRule::ConsecutiveRun { cells, color: None, from_bulb: false }];
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}

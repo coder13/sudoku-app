@@ -102,6 +102,8 @@ catalog! {
     Inequality: "inequality", 8, Easy;
     /// Fit an ordered run of consecutive digits along a line.
     ConsecutiveRun: "consecutive-run", 15, Easy;
+    /// Fit one common digit set into the rows and columns of a rotated grid.
+    InsideGrid: "inside-grid", 40, Medium;
     /// Fit different digits into a shaded group smaller than a house.
     DistinctCells: "distinct-cells", 15, Easy;
     /// Match candidates among clone cells.
@@ -1505,7 +1507,7 @@ impl CompiledVariant {
             }
             RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
-            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
                     let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))

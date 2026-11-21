@@ -196,12 +196,36 @@ impl SquareTransform {
                 self.unordered(cells);
                 *color = None;
             }
-            ConsecutiveRun { cells, color } => {
+            ConsecutiveRun { cells, color, from_bulb } => {
                 self.path(cells);
-                if cells[0] > cells[cells.len() - 1] {
+                if !*from_bulb && cells[0] > cells[cells.len() - 1] {
                     cells.reverse();
                 }
                 *color = None;
+            }
+            InsideGrid { rows } => {
+                for row in rows.iter_mut() {
+                    self.path(row);
+                }
+                // The lowest-index corner comes first. Swapping the inner
+                // rows and columns leaves their common-set rule unchanged.
+                let last = rows.len() - 1;
+                if rows[last][0].min(rows[last][last]) < rows[0][0].min(rows[0][last]) {
+                    rows.reverse();
+                }
+                if rows[0][last] < rows[0][0] {
+                    for row in rows.iter_mut() {
+                        row.reverse();
+                    }
+                }
+                if rows[1][0] < rows[0][1] {
+                    for i in 1..rows.len() {
+                        let (top, bottom) = rows.split_at_mut(i);
+                        for (j, row) in top.iter_mut().enumerate() {
+                            std::mem::swap(&mut row[i], &mut bottom[0][j]);
+                        }
+                    }
+                }
             }
             KillerCages { cages, .. } => {
                 for cage in &mut *cages {

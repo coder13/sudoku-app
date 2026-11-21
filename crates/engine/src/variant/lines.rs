@@ -1,5 +1,6 @@
 mod group_sums;
 mod groups;
+mod inside_grid;
 pub(super) mod ray_houses;
 pub(super) mod renban_sum;
 
@@ -29,8 +30,9 @@ enum LineKind {
     PillArrow,
     Sum(u16),
     Renban,
-    ConsecutiveRun,
+    ConsecutiveRun { from_bulb: bool },
     DistinctCells,
+    InsideGrid(inside_grid::InsideGrid),
     ThreeGroups(groups::GroupLine),
     Between,
     Lockout,
@@ -84,7 +86,7 @@ impl LineConstraint {
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban)
             }
-            PuzzleRule::ConsecutiveRun { cells, color } | PuzzleRule::DistinctCells { cells, color } => {
+            PuzzleRule::ConsecutiveRun { cells, color, .. } | PuzzleRule::DistinctCells { cells, color } => {
                 let run = matches!(rule, PuzzleRule::ConsecutiveRun { .. });
                 let maximum = if run { 9 } else { 8 };
                 if !(2..=maximum).contains(&cells.len()) ||
@@ -95,7 +97,15 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
-                (cells.clone(), if run { LineKind::ConsecutiveRun } else { LineKind::DistinctCells })
+                let kind = match rule {
+                    PuzzleRule::ConsecutiveRun { from_bulb, .. } => LineKind::ConsecutiveRun { from_bulb: *from_bulb },
+                    _ => LineKind::DistinctCells,
+                };
+                (cells.clone(), kind)
+            }
+            PuzzleRule::InsideGrid { rows } => {
+                let grid = inside_grid::InsideGrid::compile(puzzle, rows).ok_or(invalid)?;
+                (rows.iter().flatten().copied().collect(), LineKind::InsideGrid(grid))
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
                 let partition = if matches!(rule, PuzzleRule::Entropic { .. }) {
@@ -323,7 +333,8 @@ impl LineConstraint {
             LineKind::PillArrow => pill_arrow_support(domains, support),
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
-            LineKind::ConsecutiveRun => consecutive_run_support(domains, support),
+            LineKind::ConsecutiveRun { from_bulb } => consecutive_run_support(domains, support, *from_bulb),
+            LineKind::InsideGrid(grid) => grid.support(domains, support),
             LineKind::DistinctCells => {
                 let union = domains.iter().fold(0, |union, mask| union | mask);
                 let mut set = union;
@@ -379,10 +390,11 @@ pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16]
 }
 
 /// Support an ordered sequence that can increase from either end.
-fn consecutive_run_support(domains: &[u16], support: &mut [u16]) {
+fn consecutive_run_support(domains: &[u16], support: &mut [u16], from_bulb: bool) {
     let length = domains.len();
+    let directions: &[bool] = if from_bulb { &[false] } else { &[false, true] };
     for first in 0..=9 - length {
-        for reverse in [false, true] {
+        for &reverse in directions {
             let digit_at = |i| 1u16 << (first + if reverse { length - 1 - i } else { i });
             if domains.iter().enumerate().all(|(i, domain)| domain & digit_at(i) != 0) {
                 for (i, mask) in support.iter_mut().enumerate() {

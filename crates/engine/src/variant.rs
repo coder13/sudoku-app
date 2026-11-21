@@ -231,6 +231,11 @@ rules! {
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         color: Option<String>,
     }
+    /// Require all rows and columns of a rotated grid to use the same digit set.
+    InsideGrid => "inside-grid" {
+        /// Ordered rows of the grid, with each cell identified by its outer index.
+        rows: Vec<Vec<usize>>,
+    }
     /// Constrain disjoint cages to given sums and distinct digits.
     KillerCages => "killer-cages" {
         /// The cages, which may have gaps between them in a mixed puzzle.
@@ -391,6 +396,9 @@ rules! {
         /// Optional authored line color.
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         color: Option<String>,
+        /// A bulb fixes the increasing direction to the path order.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_bulb: bool,
     }
     /// Require each three successive positions to use low, medium and high digits.
     Entropic => "entropic" {
@@ -701,6 +709,7 @@ impl VariantPuzzle {
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::ConsecutiveRun { .. }
                 | PuzzleRule::DistinctCells { .. }
+                | PuzzleRule::InsideGrid { .. }
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }

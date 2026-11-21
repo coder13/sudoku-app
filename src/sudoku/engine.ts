@@ -43,7 +43,8 @@ export type VariantRule =
   | { type: 'diagonal'; diagonal: 'main' | 'anti' }
   | { type: 'extra-house'; cells: readonly number[] }
   | { type: 'distinct-cells'; cells: readonly number[]; color?: string }
-  | { type: 'consecutive-run'; cells: readonly number[]; color?: string }
+  | { type: 'consecutive-run'; cells: readonly number[]; color?: string; fromBulb?: boolean }
+  | { type: 'inside-grid'; rows: readonly (readonly number[])[] }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }

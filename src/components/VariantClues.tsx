@@ -26,11 +26,24 @@ function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?
     x2={diagonal === 'main' ? size : 0} y2={size} />
 }
 
-function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
+function ThermometerClue({ cells, size = 9, consecutive, color }: {
+  cells: readonly number[]; size?: number; consecutive?: boolean; color?: string
+}) {
   const [bulbX, bulbY] = center(cells[0], size)
-  return <g className="variant-thermometer">
+  return <g className="variant-thermometer" data-consecutive-thermometer={consecutive || undefined}
+    style={color ? { '--line-clue-color': color } as CSSProperties : undefined}>
     <polyline points={points(cells, size)} />
     <circle cx={bulbX} cy={bulbY} r=".32" />
+  </g>
+}
+
+function InsideGridClue({ rows }: Extract<VariantRule, { type: 'inside-grid' }>) {
+  return <g className="variant-inside-grid">
+    {rows.flatMap(row => row.map(cell => {
+      const [cx, cy] = center(cell)
+      return <rect key={cell} x={cx - .33} y={cy - .33} width=".66" height=".66" rx=".045"
+        transform={`rotate(45 ${cx} ${cy})`} />
+    }))}
   </g>
 }
 
@@ -636,7 +649,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
@@ -711,7 +724,10 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
           return <DiagonalClue key={index} diagonal={rule.diagonal} />
         case 'distinct-cells':
           return <ExtraRegion key={index} cells={rule.cells} color={rule.color} distinct />
+        case 'inside-grid':
+          return <InsideGridClue key={index} {...rule} />
         case 'consecutive-run':
+          if (rule.fromBulb) return <ThermometerClue key={index} cells={rule.cells} color={rule.color} consecutive />
           return <g key={index} className="variant-consecutive-run"
             style={rule.color ? { '--line-clue-color': rule.color } as CSSProperties : undefined}>
             <polyline points={points(rule.cells)} />
@@ -844,9 +860,14 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
       case 'distinct-cells':
         for (const cell of rule.cells) labels[cell].push('Shaded group, all digits differ')
         break
+      case 'inside-grid':
+        rule.rows.forEach((row, i) => row.forEach((cell, j) =>
+          labels[cell].push(`Inside Grid row ${i + 1}, column ${j + 1}`)))
+        break
       case 'consecutive-run':
-        for (const cell of rule.cells) labels[cell].push(
-          `Consecutive Line from ${reference(rule.cells[0])} to ${reference(rule.cells.at(-1)!)}, digits increase by one from one end to the other`)
+        for (const cell of rule.cells) labels[cell].push(rule.fromBulb
+          ? `Consecutive Thermometer from the bulb at ${reference(rule.cells[0])}, digits increase by one at each step`
+          : `Consecutive Line from ${reference(rule.cells[0])} to ${reference(rule.cells.at(-1)!)}, digits increase by one from one end to the other`)
         break
       case 'extra-house':
         for (const cell of rule.cells) labels[cell].push(`${extraRegionName(rules, index)}, digits 1–9 once each`)

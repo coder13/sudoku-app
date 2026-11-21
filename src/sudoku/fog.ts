@@ -143,10 +143,13 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const ten = visibleMarks(rule.ten, visible, completeXv)
         return five || ten ? [{ type: 'xv', ...(five && { five }), ...(ten && { ten }) }] : []
       }
+      case 'inside-grid': return allVisible(rule.rows.flat()) ? [rule] : []
       case 'distinct-cells':
         return allVisible(rule.cells) ? [rule] : visibleShadedGroups(rule.cells, visible).map(cells => ({ ...rule, cells }))
-      case 'whispers':
       case 'consecutive-run':
+        if (rule.fromBulb) return allVisible(rule.cells) ? [rule] : []
+        return visiblePaths(rule.cells, visible).map(cells => ({ ...rule, cells }))
+      case 'whispers':
       case 'modular':
       case 'entropic':
         // Every contiguous run keeps the original pairwise phase relationships.
@@ -228,6 +231,9 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
       case 'between': case 'lockout': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
+        break
+      case 'inside-grid':
+        addFragment(rule.rows.flat(), 'part of an Inside Grid')
         break
       case 'distinct-cells':
         addFragment(rule.cells, 'part of a shaded group')

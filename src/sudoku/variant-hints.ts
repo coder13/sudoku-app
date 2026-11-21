@@ -16,7 +16,16 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'inside-grid':
+      return {
+        description: `Every row and column of the rotated ${rule.rows.length} × ${rule.rows.length} grid uses the same set of different digits.`,
+        reason: 'Test each set that can fill every inside row and column. Remove candidates that cannot be placed in their cell with any of those sets.',
+      }
     case 'consecutive-run':
+      if (rule.fromBulb) return {
+        description: `Digits increase by one at each step from the bulb at ${at(a)} to the tip at ${at(cells.at(-1)!)}.`,
+        reason: 'Check which starting digits fit every cell along the thermometer. Remove candidates that occur in none of those runs.',
+      }
       return { description: `Digits increase by one from one end of the Consecutive Line to the other, between ${at(a)} and ${at(cells.at(-1)!)}.`,
         reason: 'Check both directions. No run that uses a crossed-out candidate fits the other cells on the line.' }
     case 'distinct-cells': {

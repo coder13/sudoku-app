@@ -59,10 +59,19 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         assert.ok(distinct(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? i * 10 : 8 + i * 8)))
         break
       case 'extra-house': case 'distinct-cells': assert.ok(distinct(rule.cells)); break
+      case 'inside-grid': {
+        const set = new Set(rule.rows[0].map(cell => digits[cell]))
+        assert.equal(set.size, rule.rows.length)
+        const columns = rule.rows[0].map((_, column) => rule.rows.map(row => row[column]))
+        for (const cells of [...rule.rows, ...columns]) {
+          assert.ok(distinct(cells) && cells.every(cell => set.has(digits[cell])))
+        }
+        break
+      }
       case 'consecutive-run': {
         const first = digits[rule.cells[0]]
         const step = digits[rule.cells[1]] - first
-        assert.equal(Math.abs(step), 1)
+        assert.equal(rule.fromBulb ? step : Math.abs(step), 1)
         rule.cells.forEach((cell, i) => assert.equal(digits[cell], first + i * step))
         break
       }

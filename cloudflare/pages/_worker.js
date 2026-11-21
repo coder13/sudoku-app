@@ -156,7 +156,10 @@ async function coachPublication(puzzle, id, code) {
   const partialRegions = puzzle.custom_constraints && id === 'JDv2' &&
     await digest(code) === '349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a' &&
     await digest(lines.join('\n')) === 'f9ab780aef148150727d073d5cfeb733e2211ad162a2a50e9cb9ac1115af2fc6'
-  const authoredRule = coachAuthoredRule(lines) ?? (partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
+  const insideGrid = puzzle.custom_constraints && id === '7FCB' &&
+    await digest(code) === 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c' &&
+    await digest(lines.join('\n')) === '084367b723e227b486649f3641a2d4791ae491ca32bd541059cd76faa38b2a85'
+  const authoredRule = coachAuthoredRule(lines) ?? (insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
     : mirroredRenbans ? 'mirrored-renban' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
@@ -405,6 +408,19 @@ const regions = value => fields(value, { type: oneOf('boxes') }) ||
     new Set(value.regions.flat()).size === 9 * value.regions.length && value.regions.every(part => connectedRegion(part, 9)))
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
+function insideGridRows(rows) {
+  if (!list(uniqueCells(2, 5), 2, 5)(rows)) return false
+  const size = rows.length
+  if (rows.some(row => row.length !== size) || new Set(rows.flat()).size !== size ** 2) return false
+  const rowOf = cell => Math.floor(cell / 9)
+  const colOf = cell => cell % 9
+  const start = rows[0][0], right = rows[0][1], down = rows[1][0]
+  const dr = rowOf(down) - rowOf(start), dc = colOf(down) - colOf(start)
+  const rr = rowOf(right) - rowOf(start), rc = colOf(right) - colOf(start)
+  return [dr, dc, rr, rc].every(step => Math.abs(step) === 1) && dr * rr + dc * rc === 0 &&
+    rows.every((row, i) => row.every((cell, j) =>
+      rowOf(cell) === rowOf(start) + i * dr + j * rr && colOf(cell) === colOf(start) + i * dc + j * rc))
+}
 const quadruple = [{ topLeft: value => cell(value) && value < 72 && value % 9 < 8, digits: list(integer(1, 9), 1, 4) }]
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
@@ -431,7 +447,8 @@ const ruleFields = {
   diagonal: [{ diagonal: oneOf('main', 'anti') }],
   'extra-house': [{ cells: house }],
   'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
-  'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor }],
+  'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor, fromBulb: boolean }],
+  'inside-grid': [{ rows: insideGridRows }],
   'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }), 1) }, { coverGrid: boolean }],
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],

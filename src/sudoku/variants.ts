@@ -1,3 +1,4 @@
+import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
@@ -265,6 +266,12 @@ export function variantHouseMasks(puzzle: VariantPuzzle, values: string, elimina
   const regionCount = hasAuthoredRegions(puzzle.regions) ? puzzle.regions.regions.length : 9
   for (let i = 0; i < regionCount; i++) houses.push({ region: i })
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
+    if (rule.type === 'inside-grid') {
+      for (const cells of [...rule.rows, ...insideGridColumns(rule.rows)]) {
+        const used = cells.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
+        for (const cell of cells) masks[cell] &= ~used
+      }
+    }
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
     if (rule.type === 'entropic' || rule.type === 'modular') {
@@ -306,6 +313,10 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house' || rule.type === 'distinct-cells') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'inside-grid') {
+      const row = rule.rows.find(row => row.includes(a))
+      return row !== undefined && (row.includes(b) || rule.rows.some(other => other[row.indexOf(a)] === b))
+    }
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
@@ -386,8 +397,13 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
     }
     if (rule.type === 'consecutive-run' && rule.cells.includes(to)) {
-      const gap = Math.abs(rule.cells.indexOf(from) - rule.cells.indexOf(to))
-      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) !== gap) excluded |= 1 << (other - 1)
+      const gap = rule.cells.indexOf(to) - rule.cells.indexOf(from)
+      if (rule.fromBulb) {
+        const expected = digit + gap
+        excluded |= expected >= 1 && expected <= 9 ? 511 & ~(1 << (expected - 1)) : 511
+      } else {
+        for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) !== Math.abs(gap)) excluded |= 1 << (other - 1)
+      }
     }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
@@ -483,10 +499,14 @@ function isPlayableRule(rule: VariantRule): boolean {
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
-    case 'consecutive-run': case 'distinct-cells':
-      return Object.keys(rule).every(key => key === 'type' || key === 'cells' || key === 'color') &&
-        validCells(rule.cells, 2) && rule.cells.length <= (rule.type === 'consecutive-run' ? 9 : 8) &&
-        (rule.color === undefined || isHexColor(rule.color))
+    case 'inside-grid': return Object.keys(rule).length === 2 && validInsideGridRows(rule.rows)
+    case 'consecutive-run':
+      if (rule.fromBulb !== undefined && typeof rule.fromBulb !== 'boolean') return false
+      return Object.keys(rule).every(key => ['type', 'cells', 'color', 'fromBulb'].includes(key)) &&
+        validCells(rule.cells, 2) && rule.cells.length <= 9 && (rule.color === undefined || isHexColor(rule.color))
+    case 'distinct-cells':
+      return Object.keys(rule).every(key => ['type', 'cells', 'color'].includes(key)) &&
+        validCells(rule.cells, 2) && rule.cells.length <= 8 && (rule.color === undefined || isHexColor(rule.color))
     case 'entropic': case 'modular': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)
     case 'whispers': return Array.isArray(rule.cells) && rule.cells.length >= 2 && rule.cells.length <= 82 &&
@@ -587,6 +607,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'labeled-dots': 'Numbered dots',
   'extra-house': 'Extra regions',
   'distinct-cells': 'Shaded groups',
+  'inside-grid': 'Inside Grid',
   'consecutive-run': 'Consecutive Lines',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
@@ -702,7 +723,12 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       }
       case 'consecutive-run':
-        descriptions.push('Digits along a Consecutive Line increase by one from one end to the other.')
+        descriptions.push(rule.fromBulb
+          ? 'Digits along a Consecutive Thermometer increase by one at each step from the bulb to the tip.'
+          : 'Digits along a Consecutive Line increase by one from one end to the other.')
+        break
+      case 'inside-grid':
+        descriptions.push(`The diamonds form a rotated ${rule.rows.length} × ${rule.rows.length} grid. Every row and column of that grid uses the same set of ${rule.rows.length} different digits.`)
         break
       case 'distinct-cells':
         descriptions.push('The cells in each shaded group contain different digits.')

@@ -1,4 +1,4 @@
-import type { VariantPuzzle } from './engine.ts'
+import type { VariantPuzzle, VariantRule } from './engine.ts'
 import { regionIndex } from './region-sum.ts'
 import { isQuadrupleRule, quadrupleCells } from './variants.ts'
 
@@ -89,9 +89,12 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
   return support[0] ? support : undefined
 }
 
+type PlacedRule = Extract<VariantRule, { type: 'parity' | 'thermometer' | 'inside-grid' | 'consecutive-run' | 'quadruple' | 'quadruple-sum' }>
+
 /** Local restrictions from placed digits. Other rules still contribute their own checks. */
 export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const rules = puzzle?.rules?.filter(rule => rule.type === 'parity' || rule.type === 'thermometer' || isQuadrupleRule(rule))
+  const rules = puzzle?.rules?.filter((rule): rule is PlacedRule => rule.type === 'parity' || rule.type === 'thermometer' || rule.type === 'inside-grid' ||
+    rule.type === 'consecutive-run' && rule.fromBulb || isQuadrupleRule(rule))
   if (!rules?.length) return
   const allowed = Array<number>(81).fill(ALL_DIGITS)
   const conflicts = new Set<number>()
@@ -101,6 +104,31 @@ export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values
       for (const cell of rule.cells) {
         if (values[cell] === '0') allowed[cell] &= parity
         else if (!(parity & digitMask(Number(values[cell])))) conflicts.add(cell)
+      }
+      continue
+    }
+    if (rule.type === 'inside-grid') {
+      const cells = rule.rows.flat()
+      const placed = cells.filter(cell => values[cell] !== '0')
+      const digits = new Set(placed.map(cell => Number(values[cell])))
+      if (digits.size > rule.rows.length) for (const cell of placed) conflicts.add(cell)
+      else if (digits.size === rule.rows.length) {
+        const mask = [...digits].reduce((mask, digit) => mask | digitMask(digit), 0)
+        for (const cell of cells) if (values[cell] === '0') allowed[cell] &= mask
+      }
+      continue
+    }
+    if (rule.type === 'consecutive-run') {
+      const placed = rule.cells.findIndex(cell => values[cell] !== '0')
+      const first = placed === -1 ? 0 : Number(values[rule.cells[placed]]) - placed
+      const max = 10 - rule.cells.length
+      const invalid = placed !== -1 && (first < 1 || first > max ||
+        rule.cells.some((cell, i) => values[cell] !== '0' && Number(values[cell]) !== first + i))
+      for (const [i, cell] of rule.cells.entries()) {
+        if (invalid && values[cell] !== '0') conflicts.add(cell)
+        else if (!invalid && values[cell] === '0') {
+          allowed[cell] &= placed === -1 ? ((1 << max) - 1) << i : digitMask(first + i)
+        }
       }
       continue
     }
