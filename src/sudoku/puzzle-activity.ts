@@ -13,11 +13,14 @@ export function lastPlayed(game: Game, storage?: Storage) {
   } catch { return Number.isFinite(new Date(fallback).getTime()) ? fallback : 0 }
 }
 
-export function inProgress(games: readonly Game[], storage?: Storage) {
+export function activeHistory(games: readonly Game[], storage?: Storage) {
   return games.filter(game => !game.archived && !game.savedForLater && !isSolved(game))
     .map(game => ({ game, playedAt: lastPlayed(game, storage) }))
     .sort((a, b) => b.playedAt - a.playedAt || b.game.created - a.game.created || a.game.id.localeCompare(b.game.id))
-    .map(({ game }) => game)
+}
+
+export function inProgress(games: readonly Game[], storage?: Storage) {
+  return activeHistory(games, storage).map(({ game }) => game)
 }
 
 export type SolvedPuzzleFilters = {

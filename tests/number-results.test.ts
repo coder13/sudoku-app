@@ -7,7 +7,8 @@ import { kakuroRecipeFromPuzzle } from '../src/kakuro/generator.ts'
 import { solveLatin } from '../src/latin/engine.ts'
 import {
   addGeneratedHistoryRow, changeGeneratedSolveTotal, createGeneratedHistoryReader, createGeneratedNumberResultCollector,
-  generatedDifficultyTotals, type GeneratedHistoryRow, type GeneratedNumberResults, type StoredSolveTotals,
+  generatedDifficultyTotals, generatedNumberWindow, orderNumberHistory,
+  type GeneratedHistoryRow, type GeneratedNumberResults, type NumberHistoryEntry, type StoredSolveTotals,
 } from '../src/number-puzzles/generated-results.ts'
 import { encodeGeneratedNumberPuzzle, type GeneratedNumberPuzzle } from '../src/number-puzzles/generated.ts'
 import { NUMBER_HISTORY_SIZE, type SavedNumberProgress } from '../src/number-puzzles/progress.ts'
@@ -52,6 +53,34 @@ test('in-progress pages preserve order and let the first page count every solve'
   assert.deepEqual(second.entries.map(entry => entry.number), [5])
   assert.equal(second.hasMore, undefined)
   assert.equal(second.totals.size, 0)
+})
+
+test('library windows filter before limiting rows and keep the order of equal timestamps', () => {
+  const recent = new Date(2026, 10, 20, 15).getTime()
+  const earlier = new Date(2026, 10, 17, 15).getTime()
+  const easy = { id: 'earlier', number: 5, difficulty: 'easy', lastPlayed: earlier } as const
+  const entries: NumberHistoryEntry[] = [
+    { id: 'legacy', number: 1, difficulty: 'easy' },
+    { id: 'tie-after', number: 9, difficulty: 'medium', lastPlayed: recent },
+    easy,
+    { id: 'tie-before', number: 2, difficulty: 'medium', lastPlayed: recent },
+  ]
+  orderNumberHistory(entries)
+  const first = generatedNumberWindow(entries, 'kakuro', { revision: 1, limit: 2 })
+  assert.deepEqual(first.entries.map(entry => entry.id), ['tie-before', 'tie-after'])
+  assert.equal(first.hasMore, true)
+  assert.equal(first.revision, 1)
+  const more = generatedNumberWindow(entries, 'kakuro', { revision: 2, limit: 4 })
+  assert.deepEqual(more.entries.map(entry => entry.id), ['tie-before', 'tie-after', 'earlier', 'legacy'])
+  assert.equal(more.hasMore, undefined)
+
+  const date = { from: '2026-11-17', to: '2026-11-17', difficulty: 'easy' } as const
+  const filtered = generatedNumberWindow(entries, 'kakuro', { revision: 3, limit: 1, filters: date })
+  assert.deepEqual(filtered.entries, [easy])
+  assert.equal(filtered.hasMore, undefined)
+  const otherGame = generatedNumberWindow(entries, 'kakuro', { revision: 4, limit: 1, filters: { game: 'calcudoku' } })
+  assert.deepEqual(otherGame.entries, [])
+  assert.equal(otherGame.hasAny, true)
 })
 
 for (const { board, values } of [

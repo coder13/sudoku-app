@@ -1,23 +1,39 @@
-import { addGeneratedHistoryRow, createGeneratedNumberResultCollector, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
-import { indexGeneratedPickerHistory, readGeneratedPickerHistory } from './generated-storage.ts'
+import {
+  addGeneratedHistoryRow, createGeneratedNumberResultCollector, generatedNumberWindow, orderNumberHistory,
+  type GeneratedNumberResults, type NumberHistoryRequest,
+} from './generated-results.ts'
+import { indexGeneratedHistory, readGeneratedPickerHistory } from './generated-storage.ts'
+
+async function readHistory(request: NumberHistoryRequest) {
+  const history = await readGeneratedPickerHistory(request.game, request.status, request.page)
+  const totals = 'totals' in history ? history.totals : undefined
+  const result: GeneratedNumberResults = { entries: [], totals: totals ?? new Map() }
+  if ('rows' in history) {
+    for (const row of history.rows) addGeneratedHistoryRow(result, request, row, !request.window && !totals)
+  } else {
+    const collect = createGeneratedNumberResultCollector(result, request)
+    for (const record of history.records) collect(record)
+  }
+  if (request.window) orderNumberHistory(result.entries)
+  return { result, indexPending: history.indexPending }
+}
+
+let history: ReturnType<typeof readHistory> | undefined
+let latest: NumberHistoryRequest
+let indexing = false
 
 self.onmessage = async ({ data: request }: MessageEvent<NumberHistoryRequest>) => {
-  let needsIndex = false
+  latest = request
   try {
-    const history = await readGeneratedPickerHistory(request.game, request.status, request.page)
-    const totals = 'totals' in history ? history.totals : undefined
-    const result: GeneratedNumberResults = { entries: [], totals: totals ?? new Map() }
-    if ('rows' in history) {
-      for (const row of history.rows) addGeneratedHistoryRow(result, request, row, !totals)
-    } else {
-      const collect = createGeneratedNumberResultCollector(result, request)
-      for (const record of history.records) collect(record)
-      needsIndex = true
+    const { result, indexPending } = await (history ??= readHistory(request))
+    if (request !== latest) return
+    self.postMessage(request.window ? generatedNumberWindow(result.entries, request.game, request.window) : result)
+    if (indexPending && !indexing) {
+      indexing = true
+      await indexGeneratedHistory(request.game).catch(() => {})
     }
-    self.postMessage(result)
   } catch {
-    self.postMessage(null)
+    if (request === latest) self.postMessage(null)
   }
-  if (needsIndex) await indexGeneratedPickerHistory(request.game).catch(() => {})
-  self.close()
+  if (!request.window) self.close()
 }

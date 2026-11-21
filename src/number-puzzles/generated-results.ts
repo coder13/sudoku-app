@@ -1,6 +1,7 @@
 import { checkKakuro } from '../kakuro/engine.ts'
 import { checkLatin } from '../latin/engine.ts'
 import { recordDifficultySolve, type DifficultyTotals } from '../sudoku/difficulty-statistics.ts'
+import { matchesSolvedNumberFilters, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity.ts'
 import type { NumberPuzzleDifficulty, NumberPuzzleEntry } from './catalog.ts'
 import { calcudokuFromRecipe, decodeGeneratedNumberPayload, generatedNumberPayload, kakuroFromRecipe, type GeneratedNumberGame } from './generated.ts'
 import type { GeneratedRecord } from './generated-storage.ts'
@@ -83,7 +84,32 @@ function generatedProgressRules(game: GeneratedNumberGame, payload: string): Gen
 }
 
 export type NumberHistoryPage = { after: number; limit: number }
-export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus; page?: NumberHistoryPage }
+export type NumberHistoryWindow = { revision: number; limit: number; filters?: SolvedPuzzleFilters }
+export type NumberHistoryRequest = {
+  game: GeneratedNumberGame; status: NumberResultStatus; page?: NumberHistoryPage; window?: NumberHistoryWindow
+}
+export type GeneratedNumberWindowResult = GeneratedNumberResults & { revision: number; hasAny: boolean }
+
+export function orderNumberHistory(entries: NumberHistoryEntry[]) {
+  entries.sort((a, b) => (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0) || a.number - b.number)
+}
+
+export function generatedNumberWindow(
+  entries: readonly NumberHistoryEntry[], game: GeneratedNumberGame, { revision, limit, filters }: NumberHistoryWindow,
+): GeneratedNumberWindowResult {
+  const result: GeneratedNumberWindowResult = { entries: [], totals: new Map(), revision, hasAny: entries.length > 0 }
+  if (filters?.variant || filters?.game && filters.game !== game) return result
+  if (filters?.from && filters.to && filters.from > filters.to) return result
+  for (const entry of entries) {
+    if (filters && !matchesSolvedNumberFilters({ ...entry, game }, filters)) continue
+    if (result.entries.length === limit) {
+      result.hasMore = true
+      break
+    }
+    result.entries.push(entry)
+  }
+  return result
+}
 export type GeneratedHistoryRow = NumberHistoryEntry & { game: GeneratedNumberGame; status: NumberResultStatus }
 
 export type StoredSolveTotals = Map<NumberPuzzleDifficulty, { solved: number; timed: number; seconds: bigint }>
