@@ -11,6 +11,9 @@ type ThemeAccents = {
   accent: string
   selectionBorder: string
   secondaryAccent: string
+  peerBg?: string
+  extraHouseBg?: string
+  boardSelectedBg?: string
 }
 
 const colorModes = {
@@ -30,7 +33,7 @@ const colorModes = {
     borderStrong: '#949494',
     boardBg: '#ffffff',
     givenBg: '#f3f3f3',
-    gridLine: '#b7b7b7',
+    gridLine: '#a0a0a0',
     gridStrong: '#525252',
     peerBg: '#e0e0e0',
     keyBg: '#f7f7f7',
@@ -54,7 +57,7 @@ const colorModes = {
     borderStrong: '#777777',
     boardBg: '#171717',
     givenBg: '#242424',
-    gridLine: '#545454',
+    gridLine: '#666666',
     gridStrong: '#969696',
     peerBg: '#363636',
     keyBg: '#252525',
@@ -68,6 +71,7 @@ type ThemeDefinition = {
   id: ThemeId
   name: string
   category: 'Sudoku' | 'Curated' | 'IDE' | 'Accessibility'
+  houseAccent: string
   light: ThemeAccents
   dark: ThemeAccents
 }
@@ -109,8 +113,9 @@ function contrastingAccent(accent: string, fallback: string, against: string[], 
   return fallback
 }
 
-function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, secondaryAccent }: ThemeAccents) {
+function buildTokens(mode: ResolvedColorMode, accents: ThemeAccents, houseAccent: string) {
   const base = colorModes[mode]
+  const { accent, selectionBorder, secondaryAccent, peerBg = base.peerBg } = accents
   const { boardBg, ink } = base
   const lightMode = mode === 'light'
   const highlight = (color: string, lightAmount: number, darkContrast: number) => lightMode
@@ -120,8 +125,9 @@ function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, seconda
   const primaryBg = contrastingAccent(accent, '#000000', [primaryInk], 5)
   const matchingBg = highlight(accent, 0.32, 2.2)
   const selectedBg = highlight(accent, 0.48, 2.85)
-  const candidateCountBg = highlight(secondaryAccent, 0.35, 2.4)
-  const cellBackgrounds = [base.givenBg, base.peerBg, matchingBg, selectedBg, candidateCountBg]
+  const boardSelectedBg = accents.boardSelectedBg ?? selectedBg
+  const extraHouseBg = accents.extraHouseBg ?? highlight(houseAccent, 0.22, 1.72)
+  const cellBackgrounds = [base.givenBg, peerBg, matchingBg, selectedBg, extraHouseBg]
   const accentInk = contrastingAccent(accent, ink, [base.pageBg, base.surfaceHoverStrong, ...cellBackgrounds])
   const selectedBorder = contrastingAccent(selectionBorder, ink, [selectedBg], 3)
 
@@ -138,14 +144,14 @@ function buildTokens(mode: ResolvedColorMode, { accent, selectionBorder, seconda
     boardOutline: base.gridStrong,
     boardBoxBg: boardBg,
     boardInk: ink,
-    entryInk: accentInk,
+    entryInk: contrastingAccent(accentInk, ink, [boardSelectedBg]),
+    peerBg,
+    extraHouseBg,
     matchingBg,
-    matchingDigitBg: matchingBg,
-    candidateCountBg,
     selectedBg,
     selectedBorder,
-    boardSelectedBg: selectedBg,
-    boardSelectedBorder: selectedBorder,
+    boardSelectedBg,
+    boardSelectedBorder: contrastingAccent(selectionBorder, ink, [boardSelectedBg], 3),
     keyInk: ink,
     centerNoteBg: boardBg,
   }
@@ -171,15 +177,14 @@ const andokuTokens: ThemeTokens = {
   boardBg: '#fafafa',
   boardBoxBg: '#eeeeee',
   givenBg: '#fafafa',
-  gridLine: '#9a9a9a',
+  gridLine: '#8a8a8a',
   gridStrong: '#424242',
   boardOutline: '#424242',
   boardInk: '#111111',
   entryInk: '#28351b',
+  extraHouseBg: '#c2d7aa',
   peerBg: '#dedede',
   matchingBg: '#e6ca4f',
-  matchingDigitBg: '#ffda32',
-  candidateCountBg: '#d7ddad',
   boardSelectedBg: '#ffda32',
   boardSelectedBorder: '#695100',
   centerNoteBg: '#fafafa',
@@ -203,66 +208,85 @@ const andokuTokens: ThemeTokens = {
 const definitions: ThemeDefinition[] = [
   {
     id: 'violet', name: 'Violet', category: 'Sudoku',
-    light: { accent: '#5b3dba', selectionBorder: '#6f49c2', secondaryAccent: '#78583d' },
+    houseAccent: '#5576ad',
+    light: { accent: '#5b3dba', selectionBorder: '#6f49c2', secondaryAccent: '#78583d', extraHouseBg: '#e5e4f8' },
     dark: { accent: '#8f70dd', selectionBorder: '#bc9cf4', secondaryAccent: '#efc27f' },
   },
   {
     id: 'ocean', name: 'Ocean', category: 'Sudoku',
-    light: { accent: '#1967b3', selectionBorder: '#2774b7', secondaryAccent: '#7b542f' },
+    houseAccent: '#397e70',
+    light: {
+      accent: '#1967b3', selectionBorder: '#2774b7', secondaryAccent: '#7b542f',
+      peerBg: '#cfe3f7', extraHouseBg: '#cff7ed',
+    },
     dark: { accent: '#4f8fd2', selectionBorder: '#83b9ed', secondaryAccent: '#efbd76' },
   },
   {
     id: 'forest', name: 'Forest', category: 'Sudoku',
-    light: { accent: '#28755a', selectionBorder: '#367d60', secondaryAccent: '#76552f' },
+    houseAccent: '#6f782f',
+    light: {
+      accent: '#28755a', selectionBorder: '#367d60', secondaryAccent: '#76552f',
+      peerBg: '#eddeca', extraHouseBg: '#98bdb0', boardSelectedBg: '#78ac93',
+    },
     dark: { accent: '#4c9b77', selectionBorder: '#83cba7', secondaryAccent: '#edbe77' },
   },
   {
     id: 'rose-pine', name: 'Rosé Pine', category: 'Curated',
+    houseAccent: '#ad6d73',
     light: { accent: '#907aa9', selectionBorder: '#725d8b', secondaryAccent: '#9a5b42' },
     dark: { accent: '#c4a7e7', selectionBorder: '#c4a7e7', secondaryAccent: '#f6c177' },
   },
   {
     id: 'catppuccin', name: 'Catppuccin', category: 'Curated',
+    houseAccent: '#4e7c9f',
     light: { accent: '#8839ef', selectionBorder: '#7c2bd6', secondaryAccent: '#8c4d20' },
     dark: { accent: '#cba6f7', selectionBorder: '#cba6f7', secondaryAccent: '#fab387' },
   },
   {
     id: 'solarized', name: 'Solarized', category: 'IDE',
+    houseAccent: '#3a8077',
     light: { accent: '#6c71c4', selectionBorder: '#5b60ad', secondaryAccent: '#9a5d00' },
     dark: { accent: '#6c71c4', selectionBorder: '#7f87da', secondaryAccent: '#d99b25' },
   },
   {
     id: 'nord', name: 'Nord', category: 'IDE',
+    houseAccent: '#517e75',
     light: { accent: '#5e81ac', selectionBorder: '#4f719d', secondaryAccent: '#8b5e22' },
     dark: { accent: '#5e81ac', selectionBorder: '#88c0d0', secondaryAccent: '#ebcb8b' },
   },
   {
     id: 'ayu', name: 'Ayu', category: 'IDE',
+    houseAccent: '#427d72',
     light: { accent: '#b35c00', selectionBorder: '#a95200', secondaryAccent: '#8a4b08' },
     dark: { accent: '#e6b450', selectionBorder: '#e6b450', secondaryAccent: '#ffb454' },
   },
   {
     id: 'github', name: 'GitHub', category: 'IDE',
+    houseAccent: '#438353',
     light: { accent: '#0969da', selectionBorder: '#0969da', secondaryAccent: '#8a4b08' },
     dark: { accent: '#2f81f7', selectionBorder: '#58a6ff', secondaryAccent: '#e3b341' },
   },
   {
     id: 'one', name: 'One', category: 'IDE',
+    houseAccent: '#447d92',
     light: { accent: '#a626a4', selectionBorder: '#982397', secondaryAccent: '#986801' },
     dark: { accent: '#c678dd', selectionBorder: '#d08ee3', secondaryAccent: '#e5c07b' },
   },
   {
     id: 'tokyo-night', name: 'Tokyo Night', category: 'IDE',
+    houseAccent: '#8466a0',
     light: { accent: '#2e7de9', selectionBorder: '#256ed1', secondaryAccent: '#8b5500' },
     dark: { accent: '#7aa2f7', selectionBorder: '#8fb5ff', secondaryAccent: '#e0af68' },
   },
   {
     id: 'gruvbox', name: 'Gruvbox', category: 'IDE',
+    houseAccent: '#7c783d',
     light: { accent: '#8f3f71', selectionBorder: '#8f3f71', secondaryAccent: '#9d4f00' },
     dark: { accent: '#d3869b', selectionBorder: '#e39caf', secondaryAccent: '#fabd2f' },
   },
   {
     id: 'high-contrast', name: 'High contrast', category: 'Accessibility',
+    houseAccent: '#3e845e',
     light: { accent: '#0047cc', selectionBorder: '#003fae', secondaryAccent: '#6b3e00' },
     dark: { accent: '#70a7ff', selectionBorder: '#8db9ff', secondaryAccent: '#ffd27a' },
   },
@@ -272,7 +296,10 @@ export const THEME_OPTIONS = [...definitions.map(({ id, name, category }) => ({ 
 export const THEME_IDS_SET = new Set<ThemeId>(THEME_IDS)
 
 export const THEME_TOKENS = Object.fromEntries([
-  ...definitions.map((theme) => [theme.id, { light: buildTokens('light', theme.light), dark: buildTokens('dark', theme.dark) }] as const),
+  ...definitions.map(({ id, light, dark, houseAccent }) => [id, {
+    light: buildTokens('light', light, houseAccent),
+    dark: buildTokens('dark', dark, houseAccent),
+  }] as const),
   [andokuOption.id, { light: andokuTokens, dark: andokuTokens }],
 ]) as Record<ThemeId, Record<ResolvedColorMode, ThemeTokens>>
 

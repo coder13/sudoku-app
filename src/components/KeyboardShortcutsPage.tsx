@@ -29,6 +29,7 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
   {
     title: 'Chain drawing', shortcuts: [
       { label: 'Undo a link edit', description: 'Undo the last edit to the selected chain.', keys: ['Ctrl/⌘', 'Z'] },
+      { label: 'Redo a link edit', description: 'Restore the last undone chain edit. Ctrl/⌘+Y also works.', keys: ['Ctrl/⌘', 'Shift', 'Z'] },
       { label: 'Highlight matching candidates', description: 'Highlight the selected digit while you draw links.', keys: ['1–9'] },
       { label: 'Toggle a strong-link digit', description: 'With Show strong links on, toggle one digit without clearing the others.', keys: ['Shift', '1–9'] },
     ],

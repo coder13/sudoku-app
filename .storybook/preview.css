@@ -27,3 +27,22 @@ body.sb-show-main:not(:has(.story-app)) { overflow: auto; }
 .story-button-guide > div { display: grid; grid-template-columns: minmax(9rem, 1fr) 2fr; gap: var(--space-16); align-items: center; }
 .story-button-guide .button, .story-button-guide .icon-button { justify-self: start; }
 @media (max-width: 480px) { .story-button-guide > div { grid-template-columns: 1fr; gap: var(--space-4); } }
+.theme-kitchen-sink { min-height: 100dvh; padding: clamp(12px, 3vw, 32px); background: var(--page-bg); color: var(--ink); }
+.theme-samples { display: grid; gap: var(--space-24); max-width: 1160px; margin-inline: auto; }
+.theme-samples h1 { font-size: 1.625rem; }
+.theme-sample-palette, .theme-sample-grids, .theme-sample-controls { display: grid; gap: var(--space-12); }
+.theme-sample-palette { grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); margin: 0; }
+.theme-sample-palette > div { padding: var(--space-8) var(--space-12); border-radius: 9px; }
+.theme-sample-palette dt { display: flex; align-items: center; gap: var(--space-6); font-size: .8125rem; font-weight: 700; }
+.theme-sample-palette dt span { flex: none; width: 18px; height: 18px; border: 1px solid var(--border-strong); border-radius: 4px; }
+.theme-sample-palette dd { margin: 4px 0 0 24px; color: var(--muted); font-size: .75rem; }
+.theme-sample-grids { grid-template-columns: repeat(auto-fit, minmax(min(100%, 232px), 1fr)); }
+.theme-sample-grid { --board-frame-width: 100%; min-width: 0; margin: 0; padding: var(--space-12); }
+.theme-sample-grid figcaption { display: flex; align-items: center; gap: var(--space-8); margin-bottom: var(--space-8); font-weight: 700; }
+.theme-sample-grid .variant-preview { width: 28px; }
+.theme-sample-controls { grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); }
+.theme-sample-panel { padding: var(--space-16); }
+.theme-sample-panel h2 { font-size: 1.25rem; }
+.theme-sample-panel .controls { padding-inline: 0; }
+.theme-sample-input-actions { left: 0; right: auto; transform-origin: top left; }
+.theme-sample-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }

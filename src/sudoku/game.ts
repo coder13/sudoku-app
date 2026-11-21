@@ -502,7 +502,13 @@ export function paintCandidateStroke(
     candidatesInitialized: start.candidatesInitialized,
     started: start.started,
   }
-  return enter(origin, [...cells], mode, digit, { candidateAction: action })
+  const next = enter(origin, [...cells], mode, digit, { candidateAction: action })
+  const undoPosition = current.past.at(-1)
+  // A prior segment of this stroke may already have removed a chain.
+  if (next === origin || current.past === start.past || undoPosition?.chainSketch === undefined ||
+    undoPosition.entries !== start.position.entries || undoPosition.center !== start.position.center ||
+    undoPosition.corner !== start.position.corner) return next
+  return { ...next, past: [...next.past.slice(0, -1), undoPosition] }
 }
 
 export function replaceCandidates(game: Game, masks: readonly number[], options: { recordHistory?: boolean } = {}): Game {

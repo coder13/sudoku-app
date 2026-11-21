@@ -72,10 +72,10 @@ export const roomStore: typeof appStore = {
     if (game.savedForLater) publish({ ...room, games })
     else playPuzzle(games, game)
   },
-  update(id, update) {
+  update(id, update, { chainCandidates } = {}) {
     const game = room.games.find((item) => item.id === id)
     if (!game) return
-    const next = pruneChainsAfterMove(game, update(game))
+    const next = pruneChainsAfterMove(game, update(game), chainCandidates)
     if (next !== game) publish({ ...room, games: room.games.map((item) => item.id === id ? next : item) })
   },
   advanceElapsed(id, seconds) {

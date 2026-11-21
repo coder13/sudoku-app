@@ -1,10 +1,11 @@
 import { Button, IconButton } from './Button'
-import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ChevronUp, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
+type HintDetailNavigation = { first: boolean; last: boolean; onMove: (offset: -1 | 1) => void }
 type HintAction = { label: string; onClick: () => void; shortcut?: string }
 
 type ExplanationProps = {
@@ -15,15 +16,16 @@ type ExplanationProps = {
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 
-export function HintCard({ hint, onClose, onShown, visuals, navigation, action, lessDetail, secondaryAction, lesson, removals, detail, ...explanation }: {
+export function HintCard({ hint, onClose, onShown, visuals, reserveVisuals, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, ...explanation }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
   visuals?: { visible: boolean; onToggle: () => void }
+  reserveVisuals?: boolean
   navigation?: HintNavigation
   action?: HintAction
-  lessDetail?: { disabled: boolean; onClick: () => void }
-  secondaryAction?: HintAction & { expanded?: boolean }
+  detailNavigation?: HintDetailNavigation
+  secondaryAction?: HintAction & { expanded?: boolean; reserved?: boolean }
   lesson?: { id: string; title: string }
   detail?: ReactNode
   removals?: readonly HintRemoval[]
@@ -32,29 +34,30 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
   useLayoutEffect(() => {
     if (card.current?.getClientRects().length) onShown?.()
   }, [onShown])
+  const reserveAction = detailNavigation && !detailNavigation.last
 
   return (
-    <aside className="hint-card" aria-label="Puzzle hint" ref={card}>
+    <aside className="hint-card" aria-label="Puzzle hint" data-staged={Boolean(detailNavigation) || undefined} ref={card}>
       <div className="hint-card-heading">
         <span className="hint-card-icon" aria-hidden="true"><Lightbulb size={19} /></span>
-        <div className="hint-card-title">
-          <small>Hint</small>
-          <h2>{hint.title}</h2>
-          {lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}>
-            <BookOpen size={14} aria-hidden="true" /> Review lesson
-          </a>}
-        </div>
-        <div className="hint-card-heading-buttons">
-          {visuals && <IconButton type="button" variant="quiet" className="hint-card-visuals"
+        <div className="hint-card-summary">
+          <div className="hint-card-title">
+            <small>Hint</small>
+            <h2>{hint.title}</h2>
+            {lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}>
+              <BookOpen size={14} aria-hidden="true" /> Review lesson
+            </a>}
+          </div>
+          {visuals ? <IconButton type="button" variant="quiet" className="hint-card-visuals"
             aria-label="Hint visuals" aria-pressed={visuals.visible} title={visuals.visible ? 'Hide hint visuals' : 'Show hint visuals'}
             onClick={visuals.onToggle}>
             {visuals.visible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
-          </IconButton>}
-          <IconButton type="button" variant="quiet" className="hint-card-close" aria-label="Close hint" onClick={onClose}>
-            <X size={18} aria-hidden="true" />
-          </IconButton>
+          </IconButton> : reserveVisuals && <span className="hint-card-visuals-space" aria-hidden="true" />}
         </div>
-        {(navigation || action || secondaryAction) && <div className="hint-card-actions">
+        <IconButton type="button" variant="quiet" className="hint-card-close" aria-label="Close hint" onClick={onClose}>
+          <X size={18} aria-hidden="true" />
+        </IconButton>
+        {(navigation || action || detailNavigation || secondaryAction) && <div className="hint-card-actions">
           {navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
             <IconButton type="button" aria-label="Previous hint"
               disabled={navigation.index === 0} onClick={() => navigation.onMove(-1)}>
@@ -66,19 +69,31 @@ export function HintCard({ hint, onClose, onShown, visuals, navigation, action, 
               <ArrowRight size={16} aria-hidden="true" />
             </IconButton>
           </div>}
-          {secondaryAction && <Button type="button" aria-expanded={secondaryAction.expanded}
+          {secondaryAction && <Button type="button" aria-expanded={secondaryAction.expanded} data-reserved={secondaryAction.reserved || undefined}
+            disabled={secondaryAction.reserved}
             onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>}
-          {action && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
-            {lessDetail && <Button type="button" disabled={lessDetail.disabled}
-              onClick={lessDetail.onClick}>Less detail</Button>}
-            <Button type="button" variant="primary" onClick={action.onClick}
-              aria-keyshortcuts={action.shortcut} title={action.shortcut ? `${action.label} (${action.shortcut})` : undefined}>{action.label}</Button>
+          {(action || detailNavigation) && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
+            {detailNavigation && <>
+              <IconButton aria-label="Less detail" title="Less detail" aria-disabled={detailNavigation.first || undefined}
+                tabIndex={detailNavigation.first ? -1 : undefined} onClick={detailNavigation.first ? undefined : () => detailNavigation.onMove(-1)}>
+                <ChevronUp size={18} aria-hidden="true" />
+              </IconButton>
+              <IconButton aria-label="More detail" title="More detail" aria-disabled={detailNavigation.last || undefined}
+                tabIndex={detailNavigation.last ? -1 : undefined} onClick={detailNavigation.last ? undefined : () => detailNavigation.onMove(1)}>
+                <ChevronDown size={18} aria-hidden="true" />
+              </IconButton>
+            </>}
+            {action && <Button type="button" variant="primary" disabled={reserveAction} data-reserved={reserveAction || undefined}
+              onClick={action.onClick} aria-keyshortcuts={action.shortcut}
+              title={action.shortcut ? `${action.label} (${action.shortcut})` : undefined}>{action.label}</Button>}
           </div>}
         </div>}
       </div>
-      <DeductionExplanation {...explanation} />
-      {detail}
-      <DeductionOutcome removals={removals} text={hint.text} />
+      <div className="hint-card-body">
+        <DeductionExplanation {...explanation} />
+        {detail}
+        <DeductionOutcome removals={removals} text={hint.text} />
+      </div>
     </aside>
   )
 }

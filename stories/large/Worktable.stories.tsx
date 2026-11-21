@@ -302,6 +302,209 @@ export const ChainShortcuts: Story = {
     await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
   },
 }
+export const InputModeAfterChains: Story = {
+  args: { game: branchedGame, games: [branchedGame] },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('pinnedActions', ['strong-links'])
+    return () => {
+      playPreferenceStore.set('pinnedActions', saved.pinnedActions)
+      playPreferenceStore.set('pencil', saved.pencil)
+      playPreferenceStore.set('highlightMode', saved.highlightMode)
+      playPreferenceStore.set('colorMode', saved.colorMode)
+      playPreferenceStore.set('eraseMode', saved.eraseMode)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const grid = () => canvas.findByRole('grid', { name: /^Sudoku grid$/ })
+    const strongLinks = canvas.getByRole('button', { name: 'Strong links' })
+    const highlight = canvas.getByRole('button', { name: 'Highlight mode' })
+    const pencil = canvas.getByRole('button', { name: 'Pencil mode' })
+    async function showStrongLinks() {
+      await userEvent.click(strongLinks)
+      await canvas.findByRole('grid', { name: 'Sudoku grid with strong links' })
+    }
+
+    await userEvent.keyboard('d')
+    await showStrongLinks()
+    await userEvent.click(highlight)
+    await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.click(highlight)
+    await expect(await grid()).toHaveAccessibleDescription('Pen mode')
+    await expect(strongLinks).toHaveAttribute('aria-pressed', 'false')
+
+    await showStrongLinks()
+    await userEvent.click(pencil)
+    await expect(await grid()).toHaveAccessibleDescription('Pencil mode')
+    await userEvent.keyboard('x')
+    await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' })
+    await userEvent.keyboard('hh')
+    await expect(await grid()).toHaveAccessibleDescription('Pencil mode')
+
+    await showStrongLinks()
+    await userEvent.keyboard('d')
+    await expect(await grid()).toHaveAccessibleDescription('Pen mode')
+    await showStrongLinks()
+    await userEvent.keyboard('q')
+    await expect(await grid()).toHaveAccessibleDescription('Pencil mode')
+  },
+}
+const strongLinksGame = { ...starter, id: 'strong-links-selected-digit' }
+export const StrongLinksSelectedDigit: Story = {
+  args: { game: strongLinksGame, games: [strongLinksGame] },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('pinnedActions', ['strong-links'])
+    playPreferenceStore.set('selectedDigit', null)
+    playSession.set(strongLinksGame.id, 'showStrongLinks', false)
+    return () => {
+      playPreferenceStore.set('pinnedActions', saved.pinnedActions)
+      playPreferenceStore.set('selectedDigit', saved.selectedDigit)
+      playPreferenceStore.set('pencil', saved.pencil)
+      playPreferenceStore.set('highlightMode', saved.highlightMode)
+      playPreferenceStore.set('colorMode', saved.colorMode)
+      playPreferenceStore.set('eraseMode', saved.eraseMode)
+    }
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const strongLinks = canvas.getByRole('button', { name: /^Strong links$/ })
+    await userEvent.keyboard('d4')
+    await expect(canvas.getByRole('button', { name: 'Deselect 4' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(strongLinks)
+    await canvas.findByRole('grid', { name: 'Sudoku grid with strong links' }, { timeout: 5000 })
+    await expect(canvas.getByRole('button', { name: 'Clear highlight for 4' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvasElement.querySelector('.board-link-target')).toBeInTheDocument()
+    await userEvent.click(strongLinks)
+    await expect(canvas.getByRole('button', { name: 'Deselect 4' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(strongLinks)
+    await userEvent.keyboard('{Shift>}6{/Shift}')
+    await expect(canvas.getByRole('button', { name: 'Clear highlight for 4' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: 'Clear highlight for 6' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(strongLinks)
+    await userEvent.keyboard('d0')
+    await userEvent.click(canvas.getByRole('gridcell', { name: /^Row 1, column 1, given 5/ }))
+    await userEvent.click(strongLinks)
+    await expect(canvas.getByRole('button', { name: 'Clear highlight for 5' })).toHaveAttribute('aria-pressed', 'true')
+  },
+}
+export const ModeCursors: Story = {
+  args: { game: { ...inProgress, id: 'mode-cursors' } },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('selectedDigit', null)
+    playPreferenceStore.set('colorBrush', null)
+    return () => {
+      playPreferenceStore.set('selectedDigit', saved.selectedDigit)
+      playPreferenceStore.set('colorBrush', saved.colorBrush)
+      playPreferenceStore.set('pencil', saved.pencil)
+      playPreferenceStore.set('highlightMode', saved.highlightMode)
+      playPreferenceStore.set('colorMode', saved.colorMode)
+      playPreferenceStore.set('eraseMode', saved.eraseMode)
+      playPreferenceStore.set('colorTarget', saved.colorTarget)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    if (!matchMedia('(any-pointer: fine)').matches) return
+    await userEvent.keyboard('d')
+    const cell = () => canvas.getByRole('gridcell', { name: /^Row 1, column 4,/ })
+    await userEvent.hover(cell())
+    const pen = getComputedStyle(cell()).cursor
+    expect(pen).toBe('pointer')
+
+    await userEvent.keyboard('{Control>}')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Pencil mode')
+    expect(getComputedStyle(cell()).cursor).toBe(pen)
+    await userEvent.keyboard('{/Control}')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Pen mode')
+    await userEvent.keyboard('q')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Pencil mode')
+
+    await userEvent.keyboard('c')
+    const palette = within(await canvas.findByRole('region', { name: 'Coloring' }))
+    await userEvent.click(palette.getByRole('button', { name: 'Cells' }))
+    await userEvent.click(palette.getByRole('button', { name: 'Light mint' }))
+    await userEvent.hover(cell())
+    expect(getComputedStyle(cell()).cursor).toBe(pen)
+
+    await userEvent.click(palette.getByRole('button', { name: 'Candidates' }))
+    const candidate = await canvas.findByRole('button', { name: /^2 in row 1, column 4\b/ })
+    expect(getComputedStyle(candidate).cursor).toBe(pen)
+    await userEvent.click(palette.getByRole('button', { name: 'Stop coloring' }))
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Pencil mode')
+    await userEvent.click(palette.getByRole('button', { name: 'Light mint' }))
+    await userEvent.keyboard('q')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('q')
+    expect(getComputedStyle(cell()).cursor).toBe(pen)
+    await userEvent.keyboard('q')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Pencil mode')
+
+    await userEvent.keyboard('x')
+    const grid = await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }, { timeout: 5000 })
+    expect(getComputedStyle(within(grid).getAllByRole('button')[0]).cursor).toBe('crosshair')
+    await userEvent.keyboard('q')
+    await expect(canvas.getByRole('grid', { name: 'Sudoku grid' })).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('q')
+    expect(getComputedStyle(cell()).cursor).toBe(pen)
+  },
+}
+const cellPaintingGame = { ...inProgress, id: 'cell-painting' }
+export const CellPainting: Story = {
+  args: { game: cellPaintingGame, games: [cellPaintingGame] },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('selectedDigit', null)
+    playPreferenceStore.set('colorBrush', null)
+    playPreferenceStore.set('colorTarget', 'cell')
+    return () => {
+      playPreferenceStore.set('selectedDigit', saved.selectedDigit)
+      playPreferenceStore.set('colorBrush', saved.colorBrush)
+      playPreferenceStore.set('colorTarget', saved.colorTarget)
+      playPreferenceStore.set('pencil', saved.pencil)
+      playPreferenceStore.set('highlightMode', saved.highlightMode)
+      playPreferenceStore.set('eraseMode', saved.eraseMode)
+      playPreferenceStore.set('colorMode', saved.colorMode)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const grid = () => canvas.getByRole('grid', { name: 'Sudoku grid' })
+    const cell = () => within(grid()).getByRole('gridcell', { name: /^Row 1, column 4,/ })
+    await userEvent.keyboard('dqc')
+    const palette = within(await canvas.findByRole('region', { name: 'Coloring' }))
+    const rose = palette.getByRole('button', { name: 'Light rose' })
+    const swatchTop = rose.getBoundingClientRect().top
+    await userEvent.click(rose)
+    expect(rose.getBoundingClientRect().top).toBeCloseTo(swatchTop)
+    await expect(grid()).toHaveAccessibleDescription('Color mode')
+    await expect(palette.queryByText('Choose cells to paint rose.')).not.toBeInTheDocument()
+    await userEvent.keyboard('2')
+    await expect(cell()).toHaveClass('candidate-highlight-cell')
+    await userEvent.click(cell())
+    await expect(cell()).toHaveClass('color-1')
+    await expect(cell()).toHaveAccessibleName(/candidates 2/)
+    await userEvent.click(rose)
+    await expect(rose).toHaveAttribute('aria-pressed', 'false')
+    await expect(grid()).toHaveAccessibleDescription('Pencil mode')
+
+    for (const [shortcut, mode] of [['h', 'Highlight'], ['de', 'Erase']]) {
+      await userEvent.keyboard(shortcut)
+      await expect(grid()).toHaveAccessibleDescription(`${mode} mode`)
+      await userEvent.click(rose)
+      await expect(grid()).toHaveAccessibleDescription('Color mode')
+      await userEvent.click(rose)
+      await expect(grid()).toHaveAccessibleDescription(`${mode} mode`)
+    }
+    await userEvent.keyboard('d0{Shift>}24{/Shift}')
+    await expect(grid()).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.click(rose)
+    await userEvent.keyboard('3')
+    await userEvent.click(rose)
+    await expect(grid()).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.keyboard('dq')
+  },
+}
 export const ChainProofPreview: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   play: async ({ canvas, canvasElement, userEvent }) => {
@@ -321,6 +524,12 @@ export const ChainProofPreview: Story = {
 }
 export const MedusaRemoval: Story = {
   args: { game: medusaRemovalGame, games: [medusaRemovalGame] },
+}
+export const DisabledChainEdits: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.keyboard('x')
+    await expect(await canvas.findByRole('button', { name: 'Apply edits' })).toBeDisabled()
+  },
 }
 export const RemoveBranchTip: Story = {
   args: { game: branchedGame, games: [branchedGame] },
@@ -346,8 +555,33 @@ export const RemoveBranchTip: Story = {
     await expect(canvas.getByText('Branch tip removed.')).toBeVisible()
     await expect(chain).not.toHaveTextContent(branchNotation)
     await expect(tip).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'Undo edit' }))
+    const undoEdit = canvas.getByRole('button', { name: 'Undo edit' })
+    const redoEdit = canvas.getByRole('button', { name: 'Redo edit' })
+    await expect(redoEdit).toBeDisabled()
+    await userEvent.click(undoEdit)
     await expect(chain).toHaveTextContent(branchNotation)
+    await expect(tip).toHaveAttribute('aria-pressed', 'true')
+    await expect(redoEdit).toBeEnabled()
+    await userEvent.keyboard('{Control>}z{/Control}')
+    await expect(chain).toHaveTextContent('No links yet.')
+    await userEvent.keyboard('{Control>}y{/Control}')
+    await expect(chain).toHaveTextContent(branchNotation)
+    await userEvent.keyboard('{Meta>}{Shift>}Z{/Shift}{/Meta}')
+    await expect(chain).not.toHaveTextContent(branchNotation)
+    await expect(tip).toHaveAttribute('aria-pressed', 'false')
+    await expect(redoEdit).toBeDisabled()
+    await userEvent.click(undoEdit)
+    await userEvent.click(redoEdit)
+    await expect(chain).not.toHaveTextContent(branchNotation)
+    await userEvent.click(undoEdit)
+    await userEvent.click(tip)
+    await expect(redoEdit).toBeDisabled()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Done drawing' }))
+    const showLinks = canvas.getByRole('button', { name: 'Show strong links' })
+    await userEvent.click(showLinks)
+    await expect(showLinks).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.queryByText('Select a candidate or link to start drawing.')).not.toBeInTheDocument()
   },
 }
 export const TemporaryPencil: Story = {
@@ -630,16 +864,16 @@ export const HintWithGrid: Story = {
     await userEvent.click(viewHint)
     const hint = await canvas.findByRole('complementary', { name: 'Puzzle hint' }, { timeout: 5000 })
     const outcomeText = /Place [1-9] in|Remove [1-9] from|Remove candidates/
-    await canvas.findByRole('button', { name: 'Show digits' })
+    const more = await within(hint).findByRole('button', { name: 'More detail' }, { timeout: 5000 })
     await expect(within(hint).queryByRole('button', { name: 'Hint visuals' })).not.toBeInTheDocument()
     await expect(hint).not.toHaveTextContent(outcomeText)
     await expect(hint).not.toHaveTextContent(/Look for digit/)
     await expect(canvas.getByRole('group', { name: 'Hint navigation' })).toHaveTextContent('1/10')
-    await userEvent.click(canvas.getByRole('button', { name: 'Show digits' }))
+    await userEvent.click(more)
     await expect(hint).toHaveTextContent(/Look for digit/)
     await expect(hint).not.toHaveTextContent(outcomeText)
     await expect(hint).not.toHaveTextContent(/Look in/)
-    await userEvent.click(canvas.getByRole('button', { name: 'Show location' }))
+    await userEvent.click(more)
     await expect(hint).toHaveTextContent(/Look in|Look at the highlighted cells/)
     await expect(hint).not.toHaveTextContent(outcomeText)
     const coloredCell = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
@@ -649,7 +883,7 @@ export const HintWithGrid: Story = {
     await userEvent.click(visuals)
     await expect(visuals).toHaveAttribute('aria-pressed', 'false')
     await expect(coloredCell).toHaveClass('color-1')
-    await userEvent.click(canvas.getByRole('button', { name: 'Show explanation' }))
+    await userEvent.click(more)
     await expect(visuals).toHaveAttribute('aria-pressed', 'false')
     await expect(hint).toHaveTextContent(outcomeText)
     await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
@@ -657,9 +891,127 @@ export const HintWithGrid: Story = {
     await expect(visuals).toHaveAttribute('aria-pressed', 'true')
     await expect(coloredCell).not.toHaveClass('color-1')
     await userEvent.click(canvas.getByRole('button', { name: 'Next hint' }))
-    await expect(canvas.getByRole('button', { name: 'Show digits' })).toBeVisible()
+    await expect(more).not.toHaveAttribute('aria-disabled', 'true')
     await expect(visuals).not.toBeInTheDocument()
     await expect(hint).not.toHaveTextContent(outcomeText)
+  },
+}
+
+const medusaHintGrid = [
+  '042609300', '603200005', '000003062', '365080294', '020564713',
+  '174932006', '000396027', '236070009', '000025630',
+].join('')
+const medusaHintNotes = [
+  '578 - - - 15 - - 78 18', '- 189 - - 14 78 1489 478 -', '579 1589 1789 78 145 - 49 - -',
+  '- - - 17 - 17 - - -', '89 - 89 - - - - - -', '- - - - - - 58 58 -',
+  '458 158 18 - - - 148 - -', '- - - 148 - 18 145 45 -', '4789 189 1789 14 - - - - 18',
+].join(' ').split(' ').map(notes => notes === '-' ? 0 : [...notes].reduce((mask, digit) => mask | 1 << (Number(digit) - 1), 0))
+const medusaHintGame = {
+  ...replaceCandidates(makeGame('medusa-hint-location', '3D Medusa', medusaHintGrid, 'generated'), medusaHintNotes, { recordHistory: false }),
+  difficulty: 'very-hard' as const, score: 2116,
+}
+
+const cleanupNodes = [[13, 1], [13, 4], [22, 4], [24, 4], [24, 9], [15, 9], [10, 9]]
+  .map(([cell, digit]) => candidateId({ cell, digit }))
+const cleanupLinks = cleanupNodes.slice(1).map((node, index): ChainEdge => [cleanupNodes[index], node])
+const chainCleanupGame = {
+  ...medusaHintGame, id: 'chain-candidate-cleanup',
+  chainSketch: { sketches: [{ ...newChainSketch(1), history: [[], cleanupLinks] }], activeId: 1, pending: null },
+}
+
+export const ChainCandidateCleanup: Story = {
+  args: { game: chainCleanupGame, games: [chainCleanupGame] },
+  beforeEach: () => {
+    const selectedDigit = playPreferenceStore.getSnapshot().selectedDigit
+    playPreferenceStore.set('selectedDigit', null)
+    playSession.set(chainCleanupGame.id, 'toolPanels', { open: ['chains'], active: 'digits' })
+    playSession.set(chainCleanupGame.id, 'drawingIntent', false)
+    return () => playPreferenceStore.set('selectedDigit', selectedDigit)
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.keyboard('d')
+    const grid = within(canvas.getByRole('grid', { name: 'Sudoku grid' }))
+    const links = () => canvasElement.querySelector('.board-links')
+    const removeOne = async (cell: HTMLElement) => {
+      await userEvent.click(cell)
+      await userEvent.keyboard('{Control>}1{/Control}')
+      await expect(cell).not.toHaveAccessibleName(/candidates (?:\d+, )*1\b/)
+      await waitFor(() => expect(links()).not.toBeInTheDocument())
+    }
+    await waitFor(() => expect(links()).toBeInTheDocument(), { timeout: 5000 })
+    // The only elimination is outside the chain. Removing it should still clear the links.
+    await removeOne(grid.getByRole('gridcell', { name: /^Row 2, column 7,/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Undo$/ }))
+    await waitFor(() => expect(links()).toBeInTheDocument())
+    // Removing a linked candidate should also clear the links.
+    await removeOne(grid.getByRole('gridcell', { name: /^Row 2, column 5,/ }))
+  },
+}
+
+export const MedusaHintStages: Story = {
+  args: { game: medusaHintGame, games: [medusaHintGame] },
+  beforeEach: () => {
+    const saved = playPreferenceStore.getSnapshot().selectedDigit
+    playPreferenceStore.set('selectedDigit', 4)
+    return () => playPreferenceStore.set('selectedDigit', saved)
+  },
+  play: async ({ canvas, userEvent }) => {
+    const grid = within(canvas.getByRole('grid', { name: 'Sudoku grid' }))
+    const unrelatedCell = grid.getByRole('gridcell', { name: /^Row 7, column 1,/ })
+    await expect(unrelatedCell).toHaveAccessibleName(/candidate 4 highlighted|highlighted for candidate 4/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
+    const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
+    const hint = within(card)
+    if (!hint.queryByRole('heading', { name: '3D Medusa' })) await userEvent.click(hint.getByRole('button', { name: 'Next hint' }))
+    const title = hint.getByRole('heading', { name: '3D Medusa' })
+    const more = hint.getByRole('button', { name: 'More detail' })
+    const less = hint.getByRole('button', { name: 'Less detail' })
+    const geometry = () => {
+      const bounds = card.getBoundingClientRect()
+      const controls = [title, hint.getByRole('link', { name: /Review .* lesson/ }),
+        hint.getByRole('button', { name: 'Close hint' }), hint.getByRole('group', { name: 'Hint navigation' }),
+        less, more, card.querySelector('.hint-card-summary :is(.hint-card-visuals, .hint-card-visuals-space)')!,
+        card.querySelector('.hint-card-detail-actions .primary')!,
+      ].flatMap(element => {
+        const { x, y, width, height } = element.getBoundingClientRect()
+        return [x - bounds.x, y - bounds.y + card.scrollTop, width, height]
+      })
+      return [card.offsetLeft, card.offsetTop, bounds.width, bounds.height, ...controls]
+    }
+    const initial = geometry()
+    const expectStableGeometry = () => geometry().forEach((value, index) => expect(Math.abs(value - initial[index])).toBeLessThan(1))
+    const reveal = async (keyboard = false) => {
+      if (keyboard) {
+        more.focus()
+        await userEvent.keyboard('{Enter}')
+        await expect(more).toHaveFocus()
+      } else await userEvent.click(more)
+      expectStableGeometry()
+    }
+    await expect(less).toHaveAttribute('aria-disabled', 'true')
+    await expect(hint.queryByRole('button', { name: 'Apply hint' })).not.toBeInTheDocument()
+    await reveal(true)
+    await expect(card).toHaveTextContent('Look for digits 1, 4, and 9.')
+    await expect(unrelatedCell).not.toHaveAccessibleName(/highlighted/)
+    await expect(grid.queryAllByRole('gridcell', { name: /hint cell|hint area/ })).toHaveLength(0)
+
+    await reveal()
+    const highlighted = grid.getAllByRole('gridcell', { name: /hint cell|hint area/ }).map(cell => cell.dataset.cell)
+    await expect(highlighted).toEqual(['10', '13', '15', '22', '24'])
+    await userEvent.click(hint.getByRole('button', { name: 'Hint visuals' }))
+    await expect(unrelatedCell).toHaveAccessibleName(/candidate 4 highlighted|highlighted for candidate 4/)
+    await userEvent.click(hint.getByRole('button', { name: 'Hint visuals' }))
+
+    await reveal(true)
+    await expect(hint.getByRole('heading', { name: 'Remove candidates' })).toBeInTheDocument()
+    await expect(more).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.tab()
+    await expect(hint.getByRole('button', { name: 'Apply hint' })).toHaveFocus()
+    await userEvent.click(less)
+    await expect(hint.queryByRole('button', { name: 'Apply hint' })).not.toBeInTheDocument()
+    expectStableGeometry()
   },
 }
 
@@ -699,12 +1051,12 @@ function hintViewportStory(viewport: keyof typeof hintViewports): Story {
       expect(layout).toBeInTheDocument()
       await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
       await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
-      await canvas.findByRole('button', { name: 'Show digits' }, { timeout: 5000 })
+      await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
       const cards = Array.from(layout.querySelectorAll<HTMLElement>('[data-mobile-panel]'))
       const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
       const puzzle = layout.querySelector<HTMLElement>('[data-mobile-panel="puzzle"]')!
       const doc = page.ownerDocument.documentElement
-      const tools = TOOL_PANEL_ORDER
+      const tools = TOOL_PANEL_ORDER.filter(panel => panel !== 'rules')
       expect(cards.map(card => card.dataset.mobilePanel).sort()).toEqual(['hint', 'input', 'puzzle'])
 
       const fitsInside = (rect: DOMRect, container: DOMRect) => rect.width > 0 && rect.height > 0 &&

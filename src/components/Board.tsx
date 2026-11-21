@@ -2,11 +2,11 @@ import { cloneElement, memo, useCallback, useLayoutEffect, useMemo, useRef, useS
 import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
 import { candidateCount, COLORS, DIGITS, hasCandidate, marksOf, peer, type CandidateLayout, type Position } from '../sudoku/game'
-import { jigsawMembership, CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
+import { jigsawMembership, jigsawRegionColors, CLASSIC_GRID, type SizedGrid } from '../sudoku/grid'
 import { activeHighlightDigit, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sudoku/preferences'
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
-import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, type VariantRuleSectionId } from '../sudoku/variants'
+import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, variantHouseFillCells, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
@@ -102,6 +102,8 @@ type CellGeometry = {
   cageTotal?: number | string
   cageStyle?: CSSProperties
   regionAtCell?: number
+  regionColor?: number
+  houseFill: boolean
   boxEdge: boolean
   regionRight: boolean
   regionBottom: boolean
@@ -287,6 +289,7 @@ const BoardCell = memo(function BoardCell({
   ], [cageTotal, geometry.cageStyle, cellItems])
 
   return <Cell role="gridcell" data-cell={index} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
+    data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
     data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
@@ -323,6 +326,7 @@ export function Board({
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
   const variantRules = variantPuzzle?.rules
+  const houseFills = useMemo(() => new Set(variantRules?.flatMap(variantHouseFillCells)), [variantRules])
   const highlightedDiagonals = useMemo(() => highlightedRule === 'diagonal'
     ? (variantRules ?? []).flatMap(rule => rule.type === 'diagonal' ? [rule.diagonal] : []) : [], [highlightedRule, variantRules])
   const linkedDoubleArrows = useMemo(() => sizedRules?.filter(rule => rule.type === 'linked-double-arrow') ?? [], [sizedRules])
@@ -343,6 +347,7 @@ export function Board({
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => 'regions' in grid ? jigsawMembership(grid)
     : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [grid, regions])
+  const regionColors = useMemo(() => regionsAt && jigsawRegionColors(regionsAt, gridSize), [regionsAt, gridSize])
   const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
   const sizedLabels = useMemo(() => sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined, [sizedRules, sizedGrid])
@@ -367,9 +372,12 @@ export function Board({
     for (const cell of [...cageTotals.keys(), ...algebraicLabels.captions.keys()]) insets.set(cell, { top: .3, bottom: insets.get(cell)?.bottom ?? .07 })
     return insets
   }, [clones, cageTotals, algebraicLabels])
-  const variantClues = useMemo(() => variantRules?.length
-    ? [<div className="board-variant-clues" key={JSON.stringify(variantRules)}><VariantClues rules={variantRules} /></div>]
-    : NO_MARKS, [variantRules])
+  const variantClues = useMemo(() => {
+    const rules = variantRules?.filter(rule => rule.type === highlightedRule || !variantHouseFillCells(rule).length)
+    return rules?.length
+      ? [<div className="board-variant-clues" key={JSON.stringify(rules)}><VariantClues rules={rules} /></div>]
+      : NO_MARKS
+  }, [highlightedRule, variantRules])
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const highlightedDigits = useMemo(() => marksOf(highlightedDigitMask), [highlightedDigitMask])
   const matchAnyDigit = highlightedDigitMatch === 'any' && highlightedDigitMask !== 0
@@ -426,6 +434,7 @@ export function Board({
     const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
     return {
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
+      regionColor: regionAtCell === undefined ? undefined : regionColors?.[regionAtCell], houseFill: houseFills.has(index),
       cageStyle: cageTotal !== undefined && variantRules ? { insetInlineStart: `${cageLabelInset(index, variantRules) * 100}%` } : undefined,
       boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
@@ -433,7 +442,7 @@ export function Board({
       alternateBox: rectangularBoxes && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
       clues: [cellClues?.[index]?.join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
     }
-  }), [gridSize, boxRows, boxColumns, regionsAt, rectangularBoxes, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
+  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, rectangularBoxes, cageTotals, algebraicLabels, clones, variantRules, cellClues, sizedLabels])
 
   // Parent timers and fresh event closures do not change the grid. Event wrappers
   // read the latest committed callbacks even when this element tree is reused.
@@ -545,7 +554,7 @@ export function Board({
       {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
-      <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}`}
+      <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}${houseFills.size ? ' shaded-houses-board' : ''}`}
         data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={modeBoundaryRef}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
