@@ -91,7 +91,7 @@ pub use variant::{
     VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
-    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
+    VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
     canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]

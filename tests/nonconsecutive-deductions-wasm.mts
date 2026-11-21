@@ -87,7 +87,7 @@ test('Consecudoku now completes without seeding removals and every new step repl
   const normalized = await runEngine({ type: 'variant', operation: 'normalize', position })
   assert.deepEqual(normalized.puzzle, fixture.position.puzzle)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.equal(trace.rating.scoringVersion, 15)
+  assert.equal(trace.rating.scoringVersion, 16)
   assert.notEqual(trace.rating.status, 'stalled')
   assert.ok(trace.steps.some(step => NC_EXCLUSION_TECHNIQUES.includes(step.technique as typeof NC_EXCLUSION_TECHNIQUES[number])))
   let played = game
@@ -125,7 +125,7 @@ test('old explicit profiles retain the archived stall and disabled hints preserv
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new MemoryStorage() })
   try {
-    assert.equal(saveDisabledHintTechniques([...NC_EXCLUSION_TECHNIQUES]), true)
+    assert.equal(saveDisabledHintTechniques([...NC_EXCLUSION_TECHNIQUES, 'kropki-house-support']), true)
     const base = makeGame('nc-archived-stall', 'Consecudoku', fixture.position.puzzle.givens, 'imported')
     const current = { ...base, variant: game.variant, position: { ...base.position,
       entries: fixture.position.entries, eliminations: [...fixture.position.eliminations] } }

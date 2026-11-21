@@ -37,7 +37,7 @@ pub use logical::{
     VariantSumPairProof, VariantTechnique, VariantTrace,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
-    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
+    VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
 };
 use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(
@@ -565,6 +565,7 @@ impl VariantPuzzle {
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
             extra_rule_cells: 0,
+            kropki_marks: 0..0,
         };
 
         for i in 0..9 {
@@ -814,6 +815,7 @@ pub struct CompiledVariant {
     pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,
     extra_rule_cells: u128,
+    kropki_marks: std::ops::Range<usize>,
 }
 
 #[derive(Clone, Debug)]

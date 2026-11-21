@@ -32,13 +32,16 @@ test('app hints, technique selection, and complete solutions work for every offe
   const thermometerOrder = await getVariantPlayOrder({
     version: 1, givens: '0'.repeat(81), rules: [{ type: 'thermometer', cells: [0, 1] }],
   })
+  const kropkiOrder = await getVariantPlayOrder({
+    version: 1, givens: '0'.repeat(81), rules: [{ type: 'kropki', consecutive: { pairs: [[0, 1]] } }],
+  })
   const catalog = await puzzleTechniqueCatalog(true)
   assert.ok(catalog.techniques.some(({ id }) => id === 'locked-candidates'))
   assert.ok(!(await puzzleTechniqueCatalog(false)).techniques.some(({ id }) => id === 'thermometer'))
   for (const [id, levels] of Object.entries(variantSeeds)) {
     for (const [difficulty, recipes] of Object.entries(levels)) await t.test(`${id} ${difficulty}`, async () => {
       const { puzzle, solution } = await runEngine(variantGenerationRequest(
-        id as keyof typeof variantSeeds, difficulty as Difficulty, recipes![0], id === 'thermometer' ? thermometerOrder : defaultOrder,
+        id as keyof typeof variantSeeds, difficulty as Difficulty, recipes![0], id === 'thermometer' ? thermometerOrder : id === 'kropki' ? kropkiOrder : defaultOrder,
       ))
       const game = { ...makeGame(`help-${id}-${difficulty}`, 'Variant', puzzle.givens, 'generated'),
         variant: { id: id as keyof typeof variantSeeds, puzzle, solution }, difficulty: difficulty as Difficulty }

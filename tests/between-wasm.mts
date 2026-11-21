@@ -9,6 +9,7 @@ import { generatePlayableVariant, getVariantPlayOrder, playCandidates, variantPo
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { assertKropkiHouseProof } from './helpers/kropki-house-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -20,7 +21,7 @@ const published = JSON.parse(readFileSync(new URL('./fixtures/between-newman.jso
 const mixed = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
-for (const [source, points, steps, complete] of [[published, 958, 77, true], [mixed, 1921, 62, false]] as const) {
+for (const [source, points, steps, complete] of [[published, 958, 77, true], [mixed, 2085, 66, false]] as const) {
   test(`complete source ${source.title} imports with checked rules, several hints and an honest solution path`, async () => {
     const { game } = await prepareImportedPuzzle(source === published ? share(source.puzzle) : source.code)
     assert.deepEqual(game.variant!.puzzle, source.puzzle)
@@ -39,14 +40,17 @@ for (const [source, points, steps, complete] of [[published, 958, 77, true], [mi
     assert.equal(solution.rating.status === 'stalled', !complete)
     assert.equal(solution.board === source.solution, complete)
     let play = game
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: await getVariantPlayOrder() })
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: await getVariantPlayOrder(game.variant!.puzzle) })
     for (const step of trace.steps) {
       for (const action of step.actions) {
         if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
         else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
       }
       const before = play
-      play = applyDeduction(play, step.actions, variantHouseMasks(game.variant!.puzzle, valuesOf(play), play.position.eliminations))
+      const puzzle = game.variant!.puzzle
+      const masks = variantHouseMasks(puzzle, valuesOf(play), play.position.eliminations)
+      if (step.technique === 'kropki-house-support') assertKropkiHouseProof(puzzle, valuesOf(play), masks, step)
+      play = applyDeduction(play, step.actions, masks)
       assert.deepEqual(undo(play).position, before.position)
       assert.deepEqual(redo(undo(play)).position, play.position)
     }

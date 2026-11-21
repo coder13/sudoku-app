@@ -80,6 +80,13 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
 }
 
 
+fn white_dot_seed(givens: &'static str, pair: [usize; 2], cell: usize, digit: u8) -> ExampleSeed {
+    seed(givens, cell, digit, [PuzzleRule::Kropki {
+        consecutive: positive_pairs([pair]),
+        ratio_two: MarkedPairs::default(),
+    }])
+}
+
 fn positive_pairs<const N: usize>(pairs: [[usize; 2]; N]) -> MarkedPairs {
     MarkedPairs {
         pairs: pairs.into(),
@@ -1133,6 +1140,20 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                     },
                     PuzzleRule::Renban { cells: vec![52, 43], segments: None },
                 ],
+            ),
+        ],
+        KropkiHouseSupport => [
+            white_dot_seed(
+                "000170000106400092287900040608300905009208030003590016090604000800053260060000100",
+                [23, 24], 22, 6,
+            ),
+            white_dot_seed(
+                "050002080006085092200006040008040925509060007003590010092010308040003009065020004",
+                [30, 39], 30, 7,
+            ),
+            white_dot_seed(
+                "900002000006400792287930041008340920010260400000090810000610008040003009005029070",
+                [14, 23], 3, 8,
             ),
         ],
         ThermometerHouseSupport => [

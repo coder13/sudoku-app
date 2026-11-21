@@ -1,5 +1,5 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
-import { DIGITS, onlyCandidate } from './game.ts'
+import { candidateCount, DIGITS, onlyCandidate } from './game.ts'
 import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
 import { cloneLayout } from './clone.ts'
@@ -277,6 +277,24 @@ function explainGroupOrder(
     description: `Check the order of the repeating groups on the ${family(evidence.rule)} line starting at ${at(evidence.cells[0])}.`,
     reason: [...cases, conclusion].join(' '),
   }
+}
+
+function dotHouseConflict(proof: Extract<VariantDeduction['evidence'], { type: 'kropki-house' }>) {
+  const remaining = proof.cells.flatMap((cell, i) => proof.pair.includes(cell) ? [] : [{ cell, domain: proof.domains[i] }])
+  let shortest: { used: number; blocked: number[]; digits: number } | undefined
+  for (const used of proof.rejected) {
+    for (let subset = 1; subset < 1 << remaining.length; subset++) {
+      const size = candidateCount(subset)
+      if (shortest && size >= shortest.blocked.length) continue
+      const cells = remaining.filter((_, i) => subset & (1 << i))
+      const digits = cells.reduce((union, { domain }) => union | (domain & ~used), 0)
+      if (candidateCount(digits) < size) {
+        shortest = { used, blocked: cells.map(({ cell }) => cell), digits }
+        if (size === 1) return shortest
+      }
+    }
+  }
+  return shortest
 }
 
 export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPuzzle, options: CellReferenceOptions = {}): HintChoice {
@@ -662,6 +680,33 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const surviving = choices.length <= 3 ? `Only these group orders fit ${house}. ${alternatives.format(choices)}.` : ''
       reason = [...failed.slice(0, 2), surviving,
         'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
+      break
+    }
+    case 'kropki-house': {
+      const house = houseLabel(evidence.house)
+      const [a, b] = evidence.pair
+      const rules = evidence.rules.map(index => puzzle.rules?.[index]).filter(rule => rule?.type === 'kropki')
+      const white = rules.some(rule => hasMarkedPair(rule.consecutive?.pairs, a, b))
+      const black = rules.some(rule => hasMarkedPair(rule.ratioTwo?.pairs, a, b))
+      const dot = white && black ? 'The white and black dots' : white ? 'The white dot' : 'The black dot'
+      const rule = white && black ? 'The two digits must be 1 and 2.'
+        : white ? 'The two digits must be consecutive.' : 'One digit must be double the other.'
+      description = `${dot} join${white && black ? '' : 's'} ${nameCell(a)} and ${nameCell(b)} in ${house}. ${rule}`
+      cells = evidence.cells
+      const pairDigits = (mask: number) => new Intl.ListFormat('en').format(DIGITS
+        .filter(digit => mask & (1 << (digit - 1))).map(String))
+      const conflict = dotHouseConflict(evidence)
+      if (conflict) {
+        const shortage = conflict.blocked.length === 1
+          ? `${nameCell(conflict.blocked[0])} has no digit left`
+          : `${new Intl.ListFormat('en').format(conflict.blocked.map(nameCell))} can only use ${pairDigits(conflict.digits)}`
+        reason = `If the dot uses ${pairDigits(conflict.used)}, ${shortage}. Check the other pairs in ${house} to rule out the crossed-out candidates.`
+      } else if (focus.every(({ cell, digit }) => !evidence.pair.includes(cell) && evidence.locked & (1 << (digit - 1)))) {
+        const named = pairDigits(evidence.locked)
+        reason = `Every assignment that fills ${house} uses ${named} on the dot. Remove those candidates from the other cells in ${house}.`
+      } else {
+        reason = `Try each pair that fits the dot. The other cells in ${house} must use the digits it leaves. None of the complete assignments uses the crossed-out candidates.`
+      }
       break
     }
     case 'thermometer-house': {

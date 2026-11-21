@@ -252,3 +252,31 @@ The table reports median thread CPU time in milliseconds from nine alternating, 
 | Sudoku Spider | 0.960 → 0.946 | 4.096 → 4.534 | 0.569 → 0.737 |
 
 Thermo Sandwich kept all eight opening hints, its 163-step Very Hard walkthrough, and the published exact grid. It continues to report zero Unique Rectangle chain moves at the opening position.
+
+
+## Kropki dots with a shared house
+
+For a printed white or black dot, the engine checks whether its two open cells can use each feasible pair of digits while the rest of their shared house uses the other digits. The technique removes a candidate only when the dot and the house each allow it on their own and their combination rules it out. It can also remove a digit elsewhere in the house when every assignment uses it on the dot. Proofs carry both rule indices when white and black marks share an edge. An irregular Jigsaw control verifies the authored region and both marks. Unmarked edges retain their negative-rule behavior.
+
+Kropki dot and house costs 48 points at Medium. The three practice estimates are 42, 70, and 48 points. Variant scoring is version 16, and saved ratings with printed dots refresh on the next rating pass.
+
+| Published puzzle | Previous app walkthrough | Walkthrough with dot and house |
+| --- | --- | --- |
+| Cauldron | 82 steps, partial at 12,215 points | 123 steps, Medium at 2,653 points |
+| Entropic Loop (Hyk5) | 144 steps, Hard at 3,345 points | 153 steps, Hard at 3,604 points |
+| L25 entropic (Hafj) | 169 steps, Hard at 4,081 points | 193 steps, Tricky at 5,062 points |
+| Between the Dots | 62 steps, partial at 1,921 points | 66 steps, partial at 2,085 points |
+
+The original Cauldron import and each walkthrough action agree with the published grid. Independent house permutations check its five new proofs and the new proofs in the Entropic and Between controls. The archived K95q import with complete black-dot markings and Global Entropy also finishes at Medium with 2,452 points. Its exact grid and all 24 printed dots are preserved.
+
+Nine alternating warmed Wasm samples measured median thread CPU time in milliseconds on Darwin arm64. Exact verification replies and opening candidate masks matched on all five sampled puzzles. Each opening-hint request retained its choice count.
+
+| Published puzzle | Rating before → after | Ranked opening hints before → after |
+| --- | --- | --- |
+| carved out | 1.090 → 0.842 | 0.443 → 0.449 |
+| Cauldron | 503.917 → 1.418 | 0.129 → 0.126 |
+| Entropic Loop | 3.078 → 4.613 | 6.046 → 6.465 |
+| L25 entropic | 7.169 → 8.728 | 1.962 → 2.227 |
+| Thermo Sandwich | 63.786 → 63.644 | 15.631 → 15.676 |
+
+Seventeen replacement recipes preserve all seven Kropki generation tiers. Mixed Hard generation with complete Kropki markings checks more layouts within the existing time budget. Tests verify the requested grade, unique solutions, preserved markers, and complete walkthroughs.
