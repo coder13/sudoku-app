@@ -1,0 +1,29 @@
+[
+  {
+    "sudoku_id": "ETLV",
+    "name": "Windoku I",
+    "description": ";; This puzzle solves with Basics of Windoku-Logic.",
+    "sudoku": "SCv7_32_f2e9r5ebdrdj0425vu2unev0i31off2divcjbeu01fbmcld2hpi4gqk1qjobutpseb9q83q4i001qk74pge8k954mdkoeunob1vh9cr9c3dflfbk3tl5n9uhdg697ddmi4ttjubiurakabtdv3pe8r7ormbuf5gkn1r7leedplodetv36jm6ktul7if4qfco1lcphqfp4jpj0gr9dffkjs2orajv4ar8bu7cequbbes0cbk3394144e8o48ppne2jhrc7rl99hip1i7jsmpbrlkokrdbblr7qefndupq7mdorfase39t4khdodtngkbp221g47630l85p9bl1eqj28g68h30ho089rg8p40gqpkvqgjdma40r8l83828mg081q8h1lpde9cah58tplo0icifsvg6aqojbi20vatce6gpa0o24dtb1f3c8qadbtc81q4lcqej8amhome8h55f06du87p4h35ktpav6gl73gisg492m01omc11cmi6d5djb7kb8o34621irf78clgi7slqgf22vjjt7t56lnevqunfpjvs53nrd19g1e9j4am3hl4hj5a18u1kc1mdj8cpaqfrutuf3hn46m73b7tl2pltr6aut6aa98t4i6i5icstqavm6oldolddeasti9nf8il74geib394pmdej57fje9ccpedptd2mqutj54hj5a18u1kc1mdj8cpbvqqnkvndup8vfsf19fentr6b50ev5h7pqk78ccltte93t1fulmttrqd1nu9do7kauhvtu766u9jq87pqil6s5dh3jv54vqr44m6",
+    "solution": "418729563796358412325416978687145239532967841149832756273591684861274395954683127",
+    "blocked": false,
+    "custom_constraints": false
+  },
+  {
+    "sudoku_id": "AUde",
+    "name": "Khachkar",
+    "description": "",
+    "sudoku": "SCv7_32_f2e9qkubdq1j047sivmna571uk5n5rdlmsea6718m6kabh2480lba4fvroiui8rtggr9alo8pcpjncr3718drhnl48v0f6gnk0t3t1jkreiasrubj3t8tpmb0f2jbjal0rl9utk2k8rd9ca9hfuvcbl682g2tl6ru23argj66evdi76mocsng0r7c06op0ueo4sp8l06gphb0f753j583pao806cms0cjv0ues6ikm02j80be00ib9e019d8koek1aq2nmri3ftd12nac4c5d8svnq7qi7nnagqpmpmvhbkpnd8p2s6g6ng7a9jg79fr69epph61b5s0r9r1tlrkav20jm3pf2ft6h4c2pdgt93vmppop70hhib42bia2b6o89su9kta23878bvmq1p0jkvefm0jpep2eoncet8m7evsenhljlq8hlf2k7e5rv4eipv6d8b7erqlb4tq4d6tlh5mr82flp7ip2p5fcs405pjbio95ftpf5nq2flrer3hkaefsoct15gng0cfksp0m",
+    "solution": "463581279917263845528947163659712438781436592234859716375624981846195327192378654",
+    "blocked": false,
+    "custom_constraints": false
+  },
+  {
+    "sudoku_id": "GVS6",
+    "name": "Traffic",
+    "description": "",
+    "sudoku": "SCv7_32_f2e8r4a11f120540vv5jnfq3n8ktnbgttfb32tkgtkgs5pk6b98b5vsukcd188etfjp7r7sa26q37ve9rg4pk6i1jcltjvb4floclm70k4skec1t6hm8e43eeeh41mb01r36kg7gkh3nkond7a2p1tmj2ibganourcu3nm9eimkrn13kp9vjdnrctl40asi7ubv573egq4oaoap9a35596klachiau3bnk4id44lb6176b2oiok1j5hs9va2hahca5a5hl7pgp223skd29spso1lubu3q923u7hirntvq4n0udoon3kg",
+    "solution": "579246813813579246246813579681357924924681357357924681792468135135792468468135792",
+    "blocked": false,
+    "custom_constraints": false
+  }
+]

@@ -1,6 +1,7 @@
 import { runEngine, type Analysis } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
 import { sameImportedDrawings } from './imported-drawings.ts'
+import { sameAuthoredArtwork } from './authored-artwork.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, markSolveUntimed, puzzleIdentity, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
@@ -12,6 +13,10 @@ import { validation } from './puzzle-validation.ts'
 import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
 
+// Imports can be much sparser than generated puzzles. Give the worker one
+// bounded uniqueness attempt so it can finish without restarting the search.
+const IMPORT_VARIANT_SEARCH_NODES = 2_000_000
+
 export type PuzzlePreview = {
   game: Game
   format: ImportedPuzzle['format'] | 'Photo or screenshot'
@@ -19,10 +24,11 @@ export type PuzzlePreview = {
   hasProgress?: true
 }
 
-export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules' | 'givenCellColors'>) {
+export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules' | 'givenCellColors' | 'authoredArtwork'>) {
   const identity = puzzleIdentity(imported)
   return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity &&
-    sameImportedCellColors(game.givenCellColors, imported.givenCellColors))
+    sameImportedCellColors(game.givenCellColors, imported.givenCellColors) &&
+    sameAuthoredArtwork(game.authoredArtwork, imported.authoredArtwork))
 }
 
 export function findImportAttempt(games: readonly Game[], { game, hasProgress }: PuzzlePreview): Game | undefined {
@@ -40,6 +46,7 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
     sameCandidateColors(importedCandidateColors, saved.position.importedCandidateColors) &&
     sameImportedDrawings(importedDrawings, saved.position.importedDrawings) &&
     sameImportedCellColors(game.givenCellColors, saved.givenCellColors) &&
+    sameAuthoredArtwork(game.authoredArtwork, saved.authoredArtwork) &&
     puzzleIdentity(saved) === identity)
 }
 
@@ -62,7 +69,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
-    authoredSolution, progress, whispersGuide, givenCellColors } = imported
+    authoredSolution, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' && !variant.fog ? 'Imported mixed-rule puzzle'
@@ -71,7 +78,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
         : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
         : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
   let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId,
-    ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }) }
+    ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), ...(authoredArtwork && { authoredArtwork }) }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
     game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })
@@ -88,7 +95,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
       const solution = existing.variant?.solution ?? await runEngine({ type: 'variant', operation: 'solve', position })
       game.variant = { ...variant, solution }
     } else {
-      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position })
+      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position, maxNodes: IMPORT_VARIANT_SEARCH_NODES })
       if (result.status !== 'unique') throw importValidationError(result.status)
       game.variant = { ...variant, solution: result.solution }
     }
