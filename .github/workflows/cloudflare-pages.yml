@@ -5,13 +5,19 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      pull_request:
+        description: 'Pull request number for a preview. Leave blank to redeploy main.'
+        type: string
+        required: false
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: cloudflare-pages-${{ github.event.pull_request.number || 'production' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: cloudflare-pages-${{ github.event.pull_request.number && format('check-{0}', github.event.pull_request.number) || inputs.pull_request && format('preview-{0}', inputs.pull_request) || 'production' }}
+  cancel-in-progress: false
 
 jobs:
   desktop-resize:
@@ -60,7 +66,7 @@ jobs:
           retention-days: 14
 
   deploy:
-    name: Build and deploy Sudoku
+    name: ${{ github.event_name == 'pull_request' && 'Build and check Sudoku' || 'Build and deploy Sudoku' }}
     if: >-
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository) ||
@@ -68,11 +74,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      PAGES_BRANCH: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'main' }}
+      PAGES_BRANCH: main
     steps:
+      - name: Resolve the pull request for this preview
+        id: preview
+        if: github.event_name == 'workflow_dispatch' && inputs.pull_request != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pull_request }}
+        run: |
+          if [[ ! "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Enter a positive pull request number."
+            exit 1
+          fi
+
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+          if ! sha=$(jq -er --arg repo "$GITHUB_REPOSITORY" \
+            'select(.state == "open" and .head.repo.full_name == $repo) | .head.sha' <<< "$pr"); then
+            echo "::error::Choose an open pull request from this repository."
+            exit 1
+          fi
+
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "PAGES_BRANCH=pr-$PR_NUMBER" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ steps.preview.outputs.sha || github.sha }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -82,10 +112,10 @@ jobs:
       - run: npm run build:cloudflare
         env:
           RUSTUP_TOOLCHAIN: stable
-          VITE_EXPERIMENTAL_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          VITE_EXPERIMENTAL_MODE: ${{ (github.event_name == 'pull_request' || steps.preview.outputs.sha != '') && 'true' || 'false' }}
 
       - name: Check board, startup, mobile resize, and solver lifecycles
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
         run: |
           npm run check
           npm test
@@ -99,7 +129,7 @@ jobs:
           node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
 
       - name: Upload browser check results
-        if: always() && github.event_name == 'pull_request'
+        if: always() && (github.event_name == 'pull_request' || steps.preview.outputs.sha != '')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: performance-and-browser-checks
@@ -111,6 +141,7 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: pages
+        if: github.event_name != 'pull_request'
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -118,6 +149,7 @@ jobs:
           command: pages deploy dist/client --project-name klyn-sudoku --branch ${{ env.PAGES_BRANCH }}
 
       - name: Report and check deployment
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.pages.outputs.deployment-url }}
