@@ -302,6 +302,38 @@ export const ChainShortcuts: Story = {
     await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
   },
 }
+export const StrongLinksSelectedDigit: Story = {
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['chains'], active: 'digits' })
+    const { pinnedActions, selectedDigit } = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('pinnedActions', ['strong-links'])
+    playPreferenceStore.set('selectedDigit', null)
+    return () => {
+      playPreferenceStore.set('pinnedActions', pinnedActions)
+      playPreferenceStore.set('selectedDigit', selectedDigit)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const keypad = within(canvas.getByRole('group', { name: 'Digit pad' }))
+    const selectEight = keypad.queryByRole('button', { name: /^Select 8$/ })
+    if (selectEight) await userEvent.click(selectEight)
+    await expect(keypad.getByRole('button', { name: 'Deselect 8' })).toHaveAttribute('aria-pressed', 'true')
+    const actions = canvas.queryByRole('region', { name: 'Chains' }) ??
+      canvas.getByRole('navigation', { name: 'Pinned puzzle actions' })
+    const toggle = await within(actions).findByRole('button', { name: /^(Show )?strong links$/i })
+    await userEvent.click(toggle)
+    const grid = await canvas.findByRole('grid', { name: 'Sudoku grid with strong links' })
+    await expect(keypad.getByRole('button', { name: 'Clear highlight for 8' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(within(grid).getAllByRole('button', { name: /^8 in row .*strong link color/i })[0]).toBeVisible()
+
+    await userEvent.click(toggle)
+    await expect(keypad.getByRole('button', { name: 'Deselect 8' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(toggle)
+    await userEvent.keyboard('{Shift>}[Digit7]{/Shift}')
+    await expect(keypad.getByRole('button', { name: 'Clear highlight for 7' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(keypad.getByRole('button', { name: 'Clear highlight for 8' })).toHaveAttribute('aria-pressed', 'true')
+  },
+}
 export const ChainProofPreview: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   play: async ({ canvas, canvasElement, userEvent }) => {
