@@ -2,7 +2,7 @@ import {
   addGeneratedHistoryRow, createGeneratedNumberResultCollector, generatedNumberWindow, orderNumberHistory,
   type GeneratedNumberResults, type NumberHistoryRequest,
 } from './generated-results.ts'
-import { indexGeneratedHistory, readGeneratedPickerHistory } from './generated-storage.ts'
+import { indexGeneratedHistory, indexGeneratedRecentHistory, readGeneratedPickerHistory, readGeneratedRecentHistory } from './generated-storage.ts'
 
 async function readHistory(request: NumberHistoryRequest) {
   const history = await readGeneratedPickerHistory(request.game, request.status, request.page)
@@ -21,16 +21,25 @@ async function readHistory(request: NumberHistoryRequest) {
 let history: ReturnType<typeof readHistory> | undefined
 let latest: NumberHistoryRequest
 let indexing = false
+let buildingRecentIndex = false
 
 self.onmessage = async ({ data: request }: MessageEvent<NumberHistoryRequest>) => {
   latest = request
   try {
-    const { result, indexPending } = await (history ??= readHistory(request))
+    // Keep paging the existing snapshot while this worker writes the new index.
+    const indexed = request.window && !buildingRecentIndex
+      ? await readGeneratedRecentHistory(request.game, request.status, request.window) : undefined
     if (request !== latest) return
-    self.postMessage(request.window ? generatedNumberWindow(result.entries, request.game, request.window) : result)
-    if (indexPending && !indexing) {
+    if (indexed) history = undefined
+    const { result, indexPending } = indexed ?? await (history ??= readHistory(request))
+    if (request !== latest) return
+    self.postMessage(request.window && !indexed ? generatedNumberWindow(result.entries, request.game, request.window) : result)
+    if (!indexing && (indexPending || request.window && !indexed)) {
       indexing = true
-      await indexGeneratedHistory(request.game).catch(() => {})
+      buildingRecentIndex = Boolean(request.window && !indexed)
+      if (indexPending) await indexGeneratedHistory(request.game).catch(() => {})
+      if (buildingRecentIndex) await indexGeneratedRecentHistory(request.game).catch(() => {})
+      buildingRecentIndex = false
     }
   } catch {
     if (request === latest) self.postMessage(null)
