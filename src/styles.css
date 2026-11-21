@@ -893,8 +893,7 @@ svg { flex-shrink: 0; }
   border-radius: var(--puzzle-mode-corner-radius);
 }
 .board-body[data-input-mode]::after { z-index: 6; }
-.board-body[data-input-mode] > .sudoku-grid,
-.board-body[data-input-mode] > .board-grid-surface > .sudoku-grid { border-color: transparent; }
+.board-body[data-input-mode] > .sudoku-grid { border-color: transparent; }
 .desktop-dock :is(.puzzle, .board-body)[data-input-mode],
 :root[data-theme="andoku"] :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-border-inset: 0px; }
 .desktop-dock :is(.puzzle, .board-body)[data-input-mode] { --puzzle-mode-corner-radius: 0px; }
@@ -954,6 +953,16 @@ svg { flex-shrink: 0; }
 
 .desktop-play-resizable .standard-puzzle-stack {
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
+}
+.desktop-play-resizable .workspace[data-layout-resizing] .standard-puzzle-stack .puzzle-flat {
+  /* Follow the live column while its inherited saved width stays fixed. The
+     two pixels match the border allowance in --puzzle-column-padding. */
+  --board-frame-width: 100%;
+  --puzzle-grid-inset: var(--board-guide-width);
+  max-inline-size: calc(100% - 2px);
+}
+.desktop-play-resizable .workspace[data-layout-resizing] .standard-hint-slot .hint-dock {
+  max-inline-size: max(240px, calc(100% - 2 * var(--puzzle-badge-gutter-inline)));
 }
 .desktop-play-resizable .standard-puzzle-stack .board-body {
   /* The frame consumes layout widths. Stop those changing inherited values
@@ -1264,19 +1273,8 @@ svg { flex-shrink: 0; }
   padding-inline-end: var(--board-guide-gap);
 }
 .board-body { grid-area: board; position: relative; container-type: inline-size; }
-.board-grid-surface { position: relative; container-type: inline-size; }
-.board-resize-font-metric {
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
-}
 .board-frame[data-overlay="true"] > :is(.col-labels, .row-labels),
-.board-frame[data-overlay="true"] > .board-body > :not(.board-overlay, .board-grid-surface),
-.board-frame[data-overlay="true"] > .board-body > .board-grid-surface > *,
+.board-frame[data-overlay="true"] > .board-body > :not(.board-overlay),
 .board-frame[data-overlay="false"] > .board-body > .board-overlay { opacity: 0; }
 .board-overlay { position: absolute; inset: 0; z-index: 4; transition: opacity var(--board-shape-motion); }
 @starting-style {
@@ -1359,14 +1357,12 @@ svg { flex-shrink: 0; }
   position: relative;
   display: grid;
   place-items: center;
+  font-size: calc((clamp(18px, 5.75cqw, 30px) * var(--board-font-scale, 1)) * var(--app-text-scale));
   line-height: 1;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   /* Selection and dense highlights update in one paint. Mark entry/exit still fades. */
   transition: none;
-}
-.cell, .board-resize-font-metric {
-  font-size: calc((clamp(18px, 5.75cqw, 30px) * var(--board-font-scale, 1)) * var(--app-text-scale));
 }
 .cell[data-box-edge] { border-right: 2px solid var(--grid-strong); }
 .grid-row[data-box-edge] .cell { border-bottom: 2px solid var(--grid-strong); }
@@ -1466,6 +1462,10 @@ svg { flex-shrink: 0; }
 }
 .puzzle .candidate-marks > * {
   font-size: calc((16cqmin + 13cqmin * var(--board-font-scale, 1)) * var(--app-text-scale) * var(--candidate-font-scale, 1));
+}
+.puzzle .candidate-marks[data-desktop-candidate-preview] > * { font-size: inherit; }
+.puzzle .candidate-marks[data-desktop-candidate-preview] :is(.board-candidate, .candidate-glyph) {
+  --candidate-shape-size: inherit;
 }
 .puzzle .center-marks {
   max-width: 90%;
@@ -1648,27 +1648,27 @@ svg { flex-shrink: 0; }
   opacity: 1;
 }
 
-:is(.board-body, .board-grid-surface):has(> .board-links) .cell:focus-visible:has([data-mark]),
-:is(.board-body, .board-grid-surface):has(> .board-links) :is(.candidate-marks, .center-marks):has(> [data-mark]) {
+.board-body:has(> .board-links) .cell:focus-visible:has([data-mark]),
+.board-body:has(> .board-links) :is(.candidate-marks, .center-marks):has(> [data-mark]) {
   z-index: auto;
 }
-:is(.board-body, .board-grid-surface):has(> .board-links) :is(.candidate-marks, .center-marks) > [data-mark] {
+.board-body:has(> .board-links) :is(.candidate-marks, .center-marks) > [data-mark] {
   z-index: 4;
 }
 /* Clear a gap around marked candidates that a link crosses. */
-:is(.board-body, .board-grid-surface):has(> .board-links) .candidate-marks > [data-mark="ring"] {
+.board-body:has(> .board-links) .candidate-marks > [data-mark="ring"] {
   -webkit-text-stroke: .24em var(--candidate-ring-fill, var(--cell-fill));
   paint-order: stroke fill;
 }
-:is(.board-body, .board-grid-surface):has(> .board-links) .center-marks > [data-mark="ring"] {
+.board-body:has(> .board-links) .center-marks > [data-mark="ring"] {
   -webkit-text-stroke: .24em var(--candidate-ring-fill, var(--center-note-bg));
   paint-order: stroke fill;
 }
-:is(.board-body, .board-grid-surface):has(> .board-links) .board-candidate[data-mark="strike"] {
+.board-body:has(> .board-links) .board-candidate[data-mark="strike"] {
   -webkit-text-stroke: .24em var(--cell-fill);
   paint-order: stroke fill;
 }
-:is(.board-body, .board-grid-surface):has(> .board-links) .center-marks > [data-mark="strike"] { -webkit-text-stroke-color: var(--center-note-bg); }
+.board-body:has(> .board-links) .center-marks > [data-mark="strike"] { -webkit-text-stroke-color: var(--center-note-bg); }
 .chain-sketch .chain-candidate[data-mark="strike"] { background: transparent; box-shadow: none; }
 .board-links, .board-outside-clues {
   position: absolute;
@@ -3299,7 +3299,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 :root[data-theme="andoku"] .cell[data-alternate-box] { --cell-base-bg: var(--board-box-bg); }
 .shaded-houses-board:not(.jigsaw-board) .cell { --cell-base-bg: var(--board-bg); }
 :root[data-theme="andoku"] :is(.cell, .controls) { font-family: Roboto, Arial, sans-serif; }
-:root[data-theme="andoku"] :is(.cell, .board-resize-font-metric) {
+:root[data-theme="andoku"] .cell {
   font-size: calc((clamp(16px, 68cqw / var(--board-columns, 9), 44px) * var(--board-font-scale, 1)) * var(--app-text-scale));
 }
 :root[data-theme="andoku"] .cell.entry { font-weight: 450; }
@@ -3958,7 +3958,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   :root[data-theme="andoku"] .compact-controls .left-actions:has(.puzzle-check-button) { height: auto; grid-template-rows: none; }
 
   @container (width < 185px) {
-    .standard-workspace-page .puzzle-stage :is(.cell, .board-resize-font-metric) {
+    .standard-workspace-page .puzzle-stage .cell {
       font-size: calc(min(calc(7.5cqw * var(--board-font-scale, 1)), 9.5cqw) * var(--app-text-scale));
     }
   }

@@ -328,21 +328,23 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
 
   function beginPreview(): WidthPreview | null {
     const workspace = workspaceRef.current
-    if (!workspace) return null
-    const restore = rememberInlineStyles(workspace, ['--play-input-width', '--play-input-scale'])
+    const inputStack = workspace?.querySelector<HTMLElement>(':scope > .standard-input-stack')
+    if (!workspace || !inputStack) return null
+    const restoreWorkspace = rememberInlineStyles(workspace, ['grid-template-columns'])
+    const restoreInput = rememberInlineStyles(inputStack, ['--play-input-scale'])
     const clearBoards = previewDesktopBoards(workspace)
     workspace.setAttribute('data-layout-resizing', '')
     const update = (input: number) => {
-      workspace.style.setProperty('--play-input-width', `${input}px`)
-      workspace.style.setProperty('--play-input-scale', String(input / DEFAULT_DESKTOP_INPUT_WIDTH))
+      // Native track sizing does not change inherited variables on every cell.
+      workspace.style.gridTemplateColumns = `minmax(0, 1fr) ${input}px`
+      inputStack.style.setProperty('--play-input-scale', String(input / DEFAULT_DESKTOP_INPUT_WIDTH))
     }
     return {
       update,
-      clear(nextWidth) {
+      clear() {
         clearBoards()
-        restore()
-        // React may have committed a new preference while the preview was live.
-        if (nextWidth !== width) update(nextWidth)
+        restoreWorkspace()
+        restoreInput()
         workspace.removeAttribute('data-layout-resizing')
       },
     }

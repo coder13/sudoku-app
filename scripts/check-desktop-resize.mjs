@@ -31,8 +31,11 @@ const rounds = Number(option('--rounds', '2'))
 const cpuRate = Number(option('--cpu-rate', '1'))
 const regressionOnly = process.argv.includes('--regression-only')
 const buildOnly = process.argv.includes('--build-only')
+const traceCurrentDivider = process.argv.includes('--trace-current-divider')
 assert.ok(Number.isInteger(rounds) && rounds > 0)
 assert.ok(Number.isFinite(cpuRate) && cpuRate >= 1)
+assert.ok(!traceCurrentDivider || output && !regressionOnly,
+  '--trace-current-divider requires --output and a baseline comparison')
 const temporary = await mkdtemp(resolve(tmpdir(), 'sudoku-desktop-resize-'))
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
@@ -52,7 +55,7 @@ const report = {
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
   sourceStatus: execFileSync('git', ['status', '--short'], { cwd: root, encoding: 'utf8' }).trim(),
   sourceHashes: await hashes(), baselineHashes: {},
-  configuration: { viewport, cpuRate, reducedMotion: false, dragPixels: 72, dragSteps: 18, rounds, regressionOnly },
+  configuration: { viewport, cpuRate, reducedMotion: false, dragPixels: 72, dragSteps: 18, rounds, regressionOnly, traceCurrentDivider },
   notes: [
     'Production React fixture with real DesktopPlayLayout, PlayWorkspace, PlayLayout, Board, Controls, ModeBadge, dialog, and preference store.',
     'The fixture mirrors Worktable play layers and its input-alignment ResizeObserver. It excludes Worktable state, routing, WASM, syncing, and the clock.',
@@ -61,8 +64,9 @@ const report = {
     'Mouse drags use native Chromium input. Only queued pointer lifecycle checks dispatch synthetic pointer events to exercise events within one task.',
     'Style/layout counters and animation-frame gaps do not measure paint latency or INP. Headless Chromium does not establish performance on the user desktop.',
     'Timings are observations, not CI pass/fail thresholds. Behavior and geometry assertions are the regression gates.',
+    'An optional current dense-divider trace repeats the first-round scenario in a fresh page. Its timings are diagnostic only and are excluded from paired measurements.',
   ],
-  measurements: [], checks: [], browserErrors: [],
+  measurements: [], diagnostics: [], checks: [], browserErrors: [],
 }
 let server, browser
 
@@ -83,7 +87,7 @@ async function snapshot(page) {
     const badgeBox = box('.puzzle-mode-tab')
     const styleSelectors = ['.desktop-play-resizable', '.standard-workspace-page', '.workspace',
       '.standard-puzzle-stack', '.puzzle-column', '.puzzle', '.puzzle-stage', '.puzzle-play-layers',
-      '.puzzle-live-layer', '.board-frame', '.board-body', '.board-grid-surface', '.board-resize-font-metric',
+      '.puzzle-live-layer', '.board-frame', '.board-body',
       '.standard-input-stack', '.controls', '.desktop-layout-edges']
     const styles = Object.fromEntries(styleSelectors.map(selector => {
       const element = document.querySelector(selector)
@@ -117,6 +121,14 @@ async function snapshot(page) {
         glyph.closest('[data-cell]')?.getAttribute('data-cell'),
         Object.fromEntries([...glyph.style].sort().map(name => [name, glyph.style.getPropertyValue(name)])),
       ])),
+      candidateStyles: [...document.querySelectorAll('.candidate-marks')].map(marks => ({
+        cell: marks.closest('[data-cell]')?.getAttribute('data-cell'),
+        preview: marks.getAttribute('data-desktop-candidate-preview'),
+        hasStyleAttribute: marks.hasAttribute('style'),
+        styles: Object.fromEntries([...marks.style].sort().map(name => [name, {
+          value: marks.style.getPropertyValue(name), priority: marks.style.getPropertyPriority(name),
+        }])),
+      })),
       preferences: JSON.parse(localStorage.getItem(key)), writes: window.desktopResizeProbe.writes.length,
       candidates: window.desktopResizeFixture.candidates,
     }
@@ -173,8 +185,13 @@ async function glyphSnapshot(page) {
         const range = document.createRange()
         range.selectNodeContents(element)
         const { x, y, width, height } = range.getBoundingClientRect()
+        const rect = target => {
+          const { x, y, width, height } = target.getBoundingClientRect()
+          return { x, y, width, height }
+        }
         return { kind, cell: element.closest('[data-cell]')?.getAttribute('data-cell'), text: element.textContent,
-          x, y, width, height, fontSize: getComputedStyle(element).fontSize }
+          x, y, width, height, fontSize: getComputedStyle(element).fontSize, scale: getComputedStyle(element).scale,
+          elementBounds: rect(element), cellBounds: rect(element.closest('[data-cell]')) }
       })
     })
   })
@@ -239,17 +256,22 @@ async function measure(page, client, handle) {
       requestAnimationFrame(frame)
     }
     requestAnimationFrame(frame)
+    performance.mark('desktop-resize-drag-start')
     return performance.now()
   })
   const start = await startDrag(page, handle)
   await moveDrag(page, start, -handle.direction * 72)
   const beforeRelease = await metrics(client)
-  const releasedAt = await page.evaluate(() => performance.now())
+  const releasedAt = await page.evaluate(() => {
+    performance.mark('desktop-resize-release-start')
+    return performance.now()
+  })
   await page.mouse.up()
   await page.waitForTimeout(250)
   await frames(page, 2)
   const timing = await page.evaluate(() => {
     window.desktopResizeProbe.recording = false
+    performance.mark('desktop-resize-release-end')
     return { finishedAt: performance.now(), frames: window.desktopResizeProbe.frames }
   })
   const after = await metrics(client)
@@ -257,6 +279,7 @@ async function measure(page, client, handle) {
   assertGeometry(final, 'after measurement')
   assert.ok(final.handles[handle.name].width < initial.handles[handle.name].width, 'measured drag must actually resize the panel')
   assert.equal(final.writes, initial.writes + 1, 'measured drag must save once')
+  assert.deepEqual(final.candidateStyles, initial.candidateStyles, 'measured release must restore candidate styles and preview attributes')
   return {
     candidates: initial.candidates, initialWidth: initial.handles[handle.name].width, finalWidth: final.handles[handle.name].width,
     drag: { ...difference(before, beforeRelease), durationMilliseconds: releasedAt - startedAt,
@@ -264,6 +287,50 @@ async function measure(page, client, handle) {
     release: { ...difference(beforeRelease, after), durationMilliseconds: timing.finishedAt - releasedAt,
       frames: frameSummary(timing.frames.filter(frame => frame.time > releasedAt)) },
     total: difference(before, after),
+  }
+}
+
+async function finishTrace(client) {
+  const completed = new Promise(resolve => client.once('Tracing.tracingComplete', resolve))
+  await client.send('Tracing.end')
+  const { stream } = await completed
+  assert.ok(stream, 'Chromium must return a diagnostic trace stream')
+  const chunks = []
+  try {
+    for (;;) {
+      const part = await client.send('IO.read', { handle: stream })
+      chunks.push(Buffer.from(part.data, part.base64Encoded ? 'base64' : 'utf8'))
+      if (part.eof) break
+    }
+  } finally { await client.send('IO.close', { handle: stream }) }
+  return Buffer.concat(chunks)
+}
+
+async function traceDenseDivider() {
+  const { context, page, client } = await openPage('', 'current-dense-divider-diagnostic')
+  const path = resolve(dirname(output), 'desktop-resize-current-dense-divider-trace.json')
+  const diagnostic = { variant: 'current', density: 'dense', handle: 'divider', afterRound: 1,
+    timingExcludedFromComparison: true, trace: path }
+  report.diagnostics.push(diagnostic)
+  let tracing = false
+  try {
+    await client.send('Tracing.start', {
+      categories: 'devtools.timeline,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-devtools.timeline.invalidationTracking,disabled-by-default-devtools.timeline.stack',
+      transferMode: 'ReturnAsStream', options: 'record-as-much-as-possible',
+    })
+    tracing = true
+    diagnostic.measurement = await measure(page, client, handles.find(handle => !handle.outer))
+  } finally {
+    try {
+      if (tracing) {
+        const trace = await finishTrace(client)
+        await mkdir(dirname(path), { recursive: true })
+        await writeFile(path, trace)
+        diagnostic.bytes = trace.length
+        diagnostic.sha256 = sha256(trace)
+        console.log(`Saved desktop divider diagnostic trace: ${path}`)
+      }
+    } finally { await context.close() }
   }
 }
 
@@ -294,6 +361,7 @@ async function checkDragAndSave(page, handle, expandFirst = false) {
   assert.equal(committed.handles[handle.name].width, preview.handles[handle.name].width, 'release must preserve the preview width')
   assertSameGeometry(preview, committed, 'release must not snap')
   assert.deepEqual(committed.glyphStyles, initial.glyphStyles, 'release must clear temporary glyph styles')
+  assert.deepEqual(committed.candidateStyles, initial.candidateStyles, 'release must restore candidate styles and preview attributes')
   assert.equal(committed.resizing, false)
   assert.equal(await page.getByRole('dialog').count(), 0, 'a drag must not open the width dialog')
   await page.reload()
@@ -307,7 +375,9 @@ async function checkDragAndSave(page, handle, expandFirst = false) {
   assert.ok(grownPreview.handles[handle.name].width > reloaded.handles[handle.name].width, 'a previously shrunken panel must grow')
   await page.mouse.up()
   await frames(page, 4)
-  assertSameGeometry(grownPreview, await snapshot(page), 'expanded release must not snap')
+  const grownCommitted = await snapshot(page)
+  assertSameGeometry(grownPreview, grownCommitted, 'expanded release must not snap')
+  assert.deepEqual(grownCommitted.candidateStyles, reloaded.candidateStyles, 'expanded release must restore candidate styles and preview attributes')
   return { previewWidths: values, expandFirst }
 }
 
@@ -343,6 +413,7 @@ async function checkInterruption(page, handle, kind) {
   assertSameGeometry(initial, restored, `${kind}: old dimensions must return`)
   assert.deepEqual(restored.styles, initial.styles, `${kind}: temporary inline styles must be restored`)
   assert.deepEqual(restored.glyphStyles, initial.glyphStyles, `${kind}: temporary glyph scales must be restored`)
+  assert.deepEqual(restored.candidateStyles, initial.candidateStyles, `${kind}: candidate styles and preview attributes must be restored`)
   assertGeometry(restored, kind)
 }
 
@@ -361,6 +432,7 @@ async function checkQueuedFinish(page, handle, kind) {
   await frames(page, 4)
   const final = await snapshot(page)
   assert.equal(final.resizing, false, 'queued preview must not survive its ending event')
+  assert.deepEqual(final.candidateStyles, initial.candidateStyles, `queued ${kind}: candidate styles and preview attributes must be restored`)
   if (kind === 'release') {
     const multiplier = handle.outer ? 2 * 1128 / initial.contentWidth : 1 / initial.scale
     const expected = Math.min(initial.handles[handle.name].max,
@@ -436,12 +508,16 @@ async function checkDividerLimits(page) {
     const committed = await snapshot(page)
     const committedGlyphs = await glyphSnapshot(page)
     assert.equal(committed.writes, before.writes + 1, 'limit release must save once')
-    assertSameGeometry(preview, committed, `divider ${limit} release`)
-    assertSameGlyphs(previewGlyphs, committedGlyphs, `divider ${limit} release`)
-    assert.deepEqual(committed.glyphStyles, before.glyphStyles, 'committing a limit must restore glyph styles')
-    for (const selector of ['.board-body', '.board-grid-surface', '.board-resize-font-metric']) {
-      assert.deepEqual(committed.styles[selector], before.styles[selector], `committing a limit must restore ${selector} styles`)
+    try {
+      assertSameGeometry(preview, committed, `divider ${limit} release`)
+      assertSameGlyphs(previewGlyphs, committedGlyphs, `divider ${limit} release`)
+    } catch (error) {
+      error.resizeDiagnostic = { limit, width: target, preview, committed, previewGlyphs, committedGlyphs }
+      throw error
     }
+    assert.deepEqual(committed.glyphStyles, before.glyphStyles, 'committing a limit must restore glyph styles')
+    assert.deepEqual(committed.candidateStyles, before.candidateStyles, 'committing a limit must restore candidate styles and preview attributes')
+    assert.deepEqual(committed.styles['.board-body'], before.styles['.board-body'], 'committing a limit must restore board-body styles')
     assertGeometry(committed, `divider ${limit} committed`)
     records.push({ limit, width: target, previewGrid: preview.grid, committedGrid: committed.grid,
       previewGlyphs, committedGlyphs, links: committed.links.length })
@@ -493,7 +569,7 @@ async function runCheck(name, query, check) {
     report.checks.push({ name, status: 'passed', ...detail })
     console.log(`Passed desktop resize: ${name}`)
   } catch (error) {
-    const result = { name, status: 'failed', error: error.stack || String(error) }
+    const result = { name, status: 'failed', error: error.stack || String(error), diagnostic: error.resizeDiagnostic }
     if (output) {
       const directory = resolve(dirname(output), 'desktop-resize-failures')
       await mkdir(directory, { recursive: true })
@@ -562,6 +638,9 @@ try {
           report.measurements.push({ variant, handle: handle.name, density, round: round + 1, ...result })
           console.log(`${variant} ${density} ${handle.name}: drag style ${result.drag.styleMilliseconds.toFixed(1)}ms; layout ${result.drag.layoutMilliseconds.toFixed(1)}ms; frames over 25ms ${result.drag.frames.over25ms}`)
         } finally { await context.close() }
+        if (traceCurrentDivider && round === 0 && variant === 'current' && density === 'dense' && !handle.outer) {
+          await traceDenseDivider()
+        }
       }
     }
     for (const handle of handles) {
@@ -603,14 +682,22 @@ try {
     assert.equal(report.checks.filter(check => check.status === 'failed').length, 0, 'desktop resize behavior must pass')
     report.status = 'passed'
   }
-  assert.deepEqual(await hashes(), report.sourceHashes, 'Sources must not change during desktop resize checks')
-  report.sourceHashesVerifiedAtEnd = true
 } catch (error) {
   report.status = 'failed'
   report.error = error.stack || String(error)
   process.exitCode = 1
   console.error(report.error)
 } finally {
+  try {
+    assert.deepEqual(await hashes(), report.sourceHashes, 'Sources must not change during desktop resize checks')
+    report.sourceHashesVerifiedAtEnd = true
+  } catch (error) {
+    report.sourceHashesVerifiedAtEnd = false
+    report.sourceVerificationError = error.stack || String(error)
+    report.status = 'failed'
+    process.exitCode = 1
+    console.error(report.sourceVerificationError)
+  }
   if (output) {
     await mkdir(dirname(resolve(output)), { recursive: true })
     await writeFile(resolve(output), JSON.stringify(report, null, 2) + '\n')
