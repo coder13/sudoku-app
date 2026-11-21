@@ -39,6 +39,8 @@ mod sue_de_coq;
 mod templates;
 mod tridagon;
 mod uniqueness;
+#[cfg(feature = "variants")]
+pub(crate) use uniqueness::has_rectangle_guardians;
 mod wings;
 
 pub(super) struct PatternSearch<'a> {

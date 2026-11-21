@@ -65,6 +65,33 @@ for (const [index, source] of sources.entries()) {
   })
 }
 
+test('Thermo Sandwich keeps its ranked hints and reports no Unique Rectangle chains', async () => {
+  const { puzzle, solution } = sources[2]
+  const { game } = await prepareImportedPuzzle(share(puzzle))
+  const hints = await puzzleHints(game, 10, undefined, 859)
+  assert.equal(hints.available, 8)
+  assert.deepEqual((await puzzleHintPage(game.variant, 859, 0)).choices, hints.choices)
+  await runEngine({ type: 'release-hints', collection: 859 })
+  for (const hint of hints.choices) for (const action of hint.actions) {
+    if ('place' in action) assert.equal(action.place.digit, Number(solution[action.place.cell]))
+    else assert.notEqual(action.eliminate.digit, Number(solution[action.eliminate.cell]))
+  }
+
+  const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant!))
+  try {
+    for (const technique of [
+      'unique-rectangle-aic',
+      'unique-rectangle-discontinuous-nice-loop',
+      'unique-rectangle-continuous-nice-loop',
+    ]) {
+      assert.equal(await scan.count(technique), 0)
+      assert.equal((await puzzleHints(game, 'all', technique)).available, 0)
+    }
+  } finally {
+    scan.close()
+  }
+})
+
 test('disabled human techniques and explicit removals still enforce all Sandwich and companion rules', async () => {
   for (const source of sources) {
     const position = { puzzle: source.puzzle }
