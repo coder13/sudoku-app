@@ -411,8 +411,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     const { givens, grid, rules } = readCoachSized(data)
+    if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
+      throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
+    }
     return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}),
-      ...(fromCollection && publication?.title && { title: publication.title }), format: 'Sudoku Coach' }
+      ...(publication?.title && { title: publication.title }), format: 'Sudoku Coach' }
   }
   if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
@@ -666,10 +669,13 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         rules.push({ type: 'sandwich', ...coachOutsideRay(side as OutsideSide, Number(index)), sum: Number(value) })
       }
     } else if (constraint.type === 'quadruple') {
+      if (grid && !constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Quadruple clues.')
+      const size = grid?.size ?? 9
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
           !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
-          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) {
+          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits) ||
+          [...segment.parameters.digits].some(digit => Number(digit) > size)) {
           throw new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
         }
         rules.push({ type: authoredRule === 'quad-arrows' ? 'quadruple-sum' : 'quadruple',
@@ -946,7 +952,7 @@ function readCoachSized(data: Record<string, unknown>) {
   const active = constraints.filter(rule => !(record(rule) &&
     ['odd', 'even', 'thermometer', 'palindromeLine', 'renban'].includes(String(rule.type)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 && !hasData(rule.settings)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'cage', 'region', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine']
+  const supported = ['diagonalNegative', 'diagonalPositive', 'cage', 'region', 'odd', 'even', 'thermometer', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'quadruple']
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }

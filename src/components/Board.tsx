@@ -487,18 +487,19 @@ export function Board({
     const row = Math.floor(index / gridSize) + 1, column = index % gridSize + 1
     const regionAtCell = regionsAt?.[index]
     const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
+    const cageRules = drawingRules ?? sizedRules
     return {
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
       regionColor: regionAtCell === undefined ? undefined : regionColors?.[regionAtCell], houseFill: houseFills.has(index),
       whispersLinks: linkCounts?.[index] || undefined,
-      cageStyle: cageTotal !== undefined && drawingRules ? { insetInlineStart: `${cageLabelInset(index, drawingRules) * 100}%` } : undefined,
+      cageStyle: cageTotal !== undefined && cageRules ? { insetInlineStart: `${cageLabelInset(index, cageRules, gridSize) * 100}%` } : undefined,
       boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
       regionBottom: Boolean(regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize]),
       alternateBox: rectangularBoxes && (Math.floor((row - 1) / boxRows) + Math.floor((column - 1) / boxColumns)) % 2 === 1,
       clues: [cellClues?.[index]?.join(', '), fragments?.[index].join(', '), sizedLabels?.[index], algebraicLabels.descriptions.get(index)?.join(', ')].filter(Boolean).join(', '),
     }
-  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, linkCounts, rectangularBoxes, cageTotals, algebraicLabels, clones, drawingRules, cellClues, fragments, sizedLabels])
+  }), [gridSize, boxRows, boxColumns, regionsAt, regionColors, houseFills, linkCounts, rectangularBoxes, cageTotals, algebraicLabels, clones, drawingRules, sizedRules, cellClues, fragments, sizedLabels])
 
   // Parent timers and fresh event closures do not change the grid. Event wrappers
   // read the latest committed callbacks even when this element tree is reused.

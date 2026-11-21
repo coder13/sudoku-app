@@ -187,7 +187,7 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
 export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
@@ -202,6 +202,7 @@ type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraint
 export type SizedKropkiPair = { cells: [number, number]; relation: 'consecutive' | 'ratio-two'; negative: boolean; value?: number }
 
 export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction }
+  | { type: 'quadruple-overlap'; rules: [number, number]; cells: number[]; actions: DeductionAction[] }
   | { type: 'rule'; rule: number; actions: DeductionAction[] }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair; actions: DeductionAction[] }
   | { type: 'anti-sum'; rule: number; cells: [number, number]; actions: DeductionAction[] }

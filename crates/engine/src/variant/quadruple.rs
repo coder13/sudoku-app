@@ -16,8 +16,7 @@ pub(super) struct Quadruple {
     pub(super) cells: [usize; 4],
     digits: Vec<u8>,
     pub(super) is_sum: bool,
-    peers: [u8; 4],
-    placements: Vec<[u16; 4]>,
+    inner: QuadrupleSupport,
 }
 
 impl Quadruple {
@@ -43,21 +42,19 @@ impl Quadruple {
         });
         let mut digits = digits.to_vec();
         digits.sort_unstable();
-        let mut placements = Vec::new();
-        if is_sum {
+        let inner = if is_sum {
+            let mut placements = Vec::new();
             sum_placements(&digits, &peers, &mut placements);
+            QuadrupleSupport::from_placements(peers, placements)
         } else {
-            place_required(&digits, [0; 4], &peers, &mut placements);
-        }
-        placements.sort_unstable();
-        placements.dedup();
+            QuadrupleSupport::new(&digits, peers)
+        };
         Ok(Self {
             rule_index,
             cells,
             digits,
             is_sum,
-            peers,
-            placements,
+            inner,
         })
     }
 
@@ -72,18 +69,48 @@ impl Quadruple {
     }
 
     pub(super) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
+        self.inner.support(domains.map(|domain| domain & DIGITS))
+    }
+
+    pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
+        let mut supported = [0; 4];
+        self.inner.scan::<true, true>(domains.map(|domain| domain & DIGITS), &mut supported);
+        supported
+    }
+
+    pub(super) fn has_assignment(&self, domains: [u16; 4]) -> bool {
+        self.inner
+            .has_assignment(domains.map(|domain| domain & DIGITS))
+    }
+}
+
+/// Candidate support for a multiset of printed digits in four cells.
+#[derive(Clone, Debug)]
+pub(crate) struct QuadrupleSupport {
+    peers: [u8; 4],
+    placements: Vec<[u16; 4]>,
+}
+
+impl QuadrupleSupport {
+    pub(crate) fn new(digits: &[u8], peers: [u8; 4]) -> Self {
+        let mut placements = Vec::new();
+        place_required(digits, [0; 4], &peers, &mut placements);
+        Self::from_placements(peers, placements)
+    }
+
+    fn from_placements(peers: [u8; 4], mut placements: Vec<[u16; 4]>) -> Self {
+        placements.sort_unstable();
+        placements.dedup();
+        Self { peers, placements }
+    }
+
+    pub(crate) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
         let mut supported = [0; 4];
         self.scan::<true, false>(domains, &mut supported);
         supported
     }
 
-    pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
-        let mut supported = [0; 4];
-        self.scan::<true, true>(domains, &mut supported);
-        supported
-    }
-
-    pub(super) fn has_assignment(&self, domains: [u16; 4]) -> bool {
+    pub(crate) fn has_assignment(&self, domains: [u16; 4]) -> bool {
         self.scan::<false, false>(domains, &mut [0; 4])
     }
 
@@ -96,7 +123,11 @@ impl Quadruple {
         for placement in &self.placements {
             let restricted = std::array::from_fn(|cell| {
                 let required = placement[cell];
-                domains[cell] & if required == 0 { DIGITS } else { required }
+                if required == 0 {
+                    domains[cell]
+                } else {
+                    domains[cell] & required
+                }
             });
             if assign::<ALL, ENTROPY>(restricted, 0b1111, &self.peers, 0, supported) {
                 if !ALL || *supported == domains {

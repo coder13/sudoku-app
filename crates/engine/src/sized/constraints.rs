@@ -2,6 +2,8 @@ mod double_arrow;
 mod killer;
 mod linked_double_arrow;
 mod pairs;
+mod quadruple;
+mod quadruple_overlap;
 mod region_sum;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
@@ -13,6 +15,7 @@ use self::killer::Cage;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
 use self::pairs::{RowColumnSum, SizedPairLink, UnmarkedSumSupport, compile_pairs};
+use self::quadruple::SizedQuadruple;
 use self::region_sum::RegionSum;
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
@@ -51,6 +54,7 @@ pub enum SizedConstraint {
         consecutive: MarkedPairs,
         ratio_two: MarkedPairs,
     },
+    Quadruple { top_left: usize, digits: Vec<u8> },
     LabeledDots {
         relation: SizedDotRelation,
         marks: Vec<SizedLabeledDot>,
@@ -113,6 +117,11 @@ pub enum SizedConstraintStep {
     Kropki {
         rule: usize,
         pair: SizedKropkiPair,
+        actions: Vec<HintAction>,
+    },
+    QuadrupleOverlap {
+        rules: [usize; 2],
+        cells: Vec<usize>,
         actions: Vec<HintAction>,
     },
     AntiSum {
@@ -179,6 +188,7 @@ pub struct SizedConstraintGrid {
     arrows: Vec<(usize, Vec<usize>)>,
     double_arrows: Vec<Option<DoubleArrow>>,
     region_sums: Vec<Option<RegionSum>>,
+    quadruples: Vec<Option<SizedQuadruple>>,
     cages: Vec<Vec<Cage>>,
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
@@ -290,11 +300,19 @@ impl SizedConstraintGrid {
                     renbans.push(cells.clone());
                 }
                 SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
-                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {}
+                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. }
+                | SizedConstraint::Quadruple { .. } => {}
                 SizedConstraint::RowColumnSum { pairs, require_unmarked } => {
                     row_column_sums.resize_with(index + 1, || None);
                     row_column_sums[index] = Some(RowColumnSum::compile(size, pairs, *require_unmarked, rules)?);
                 }
+            }
+        }
+        let mut quadruples = Vec::new();
+        for (index, rule) in rules.iter().enumerate() {
+            if let SizedConstraint::Quadruple { top_left, digits } = rule {
+                quadruples.resize_with(index + 1, || None);
+                quadruples[index] = Some(SizedQuadruple::compile(&layout, *top_left, digits, &diagonals, &extra_houses)?);
             }
         }
         let parity = parity
@@ -314,6 +332,7 @@ impl SizedConstraintGrid {
             arrows,
             double_arrows,
             region_sums,
+            quadruples,
             cages,
             linked_double_arrows,
             pair_links,
@@ -420,6 +439,13 @@ impl SizedConstraintGrid {
                     candidates[cell] = supported[cell];
                 }
             }
+            for clue in self.quadruples.iter().flatten() {
+                let Some(support) = clue.support(candidates) else { return false };
+                for (cell, mask) in clue.cells.into_iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
             for cage in self.cages.iter().flatten() {
                 let support = cage.support(candidates);
                 for (&cell, mask) in cage.cells.iter().zip(support) {
@@ -520,6 +546,7 @@ impl SizedConstraintGrid {
         limit: usize,
     ) -> Option<SizedConstraintHints> {
         let mut hints = self.find_hints(digits, eliminations, limit, false)?;
+        self.quadruple_overlap_hints(digits, &hints.candidates, &mut hints.choices, limit);
         if hints.choices.is_empty() && limit != 0 {
             hints
                 .choices
@@ -642,6 +669,12 @@ impl SizedConstraintGrid {
                     }
                     for &cell in &arrow.cells {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::Quadruple { .. } => {
+                    let clue = self.quadruples[rule].as_ref()?;
+                    for (cell, mask) in clue.cells.into_iter().zip(clue.support(&domains)?) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::KillerCages { .. } => {
@@ -789,6 +822,7 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraintStep::Rule { actions, .. }
                 | SizedConstraintStep::Kropki { actions, .. }
+                | SizedConstraintStep::QuadrupleOverlap { actions, .. }
                 | SizedConstraintStep::AntiSum { actions, .. }
                 | SizedConstraintStep::RowColumnSum { actions, .. } => {
                     advance(actions, &mut digits, &mut eliminations)
@@ -954,6 +988,7 @@ impl SizedConstraintGrid {
                     }
                     false
                 }
+                SizedConstraint::Quadruple { .. } => self.quadruples[rule].as_ref()?.support(&domains).is_none(),
                 SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
                 SizedConstraint::Renban { cells } => {
@@ -1094,6 +1129,7 @@ impl SizedConstraintGrid {
                 ends_min <= line_max && line_min <= ends_max
             })
             && self.linked_double_arrows.iter().flatten().all(|arrow| arrow.permits(digits))
+            && self.quadruples.iter().flatten().all(|clue| clue.permits(digits, self.layout.full_mask))
             && self.cages.iter().flatten().all(|cage| cage.permits(digits))
             && self.region_sums.iter().flatten().all(|line| line.permits(digits))
             && self.row_column_sums.iter().flatten().all(|layer| layer.permits(digits))

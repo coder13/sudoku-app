@@ -100,6 +100,7 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => Self::DoubleArrow { ends, cells },
             Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => Self::LinkedDoubleArrow { ends, cells },
+            Rule::Variant(PuzzleRule::Quadruple { top_left, digits }) => Self::Quadruple { top_left, digits },
             Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
                 Self::Kropki { consecutive, ratio_two }
             }

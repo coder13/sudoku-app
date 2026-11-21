@@ -147,8 +147,8 @@ export function isQuadrupleRule(rule: VariantRule | undefined): rule is Extract<
 
 export const QUADRUPLE_SUM_RULE = 'The largest digit around a Quad-Arrows circle equals the sum of the other three.'
 
-export function quadrupleCells(topLeft: number): readonly number[] {
-  return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
+export function quadrupleCells(topLeft: number, size = 9): readonly [number, number, number, number] {
+  return [topLeft, topLeft + 1, topLeft + size, topLeft + size + 1]
 }
 
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>

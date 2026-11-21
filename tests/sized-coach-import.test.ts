@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { enter, makeGame } from '../src/sudoku/game.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { tournamentQuadrupleCode, tournamentQuadrupleRules, tournamentQuadrupleSolution } from './fixtures/tournament-quadruple.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 const six = { gridSize: 6, givenDigits: '000000000000000000000000000030000400' }
@@ -144,4 +148,37 @@ test('a 7 × 7 Coach Jigsaw preserves explicit regions beside Thermometer and ex
     { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [1, 2], value: 3 }], negative: true },
   ])
   await assert.rejects(detectPuzzle(coachCode({ ...original, regions: Array(49).fill(0) })), /seven connected regions/)
+})
+
+test('Coach preserves repeated Quadruple digits and rejects malformed corners or digits', async () => {
+  const imported = await detectPuzzle(tournamentQuadrupleCode())
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, tournamentQuadrupleRules.map(([topLeft, digits]) => ({
+    type: 'quadruple', topLeft, digits: Array.from(digits, Number),
+  })))
+
+  const shape = { ...six, regions: rectangularRegions(2, 3) }
+  const code = (cell: number, digits: string) => coachCode({ ...shape, givenConstraints: [
+    { type: 'quadruple', segments: [{ cells: [cell], parameters: { digits } }] },
+    { type: 'even', segments: [{ cells: [0] }] },
+  ] })
+  assert.deepEqual((await detectPuzzle(code(8, '4556'))).sizedRules, [
+    { type: 'quadruple', topLeft: 8, digits: [4, 5, 5, 6] },
+    { type: 'parity', cells: [0], parity: 'even' },
+  ])
+  await assert.rejects(detectPuzzle(code(5, '4556')), /contains invalid rules/)
+  await assert.rejects(detectPuzzle(code(8, '457')), /invalid Quadruple clue/)
+  await assert.rejects(detectPuzzle(code(8, '')), /invalid Quadruple clue/)
+})
+
+test('a progressed tournament Quadruple preserves repeated labels through reload and the share Worker', async () => {
+  const { grid, givens, sizedRules: rules } = await detectPuzzle(tournamentQuadrupleCode())
+  assert.ok(grid && rules)
+  const game = { ...makeGame('quad-tournament', 'Tournament Quadruple', givens, 'imported', 0, grid),
+    sized: { rules, solution: tournamentQuadrupleSolution } }
+  const progressed = enter(game, [0], 'value', 3)
+  assert.deepEqual(readGame(game.id, JSON.stringify(progressed))?.sized, game.sized)
+  const shared = await publishFixture(progressed)
+  assert.deepEqual(shared.sixRules, rules)
+  assert.equal(shared.givens, givens)
 })

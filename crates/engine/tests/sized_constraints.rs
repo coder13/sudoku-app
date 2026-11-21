@@ -240,3 +240,36 @@ fn published_double_arrow_x_sums_has_one_solution() {
     assert_eq!(SizedConstraintGrid::new(SIX, &[]).unwrap().analyze(&swapped, 100_000), Analysis::Unique);
     assert_eq!(grid.analyze(&swapped, 100_000), Analysis::Conflict);
 }
+
+#[test]
+fn tournament_6x6_quadruples_preserve_repeated_required_digits() {
+    let givens = b"050000600000000004000050000300002000".map(|digit| digit - b'0');
+    let answer = b"351462624513215634463251146325532146".map(|digit| digit - b'0');
+    let rules = [(3, vec![1,4,5,6]), (8, vec![4,5,5,6]), (13, vec![1,3,5,6]), (18, vec![1,4,4,6])]
+        .map(|(top_left, digits)| Rule::Quadruple { top_left, digits });
+    let puzzle = SizedConstraintGrid::new(SIX, &rules).unwrap();
+    assert_eq!(puzzle.solve_unique(&givens, 1_000_000).as_deref(), Ok(answer.as_slice()));
+    for omitted in [0, 1, 3] {
+        let others = rules.iter().enumerate().filter(|(index, _)| *index != omitted)
+            .map(|(_, rule)| rule.clone()).collect::<Vec<_>>();
+        assert_eq!(SizedConstraintGrid::new(SIX, &others).unwrap().analyze(&givens, 1_000_000), Analysis::Multiple);
+    }
+}
+
+#[test]
+fn sixteen_digit_quadruples_respect_their_corner_and_the_highest_digit() {
+    let spec = GridSpec { size: 16, box_rows: 4, box_columns: 4 };
+    let rule = |top_left, digits| Rule::Quadruple { top_left, digits };
+    for invalid in [rule(15, vec![3]), rule(240, vec![3]), rule(3, vec![17]), rule(3, vec![0]), rule(3, vec![])] {
+        assert!(SizedConstraintGrid::new(spec, &[invalid]).is_none());
+    }
+    let grid = SizedConstraintGrid::new(spec, &[rule(3, vec![16, 16])]).unwrap();
+    let mut digits = vec![0; 256];
+    digits[3] = 16;
+    let masks = grid.candidates(&digits).unwrap();
+    assert_eq!(masks[20], 1 << 15);
+    assert_eq!(masks[4] & (1 << 15), 0);
+    assert_eq!(masks[19] & (1 << 15), 0);
+    digits[20] = 15;
+    assert_eq!(grid.analyze(&digits, 100), Analysis::Conflict);
+}

@@ -1,3 +1,4 @@
+import { sizedQuadrupleState } from './sized-quadruple.ts'
 import { fogView, playVariantPuzzle } from './fog.ts'
 import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-linked-double-arrow.ts'
 import { STARTER } from './formats.ts'
@@ -283,6 +284,7 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
     variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
+    sizedQuadrupleState(sizedRules, values, grid.size),
   ]
     .filter(state => state !== undefined)
   const result = states[0]

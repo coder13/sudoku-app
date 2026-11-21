@@ -46,6 +46,7 @@ pub(crate) use practice::generate_practice_example;
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
+pub(crate) use quadruple::QuadrupleSupport;
 pub use search::VariantPositionError;
 pub(crate) use symmetry::SquareTransform;
 pub use symmetry::canonical_variant;

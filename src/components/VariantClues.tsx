@@ -124,6 +124,21 @@ function DifferenceClue({ cells: [a, b], difference, dots, size }: SizedDifferen
   </g>
 }
 
+function QuadrupleClue({ digits, topLeft, size = 9, sum }: {
+  digits: readonly number[]; topLeft: number; size?: number; sum?: boolean
+}) {
+  const cx = x(topLeft, size) + 1
+  const cy = y(topLeft, size) + 1
+  const count = digits.length
+  return <g className="variant-quadruple" data-quadruple-sum={sum || undefined}>
+    <circle cx={cx} cy={cy} r=".265" />
+    {sum && <text className="quadruple-sum-mark" x={cx + .23} y={cy - .19}>+</text>}
+    {digits.map((digit, index) => <text key={index}
+      x={cx + (count === 1 || count === 3 && index === 2 ? 0 : index % 2 ? .105 : -.105)}
+      y={cy + (count <= 2 ? 0 : Math.floor(index / 2) ? .105 : -.105)}>{digit}</text>)}
+  </g>
+}
+
 export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstraintRule[]; size: number }) {
   const marker = useId()
   let renbanNumber = 0, regionSumNumber = 0
@@ -159,7 +174,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
     {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
       {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
-        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={.1} size={size} />
+        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={cageLabelInset(Math.min(...cells), rules, size)} size={size} />
       </g>)}
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
@@ -201,6 +216,7 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
         x={cx - side / 2} y={cy - side / 2} width={side} height={side}
         transform={`rotate(45 ${cx} ${cy})`} />
     })}
+    {rules.map((rule, index) => rule.type === 'quadruple' && <QuadrupleClue key={index} {...rule} size={size} />)}
   </svg>
 }
 
@@ -246,6 +262,9 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       for (const cell of rule.cells) labels[cell].add('extra region')
     } else if (rule.type === 'killer-cages') {
       for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
+    } else if (rule.type === 'quadruple') {
+      const description = 'Quadruple circle with ' + rule.digits.join(', ')
+      for (const cell of quadrupleCells(rule.topLeft, size)) labels[cell].add(description)
     } else if (rule.type === 'parity') {
       const odd = rule.parity === 'odd'
       const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
@@ -316,8 +335,8 @@ function pairCenter(a: number, b: number, offset = 0, size = 9) {
 }
 
 /** Reserve the circle at the caption cell's top-left intersection. */
-export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
-  return rules.some(rule => isQuadrupleRule(rule) && rule.topLeft + 10 === cell) ? .34 : .1
+export function cageLabelInset(cell: number, rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
+  return rules.some(rule => (rule.type === 'quadruple' || rule.type === 'quadruple-sum') && rule.topLeft + size + 1 === cell) ? .34 : .1
 }
 
 function Cage({ cells, captionWidth, captionInset, size = 9 }: {
@@ -686,18 +705,8 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
-        case 'quadruple': case 'quadruple-sum': {
-          const cx = x(rule.topLeft) + 1
-          const cy = y(rule.topLeft) + 1
-          const count = rule.digits.length
-          return <g key={index} className="variant-quadruple" data-quadruple-sum={rule.type === 'quadruple-sum' || undefined}>
-            <circle cx={cx} cy={cy} r=".265" />
-            {rule.type === 'quadruple-sum' && <text className="quadruple-sum-mark" x={cx + .23} y={cy - .19}>+</text>}
-            {rule.digits.map((digit, i) => <text key={i}
-              x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
-              y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
-          </g>
-        }
+        case 'quadruple': case 'quadruple-sum':
+          return <QuadrupleClue key={index} {...rule} sum={rule.type === 'quadruple-sum'} />
         case 'diagonal':
           return <DiagonalClue key={index} diagonal={rule.diagonal} />
         case 'distinct-cells':
