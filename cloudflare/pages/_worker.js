@@ -110,6 +110,7 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['AjZy', '9c921e472d17b801c9c6523a4fb1226fc636ed263b83a861e4f14929fcf1c445'],
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
@@ -352,7 +353,10 @@ const algebraic = value => fields(value, { sudokuPad: code => typeof code === 's
     new Set(value.rules.flatMap(rule => rule.cells)).size === value.rules.reduce((count, rule) => count + rule.cells.length, 0))
 const cell = integer(0, 80)
 const cells = list(cell, 1, 81)
-const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ||
+const uniqueCells = (minimum, maximum) => value =>
+  list(cell, minimum, maximum)(value) && new Set(value).size === value.length
+const clueColor = value => typeof value === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)
+const cellColor = value => typeof value === 'string' && (clueColor(value) ||
   /^(?:(?:white|grey|lime|blue|purple|red|green|yellow|orange|cyan|magenta)(?:Heavy)?|error)$/.test(value))
 const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
@@ -393,6 +397,8 @@ const ruleFields = {
   arrow: [{ circle: cell, cells }],
   diagonal: [{ diagonal: oneOf('main', 'anti') }],
   'extra-house': [{ cells: house }],
+  'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
+  'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor }],
   'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }), 1) }, { coverGrid: boolean }],
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],

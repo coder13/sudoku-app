@@ -192,6 +192,17 @@ impl SquareTransform {
                 };
             }
             ExtraHouse { cells } | Parity { cells, .. } => self.unordered(cells),
+            DistinctCells { cells, color } => {
+                self.unordered(cells);
+                *color = None;
+            }
+            ConsecutiveRun { cells, color } => {
+                self.path(cells);
+                if cells[0] > cells[cells.len() - 1] {
+                    cells.reverse();
+                }
+                *color = None;
+            }
             KillerCages { cages, .. } => {
                 for cage in &mut *cages {
                     self.unordered(&mut cage.cells);

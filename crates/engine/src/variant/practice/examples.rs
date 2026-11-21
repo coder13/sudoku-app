@@ -84,6 +84,34 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        ConsecutiveRun => [
+            seed(
+                "209105307003068050805320609914530876307006025026780431732604090650291003490073560",
+                10, 4, [PuzzleRule::ConsecutiveRun { cells: vec![10, 18, 27], color: None }],
+            ),
+            seed(
+                "209140087170960204845327619914032800007400925506789401732654198650291743491870560",
+                14, 5, [PuzzleRule::ConsecutiveRun { cells: vec![13, 23, 14], color: None }],
+            ),
+            seed(
+                "209045387173068200005327600900532876387406925500789031732050100608091743490803562",
+                29, 1, [PuzzleRule::ConsecutiveRun { cells: vec![21, 29, 20], color: None }],
+            ),
+        ],
+        DistinctCells => [
+            seed(
+                "534678912002195348198342567859761423426853791713924856901537284287419635345286179",
+                10, 6, [PuzzleRule::DistinctCells { cells: vec![3, 10], color: None }],
+            ),
+            seed(
+                "534678912672195348198342567809761403426853791713924806961537284287419635345286179",
+                34, 5, [PuzzleRule::DistinctCells { cells: vec![0, 34, 1], color: None }],
+            ),
+            seed(
+                "534678912672195348198342567859761423426853791713924856961537284280419630340286179",
+                65, 5, [PuzzleRule::DistinctCells { cells: vec![0, 65, 1, 2], color: None }],
+            ),
+        ],
         Quadruple => [
             seed(
                 "403591602260008109000006030009207308034015700070080090720030915501070080340050060",

@@ -42,6 +42,8 @@ type DiagonalDirection = 'north-east' | 'south-east' | 'south-west' | 'north-wes
 export type VariantRule =
   | { type: 'diagonal'; diagonal: 'main' | 'anti' }
   | { type: 'extra-house'; cells: readonly number[] }
+  | { type: 'distinct-cells'; cells: readonly number[]; color?: string }
+  | { type: 'consecutive-run'; cells: readonly number[]; color?: string }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }

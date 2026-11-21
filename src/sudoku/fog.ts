@@ -1,6 +1,6 @@
 import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
 import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
-import { quadrupleCells, type VariantGame } from './variants.ts'
+import { cellsShareEdge, quadrupleCells, type VariantGame } from './variants.ts'
 
 export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
@@ -61,6 +61,24 @@ function visibleMarks(marks: MarkedPairs | undefined, visible: ReadonlySet<numbe
   return pairs?.length || negative ? { ...(pairs?.length && { pairs }), ...(negative && { negative }) } : undefined
 }
 
+/** A continuous patch of revealed shading identifies cells in the same group. */
+function visibleShadedGroups(cells: readonly number[], visible: ReadonlySet<number>) {
+  const remaining = new Set(cells.filter(cell => visible.has(cell)))
+  const groups: number[][] = []
+  for (const start of remaining) {
+    const group = [start]
+    remaining.delete(start)
+    for (const cell of group) for (const neighbor of remaining) {
+      if (cellsShareEdge(cell, neighbor)) {
+        remaining.delete(neighbor)
+        group.push(neighbor)
+      }
+    }
+    if (group.length >= 2) groups.push(group)
+  }
+  return groups
+}
+
 /** The printed digits that lie entirely outside the fog. */
 function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' }>, visible: ReadonlySet<number>) {
   const cells = quadrupleCells(rule.topLeft)
@@ -110,7 +128,10 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const ten = visibleMarks(rule.ten, visible, completeXv)
         return five || ten ? [{ type: 'xv', ...(five && { five }), ...(ten && { ten }) }] : []
       }
+      case 'distinct-cells':
+        return allVisible(rule.cells) ? [rule] : visibleShadedGroups(rule.cells, visible).map(cells => ({ ...rule, cells }))
       case 'whispers':
+      case 'consecutive-run':
       case 'modular':
       case 'entropic':
         // Every contiguous run keeps the original pairwise phase relationships.
@@ -150,7 +171,7 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
 }
 
 const lineFragments = {
-  between: 'Between line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
+  between: 'Between line', 'consecutive-run': 'Consecutive Line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
   renban: 'Renban line', 'region-sum': 'Region Sum line', thermometer: 'thermometer', whispers: 'Whispers line',
 } as const
 
@@ -176,9 +197,12 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
           addFragment(quadrupleCells(rule.topLeft), 'part of a Quadruple clue')
         }
         break
-      case 'between': case 'entropic': case 'modular': case 'palindrome':
+      case 'between': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
+        break
+      case 'distinct-cells':
+        addFragment(rule.cells, 'part of a shaded group')
         break
       case 'arrow':
         addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')

@@ -45,6 +45,8 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
       case 'anti-knight': return ['Cells a knight’s move apart must differ.']
       case 'anti-king': return ['Cells touching at a corner must differ.']
       case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]
+      case 'consecutive-run': return [`Consecutive Line · ${path(rule.cells)}`]
+      case 'distinct-cells': return [`Different digits · ${cells(rule.cells)}`]
       case 'inequality': return [`${cellName(rule.less)} < ${cellName(rule.greater)}`]
       case 'adjacent-total': return [`Total ${rule.sum} · ${cells(rule.cells)}`]
       case 'clone': return rule.groups.map((group) => `Same digit · ${cells(group)}`)

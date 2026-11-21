@@ -123,6 +123,15 @@ export const RegionSumClosedAndSeparated: Story = {
   parameters: { docs: { description: { story: 'The first clue keeps its closing edge. The second clue combines its two visits to the same region. Dashed connectors skip unmarked cells; dots identify the logical cells.' } } },
 }
 
+export const ConsecutiveLinesAndShading: Story = {
+  args: candidateGrid({ version: 1, givens: '0'.repeat(81), rules: [
+    { type: 'consecutive-run', cells: [60, 61], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [68, 77, 78, 79, 80], color: '#0cd3ed' },
+    { type: 'quadruple', topLeft: 68, digits: [4, 6] },
+  ] }, 'Consecutive Lines with a shaded group and a Quadruple'),
+  parameters: { gridWidth: 290 },
+}
+
 export const CloneShapes: Story = {
   args: candidateGrid(cloneMurphy.puzzle as VariantPuzzle, 'Clone Sudoku grid'),
   parameters: { docs: { description: { story: 'Legs in a Snare by Bill Murphy. Shading retains its two pairs of published shapes. Matching letters require matching digits; different letters need not be different digits. Candidate grids reserve a lower strip for the letters.' } } },

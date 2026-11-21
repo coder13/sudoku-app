@@ -16,6 +16,18 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
   const [a, b] = cells
   const pair = b === undefined ? at(a) : `${at(a)} and ${at(b)}`
   switch (rule?.type) {
+    case 'consecutive-run':
+      return { description: `Digits increase by one from one end of the Consecutive Line to the other, between ${at(a)} and ${at(cells.at(-1)!)}.`,
+        reason: 'Check both directions. No run that uses a crossed-out candidate fits the other cells on the line.' }
+    case 'distinct-cells': {
+      const candidate = focus.length === 1 ? focus[0] : undefined
+      const fixed = candidate && cells.find((cell, i) => cell !== candidate.cell && onlyCandidate(domains[i]) === candidate.digit)
+      const locations = new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))
+      return { description: `The shaded group at ${locations} needs a different digit in each cell.`,
+        reason: candidate && fixed !== undefined
+          ? `${at(fixed)} must contain ${candidate.digit}. Remove it from ${at(candidate.cell)} in the same shaded group.`
+          : 'No assignment with a crossed-out candidate gives every cell in this group a different digit.' }
+    }
     case 'global-entropy': {
       const names = ['low (1–3)', 'medium (4–6)', 'high (7–9)']
       const groups = [7, 56, 448]

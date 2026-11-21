@@ -1,3 +1,4 @@
+import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
@@ -282,7 +283,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
     }
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
-    if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'extra-house' || rule.type === 'distinct-cells') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
@@ -290,7 +291,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
       return ends.includes(a) || ends.includes(b)
     }
-    if (rule.type === 'thermometer' || rule.type === 'renban') return rule.cells.includes(a) && rule.cells.includes(b)
+    if (rule.type === 'thermometer' || rule.type === 'renban' || rule.type === 'consecutive-run') return rule.cells.includes(a) && rule.cells.includes(b)
     return false
   })
 }
@@ -316,7 +317,7 @@ export function sumLabel(sum: number) {
   return ROMAN_TOTALS[sum - 3] ?? String(sum)
 }
 
-type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
+type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'consecutive-run' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
 type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' }>
 const noCellExclusions: readonly CellExclusionRule[] = []
 const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
@@ -332,7 +333,7 @@ function indexExclusions(rules: readonly VariantRule[]) {
       case 'kropki': kropki.push(rule); continue
       case 'xv': case 'non-consecutive': edgeRules.push(rule); continue
       case 'clone': clones ??= cloneLayout(rules).at; continue
-      case 'entropic': case 'modular': case 'renban': case 'adjacent-total': case 'palindrome': case 'whispers':
+      case 'entropic': case 'modular': case 'renban': case 'consecutive-run': case 'adjacent-total': case 'palindrome': case 'whispers':
       case 'inequality': {
         const cells = rule.type === 'inequality' ? [rule.less, rule.greater] : new Set(rule.cells)
         for (const cell of cells) (byCell[cell] ??= []).push(rule)
@@ -361,6 +362,10 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
     }
     if (rule.type === 'renban' && rule.cells.includes(to)) {
       for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
+    }
+    if (rule.type === 'consecutive-run' && rule.cells.includes(to)) {
+      const gap = Math.abs(rule.cells.indexOf(from) - rule.cells.indexOf(to))
+      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) !== gap) excluded |= 1 << (other - 1)
     }
     if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
       v ||= rule.sum === 5
@@ -453,6 +458,10 @@ function isPlayableRule(rule: VariantRule): boolean {
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
     case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
     case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
+    case 'consecutive-run': case 'distinct-cells':
+      return Object.keys(rule).every(key => key === 'type' || key === 'cells' || key === 'color') &&
+        validCells(rule.cells, 2) && rule.cells.length <= (rule.type === 'consecutive-run' ? 9 : 8) &&
+        (rule.color === undefined || isHexColor(rule.color))
     case 'entropic': case 'modular': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)
     case 'whispers': return Array.isArray(rule.cells) && rule.cells.length >= 2 && rule.cells.length <= 82 &&
@@ -534,6 +543,8 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
   'extra-house': 'Extra regions',
+  'distinct-cells': 'Shaded groups',
+  'consecutive-run': 'Consecutive Lines',
   diagonal: VARIANTS.diagonal.name,
   'killer-cages': VARIANTS['killer-cages'].name,
   'anti-knight': VARIANTS['anti-knight'].name,
@@ -623,6 +634,12 @@ function describedVariantRules(puzzle: VariantPuzzle) {
           'A dashed Region Sum connector skips cells. Only cells with a small dot belong to that line.')
         break
       }
+      case 'consecutive-run':
+        descriptions.push('Digits along a Consecutive Line increase by one from one end to the other.')
+        break
+      case 'distinct-cells':
+        descriptions.push('The cells in each shaded group contain different digits.')
+        break
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)
         break

@@ -28,3 +28,37 @@ export function coachConnectedLines(paths: readonly (readonly number[])[]) {
   }
   return components
 }
+
+/** Join adjacent authored segments into the ordered runs used by Sudoku Coach. */
+export function coachConsecutiveRuns(paths: readonly (readonly number[])[], size: number): number[][] {
+  const neighbors = new Map<number, Set<number>>()
+  const invalid = () => new Error('This Sudoku Coach Consecutive line must form a path with at most one cell per grid digit.')
+  for (const path of paths) for (let index = 1; index < path.length; index++) {
+    const a = path[index - 1], b = path[index]
+    if (a === b) throw invalid()
+    const aNeighbors = neighbors.get(a) ?? new Set<number>()
+    aNeighbors.add(b)
+    neighbors.set(a, aNeighbors)
+    const bNeighbors = neighbors.get(b) ?? new Set<number>()
+    bNeighbors.add(a)
+    neighbors.set(b, bNeighbors)
+  }
+
+  const visited = new Set<number>()
+  const runs: number[][] = []
+  for (const [endpoint, edges] of neighbors) {
+    if (visited.has(endpoint) || edges.size !== 1) continue
+    const run: number[] = []
+    let cell: number | undefined = endpoint
+    while (cell !== undefined) {
+      const next: Set<number> = neighbors.get(cell)!
+      if (next.size > 2 || visited.has(cell) || run.length === size) throw invalid()
+      visited.add(cell)
+      run.push(cell)
+      cell = [...next].find(neighbor => !visited.has(neighbor))
+    }
+    runs.push(run)
+  }
+  if (visited.size !== neighbors.size) throw invalid()
+  return runs
+}

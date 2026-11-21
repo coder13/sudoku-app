@@ -217,6 +217,14 @@ rules! {
         /// Cell indices in the house.
         cells: Vec<usize>,
     }
+    /// Require a shaded group smaller than a house to contain different digits.
+    DistinctCells => "distinct-cells" {
+        /// The cells in the group.
+        cells: Vec<usize>,
+        /// Optional authored shade.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
+    }
     /// Constrain disjoint cages to given sums and distinct digits.
     KillerCages => "killer-cages" {
         /// The cages, which may have gaps between them in a mixed puzzle.
@@ -326,6 +334,14 @@ rules! {
         /// Drawing paths may revisit cells without repeating their digits.
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         segments: Option<Vec<Vec<usize>>>,
+    }
+    /// Require digits to rise or fall by one at every step along the whole path.
+    ConsecutiveRun => "consecutive-run" {
+        /// Distinct cells in path order.
+        cells: Vec<usize>,
+        /// Optional authored line color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
     }
     /// Require each three successive positions to use low, medium and high digits.
     Entropic => "entropic" {
@@ -626,6 +642,8 @@ impl VariantPuzzle {
                 }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::Renban { .. }
+                | PuzzleRule::ConsecutiveRun { .. }
+                | PuzzleRule::DistinctCells { .. }
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }

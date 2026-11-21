@@ -83,3 +83,24 @@ test('published Fog renders outside totals and shows only the public text of cli
   assert.doesNotMatch(quads, /data-cell="32"[^>]*aria-label="[^"]*Quadruple 8, 9/)
   assert.doesNotMatch(quads, /data-cell="33"[^>]*aria-label="[^"]*Quadruple/)
 })
+
+test('Spiral 3 keeps its line and group colors and labels the revealed geometry', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/fog-spiral-coach.json', import.meta.url), 'utf8'))
+  const { variant, givens } = await detectPuzzle(source.code)
+  assert.ok(variant?.fog)
+  const puzzle = { ...variant, solution: source.solution }
+  const draw = (entries: string) => renderToStaticMarkup(createElement(Board, {
+    values: entries, givens, variantPuzzle: variant.puzzle, fog: fogView(puzzle, entries), showGuides: true,
+  }))
+  const start = draw(EMPTY)
+  assert.match(start, /<clipPath/)
+  assert.doesNotMatch(start, /data-cell="60"[^>]*aria-label="[^"]*Consecutive Line/)
+  assert.doesNotMatch(start, /data-cell="46"[^>]*aria-label="[^"]*Shaded group/)
+  const entries = [...EMPTY]
+  for (const cell of [6, 45, 61, 68]) entries[cell] = source.solution[cell]
+  const revealed = draw(entries.join(''))
+  assert.match(revealed, /variant-consecutive-run" style="--line-clue-color:#fc03cf"/)
+  assert.match(revealed, /data-distinct-cells="true" style="--region-clue-color:#0cd3ed"/)
+  assert.match(revealed, /data-cell="60"[^>]*aria-label="[^"]*Consecutive Line/)
+  assert.match(revealed, /data-cell="46"[^>]*aria-label="[^"]*Shaded group, all digits differ/)
+})

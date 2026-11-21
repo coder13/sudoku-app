@@ -4,12 +4,12 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
-import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
+import { isHexColor, isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
 import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
-import { coachConnectedLines } from './coach-lines.ts'
+import { coachConnectedLines, coachConsecutiveRuns } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
 import { isCoachWhispersGuide } from './coach-whispers-guide.ts'
 import { decodeLegacyCoach, type LegacyCoachVersion } from './legacy-coach.ts'
@@ -570,7 +570,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
@@ -691,16 +691,40 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         ? { type: 'kropki', consecutive: marks }
         : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
-      if (unsupportedClueStyling(constraint.settings)) {
+      const settings = constraint.settings
+      if (unsupportedClueStyling(settings)) {
         throw new Error('This Sudoku Coach extra region uses unsupported settings.')
       }
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no extra regions.')
+      const color = record(settings) ? settings.colour : undefined
       for (const segment of constraint.segments) {
         if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
           throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
         }
-        rules.push({ type: 'extra-house', cells: segment.cells })
+        if (grid || segment.cells.length === 9) {
+          rules.push({ type: 'extra-house', cells: segment.cells })
+        } else {
+          if (color !== undefined && !isHexColor(color)) throw new Error('This Sudoku Coach shaded group uses an unsupported color.')
+          rules.push({ type: 'distinct-cells', cells: segment.cells, ...(color && { color }) })
+        }
       }
+    } else if (constraint.type === 'consecutiveLine') {
+      const settings = constraint.settings
+      const color = record(settings) ? settings.colour : undefined
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+        hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key))) ||
+        color !== undefined && !isHexColor(color)) {
+        throw new Error('This Sudoku Coach Consecutive Line uses unsupported settings.')
+      }
+      const size = grid?.size ?? 9
+      const paths = constraint.segments.map((segment: unknown) => {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 2 || hasData(segment.parameters) ||
+          segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Consecutive Line segment.')
+        }
+        return segment.cells as number[]
+      })
+      for (const cells of coachConsecutiveRuns(paths, size)) rules.push({ type: 'consecutive-run', cells, ...(color && { color }) })
     } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban' || constraint.type === 'regionSumLine') {
       const name = constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
       const settings = constraint.settings

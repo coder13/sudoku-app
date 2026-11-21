@@ -220,6 +220,21 @@ test('clipped Quadruples keep the exposed digit slots and their multiplicity', (
   assert.deepEqual(shown([6, 8, 9, 6], [0, 3]), [{ type: 'quadruple', topLeft, digits: [6, 6] }])
 })
 
+test('fog retains separate visible runs and patches without reasoning through covered cells', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: EMPTY, rules: [
+    { type: 'consecutive-run', cells: [0, 1, 2, 3, 4], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [0, 1, 2, 3, 4, 80], color: '#0cd3ed' },
+  ] }
+  const view = projectFogPuzzle(puzzle, new Set([0, 1, 3, 4, 80]))
+  assert.deepEqual(view.rules, [
+    { type: 'consecutive-run', cells: [0, 1], color: '#fc03cf' },
+    { type: 'consecutive-run', cells: [3, 4], color: '#fc03cf' },
+    { type: 'distinct-cells', cells: [0, 1], color: '#0cd3ed' },
+    { type: 'distinct-cells', cells: [3, 4], color: '#0cd3ed' },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 80])).rules, puzzle.rules)
+})
+
 test('normal Fog play, paged hints, Technique Finder, reload, sharing, and exact solution agree on the published grid', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()
   mock.method(globalThis, 'fetch', fetcher)
@@ -365,6 +380,78 @@ test('published mixed Fog imports keep outside totals and fully exposed Quadrupl
     }
     changedNote = true
     await assert.rejects(prepareImportedPuzzle(sources[1].url), /has author instructions/)
+  } finally { sqlite.close() }
+})
+
+test('Spiral 3 retains its published rules and completes with reveal-aware hints and Finder', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/fog-spiral-coach.json', import.meta.url), 'utf8')) as
+    { id: string; url: string; title: string; description: string; code: string; solution: string }
+  const { sqlite, fetcher } = syncDatabase()
+  let description = source.description
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path !== source.url) return fetcher(path, init)
+    const specificSudoku = { sudoku_id: source.id, name: source.title, sudoku: source.code,
+      description, custom_constraints: false, blocked: false }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(source.url)
+    const variant = game.variant!
+    assert.ok(variant.fog)
+    assert.equal(game.title, source.title)
+    assert.equal(variant.solution, source.solution)
+    assert.deepEqual((await detectPuzzle(source.code)).variant?.puzzle, variant.puzzle)
+    assertVariantCompletion(variant.puzzle, source.solution)
+    assert.deepEqual(variant.puzzle.rules?.filter(rule => rule.type === 'consecutive-run'), [
+      { type: 'consecutive-run', cells: [60, 61], color: '#fc03cf' },
+      { type: 'consecutive-run', cells: [67, 76], color: '#fc03cf' },
+    ])
+    assert.deepEqual(variant.puzzle.rules?.filter(rule => rule.type === 'distinct-cells'), [
+      { type: 'distinct-cells', cells: [68, 77, 79, 80, 65, 78] },
+      { type: 'distinct-cells', cells: [46, 7], color: '#0cd3ed' },
+    ])
+    assert.equal(fogView(variant)?.cells.size, 9)
+    assert.ok((await puzzleHints(game)).choices.some(hint => hint.technique === 'quadruple'))
+    const openingScan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(variant, game.position))
+    try {
+      assert.ok(await openingScan.count('quadruple') > 0)
+      assert.equal(await openingScan.count('distinct-cells'), 0)
+      assert.equal(await openingScan.count('consecutive-run'), 0)
+    } finally { openingScan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.equal(path.exact, undefined)
+    assert.notEqual(path.rating.status, 'stalled')
+    assert.equal(fogView(variant, path.positions?.at(-1)?.entries)?.cells.size, 81)
+    for (const { actions } of path.steps) for (const action of actions) {
+      if ('place' in action) assert.equal(source.solution[action.place.cell], String(action.place.digit))
+      else assert.notEqual(source.solution[action.eliminate.cell], String(action.eliminate.digit))
+    }
+    for (const technique of ['consecutive-run', 'distinct-cells']) {
+      const at = path.steps.findIndex(step => step.technique === technique)
+      assert.ok(at >= 0)
+      const { entries, eliminations } = path.positions![at]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const { choices } = await puzzleHints(checkpoint, 'all', technique)
+      assert.ok(choices.length)
+      const position = variantPosition(variant, checkpoint.position)
+      const visible = fogView(variant, entries)!.cells
+      for (const hint of choices) {
+        assert.ok('variant' in hint.evidence)
+        const proof = hint.evidence.variant.source
+        assert.deepEqual(proof?.puzzle, position.puzzle)
+        assert.ok(proof?.deduction.evidence.type === 'constraint')
+        assert.ok(proof.deduction.evidence.cells.every(cell => visible.has(cell)))
+      }
+      const actions = new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, position)
+      try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    }
+    const id = await publishSharedPuzzle(game)
+    assert.deepEqual((await prepareSharedPuzzle(id, [], new AbortController().signal)).game.variant, variant)
+    description += '\nDigits in shaded cells count twice.'
+    await assert.rejects(prepareImportedPuzzle(source.url), /has author instructions/)
   } finally { sqlite.close() }
 })
 

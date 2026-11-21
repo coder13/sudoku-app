@@ -38,7 +38,11 @@ test('published ordinary Arrow styling preserves the circle, ordered shaft and s
     const { variant } = await detectPuzzle(coachCode({ givenConstraints: [layer] }))
     assert.deepEqual(variant?.puzzle.rules, layer.segments.map(({ cells: [circle, ...cells] }) => ({ type: 'arrow', circle, cells })))
   }
-  await assert.rejects(detectPuzzle(source('HQXe').code), /consecutiveLine/)
+  const mixed = await prepareImportedPuzzle(source('HQXe').code, [], { deferRating: true })
+  assert.ok(mixed.game.variant)
+  assert.ok(mixed.game.variant.puzzle.rules?.some(rule => rule.type === 'consecutive-run'))
+  assert.equal(mixed.game.variant.solution, source('HQXe').solution)
+  assertVariantCompletion(mixed.game.variant.puzzle, source('HQXe').solution)
   await assert.rejects(detectPuzzle(source('HBLt').code), /pillArrow/)
 
   // Apply the published drawing settings to an independently verified ordinary Arrow puzzle.

@@ -28,6 +28,8 @@ enum LineKind {
     EqualSums(Vec<Range<usize>>),
     Sum(u16),
     Renban,
+    ConsecutiveRun,
+    DistinctCells,
     ThreeGroups(groups::GroupLine),
     Between,
     Outside(OutsideClue),
@@ -71,6 +73,19 @@ impl LineConstraint {
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban)
+            }
+            PuzzleRule::ConsecutiveRun { cells, color } | PuzzleRule::DistinctCells { cells, color } => {
+                let run = matches!(rule, PuzzleRule::ConsecutiveRun { .. });
+                let maximum = if run { 9 } else { 8 };
+                if !(2..=maximum).contains(&cells.len()) ||
+                    color.as_deref().is_some_and(|color| {
+                        !matches!(color.len(), 4 | 5 | 7 | 9) || !color.starts_with('#') ||
+                            !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
+                    }) {
+                    return Err(invalid);
+                }
+                puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
+                (cells.clone(), if run { LineKind::ConsecutiveRun } else { LineKind::DistinctCells })
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
                 let partition = if matches!(rule, PuzzleRule::Entropic { .. }) {
@@ -289,6 +304,20 @@ impl LineConstraint {
             }
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
+            LineKind::ConsecutiveRun => consecutive_run_support(domains, support),
+            LineKind::DistinctCells => {
+                let union = domains.iter().fold(0, |union, mask| union | mask);
+                let mut set = union;
+                while set != 0 {
+                    if set.count_ones() as usize == domains.len() {
+                        digit_set_support(set, domains, support);
+                        if support == domains {
+                            break;
+                        }
+                    }
+                    set = (set - 1) & union;
+                }
+            }
             LineKind::ThreeGroups(line) => line.support(domains, support),
             LineKind::Between => between_support(domains, support),
             LineKind::Outside(clue) => {
@@ -325,6 +354,21 @@ pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16]
                 super::search::record_support(interval, domains, &mut matches, &mut [None; CACHE]);
             }
             support.copy_from_slice(&matches[..len]);
+        }
+    }
+}
+
+/// Support an ordered sequence that can increase from either end.
+fn consecutive_run_support(domains: &[u16], support: &mut [u16]) {
+    let length = domains.len();
+    for first in 0..=9 - length {
+        for reverse in [false, true] {
+            let digit_at = |i| 1u16 << (first + if reverse { length - 1 - i } else { i });
+            if domains.iter().enumerate().all(|(i, domain)| domain & digit_at(i) != 0) {
+                for (i, mask) in support.iter_mut().enumerate() {
+                    *mask |= digit_at(i);
+                }
+            }
         }
     }
 }

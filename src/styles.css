@@ -4174,8 +4174,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-clone-label-halo { fill: none; stroke: var(--board-bg); stroke-width: .045; }
 .variant-clone-label-mark { fill: var(--board-ink); }
 .variant-board .board-links { z-index: 3; }
-.variant-extra-region rect { fill: var(--board-selected-border); opacity: .1; }
-.variant-extra-region path { fill: none; stroke: var(--board-selected-border); stroke-opacity: .4; stroke-width: .025; }
+.variant-extra-region rect { fill: var(--region-clue-color, var(--board-selected-border)); opacity: .1; }
+.variant-extra-region path { fill: none; stroke: var(--region-clue-color, var(--board-selected-border)); stroke-opacity: .4; stroke-width: .025; }
 .variant-parity { fill: var(--board-ink); fill-opacity: .13; stroke: var(--board-ink); stroke-opacity: .4; stroke-width: .022; }
 .variant-preview .variant-parity { fill-opacity: .28; stroke-opacity: .8; stroke-width: .07; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
@@ -4455,6 +4455,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-ruleset-selector small { font-size: .8rem; color: var(--muted); }
 .variant-ruleset-selector:disabled label { cursor: default; opacity: .65; }
 
+.variant-consecutive-run polyline { fill: none; stroke: var(--line-clue-color, #8055ad); stroke-width: .16; stroke-linecap: round; stroke-linejoin: round; opacity: .78; }
+.board-body[data-highlighted-rule="consecutive-run"] .variant-consecutive-run polyline { stroke: var(--rule-accent); opacity: 1; }
+.board-body[data-highlighted-rule="distinct-cells"] [data-distinct-cells] rect { fill: var(--rule-accent); opacity: .25; }
+.board-body[data-highlighted-rule="distinct-cells"] [data-distinct-cells] path { stroke: var(--rule-accent); stroke-opacity: 1; }
 .variant-entropic polyline { fill: none; stroke: #bc6c27; stroke-width: .105; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: .19 .1; opacity: .88; }
 .variant-preview .variant-entropic polyline { stroke-width: .17; stroke-dasharray: .27 .27; opacity: 1; }
 .variant-entropic circle { fill: #bc6c27; stroke: none; }

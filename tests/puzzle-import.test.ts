@@ -270,8 +270,14 @@ test('imports Windoku regions and keeps them through sharing', async () => {
   ] }))
   assert.equal(repeated.variant?.id, 'mixed')
   assert.equal(repeated.variant.puzzle.rules?.length, 5)
+  const short = WINDOKU_REGIONS[0].slice(1)
+  const shaded = await detectPuzzle(coach({ givenConstraints: [{
+    type: 'region', segments: [{ cells: short, parameters: {} }],
+  }] }))
+  assert.equal(shaded.variant?.id, 'mixed')
+  assert.deepEqual(shaded.variant.puzzle.rules, [{ type: 'distinct-cells', cells: short }])
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'region', segments: [
-    { cells: WINDOKU_REGIONS[0].slice(1), parameters: {} },
+    { cells: [...short, short[0]], parameters: {} },
   ] }] })), /unsupported or invalid/)
 })
 
@@ -512,4 +518,26 @@ test('deterministic malformed-input stress run always resolves to a validated gr
     assert.match(imported.givens, /^[0-9]{81}$/)
     if (imported.variant) assert.ok(isPlayablePuzzle(imported.variant.id, imported.variant.puzzle))
   }
+})
+
+test('Coach joins Consecutive Line segments into runs and preserves short shaded groups', async () => {
+  const consecutive = (paths: number[][], colour = '#9a77c4') => ({
+    type: 'consecutiveLine', settings: { colour },
+    segments: paths.map(cells => ({ cells, parameters: {} })),
+  })
+  const input = coach({ givenConstraints: [
+    consecutive([[1, 2], [0, 1], [20, 30]]),
+    { type: 'region', segments: [{ cells: [3, 42], parameters: {} }], settings: { colour: '#0cd3ed' } },
+  ] })
+  const { variant } = await detectPuzzle(input)
+  assert.deepEqual(variant?.puzzle.rules, [
+    { type: 'consecutive-run', cells: [2, 1, 0], color: '#9a77c4' },
+    { type: 'consecutive-run', cells: [20, 30], color: '#9a77c4' },
+    { type: 'distinct-cells', cells: [3, 42], color: '#0cd3ed' },
+  ])
+  for (const paths of [[[0, 1], [1, 2], [2, 0]], [[0, 1], [1, 2], [1, 3]]]) {
+    await assert.rejects(detectPuzzle(coach({ givenConstraints: [consecutive(paths)] })), /must form a path/)
+  }
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [consecutive([[0, 1]], 'var(--line)')] })),
+    /unsupported settings/)
 })

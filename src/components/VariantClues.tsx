@@ -1,5 +1,5 @@
 import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
-import { memo, useId, useMemo } from 'react'
+import { memo, useId, useMemo, type CSSProperties } from 'react'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
@@ -353,8 +353,11 @@ function cellBoundary(cells: readonly number[], size = 9) {
   return edge
 }
 
-function ExtraRegion({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
-  return <g className="variant-extra-region">
+function ExtraRegion({ cells, size = 9, color, distinct }: {
+  cells: readonly number[]; size?: number; color?: string; distinct?: true
+}) {
+  return <g className="variant-extra-region" data-distinct-cells={distinct}
+    style={color ? { '--region-clue-color': color } as CSSProperties : undefined}>
     {cells.map((cell) => <rect key={cell} x={x(cell, size)} y={y(cell, size)} width="1" height="1" />)}
     <path d={cellBoundary(cells, size)} />
   </g>
@@ -565,7 +568,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
@@ -647,6 +650,13 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'diagonal':
           return <DiagonalClue key={index} diagonal={rule.diagonal} />
+        case 'distinct-cells':
+          return <ExtraRegion key={index} cells={rule.cells} color={rule.color} distinct />
+        case 'consecutive-run':
+          return <g key={index} className="variant-consecutive-run"
+            style={rule.color ? { '--line-clue-color': rule.color } as CSSProperties : undefined}>
+            <polyline points={points(rule.cells)} />
+          </g>
         case 'extra-house':
           return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
@@ -745,6 +755,13 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         }
         break
       }
+      case 'distinct-cells':
+        for (const cell of rule.cells) labels[cell].push('Shaded group, all digits differ')
+        break
+      case 'consecutive-run':
+        for (const cell of rule.cells) labels[cell].push(
+          `Consecutive Line from ${reference(rule.cells[0])} to ${reference(rule.cells.at(-1)!)}, digits increase by one from one end to the other`)
+        break
       case 'extra-house':
         for (const cell of rule.cells) labels[cell].push(`${extraRegionName(rules, index)}, digits 1–9 once each`)
         break

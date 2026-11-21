@@ -7559,6 +7559,82 @@
       "variant": true,
       "lessons": [
         {
+          "id": "consecutive-run",
+          "title": "Consecutive Lines",
+          "summary": "A Consecutive Line increases by one at every step from one end to the other. Remove any candidate that cannot fit a complete run.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check both ends"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start at a placed digit or a cell with few candidates. Check the runs in both directions and keep those that fit every cell on the line."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "consecutive-run",
+              "copy": {
+                "description": "R3C1 is 8 and R4C1 is 9. The line increases toward R4C1, so R2C2 must be 7. Remove 4 from R2C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "consecutive-run", "title": "Fit the run" }
+              ],
+              "guide": {
+                "start": "Find a placed digit or a cell with few candidates on the highlighted line.",
+                "check": "Check the runs that increase from either end.",
+                "reason": "Remove a candidate if every run that uses it conflicts with another cell on the line."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
+          "id": "distinct-cells",
+          "title": "Shaded groups",
+          "summary": "The cells in each shaded group need different digits. A placed digit rules out the same digit in the other cells in its group.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Start with a placed digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a placed digit first. If two cells in the group share the same two candidates, they use both digits and rule them out in the other cells of that group."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "distinct-cells",
+              "copy": {
+                "description": "R1C4 is 6. R1C4 and R2C2 belong to the same shaded group, so remove 6 from R2C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "distinct-cells", "title": "Remove a repeated digit" }
+              ],
+              "guide": {
+                "start": "Find a placed digit in the highlighted shaded group.",
+                "check": "Look for the same digit among the candidates of another cell in the group.",
+                "reason": "The group needs different digits, so remove the duplicate candidate."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
           "id": "palindrome",
           "title": "Palindrome lines",
           "summary": "A palindrome line reads the same in both directions. Its two ends match, as do the cells one step in from each end. A known digit or a missing candidate in one cell affects its partner.",

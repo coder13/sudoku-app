@@ -23,8 +23,12 @@ export function sameCandidateColors<Shade>(a?: CandidateColors<Shade>, b?: Candi
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
+export function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && HEX_COLOR.test(value)
+}
+
 export function isImportedColor(value: unknown): value is string {
-  return typeof value === 'string' && (Object.hasOwn(COACH_CELL_COLORS, value) || HEX_COLOR.test(value))
+  return typeof value === 'string' && (Object.hasOwn(COACH_CELL_COLORS, value) || isHexColor(value))
 }
 
 export function validImportedCellColors(value: unknown): value is ImportedCellColors {
