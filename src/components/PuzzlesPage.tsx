@@ -549,6 +549,8 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const boxRows = rectangularBoxRows(variant, newPuzzleSearch?.boxRows ?? rememberedVariant?.boxRows)
     ?? (rectangularPuzzleSize(variant) ? 2 : undefined)
   const sizedDifficulty = difficultyScreen && isSizedPuzzleId(variant)
+  const variantBack = difficultyScreen && !sizedDifficulty && !newPuzzleSearch?.mode
+    && !coreSudokuModes.some(mode => mode === variant)
   const requestedDifficulty = newPuzzleSearch?.difficulty ?? newPuzzlePreference.difficulty
   const difficulty = newPuzzleDifficulty(variant, requestedDifficulty)
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
@@ -612,9 +614,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
           : difficultyScreen || customScreen ? (fromVariantPicker && canGoBack
             ? <IconButton className="puzzles-back" aria-label="Back" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
             : <Link to={sizedDifficulty ? '/puzzles/new/custom' : '/puzzles/new'}
-              search={sizedDifficulty ? { variant, boxRows, difficulty: requestedDifficulty } : { step: 'variant', difficulty: requestedDifficulty }} replace
+              search={sizedDifficulty ? { variant, boxRows, difficulty: requestedDifficulty }
+                : variantBack ? { variant, ruleset, difficulty: requestedDifficulty }
+                  : { step: 'variant', difficulty: requestedDifficulty }} replace
               className={iconButtonClassName('secondary', 'puzzles-back')}
-              aria-label={sizedDifficulty ? 'Back to custom puzzle setup' : 'Back to Sudoku modes'}><ChevronLeft size={21} /></Link>)
+              aria-label={sizedDifficulty ? 'Back to custom puzzle setup' : variantBack ? 'Back to variant' : 'Back to Sudoku modes'}><ChevronLeft size={21} /></Link>)
             : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}
         <h1 id="puzzles-page-title" ref={heading} tabIndex={screen ? -1 : undefined}>{pageTitle}</h1>
       </header>
