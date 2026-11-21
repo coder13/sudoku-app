@@ -2,9 +2,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { inflateSync } from 'node:zlib'
+import { applyDeduction, undo, valuesOf } from '../src/sudoku/game.ts'
+import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
-import { playCandidates } from '../src/sudoku/variant-play.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -111,4 +116,63 @@ test('published Thermometer and cage styles retain their complete mixed puzzles 
   }
   await assert.rejects(detectPuzzle(withSettings('5uF2', 'thermometer', { bulbSize: 80, allowEquality: true })),
     /thermometer uses unsupported settings/)
+})
+
+
+test('the published Windoku construction note keeps all 28 encoded clues through import and Play', async ({ mock }) => {
+  const puzzle = source('HQXe')
+  const { sqlite, fetcher } = syncDatabase()
+  let description = puzzle.description
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path !== puzzle.url) return fetcher(path, init)
+    const specificSudoku = {
+      sudoku_id: puzzle.id, sudoku: puzzle.code, name: puzzle.title, custom_constraints: false, blocked: false, description,
+    }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(puzzle.url)
+    const pasted = await detectPuzzle(puzzle.code)
+    assert.equal(game.title, puzzle.title)
+    assert.ok(game.variant)
+    assert.deepEqual(game.variant.puzzle, pasted.variant?.puzzle)
+    const rules = game.variant.puzzle.rules!
+    assert.equal(rules.length, 28)
+    assert.equal(rules.filter(rule => rule.type === 'extra-house').length, 4)
+    assert.equal(rules.filter(rule => rule.type === 'sandwich').length, 8)
+    assert.deepEqual(rules.find(rule => rule.type === 'kropki'), {
+      type: 'kropki', ratioTwo: { pairs: [], negative: true },
+    })
+    assert.equal(game.variant.solution, puzzle.solution)
+    assertVariantCompletion(game.variant.puzzle, puzzle.solution)
+
+    const ranked = await puzzleHints(game)
+    assert.equal(ranked.choices.length, 10)
+    const filtered = await puzzleHints(game, 'all', 'consecutive-run')
+    const finder = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try {
+      const moves = new Set(filtered.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      assert.ok(moves.size)
+      assert.equal(await finder.count('consecutive-run'), moves.size)
+    } finally { finder.close() }
+    const changed = applyDeduction(game, ranked.choices[0].actions, ranked.candidates!)
+    assert.notEqual(changed, game)
+    assert.deepEqual(undo(changed).position, game.position)
+    assert.deepEqual(readGame(changed.id, JSON.stringify(changed))?.variant, game.variant)
+    const id = await publishSharedPuzzle(changed)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.equal(valuesOf(shared.game), game.givens)
+
+    const path = await puzzleSolution(game)
+    assert.deepEqual(path.rating.status, { solved: 'hard' })
+    assert.equal(path.rating.score.points, 3149)
+    assert.equal(path.steps.length, 153)
+    assert.equal(path.board, puzzle.solution)
+
+    description += '\nDigits on the arrow count twice.'
+    await assert.rejects(detectPuzzle(puzzle.url), /author instructions/)
+  } finally {
+    sqlite.close()
+  }
 })

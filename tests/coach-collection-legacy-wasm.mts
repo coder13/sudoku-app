@@ -9,13 +9,15 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { countLineSolutions } from './helpers/line-oracle.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
 type Source = { id: string; title: string; collection: string; code: string; solution: string }
-type ClassicSource = Source & { givens: string; colorCount: number; sampleColors: ImportedCellColors }
+type ClassicSource = Source & { givens: string; colorCount: number; sampleColors?: ImportedCellColors; givenCellColors?: ImportedCellColors }
 const classic = JSON.parse(readFileSync(new URL('./fixtures/coach-collections-legacy.json', import.meta.url), 'utf8')) as ClassicSource[]
 const clueStyles = JSON.parse(readFileSync(new URL('./fixtures/coach-clue-styles.json', import.meta.url), 'utf8')) as (Omit<Source, 'collection'> & { description: string })[]
 const mixed = { ...clueStyles.find(({ id }) => id === '5uF2')!, collection: 'halloween-2024' }
@@ -52,7 +54,14 @@ test('original Coach collection and legacy codes keep givens, authored fills, an
       assert.equal(game.variant, undefined)
       assert.equal(preview.hasProgress, undefined)
       assert.equal(Object.keys(givenCellColors).length, source.colorCount)
-      for (const [cell, shades] of Object.entries(source.sampleColors)) assert.deepEqual(givenCellColors[Number(cell)], shades)
+      const expected = source.givenCellColors ?? source.sampleColors
+      assert.ok(expected)
+      for (const [cell, shades] of Object.entries(expected)) assert.deepEqual(givenCellColors[Number(cell)], shades)
+      if (source.givenCellColors) {
+        const independent = countLineSolutions({ version: 1, givens: source.givens })
+        assert.equal(independent.count, 1, source.title)
+        assert.equal(independent.solution, source.solution)
+      }
       assert.equal(await runEngine({ type: 'solve', values: game.givens }), source.solution)
       const { choices } = await puzzleHints(game)
       assert.ok(choices.length > 0 && choices.length <= 10)
@@ -77,9 +86,35 @@ test('original Coach collection and legacy codes keep givens, authored fills, an
     assert.ok((await puzzleHints(game)).choices.length > 0)
     instructions = 'Orange cells count twice.'
     await assert.rejects(detectPuzzle(collectionLink(classic[0])), /author instructions/)
+    for (const { id } of classic.filter(source => source.givenCellColors)) {
+      await assert.rejects(detectPuzzle(`${coach}/en/s/${id}`), /author instructions/)
+    }
   } finally {
     sqlite.close()
   }
+})
+
+test('reviewed Candy fills match by their cell colors and kept givens in a Current State export', async () => {
+  const source = classic.find(({ id }) => id === '679X')!
+  assert.ok(source.givenCellColors)
+  const palette = [...new Set(Object.values(source.givenCellColors).flat())].reverse()
+  const cells = Array.from({ length: 81 }, (_, cell) =>
+    (source.givenCellColors![cell] ?? []).map(shade => palette.indexOf(shade)).join(''))
+  const open = source.givens.indexOf('0')
+  const userDigits = '0'.repeat(open) + source.solution[open] + '0'.repeat(80 - open)
+  const { game, hasProgress } = await prepareImportedPuzzle(coachCode({
+    givenDigits: source.givens, colours: palette, givenColours: cells.join(','), userDigits,
+  }))
+  assert.equal(hasProgress, true)
+  assert.equal(game.title, source.title)
+  assert.equal(game.position.entries, userDigits)
+  assert.deepEqual(game.givenCellColors, source.givenCellColors)
+  assert.deepEqual(restartGame(game).givenCellColors, source.givenCellColors)
+  const firstMarked = cells.findIndex(Boolean)
+  cells[firstMarked] = ''
+  await assert.rejects(detectPuzzle(coachCode({
+    givenDigits: source.givens, colours: palette, givenColours: cells.join(','),
+  })), /unsupported authored markings/)
 })
 
 test('a plain published Classic grid opens with its original title, hints and solution', async ({ mock }) => {

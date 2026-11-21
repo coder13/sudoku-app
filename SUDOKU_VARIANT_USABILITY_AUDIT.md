@@ -208,6 +208,14 @@ Sudoku Spider uses 26 grey and red background fills to illustrate the grid. Its 
 An independent counter found the published completion of Sudoku Spider. The Play profile before the joint Thermometer and house deduction offered ten opening hints and explained 68 steps before stalling. Every recorded action agreed with the published grid. A paired re-decode of 72 captured 9×9 codes admitted the three reviewed exports and matched all 69 other outcomes. Changed authoring data, new mathematical instructions accompanying a published code, and authored colors outside the reveal data of a Fog puzzle continue to reject.
 
 
+### Halloween Candy and a Windoku publication note
+
+Halloween Candy 2–5 already opened through the collection. Matching each reviewed export's full authoring data and cell colors also preserves its 33 fills in pasted codes and direct links. Independent enumeration checks all four published Classic grids and their unique completions. The imported fills survive save, restart, and sharing. A Current State export can reorder the palette and add an entered digit. A changed authored fill or an added gameplay instruction still produces an explicit error. [Halloween collection](https://sudoku.coach/en/collections/halloween-2024)
+
+Ratio Free Sandwiched between Windows, HQXe, opens through its published short link. Its reviewed construction note describes the encoded puzzle. Preview keeps all 28 rules, including four extra regions, eight Sandwich clues, the global black-dot ratio ban, and the consecutive run. Play offers ten ranked hints, the Consecutive Line choices agree with Technique Finder, and the 153-step Hard walkthrough reaches the published grid with 3,149 points. Save and sharing retain the definition. A changed note that adds an Arrow rule still fails explicitly. [HQXe](https://sudoku.coach/en/s/HQXe)
+
+The comparison ran both pasted codes and direct links for 130 archived 9×9 publications. It changes nine of 260 results from rejections to successful imports. The other 251 normalized results or error messages match.
+
 ## Thermometer deductions with a shared house
 
 A Thermometer can share two or more cells with a row, column, region, diagonal, or extra house. A set of digits that increases from the bulb can still leave the house unable to place all its digits. The new Medium technique, worth 64 points, removes a candidate only when it fits the two rules separately and has no support when they are combined. Play, Technique Finder, the walkthrough, and practice use the same proof. The three practice examples use a row, column, and box. A separate test exercises the region order of an irregular Jigsaw partition.

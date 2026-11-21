@@ -62,6 +62,10 @@ const reviewedFills = new Map([
   ['5a500262913542452647e2a3623d6caeff79a00e949ad5c4f83acea306c1f980', 'Sudoku Spider'],
   ['5b9cb5df490c8ac7e2b55566ef5a0e37c6161f260887484c457baf7e76ad6fc8', 'Pumpkin 2024'],
   ['3f9c2090ae6dab63a274a4c8dc16711e406bad21e077df0103671470d8e42aa0', 'Halloween Candy 1'],
+  ['6c228123fac384a93b7354da2036675e86a8d16fd5018e023f9e154caef6a5b1', 'Halloween Candy 2'],
+  ['7a700d2049444a0d0dda80de06bebc2d07e13ab5e71064b296b25e8c5cb7b38b', 'Halloween Candy 3'],
+  ['353a05eade0f1a0fb8ffc7a52f7f07f64d82f228831bb3e95b4d70a81d820ba3', 'Halloween Candy 4'],
+  ['8fe3e67f25f6dab7ad9d38f7b5ccab025ed0bbb426fcf7f08d69068f893f4138', 'Halloween Candy 5'],
 ])
 
 const fieldsOutsideFillReview = new Set([
