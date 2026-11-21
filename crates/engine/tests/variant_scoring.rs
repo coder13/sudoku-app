@@ -39,6 +39,12 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::RegionSumDistinct(proof) => {
+            let span: u16 = proof.parts.iter().map(|part| part.cells.len() as u16).sum();
+            let choices: u16 = proof.parts.iter().map(|part| binary_choices(&part.domains)).sum();
+            // Inspect the candidates and compare each part's distinct-digit totals.
+            return 24 + 2 * span + 2 * choices + 3 * proof.parts.len() as u16;
+        }
         VariantEvidence::GroupLineHouseSupport(proof) => {
             let choices: u16 = proof.domains.iter()
                 .map(|domain| (u32::BITS - (domain.count_ones() - 1).leading_zeros()) as u16)

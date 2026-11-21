@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 12;
+pub const VARIANT_SCORING_VERSION: u32 = 13;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -33,6 +33,7 @@ mod entropy_quadruple;
 mod sum_pairs;
 mod group_sum_implications;
 mod ray_houses;
+mod region_sum_distinct;
 mod renban_group_counts;
 mod renban_house_support;
 mod renban_locks;
@@ -176,6 +177,8 @@ catalog! {
     GroupLineHouseSupport: "group-line-house-support", 64, Medium;
     /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
     GroupOrderContradiction: "group-order-contradiction", 89, Hard;
+    /// Intersect Region Sum totals after requiring distinct digits inside each part.
+    RegionSumDistinct: "region-sum-distinct", 67, Medium;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -367,6 +370,8 @@ pub enum VariantEvidence {
     GroupLineHouseSupport(Box<VariantGroupLineHouseProof>),
     /// One or more repeating orders contradict the surrounding clues and houses.
     GroupOrder(Box<VariantGroupOrderProof>),
+    /// A Region Sum line whose parts must each use distinct digits.
+    RegionSumDistinct(Box<VariantRegionSumProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -798,6 +803,30 @@ pub struct VariantGroupOrderProof {
     pub rejected: Vec<VariantGroupOrderRefutation>,
 }
 
+/// The valid distinct-digit totals for each part of a Region Sum line.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumProof {
+    /// Rule index of the Region Sum line.
+    pub rule: usize,
+    /// Parts in compiled order. Grouped visits are ordered by region.
+    pub parts: Vec<VariantRegionSumPart>,
+    /// Totals that every part can reach.
+    pub common_totals: Vec<u8>,
+}
+
+/// One part of a Region Sum line, with all its cells in one region.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumPart {
+    /// Cells in this part.
+    pub cells: Vec<usize>,
+    /// Input masks in cell order, including placed digits.
+    pub domains: Vec<u16>,
+    /// Totals reachable with distinct digits.
+    pub totals: Vec<u8>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -1072,6 +1101,7 @@ impl VariantDeduction {
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
+            VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1605,6 +1635,7 @@ impl CompiledVariant {
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
+            RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));

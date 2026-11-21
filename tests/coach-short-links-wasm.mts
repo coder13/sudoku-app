@@ -402,7 +402,8 @@ test('220V imports its complete published rules and centered paths through the s
     assertVariantCompletion(game.variant.puzzle, solution)
     const counted = countLineSolutions(game.variant.puzzle)
     assert.deepEqual(counted.solutions, [solution])
-    assert.equal(grade, null)
+    assert.equal(grade?.difficulty, 'medium')
+    assert.equal(grade.points, 3815)
 
     const ranked = await puzzleHints(game)
     assert.ok(ranked.choices.length > 1)
@@ -458,10 +459,10 @@ test('220V imports its complete published rules and centered paths through the s
 
     const path = await puzzleSolution(game)
     assert.ok('rating' in path)
-    assert.equal(path.rating.status, 'stalled')
-    assert.equal(path.steps.length, 82)
-    assert.equal(path.rating.score.points, 2895)
-    assert.equal(path.rating.score.counts['group-line-house-support'], 3)
+    assert.deepEqual(path.rating.status, { solved: 'medium' })
+    assert.equal(path.steps.length, 200)
+    assert.equal(path.rating.score.points, 3815)
+    assert.equal(path.rating.score.counts['region-sum-distinct'], 3)
     let played = game
     for (const step of path.steps) {
       for (const action of step.actions) {
@@ -471,7 +472,7 @@ test('220V imports its complete published rules and centered paths through the s
       played = applyDeduction(played, step.actions, variantHouseMasks(game.variant.puzzle, valuesOf(played)))
     }
     assert.equal(valuesOf(played), path.board)
-    assert.notEqual(path.board, solution)
+    assert.equal(path.board, solution)
     const restored = readGame(played.id, JSON.stringify(played))
     assert.deepEqual(restored?.variant, game.variant)
     assert.deepEqual(restored?.position, played.position)

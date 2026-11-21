@@ -610,6 +610,8 @@ export type VariantDeduction = {
     | { type: 'group-line-house-support'; rule: number; lineCells: number[]; lineDomains: number[]; phases: number[];
       house: VariantHouse; cells: number[]; domains: number[]; supported: number[];
       cases: { groups: number[]; conflict: { cells: number[]; digits: number } | null }[] }
+    | { type: 'region-sum-distinct'; rule: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
+      commonTotals: number[] }
     | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
       remaining: number[][];
       rejected: { groups: number[]; checks: VariantGroupOrderCheck[]; conflict: VariantGroupOrderCheck;

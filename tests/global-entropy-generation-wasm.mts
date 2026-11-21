@@ -23,7 +23,7 @@ function gameOf(result: GeneratedVariant, id = 'global-entropy-generated'): Game
 }
 function verify(value: GeneratedVariant, difficulty: 'easy' | 'medium') {
   assert.deepEqual(value.puzzle.rules, [{ type: 'global-entropy' }])
-  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 12)
+  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 13)
   assert.ok(value.rating.counts['global-entropy'])
   assert.ok(value.givens >= (difficulty === 'medium' ? 14 : 0) && value.givens <= (difficulty === 'medium' ? 24 : 30))
   const independent = countLineSolutions(value.puzzle)

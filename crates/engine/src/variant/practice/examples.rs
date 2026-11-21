@@ -1119,6 +1119,35 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 ],
             ),
         ],
+        RegionSumDistinct => [
+            seed(
+                "307500942192704050408029007020905030709630425043070860904017000080090070001000004",
+                78, 3,
+                [PuzzleRule::RegionSum {
+                    cells: vec![76, 77, 78, 69, 60, 51],
+                    group_by_region: false,
+                    segments: None,
+                }],
+            ),
+            seed(
+                "840700560000800070279000408000300019900010750007000043600009305093581607085032104",
+                49, 5,
+                [PuzzleRule::RegionSum {
+                    cells: vec![49, 48, 47, 37, 27, 18, 9, 10, 1, 2, 3, 13, 23, 32, 41],
+                    group_by_region: false,
+                    segments: None,
+                }],
+            ),
+            seed(
+                "001004708080703090009005403068341050503600104010250639807000900030400801002000000",
+                62, 6,
+                [PuzzleRule::RegionSum {
+                    cells: vec![16, 26, 34, 44, 52, 62, 70],
+                    group_by_region: false,
+                    segments: None,
+                }],
+            ),
+        ],
         RegionSum => [
             seed(
                 "913070400002000071700040000605710234070006010100400760056807020890304050237600000",

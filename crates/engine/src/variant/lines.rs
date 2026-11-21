@@ -41,6 +41,13 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
+        match &self.kind {
+            LineKind::EqualSums(parts) if self.rule_id == "region-sum" => Some(parts),
+            _ => None,
+        }
+    }
+
     pub fn little_killer_sum(&self) -> Option<u16> {
         match self.kind {
             LineKind::Sum(total) => Some(total),
