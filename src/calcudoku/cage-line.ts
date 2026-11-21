@@ -1,5 +1,5 @@
 import { candidateCount, latinLineRules, type LatinRule } from '../latin/engine.ts'
-import { cageTupleSkips } from './tuple-support.ts'
+import { tuplePrefixSkips } from '../latin/tuple-support.ts'
 
 const list = new Intl.ListFormat('en')
 
@@ -7,7 +7,7 @@ const list = new Intl.ListFormat('en')
 export function cageLineRules(size: number, cage: LatinRule, tuples: Uint16Array): LatinRule[] {
   const length = cage.cells.length
   if (length < 2) return []
-  const skips = cageTupleSkips(tuples, length)
+  const skips = tuplePrefixSkips(tuples, length)
   const positions = new Uint8Array(size * 2)
   for (let index = 0; index < length; index++) {
     const cell = cage.cells[index]

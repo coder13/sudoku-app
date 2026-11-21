@@ -793,6 +793,48 @@ export const GlobalEntropy: Story = {
   },
 }
 
+const quadrupleWithCage = prepareImportedCalcudoku({
+  size: 4, givens: '0034004334124321', colors: [],
+  cages: [{ label: '3+', cells: [10, 11], operator: 'add' }],
+  quadruples: [{ topLeft: 5, digits: [1, 1, 4, 4] }],
+})
+
+export const QuadrupleWithCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={quadrupleWithCage} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const cell = within(grid).getByRole('button', { name: /^R2C2, empty, Quadruple 1, 1, 4, 4/ })
+    await expect(grid.querySelector('.variant-quadruple circle')).toHaveAttribute('cx', '2')
+    await expect(grid.querySelector('.variant-quadruple')).toHaveTextContent('1144')
+    await expect(grid.querySelector('[data-cell="10"] [data-below-quadruple]')).toHaveTextContent('3+')
+
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R2C3, .*Quadruple 1, 1, 4, 4/ })).toHaveFocus()
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Quadruple' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Quadruple' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/The Quadruple touching R2C2 through R3C3 needs 1, 1, 4, 4/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="9"]')).toHaveAttribute('data-context', 'true')
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Calcudoku solution' })
+    await expect(final.querySelector('.variant-quadruple')).toHaveTextContent('1144')
+    await expect(within(final).getByRole('button', { name: /^R2C2, 1, Quadruple 1, 1, 4, 4/ })).toBeVisible()
+  },
+}
+
 const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
   position: {
     values: [1, ...Array<number>(15).fill(0)],

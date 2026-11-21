@@ -22,6 +22,7 @@ import { readCoachColouredLines } from './coach-coloured-lines.ts'
 import { isCoachWhispersGuide } from './coach-whispers-guide.ts'
 import { decodeLegacyCoach, type LegacyCoachVersion } from './legacy-coach.ts'
 import type { OutsideSide } from './outside-clues.ts'
+import { validQuadruple, type Quadruple } from './quadruple.ts'
 import { closedRegionSumCells, regionIndex } from './region-sum.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from './sized-sudoku-pad.ts'
 import { isAlgebraicCageList } from './algebraic-cages.ts'
@@ -454,7 +455,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -764,10 +765,25 @@ function checkCoachGlobalEntropy(layer: Record<string, unknown>) {
   }
 }
 
+function readCoachQuadruples(layer: Record<string, unknown>, size: number): Quadruple[] {
+  if (hasData(layer.settings)) throw new Error('This Sudoku Coach puzzle uses unsupported settings for Quadruple.')
+  if (!Array.isArray(layer.segments)) throw new Error('This Sudoku Coach puzzle has invalid Quadruple clues.')
+  return layer.segments.map(segment => {
+    const invalid = () => new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
+      typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) throw invalid()
+    const clue = { topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) }
+    if (!validQuadruple(clue, size)) throw invalid()
+    return clue
+  })
+}
+
 function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
   const extraRegions: number[][] = []
+  const quadruples: Quadruple[] = []
   let globalEntropy: true | undefined
   for (const layer of layers) {
     if (!record(layer)) continue
@@ -777,6 +793,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
       checkCoachGlobalEntropy(layer)
       globalEntropy = true
     }
+    if (layer.type === 'quadruple') quadruples.push(...readCoachQuadruples(layer, size))
     const type = layer.type
     if (type === 'betweenLine') {
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
@@ -808,7 +825,10 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     const pathType = type === 'palindromeLine' ? 'palindrome' : type === 'consecutiveLine' ? 'consecutive' : 'renban'
     for (const line of coachConnectedLines(paths)) pathClues.push({ ...line, type: pathType })
   }
-  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues, ...(extraRegions.length && { extraRegions }), globalEntropy }
+  return {
+    adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues,
+    ...(extraRegions.length && { extraRegions }), globalEntropy, ...(quadruples.length && { quadruples }),
+  }
 }
 
 function coachOutsideRay(side: OutsideSide, index: number) {
@@ -926,14 +946,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         rules.push({ type: 'sandwich', ...coachOutsideRay(side as OutsideSide, Number(index)), sum: Number(value) })
       }
     } else if (constraint.type === 'quadruple') {
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
-          !record(segment.parameters) || Object.keys(segment.parameters).some(key => key !== 'digits') ||
-          typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
-        }
-        rules.push({ type: 'quadruple', topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
-      }
+      for (const clue of readCoachQuadruples(constraint, 9)) rules.push({ type: 'quadruple', ...clue })
     } else if (constraint.type === 'cage') {
       const { settings } = constraint
       if (hasData(settings) && (grid || !record(settings) || Object.keys(settings).some(key => key !== 'horizontalOffset') ||

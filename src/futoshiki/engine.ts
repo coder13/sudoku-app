@@ -4,6 +4,7 @@ import { latinExtraRegionRules } from '../latin/extra-regions.ts'
 import { latinGlobalEntropyRules } from '../latin/global-entropy.ts'
 import { lineSubsetRules } from '../latin/line-subsets.ts'
 import { latinPathRules, type LatinClues } from '../latin/path-clues.ts'
+import { latinQuadrupleRules } from '../latin/quadruples.ts'
 import { whispersRules } from '../latin/whispers.ts'
 import { xWingRule } from '../latin/x-wing.ts'
 import { inequalityRules, type Inequality } from './inequality-rules.ts'
@@ -13,7 +14,7 @@ export type FutoshikiPuzzle = LatinPuzzle & LatinClues & { inequalities: readonl
 
 export function createFutoshiki(
   size: number, givens: readonly number[], inequalities: readonly Inequality[],
-  { adjacentClues, whispers, pathClues, extraRegions, globalEntropy }: LatinClues = {},
+  { adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples }: LatinClues = {},
 ): FutoshikiPuzzle {
   const puzzle = createLatinPuzzle(size, givens, [])
   const adjacent = adjacentClues ? adjacentClueRules(size, adjacentClues) : []
@@ -23,9 +24,10 @@ export function createFutoshiki(
     ...puzzle,
     rules: [
       ...basic, ...adjacent, ...(lines?.basic ?? []), ...latinPathRules(size, pathClues),
-      ...latinExtraRegionRules(size, extraRegions), ...latinGlobalEntropyRules(size, globalEntropy), ...puzzle.rules,
+      ...latinExtraRegionRules(size, extraRegions), ...latinGlobalEntropyRules(size, globalEntropy),
+      ...latinQuadrupleRules(size, quadruples, extraRegions), ...puzzle.rules,
       ...(lines?.advanced ?? []), ...sharedBounds, ...lineSubsetRules(size), ...lineRules, xWingRule(size), ...lineMatching,
     ],
-    inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy,
+    inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples,
   }
 }

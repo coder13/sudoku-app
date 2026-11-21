@@ -5,17 +5,19 @@ import { extraRegionNote, extraRegionTechnique } from '../latin/extra-regions'
 import { globalEntropyNote, globalEntropyTechnique } from '../latin/global-entropy'
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
+import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
 import { ArrowClue } from './ArrowClue'
 import { EndpointLineClues } from './EndpointLineClues'
 import { PuzzlePathClue } from './PuzzlePathClue'
+import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue } from './RenbanClue'
 import { ExtraRegion } from './VariantClues'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
-  size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy }: LatinClues,
+  size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [] }: LatinClues,
 ) {
-  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0
+  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || quadruples.length > 0
   if (!hasDrawing && !globalEntropy) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
@@ -28,6 +30,13 @@ export function numberPuzzleClues(
   }
   for (const [index, cells] of extraRegions.entries()) {
     for (const cell of cells) addLabel(cell, `Extra region ${index + 1}`)
+  }
+  for (const { topLeft, digits } of quadruples) {
+    const cells = quadrupleCells(topLeft, size)
+    markedEdges.add(key(cells[0], cells[3]))
+    markedEdges.add(key(cells[1], cells[2]))
+    const label = `Quadruple ${digits.join(', ')} touching ${cellLabel(cells[0], size)} through ${cellLabel(cells[3], size)}`
+    for (const cell of cells) addLabel(cell, label)
   }
   for (const { cells, minDifference } of whispers) {
     for (let index = 1; index < cells.length; index++) {
@@ -95,18 +104,21 @@ export function numberPuzzleClues(
       <ArrowClue key={`arrow-${index}`} circle={circle} cells={cells} size={size} />)}
     {(['between', 'lockout'] as const).map(kind =>
       <EndpointLineClues key={kind} kind={kind} paths={pathClues.filter(line => line.type === kind).map(line => line.cells)} size={size} />)}
+    {quadruples.map((clue, index) => <QuadrupleClue key={`quadruple-${index}`} {...clue} size={size} />)}
     {whispers.map((line, index) => <WhispersLineLabel key={`gap-${index}`} line={line} size={size} markedEdges={markedEdges} />)}
   </svg> : undefined
   const types = new Set(pathClues.map(line => line.type))
   return {
     drawing, labels,
     notes: [
+      ...(quadruples.length ? [quadrupleNote] : []),
       ...(globalEntropy ? [globalEntropyNote] : []),
       ...(extraRegions.length ? [extraRegionNote] : []),
       ...(whispers.length ? [whispersRuleNote] : []),
       ...Array.from(types, type => pathClueNotes[type]),
     ],
     techniques: [
+      ...(quadruples.length ? [quadrupleTechnique] : []),
       ...(globalEntropy ? [globalEntropyTechnique] : []),
       ...(extraRegions.length ? [extraRegionTechnique] : []),
       ...(whispers.length ? [whispersTechnique] : []),

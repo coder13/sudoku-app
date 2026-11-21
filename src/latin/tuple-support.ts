@@ -1,8 +1,8 @@
-import type { LatinRule } from '../latin/engine.ts'
+import type { LatinRule } from './engine.ts'
 
 const tupleSkips = new WeakMap<Uint16Array, Uint32Array>()
 
-export function cageTupleSkips(tuples: Uint16Array, length: number) {
+export function tuplePrefixSkips(tuples: Uint16Array, length: number) {
   if (tuples.length < 128 * length) return undefined
   let skips = tupleSkips.get(tuples)
   if (skips) return skips
@@ -23,7 +23,7 @@ export function cageTupleSkips(tuples: Uint16Array, length: number) {
 
 export function tupleSupport(cells: readonly number[], tuples: Uint16Array): LatinRule['support'] {
   const length = cells.length
-  const skips = cageTupleSkips(tuples, length)
+  const skips = tuplePrefixSkips(tuples, length)
   const cache = new Map<number, readonly number[] | null>()
   return domains => {
     // A digit mask uses nine bits. Five masks fit in an exact JS number.

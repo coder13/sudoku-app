@@ -9,6 +9,7 @@ import { cloneLayout } from '../sudoku/clone'
 import { ArrowClue, ArrowMarker } from './ArrowClue'
 import { EndpointPath } from './EndpointPath'
 import { PuzzlePathClue } from './PuzzlePathClue'
+import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue, renbanClueColor } from './RenbanClue'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
@@ -564,17 +565,8 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
-        case 'quadruple': {
-          const cx = x(rule.topLeft) + 1
-          const cy = y(rule.topLeft) + 1
-          const count = rule.digits.length
-          return <g key={index} className="variant-quadruple">
-            <circle cx={cx} cy={cy} r=".265" />
-            {rule.digits.map((digit, i) => <text key={i}
-              x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
-              y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
-          </g>
-        }
+        case 'quadruple':
+          return <QuadrupleClue key={index} {...rule} />
         case 'diagonal':
           return <DiagonalClue key={index} diagonal={rule.diagonal} />
         case 'extra-house':

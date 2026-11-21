@@ -54,6 +54,7 @@ export const calcudoku = {
     const lines = numberPuzzleClues(size, inequalities, puzzle)
     const describeHint = (hint: LatinHint) => numberHint(hint, hasInequalities)
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
+    const quadrupleCorners = new Set(puzzle.quadruples?.map(clue => clue.topLeft + size + 1))
     const cells = givens.map((given, cell) => {
       const cage = cageAt.get(cell)
       const clue = clues.get(cell)
@@ -74,7 +75,8 @@ export const calcudoku = {
         : `${cage.target}${operation ? ` ${operation}` : ''} cage at ${cellLabel(anchor, size)}${cage.distinct ? ', no repeats' : ''}`
       const label = (cageLabel ? [cageLabel, ...labels] : labels).join(', ')
       const decoration = cell === anchor && (sourceLabel || !given)
-        ? <span key="cage" className="number-puzzle-cell-label" aria-hidden="true">{sourceLabel ?? `${cage.target}${symbol}`}</span> : undefined
+        ? <span key="cage" className="number-puzzle-cell-label" data-below-quadruple={quadrupleCorners.has(cell) || undefined}
+          aria-hidden="true">{sourceLabel ?? `${cage.target}${symbol}`}</span> : undefined
       return {
         given, edges, color, label,
         decoration: clue?.signs.length ? [decoration, ...clue.signs] : decoration,

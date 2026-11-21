@@ -290,6 +290,8 @@
   line-height: 1;
 }
 
+.number-puzzle-cell-label[data-below-quadruple] { top: calc(28cqi / var(--number-puzzle-columns)); }
+
 .number-difficulty-preview {
   display: grid;
   place-items: center;

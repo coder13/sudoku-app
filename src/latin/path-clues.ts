@@ -7,6 +7,7 @@ import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, l
 import { renbanRule, renbanRuleNote, renbanTechnique } from './renban.ts'
 import type { WhisperLine } from './whispers.ts'
 import { maxPathCells, maxPathClueTokenLength } from '../number-puzzles/import-token-limits.ts'
+import { quadrupleTechnique, type Quadruple } from '../sudoku/quadruple.ts'
 
 const pathClueKinds = { palindrome: 'p', consecutive: 'c', thermometer: 't', arrow: 'a', renban: 'r', lockout: 'k', between: 'b' } as const
 
@@ -25,6 +26,7 @@ export type LatinClues = {
   pathClues?: readonly LatinPathClue[]
   extraRegions?: readonly (readonly number[])[]
   globalEntropy?: true
+  quadruples?: readonly Quadruple[]
 }
 
 export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
@@ -32,6 +34,7 @@ export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Cons
 export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'extra-region') return extraRegionTechnique
   if (kind === 'global-entropy') return globalEntropyTechnique
+  if (kind === 'quadruple') return quadrupleTechnique
   if (kind && Object.hasOwn(pathClueNames, kind)) return pathClueNames[kind as LatinPathClueType]
 }
 

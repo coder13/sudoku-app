@@ -3,6 +3,8 @@ export const maxWhisperCells = 640
 export const maxWhisperTokenLength = 2 * maxWhisperCells + Math.floor(maxWhisperCells / 2) * 3
 export const maxPathCells = 640
 export const maxPathClueTokenLength = 7 * maxPathCells
+export const maxQuadrupleClues = 144
+export const maxQuadrupleTokenLength = 7 * maxQuadrupleClues
 export const maxExtraRegionCells = 640
 export const maxExtraRegionTokenLength = 3 * maxExtraRegionCells
 
