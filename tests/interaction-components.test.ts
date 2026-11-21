@@ -71,6 +71,25 @@ function boardTree(props: Record<string, unknown>) {
   return tree
 }
 
+test('imported cell colors retain each named shade and yield to conflicts and hidden player visuals', () => {
+  const position = { center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedCellColors: { 0: ['blueHeavy', 'yellow'], 1: ['cyan'], 2: ['green'] } }
+  const cells = (showPlayerColors: boolean) => boardTree({ position, showPlayerColors, selected: [0], errors: new Set([2]) })
+    .filter(({ props }) => props.role === 'gridcell')
+  const [multi, single, conflict] = cells(true).map(({ props }) => props)
+  assert.match(String(multi['aria-label']), /Cell colors deep blue, yellow/)
+  assert.match(String(multi.className), /imported-colors.*selected/)
+  assert.match((multi.style as { '--imported-cell-colors': string })['--imported-cell-colors'], /#a1d5f7.*0% 50%.*#f7f7c5.*50% 100%/)
+  assert.equal((single.style as { '--tone': string })['--tone'], '#c5f7f5')
+  assert.equal(conflict.style, undefined)
+  assert.match(String(conflict.className), /conflict/)
+  assert.doesNotMatch(String(cells(false)[0].props['aria-label']), /Cell colors/)
+  const importedOnly = boardTree({ position: { ...position, colors: [0, 0, 0, 2] }, showPlayerColors: false, showImportedColors: true })
+    .filter(({ props }) => props.role === 'gridcell')
+  assert.match(String(importedOnly[0].props['aria-label']), /Cell colors/)
+  assert.doesNotMatch(String(importedOnly[3].props['aria-label']), /Peach/)
+})
+
 test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {
   const tree = boardTree({
     grid: { size: 4, boxRows: 2, boxColumns: 2 },

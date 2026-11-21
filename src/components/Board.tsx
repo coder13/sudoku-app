@@ -14,6 +14,7 @@ import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
 import { BoardLinks, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
+import { importedCellColorFill, importedCellColorLabel } from '../sudoku/imported-cell-colors'
 
 type Props = {
   descriptionId?: string
@@ -25,7 +26,7 @@ type Props = {
   sizedRules?: readonly SizedConstraintRule[]
   givens: string
   values: string
-  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors'>>
+  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors' | 'importedCellColors'>>
   errors?: ReadonlySet<number>
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
@@ -33,6 +34,7 @@ type Props = {
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
   showPlayerColors?: boolean
+  showImportedColors?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -128,6 +130,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   preview?: Props['candidatePreview']
   candidateColors?: Record<number, number>
   color?: number
+  importedColors?: readonly string[]
   cellAnnotation?: CellAnnotation
   candidateAnnotations?: ReadonlyMap<number, CandidateAnnotation>
   selected: boolean
@@ -156,7 +159,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
 // or position. An edit can therefore leave unrelated cells and their marks intact.
 const BoardCell = memo(function BoardCell({
   geometry, value, fixed, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
-  preview, candidateColors, color, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
+  preview, candidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
   linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted,
   onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
@@ -175,10 +178,19 @@ const BoardCell = memo(function BoardCell({
   const visibleCenterMask = centerMask | (previewAction === 'add' && !previewSlotted ? 1 << (previewDigit! - 1) : 0)
   const visibleGridCandidates = useMemo(() => marksOf(visibleGridMask), [visibleGridMask])
   const visibleCenterCandidates = useMemo(() => marksOf(visibleCenterMask), [visibleCenterMask])
-  const cellStyle = useMemo(() => cellAnnotation && {
-    '--cell-fill': error ? undefined : cellAnnotation.fill,
-    color: error ? undefined : cellAnnotation.ink,
-  } as CSSProperties, [cellAnnotation, error])
+  const cellStyle = useMemo(() => {
+    if (error) return
+    if (cellAnnotation) return { '--cell-fill': cellAnnotation.fill, color: cellAnnotation.ink } as CSSProperties
+    if (!importedColors || color) return
+    const fills = importedColors.map(importedCellColorFill)
+    const stripes = fills.map((fill, index) => {
+      const start = index * 100 / fills.length, end = (index + 1) * 100 / fills.length
+      return `color-mix(in srgb, ${fill} var(--imported-color-weight), var(--board-selected-bg)) ${start}% ${end}%`
+    })
+    return { '--tone': fills[0],
+      '--imported-cell-colors': fills.length > 1 ? `linear-gradient(90deg, ${stripes.join(', ')})` : undefined,
+    } as CSSProperties
+  }, [cellAnnotation, error, color, importedColors])
   const candidateLabel = useMemo(() => (candidateAnnotations || candidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
     .map((digit) => {
       const color = candidateColors?.[digit]
@@ -191,6 +203,7 @@ const BoardCell = memo(function BoardCell({
     !value && gridCandidates.length ? `${digitSlots ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
     !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
     color ? COLORS[color - 1] : '',
+    !color && importedColors?.length && `Cell colors ${importedColors.map(importedCellColorLabel).join(', ')}`,
     regionAtCell !== undefined && `region ${regionAtCell + 1}`,
     cellAnnotation?.label,
     geometry.whispersLinks ? `Whispers neighbors need at least ${geometry.whispersLinks} distinct digit${geometry.whispersLinks === 1 ? '' : 's'}` : '',
@@ -203,7 +216,8 @@ const BoardCell = memo(function BoardCell({
   ].filter(Boolean).join(', ')
   const classes = [
     'cell', canSelectLinkCandidate ? 'chain-cell-target' : '', fixed ? 'given' : 'entry', related ? 'peer' : '', matching ? 'matching' : '',
-    cellHighlight, countHighlighted ? 'candidate-count-match' : '', color ? `colored color-${color}` : '',
+    cellHighlight, countHighlighted ? 'candidate-count-match' : '',
+    color ? `colored color-${color}` : importedColors && !cellAnnotation ? 'colored imported-colors' : '',
     error ? 'conflict' : '', selected ? 'selected' : '',
   ].join(' ')
 
@@ -321,7 +335,7 @@ export function Board({
   variantPuzzle, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedColors = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
@@ -497,6 +511,7 @@ export function Board({
           digitSlots={digitSlots} annotatedSlots={Boolean(linkedDigits)} preview={preview}
           candidateColors={showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined}
           color={showPlayerColors ? position?.colors?.[index] : undefined}
+          importedColors={showImportedColors ? position?.importedCellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
@@ -517,9 +532,9 @@ export function Board({
     </div>
   )), [
     rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
-    position?.center, position?.corner, position?.candidateColors, position?.colors, candidates, candidatePreview,
+    position?.center, position?.corner, position?.candidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
-    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors,
+    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedColors,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidate?.cell, selectedCandidate?.digit, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
     setCandidateFocus, boardEvents, Boolean(onCell), Boolean(onCellDoubleClick), Boolean(onCellPointerDown),

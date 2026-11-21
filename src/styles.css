@@ -1390,6 +1390,15 @@ svg { flex-shrink: 0; }
   --cell-fill: color-mix(in srgb, var(--matching-bg) 45%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
 }
 .cell.colored { --cell-fill: var(--tone); }
+.cell.imported-colors:not(.conflict) {
+  --board-ink: #201a23;
+  --entry-ink: #24375a;
+  --candidate-ink: #3b3242;
+  --candidate-match-surface: #fff;
+  --imported-color-weight: 100%;
+  background-image: var(--imported-cell-colors, none);
+}
+.cell.imported-colors.selected { --imported-color-weight: 76%; }
 :root[data-color-mode="dark"]:not([data-theme="andoku"]) .cell.colored:not(.conflict) {
   --board-ink: #201a23;
   --entry-ink: #24375a;

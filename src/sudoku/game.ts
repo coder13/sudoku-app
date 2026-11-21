@@ -21,6 +21,7 @@ import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
 import type { CustomModeDefinition } from './custom-modes.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
+import type { ImportedCellColors } from './imported-cell-colors.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -34,6 +35,7 @@ export type Position = {
   center: number[]
   corner: number[]
   colors: number[]
+  importedCellColors?: ImportedCellColors
   candidateColors?: Record<number, Record<number, number>>
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
@@ -372,15 +374,28 @@ export function paintCandidate(game: Game, candidate: Candidate, color: number):
   return paintCandidates(game, [{ ...candidate, color }])
 }
 
-export function paintCells(game: Game, marks: readonly { cell: number; color: number }[]): Game {
-  const colors = [...game.position.colors]
+export function withCellColors(position: Position, marks: readonly { cell: number; color: number }[]): Position {
+  const colors = [...position.colors]
+  let imported = position.importedCellColors
   for (const { cell, color } of marks) {
-    if (!Number.isInteger(cell) || cell < 0 || cell >= game.givens.length ||
+    if (!Number.isInteger(cell) || cell < 0 || cell >= colors.length ||
       !Number.isInteger(color) || color < 0 || color > COLORS.length) continue
     colors[cell] = color
+    if (imported?.[cell]) {
+      if (imported === position.importedCellColors) imported = { ...imported }
+      delete imported[cell]
+    }
   }
-  return colors.every((color, cell) => color === game.position.colors[cell]) ? game
-    : move(game, { ...game.position, colors })
+  if (imported === position.importedCellColors && colors.every((color, cell) => color === position.colors[cell])) return position
+  const next = { ...position, colors }
+  if (imported && Object.keys(imported).length) next.importedCellColors = imported
+  else delete next.importedCellColors
+  return next
+}
+
+export function paintCells(game: Game, marks: readonly { cell: number; color: number }[]): Game {
+  const position = withCellColors(game.position, marks)
+  return position === game.position ? game : move(game, position)
 }
 
 export function paintCandidates(game: Game, marks: readonly (Candidate & { color: number })[]): Game {
@@ -446,71 +461,69 @@ export function redo(game: Game): Game {
 }
 
 export function enter(game: Game, selection: number[], mode: Mode, digit: number, options: EnterOptions = {}): Game {
-  let { entries, center, corner, colors } = game.position
-  let replacedEntry = false
   if (mode === 'color') {
     if (!Number.isInteger(digit) || digit < 0 || digit > COLORS.length) return game
-    const add = digit !== 0 && selection.some((i) => colors[i] !== digit)
-    colors = colors.map((color, i) => selection.includes(i) ? (add ? digit : 0) : color)
-  } else {
-    if (!Number.isInteger(digit) || digit < 0 || digit > (game.grid ?? CLASSIC_GRID).size) return game
-    const editable = selection.filter((i) => game.givens[i] === '0')
-    if (mode === 'value') {
-      const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
-      if (value && editable.length !== 1 && !options.allowMultipleValues) return game
-      for (const i of editable) {
-        if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
-        entries = entries.slice(0, i) + value + entries.slice(i + 1)
-      }
-      if (value && options.removeCandidates !== false) {
-        const bit = 1 << (value - 1)
-        const puzzle = game.variant?.puzzle
-        const grid = game.grid ?? CLASSIC_GRID
-        const sizedRules = game.sized?.rules
-        const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
-        const ruleMasks = placedRuleState(puzzle, values, grid, sizedRules)?.allowed
-        center = center.slice()
-        corner = corner.slice()
-        for (let i = 0; i < center.length; i++) {
-          if (!(center[i] | corner[i])) continue
-          let allowed = ruleMasks?.[i] ?? 511
-          for (const cell of editable) {
-            const removed = (peer(cell, i, puzzle, grid, sizedRules) ? bit : 0) |
-              variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size)
-            allowed &= ~removed
-          }
-          center[i] &= allowed
-          corner[i] &= allowed
+    const color = digit !== 0 && selection.some(i => game.position.colors[i] !== digit) ? digit : 0
+    return paintCells(game, selection.map(cell => ({ cell, color })))
+  }
+  let { entries, center, corner } = game.position
+  let replacedEntry = false
+  if (!Number.isInteger(digit) || digit < 0 || digit > (game.grid ?? CLASSIC_GRID).size) return game
+  const editable = selection.filter((i) => game.givens[i] === '0')
+  if (mode === 'value') {
+    const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
+    if (value && editable.length !== 1 && !options.allowMultipleValues) return game
+    for (const i of editable) {
+      if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
+      entries = entries.slice(0, i) + value + entries.slice(i + 1)
+    }
+    if (value && options.removeCandidates !== false) {
+      const bit = 1 << (value - 1)
+      const puzzle = game.variant?.puzzle
+      const grid = game.grid ?? CLASSIC_GRID
+      const sizedRules = game.sized?.rules
+      const values = [...game.givens].map((given, i) => given === '0' ? entries[i] : given).join('')
+      const ruleMasks = placedRuleState(puzzle, values, grid, sizedRules)?.allowed
+      center = center.slice()
+      corner = corner.slice()
+      for (let i = 0; i < center.length; i++) {
+        if (!(center[i] | corner[i])) continue
+        let allowed = ruleMasks?.[i] ?? 511
+        for (const cell of editable) {
+          const removed = (peer(cell, i, puzzle, grid, sizedRules) ? bit : 0) |
+            variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size)
+          allowed &= ~removed
         }
-      } else {
-        const clearCell = (mask: number, i: number) => editable.includes(i) && (value || game.position.entries[i] === '0') ? 0 : mask
-        center = center.map(clearCell)
-        corner = corner.map(clearCell)
+        center[i] &= allowed
+        corner[i] &= allowed
       }
     } else {
-      const empty = editable.filter((i) => entries[i] === '0')
-      const marks = mode === 'candidate' ? center.map((mask, i) => mask | corner[i]) : mode === 'center' ? center : corner
-      const bit = digit ? 1 << (digit - 1) : 0
-      const add = options.candidateAction ? options.candidateAction === 'add' : empty.some((i) => (marks[i] & bit) === 0)
-      const next = marks.map((mask, i) => {
-        if (!empty.includes(i)) return mask
-        if (!digit) return 0
-        return add ? mask | bit : mask & ~bit
-      })
-      if (mode === 'candidate') {
-        center = Array(game.givens.length).fill(0)
-        corner = next
-      } else if (mode === 'center') center = next
-      else corner = next
+      const clearCell = (mask: number, i: number) => editable.includes(i) && (value || game.position.entries[i] === '0') ? 0 : mask
+      center = center.map(clearCell)
+      corner = corner.map(clearCell)
     }
+  } else {
+    const empty = editable.filter((i) => entries[i] === '0')
+    const marks = mode === 'candidate' ? center.map((mask, i) => mask | corner[i]) : mode === 'center' ? center : corner
+    const bit = digit ? 1 << (digit - 1) : 0
+    const add = options.candidateAction ? options.candidateAction === 'add' : empty.some((i) => (marks[i] & bit) === 0)
+    const next = marks.map((mask, i) => {
+      if (!empty.includes(i)) return mask
+      if (!digit) return 0
+      return add ? mask | bit : mask & ~bit
+    })
+    if (mode === 'candidate') {
+      center = Array(game.givens.length).fill(0)
+      corner = next
+    } else if (mode === 'center') center = next
+    else corner = next
   }
   if (
     entries === game.position.entries &&
     center.every((mask, i) => mask === game.position.center[i]) &&
-    corner.every((mask, i) => mask === game.position.corner[i]) &&
-    colors.every((color, i) => color === game.position.colors[i])
+    corner.every((mask, i) => mask === game.position.corner[i])
   ) return game
-  const position = { ...game.position, entries, center, corner, colors }
+  const position = { ...game.position, entries, center, corner }
   if (replacedEntry) delete position.eliminations
   return move(game, position)
 }

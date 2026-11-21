@@ -15,11 +15,8 @@ function record(value: unknown): value is Record<string, unknown> {
 const TEXT_STYLING = new Set(['gridZoomOut', 'gridSnapToCorners', 'textSize', 'gridResolution', 'outlineThickness'])
 
 /** Accept the Coach legend when all its marks restate the typed Whispers rules. */
-export function isCoachWhispersGuide(data: Record<string, unknown>, decorations: readonly Record<string, unknown>[],
+export function isCoachWhispersGuide(cellColours: readonly (string | undefined)[], decorations: readonly Record<string, unknown>[],
   puzzle: VariantPuzzle): boolean {
-  const { colours, givenColours } = data
-  if (!Array.isArray(colours) || colours.length !== SWATCHES.length || new Set(colours).size !== SWATCHES.length ||
-    !SWATCHES.every(swatch => colours.includes(swatch.name)) || typeof givenColours !== 'string') return false
   const expected = new Set<string>()
   for (const [index, { fill, x, y }] of SWATCHES.entries()) {
     const count = index + 1
@@ -46,8 +43,6 @@ export function isCoachWhispersGuide(data: Record<string, unknown>, decorations:
   }
   if (expected.size) return false
   const counts = whispersLinkCounts(puzzle)
-  const colourCounts = colours.map(name => SWATCHES.findIndex(swatch => swatch.name === name) + 1)
-  const cells = givenColours.split(',')
-  return Boolean(counts && cells.length === counts.length && cells.every((shade, cell) =>
-    counts[cell] === (shade === '' ? 0 : /^[0-3]$/.test(shade) ? colourCounts[Number(shade)] : -1)))
+  return Boolean(counts && cellColours.length === counts.length && cellColours.every((shade, cell) =>
+    shade === '' ? counts[cell] === 0 : shade !== undefined && counts[cell] > 0 && shade === SWATCHES[counts[cell] - 1]?.name))
 }

@@ -152,6 +152,30 @@ test('keeps 9 × 9 Coach Current State digits and both kinds of candidates separ
   }
 })
 
+test('Coach Current State keeps multiple player colors separate from the authored region', async () => {
+  const house = [0, 1, 2, 9, 10, 11, 18, 19, 27]
+  const givenConstraints = [{ type: 'region', segments: [{ cells: house }] }]
+  const givenColours = Array.from({ length: 81 }, (_, cell) => house.includes(cell) ? '0' : '').join(',')
+  const marks = Array<string>(81).fill('')
+  marks[0] = '21'
+  marks[80] = '3'
+  const data = { givenDigits: STARTER, givenConstraints, givenColours,
+    colours: ['green', 'blueHeavy', 'cyan', '#6c5ce7'], userColours: marks.join(',') }
+  const imported = await detectPuzzle(coach(data))
+  assert.deepEqual(imported.variant?.puzzle.rules, [{ type: 'extra-house', cells: house }])
+  assert.deepEqual(imported.progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedCellColors: { 0: ['blueHeavy', 'cyan'], 80: ['#6c5ce7'] },
+  })
+  assert.equal((await detectPuzzle(coach({ ...data, userColours: ','.repeat(80) }))).progress, undefined)
+  assert.equal((await detectPuzzle(coach({ ...data, userColours: undefined }))).progress, undefined)
+  for (const userColours of ['1', '4' + ','.repeat(80), '11' + ','.repeat(80)]) {
+    await assert.rejects(detectPuzzle(coach({ ...data, userColours })), /invalid cell colors/)
+  }
+  await assert.rejects(detectPuzzle(coach({ ...data, colours: ['green', 'var(--custom)', 'cyan', '#6c5ce7'] })),
+    /invalid or unsupported cell colors/)
+})
+
 test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
   const emptyMasks = Array(81).fill('0').join('-')
   assert.deepEqual(await detectPuzzle(coach({

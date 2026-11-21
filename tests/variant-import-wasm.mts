@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
-import { applyDeduction, EMPTY, enter, isSolved, needsInitialCandidates, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, EMPTY, enter, isSolved, needsInitialCandidates, paintCells, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -42,7 +42,7 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   const cages = fixture.puzzle.rules?.find(rule => rule.type === 'killer-cages')
   assert.equal(cages?.type, 'killer-cages')
   const entries = '9' + EMPTY.slice(1) // The published solution has 8 here.
-  const input = coachCode({
+  const state = {
     givenDigits: fixture.puzzle.givens,
     givenConstraints: [
       { type: 'diagonalNegative', segments: [] },
@@ -52,7 +52,10 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
     userDigits: entries,
     userCellCandidates: ['0', '16', ...Array(79).fill('0')].join('-'),
     userBoxCandidates: ['0', '256', ...Array(79).fill('0')].join('-'),
-  })
+    colours: ['blue', 'yellowHeavy', 'grey'],
+    userColours: ['10', '2', ...Array(79).fill('')].join(','),
+  }
+  const input = coachCode(state)
   const plain = (await prepareImportedPuzzle(fixture.coach)).game
   const preview = await prepareImportedPuzzle(`https://sudoku.coach/en/play/${input}`)
   const { game } = preview
@@ -65,6 +68,7 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   assert.equal(game.position.entries, entries)
   assert.equal(game.position.center[1], 8)
   assert.equal(game.position.corner[1], 128)
+  assert.deepEqual(game.position.importedCellColors, { 0: ['blue', 'yellowHeavy'], 1: ['grey'] })
   assert.equal(game.started, true)
   assert.equal(game.timeUntracked, true)
   assert.equal(needsInitialCandidates(game), false)
@@ -74,8 +78,30 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   assert.deepEqual(restored.position, game.position)
   assert.equal(findImportAttempt([plain, restored], preview), restored)
   assert.equal(findImportAttempt([enter(restored, [2], 'value', 3)], preview), undefined)
+  const replaced = paintCells(restored, [{ cell: 0, color: 2 }])
+  assert.deepEqual(replaced.position.importedCellColors, { 1: ['grey'] })
+  assert.equal(replaced.position.colors[0], 2)
+  assert.equal(findImportAttempt([replaced], preview), undefined)
+  assert.deepEqual(undo(replaced).position, restored.position)
+  assert.ok(readGame(replaced.id, JSON.stringify(replaced)))
+  const cleared = enter(replaced, [0, 1], 'color', 0)
+  assert.equal(cleared.position.importedCellColors, undefined)
+  assert.equal(cleared.position.colors[0], 0)
+  assert.deepEqual(redo(undo(cleared)).position, cleared.position)
+  const reordered = await prepareImportedPuzzle(coachCode({ ...state, colours: ['grey', 'yellowHeavy', 'blue'],
+    userColours: ['21', '0', ...Array(79).fill('')].join(',') }), [plain])
+  assert.equal(findImportAttempt([restored], reordered), restored)
+  const different = await prepareImportedPuzzle(coachCode({ ...state,
+    userColours: ['1', '2', ...Array(79).fill('')].join(',') }), [plain])
+  assert.equal(findImportAttempt([restored], different), undefined)
+  const colorsOnly = await prepareImportedPuzzle(coachCode({ ...state,
+    userDigits: undefined, userCellCandidates: undefined, userBoxCandidates: undefined }), [plain])
+  assert.equal(colorsOnly.hasProgress, true)
+  assert.deepEqual(colorsOnly.game.position.importedCellColors, restored.position.importedCellColors)
+  assert.equal(findImportAttempt([plain, restored], colorsOnly), undefined)
   const restarted = restartGame(restored)
   assert.equal(restarted.position.entries, EMPTY)
+  assert.equal(restarted.position.importedCellColors, undefined)
   assert.equal(restarted.givens, fixture.puzzle.givens)
   assert.equal(needsInitialCandidates(restarted), true)
   const cached = await prepareImportedPuzzle(input, [plain])

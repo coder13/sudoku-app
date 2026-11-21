@@ -1,4 +1,5 @@
 import { runEngine, type Analysis } from './engine.ts'
+import { sameImportedCellColors } from './imported-cell-colors.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, markSolveUntimed, puzzleIdentity, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
@@ -26,11 +27,13 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
   const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
   if (!hasProgress) return findImportedPuzzle(attempts, game)
-  const { entries, center, corner } = game.position
+  const { entries, center, corner, colors, importedCellColors } = game.position
   const identity = puzzleIdentity(game)
   return attempts.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
     center.every((mask, cell) => mask === saved.position.center[cell]) &&
-    corner.every((mask, cell) => mask === saved.position.corner[cell]) && puzzleIdentity(saved) === identity)
+    corner.every((mask, cell) => mask === saved.position.corner[cell]) &&
+    colors.every((color, cell) => color === saved.position.colors[cell]) &&
+    sameImportedCellColors(importedCellColors, saved.position.importedCellColors) && puzzleIdentity(saved) === identity)
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */

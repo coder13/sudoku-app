@@ -4,6 +4,7 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
+import { isImportedCellColor, type ImportedCellColors } from './imported-cell-colors.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
@@ -57,7 +58,7 @@ export type ImportedPuzzle = {
   title?: string
   sharedPuzzleId?: string
   collection?: CollectionReference
-  progress?: Pick<Position, 'entries' | 'center' | 'corner'>
+  progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors'>
   whispersGuide?: true
 }
 
@@ -221,8 +222,25 @@ function readCoachCandidateMasks(value: unknown): number[] {
   return masks.map(mask => Number(mask) >>> 1)
 }
 
+function readCoachPlayerColors(data: Record<string, unknown>): ImportedCellColors | undefined {
+  const cells = readCoachColourCells(data.colours, data.userColours)
+  if (!cells) throw new Error('This Sudoku Coach progress has invalid cell colors.')
+  const colors: ImportedCellColors = {}
+  const palette = data.colours as unknown[]
+  for (const [cell, shades] of cells.entries()) {
+    if (!shades) continue
+    const names = [...shades].map(shade => palette[COACH_BASE62.indexOf(shade)])
+    if (!names.every(isImportedCellColor) || new Set(names).size !== names.length) {
+      throw new Error('This Sudoku Coach progress has invalid or unsupported cell colors.')
+    }
+    colors[cell] = names.sort()
+  }
+  return Object.keys(colors).length ? colors : undefined
+}
+
 function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours].some(hasData)) return
+  const importedCellColors = readCoachPlayerColors(data)
   const digits = data.userDigits === undefined || data.userDigits === '' ? EMPTY : data.userDigits
   if (typeof digits !== 'string' || !/^[0-9]{81}$/.test(digits)) {
     throw new Error('This Sudoku Coach progress has invalid placed digits.')
@@ -233,13 +251,15 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   const entries = [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
   const center = readCoachCandidateMasks(data.userCellCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   const corner = readCoachCandidateMasks(data.userBoxCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
-  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean)) return { entries, center, corner }
+  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors) {
+    return { entries, center, corner, ...(importedCellColors && { importedCellColors }) }
+  }
 }
 
-function readCoachCellColours({ colours, givenColours }: Record<string, unknown>): string[] | undefined {
-  if (givenColours === undefined || givenColours === '') return []
-  if (typeof givenColours !== 'string') return
-  const cellColours = givenColours.split(',')
+function readCoachColourCells(colours: unknown, value: unknown): string[] | undefined {
+  if (value === undefined || value === '') return []
+  if (typeof value !== 'string') return
+  const cellColours = value.split(',')
   if (cellColours.length !== 81) return
   if (!cellColours.some(Boolean)) return []
   if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
@@ -326,11 +346,15 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? (constraints as Record<string, unknown>[]).filter(layer => layer.type === 'whisper') : constraints
   const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
-  const whispersGuide = guideLayers.length > 0 && isCoachWhispersGuide(data, guideLayers, { version: 1, givens, regions, rules })
+  const cellColours = readCoachColourCells(data.colours, data.givenColours)
+  const palette = Array.isArray(data.colours) ? data.colours : []
+  const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
+    cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
+    guideLayers, { version: 1, givens, regions, rules },
+  )
   if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
     throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
   }
-  const cellColours = readCoachCellColours(data)
   const declaredMirroredRenban = publication?.authoredRule === 'mirrored-renban'
   if (declaredMirroredRenban && (!cellColours || !coachMirroredRenbansMatch(cellColours, rules, true))) {
     throw new Error('The Sudoku Coach export does not match its published mirrored Renban rules and markings.')

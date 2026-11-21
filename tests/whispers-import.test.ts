@@ -144,6 +144,13 @@ test('the Coach Whispers lesson retains every link and derives its guide from th
   assert.equal(counts.filter(Boolean).length, 44)
   assert.deepEqual(whispersLinkCounts(variant.puzzle), counts)
 
+  const colours = ['blue', ...state.colours]
+  const givenColours = state.givenColours.split(',').map((shade: string) => shade ? String(Number(shade) + 1) : '').join(',')
+  const marked = await detectPuzzle(coachCode({ ...state, colours, givenColours, userColours: '0' + ','.repeat(80) }))
+  assert.equal(marked.whispersGuide, true)
+  assert.deepEqual(marked.variant, variant)
+  assert.deepEqual(marked.progress?.importedCellColors, { 0: ['blue'] })
+
   for (const mutate of [
     (data: typeof state) => { data.givenColours = data.givenColours.replace('0', '1') },
     (data: typeof state) => { data.givenConstraints[1].segments[0].parameters.text = '= 3 unique links' },

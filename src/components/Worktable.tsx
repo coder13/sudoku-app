@@ -13,7 +13,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -469,8 +469,7 @@ export function Worktable({
   const boardPosition = useMemo(() => {
     const position = game.position
     if (!cellPaintPreview || cellPaintPreview.gameId !== id || cellPaintPreview.color !== cellBrush) return position
-    return { ...position, colors: position.colors.map((color, cell) =>
-      cellPaintPreview.cells.has(cell) ? cellPaintPreview.color : color) }
+    return withCellColors(position, Array.from(cellPaintPreview.cells, cell => ({ cell, color: cellPaintPreview.color })))
   }, [game.position, cellPaintPreview, cellBrush, id])
   const chainsPanelOpen = openPuzzlePanels.includes('chains')
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeToolPanel === 'digits'
@@ -2253,7 +2252,7 @@ export function Worktable({
   )
   const cellColorsPanel = (
     <CellColorPalette target={colorTarget} onTarget={changeColorTarget} brush={brush}
-      hasColors={colorTarget === 'cell' ? game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
+      hasColors={colorTarget === 'cell' ? Boolean(game.position.importedCellColors) || game.position.colors.some(Boolean) : Boolean(game.position.candidateColors)}
       canContinueGroup={canContinueColorGroup} groupMessage={colorGroupMessage} onContinueGroup={continueColorGroup}
       disabled={cellColorsDisabled} onColor={chooseColor} onSwitchShade={switchColorShade}
       onStop={() => setColorBrush(null)} onClear={clearColors} />
@@ -2512,7 +2511,7 @@ export function Worktable({
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
-      candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors}
+      candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors} showImportedColors={!hintVisualsActive}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
       modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
@@ -2530,7 +2529,7 @@ export function Worktable({
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
-      showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
+      showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedColors={!hintVisualsActive}
       candidatePreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}

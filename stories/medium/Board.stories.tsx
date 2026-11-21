@@ -143,6 +143,16 @@ export const CandidatesAndColor: Story = {
     highlightedDigit: 2,
   },
 }
+export const ImportedCellColors: Story = {
+  render: args => <SelectableGrid {...args} />,
+  args: {
+    values: valuesOf(inProgress),
+    position: { ...inProgress.position, importedCellColors: { 2: ['blueHeavy', 'yellow'], 3: ['cyan'], 5: ['lime', 'magenta', 'orange'] } },
+    candidateLayout: 'center-corner',
+  },
+  decorators: [(Story) => <Width width={320}><Story /></Width>],
+}
+
 export const ConflictingDigits: Story = {
   render: (args) => {
     const values = valuesOf(enter(starter, [2], 'value', 5))
