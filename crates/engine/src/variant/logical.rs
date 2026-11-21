@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 18;
+pub const VARIANT_SCORING_VERSION: u32 = 19;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -31,6 +31,7 @@ mod pruning;
 mod group_line_houses;
 mod group_order;
 mod linked_clues;
+mod matching_digits;
 mod scope_checks;
 mod line_houses;
 mod entropy_quadruple;
@@ -205,6 +206,8 @@ catalog! {
     KropkiHouseSupport: "kropki-house-support", 48, Medium;
     /// Reject a candidate using a bounded sequence of line, pair and house checks.
     LinkedClueContradiction: "linked-clue-contradiction", 78, Hard;
+    /// Follow a digit through matching cells and the houses that require it.
+    MatchingDigitContradiction: "matching-digit-contradiction", 80, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -398,6 +401,8 @@ pub enum VariantEvidence {
     GroupOrder(Box<VariantGroupOrderProof>),
     /// A candidate refuted by a sequence of linked rule and house checks.
     LinkedClue(Box<VariantLinkedClueProof>),
+    /// Matching cells and forced placements leave a house without the digit.
+    MatchingDigit(Box<VariantMatchingDigitProof>),
     /// A Region Sum line whose parts must each use distinct digits.
     RegionSumDistinct(Box<VariantRegionSumProof>),
     /// Several Region Sum line parts must use disjoint digits in one region.
@@ -820,6 +825,48 @@ pub struct VariantConstraintCheck {
 /// A checked constraint in a group-order proof.
 pub use VariantConstraintCheck as VariantGroupOrderCheck;
 
+/// Why a candidate cannot fit in an uncovered house under this assumption.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantMatchingDigitBlock {
+    /// Candidate cell in the house being checked.
+    pub cell: usize,
+    /// The cell that must match the candidate, or the candidate itself.
+    pub matched: usize,
+    /// A cell already assigned the digit under the assumption.
+    pub placed: usize,
+    /// House that prevents the matched cell from using the placed digit.
+    pub house: VariantHouseKind,
+}
+
+/// Places for the digit in one required house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantMatchingDigitCheck {
+    /// House that needs the digit.
+    pub house: VariantHouseKind,
+    /// The sole remaining cell and its matching cells, or empty on conflict.
+    pub forced: Vec<usize>,
+    /// Why each other available candidate is blocked.
+    pub blocked: Vec<VariantMatchingDigitBlock>,
+}
+
+/// A placement of one digit that leaves a house without that digit.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantMatchingDigitProof {
+    /// Digit being followed.
+    pub digit: u8,
+    /// The assumed cell and every cell that must match it.
+    pub assumed: Vec<usize>,
+    /// Placed digits and their matching cells before the assumption.
+    pub initially_placed: Vec<usize>,
+    /// Houses that force one more placement under the assumption.
+    pub checks: Vec<VariantMatchingDigitCheck>,
+    /// House that has no remaining place for the digit.
+    pub conflict: VariantMatchingDigitCheck,
+}
+
 /// A candidate that leaves a linked clue or house without an assignment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
@@ -1082,7 +1129,7 @@ impl VariantPosition {
         &self,
         order: &[VariantTechnique],
     ) -> Result<VariantTrace, VariantLogicalError> {
-        self.trace_with_boundary(order, 0, true)
+        self.trace_with_boundary(order, 0, true, usize::MAX)
     }
 
     pub(crate) fn trace_with_boundary(
@@ -1090,11 +1137,17 @@ impl VariantPosition {
         order: &[VariantTechnique],
         stop_after_placement_in: u128,
         include_steps: bool,
+        max_steps: usize,
     ) -> Result<VariantTrace, VariantLogicalError> {
         let mut steps = Vec::new();
         let (end, rating) = self.logical_run(order, stop_after_placement_in, |step| {
             if include_steps {
                 steps.push(step);
+            }
+            if steps.len() == max_steps {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
             }
         })?;
         Ok(VariantTrace {
@@ -1107,14 +1160,14 @@ impl VariantPosition {
 
     /// Rate the logical path without retaining its proof trace.
     pub fn rate(&self, order: &[VariantTechnique]) -> Result<VariantRating, VariantLogicalError> {
-        self.logical_run(order, 0, |_| {}).map(|(_, rating)| rating)
+        self.logical_run(order, 0, |_| ControlFlow::Continue(())).map(|(_, rating)| rating)
     }
 
     fn logical_run(
         &self,
         order: &[VariantTechnique],
         stop_after_placement_in: u128,
-        receive: impl FnMut(VariantDeduction),
+        receive: impl FnMut(VariantDeduction) -> ControlFlow<()>,
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let compiled = self
             .puzzle
@@ -1128,9 +1181,12 @@ impl VariantPosition {
         &self,
         compiled: &CompiledVariant,
         order: &[VariantTechnique],
-        receive: impl FnMut(VariantDeduction),
+        mut receive: impl FnMut(VariantDeduction),
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
-        self.run_with_boundary(compiled, order, 0, receive)
+        self.run_with_boundary(compiled, order, 0, |step| {
+            receive(step);
+            ControlFlow::Continue(())
+        })
     }
 
     fn run_with_boundary(
@@ -1138,7 +1194,7 @@ impl VariantPosition {
         compiled: &CompiledVariant,
         order: &[VariantTechnique],
         stop_after_placement_in: u128,
-        mut receive: impl FnMut(VariantDeduction),
+        mut receive: impl FnMut(VariantDeduction) -> ControlFlow<()>,
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let mut position = compiled
             .proof_position(&self.entries, &self.eliminations)
@@ -1188,13 +1244,12 @@ impl VariantPosition {
                 }
             }
             end.record_actions(&step.actions);
-            if stop_after_placement_in != 0
+            let reached_boundary = stop_after_placement_in != 0
                 && position.board.contains(&0)
                 && step.actions.iter().any(|action| {
                     matches!(action, HintAction::Place(candidate) if stop_after_placement_in & (1 << candidate.cell) != 0)
-                })
-            {
-                receive(step);
+                });
+            if receive(step).is_break() || reached_boundary {
                 break;
             }
             let overlay = position.overlay.take();
@@ -1205,7 +1260,6 @@ impl VariantPosition {
                 overlay.get_mut().update_position(&position.board, &position.masks);
                 position.overlay = OnceCell::from(overlay);
             }
-            receive(step);
         }
         Ok((end, rating))
     }
@@ -1251,6 +1305,7 @@ impl VariantDeduction {
             VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
             VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
+            VariantEvidence::MatchingDigit(proof) => proof.checks.len() + 1,
             VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
             VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
                 .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
@@ -1615,6 +1670,10 @@ impl CompiledVariant {
                 .map(overlay_proof)
         } else if technique == VariantTechnique::EntropyQuadruple {
             self.entropy_proofs(position, technique, 1).pop()
+        } else if technique == VariantTechnique::MatchingDigitContradiction {
+            let mut proofs = Vec::new();
+            self.matching_digit_proofs(position, &mut proofs, true);
+            proofs.into_iter().next()
         } else {
             self.local_proofs(position, technique)
                 .into_iter()
@@ -1840,6 +1899,7 @@ impl CompiledVariant {
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             LinkedClueContradiction => self.linked_clue_proofs(position, &mut proofs),
+            MatchingDigitContradiction => self.matching_digit_proofs(position, &mut proofs, false),
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),

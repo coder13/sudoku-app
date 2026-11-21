@@ -260,6 +260,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             .and_then(VariantTechnique::from_id)
             .ok_or(INVALID_TECHNIQUE)
     };
+    #[cfg(feature = "teaching")]
     let trace = || position.solve_logically(&order()?).map_err(logical_error);
     let budget = options.max_nodes.unwrap_or(DEFAULT_VARIANT_SEARCH_NODES);
     let entries = &position.entries;
@@ -276,7 +277,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             .ok_or(("invalid-placement-boundary", "Choose distinct cells between 0 and 80."))?;
             return Ok(json!(
                 position
-                    .trace_with_boundary(&order()?, stop, options.include_steps.unwrap_or(true))
+                    .trace_with_boundary(&order()?, stop, options.include_steps.unwrap_or(true), usize::MAX)
                     .map_err(logical_error)?
             ));
         }
@@ -284,7 +285,10 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             let step = options
                 .step_index
                 .ok_or(("invalid-step", "Choose a step index."))?;
-            return Ok(json!(trace()?.replay_step(step)));
+            let prefix = position
+                .trace_with_boundary(&order()?, 0, true, step.saturating_add(1))
+                .map_err(logical_error)?;
+            return Ok(json!(prefix.replay_step(step)));
         }
         #[cfg(feature = "teaching")]
         Operation::PracticePosition => {

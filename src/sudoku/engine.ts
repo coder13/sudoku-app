@@ -607,6 +607,12 @@ type VariantConstraintCheck = {
   domains: number[]
   supported: number[]
 }
+type VariantMatchingDigitCheck = {
+  house: VariantHouse
+  forced: number[]
+  blocked: { cell: number; matched: number; placed: number; house: VariantHouse }[]
+}
+
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -636,6 +642,8 @@ export type VariantDeduction = {
       remainder: number[]; remainderDomains: number[] }
     | { type: 'linked-clue'; assumption: Candidate; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
       houseConflict?: { cells: number[]; digits: number } }
+    | { type: 'matching-digit'; digit: number; assumed: number[]; initiallyPlaced: number[];
+      checks: VariantMatchingDigitCheck[]; conflict: VariantMatchingDigitCheck }
     | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
       remaining: number[][];
       rejected: { groups: number[]; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
