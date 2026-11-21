@@ -19,6 +19,25 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const ReadOnly: Story = {}
+export const AuthoredCellFills: Story = {
+  args: {
+    givenCellColors: { 10: ['orange'], 11: ['orange'], 12: ['green'], 19: ['orange'], 20: ['orange', 'green'] },
+    selected: [11],
+    showPlayerColors: false,
+  },
+  decorators: [(Story) => <Width width={320}><Story /></Width>],
+}
+export const AuthoredVariantArtwork: Story = {
+  args: {
+    authoredArtwork: [
+      { type: 'outline', points: [[1, 1], [4, 1], [4, 4], [1, 4], [1, 1]], thickness: .05 },
+      { type: 'disc', center: [4.5, 4.5], radius: .225, color: '#2a2a2a' },
+    ],
+    showImportedAnnotations: false,
+    selected: [40],
+  },
+  decorators: [(Story) => <Width width={320}><Story /></Width>],
+}
 export const MiniSudoku: Story = {
   args: { grid: MINI_GRID, givens: '0234341221434321', values: '0234341221434321',
     candidates: [1, ...Array<number>(15).fill(0)], selected: [0] },

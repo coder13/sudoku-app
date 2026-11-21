@@ -34,6 +34,91 @@ test('the Pages worker does not follow a redirect from a published provider', as
   assert.equal(fetcher.mock.callCount(), 1)
 })
 
+test('Coach collection imports resolve only listed IDs under the complete collection path', async ({ mock }) => {
+  const path = 'sudoku-coach/collections/halloween-2024'
+  const index = 'https://sudoku.coach/beapi/get-collection-hierarchy'
+  const upstream = 'https://sudoku.coach/beapi/get-sudoku/675G'
+  const code = 'SCv7_32_102aa'
+  let publication: object = {
+    sudoku_id: '675G', sudoku: code, name: 'Pumpkin 2024', published: false,
+    blocked: false, custom_constraints: false, description: '',
+  }
+  const completePublication = publication
+  let hierarchy: object = { id: 'collections', groups: [{ items: [
+    { id: 'halloween-2024', groups: [{ items: ['675G'] }] },
+    { id: 'daily', groups: [{ items: [{ id: '01', groups: [{ items: ['675G'] }] }] }] },
+  ] }] }
+  const fetcher = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.ok(url === index || url === upstream)
+    return Response.json(url === index ? { hierarchy } : publication)
+  })
+  for (const unsafe of ['halloween-2024/675G/extra', 'halloween-2024/675G%2F675G', '%2Fhalloween-2024/675G']) {
+    assert.equal((await request('sudoku-coach/collections/' + unsafe)).status, 404)
+  }
+  assert.equal((await request(path + '/675G', { method: 'POST' })).status, 405)
+  assert.equal(fetcher.mock.callCount(), 0)
+  for (const wrong of [path + '/Unlisted', 'sudoku-coach/collections/other/675G', 'sudoku-coach/collections/daily/675G']) {
+    assert.equal((await request(wrong)).status, 404)
+  }
+  assert.deepEqual(fetcher.mock.calls.map(call => call.arguments[0]), [index, index, index])
+  const accepted = { code, coach: { title: 'Pumpkin 2024', hasAuthorInstructions: false } }
+  assert.deepEqual(await (await request(path + '/675G')).json(), accepted)
+  assert.deepEqual(await (await request('sudoku-coach/collections/daily/01/675G')).json(), accepted)
+  publication = { ...completePublication, blocked: true }
+  assert.equal((await request(path + '/675G')).status, 404)
+  publication = { ...completePublication, sudoku_id: 'Other' }
+  assert.equal((await request(path + '/675G')).status, 502)
+  publication = { ...completePublication, sudoku: code + '!' }
+  assert.equal((await request(path + '/675G')).status, 422)
+  publication = { ...completePublication, sudoku: '0'.repeat(81) }
+  assert.equal((await request(path + '/675G')).status, 200)
+  hierarchy = {}
+  assert.equal((await request(path + '/675G')).status, 502)
+})
+
+test('plain published Coach grids are read only from the matching publication and still check instructions', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/coach-plain-grid.json', import.meta.url), 'utf8'))
+  const url = 'https://sudoku.coach/en/s/' + source.sudoku_id
+  const page = (specificSudoku: object) => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'
+  let html = page(source)
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === url
+    ? Promise.resolve(new Response(html))
+    : worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {}))
+  assert.deepEqual(await detectPuzzle(url), { givens: source.sudoku, format: 'Sudoku Coach', title: source.name })
+  for (const change of [
+    { sudoku_id: 'Different' }, { blocked: true }, { description: null }, { sudoku: undefined },
+    { sudoku: [source.sudoku] }, { sudoku: source.sudoku.slice(1) },
+  ]) {
+    html = page({ ...source, ...change }) + `<div>${source.sudoku}</div>`
+    await assert.rejects(detectPuzzle(url), /supported puzzle export/)
+  }
+  for (const change of [{ description: 'Both main diagonals are extra houses.' }, { custom_constraints: true }]) {
+    html = page({ ...source, ...change })
+    await assert.rejects(detectPuzzle(url), /author instructions/)
+  }
+})
+
+test('collection exports cannot drop author instructions from sized grids', async ({ mock }) => {
+  const base = 'https://sudoku.coach'
+  const id = 'Mini'
+  const code = coachCode({ gridSize: 4, givenDigits: '0234341221434321' })
+  const puzzle = { sudoku_id: id, sudoku: code, name: 'Four-cell boxes', blocked: false, custom_constraints: false, description: '' }
+  let description = ''
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === base + '/beapi/get-collection-hierarchy') return Promise.resolve(Response.json({
+      hierarchy: { id: 'collections', groups: [{ items: [{ id: 'mini', groups: [{ items: [id] }] }] }] },
+    }))
+    if (path === base + '/beapi/get-sudoku/' + id) return Promise.resolve(Response.json({ ...puzzle, description }))
+    return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+  })
+  const url = base + '/en/collections/mini/s/' + id
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.grid?.size, 4)
+  assert.equal(imported.title, puzzle.name)
+  description = 'Digits in shaded positions count twice.'
+  await assert.rejects(detectPuzzle(url), /author instructions/)
+})
+
 test('the worker bounds stream reads and rejects ambiguous or unavailable sources', async (context) => {
   let cancelled = false
   const chunk = new Uint8Array(14_000)

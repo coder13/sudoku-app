@@ -24,6 +24,7 @@ import type { CustomModeDefinition } from './custom-modes.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
 import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
 import type { ImportedDrawing } from './imported-drawings.ts'
+import type { AuthoredMark } from './authored-artwork.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -56,6 +57,8 @@ export type Game = {
   collection?: CollectionReference
   sharedPuzzleId?: string
   whispersGuide?: true
+  givenCellColors?: ImportedCellColors
+  authoredArtwork?: readonly AuthoredMark[]
   difficulty?: Difficulty | null
   score?: number | null
   fogRatingVersion?: number
@@ -133,6 +136,8 @@ export function restartGame(game: Game): Game {
     collection: game.collection,
     sharedPuzzleId: game.sharedPuzzleId,
     ...(game.whispersGuide && { whispersGuide: true }),
+    ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
+    ...(game.authoredArtwork && { authoredArtwork: game.authoredArtwork }),
     score: game.score,
     ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
     variant: game.variant,

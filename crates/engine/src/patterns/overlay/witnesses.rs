@@ -6,7 +6,7 @@ use crate::{Board, CELLS, DIGITS, Units, variant::SquareTransform};
 
 mod renaming;
 
-const NODES_PER_PROBE: u32 = 128;
+const NODES_PER_PROBE: u32 = 256;
 // Each nonidentity grid mapping tries at most nine digit cycles. This budget
 // limits transform work independently of the existing exact-search nodes.
 const SPATIAL_TRANSFORMS: u8 = 64;

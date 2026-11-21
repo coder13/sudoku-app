@@ -4,6 +4,7 @@ import type { Candidate } from '../sudoku/engine'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 import { importedColorLabel, importedColorValue } from '../sudoku/imported-colors'
 import type { ImportedDrawing } from '../sudoku/imported-drawings'
+import type { AuthoredMark } from '../sudoku/authored-artwork'
 
 export type BoardRegion = { row: number; column: number; rows: number; columns: number }
 
@@ -77,6 +78,21 @@ function drawingLocation([x, y]: readonly [number, number]): string {
     ? `row ${y + .5}, column ${x + .5}`
     : `grid coordinates ${x}, ${y}`
 }
+
+/** Render the artwork saved in the puzzle definition in full-board coordinates. */
+export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
+  artwork: readonly AuthoredMark[]
+  region?: BoardRegion
+}) {
+  const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
+  return <svg className="board-authored-artwork" viewBox={bounds} aria-hidden="true">
+    {artwork.map((mark, index) => mark.type === 'outline'
+      ? <polyline key={index} points={mark.points.map(([x, y]) => `${x},${y}`).join(' ')}
+        fill="none" stroke="var(--board-ink)" strokeWidth={mark.thickness} strokeLinejoin="round" />
+      : <circle key={index} cx={mark.center[0]} cy={mark.center[1]} r={mark.radius}
+        fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />)}
+  </svg>
+})
 
 /** Restore imported marks at their original positions, independently of chain links. */
 export const BoardQuickDraw = memo(function BoardQuickDraw({ drawings, region, hidden }: {

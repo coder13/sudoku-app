@@ -41,13 +41,19 @@ async function input(request, limit = 2048, tooLarge = 'Save is too large.') {
 }
 
 const maximumPuzzleCodeLength = 20_000
+const coachId = /^[A-Za-z0-9]{1,16}$/
+const coachCollectionSegment = /^[a-z0-9-]{1,64}$/
+const isCoachClassicGrid = code => typeof code === 'string' && /^[0-9]{81}$/.test(code)
+const coachCodeSource = 'SCv(?:7_32_[0-9a-v]+\\b|[3-6]_[0-9a-z_()[\\]+.-]+)'
+const embeddedCoachCode = new RegExp('\\b' + coachCodeSource, 'gi')
+const exactCoachCode = new RegExp('^' + coachCodeSource + '$', 'i')
 const publicPuzzleSources = {
   'sudoku-coach': {
-    pattern: /^[A-Za-z0-9]{1,16}$/,
+    pattern: coachId,
     url: id => `https://sudoku.coach/en/s/${id}`,
     maxBytes: 512 * 1024,
     code(text) {
-      const codes = new Set(text.match(/\bSCv(?:7_32_[0-9a-v]+\b|[456]_[0-9a-z_()[\]+.-]+)/gi) ?? [])
+      const codes = new Set(text.match(embeddedCoachCode) ?? [])
       return codes.size === 1 ? codes.values().next().value : undefined
     },
   },
@@ -84,6 +90,11 @@ function coachAuthoredRule(lines) {
 // A published legend can refer to fully encoded rules. The app checks those
 // rules against the export before it accepts the publication.
 function coachTypedDeclaration(lines) {
+  const cages = lines.length === 1 && /^All cages are (\d{1,2}) or (\d{1,2})[.!]?$/i.exec(lines[0])
+  if (cages) {
+    const totals = cages.slice(1).map(Number)
+    if (totals.every(sum => sum >= 1 && sum <= 45) && totals[0] !== totals[1]) return { cageTotals: totals }
+  }
   const requirements = [
     /^VII\s*=\s*7[.!]?$/i, /^XIII\s*=\s*13[.!]?$/i, /^Note global entropy[.!]?$/i,
   ]
@@ -99,21 +110,24 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
 ])
 
 // Coach publishes the puzzle code and its author instructions separately.
-async function coachPublication(html, id, code) {
+function readCoachPage(html) {
   const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
   if (scripts.length !== 1) return
-  let puzzle
   try {
-    puzzle = JSON.parse(scripts[0][1])?.specificSudoku
+    return JSON.parse(scripts[0][1])?.specificSudoku
   } catch {
     return
   }
+}
+
+async function coachPublication(puzzle, id, code) {
   if (puzzle?.sudoku_id !== id || puzzle.sudoku !== code || puzzle.blocked !== false ||
       typeof puzzle.custom_constraints !== 'boolean' || typeof puzzle.description !== 'string') return
   const title = typeof puzzle.name === 'string' ? puzzle.name.trim().slice(0, 72) : ''
@@ -143,16 +157,10 @@ async function coachPublication(html, id, code) {
   }
 }
 
-async function loadPublicPuzzle(request, path) {
-  const [, provider, id] = path.split('/')
-  const source = Object.hasOwn(publicPuzzleSources, provider) ? publicPuzzleSources[provider] : undefined
-  if (!source || !source.pattern.test(id ?? '') || path !== `import/${provider}/${id}`) {
-    throw new HttpError(404, 'Unknown puzzle link.')
-  }
-  if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
+async function readPuzzleSource(url, maxBytes, signal) {
   let response
   try {
-    response = await fetch(source.url(id), { redirect: 'manual', signal: AbortSignal.timeout(5_000) })
+    response = await fetch(url, { redirect: 'manual', signal })
   } catch {
     throw new HttpError(502, 'Could not open the published puzzle.')
   }
@@ -163,7 +171,7 @@ async function loadPublicPuzzle(request, path) {
   if (response.status === 404) throw new HttpError(404, 'The published puzzle could not be found.')
   if (!response.ok || !response.body) throw new HttpError(502, 'The puzzle source is unavailable.')
 
-  if (+response.headers.get('Content-Length') > source.maxBytes) {
+  if (+response.headers.get('Content-Length') > maxBytes) {
     await response.body.cancel()
     throw new HttpError(413, 'The puzzle source is too large.')
   }
@@ -172,19 +180,75 @@ async function loadPublicPuzzle(request, path) {
   try {
     for await (const chunk of response.body) {
       bytes += chunk.byteLength
-      if (bytes > source.maxBytes) throw new HttpError(413, 'The puzzle source is too large.')
+      if (bytes > maxBytes) throw new HttpError(413, 'The puzzle source is too large.')
       content += decoder.decode(chunk, { stream: true })
     }
   } catch (error) {
     if (error instanceof HttpError) throw error
     throw new HttpError(502, 'The puzzle source is unavailable.')
   }
-  content += decoder.decode()
-  const code = source.code(content)
+  return content + decoder.decode()
+}
+
+async function readCoachJSON(url, maxBytes, signal) {
+  const text = await readPuzzleSource(url, maxBytes, signal)
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new HttpError(502, 'Sudoku Coach returned an unreadable response.')
+  }
+}
+
+function coachCollectionMembers(collection) {
+  return Array.isArray(collection?.groups)
+    ? collection.groups.flatMap(group => Array.isArray(group?.items) ? group.items : []) : []
+}
+
+async function loadCoachCollectionPuzzle(collectionPath, id, signal) {
+  const base = 'https://sudoku.coach/beapi'
+  const index = await readCoachJSON(`${base}/get-collection-hierarchy`, 512 * 1024, signal)
+  if (index?.hierarchy?.id !== 'collections' || !Array.isArray(index.hierarchy.groups)) {
+    throw new HttpError(502, 'Sudoku Coach returned an unreadable collection index.')
+  }
+  let collection = index.hierarchy
+  for (const segment of collectionPath) collection = coachCollectionMembers(collection).find(item => item?.id === segment)
+  if (!coachCollectionMembers(collection).includes(id)) {
+    throw new HttpError(404, 'This puzzle could not be found in the Sudoku Coach collection.')
+  }
+  const puzzle = await readCoachJSON(`${base}/get-sudoku/${id}`, 512 * 1024, signal)
+  const code = puzzle?.sudoku
+  if (puzzle?.blocked === true) throw new HttpError(404, 'The published puzzle could not be found.')
+  if (typeof code !== 'string' || code.length > maximumPuzzleCodeLength || !(exactCoachCode.test(code) || isCoachClassicGrid(code))) {
+    throw new HttpError(422, 'This collection puzzle does not contain a supported puzzle export.')
+  }
+  const coach = await coachPublication(puzzle, id, code)
+  if (!coach) throw new HttpError(502, 'Sudoku Coach returned incomplete puzzle details.')
+  return json({ code, coach })
+}
+
+async function loadPublicPuzzle(request, path) {
+  const [, provider, ...parts] = path.split('/')
+  const source = Object.hasOwn(publicPuzzleSources, provider) ? publicPuzzleSources[provider] : undefined
+  const id = parts.pop()
+  const isCollection = provider === 'sudoku-coach' && parts[0] === 'collections' &&
+    parts.length >= 2 && parts.length <= 5 && parts.slice(1).every(segment => coachCollectionSegment.test(segment))
+  if (!source || !source.pattern.test(id ?? '') || parts.length && !isCollection) {
+    throw new HttpError(404, 'Unknown puzzle link.')
+  }
+  if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
+  const signal = AbortSignal.timeout(5_000)
+  if (isCollection) return loadCoachCollectionPuzzle(parts.slice(1), id, signal)
+  const content = await readPuzzleSource(source.url(id), source.maxBytes, signal)
+  const puzzle = provider === 'sudoku-coach' ? readCoachPage(content) : undefined
+  // Only the matching publication field identifies a plain grid. Other digits
+  // in the page may be a solution, description, or unrelated export.
+  const plainGrid = isCoachClassicGrid(puzzle?.sudoku)
+  const code = plainGrid ? puzzle.sudoku : source.code(content)
   if (!code || code.length > maximumPuzzleCodeLength) {
     throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   }
-  const coach = provider === 'sudoku-coach' ? await coachPublication(content, id, code) : undefined
+  const coach = puzzle && await coachPublication(puzzle, id, code)
+  if (plainGrid && !coach) throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   return json({ code, ...(coach && { coach }) })
 }
 
@@ -293,6 +357,14 @@ const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a
 const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
     list(cellColor, 1, 62)(shades) && new Set(shades).size === shades.length)
+const artworkSize = value => typeof value === 'number' && value > 0 && value <= .5
+const artworkCorner = list(integer(0, 9), 2, 2)
+const artworkCenter = list(value => typeof value === 'number' && value >= .5 && value <= 8.5 && Number.isInteger(value - .5), 2, 2)
+const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
+  points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
+const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
+  fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }), 1, 81)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -362,6 +434,8 @@ async function sharePuzzle(request, db, path) {
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection,
+      givenCellColors: value => data.grid === undefined && data.variant === undefined && cellColors(value),
+      authoredArtwork: value => data.grid === undefined && data.variant && data.variant.fog === undefined && authoredArtwork(value),
       whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')
