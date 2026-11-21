@@ -36,6 +36,8 @@ assert.ok(source?.puzzle)
 const cases = []
 const archivedOrder = order.filter(technique => technique !== 'modular')
 for (const stepIndex of [22, 23, 24, 25]) {
+  const name = `HCHW-${stepIndex}`
+  if (selected.length && !selected.includes(name)) continue
   const position = stepIndex === 25
     ? (await seed.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder })).end
     : (await seed.request({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder, stepIndex })).before
@@ -44,8 +46,12 @@ for (const stepIndex of [22, 23, 24, 25]) {
     assert.deepEqual(position.eliminations, saved.eliminations)
     assert.deepEqual(await seed.request({ type: 'variant', operation: 'candidates', position }), saved.domains)
   }
-  cases.push({ name: `HCHW-${stepIndex}`, request: { type: 'variant', operation: 'hints', position,
+  cases.push({ name, request: { type: 'variant', operation: 'hints', position,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+}
+if (selected.includes('HCHW-app-walkthrough')) {
+  cases.push({ name: 'HCHW-app-walkthrough', request: { type: 'variant', operation: 'trace',
+    position: { puzzle: source.puzzle }, techniqueOrder: order }, expectedSteps: 37 })
 }
 if (selected.includes('HCHW-current-stall')) {
   const current = await engine(binaries[1])
@@ -54,7 +60,9 @@ if (selected.includes('HCHW-current-stall')) {
   cases.push({ name: 'HCHW-current-stall', request: { type: 'variant', operation: 'hints', position: trace.end,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
 }
-if (selected.some(name => ['HCHW-linked', 'HCHW-edited-tail', 'HCHW-overlay-first'].includes(name))) {
+if (selected.some(name => [
+  'HCHW-linked', 'HCHW-edited-tail', 'HCHW-overlay-first', 'HCHW-ranked-hints', 'HCHW-edited-quintuple',
+].includes(name))) {
   const linked = await load('overlay-hchw-linked')
   assert.equal(linked.url, source.url)
   const position = { puzzle: source.puzzle, entries: linked.entries, eliminations: linked.after }
@@ -67,6 +75,10 @@ if (selected.some(name => ['HCHW-linked', 'HCHW-edited-tail', 'HCHW-overlay-firs
     position: edited, techniqueOrder: order }, expectedSteps: 1 })
   cases.push({ name: 'HCHW-overlay-first', request: { type: 'variant', operation: 'trace',
     position: edited, techniqueOrder: ['quintuple-pattern-overlay', 'dynamic-forcing-net'] }, expectedSteps: 1 })
+  cases.push({ name: 'HCHW-ranked-hints', request: { type: 'variant', operation: 'hints',
+    position: edited, techniqueOrder: order, limit: 10, preferProgress: true, difficulty: 'medium' }, expected: 2 })
+  cases.push({ name: 'HCHW-edited-quintuple', request: { type: 'variant', operation: 'hints',
+    position: edited, techniqueOrder: ['quintuple-pattern-overlay'], limit: 10 }, expected: 1 })
 }
 const methods = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
 for (const technique of methods) {

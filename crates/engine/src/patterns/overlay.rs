@@ -246,7 +246,7 @@ impl<'a> OverlaySearch<'a> {
                 })
                 .collect();
             families.sort_unstable_by_key(|family| (family.layouts.len(), family.digit));
-            support = compatible_support(&families, support);
+            support = compatible_support(&families, support, self.geometry);
         }
         self.supports.insert(group, support);
         support

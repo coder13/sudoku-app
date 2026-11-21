@@ -296,10 +296,10 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.match(reason, /use 1 and 3.*r5c2 with no candidate in box 4/i)
   assertModularProof(game.variant!.puzzle, deduction)
   const ranked = (await puzzleHints(stalled)).choices
-  const lineIndex = ranked.findIndex(choice => choice.technique === 'modular' &&
-    choice.actions.length === 2 && choice.actions.every(action => 'eliminate' in action && action.eliminate.cell === 19))
-  const forcingIndex = ranked.findIndex(choice => choice.technique === 'dynamic-forcing-net')
-  assert.ok(lineIndex >= 0 && (forcingIndex < 0 || lineIndex < forcingIndex))
+  assert.deepEqual(ranked.map(choice => [choice.technique, choice.actions]), [
+    ['modular', hint.actions],
+    ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
+  ])
   const position = variantPosition(game.variant!, stalled.position)
   const finder = watchTechniqueScan(valuesOf(stalled), eliminations, position)
   try {

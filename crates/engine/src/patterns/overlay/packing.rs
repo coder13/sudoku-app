@@ -2,10 +2,13 @@
 
 use std::cell::OnceCell;
 
-use super::{cell_bit, cells};
+use super::{Geometry, cell_bit, cells};
 
 mod indexed;
 mod interchangeable;
+mod projection;
+
+use indexed::WIDTH;
 
 #[derive(Clone, Copy)]
 pub(super) struct Family<'a> {
@@ -54,8 +57,18 @@ fn share_support(
 const ORIGINAL_CHOICES: u16 = 64;
 const ALTERNATE_CHECKS: u32 = 4096;
 
-pub(super) fn compatible_support(families: &[Family<'_>], support: [u128; 9]) -> [u128; 9] {
-    support_with_probes(families, support, ORIGINAL_CHOICES, ALTERNATE_CHECKS)
+pub(super) fn compatible_support(
+    families: &[Family<'_>],
+    support: [u128; 9],
+    geometry: Option<Geometry<'_>>,
+) -> [u128; 9] {
+    support_with_probes(
+        families,
+        support,
+        ORIGINAL_CHOICES,
+        ALTERNATE_CHECKS,
+        projection::Search::new(families, geometry),
+    )
 }
 
 fn support_with_probes(
@@ -63,6 +76,7 @@ fn support_with_probes(
     mut support: [u128; 9],
     choices: u16,
     checks: u32,
+    mut projected: Option<projection::Search<'_>>,
 ) -> [u128; 9] {
     let mut witness = [0; 9];
     let indexed = OnceCell::new();
@@ -97,6 +111,9 @@ fn support_with_probes(
                         &mut remaining,
                     )
                 });
+            let probed = probed.or_else(|| {
+                projected.as_mut()?.find(index, cell, families, &mut witness)
+            });
             let found = if let Some(found) = probed {
                 found
             } else if let Some(complete) = interchangeable::support(families, support) {
@@ -246,6 +263,15 @@ fn disjoint_layouts(families: &[Family<'_>], occupied: u128, witness: &mut [u128
 mod tests {
     use super::*;
 
+    fn support_with_probes(
+        families: &[Family<'_>],
+        support: [u128; 9],
+        choices: u16,
+        checks: u32,
+    ) -> [u128; 9] {
+        super::support_with_probes(families, support, choices, checks, None)
+    }
+
     // Enumerate complete assignments independently of candidate pinning,
     // witness seeds, budgets or either production traversal order.
     fn direct(families: &[Family<'_>]) -> [u128; 9] {
@@ -271,6 +297,79 @@ mod tests {
         let mut support = [0; 9];
         visit(families, 0, &mut [0; 9], &mut support);
         support
+    }
+
+    #[test]
+    fn projected_support_matches_direct_packings_with_classic_and_extra_peer_geometry() {
+        use super::super::super::{House, PEERS, house_cells, templates};
+
+        let mut solution = [0u128; 9];
+        for cell in 0..81 {
+            let row = cell / 9;
+            let digit = (row * 3 + row / 3 + cell % 9) % 9;
+            solution[digit] |= cell_bit(cell);
+        }
+        let a = cells(solution[4]).next().unwrap();
+        let b = cells(solution[4]).last().unwrap();
+        let houses: Vec<_> = House::all().map(house_cells).collect();
+        let mut peers = PEERS;
+        assert_eq!(peers[a] & cell_bit(b), 0);
+        peers[a] |= cell_bit(b);
+        peers[b] |= cell_bit(a);
+        let extra_peer = Geometry {
+            houses: &houses,
+            peers: &peers,
+        };
+        let shared = solution[0] | solution[1];
+        let allowed = [
+            shared,
+            shared,
+            solution[2] | cell_bit(a),
+            solution[3],
+            solution[4],
+        ];
+        for geometry in [None, Some(extra_peer)] {
+            let layouts = allowed.map(|sites| {
+                geometry.map_or_else(
+                    || templates::layouts(sites),
+                    |geometry| templates::layouts_in_houses(sites, geometry.houses, geometry.peers),
+                )
+            });
+            let families = std::array::from_fn::<_, WIDTH, _>(|digit| Family {
+                digit,
+                allowed: allowed[digit],
+                layouts: &layouts[digit],
+            });
+            let expected = direct(&families);
+            assert_eq!(expected[2] & cell_bit(a), 0);
+            assert_eq!(expected[0] != 0, geometry.is_none());
+
+            let mut search = projection::Search::new(&families, geometry).unwrap();
+            let mut witness = [0; 9];
+            assert_eq!(search.find(2, a, &families, &mut witness), Some(false));
+            let target = cells(shared).next().unwrap();
+            let supported = geometry.is_none();
+            assert_eq!(
+                search.find(0, target, &families, &mut witness),
+                Some(supported)
+            );
+            if supported {
+                assert_ne!(witness[0] & cell_bit(target), 0);
+                for family in &families {
+                    assert!(family.layouts.contains(&witness[family.digit]));
+                }
+            }
+            assert_eq!(
+                super::support_with_probes(
+                    &families,
+                    [0; 9],
+                    0,
+                    0,
+                    projection::Search::new(&families, geometry),
+                ),
+                expected
+            );
+        }
     }
 
     #[test]
@@ -441,7 +540,10 @@ mod tests {
                 });
                 assert_eq!(support_with_probes(&families, [0; 9], 0, 0), expected);
                 assert_eq!(support_with_probes(&families, seeded, 0, 0), expected);
-                assert_eq!(compatible_support(&families, seeded), expected);
+                assert_eq!(
+                    support_with_probes(&families, seeded, ORIGINAL_CHOICES, ALTERNATE_CHECKS),
+                    expected
+                );
                 if order {
                     families.reverse();
                 }
@@ -503,7 +605,10 @@ mod tests {
         let mut seeded = [0; 9];
         seeded[0] = sites[4];
         assert_eq!(support_with_probes(&families, seeded, 0, 0), exact);
-        assert_eq!(compatible_support(&families, [0; 9]), exact);
+        assert_eq!(
+            support_with_probes(&families, [0; 9], ORIGINAL_CHOICES, ALTERNATE_CHECKS),
+            exact
+        );
 
         families[4].allowed &= !sites[4];
         assert!(interchangeable::support(&families, [0; 9]).is_none());

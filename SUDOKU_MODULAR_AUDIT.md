@@ -319,6 +319,30 @@ Five alternating warmed WebAssembly samples put the median CPU time for the norm
 
 The full Play request for up to ten hints at the archived position still scans higher tiers for additional choices. One paired run took 26.4 seconds before and 27.1 seconds after, returning one forcing hint before and the new Modular hint followed by the forcing hint after. The rating and selected-technique timings measure different requests.
 
+### Ranked hints after the linked-sum edits
+
+A per-technique scan at the archived HCHW position attributed 11.8 seconds of Wasm CPU to Quintuple Pattern Overlay. Each other technique finished in under 80 ms in that scan. The full Play request scans additional tiers to fill the requested list. Its 8 removal from Dynamic Forcing Net already covers the same action as the Quintuple proof.
+
+After the quick layout probes, Quintuple Pattern Overlay can search cell assignments directly. It chooses the most constrained house for its remaining digits, respects extra equal-digit exclusions, and assigns at most one digit to a cell. A complete search either finds a compatible packing or proves the pinned candidate has none. A 1,024-node cap per candidate and 4,096-node cap per group preserve the existing indexed or exhaustive layout fallback. The proof and scoring rules use the same exact support.
+
+Across three alternating samples after one warmup on arm64 macOS, the median Wasm CPU time for Play's up-to-ten request fell from 23,090 to 580 ms. Both builds return the same Modular and Dynamic Forcing Net choices, with identical actions and evidence. The selected Quintuple request falls from 18,315 to 131 ms and retains its complete proof. The complete 37-step walkthrough from givens matches across five pairs, with median CPU time falling from 1,492 to 1,366 ms. Peak Wasm linear memory stays at 6,225,920 bytes for the ranked request.
+
+The overlay comparison matches 640 complete responses, including 30 positive practice positions and 13 corpus positions. The Murphy X-Sums full scan keeps all 179 choices and moves from 429 to 444 ms median CPU across five pairs. Its five Quintuple proofs still match, with medians of 313 and 310 ms. In ten warm positive practice pairs, median CPU time moves from 36.4 to 39.9 ms for Classic and from 2.5 to 3.0 ms for the variant exercise. Wasm grows from 4,084,813 to 4,088,642 raw bytes and from 1,077,561 to 1,081,541 gzip bytes.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=3 --warmups=1 --cases=HCHW-ranked-hints,HCHW-edited-quintuple,HCHW-edited-tail
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=5 --warmups=1 --cases=HCHW-app-walkthrough,Murphy-full,Murphy-quintuple
+node --experimental-strip-types scripts/compare-overlay-engines.mjs before.wasm after.wasm
+```
+
+### Two adjacent sums on the same row
+
+At the 37-step stall, the 13 sum between R1C3 and R1C4 and the 7 sum between R1C4 and R1C5 make R1C3 six greater than R1C5. R1C8 shares a Modular group with R1C5. In row 1 it must differ from both R1C5 and R1C3.
+
+R1C5 can be 1, 2 or 3. If it were 2, R1C8 could only be 8, repeating R1C3. If R1C5 is 1 or 3, R1C8 must be 4 or 6 respectively, and R1C4 uses the other digit in that pair. Row 1 therefore reserves 4 and 6 for R1C4 and R1C8.
+
+Independent enumeration of the seven relevant cells removes 8 from R1C3, 5 from R1C4, 2 from R1C5, 7, 8 and 9 from R1C8, and 4 and 6 from R1C6, R1C7 and R1C9. Applying all 12 removals manually opens 47 additional app steps, including eight placements that match the published solution. The trace reaches another stall after those steps. Play and Technique Finder still need a detector and an explanation for this step.
+
 ## Reproduce
 
 ```sh
