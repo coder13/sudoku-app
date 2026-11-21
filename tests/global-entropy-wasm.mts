@@ -276,7 +276,7 @@ test('mixed entropy and Quadruple proofs work through exercises, Hint pages, and
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: disabled })
   assert.ok(trace.steps.every(step => step.technique !== technique))
   const withoutEntropy = await runEngine({ type: 'variant', operation: 'trace', position,
-    techniqueOrder: disabled.filter(id => id !== 'global-entropy') })
+    techniqueOrder: disabled.filter(id => id !== 'global-entropy' && id !== 'forcing-chain') })
   assert.equal(withoutEntropy.rating.status, 'stalled')
   assert.equal(withoutEntropy.rating.points, 1741)
   assert.equal(withoutEntropy.steps.length, 31)

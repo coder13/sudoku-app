@@ -116,7 +116,7 @@ impl CompiledVariant {
         mode: SearchMode<'_>,
         solution: &mut Option<Board>,
     ) -> Result<Analysis, VariantPositionError> {
-        let position = match self.prepare(entries, eliminations) {
+        let position = match self.prepare_search(entries, eliminations, max_nodes, mode) {
             Ok(position) => position,
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
@@ -140,13 +140,19 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
-        self.complete(
-            entries,
-            eliminations,
-            max_nodes,
-            SearchMode::PropagateHouses,
-            digits,
-        )
+        if self.quadruples.is_empty() {
+            return self.solve_for_proof(entries, eliminations, max_nodes);
+        }
+        self.complete(entries, eliminations, max_nodes, SearchMode::Verify(&[]), digits)
+    }
+
+    pub(super) fn solve_for_proof(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Board, VariantPositionError> {
+        self.complete(entries, eliminations, max_nodes, SearchMode::PropagateHouses, digits)
     }
 
     /// Find one rule-compliant completion by trying candidate digits in seeded order.
@@ -189,12 +195,31 @@ impl CompiledVariant {
         mode: SearchMode<'_>,
         mut order: impl FnMut(u16) -> D,
     ) -> Result<Board, VariantPositionError> {
-        let position = self.prepare(entries, eliminations)?;
+        let position = self.prepare_search(entries, eliminations, max_nodes, mode)?;
         let mut solution = None;
         match self.search(position, 1, &mut max_nodes, &mut solution, mode, &mut order) {
             None => Err(VariantPositionError::Puzzle(Analysis::SearchLimit)),
             Some(_) => solution.ok_or(VariantPositionError::Puzzle(Analysis::Unsolvable)),
         }
+    }
+
+    fn prepare_search(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+        mode: SearchMode<'_>,
+    ) -> Result<SearchPosition, VariantPositionError> {
+        let mut position = self.prepare(entries, eliminations)?;
+        if max_nodes > 0 && matches!(mode, SearchMode::Verify(_)) && !self.quadruples.is_empty()
+            && position.masks.iter().any(|mask| mask.count_ones() > 1)
+        {
+            if !self.restrict_quadruple_layouts(&mut position) {
+                return Err(VariantPositionError::Puzzle(Analysis::Unsolvable));
+            }
+            self.restrict_domains(&mut position, mode);
+        }
+        Ok(position)
     }
 
     pub(super) fn prepare(
@@ -324,20 +349,41 @@ impl CompiledVariant {
         };
         let mut count = 0;
         for digit in order(position.masks[cell]) {
-            let mut child = position.clone();
-            child.board[cell] = digit;
-            child.masks[cell] = 0;
-            let bit = digit_bit(digit);
-            for peer in cells_in(self.peers[cell]) {
-                child.masks[peer] &= !bit;
-            }
-            self.restrict_domains(&mut child, mode);
+            let child = self.propagate_placement_with_mode(&position, cell, digit, mode);
             count += self.search(child, limit - count, nodes, solution, mode, order)?;
             if count == limit {
                 break;
             }
         }
         Some(count)
+    }
+
+    /// Apply one candidate and propagate clue support without branching.
+    pub(super) fn propagate_placement(
+        &self,
+        position: &SearchPosition,
+        cell: usize,
+        digit: u8,
+    ) -> SearchPosition {
+        self.propagate_placement_with_mode(position, cell, digit, SearchMode::PreserveTraversal)
+    }
+
+    fn propagate_placement_with_mode(
+        &self,
+        position: &SearchPosition,
+        cell: usize,
+        digit: u8,
+        mode: SearchMode<'_>,
+    ) -> SearchPosition {
+        let mut child = position.clone();
+        child.board[cell] = digit;
+        child.masks[cell] = 0;
+        let bit = digit_bit(digit);
+        for peer in cells_in(self.peers[cell]) {
+            child.masks[peer] &= !bit;
+        }
+        self.restrict_domains(&mut child, mode);
+        child
     }
 
     // Exact search can use forced house domains without changing public

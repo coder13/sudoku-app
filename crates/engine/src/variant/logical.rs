@@ -25,6 +25,8 @@ const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod exclusions;
+mod forcing;
+pub use forcing::VariantTrialFailure;
 mod pruning;
 mod line_houses;
 mod entropy_quadruple;
@@ -400,6 +402,13 @@ pub enum VariantEvidence {
         rules: Vec<usize>,
         /// Houses needed to exclude equal digits in different cells.
         houses: Vec<VariantHouseKind>,
+    },
+    /// A candidate assumption leads to a contradiction under the variant rules.
+    RuleForcing {
+        /// Candidate tried as a placement.
+        assumption: Candidate,
+        /// The first empty cell or missing house digit after applying clue support.
+        contradiction: VariantTrialFailure,
     },
     /// A classic proof that applies to the current rules.
     Classic {
@@ -951,6 +960,7 @@ impl VariantDeduction {
                 cells.dedup();
                 cells.len()
             }
+            VariantEvidence::RuleForcing { .. } => 2,
             VariantEvidence::Classic { proof, .. } => proof.pattern_size(),
         };
         (
@@ -1290,6 +1300,12 @@ impl CompiledVariant {
             self.local_proofs(position, technique)
                 .into_iter()
                 .next()
+                .or_else(|| {
+                    if technique == VariantTechnique::Classic(Technique::ForcingChain) {
+                        return self.rule_forcing_proofs(position, 1).pop();
+                    }
+                    None
+                })
                 .or_else(|| self.group_sum_implications(position, technique, 1).into_iter().next())
                 .or_else(|| {
                     (technique == VariantTechnique::GlobalEntropy)
@@ -1323,6 +1339,9 @@ impl CompiledVariant {
         technique: VariantTechnique,
     ) -> Vec<VariantDeduction> {
         let mut proofs = self.local_proofs(position, technique);
+        if technique == VariantTechnique::Classic(Technique::ForcingChain) {
+            proofs.extend(self.rule_forcing_proofs(position, usize::MAX));
+        }
         proofs.extend(self.group_sum_implications(position, technique, usize::MAX));
         if technique == VariantTechnique::GlobalEntropy {
             proofs.extend(self.entropy_proofs(position, technique, usize::MAX));
@@ -1722,7 +1741,7 @@ impl CompiledVariant {
                 let eliminations = std::array::from_fn(|cell| {
                     if position.board[cell] == 0 { DIGITS & !position.masks[cell] } else { 0 }
                 });
-                self.solve(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
+                self.solve_for_proof(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
             })
             .flatten();
         let completion_support = (technique == Technique::NestedForcingNet)

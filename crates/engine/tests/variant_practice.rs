@@ -201,6 +201,10 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     }
                     scopes.insert(clues.into_iter().flat_map(|clue| clue.cells).collect());
                 }
+                VariantEvidence::RuleForcing { assumption, .. } => {
+                    assert_eq!(exercise.deduction.actions, vec![HintAction::Eliminate(assumption)]);
+                    scopes.insert(vec![assumption.cell]);
+                }
                 VariantEvidence::CageSum { cells, .. }
                 | VariantEvidence::Intersection { cells, .. } => {
                     scopes.insert(cells);

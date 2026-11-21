@@ -9,16 +9,13 @@ export type PuzzleGrade = RatingAttempt['grade']
 const FOG_RATING_VERSION = 1
 const FOG_QUADRUPLE_RATING_VERSION = 2
 const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
-const QUADRUPLE_RATING_VERSION = 12
+const QUADRUPLE_RATING_VERSION = 13
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
-  const quadruples = rules?.filter(rule => rule.type === 'quadruple').length ?? 0
-  if (quadruples > 1 || quadruples === 1 && rules?.some(rule => rule.type === 'global-entropy')) {
-    return QUADRUPLE_RATING_VERSION
-  }
+  if (rules?.some(rule => rule.type === 'quadruple')) return QUADRUPLE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
     return RENBAN_AND_LITTLE_KILLER_RATING_VERSION
   }

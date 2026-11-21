@@ -1,7 +1,7 @@
-use super::{CompiledVariant, VariantDefinitionError};
+use super::{CompiledVariant, VariantDefinitionError, cell_mask, search::SearchPosition};
 use crate::{
     DIGITS,
-    hints::{digit_bit, digits},
+    hints::{digit_bit, digits, layouts_in_houses},
 };
 
 /// Four cells around an internal grid intersection, in row-major order.
@@ -185,6 +185,65 @@ fn assign<const ALL: bool, const ENTROPY: bool>(
         }
     }
     found
+}
+
+impl CompiledVariant {
+    /// In exact verification, one digit must fit every house and every
+    /// occurrence printed by the circles. Candidate and hint APIs never use
+    /// these implicit removals as part of the player's starting position.
+    pub(super) fn restrict_quadruple_layouts(&self, position: &mut SearchPosition) -> bool {
+        let houses: Vec<_> = self
+            .search_houses
+            .iter()
+            .map(|&index| self.house_masks[index])
+            .collect();
+        for digit in 1..=9 {
+            let clues: Vec<_> = self
+                .quadruples
+                .iter()
+                .filter_map(|clue| {
+                    let count = u32::from(clue.occurrences(digit));
+                    (count != 0).then(|| (cell_mask(&clue.cells).unwrap(), count))
+                })
+                .collect();
+            if clues.is_empty() {
+                continue;
+            }
+            let bit = digit_bit(digit);
+            let (mut allowed, mut fixed) = (0, 0);
+            for (cell, &placed) in position.board.iter().enumerate() {
+                if placed == digit {
+                    fixed |= 1u128 << cell;
+                } else if position.masks[cell] & bit != 0 {
+                    allowed |= 1u128 << cell;
+                }
+            }
+            allowed |= fixed;
+            let (mut possible, mut forced) = (0, allowed);
+            for layout in layouts_in_houses(allowed, &houses, &self.peers) {
+                if fixed & !layout == 0
+                    && clues
+                        .iter()
+                        .all(|&(scope, count)| (layout & scope).count_ones() >= count)
+                {
+                    possible |= layout;
+                    forced &= layout;
+                }
+            }
+            if possible == 0 {
+                return false;
+            }
+            for (cell, mask) in position.masks.iter_mut().enumerate() {
+                let site = 1u128 << cell;
+                if forced & site != 0 {
+                    *mask &= bit;
+                } else if possible & site == 0 {
+                    *mask &= !bit;
+                }
+            }
+        }
+        true
+    }
 }
 
 #[cfg(test)]

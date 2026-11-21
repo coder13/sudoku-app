@@ -618,6 +618,8 @@ export type VariantDeduction = {
     | { type: 'quadruple-lock'; clues: [{ rules: number[]; cells: number[] }, { rules: number[]; cells: number[] }]; houses: [VariantHouse, VariantHouse]; sites: [number[], number[]]; digit: number }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
+    | { type: 'rule-forcing'; assumption: Candidate; contradiction:
+        { type: 'empty-cell'; cell: number } | { type: 'missing-digit'; house: VariantHouse; digit: number } }
     | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }
     | { type: 'classic'; proof: Evidence; swapCells: number[] }
 }

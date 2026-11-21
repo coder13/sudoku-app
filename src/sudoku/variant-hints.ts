@@ -259,6 +259,20 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
     }
+    case 'rule-forcing': {
+      const { assumption, contradiction } = evidence
+      const location = nameCell(assumption.cell)
+      candidates = [assumption]
+      description = `If ${location} is ${assumption.digit}, follow the puzzle's visible clues to update the candidates.`
+      if (contradiction.type === 'empty-cell') {
+        cells = [assumption.cell, contradiction.cell]
+        reason = `That leaves ${nameCell(contradiction.cell)} without a candidate. Remove ${assumption.digit} from ${location}.`
+      } else {
+        cells = [...new Set([assumption.cell, ...variantHouseCells(contradiction.house, puzzle)])]
+        reason = `${contradiction.digit} has no possible cell in ${houseLabel(contradiction.house)}. Remove ${assumption.digit} from ${location}.`
+      }
+      break
+    }
     case 'quadruple-lock': {
       const { clues, sites, digit } = evidence
       cells = [...new Set(clues.flatMap(clue => clue.cells))]

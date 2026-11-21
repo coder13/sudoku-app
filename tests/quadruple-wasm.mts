@@ -3,11 +3,14 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
 import { applyDeduction, enter, isSolved, undo, redo, valuesOf } from '../src/sudoku/game.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseMasks } from '../src/sudoku/variants.ts'
+import { variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
+import { entropyTrialDomains } from './helpers/global-entropy-truth.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { coachCode } from './helpers/coach-code.ts'
@@ -207,5 +210,102 @@ test('batched singles and the compiled-rule cache honor each Quadruple definitio
     const answer = [...givens]
     answer[10] = String(digit)
     assert.equal(await runEngine({ type: 'variant', operation: 'solve-singles', position: { puzzle } }), answer.join(''))
+  }
+})
+
+
+const mixedFixture = (file: string) => JSON.parse(readFileSync(new URL(`./fixtures/${file}.json`, import.meta.url), 'utf8')) as
+  { url: string; coach: string; solution: string }
+
+test('Entropy Quads 18 returns rule-based Forcing Chain hints at the actual stalled position', async () => {
+  const { coach, solution } = mixedFixture('quadruple-coach-entropy-lines')
+  const { game, grade } = await prepareImportedPuzzle(coach)
+  assert.ok(game.variant)
+  const { puzzle } = game.variant
+  assert.equal(game.variant.solution, solution)
+  assertVariantCompletion(puzzle, solution)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'quadruple').length, 15)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'entropic').length, 10)
+  const position = variantPosition(game.variant)
+  const technique = 'forcing-chain'
+  const order = await getVariantPlayOrder(puzzle)
+  const disabled = await runEngine({
+    type: 'variant', operation: 'trace', position, techniqueOrder: order.filter(id => id !== technique),
+  })
+  assert.equal(disabled.rating.status, 'stalled')
+  const path = await puzzleSolution(game)
+  assert.equal(path.board, solution)
+  assert.deepEqual(path.rating.status, { solved: 'extreme' })
+  assert.equal(grade?.points, path.rating.score.points)
+  assert.equal(needsPuzzleGrade({ ...game, variantRatingVersion: 12 }), true)
+  assert.equal(needsPuzzleGrade(game), false)
+  const { entries, eliminations } = disabled.end
+  assert.equal(path.positions![disabled.steps.length].entries, entries)
+  assert.deepEqual(path.positions![disabled.steps.length].eliminations, eliminations)
+  const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+  const first = (await puzzleHints(checkpoint)).choices[0]
+  assert.equal(first?.technique, technique)
+  assert.ok('variant' in first.evidence)
+  assert.match(first.evidence.variant.description, /If R1C4 is 1/i)
+  assert.match(first.evidence.variant.reason, /leaves R1C1 without a candidate/i)
+
+  const { choices } = await puzzleHints(checkpoint, 'all', technique)
+  const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+  const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+  try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+  const collection = 718
+  const page = await puzzleHints(checkpoint, 'all', technique, collection)
+  try {
+    assert.deepEqual(page.choices[0], choices[0])
+    assert.deepEqual((await puzzleHintPage(game.variant, collection, 0)).choices[0], choices[0])
+  } finally { await runEngine({ type: 'release-hints', collection }) }
+
+  const board = valuesOf(checkpoint)
+  let verified = 0
+  for (const choice of choices) {
+    if (!('variant' in choice.evidence)) continue
+    const proof = choice.evidence.variant.source?.deduction.evidence
+    if (proof?.type !== 'rule-forcing') continue
+    const { assumption, contradiction } = proof
+    assert.deepEqual(choice.actions, [{ eliminate: assumption }])
+    const masks = entropyTrialDomains(puzzle, board, eliminations, assumption)
+    if (contradiction.type === 'empty-cell') assert.equal(masks[contradiction.cell], 0)
+    else for (const cell of variantHouseCells(contradiction.house, puzzle)) {
+      assert.equal(masks[cell] & (1 << (contradiction.digit - 1)), 0)
+    }
+    verified++
+  }
+  assert.ok(verified > 1)
+  const viable = { cell: 3, digit: Number(solution[3]) }
+  const viableMasks = entropyTrialDomains(puzzle, board, eliminations, viable)
+  for (const [cell, mask] of viableMasks.entries()) assert.ok(mask & (1 << (Number(solution[cell]) - 1)))
+  for (const { actions } of path.steps) for (const action of actions) {
+    if ('place' in action) assert.equal(solution[action.place.cell], String(action.place.digit))
+    else assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
+  }
+})
+
+test('Not Actually Impossible Quads verifies within the default budget and has a full logical path', async () => {
+  const { coach, solution } = mixedFixture('quadruple-coach-impossible')
+  const { game } = await prepareImportedPuzzle(coach)
+  assert.ok(game.variant)
+  assert.equal(game.variant.solution, solution)
+  const { puzzle } = game.variant
+  assertVariantCompletion(puzzle, solution)
+  assert.equal(puzzle.givens, '0'.repeat(81))
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'diagonal').length, 2)
+  assert.ok(puzzle.rules?.some(rule => rule.type === 'anti-knight'))
+  const position = variantPosition(game.variant)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position }), { status: 'unique', solution })
+  assert.equal(await runEngine({ type: 'variant', operation: 'solve', position }), solution)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position, maxNodes: 0 }), { status: 'search-limit' })
+  const candidates = await playCandidates(game)
+  for (const [cell, mask] of candidates!.entries()) assert.ok(mask & (1 << (Number(solution[cell]) - 1)))
+  const path = await puzzleSolution(game)
+  assert.equal(path.board, solution)
+  assert.notEqual(path.rating.status, 'stalled')
+  for (const { actions } of path.steps) for (const action of actions) {
+    if ('place' in action) assert.equal(solution[action.place.cell], String(action.place.digit))
+    else assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
   }
 })
