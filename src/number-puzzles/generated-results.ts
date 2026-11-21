@@ -4,7 +4,7 @@ import { recordDifficultySolve, type DifficultyTotals } from '../sudoku/difficul
 import type { NumberPuzzleDifficulty, NumberPuzzleEntry } from './catalog.ts'
 import { calcudokuFromRecipe, decodeGeneratedNumberPayload, generatedNumberPayload, kakuroFromRecipe, type GeneratedNumberGame } from './generated.ts'
 import type { GeneratedRecord } from './generated-storage.ts'
-import { hasNumberMoves, parseNumberProgress, readNumberClock, readNumberLastPlayed, type SavedNumberProgress } from './progress.ts'
+import { numberValuesWithMoves, readNumberClock, readNumberLastPlayed, type SavedNumberProgress } from './progress.ts'
 
 export type NumberResultStatus = 'started' | 'solved'
 export type NumberHistoryEntry = NumberPuzzleEntry & { lastPlayed?: number; elapsed?: number }
@@ -46,10 +46,9 @@ export function recordNumberResult(
 function numberResultStatus(
   saved: SavedNumberProgress, { editable, maxValue, complete }: ProgressRules,
 ): NumberResultStatus | null {
-  if (!Array.isArray(saved.values) || !Array.isArray(saved.notes)) return null
-  const progress = parseNumberProgress(saved, editable, maxValue)
-  if (!progress || !hasNumberMoves(progress)) return null
-  return complete(progress.position.values) ? 'solved' : 'started'
+  const values = numberValuesWithMoves(saved, editable, maxValue)
+  if (!values) return null
+  return complete(values) ? 'solved' : 'started'
 }
 
 type GeneratedProgressRules = ProgressRules & { difficulty: NumberPuzzleDifficulty }

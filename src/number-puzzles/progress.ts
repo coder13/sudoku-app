@@ -54,34 +54,59 @@ export function readNumberProgress(key: string): SavedNumberProgress | null {
   try { return parseSavedNumberProgress(localStorage.getItem(key)) } catch { return null }
 }
 
-export function parseNumberProgress(saved: SavedNumberProgress, editable: readonly boolean[], maxValue: number): NumberProgress | null {
-  const { values, notes, past, future } = saved
-  if (values.length !== editable.length || notes.length !== editable.length) return null
-  const maxNotes = 2 ** maxValue - 1
-  const valid = (entry: unknown, max: number): entry is number => typeof entry === 'number' &&
-    Number.isInteger(entry) && entry >= 0 && entry <= max
+function validNumberValue(entry: unknown, max: number): entry is number {
+  return typeof entry === 'number' && Number.isInteger(entry) && entry >= 0 && entry <= max
+}
 
-  function readHistory(value: unknown): NumberMove[] {
-    if (!Array.isArray(value)) return []
-    const history: NumberMove[] = []
-    for (const move of value.slice(-NUMBER_HISTORY_SIZE)) {
-      if (!Array.isArray(move) || move.length !== 3) return []
-      const [cell, digit, notes] = move
-      if (!valid(cell, editable.length - 1) || !editable[cell] || !valid(digit, maxValue) || !valid(notes, maxNotes)) return []
-      history.push([cell, digit, notes])
-    }
-    return history
+function readNumberValues({ values, notes }: SavedNumberProgress, editable: readonly boolean[], maxValue: number): number[] | null {
+  if (!Array.isArray(values) || !Array.isArray(notes) ||
+    values.length !== editable.length || notes.length !== editable.length) return null
+  return editable.map((write, index) => write && validNumberValue(values[index], maxValue) ? values[index] : 0)
+}
+
+function readNumberHistory(value: unknown, editable: readonly boolean[], maxValue: number, maxNotes: number): NumberMove[] {
+  if (!Array.isArray(value)) return []
+  const recent = value.slice(-NUMBER_HISTORY_SIZE)
+  for (let index = 0; index < recent.length; index++) {
+    const move = recent[index]
+    if (!Array.isArray(move) || move.length !== 3) return []
+    const [cell, digit, notes] = move
+    if (!validNumberValue(cell, editable.length - 1) || !editable[cell] ||
+      !validNumberValue(digit, maxValue) || !validNumberValue(notes, maxNotes)) return []
+    recent[index] = [cell, digit, notes]
   }
+  return recent
+}
 
+// Results need the current values. Read notes and undo history only if they
+// are the only evidence that the player started a blank grid.
+export function numberValuesWithMoves(saved: SavedNumberProgress, editable: readonly boolean[], maxValue: number) {
+  const values = readNumberValues(saved, editable, maxValue)
+  if (!values || values.some(Boolean)) return values
+  const maxNotes = 2 ** maxValue - 1
+  const hasNotes = editable.some((write, index) => {
+    const notes = saved.notes[index]
+    return write && validNumberValue(notes, maxNotes) && notes > 0
+  })
+  if (hasNotes || readNumberHistory(saved.past, editable, maxValue, maxNotes).length ||
+    readNumberHistory(saved.future, editable, maxValue, maxNotes).length) return values
+  return null
+}
+
+export function parseNumberProgress(saved: SavedNumberProgress, editable: readonly boolean[], maxValue: number): NumberProgress | null {
+  const values = readNumberValues(saved, editable, maxValue)
+  if (!values) return null
+  const maxNotes = 2 ** maxValue - 1
+  const { notes, past, future } = saved
   const clock = readNumberClock(saved.clock)
   const lastPlayed = readNumberLastPlayed(saved.lastPlayed)
   return {
     position: {
-      values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
-      notes: editable.map((write, index) => write && valid(notes[index], maxNotes) ? notes[index] : 0),
+      values,
+      notes: editable.map((write, index) => write && validNumberValue(notes[index], maxNotes) ? notes[index] : 0),
     },
-    past: readHistory(past),
-    future: readHistory(future),
+    past: readNumberHistory(past, editable, maxValue, maxNotes),
+    future: readNumberHistory(future, editable, maxValue, maxNotes),
     ...(clock === undefined ? {} : { clock }),
     ...(lastPlayed === undefined ? {} : { lastPlayed }),
   }

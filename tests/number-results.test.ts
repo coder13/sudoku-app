@@ -9,7 +9,7 @@ import {
   addGeneratedHistoryRow, createGeneratedHistoryReader, createGeneratedNumberResultCollector, type GeneratedNumberResults,
 } from '../src/number-puzzles/generated-results.ts'
 import { encodeGeneratedNumberPuzzle, type GeneratedNumberPuzzle } from '../src/number-puzzles/generated.ts'
-import type { SavedNumberProgress } from '../src/number-puzzles/progress.ts'
+import { NUMBER_HISTORY_SIZE, type SavedNumberProgress } from '../src/number-puzzles/progress.ts'
 import { summarizeDifficultySolves } from '../src/sudoku/difficulty-statistics.ts'
 
 const kakuro = kakuroCatalog[0].puzzle
@@ -40,11 +40,13 @@ for (const { board, values } of [
     const progress: SavedNumberProgress[] = [
       { values, notes: blank },
       { values, notes: blank, clock: { elapsed: 42, finished: true }, lastPlayed: 1_790_100_000_000 },
-      { values: wrong, notes: blank, clock: { elapsed: 11, finished: true }, lastPlayed: 1_790_000_000_000 },
+      { values: wrong, notes: blank, past: [['invalid']], clock: { elapsed: 11, finished: true }, lastPlayed: 1_790_000_000_000 },
       { values: blank, notes: blank, future: [[first, values[first], 0]], lastPlayed: 'yesterday' },
       { values: blank, notes: blank.map((_, cell) => cell === first ? 1 : 0) },
       { values: blank, notes: blank },
       { values: [], notes: [] },
+      { values: blank, notes: blank, past: [[first, 0, 0], [first, -1, 0]] },
+      { values: blank, notes: blank, past: [null, ...Array.from({ length: NUMBER_HISTORY_SIZE }, () => [first, 0, 0])] },
     ]
     const ids = progress.map((_, index) => encodeGeneratedNumberPuzzle(board,
       index ? `00000000-0000-0000-0000-${String(index).padStart(12, '0')}` : undefined))
@@ -63,7 +65,7 @@ for (const { board, values } of [
       collect({ game: board.game, id: ids[0].replace(/^v1\./, 'v2.') + '.invalid', number: 9, progress: progress[0] })
     }
     assert.deepEqual([...summarizeDifficultySolves(results.totals)], [['easy', { solved: 2, averageSeconds: 42 }]])
-    assert.deepEqual(results.entries, [2, 3, 4].map(index => ({
+    assert.deepEqual(results.entries, [2, 3, 4, 8].map(index => ({
       id: ids[index], number: index + 1, difficulty: 'easy', generated: true,
       ...(index === 2 && { lastPlayed: 1_790_000_000_000, elapsed: 11 }),
     })))
