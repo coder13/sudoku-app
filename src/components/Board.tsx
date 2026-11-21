@@ -546,7 +546,8 @@ export function Board({
           candidateColors={showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined}
           importedCandidateColors={showImportedAnnotations && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
           color={!fogged && showPlayerColors ? position?.colors?.[index] : undefined}
-          importedColors={!fogged && showImportedAnnotations ? position?.importedCellColors?.[index] : undefined}
+          importedColors={!fogged ? (showImportedAnnotations ? position?.importedCellColors?.[index] : undefined)
+            ?? fog?.cellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}

@@ -189,7 +189,7 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   const { variant } = game
   if (!variant) return game.givens
   const definition = variant.fog
-    ? { ...variant.puzzle, fog: { initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
+    ? { ...variant.puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
     : variant.puzzle
   return `${variant.id}:${JSON.stringify(orderedPuzzleFields(definition))}`
 }

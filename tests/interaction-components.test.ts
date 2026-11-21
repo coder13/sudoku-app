@@ -90,6 +90,29 @@ test('imported cell colors retain each named shade and yield to conflicts and hi
   assert.doesNotMatch(String(importedOnly[3].props['aria-label']), /Peach/)
 })
 
+test('Fog shows authored cell colors only after reveal and player colors can cover them', () => {
+  const entries = '0'.repeat(81)
+  const puzzle = { version: 1, givens: entries }
+  const position = { center: Array(81).fill(0), corner: Array(81).fill(0), importedCellColors: { 1: ['yellow'] } }
+  const cells = (revealed: boolean, showImportedAnnotations = true) => boardTree({
+    variantPuzzle: puzzle, position, showImportedAnnotations,
+    fog: { entries, puzzle, cells: new Set(revealed ? [0, 1] : [0]), cellColors: { 0: ['grey'], 1: ['red'] } },
+  }).filter(({ props }) => props.role === 'gridcell').map(({ props }) => props)
+
+  const [grey, covered] = cells(false)
+  assert.match(String(grey['aria-label']), /Cell colors grey/)
+  assert.equal((grey.style as { '--tone': string })['--tone'], '#e2e2e2')
+  assert.match(String(covered['aria-label']), /covered by fog/)
+  assert.doesNotMatch(String(covered['aria-label']), /\b(?:grey|red|yellow)\b|Cell colors/)
+  assert.equal(covered.style, undefined)
+
+  const [, playerFill] = cells(true)
+  assert.match(String(playerFill['aria-label']), /Cell colors yellow/)
+  const [, authoredFill] = cells(true, false)
+  assert.match(String(authoredFill['aria-label']), /Cell colors red/)
+  assert.equal((authoredFill.style as { '--tone': string })['--tone'], '#f7c5c5')
+})
+
 test('imported candidate colors label and shade visible digits in read-only and painting views', () => {
   const position = { center: [2, ...Array(80).fill(0)], corner: [0, 16, ...Array(79).fill(0)],
     importedCandidateColors: { 0: { 2: 'blueHeavy', 9: 'orangeHeavy' }, 1: { 5: 'cyan' } } }

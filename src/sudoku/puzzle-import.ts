@@ -4,7 +4,7 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
-import { isImportedColor, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
+import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
@@ -364,6 +364,20 @@ function readCoachFog(layers: readonly Record<string, unknown>[]): FogDefinition
   return { initialCells: [...visible].sort((a, b) => a - b) }
 }
 
+function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string[], palette: readonly unknown[]) {
+  const initial = new Set(fog.initialCells)
+  const colors: ImportedCellColors = {}
+  for (const [cell, codes] of cellColours.entries()) {
+    const shades = [...codes].map(code => palette[COACH_BASE62.indexOf(code)])
+    // This Jigsaw Fog export paints the entire starting reveal gray. Covered
+    // colors become visible as ordinary cell backgrounds when the fog clears.
+    if (!shades.every(isImportedColor) ||
+      (initial.has(cell) ? shades.length !== 1 || shades[0] !== 'grey' : shades.includes('grey'))) return
+    if (shades.length) colors[cell] = shades
+  }
+  return validImportedCellColors(colors) ? colors : undefined
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -382,7 +396,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   const encodedLayers = data.givenConstraints ?? []
   if (!Array.isArray(encodedLayers)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const isFogLayer = (layer: unknown): layer is Record<string, unknown> => record(layer) && layer.type === 'fog'
-  const fog = readCoachFog(encodedLayers.filter(isFogLayer))
+  let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
   const regions = readRegions(data.regions)
   const guideLayers = constraints.every(layer => record(layer) &&
@@ -409,7 +423,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (!whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
-      throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+      const cellColors = fog && regions?.type === 'jigsaw' && !publication?.hasAuthorInstructions
+        ? readCoachFogCellColors(fog, cellColours, palette) : undefined
+      if (!fog || !cellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+      fog = { ...fog, cellColors }
     }
   }
   if (publication?.authoredRule === 'all-black-dots') {

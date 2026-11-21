@@ -1,16 +1,19 @@
 import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
+import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
 import type { VariantGame } from './variants.ts'
 
 export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
-export type FogDefinition = { initialCells: readonly number[] }
+export type FogDefinition = { initialCells: readonly number[]; cellColors?: ImportedCellColors }
 
 export function isFogDefinition(value: unknown): value is FogDefinition {
-  if (!value || typeof value !== 'object' || Object.keys(value).length !== 1 || !('initialCells' in value)) return false
-  const { initialCells } = value
+  if (!value || typeof value !== 'object' || !('initialCells' in value) ||
+    Object.keys(value).some(key => key !== 'initialCells' && key !== 'cellColors')) return false
+  const { initialCells, cellColors } = value as { initialCells: unknown; cellColors?: unknown }
   return Array.isArray(initialCells) && initialCells.length > 0 && initialCells.length <= 81 &&
     new Set(initialCells).size === initialCells.length &&
-    initialCells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)
+    initialCells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81) &&
+    (cellColors === undefined || validImportedCellColors(cellColors))
 }
 
 /** Coach reveals the neighborhood of each currently correct player entry. */
@@ -169,7 +172,7 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
   return labels
 }
 
-export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle }
+export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle; cellColors?: ImportedCellColors }
 const fogViews = new WeakMap<VariantGame, FogView>()
 const emptyEntries = '0'.repeat(81)
 const fullFogView = new Set(Array.from({ length: 81 }, (_, cell) => cell))
@@ -182,7 +185,10 @@ export function fogView(variant: VariantGame | undefined, entries = emptyEntries
   const complete = [...variant.solution].every((digit, cell) =>
     digit === (variant.puzzle.givens[cell] === '0' ? entries[cell] : variant.puzzle.givens[cell]))
   const cells = complete ? fullFogView : revealedFogCells(variant.fog, entries, variant.solution)
-  const view = { entries, cells, puzzle: projectFogPuzzle(variant.puzzle, cells) }
+  const { cellColors } = variant.fog
+  const view: FogView = { entries, cells, puzzle: projectFogPuzzle(variant.puzzle, cells),
+    ...(cellColors && { cellColors: Object.fromEntries(Object.entries(cellColors).filter(([cell]) => cells.has(Number(cell)))) }),
+  }
   fogViews.set(variant, view)
   return view
 }

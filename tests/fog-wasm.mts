@@ -8,7 +8,7 @@ import { EMPTY, completeCandidateMasks, enter, makeGame, puzzleIdentity, redo, r
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
-import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
@@ -334,5 +334,106 @@ test('published mixed Fog imports keep outside totals public and exclude clipped
     }
     changedNote = true
     await assert.rejects(prepareImportedPuzzle(sources[1].url), /has author instructions/)
+  } finally { sqlite.close() }
+})
+
+test('published Jigsaw Fog hides authored colors alongside givens and cages until each reveal', async ({ mock }) => {
+  const published = JSON.parse(readFileSync(new URL('./fixtures/fog-jigsaw-coach.json', import.meta.url), 'utf8')) as
+    { id: string; url: string; title: string; description: string; code: string; solution: string }
+  const { sqlite, fetcher } = syncDatabase()
+  let description = published.description
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path !== published.url) return fetcher(path, init)
+    const specificSudoku = { sudoku_id: published.id, name: published.title, sudoku: published.code,
+      description, custom_constraints: false, blocked: false }
+    return Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'))
+  })
+  try {
+    const { game } = await prepareImportedPuzzle(published.url)
+    const variant = game.variant!
+    assert.equal(game.title, published.title)
+    assert.equal(variant.puzzle.regions?.type, 'jigsaw')
+    assert.deepEqual(variant, (await prepareImportedPuzzle(published.code)).game.variant)
+    assert.equal(variant.solution, published.solution)
+    assert.equal((await detectPuzzle('https://sudoku.coach/en/play/' + published.code)).variant?.fog?.cellColors?.[45]?.[0], 'lime')
+    assertVariantCompletion(variant.puzzle, published.solution)
+    const independent = countLineSolutions(variant.puzzle)
+    assert.equal(independent.count, 1)
+    assert.equal(independent.solution, published.solution)
+
+    const initial = fogView(variant)!
+    assert.equal(initial.cells.size, 31)
+    const fullColors = variant.fog!.cellColors!
+    assert.equal(Object.keys(fullColors).length, 72)
+    assert.deepEqual(initial.cellColors, Object.fromEntries([...initial.cells].map(cell => [cell, ['grey']])))
+    assert.deepEqual(initial.puzzle.rules, [])
+    const cageRule = variant.puzzle.rules?.[0]
+    assert.ok(cageRule?.type === 'killer-cages')
+    assert.deepEqual(cageRule.cages.map(({ cells, sum }) => [cells[0], cells.length, sum]), [
+      [20, 1, 4], [38, 1, 7], [34, 1, 9], [7, 1, 5], [58, 1, 3], [15, 1, 7],
+    ])
+    assert.equal(game.position.importedCellColors, undefined)
+    assert.notEqual(puzzleIdentity(game), puzzleIdentity({ ...game, variant: {
+      ...variant, fog: { initialCells: variant.fog!.initialCells },
+    } }))
+
+    const wrong = enter(game, [36], 'value', 1)
+    assert.deepEqual(fogView(variant, wrong.position.entries)?.cellColors, initial.cellColors)
+    const placed = enter(game, [36], 'value', 2)
+    const visible = fogView(variant, placed.position.entries)!
+    assert.equal(visible.cells.size, 34)
+    assert.deepEqual(visible.cellColors, { ...initial.cellColors, 28: ['red'], 45: ['lime'] })
+    assert.equal(visible.cellColors?.[58], undefined)
+    const loaded = readGame(placed.id, JSON.stringify(placed))!
+    assert.deepEqual(fogView(loaded.variant, loaded.position.entries), visible)
+    const undone = undo(loaded)
+    assert.deepEqual(fogView(undone.variant, undone.position.entries)?.cellColors, initial.cellColors)
+    const redone = redo(undone)
+    assert.deepEqual(fogView(redone.variant, redone.position.entries)?.cellColors, visible.cellColors)
+
+    const hints = await puzzleHints(game)
+    assert.equal(hints.choices.length, 10)
+    const singles = await puzzleHints(game, 'all', 'hidden-single')
+    const scoped = variantPosition(variant, game.position)
+    const finder = watchTechniqueScan(valuesOf(game), undefined, scoped)
+    try {
+      assert.equal(singles.choices.length, 2)
+      assert.equal(await finder.count('hidden-single'), 2)
+      for (const hint of singles.choices) {
+        assert.ok('variant' in hint.evidence)
+        assert.deepEqual(hint.evidence.variant.source?.puzzle, initial.puzzle)
+      }
+    } finally { finder.close() }
+
+    const solution = await puzzleSolution(game)
+    assert.equal(solution.board, published.solution)
+    assert.ok(solution.steps.length > 0)
+    assert.equal(solution.exact, undefined)
+    assert.deepEqual(fogView(variant, solution.positions.at(-1)?.entries)?.cellColors, fullColors)
+
+    const id = await publishSharedPuzzle(loaded)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, variant)
+    assert.deepEqual(fogView(shared.game.variant)?.cellColors, initial.cellColors)
+    const definition = puzzleDefinitionForSharing(loaded)
+    const invalidDefinition = { ...definition, variant: { ...definition.variant,
+      fog: { ...definition.variant?.fog, cellColors: { 0: ['unknown shade'] } },
+    } }
+    const invalidShare = await fetch('/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invalidDefinition),
+    })
+    assert.equal(invalidShare.status, 400)
+
+    assert.ok(variant.puzzle.regions?.type === 'jigsaw')
+    const labels = Array<number>(81)
+    variant.puzzle.regions.regions.forEach((region, index) => region.forEach(cell => { labels[cell] = index }))
+    const misplacedGray = Array.from({ length: 81 }, (_, cell) => initial.cells.has(cell) || cell === 0 ? '0' : '')
+    await assert.rejects(detectPuzzle(coachCode({
+      regions: labels, colours: ['grey'], givenColours: misplacedGray.join(','),
+      givenConstraints: [{ type: 'fog', segments: [{ cells: variant.fog!.initialCells }] }],
+    })), /unsupported authored markings/)
+
+    description += '\nEach colored area has an additional sum rule.'
+    await assert.rejects(detectPuzzle(published.url), /has author instructions/)
   } finally { sqlite.close() }
 })

@@ -832,7 +832,7 @@ The engine takes visibility separately from the full puzzle. Visibility lists th
 - [x] Verify the published 9×9 Fog sources DD1N and E3xE along with the Fnxt reveal. Keep outside totals public, clip partially covered cages, lines and markers, and keep covered clue details out of labels and proofs. Check these shapes in the production grid at desktop and mobile widths. [Published fixtures](tests/fixtures/fog-coach.json) · [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
 - [x] Profile the slow E3xE walkthrough. Reuse exact Pattern Overlay support when digits have identical candidate locations. The opening trace falls from 763 to 664 ms median with identical steps. [Fog measurements](SUDOKU_VARIANT_USABILITY_AUDIT.md#fog-walkthrough-performance)
 - [ ] Rate the reveal sequence itself. Fog games currently stay unrated.
-- [ ] Continue the published 9×9 Fog audit with the authored colors on Jigsaw source 7HQD. [Source](https://sudoku.coach/en/s/7HQD) · [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
+- [x] Import and play the published Jigsaw Fog puzzle 7HQD. Reveal authored cell colors alongside its givens and cages. Verify the original regions, exact solution, logical walkthrough, hints, Technique Finder, undo and redo, and sharing. [Published fixture](tests/fixtures/fog-jigsaw-coach.json) · [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
 
 [World Sudoku Championship variants](https://wspc2023.com/downloads/16thWorldSudokuChampionship-InstructionBooklet-v1.pdf) · [Sudoku U constraint reference](https://www.sudoku-u.org/constraints) · [WPF X-Sums examples](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2025/2025_SudokuRound4_IB.pdf)
 

@@ -62,12 +62,14 @@ const publicPuzzleSources = {
   },
 }
 
+const coachRatingNote = /^SE \d{1,3}(?:\.\d{1,3})?$/i
+
 // Recognize a complete authored declaration, including the optional credit and rating.
 function declaresCoachXSums(lines) {
   lines = [...lines]
   if (/^Special request by [\w-]{1,32} :D$/i.test(lines[0])) lines.shift()
   if (/^(?:Normal|Standard) Sudoku rules apply\.$/i.test(lines[0])) lines.shift()
-  if (/^SE \d{1,3}(?:\.\d{1,3})?$/i.test(lines.at(-1))) lines.pop()
+  if (coachRatingNote.test(lines.at(-1))) lines.pop()
   return lines.length === 3 &&
     /^Variant Rules \(X[ -]Sums\):$/i.test(lines[0]) &&
     /^- Clues outside the grid indicate the sum of the first X digits in the corresponding direction\.$/i.test(lines[1]) &&
@@ -130,7 +132,7 @@ async function coachPublication(html, id, code) {
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
   const reviewedNote = reviewedCoachNotes.get(id)
-  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line)) &&
+  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
     (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
   return {
     hasAuthorInstructions,
@@ -286,6 +288,11 @@ const algebraic = value => fields(value, { sudokuPad: code => typeof code === 's
     new Set(value.rules.flatMap(rule => rule.cells)).size === value.rules.reduce((count, rule) => count + rule.cells.length, 0))
 const cell = integer(0, 80)
 const cells = list(cell, 1, 81)
+const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ||
+  /^(?:(?:white|grey|lime|blue|purple|red|green|yellow|orange|cyan|magenta)(?:Heavy)?|error)$/.test(value))
+const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
+  Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
+    list(cellColor, 1, 62)(shades) && new Set(shades).size === shades.length)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -331,7 +338,7 @@ const rule = value => {
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
   puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
-}, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }) && new Set(fog.initialCells).size === fog.initialCells.length })
+}, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }, { cellColors }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),
   puzzleId: id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id),
