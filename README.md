@@ -33,6 +33,12 @@ cargo bench --locked -p sudoku-app-engine --features wasm-api --bench coverage >
 
 Each stall record contains the givens, entries, and 81 candidate-removal masks in row order. Bit zero represents digit 1. It also records the solver order and scoring version. See the [baseline results](SUDOKU_ENGINE_TODO.md#6-measure-coverage-on-expert-puzzles).
 
+### Deploy a preview
+
+Open [Actions → Cloudflare Pages](https://github.com/coder13/sudoku-app/actions/workflows/cloudflare-pages.yml), choose **Run workflow** on `main`, and enter the number of an open pull request from this repository. The run summary links to the preview. Run the workflow again after pushing changes to refresh the preview URL.
+
+Pull requests run checks automatically. Pushes to `main` deploy to production. Leaving the pull request number blank in a manual run redeploys `main`.
+
 ## Browse UI components
 
 Run `npm run storybook` and open [Storybook on localhost](http://127.0.0.1:6006). The sidebar groups components by size, from hint cards and breadcrumbs to dialogs, the play workspace, and Learn pages. Use the Appearance and Viewport controls to check light, dark, and narrow layouts.
