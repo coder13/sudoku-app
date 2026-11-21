@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
+import { importedFutoshikiToken, readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { solveLatin } from '../src/latin/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { preparePlayableImport } from '../src/sudoku/puzzle-preview.ts'
@@ -28,13 +28,87 @@ for (const [name, { code, givens, edges }] of Object.entries(fixtures)) {
   })
 }
 
+for (const size of [3, 7, 8, 9]) {
+  test(`${size} × ${size} Coach Futoshiki puzzles keep signs and progress in portable links`, async () => {
+    const solved = Array.from({ length: size ** 2 }, (_, cell) => (cell % size + Math.floor(cell / size) + 1) % size + 1)
+    const last = solved.length - 1
+    const edges = [[last - 1, last], [last - size, last]]
+    const code = coachCode({
+      gridSize: size, regions: [], givenDigits: solved.slice(0, last).join('') + '0',
+      givenConstraints: [{ type: 'greaterLess', segments: edges.map(cells => ({ cells })) }],
+      userDigits: '0'.repeat(last) + solved[last],
+      userCellCandidates: [...Array(last).fill(0), 1 << size].join('-'),
+      colours: ['blue'], userColours: ','.repeat(last) + '0',
+    })
+    const preview = await preparePlayableImport(code)
+    assert.ok('futoshiki' in preview)
+    const { id, puzzle, initialPosition, annotations } = preview.futoshiki
+    assert.equal(puzzle.size, size)
+    assert.equal(id.split('.')[0], size > 6 ? 'f2' : 'f1')
+    assert.deepEqual(puzzle.inequalities, edges.map(([less, greater]) => ({ less, greater })))
+    assert.equal(solveLatin(puzzle).solution?.join(''), solved.join(''))
+    assert.equal(initialPosition?.values[last], size)
+    assert.equal(initialPosition?.notes[last], 1 << (size - 1))
+    assert.deepEqual(annotations?.cellColors, { [last]: ['blue'] })
+    assert.equal(importedFutoshikiToken(id), id)
+    const reopened = readImportedFutoshiki(id)
+    assert.deepEqual(reopened?.initialPosition, initialPosition)
+    assert.deepEqual(reopened?.annotations, annotations)
+    assert.deepEqual(solveLatin(reopened!.puzzle).solution, solved)
+    assert.deepEqual(reopened?.puzzle.inequalities, [...puzzle.inequalities].reverse())
+    const [version, givens, signs] = id.split('.')
+    assert.equal(readImportedFutoshiki(`${version}.${givens}.${signs}0`), undefined)
+    assert.equal(readImportedFutoshiki(`${size > 6 ? 'f1' : 'f2'}.${givens}.${signs}`), undefined)
+  })
+}
+
+test('imports a 9 × 9 puzzle from the Sudoku Coach Whole Progress clipboard', async () => {
+  const code = readFileSync(new URL('./fixtures/futoshiki-coach-9x9.txt', import.meta.url), 'utf8')
+  const preview = await preparePlayableImport(code)
+  assert.ok('futoshiki' in preview)
+  const { id, puzzle } = preview.futoshiki
+  assert.match(id, /^f2\./)
+  assert.equal(puzzle.size, 9)
+  assert.deepEqual(puzzle.inequalities, [{ less: 71, greater: 80 }, { less: 79, greater: 80 }])
+  assert.equal(solveLatin(readImportedFutoshiki(id)!.puzzle).solution?.[80], 9)
+})
+
+test('a fully marked 9 × 9 board fits in a portable Futoshiki link', async () => {
+  const size = 9
+  const solved = Array.from({ length: size ** 2 }, (_, cell) => (cell % size + Math.floor(cell / size)) % size + 1)
+  const edges = solved.flatMap((digit, cell) => [
+    ...(cell % size < size - 1 ? [cell + 1] : []),
+    ...(cell < size * (size - 1) ? [cell + size] : []),
+  ].map(other => digit < solved[other] ? [cell, other] : [other, cell]))
+  const { futoshiki } = await detectPuzzle(coachCode({
+    gridSize: size, regions: [], givenDigits: '0'.repeat(size ** 2),
+    givenConstraints: [{ type: 'greaterLess', segments: edges.map(cells => ({ cells })) }],
+  }))
+  assert.ok(futoshiki)
+  const reopened = readImportedFutoshiki(futoshiki.id)
+  assert.equal(reopened?.puzzle.inequalities.length, 144)
+  assert.equal(solveLatin(reopened!.puzzle).solution?.join(''), solved.join(''))
+  const [version, givens, signs] = futoshiki.id.split('.')
+  assert.equal(readImportedFutoshiki(`${version}.${givens}.${signs}0001`), undefined)
+})
+
+test('an existing 7 × 7 boxless Sudoku keeps its route', async () => {
+  const puzzle = await detectPuzzle(coachCode({
+    gridSize: 7, regions: [], givenDigits: '0'.repeat(49), givenConstraints: [],
+  }))
+  assert.equal(puzzle.futoshiki, undefined)
+  assert.deepEqual(puzzle.grid, { size: 7, noRegions: true })
+})
+
 test('an explicit boxless Latin square can be imported without inequality marks', async () => {
-  const givens = '0234234134124123'
-  for (const givenConstraints of [undefined, [], [{ type: 'greaterLess', segments: [], settings: {} }]]) {
-    const preview = await preparePlayableImport(coachCode({ gridSize: 4, regions: [], givenDigits: givens, givenConstraints }))
+  for (const size of [3, 4, 5, 6, 7, 8, 9]) {
+    const solved = Array.from({ length: size ** 2 }, (_, cell) => (cell % size + Math.floor(cell / size)) % size + 1).join('')
+    const givens = '0' + solved.slice(1)
+    const givenConstraints = [{ type: 'greaterLess', segments: [], settings: {} }]
+    const preview = await preparePlayableImport(coachCode({ gridSize: size, regions: [], givenDigits: givens, givenConstraints }))
     assert.ok('futoshiki' in preview)
     assert.deepEqual(preview.futoshiki.puzzle.inequalities, [])
-    assert.equal(solveLatin(preview.futoshiki.puzzle).solution?.join(''), '1234234134124123')
+    assert.equal(solveLatin(preview.futoshiki.puzzle).solution?.join(''), solved)
   }
 })
 

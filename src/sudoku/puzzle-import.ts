@@ -567,12 +567,17 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
 }
 
 async function readCoachFutoshiki(data: Record<string, unknown>, published: boolean): Promise<ImportedPuzzle | undefined> {
-  const { gridSize: size, regions } = data
-  if (!(size === 4 || size === 5 || size === 6) || !Array.isArray(regions) || regions.length !== 0) return
+  if (!Array.isArray(data.regions) || data.regions.length !== 0) return
   const constraints = data.givenConstraints ?? []
   if (!Array.isArray(constraints) || constraints.some(layer => !record(layer) || layer.type !== 'greaterLess')) return
+  const size = data.gridSize
+  // Keep the existing Sudoku route for 7 × 7 boxless grids without an inequality layer.
+  if (size === 7 && !constraints.length) return
+
+  const { createImportedFutoshiki, isFutoshikiSize } = await import('../futoshiki/imported.ts')
+  if (!isFutoshikiSize(size)) return
   const givens = data.givenDigits === undefined ? '0'.repeat(size ** 2) : data.givenDigits
-  if (typeof givens !== 'string' || givens.length !== size ** 2 || !/^[0-6]+$/.test(givens) ||
+  if (typeof givens !== 'string' || givens.length !== size ** 2 || !/^\d+$/.test(givens) ||
     [...givens].some(digit => Number(digit) > size)) {
     throw new Error('This Sudoku Coach puzzle has invalid givens.')
   }
@@ -583,14 +588,14 @@ async function readCoachFutoshiki(data: Record<string, unknown>, published: bool
       throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality layer.')
     }
     for (const segment of layer.segments) {
-      if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters)) {
+      if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+        !segment.cells.every(Number.isInteger) || hasData(segment.parameters)) {
         throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality sign.')
       }
       const [less, greater] = segment.cells
       inequalities.push({ less, greater })
     }
   }
-  const { createImportedFutoshiki } = await import('../futoshiki/imported.ts')
   const position = readCoachNumberPosition(data, givens, size)
   const annotations = readCoachNumberAnnotations(data, size, published)
   return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, position, annotations) }

@@ -5,22 +5,25 @@ import { solveLatin } from '../latin/engine.ts'
 import { createFutoshiki, type Inequality } from './engine.ts'
 import type { FutoshikiEntry } from './catalog.ts'
 
-const difficultyBySize = { 4: 'easy', 5: 'medium', 6: 'hard' } as const
-const importToken = /^f1\.([0-6]{16}|[0-6]{25}|[0-6]{36})\.([0-9a-z]{0,120})(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
+const difficultyBySize = { 3: 'easy', 4: 'easy', 5: 'medium', 6: 'hard', 7: 'hard', 8: 'hard', 9: 'hard' } as const
+const importToken = /^(f[12])\.([0-9]{9,81})\.([0-9a-z]{0,576})(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
+const maxDefinitionLength = 3 + 81 + 1 + 576
 
 export type FutoshikiSize = keyof typeof difficultyBySize
 
 export function isFutoshikiSize(value: unknown): value is FutoshikiSize {
-  return value === 4 || value === 5 || value === 6
+  return typeof value === 'number' && Object.hasOwn(difficultyBySize, value)
 }
 
 export function createImportedFutoshiki(size: FutoshikiSize, givens: string, inequalities: readonly Inequality[], position?: NumberPosition, annotations?: NumberImportAnnotations): FutoshikiEntry {
   const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities)
+  // Keep the one-character indices in existing links. Larger boards need two.
+  const wide = size > 6
   const encoded = inequalities
-    .map(({ less, greater }) => less.toString(36) + greater.toString(36))
+    .map(({ less, greater }) => [less, greater].map(cell => cell.toString(36).padStart(wide ? 2 : 1, '0')).join(''))
     .sort().join('')
   const progress = withImportedNumberPosition(position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
-  return { id: `f1.${givens}.${encoded}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
+  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
     puzzle, number: 0, difficulty: difficultyBySize[size], imported: true, annotations, ...progress }
 }
 
@@ -32,18 +35,34 @@ export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
   return entry
 }
 
+function matchImportedFutoshiki(value: unknown) {
+  if (typeof value !== 'string' ||
+    value.length > maxDefinitionLength + 2 + numberPositionTokenLength + 2 + numberAnnotationTokenLength) return
+  const match = importToken.exec(value)
+  if (!match) return
+  const [, version, givens, edges, progress, marks] = match
+  const size = Math.sqrt(givens.length)
+  if (!isFutoshikiSize(size) || (version === 'f2') !== (size > 6) || [...givens].some(digit => Number(digit) > size)) return
+  const indexLength = size > 6 ? 2 : 1
+  const edgeLength = 2 * indexLength
+  if (edges.length % edgeLength || edges.length > 2 * size * (size - 1) * edgeLength) return
+  return { size, givens, edges, indexLength, progress, marks }
+}
+
 export function importedFutoshikiToken(value: unknown) {
-  return typeof value === 'string' && value.length <= 161 + 2 + numberPositionTokenLength + 2 + numberAnnotationTokenLength && importToken.test(value) ? value : undefined
+  return typeof value === 'string' && matchImportedFutoshiki(value) ? value : undefined
 }
 
 export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined {
-  if (!importedFutoshikiToken(token)) return
-  const [, givens, edges, progress, marks] = importToken.exec(token)!
-  const size = Math.sqrt(givens.length)
-  if (!isFutoshikiSize(size) || edges.length % 2) return
+  const data = matchImportedFutoshiki(token)
+  if (!data) return
+  const { size, givens, edges, indexLength, progress, marks } = data
   const inequalities: Inequality[] = []
-  for (let index = 0; index < edges.length; index += 2) {
-    inequalities.push({ less: Number.parseInt(edges[index], 36), greater: Number.parseInt(edges[index + 1], 36) })
+  for (let index = 0; index < edges.length; index += 2 * indexLength) {
+    inequalities.push({
+      less: Number.parseInt(edges.slice(index, index + indexLength), 36),
+      greater: Number.parseInt(edges.slice(index + indexLength, index + 2 * indexLength), 36),
+    })
   }
   try {
     const position = progress ? readNumberImportPosition(progress, size) : undefined
