@@ -54,7 +54,7 @@ type Props = {
   active?: number
   pointerFocusedCell?: number | null
   boardRef?: RefObject<HTMLDivElement | null>
-  /** The mobile mode border and badge belong to the grid, not to the puzzle toolbar. */
+  /** The mode border follows the grid. Outside clues place the badge at the frame edge. */
   modeBorder?: PuzzleInputMode
   modeBoundaryRef?: Ref<HTMLDivElement>
   modeBadge?: ReactNode
@@ -388,6 +388,7 @@ export function Board({
     return layout
   }, [variantRules, linkedDoubleArrows])
   const hasOutside = Object.values(outside.depths).some(Boolean)
+  const badgeOnFrame = hasOutside && Boolean(modeBadge)
   const clones = useMemo(() => cloneLayout(variantRules), [variantRules])
   const disjoint = useMemo(() => disjointGroupRuleIndices(variantRules ?? []), [variantRules])
   const gridLabel = [sizedGrid ? `${gridSize} × ${gridSize} ${label.toLowerCase()}` : label, variantRules?.some(rule => rule.type === 'global-entropy')
@@ -610,13 +611,15 @@ export function Board({
   }
 
   return (
-    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`} data-overlay={overlay?.visible} style={size}>
+    <div className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`}
+      data-overlay={overlay?.visible} data-input-mode={badgeOnFrame ? modeBorder : undefined}
+      ref={badgeOnFrame ? modeBoundaryRef : undefined} style={size}>
       {outside.depths.top > 0 && <div className="outside-clues-top" aria-hidden="true" />}
       {outside.depths.bottom > 0 && <div className="outside-clues-bottom" aria-hidden="true" />}
       <div className="col-labels" aria-hidden="true">{columns.map((n) => <span key={n}>{n}</span>)}</div>
       <div className="row-labels" aria-hidden="true">{rows.map((n) => <span key={n}>{n}</span>)}</div>
       <div className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}${houseFills.size ? ' shaded-houses-board' : ''}`}
-        data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={modeBoundaryRef}>
+        data-highlighted-rule={highlightedRule ?? undefined} data-input-mode={modeBorder} ref={badgeOnFrame ? undefined : modeBoundaryRef}>
         <div className={`sudoku-grid ${dragSelect ? 'drag-select' : ''}`} role="grid" aria-label={gridLabel}
           aria-describedby={descriptionId} aria-readonly={(!onCell && !candidateAction) || undefined} ref={boardRef}
           aria-hidden={overlay?.visible || undefined} inert={overlay?.visible || undefined}
@@ -636,8 +639,9 @@ export function Board({
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}
-        {modeBadge}
+        {!badgeOnFrame && modeBadge}
       </div>
+      {badgeOnFrame && modeBadge}
       {outside.legend.length > 0 && <div className="outside-clue-legend" aria-hidden={overlay?.visible || undefined}>{outside.legend.join(' · ')}</div>}
       {linkCounts && <div className="whispers-guide" aria-hidden={overlay?.visible || undefined}>
         <p>The colors show the minimum number of distinct digits in linked cells. Each range shows what can go in the colored cell.</p>
