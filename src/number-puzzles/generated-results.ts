@@ -84,6 +84,24 @@ function generatedProgressRules(game: GeneratedNumberGame, payload: string): Gen
 export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus }
 export type GeneratedHistoryRow = NumberHistoryEntry & { game: GeneratedNumberGame; status: NumberResultStatus }
 
+export type StoredSolveTotals = Map<NumberPuzzleDifficulty, { solved: number; timed: number; seconds: bigint }>
+
+export function changeGeneratedSolveTotal(totals: StoredSolveTotals, row: GeneratedHistoryRow, change: 1 | -1) {
+  const { difficulty, elapsed } = row
+  const total = totals.get(difficulty) ?? { solved: 0, timed: 0, seconds: 0n }
+  total.solved += change
+  if (elapsed !== undefined && elapsed > 0 && Number.isSafeInteger(elapsed)) {
+    total.timed += change
+    total.seconds += BigInt(elapsed) * BigInt(change)
+  }
+  if (total.solved > 0) totals.set(difficulty, total)
+  else totals.delete(difficulty)
+}
+
+export function generatedDifficultyTotals(totals: StoredSolveTotals): GeneratedNumberResults['totals'] {
+  return new Map([...totals].map(([difficulty, total]) => [difficulty, { ...total, seconds: Number(total.seconds) }]))
+}
+
 export function createGeneratedHistoryReader(game: GeneratedNumberGame) {
   // Replays share clues, but each play keeps its own progress and result.
   const cached = new Map<string, GeneratedProgressRules | null>()
@@ -108,8 +126,9 @@ export function createGeneratedHistoryReader(game: GeneratedNumberGame) {
 
 export function addGeneratedHistoryRow(
   result: GeneratedNumberResults, match: NumberResultStatus, { game: _game, status, ...entry }: GeneratedHistoryRow,
+  countSolves = true,
 ) {
-  if (status === 'solved') recordDifficultySolve(result.totals, entry.difficulty, entry.elapsed)
+  if (countSolves && status === 'solved') recordDifficultySolve(result.totals, entry.difficulty, entry.elapsed)
   if (status === match) result.entries.push(entry)
 }
 

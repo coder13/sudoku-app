@@ -6,7 +6,8 @@ import { solveKakuro } from '../src/kakuro/engine.ts'
 import { kakuroRecipeFromPuzzle } from '../src/kakuro/generator.ts'
 import { solveLatin } from '../src/latin/engine.ts'
 import {
-  addGeneratedHistoryRow, createGeneratedHistoryReader, createGeneratedNumberResultCollector, type GeneratedNumberResults,
+  addGeneratedHistoryRow, changeGeneratedSolveTotal, createGeneratedHistoryReader, createGeneratedNumberResultCollector,
+  generatedDifficultyTotals, type GeneratedHistoryRow, type GeneratedNumberResults, type StoredSolveTotals,
 } from '../src/number-puzzles/generated-results.ts'
 import { encodeGeneratedNumberPuzzle, type GeneratedNumberPuzzle } from '../src/number-puzzles/generated.ts'
 import { NUMBER_HISTORY_SIZE, type SavedNumberProgress } from '../src/number-puzzles/progress.ts'
@@ -14,6 +15,24 @@ import { summarizeDifficultySolves } from '../src/sudoku/difficulty-statistics.t
 
 const kakuro = kakuroCatalog[0].puzzle
 const calcudoku = calcudokuCatalog[0].puzzle
+
+test('stored solve totals keep exact time when a saved result is replaced', () => {
+  const totals: StoredSolveTotals = new Map()
+  const row = { game: 'kakuro', id: 'v1.example', number: 1, difficulty: 'easy', status: 'solved' } satisfies GeneratedHistoryRow
+  const long = { ...row, elapsed: Number.MAX_SAFE_INTEGER }
+  changeGeneratedSolveTotal(totals, long, 1)
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 42 }, 1)
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 3 }, 1)
+  changeGeneratedSolveTotal(totals, row, 1)
+  changeGeneratedSolveTotal(totals, long, -1)
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 42 }, -1)
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 12 }, 1)
+  assert.deepEqual([...generatedDifficultyTotals(totals)], [['easy', { solved: 3, timed: 2, seconds: 15 }]])
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 12 }, -1)
+  changeGeneratedSolveTotal(totals, { ...row, elapsed: 3 }, -1)
+  changeGeneratedSolveTotal(totals, row, -1)
+  assert.equal(totals.size, 0)
+})
 
 for (const { board, values } of [
   {

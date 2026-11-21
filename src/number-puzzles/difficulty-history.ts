@@ -1,5 +1,5 @@
 import { addGeneratedHistoryRow, createGeneratedNumberResultCollector, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
-import { generatedNumberHistory, prepareGeneratedHistory, readGeneratedPickerHistory } from './generated-storage.ts'
+import { generatedNumberHistory, indexGeneratedHistory, prepareGeneratedHistory, readGeneratedPickerHistory } from './generated-storage.ts'
 
 export function requestGeneratedNumberResults(request: NumberHistoryRequest, publish: (result: GeneratedNumberResults) => void) {
   const { game } = request
@@ -11,20 +11,27 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
     if (cancelled) return
     worker?.terminate()
     worker = undefined
-    void prepareGeneratedHistory(game).then(() => readGeneratedPickerHistory(game))
+    void prepareGeneratedHistory(game).then(() => readGeneratedPickerHistory(game, request.status))
       .catch(async () => ({ records: await generatedNumberHistory(game) }))
       .then(history => {
         if (cancelled) return
-        const result: GeneratedNumberResults = { entries: [], totals: new Map() }
+        const totals = 'totals' in history ? history.totals : undefined
+        const result: GeneratedNumberResults = { entries: [], totals: totals ?? new Map() }
+        const finish = () => {
+          publish(result)
+          if ('indexPending' in history && history.indexPending) {
+            void indexGeneratedHistory(game, () => cancelled).catch(() => {})
+          }
+        }
         const length = 'rows' in history ? history.rows.length : history.records.length
         if (!length) {
-          publish(result)
+          finish()
           return
         }
 
         const fromSave = createGeneratedNumberResultCollector(result, request)
         const collect = 'rows' in history
-          ? (index: number) => addGeneratedHistoryRow(result, request.status, history.rows[index])
+          ? (index: number) => addGeneratedHistoryRow(result, request.status, history.rows[index], !totals)
           : (index: number) => fromSave(history.records[index])
         let cursor = 0
         const channel = queue = new MessageChannel()
@@ -37,7 +44,7 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
           else {
             channel.port1.close()
             channel.port2.close()
-            publish(result)
+            finish()
           }
         }
         channel.port2.postMessage(null)
