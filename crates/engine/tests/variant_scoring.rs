@@ -39,6 +39,11 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::MatchingDigit(proof) => {
+            let blockers: usize = proof.checks.iter().chain(std::iter::once(&proof.conflict))
+                .map(|check| check.blocked.len()).sum();
+            return 60 + 4 * blockers as u16 + 8 * proof.checks.len() as u16;
+        }
         VariantEvidence::LinkedClue(proof) => {
             // Track the assumption, then verify each restriction and the final conflict.
             return 48 + 10 * (proof.checks.len() as u16 + 1);

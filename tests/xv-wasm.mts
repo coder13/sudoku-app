@@ -35,7 +35,7 @@ test('published XV puzzles import and replay complete app-order paths to their i
     for (const [techniqueOrder, points, count] of [[nativeOrder, nativePoints, nativeSteps], [appOrder, appPoints, appSteps]] as const) {
       const position = variantPosition(game.variant!)
       const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-      assert.equal(trace.rating.scoringVersion, 18); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
+      assert.equal(trace.rating.scoringVersion, 19); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
       let played = game
       for (const step of trace.steps) {
         for (const action of step.actions) {

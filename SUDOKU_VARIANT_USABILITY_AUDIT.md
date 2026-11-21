@@ -298,3 +298,14 @@ The published zero-given Palindrome 14 keeps three Palindromes, seven inequaliti
 For a stalled 9 × 9 variant, the Solution panel keeps the last logical position and can show the verified exact grid as a separate choice. The exact grid comes from the saved solution after the engine checks the full rule definition with all digits supplied. The walkthrough and score still describe only the logical deductions.
 
 In 21 alternating, warmed Node/Wasm samples, median opening hints took 1.08 to 1.20 ms and retained seven choices. At the old stall, the request went from zero choices in 1.35 ms to three in 1.77 ms. The extra steps move median rating time from 1.52 to 2.69 ms. Validation of the filled grid for the Solution panel took 0.04 ms. These measurements exclude worker transfer and rendering.
+
+
+## Matching cells in Palindrome and Clone puzzles
+
+Palindrome 14 reaches 48 logical steps at the new stall, up from 12. Its three Palindromes, seven inequalities, five white dots, and verified exact grid survive import. The 31 new deductions follow a single digit through matching cells and required houses. The first removes 1 from R3C6 and R7C7 because their shared digit would leave column 5 with no place for 1. Independent checks replay every candidate exclusion against the actual rule and house definitions. At the former stall, 15 proofs cover 29 candidate removals. The ten ranked choices, selected pages, and Finder remain available in Play.
+
+The cost is 80 points at Hard. The three practice examples estimate 80, 80, and 72 points. They include both Palindrome and Clone definitions, and the generated drill verifies a fresh position. The full published puzzle still has a partial walkthrough. Its verified complete grid remains available in the Solution panel.
+
+The 13 related control puzzles keep their logical walks, and all 15 fixture representations keep the same exact verification result. Variant step replay stops after the requested deduction. The bounded request checked the same before and after positions as the full trace at every step.
+
+Eleven alternating warm Wasm samples compared two builds with the same technique order and the same replay replies. Median CPU time for step 13 fell from 209.4 to 2.0 ms. Step 48 fell from 200.2 to 15.2 ms. A request for missing step 49 still checks the entire path. Full rating explores the entire 48-step path and its terminal search.

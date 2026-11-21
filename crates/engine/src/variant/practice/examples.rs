@@ -60,6 +60,54 @@ pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
     }
 }
 
+// Three stages with extra givens from the published Palindrome 14 grid.
+// The second replaces each mirrored pair with an equivalent Clone group.
+fn matching_digit_seed(givens: &'static str, cell: usize, digit: u8, clone: bool) -> ExampleSeed {
+    let paths: [&[usize]; 3] = [
+        &[
+            35, 34, 44, 53, 43, 52, 60, 61, 62, 71, 79, 80, 70, 69, 68, 59,
+            58, 49, 48, 39, 30, 40, 41, 42, 33, 32, 31, 22, 23, 24, 15, 6,
+            7, 17, 16,
+        ],
+        &[
+            72, 63, 73, 74, 75, 76, 77, 67, 57, 56, 47, 55, 46, 36, 27, 37,
+            38,
+        ],
+        &[
+            21, 12, 4, 3, 11, 19, 20, 28, 29,
+        ],
+    ];
+    let matching = paths.map(|cells| {
+        if clone {
+            let groups = cells.iter().zip(cells.iter().rev()).take(cells.len() / 2)
+                .map(|(&left, &right)| vec![left, right]).collect();
+            PuzzleRule::Clone { groups }
+        } else {
+            PuzzleRule::Palindrome { cells: cells.to_vec(), segments: None }
+        }
+    });
+    let mut example = seed(givens, cell, digit, matching);
+    example.rules.extend([
+        PuzzleRule::Inequality { less: 50, greater: 49 },
+        PuzzleRule::Inequality { less: 52, greater: 51 },
+        PuzzleRule::Inequality { less: 34, greater: 25 },
+        PuzzleRule::Inequality { less: 13, greater: 4 },
+        PuzzleRule::Inequality { less: 30, greater: 31 },
+        PuzzleRule::Inequality { less: 11, greater: 2 },
+        PuzzleRule::Inequality { less: 19, greater: 18 },
+        PuzzleRule::Kropki {
+            consecutive: positive_pairs([[23, 14], [80, 71], [38, 29], [64, 55], [43, 34]]),
+            ratio_two: MarkedPairs::default(),
+        },
+    ]);
+    example.removals = &[
+        (2, 1), (3, 256), (4, 1), (11, 256), (13, 256), (15, 256), (17, 256), (18, 1),
+        (19, 256), (20, 1), (24, 256), (25, 3), (30, 256), (31, 1), (34, 256), (43, 256),
+        (49, 1), (50, 256), (51, 1), (52, 256), (62, 1), (68, 256),
+    ];
+    example
+}
+
 // Promoted givens and checked removals from three stages of Between the Dots.
 fn linked_clue_seed(
     givens: &'static str,
@@ -167,6 +215,20 @@ fn region_sum_house_seed(givens: &'static str, cell: usize, digit: u8, include_f
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     use VariantTechnique::*;
     match technique {
+        MatchingDigitContradiction => [
+            matching_digit_seed(
+                "400070100010400070000000009006100000000000000000004000000000003000040000000000000",
+                7, 6, false,
+            ),
+            matching_digit_seed(
+                "000070006010409000307010000000000020005720400000004000200000000000000000000000000",
+                3, 5, true,
+            ),
+            matching_digit_seed(
+                "400000006610009000007018009006000020090000000730000050004500000003000000000000000",
+                7, 3, false,
+            ),
+        ],
         LinkedClueContradiction => [
             linked_clue_seed(
                 "090100080080090100001000090109000000000010009000900001000001902900000018010009000",

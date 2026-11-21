@@ -91,6 +91,7 @@ pub use variant::{
     VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
+    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
     canonical_variant,

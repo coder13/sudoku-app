@@ -13,11 +13,13 @@ import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertLinkedClueProof } from './helpers/group-order-truth.ts'
 import { assertInequalityProof } from './helpers/inequality-truth.ts'
+import { assertMatchingDigitProof } from './helpers/matching-digit-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 useWasmWorker()
 const linked = 'linked-clue-contradiction'
+const matching = 'matching-digit-contradiction'
 const source = JSON.parse(readFileSync(new URL('./fixtures/palindrome-coach.json', import.meta.url), 'utf8')).examples[1]
 
 test('the complete published mixed puzzle imports, offers multiple hints and replays its honest partial solution', async () => {
@@ -31,16 +33,22 @@ test('the complete published mixed puzzle imports, offers multiple hints and rep
   const position = variantPosition(game.variant!)
   const techniqueOrder = await getVariantPlayOrder(position.puzzle)
   const legacy = await runEngine({ type: 'variant', operation: 'trace', position,
-    techniqueOrder: techniqueOrder.filter(technique => technique !== linked) })
+    techniqueOrder: techniqueOrder.filter(technique => technique !== linked && technique !== matching) })
   assert.deepEqual([legacy.rating.status, legacy.rating.points, legacy.steps.length], ['stalled', 98, 9])
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.deepEqual([trace.rating.status, trace.rating.points, trace.steps.length], ['stalled', 275, 12])
+  assert.deepEqual([trace.rating.status, trace.rating.points, trace.steps.length], ['stalled', 2833, 48])
   assert.equal(trace.rating.counts[linked], 2)
-  const stale = { ...game, variantRatingVersion: 17 }
+  assert.equal(trace.rating.counts[matching], 31)
+  const stale = { ...game, variantRatingVersion: 18 }
   assert.ok(puzzleGradeIsStale(stale))
-  assert.equal(applyPuzzleGrade(stale, null).variantRatingVersion, 18)
+  assert.equal(applyPuzzleGrade(stale, null).variantRatingVersion, 19)
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }), trace.rating)
   let played = game
+  const snapshot = () => ({
+    puzzle: trace.start.puzzle,
+    entries: played.position.entries,
+    eliminations: played.position.eliminations ?? trace.start.eliminations,
+  })
   for (const [stepIndex, step] of trace.steps.entries()) {
     for (const action of step.actions) {
       const candidate = 'place' in action ? action.place : action.eliminate
@@ -51,14 +59,24 @@ test('the complete published mixed puzzle imports, offers multiple hints and rep
       assertLinkedClueProof(position.puzzle, valuesOf(played),
         variantHouseMasks(position.puzzle, valuesOf(played), played.position.eliminations), step)
     }
-    assert.deepEqual((await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex }))!.deduction, step)
+    if (step.technique === matching) {
+      assertMatchingDigitProof(position.puzzle, valuesOf(played),
+        variantHouseMasks(position.puzzle, valuesOf(played), played.position.eliminations), step)
+    }
+    const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex })
+    assert.ok(replay)
+    assert.deepEqual(replay.deduction, step)
+    assert.deepEqual(replay.before, snapshot())
     played = applyDeduction(played, step.actions, variantHouseMasks(game.variant!.puzzle, valuesOf(played)))
+    assert.deepEqual(replay.after, snapshot())
   }
+  assert.equal(await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder,
+    stepIndex: trace.steps.length }), null)
   assert.deepEqual(redo(undo(played)).position, played.position)
   const walkthrough = await puzzleSolution(game)
   assert.equal(walkthrough.rating.status, 'stalled')
-  assert.equal(walkthrough.steps.length, 12)
-  assert.equal(walkthrough.positions?.length, 13)
+  assert.equal(walkthrough.steps.length, 48)
+  assert.equal(walkthrough.positions?.length, 49)
   assert.ok(walkthrough.board.includes('0'))
   assert.deepEqual(walkthrough.exactPosition, {
     givens: position.puzzle.givens, entries: source.solution, eliminations: Array(81).fill(0),
@@ -82,7 +100,7 @@ test('ranked hints and Finder offer short local proofs and a mirrored alternativ
   const { puzzle } = variant
   const profile = await getVariantPlayOrder(puzzle)
   const { end } = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle },
-    techniqueOrder: profile.filter(technique => technique !== linked) })
+    techniqueOrder: profile.filter(technique => technique !== linked && technique !== matching) })
   const stalled = { ...game, position: { ...game.position, ...end } }
   const values = valuesOf(stalled)
   const masks = variantHouseMasks(puzzle, values, stalled.position.eliminations)
@@ -110,6 +128,44 @@ test('ranked hints and Finder offer short local proofs and a mirrored alternativ
   } finally {
     finder.close()
     await runEngine({ type: 'release-hints', collection: 1948 })
+  }
+})
+
+test('matching cells give multiple checked hints and matching Finder counts at the twelve-step stall', async () => {
+  const { game } = await prepareImportedPuzzle(source.code)
+  const variant = game.variant!
+  const { puzzle } = variant
+  const profile = await getVariantPlayOrder(puzzle)
+  const { end, steps } = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle },
+    techniqueOrder: profile.filter(technique => technique !== matching) })
+  assert.equal(steps.length, 12)
+  const stalled = { ...game, position: { ...game.position, ...end } }
+  const values = valuesOf(stalled)
+  const masks = variantHouseMasks(puzzle, values, stalled.position.eliminations)
+  const position = variantPosition(variant, stalled.position)
+  const all = await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [matching], limit: 100 })
+  assert.equal(all.length, 15)
+  for (const proof of all) assertMatchingDigitProof(puzzle, values, masks, proof)
+  const sample = all.find(proof => proof.evidence.type === 'matching-digit'
+    && proof.evidence.assumed.includes(23) && proof.evidence.digit === 1)!
+  assert.equal(sample.evidence.type, 'matching-digit')
+  assert.deepEqual(sample.evidence.conflict.house, { column: 4 })
+  assert.deepEqual(sample.actions, [{ eliminate: { cell: 23, digit: 1 } }, { eliminate: { cell: 60, digit: 1 } }])
+  const copy = variantHintChoice(sample, puzzle).evidence
+  assert.ok('variant' in copy)
+  assert.match(copy.variant.reason, /column 5, no cell can use 1/i)
+  const ranked = await puzzleHints(stalled)
+  assert.ok(ranked.choices.filter(choice => choice.technique === matching).length >= 2)
+  const first = await puzzleHints(stalled, 'all', matching, 1949)
+  const finder = watchTechniqueScan(values, end.eliminations, position)
+  try {
+    assert.equal(first.available, all.length)
+    const moves = new Set(all.flatMap(proof => proof.actions.map(action => JSON.stringify(action))))
+    assert.equal(await finder.count(matching), moves.size)
+    assert.deepEqual((await puzzleHintPage(variant, 1949, 0)).choices, first.choices)
+  } finally {
+    finder.close()
+    await runEngine({ type: 'release-hints', collection: 1949 })
   }
 })
 
