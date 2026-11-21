@@ -560,7 +560,7 @@ function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
   if (puzzle.regions?.type !== 'jigsaw') {
     return { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
   }
-  const descriptions = [VARIANTS.jigsaw.rule]
+  const descriptions: string[] = [VARIANTS.jigsaw.rule]
   if (hasDisconnectedRegion(regionMembership(puzzle.regions.regions), 9)) {
     descriptions.push('Cells with the same region color belong to one region, even across gaps.')
   }
