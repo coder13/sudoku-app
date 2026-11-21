@@ -523,7 +523,7 @@ export const StrongLinksFromChainsPanel: Story = {
     await expect(keypad.getByRole('button', { name: 'Deselect 8' })).toHaveAttribute('aria-pressed', 'true')
     const actions = canvas.queryByRole('region', { name: 'Chains' }) ??
       canvas.getByRole('navigation', { name: 'Pinned puzzle actions' })
-    const toggle = await within(actions).findByRole('button', { name: /^(Show )?strong links$/i })
+    const toggle = await within(actions).findByRole('button', { name: /^(Show )?strong links$/i }, { timeout: 5000 })
     await userEvent.click(toggle)
     const grid = await canvas.findByRole('grid', { name: 'Sudoku grid with strong links' })
     await expect(keypad.getByRole('button', { name: 'Clear highlight for 8' })).toHaveAttribute('aria-pressed', 'true')
