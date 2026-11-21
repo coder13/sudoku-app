@@ -584,6 +584,9 @@ export type VariantGroupSumLink = {
     | { type: 'sum'; rule: number; total: number }
     | { type: 'house'; house: VariantHouse }
 }
+type VariantRenbanGroupConflict = { house: VariantHouse; cells: number[]; digits: number }
+type VariantRenbanGroupProjection = { rule: number; cells: number[]; domains: number[]; supported: number[] }
+
 export type VariantDeduction = {
   technique: string
   actions: DeductionAction[]
@@ -599,6 +602,18 @@ export type VariantDeduction = {
     | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
     | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
+    | { type: 'entropy-areas'; rules: number[]; windows: [number, number, number, number][]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[] }
+    | { type: 'ray-houses'; rules: number[]; cells: number[]; domains: number[]; houses: VariantHouse[]; supported: number[] }
+    | { type: 'renban-group-counts'; assumption: Candidate; initial: VariantRenbanGroupProjection[];
+      placement: { line: VariantRenbanGroupProjection; rejected: [number, VariantRenbanGroupConflict][]; candidate: Candidate } | null;
+      subsequent: VariantRenbanGroupProjection[]; conflict: VariantRenbanGroupConflict }
+    | { type: 'renban-house-support'; rule: number; lineLength: number; house: VariantHouse; cells: number[]; domains: number[];
+      supported: number[]; starts: number; pairedCell: number | null }
+    | { type: 'renban-sum'; rules: [number, number]; cells: number[]; domains: number[]; supported: number[]; starts: number }
+    | { type: 'renban-sum-house'; rules: [number, number, number]; cells: number[]; domains: number[];
+        house: VariantHouse; shared: number; restricted: number; supported: number[];
+        witness: { candidate: Candidate; sharedDigit: number; containedStart: number | null;
+          otherStart: number; restrictedDigits: number } | null }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }

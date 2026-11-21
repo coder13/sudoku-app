@@ -1,5 +1,6 @@
 import { playVariantPuzzle } from './fog.ts'
-import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantGenerationRequest, type VariantPosition } from './engine.ts'
+import { difficultyIndex } from './difficulty.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
@@ -9,30 +10,67 @@ import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '.
 import type { PlayableVariant, VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
-let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog }> | undefined
+let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; firstBeyondHard: string | undefined }> | undefined
 
-export function getVariantPlayProfile() {
+function withRenbanTechniques(order: readonly string[]) {
+  return order.flatMap(id => {
+    if (id === 'renban') return [id, 'renban-locked-digit']
+    if (id === 'little-killer') return [id, 'renban-house-support']
+    return [id]
+  })
+}
+
+function withLittleKillerHouses(order: readonly string[]) {
+  return order.flatMap(id => id === 'little-killer' ? [id, 'little-killer-house-support'] : [id])
+}
+
+export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   playProfile ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
-    .then(([catalog, classic]) => ({
-      catalog,
-      techniqueOrder: variantTechniqueOrder(catalog.defaultOrder, classic.difficultyOrder,
-        Object.fromEntries([...classic.techniques, ...catalog.techniques].map((t) => [t.id, t.difficulty]))),
-    }))
+    .then(([catalog, classic]) => {
+      const tiers = Object.fromEntries([...classic.techniques, ...catalog.techniques].map(technique => [technique.id, technique.difficulty]))
+      const techniqueOrder = variantTechniqueOrder(catalog.defaultOrder, classic.difficultyOrder, tiers)
+      const firstBeyondHard = techniqueOrder.find(id => difficultyIndex(tiers[id] ?? 'impossible') > difficultyIndex('hard'))
+      return { catalog, techniqueOrder, firstBeyondHard }
+    })
     .catch((error) => {
       playProfile = undefined
       throw error
     })
-  return playProfile
+  const rules = puzzle?.rules ?? []
+  const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
+  const rays = rules.filter(rule => rule.type === 'little-killer')
+  if (!renbans.length && !rays.length) return playProfile
+
+  const joined = rays.filter(ray =>
+    renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
+  const hasRenbanGroups = renbans.filter(rule => rule.cells.length === 3 || rule.cells.length === 4).length >= 3
+  const hasCompanion = joined.some(ray => renbans.some(renban =>
+    renban.cells.filter(cell => ray.cells.includes(cell)).length === 1))
+  return playProfile.then(({ techniqueOrder: order, catalog, firstBeyondHard }) => {
+    const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
+    const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
+    const scoped = rayOrder.flatMap(id => {
+      if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
+      if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
+      if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
+      if (hasRenbanGroups && id === firstBeyondHard) return ['renban-group-counts', id]
+      return [id]
+    })
+    const techniqueOrder = hasRenbanGroups && !firstBeyondHard ? [...scoped, 'renban-group-counts'] : scoped
+    return { techniqueOrder, catalog, firstBeyondHard }
+  })
 }
 
-export async function getVariantPlayOrder() {
-  return (await getVariantPlayProfile()).techniqueOrder
+export async function getVariantPlayOrder(puzzle?: VariantPuzzle) {
+  return (await getVariantPlayProfile(puzzle)).techniqueOrder
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
-  const techniqueOrder = await getVariantPlayOrder()
+  const order = await getVariantPlayOrder()
+  const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
+    : id === 'little-killer' ? withLittleKillerHouses(order) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
@@ -97,7 +135,7 @@ export async function playCandidates(game: Game, run: EngineRunner = runEngine) 
   }
 }
 
-export async function variantHintOrder() {
+export async function variantHintOrder(puzzle: VariantPuzzle) {
   const disabled = new Set(readDisabledHintTechniques())
-  return (await getVariantPlayOrder()).filter((id) => !disabled.has(id))
+  return (await getVariantPlayOrder(puzzle)).filter((id) => !disabled.has(id))
 }

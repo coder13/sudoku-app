@@ -239,11 +239,22 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     }
     case 'locked-digit': {
       cells = evidence.clue.cells
+      const target = houseLabel(evidence.target)
+      if (technique === 'renban-locked-digit') {
+        const { digit } = evidence
+        const length = evidence.clue.cells.length
+        const commonToAll = digit >= 10 - length && digit <= length
+        description = commonToAll
+          ? `Every set of ${length} consecutive digits includes ${digit}. All positions for ${digit} on the Renban lie in ${target}.`
+          : `Every consecutive set that fits the Renban includes ${digit}. All positions for ${digit} on the line lie in ${target}.`
+        reason = `One of the highlighted positions must hold ${digit}. Remove ${digit} from the other cells in ${target}.`
+        candidates = [...focus, ...evidence.cells.map(cell => ({ cell, digit }))]
+        break
+      }
       const printed = evidence.clue.rules.flatMap(index => {
         const rule = puzzle.rules?.[index]
         return rule?.type === 'quadruple' ? rule.digits : []
       })
-      const target = houseLabel(evidence.target)
       description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
       reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
@@ -555,6 +566,137 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `Check the line assignments against both rules. ${evidence.assignments} ${evidence.assignments === 1 ? 'assignment fits' : 'assignments fit'}, and none uses the crossed-out candidates.`
       candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
         .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
+    case 'entropy-areas': {
+      cells = evidence.cells
+      const ruleDescriptions = evidence.rules.flatMap(index => {
+        const rule = puzzle.rules?.[index]
+        if (rule?.type !== 'quadruple') return []
+        const window = evidence.windows.find(window => window[0] === rule.topLeft)
+        if (!window) return []
+        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.`]
+      })
+      const areas = evidence.windows.map(window => `${nameCell(window[0])} to ${nameCell(window[3])}`)
+      const groups = areas.length === 1 ? 'This area needs' : `Both areas (${areas.join(' and ')}) need`
+      description = [...ruleDescriptions, `${groups} a low digit (1–3), a medium digit (4–6), and a high digit (7–9).`].join(' ')
+      const restrictions = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ cell, digit }) => `${digit} in ${nameCell(cell)}`))
+      const shared = evidence.windows.length === 2 ? ' Both areas must use the same digits in their shared cells.' : ''
+      reason = `Fit the printed digits and the three groups without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+        .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
+    case 'ray-houses': {
+      cells = evidence.cells
+      const ray = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'little-killer')
+      const houseNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      const total = ray ? `The Little Killer diagonal from ${nameCell(cells[0])} to ${nameCell(cells[cells.length - 1])} must add to ${ray.sum}.`
+        : 'Follow the highlighted Little Killer diagonal.'
+      const renban = technique === 'renban-sum-ray-houses'
+      description = `${total} Two cells on the diagonal need different digits when both lie in the same house. Check ${houseNames}.`
+      if (renban) description += ' The Renban on the diagonal needs its own consecutive set of digits.'
+      reason = renban
+        ? 'Fit the Renban set and the other digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
+        : 'Fit the digits into the diagonal sum. Check each of the named houses for repeats. For each crossed-out candidate, every assignment containing it fails one of these checks.'
+      break
+    }
+    case 'renban-group-counts': {
+      const { assumption, initial, placement, subsequent, conflict } = evidence
+      const list = new Intl.ListFormat('en', { type: 'conjunction' })
+      const groupName = (mask: number) => mask & 1 ? '1–4' : '6–9'
+      const placementConflicts = placement?.rejected.map(([, conflict]) => conflict) ?? []
+      const projections = [...initial, ...subsequent]
+      const showLine = (projection: (typeof projections)[number], group: typeof conflict) => {
+        const positions = projection.cells.filter((cell, index) =>
+          group.cells.includes(cell) && (projection.supported[index] & ~group.digits) === 0)
+        if (!positions.length) return ''
+        const names = list.format(positions.map(nameCell))
+        return `The Renban through ${nameCell(projection.cells[0])} confines ${names} to digits ${groupName(group.digits)}.`
+      }
+      cells = [...new Set([assumption.cell, ...projections.flatMap(line => line.cells), ...conflict.cells,
+        ...placementConflicts.flatMap(group => group.cells), ...(placement?.line.cells ?? [])])]
+      description = `Try ${assumption.digit} in ${nameCell(assumption.cell)}. Check which digits the Renban lines would use.`
+      const initialGroups = placementConflicts.length ? [...placementConflicts, conflict] : [conflict]
+      const first = [...new Set(initial.flatMap(line => initialGroups.map(group => showLine(line, group))))].filter(Boolean)
+      const bridge = placement ? placement.rejected.map(([start, group]) => {
+        const end = start + placement.line.cells.length - 1
+        return `If the Renban through ${nameCell(placement.line.cells[0])} were to use ${start}–${end}, five cells in ${houseLabel(group.house)} would have to use digits ${groupName(group.digits)}.`
+      }).join(' ') + ` The remaining sets force ${nameCell(placement.candidate.cell)} to be ${placement.candidate.digit}.` : ''
+      const last = subsequent.map(line => showLine(line, conflict)).filter(Boolean)
+      const outcome = `${list.format(conflict.cells.map(nameCell))} are all in ${houseLabel(conflict.house)} and would need five distinct digits from ${groupName(conflict.digits)}. Remove ${assumption.digit} from ${nameCell(assumption.cell)}.`
+      reason = [...first, bridge, ...last, outcome].filter(Boolean).join(' ')
+      break
+    }
+    case 'renban-house-support': {
+      cells = evidence.cells
+      const length = evidence.lineLength
+      const house = houseLabel(evidence.house)
+      const set = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+      const viable = set(evidence.starts).map(first => `${first}–${first + length - 1}`)
+      description = `All ${length} Renban cells lie in ${house}. They need a consecutive set. The other cells in the house must use the remaining digits.`
+      reason = `Check each consecutive set against the candidates on and off the line. The line can use ${alternatives.format(viable)}. The crossed-out candidates have no place in any complete assignment.`
+      const paired = evidence.pairedCell
+      if (paired !== null) {
+        const pair = set(evidence.domains[cells.indexOf(paired)])
+        const target = focus[0].cell
+        cells = [...cells.slice(0, length), paired, target]
+        candidates = [...focus, ...pair.map(digit => ({ cell: paired, digit }))]
+        description = `${nameCell(paired)} can contain only ${alternatives.format(pair.map(String))}. It shares ${house} with ${nameCell(target)} and the entire Renban.`
+        const assumptions = alternatives.format(focus.map(({ digit }) => String(digit)))
+        const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ digit }) => String(digit)))
+        reason = `If ${nameCell(target)} is ${assumptions}, these two cells use both ${pair[0]} and ${pair[1]}. Every consecutive set that fits the Renban needs at least one of those digits. Remove ${removals} from ${nameCell(target)}.`
+      }
+      break
+    }
+    case 'renban-sum': {
+      cells = evidence.cells
+      const renban = puzzle.rules?.[evidence.rules[0]]
+      const ray = puzzle.rules?.[evidence.rules[1]]
+      description = 'The highlighted Renban lies entirely on the Little Killer diagonal.'
+      reason = 'Each crossed-out candidate has no assignment that fits both clues.'
+      if (renban?.type === 'renban' && ray?.type === 'little-killer') {
+        const length = renban.cells.length
+        description = `The Little Killer diagonal from ${nameCell(cells[0])} to ${nameCell(cells[cells.length - 1])} totals ${ray.sum}. It includes all ${length} cells of the Renban.`
+        const remaining = cells.filter(cell => !renban.cells.includes(cell))
+        const ranges = DIGITS.filter(digit => evidence.starts & 1 << (digit - 1)).map(first => {
+          const end = first + length - 1
+          const sum = length * (first + end) / 2
+          return remaining.length
+            ? `The set from ${first} to ${end} adds to ${sum}, leaving ${ray.sum - sum}.`
+            : `The set from ${first} to ${end} adds to the full total.`
+        })
+        const totals = remaining.length === 1
+          ? `Check the candidates in ${nameCell(remaining[0])} against what remains.`
+          : remaining.length > 1 ? 'Check whether the other cells on the diagonal can add to what remains.' : ''
+        reason = `Try consecutive sets of ${length} digits on the Renban. Here are the sets that fit both clues. ${ranges.join(' ')} ${totals ? totals + ' ' : ''}None of these sets gives a complete assignment with a crossed-out candidate.`
+      }
+      break
+    }
+    case 'renban-sum-house': {
+      cells = evidence.cells
+      const ray = puzzle.rules?.[evidence.rules[1]]
+      const total = ray?.type === 'little-killer' ? `The diagonal totals ${ray.sum}.` : 'Follow the Little Killer diagonal.'
+      const shared = nameCell(evidence.shared)
+      const restricted = nameCell(evidence.restricted)
+      description = `${total} One Renban lies on the diagonal. The other Renban meets it at ${shared} and shares ${houseLabel(evidence.house)} with ${restricted}.`
+      reason = `Try each consecutive set that fits the Renban through ${shared}. All digits in that set are used in the house, so they are unavailable at ${restricted}. Check the remaining candidates against the total and the Renban on the diagonal. None of the assignments that fit all these clues uses a crossed-out candidate.`
+      const { witness } = evidence
+      const first = puzzle.rules?.[evidence.rules[0]]
+      const other = puzzle.rules?.[evidence.rules[2]]
+      if (witness && ray?.type === 'little-killer' && first?.type === 'renban' && other?.type === 'renban') {
+        const digitList = new Intl.ListFormat('en', { type: 'conjunction' })
+        const range = (start: number, length: number) => digitList.format(DIGITS.slice(start - 1, start - 1 + length).map(String))
+        const remaining = ray.sum - witness.candidate.digit
+        const line = witness.containedStart === null ? ''
+          : ` The Renban on the diagonal must use ${range(witness.containedStart, first.cells.length)}.`
+        const pivot = witness.candidate.cell === evidence.shared ? ''
+          : ` The two clues force ${shared} to be ${witness.sharedDigit}.`
+        const limits = digitList.format(DIGITS.filter(digit => witness.restrictedDigits & (1 << (digit - 1))).map(String))
+        reason = `If ${nameCell(witness.candidate.cell)} is ${witness.candidate.digit}, the other cells of the diagonal must add to ${remaining}.${line}${pivot} The Renban through ${shared} must then use ${range(witness.otherStart, other.cells.length)}. That uses ${limits} in ${houseLabel(evidence.house)} and leaves no candidate for ${restricted}.`
+        if (actions.length > 1) reason += 'Checking the other possibilities also rules out the remaining crossed-out candidates.'
+      }
       break
     }
     case 'constraint': {

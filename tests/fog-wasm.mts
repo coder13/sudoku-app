@@ -495,8 +495,12 @@ test('an exact Fog finish leaves the attempted logical moves as a subtotal and t
   assert.equal(solution.exact, true)
   assert.equal(solution.rating.status, 'stalled')
   assert.ok(solution.steps.length > 0)
-  assert.deepEqual(solution.rating.score.counts, { 'locked-candidates': solution.steps.length })
-  assert.equal(solution.rating.score.points, solution.steps.length * catalog.techniques.find(({ id }) => id === 'locked-candidates')!.cost)
+  const counts = { 'locked-candidates': 18, 'entropy-quadruple': 5 }
+  assert.equal(solution.steps.length, 23)
+  assert.deepEqual(solution.rating.score.counts, counts)
+  const subtotal = Object.entries(counts).reduce((points, [id, count]) =>
+    points + count * catalog.techniques.find(technique => technique.id === id)!.cost, 0)
+  assert.equal(solution.rating.score.points, subtotal)
   assert.equal(grade, null)
   assert.equal(game.difficulty, null)
   assert.equal(game.score, null)

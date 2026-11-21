@@ -4,13 +4,15 @@ import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
-import { valuesOf } from '../sudoku/game'
+import { createEngineSession } from '../sudoku/engine'
+import { hasUniquenessProof, uniquenessKey, valuesOf } from '../sudoku/game'
 import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
-import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
-import { findImportAttempt, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
-import { applyPuzzleGrade, needsPuzzleGrade } from '../sudoku/puzzle-rating'
+import { MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
+import { findImportAttempt, prepareImportedPuzzle, PuzzleVerificationError, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { originalSolutionStatus } from '../sudoku/puzzle-validation'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
@@ -24,12 +26,26 @@ function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
+type PreviewProgress = { signal: AbortSignal; onDecoded: (puzzle: ImportedPuzzle) => void }
+
+function preparePreview(input: string, progress: PreviewProgress): Promise<PuzzlePreview> {
+  return prepareImportedPuzzle(input, roomStore.getSnapshot().games, { ...progress, deferRating: true })
+}
+
 export function finishImport(preview: PuzzlePreview, play: boolean) {
   const { game, grade } = preview
   const existing = findImportAttempt(roomStore.getSnapshot().games, preview)
   if (existing) {
-    if (grade !== undefined && needsPuzzleGrade(existing)) {
-      roomStore.update(existing.id, current => applyPuzzleGrade(current, grade))
+    if ((game.uniquenessProof && !hasUniquenessProof(existing)) || (grade !== undefined && needsPuzzleGrade(existing))) {
+      roomStore.update(existing.id, current => {
+        const { uniquenessProof } = game
+        if (uniquenessProof && uniquenessProof !== uniquenessKey(current)) return current
+        const updated = uniquenessProof && uniquenessProof !== current.uniquenessProof ? {
+          ...current, uniquenessProof,
+          variant: current.variant && game.variant ? { ...current.variant, solution: game.variant.solution } : current.variant,
+        } : current
+        return grade !== undefined && needsPuzzleGrade(updated) ? applyPuzzleGrade(updated, grade) : updated
+      })
     }
     if (play) roomStore.select(existing.id)
     return false
@@ -46,11 +62,11 @@ export async function openPuzzle(input: string, cancelled: () => boolean, { fres
   else finishImport(preview, true)
 }
 
-export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {
+export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePreview }: {
   close: () => void
   onPlay?: () => void
   fullPage?: boolean
-  onPreview?: (input: string) => Promise<PuzzlePreview>
+  onPreview?: (input: string, progress: PreviewProgress) => Promise<PuzzlePreview>
 }) {
   const id = useId()
   const heading = useRef<HTMLHeadingElement>(null)
@@ -62,17 +78,33 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState<PuzzlePreview>()
+  const [decoded, setDecoded] = useState<ImportedPuzzle>()
+  const [verificationError, setVerificationError] = useState<PuzzleVerificationError['status']>()
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
-  const title = preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
+  const showingPreview = Boolean(preview || decoded)
+  const title = showingPreview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
 
   useEffect(() => () => pending.current?.abort(), [])
   useEffect(() => {
     if (fullPage) {
       heading.current?.closest('main')?.scrollTo(0, 0)
       heading.current?.focus({ preventScroll: true })
-    } else if (preview) summary.current?.focus({ preventScroll: true })
-  }, [fullPage, preview, title])
+    } else if (showingPreview) summary.current?.focus({ preventScroll: true })
+  }, [fullPage, showingPreview, title])
+  useEffect(() => {
+    if (!preview?.ratingPending) return
+    const engine = createEngineSession()
+    const { game } = preview
+    let current = true
+    void ratePuzzle(game.givens, game.variant, engine.run).then(grade => {
+      if (current) setPreview(latest => latest === preview
+        ? { ...preview, game: applyPuzzleGrade(game, grade), grade, ratingPending: undefined } : latest)
+    }).catch(() => {
+      if (current) setPreview(latest => latest === preview ? { ...preview, ratingPending: undefined } : latest)
+    }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [preview])
 
   async function check(source: string | File, fromPhoto = false) {
     if (pending.current) return
@@ -81,15 +113,25 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setBusy(true)
     setError('')
     setStatus('')
+    setVerificationError(undefined)
     try {
       if (typeof source !== 'string' && source.size > MAX_IMPORT_LENGTH) throw new Error('Choose a text file containing one puzzle.')
       const text = typeof source === 'string' ? source : await source.text()
       if (work.signal.aborted) return
       if (!fromPhoto) setInput(text)
-      const result = await onPreview(text)
-      if (!work.signal.aborted) setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot' } : result)
+      const result = await onPreview(text, {
+        signal: work.signal,
+        onDecoded: puzzle => { if (!work.signal.aborted) setDecoded(puzzle) },
+      })
+      if (!work.signal.aborted) {
+        setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot' } : result)
+        setDecoded(undefined)
+      }
     } catch (reason) {
-      if (!work.signal.aborted) setError(reason instanceof Error ? reason.message : 'This puzzle could not be opened.')
+      if (!work.signal.aborted) {
+        setError(reason instanceof Error ? reason.message : 'This puzzle could not be opened.')
+        if (reason instanceof PuzzleVerificationError) setVerificationError(reason.status)
+      }
     } finally {
       if (pending.current === work) pending.current = null
       if (!work.signal.aborted) setBusy(false)
@@ -115,7 +157,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   }
 
   function pasteImage(event: ClipboardEvent) {
-    if (event.defaultPrevented || busy || preview || photo || cameraOpen) return
+    if (event.defaultPrevented || busy || showingPreview || photo || cameraOpen) return
     const image = Array.from(event.clipboardData.files).find(file => file.type.startsWith('image/')) ??
       Array.from(event.clipboardData.items).find(item => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile()
     if (!image) return
@@ -123,56 +165,69 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     usePhoto(image)
   }
 
-  function backToInput() {
+  function editPreview() {
     pending.current?.abort()
     pending.current = null
     setBusy(false)
     setError('')
+    setPreview(undefined)
+    setDecoded(undefined)
+    setVerificationError(undefined)
+  }
+
+  function backToInput() {
+    editPreview()
     setPhoto(undefined)
     setCameraOpen(false)
   }
 
-  const fog = preview && fogView(preview.game.variant, preview.game.position.entries)
-  const puzzlePreview = preview && (
+  const puzzle = preview?.game ?? decoded
+  const progress = preview ? preview.hasProgress ? preview.game.position : undefined : decoded?.progress
+  const fog = fogView(puzzle?.variant, progress?.entries)
+  const proofStatus = preview && hasUniquenessProof(preview.game) ? 'unique' : verificationError ?? (busy ? 'checking' : 'unverified')
+  const puzzlePreview = puzzle && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{preview.game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
-          : preview.game.grid ? sizedGridName(preview.game.grid) : variantName(preview.game.variant)}</strong>
-        <span className="import-preview-rating">
-          {preview.game.difficulty
+        <strong>{puzzle.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
+          : puzzle.grid ? sizedGridName(puzzle.grid) : variantName(puzzle.variant)}</strong>
+        {!puzzle.grid && <span className="import-preview-rating" role="status">{originalSolutionStatus[proofStatus]}</span>}
+        {preview && <span className="import-preview-rating" aria-live="polite">
+          {preview.ratingPending ? <strong>Rating…</strong> : preview.game.difficulty
             ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
             : <strong>{preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}</strong>}
           {preview.game.score != null && <span><span>Score</span> <strong>{preview.game.score}</strong></span>}
-        </span>
-        <span className="import-preview-format">{preview.format}</span>
+        </span>}
+        <span className="import-preview-format">{photo ? 'Photo or screenshot' : preview?.format ?? decoded?.format}</span>
       </p>
-      {preview.hasProgress && <p>This import includes your progress.</p>}
-      <Board grid={preview.game.grid} whispersGuide={preview.game.whispersGuide} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
-        givenCellColors={preview.game.givenCellColors} authoredArtwork={preview.game.authoredArtwork}
-        position={preview.hasProgress ? preview.game.position : undefined} candidateLayout="center-corner"
-        variantPuzzle={preview.game.variant?.puzzle} fog={fog} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
-      {preview.game.algebraic ? <>
+      {progress && <p>This import includes your progress.</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <Board grid={puzzle.grid} whispersGuide={puzzle.whispersGuide} label="Puzzle preview" givens={puzzle.givens}
+        values={preview ? valuesOf(preview.game) : [...puzzle.givens].map((digit, cell) => digit === '0' ? progress?.entries[cell] ?? '0' : digit).join('')}
+        givenCellColors={puzzle.givenCellColors} authoredArtwork={puzzle.authoredArtwork}
+        position={progress} candidateLayout="center-corner"
+        variantPuzzle={puzzle.variant?.puzzle} fog={fog} algebraicCages={preview?.game.algebraic?.rules} sizedRules={preview?.game.sized?.rules} showGuides={false} />
+      {preview?.game.algebraic ? <>
         {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
         <ul className="import-preview-rules">
           {algebraicRules(preview.game.algebraic).map(rule => <li key={rule}>{rule}</li>)}
         </ul>
-      </> : preview.game.grid?.size === 4 && <p>{MINI_RULE}</p>}
-      {preview.game.sized?.author && <p>By {preview.game.sized.author}</p>}
-      {preview.game.sized && preview.game.grid && <ul className="import-preview-rules">
+      </> : puzzle.grid?.size === 4 && <p>{MINI_RULE}</p>}
+      {preview?.game.sized?.author && <p>By {preview.game.sized.author}</p>}
+      {preview?.game.sized && preview.game.grid && <ul className="import-preview-rules">
         {sizedRuleDescriptions(preview.game.grid, preview.game.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
-      {preview.game.variant && <ul className="import-preview-rules">
-        {variantRuleDescriptions(fog?.puzzle ?? preview.game.variant.puzzle, preview.game.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
+      {puzzle.variant && <ul className="import-preview-rules">
+        {variantRuleDescriptions(fog?.puzzle ?? puzzle.variant.puzzle, puzzle.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       <div className="dialog-actions import-preview-actions">
-        <Button type="button" className="import-edit" onClick={() => setPreview(undefined)}>
+        <Button type="button" className="import-edit" onClick={editPreview}>
           {photo ? 'Edit givens' : 'Edit input'}
         </Button>
-        <Button type="button" onClick={() => saveAndContinue(preview)}>
+        <Button type="button" disabled={!preview} onClick={() => { if (preview) saveAndContinue(preview) }}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </Button>
-        <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
-          <Play size={17} aria-hidden="true" /> {preview.hasProgress ? 'Open puzzle' : 'Start playing'}
+        <Button type="button" variant="primary" disabled={!preview} onClick={() => { if (preview) { finishImport(preview, true); onPlay?.() } }}>
+          <Play size={17} aria-hidden="true" /> {progress ? 'Open puzzle' : 'Start playing'}
         </Button>
       </div>
     </div>
@@ -226,19 +281,19 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   )
 
   const content = <>
-    {preview && puzzlePreview}
-    {photo && <PhotoPuzzleReview image={photo} visible={!preview} onBack={backToInput}
+    {puzzlePreview}
+    {photo && <PhotoPuzzleReview image={photo} visible={!showingPreview} onBack={backToInput}
       onCheck={givens => void check(givens, true)} onEdit={() => setError('')} checking={busy} checkError={error} />}
     {cameraOpen && <PuzzleCamera onCapture={usePhoto} onCancel={backToInput} />}
-    {!preview && !photo && !cameraOpen && source}
+    {!showingPreview && !photo && !cameraOpen && source}
   </>
 
   if (fullPage) return (
-    <main className={`puzzles-page puzzles-subscreen import-page${photo && !preview ? ' import-image-view' : ''}`} aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
+    <main className={`puzzles-page puzzles-subscreen import-page${photo && !showingPreview ? ' import-image-view' : ''}`} aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
       <header className="puzzles-page-heading">
         <IconButton type="button" className="puzzles-back"
-          aria-label={preview && photo ? 'Back to detected givens' : preview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
-          onClick={preview ? () => setPreview(undefined) : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
+          aria-label={showingPreview && photo ? 'Back to detected givens' : showingPreview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
+          onClick={showingPreview ? editPreview : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
         <h1 id={`${id}-heading`} ref={heading} tabIndex={-1}>{title}</h1>
       </header>
       {content}

@@ -7786,6 +7786,57 @@
           "difficulty": "easy"
         },
         {
+          "id": "entropy-quadruple",
+          "title": "Quadruples and Global Entropy",
+          "summary": "A Quadruple circle fixes which digits must fit in a 2 × 2 area. When the puzzle uses Global Entropy, fit those digits and leave room for a low, medium, and high digit.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Fit the printed digits and all three groups"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a circle that prints two digits from one group. Those digits use two of the four cells, so the other cells must supply one digit from each missing group. A digit printed twice needs two cells.",
+                "If the circle area still has several possible arrangements, check the 2 × 2 area on the other side of an edge. The two shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "entropy-quadruple",
+              "copy": {
+                "description": "R2C8 is 6 and the circle also needs 5. Only R2C9 can supply 5. R3C9 is 1, so R3C8 must supply the high digit. Remove 3 from R3C8."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "entropy-quadruple",
+                  "title": "Fit the circle and its neighbors"
+                }
+              ],
+              "guide": {
+                "start": "Read the digits in the circle and find the groups they already supply.",
+                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas share an edge, check the same digits in their shared cells.",
+                "reason": "Remove a candidate when every arrangement that uses it breaks a circle, an entropy area, or a shared house."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Entropy Quads by cyboogie",
+              "href": "https://sudoku.coach/en/s/A2s7"
+            },
+            {
+              "label": "Entropy Quads 3 by cyboogie",
+              "href": "https://sudoku.coach/en/s/CJhv"
+            }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "modular",
           "title": "Modular lines",
           "summary": "A Modular line repeats three groups: {1, 4, 7}, {2, 5, 8} and {3, 6, 9}. Every three successive positions use one digit from each group. Positions three steps apart share a group, but can contain different digits.",
@@ -7922,6 +7973,127 @@
           "difficulty": "medium"
         },
         {
+          "id": "renban-locked-digit",
+          "title": "Renban locked digit",
+          "summary": "Every possible set for a Renban can share a digit. If its possible positions for that digit all lie in one row, column, or region, remove the digit from the rest of that house.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a digit in every possible set"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "List the consecutive sets that fit the line and its candidates. A digit that appears in every set must go somewhere on the line. For instance, every set of five consecutive Sudoku digits includes 5.",
+                "Find every position where the required digit can go on the line. If those positions all share a house, the digit must be in one of them. Cross it out from the remaining cells in that house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-locked-digit",
+              "copy": {
+                "description": "The four-cell Renban in row 6 can use 4–7, 5–8, or 6–9. Every set contains 6, so the line must supply the 6 for row 6."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-locked-digit",
+                  "title": "Renban locked digit"
+                }
+              ],
+              "guide": {
+                "start": "Find a digit that appears in every set that fits the Renban.",
+                "check": "Check where that digit can go on the line. Look for a house shared by all those positions.",
+                "reason": "One of those positions must supply that house’s copy of the digit. Remove the digit from the other cells in the house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "renban-house-support",
+          "title": "Renban in one house",
+          "summary": "When an entire Renban lies in one house, its consecutive set leaves a specific set of digits for the rest of that house. Check both parts before choosing a set.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the cells off the line"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "List the consecutive sets that fit the line. For each set, cross its digits off your list of digits for the other cells in the house. Check whether those other cells can each use a different remaining digit.",
+                "Look for a cell off the line with just two candidates. If both of its digits were used off the line, any consecutive set that needs one of them would fail. When every set needs at least one, a second cell off the line cannot force the pair to use both digits."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-house-support"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-house-support",
+                  "title": "Renban in one house"
+                }
+              ],
+              "guide": {
+                "start": "Find a Renban entirely inside one row, column, or region.",
+                "check": "For each set that fits the line, try assigning the remaining digits to the other cells in the house.",
+                "reason": "A candidate must fit a complete assignment of the house using one consecutive set on the line."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "renban-group-counts",
+          "title": "Renban and group counts",
+          "summary": "Use the possible Renban sets to count how many cells in a house need digits from 1–4 or 6–9. A house can use each of those four digits once.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Look for Renbans that need the same four digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A four-cell Renban without a place for 5 must use either 1–4 or 6–9. A three-cell Renban needs three consecutive digits. When its candidates rule out every set on one side of 5, look at where its remaining digits go.",
+                "Try a candidate that affects several Renbans. Check which sets can still fit each line. If that choice forces five cells in a house into the same group of four digits, remove the candidate you tried.",
+                "Sometimes the count first rules out a Renban set. If the remaining sets force a digit into one cell, check what that placement does to nearby lines and houses."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-group-counts"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-group-counts",
+                  "title": "Renban and group counts"
+                }
+              ],
+              "guide": {
+                "start": "Find several Renbans that share cells with one house.",
+                "check": "Try a candidate that limits the consecutive sets on those lines. Count how many cells in the house must use 1–4 or 6–9.",
+                "reason": "Five cells in one house cannot use just four distinct digits."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
+        },
+        {
           "id": "region-sum",
           "title": "Region Sum lines",
           "summary": "A Region Sum line has the same total in each part defined by the region boundaries and the puzzle’s rules. A part with just one cell can set the total for all the others.",
@@ -8025,6 +8197,171 @@
             }
           ],
           "difficulty": "medium"
+        },
+        {
+          "id": "little-killer-house-support",
+          "title": "Little Killer and shared houses",
+          "summary": "Digits on a Little Killer diagonal may repeat where the cells share no house. Check where the diagonal enters the same box, region, or extra house more than once to narrow the possible sums.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the total and shared houses"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Group the diagonal cells that share a house. Their digits must differ within that group.",
+                "List the subtotals each group can make with distinct digits. Combine them to reach the printed sum.",
+                "Remove a candidate if no assignment reaches the total while keeping the digits distinct in each shared house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "little-killer-house-support"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "little-killer-house-support",
+                  "title": "Little Killer and shared houses"
+                }
+              ],
+              "guide": {
+                "start": "Group the diagonal cells that share a house. Their digits must differ within that group.",
+                "check": "List the subtotals each group can make with distinct digits. Combine them to reach the printed sum.",
+                "reason": "Remove a candidate if no assignment reaches the total while keeping the digits distinct in each shared house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "renban-sum-ray-houses",
+          "title": "Renban sum and shared houses",
+          "summary": "When a Little Killer diagonal contains a Renban, every valid set on the line leaves a fixed sum for the other cells. A shared house can rule out combinations that fit both printed clues.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the total and shared houses"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a Little Killer diagonal with a Renban entirely on it. Identify the diagonal cells that share houses.",
+                "Try each consecutive set on the Renban. Subtract its sum from the printed total, then check the remaining cells for repeats in their houses.",
+                "Remove a candidate when every assignment that reaches the total and fits the Renban repeats a digit in a shared house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum-ray-houses"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum-ray-houses",
+                  "title": "Renban sum and shared houses"
+                }
+              ],
+              "guide": {
+                "start": "Find a Little Killer diagonal with a Renban entirely on it. Identify the diagonal cells that share houses.",
+                "check": "Try each consecutive set on the Renban. Subtract its sum from the printed total, then check the remaining cells for repeats in their houses.",
+                "reason": "Remove a candidate when every assignment that reaches the total and fits the Renban repeats a digit in a shared house."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
+        },
+        {
+          "id": "renban-sum",
+          "title": "Renban and Little Killer",
+          "summary": "When a Little Killer diagonal contains a whole Renban, each possible set of consecutive digits leaves a different total for the other cells on the diagonal. Compare those totals to rule out candidates.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Subtract the sum of each Renban set"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a Renban with all of its cells on the same Little Killer diagonal. List the sets of consecutive digits that can fit the Renban candidates. Each set has the same sum in any order.",
+                "Subtract each set’s sum from the Little Killer total. Check whether the other cells on the diagonal can make the remainder. Cross out any candidate that cannot fit a set and a remainder together."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum",
+              "copy": {
+                "description": "The diagonal totals 19. Only the set {2, 3, 4} fits the Renban and leaves a sum the other two cells can make. The set adds to 9. R8C4 is already 3, so R9C5 must be 7."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum",
+                  "title": "Renban and Little Killer"
+                }
+              ],
+              "guide": {
+                "start": "Find the Renban whose cells all lie on the Little Killer diagonal.",
+                "check": "For each consecutive set that fits the Renban, subtract its sum from the total. See whether the remaining cells can make that remainder.",
+                "reason": "A candidate must appear in an assignment that fits both the Renban and the Little Killer total."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
+        },
+        {
+          "id": "renban-sum-house",
+          "title": "Renban and Little Killer with a shared house",
+          "summary": "A second Renban can limit a Little Killer diagonal through a shared house. The digits on that Renban are unavailable in the other cells of the house. Use those exclusions to check which candidates fit the diagonal and its total.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Match the shared cell and rule out repeats"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for a Little Killer diagonal with a Renban entirely on it. Then find a second Renban that meets the diagonal in just one cell. Look for a house containing the second Renban and one more cell from the diagonal.",
+                "List the consecutive sets that fit the second Renban. For each set, keep the digits that can go in its shared cell. Cross the set’s digits out of the other diagonal cell in the house. Test the new candidates against the first Renban and the printed total.",
+                "Remove a candidate if it fails in every case. The rest of the diagonal only follows the usual rule about repeats in any houses its cells share."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "renban-sum-house",
+              "copy": {
+                "description": "The 19 diagonal starts at R9C5. Its first two cells share box 8 with the Renban across R9C4, R9C5, and R9C6. Test each set on that Renban and exclude its digits from R8C4."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "renban-sum-house",
+                  "title": "Renban and Little Killer with a shared house"
+                }
+              ],
+              "guide": {
+                "start": "Find the second Renban and the house it shares with the two cells of the diagonal.",
+                "check": "Try a consecutive set on that Renban. Keep its possible digits at the intersection, and exclude all its digits from the other diagonal cell in the house.",
+                "reason": "Keep candidates that fit the printed total and the contained Renban in at least one case."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "hard"
         },
         {
           "id": "skyscrapers",

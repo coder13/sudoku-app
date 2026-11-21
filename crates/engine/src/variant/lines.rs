@@ -1,5 +1,7 @@
 mod group_sums;
 mod groups;
+pub(super) mod ray_houses;
+pub(super) mod renban_sum;
 
 pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums};
 
@@ -39,6 +41,13 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    pub fn little_killer_sum(&self) -> Option<u16> {
+        match self.kind {
+            LineKind::Sum(total) => Some(total),
+            _ => None,
+        }
+    }
+
     pub fn compile(
         puzzle: &mut CompiledVariant,
         index: usize,

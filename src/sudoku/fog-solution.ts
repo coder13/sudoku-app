@@ -20,7 +20,7 @@ function hardestUsedTechnique(catalog: TechniqueCatalog, counts: Readonly<Record
 
 /** Follow only the deductions made before each change to the revealed grid. */
 export async function solveFogPath(variant: VariantGame, run: EngineRunner, includeSteps: boolean): Promise<LogicalSolution> {
-  const { techniqueOrder, catalog } = await getVariantPlayProfile()
+  const { techniqueOrder, catalog } = await getVariantPlayProfile(variant.puzzle)
   const steps: LogicalSolution['steps'] = []
   const positions: SolvePosition[] = []
   const counts: Record<string, number> = {}

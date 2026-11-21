@@ -14,7 +14,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
+  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -30,6 +30,7 @@ import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diag
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
 import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { originalSolutionStatus } from '../sudoku/puzzle-validation'
 import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
@@ -174,7 +175,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 }
 
 export function Worktable({
-  game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, pauseShortcutsEnabled = true, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
@@ -184,6 +185,7 @@ export function Worktable({
   storageAvailable?: boolean
   preferredDifficulty: DifficultyPreference
   modalOpen: boolean
+  pauseShortcutsEnabled?: boolean
   advancedModes: AdvancedModes
   appearance: AppearancePreferences
   highlighting: HighlightPreferences
@@ -285,6 +287,7 @@ export function Worktable({
   const [pinnedRule, setPinnedRule] = useState<VariantRuleSectionId | null>(null)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
+  const [puzzleDetailsOpen, setPuzzleDetailsOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [confirmCandidatesOpen, setConfirmCandidatesOpen] = useState(false)
@@ -292,6 +295,8 @@ export function Worktable({
   const [cancelDraftOpen, setCancelDraftOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
+  const pauseShortcut = shortcutLabel(shortcuts.pauseOrSwitchView)
+  const pauseKeys = pauseShortcut === 'Space' ? ['Space'] : ['Space', pauseShortcut]
   const [notes, setNotes] = useState<{
     gameId: string; values: string; eliminations?: number[]; variant?: Game['variant']; algebraic?: Game['algebraic']; sized?: Game['sized']; masks: number[] | null; failed?: boolean
   }>()
@@ -359,6 +364,9 @@ export function Worktable({
   const mixedVariant = !grid && variant?.id === 'mixed'
   const ruleSections = useMemo(() => puzzle ? variantRuleSections(puzzle, variant?.fog) : [], [puzzle, variant?.fog])
   const solutionIdentity = useMemo(() => puzzleIdentity({ givens, variant, algebraic, grid, sized }), [givens, variant, algebraic, grid, sized])
+  const { source, uniquenessProof } = game
+  const verifiedOriginal = useMemo(() => hasUniquenessProof({ givens, variant, grid, source, uniquenessProof }),
+    [givens, variant, grid, source, uniquenessProof])
   const savedSolution = savedPlayState?.solutionView
   const solutionView = !draft && savedSolution?.identity === solutionIdentity ? savedSolution : null
   const solutionPathRevealed = solutionView !== null && !solutionView.hidden
@@ -749,7 +757,7 @@ export function Worktable({
     setActionsOpen(false)
     setPuzzleMenuOpen(false)
     if (game.paused) resumePuzzle()
-    else updateWorkingGame((current) => setGamePaused(current, true, { onOpen: mobile }))
+    else updateWorkingGame((current) => setGamePaused(current, true, { onOpen: true }))
   }
 
   useEffect(() => {
@@ -1693,6 +1701,22 @@ export function Worktable({
   }
 
   useEffect(() => {
+    function pauseOnSpace(event: KeyboardEvent) {
+      if (!pauseShortcutsEnabled || draft || placeholder || event.key !== ' ' || event.isComposing ||
+        event.altKey || event.ctrlKey || event.metaKey) return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement && ['text', 'search', 'email', 'url', 'tel', 'password'].includes(target.type))) return
+
+      // Handle Space before focused controls can activate or change the play layout.
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      setPointerFocusedCell(null)
+      if (completed) toggleSolvedView()
+      else togglePause()
+    }
+
     function keydown(event: KeyboardEvent) {
       if (event.key === 'Shift') setCandidatePreviewCell(null)
       if (event.key === 'Tab' || event.key === 'Enter' || event.key === ' ' || ARROWS[event.key]) setPointerFocusedCell(null)
@@ -1710,11 +1734,9 @@ export function Worktable({
         (drawLinksShortcut || applyEditsShortcut || ((strongLinksVisible || solvingDigitShortcuts && !sketch.drawing) && digitShortcut !== null))
       if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || confirmCandidatesOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
-      if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
-      if (!draft && !placeholder && !previewing && !variantRulesOpen && (mobile || completed || game.started || game.paused) &&
-        !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView')) {
-        if (target instanceof HTMLElement && (target.closest('dialog[open]') ||
-          (event.key === ' ' && target.closest('button, summary, [role="button"]') && !target.matches('[role="gridcell"][data-cell]')))) return
+      if (pauseShortcutsEnabled && !draft && !placeholder && !previewing && !variantRulesOpen &&
+        event.key !== ' ' && !event.isComposing && shortcutMatches(event, shortcuts, 'pauseOrSwitchView') &&
+        !(target instanceof HTMLElement && target.closest('dialog[open]'))) {
         event.preventDefault()
         if (!event.repeat) {
           if (completed) toggleSolvedView()
@@ -1913,8 +1935,12 @@ export function Worktable({
         setEraseMode((current) => !current)
       }
     }
+    window.addEventListener('keydown', pauseOnSpace, true)
     window.addEventListener('keydown', keydown)
-    return () => window.removeEventListener('keydown', keydown)
+    return () => {
+      window.removeEventListener('keydown', pauseOnSpace, true)
+      window.removeEventListener('keydown', keydown)
+    }
   })
 
   async function runCheck() {
@@ -2427,6 +2453,11 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
+    {!grid && !advancedWorkspace && !draft && !placeholder && <button onClick={() => {
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setPuzzleDetailsOpen(true)
+    }}><Info size={17} aria-hidden="true" /> Puzzle details</button>}
     {panelToggles.length > 0 && <>
       <div className="app-menu-separator" role="separator" />
       {panelToggles}
@@ -2702,7 +2733,7 @@ export function Worktable({
       <Info size={16} aria-hidden="true" />{grid ? sizedName : variantName(variant)}
     </Button>}
     {completed && !previewing && <Button variant="quiet" className="puzzle-view-toggle"
-      aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={toggleSolvedView}>
+      aria-pressed={showSolvedGrid} aria-controls={puzzleStageId} aria-keyshortcuts={pauseKeys.join(' ')} onClick={toggleSolvedView}>
       {showSolvedGrid ? 'View results' : 'View grid'}
     </Button>}
   </>
@@ -2720,8 +2751,8 @@ export function Worktable({
         {!puzzleControlsBelow && puzzleUtilityActions}
         {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
           aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
-          title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${shortcutLabel(shortcuts.pauseOrSwitchView)})`}
-          aria-pressed={game.paused} aria-keyshortcuts={shortcutLabel(shortcuts.pauseOrSwitchView)} onClick={togglePause}>
+          title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
+          aria-pressed={game.paused} aria-keyshortcuts={pauseKeys.join(' ')} onClick={togglePause}>
           <span className="pause-toggle-icons" aria-hidden="true">
             <Pause className="pause-toggle-pause" size={18} />
             <Play className="pause-toggle-play" size={18} />
@@ -2864,6 +2895,8 @@ export function Worktable({
         <div><dt>Puzzle</dt><dd>{game.title}</dd></div>
         <div><dt>Status</dt><dd>{placeholder ? 'Waiting for puzzle' : solved ? 'Solved' : game.paused ? 'Paused' : game.started ? 'In progress' : 'Not started'}</dd></div>
         <div><dt>Difficulty</dt><dd>{difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated'}</dd></div>
+        {!grid && !draft && !placeholder && <div><dt>Original puzzle</dt>
+          <dd>{originalSolutionStatus[verifiedOriginal ? 'unique' : 'unverified']}</dd></div>}
         {showElapsedTime && <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
         <div><dt>Givens</dt><dd>{clueCount}</dd></div>
         <div><dt>Placed digits</dt><dd>{placedDigitCount}</dd></div>
@@ -2949,6 +2982,7 @@ export function Worktable({
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
+      <Modal title="Puzzle details" open={puzzleDetailsOpen} onClose={() => setPuzzleDetailsOpen(false)}>{detailsPanel}</Modal>
       <ChainColorsDialog open={chainColorsOpen} first={sketch.active.color} second={sketch.active.secondColor}
         onSelect={sketch.setColors} onClose={() => setChainColorsOpen(false)} onEdit={onEditChainColors && (() => {
           setChainColorsOpen(false)
