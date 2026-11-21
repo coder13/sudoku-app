@@ -16,7 +16,7 @@ pub(super) enum DigitGroups {
 }
 
 impl DigitGroups {
-    fn masks(self) -> [u16; 3] {
+    pub(super) fn masks(self) -> [u16; 3] {
         match self {
             Self::Entropic => [0b000000111, 0b000111000, 0b111000000],
             Self::Modular => [0b001001001, 0b010010010, 0b100100100],
@@ -66,18 +66,22 @@ impl GroupLine {
         self.phases[a] != self.phases[b]
     }
 
+    pub(super) fn repeating_group(&self, a: usize, b: usize) -> Option<DigitGroups> {
+        (self.consistent && !self.different_phases(a, b)).then_some(self.partition)
+    }
+
     pub(super) fn house_pair_removals(
         &self,
         left: usize,
         right: usize,
         domains: [u16; 2],
     ) -> [u16; 2] {
-        if !self.consistent || self.different_phases(left, right) {
+        let Some(partition) = self.repeating_group(left, right) else {
             return [0; 2];
-        }
+        };
         let mut removals = [0; 2];
         let common = domains[0] & domains[1];
-        for group in self.partition.masks() {
+        for group in partition.masks() {
             let shared = common & group;
             if shared == 0 {
                 continue;

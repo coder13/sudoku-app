@@ -23,7 +23,7 @@ pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
 };
-use lines::{LineConstraint, ModularSum};
+use lines::{GroupSumHouse, LineConstraint, ModularSum, compile_line_sums};
 pub(crate) use search::record_support;
 pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
@@ -546,6 +546,7 @@ impl VariantPuzzle {
             pairs: Vec::new(),
             lines: Vec::new(),
             modular_sums: Vec::new(),
+            group_sum_houses: Vec::new(),
             quadruples: Vec::new(),
             global_entropy: None,
             pair_clues: Vec::new(),
@@ -631,7 +632,6 @@ impl VariantPuzzle {
             }
         }
         pairs.finish(&mut compiled);
-        compiled.modular_sums = ModularSum::compile(&compiled.lines, &self.rules);
         // Region geometry can remain available for sum lines after a generation
         // dependency check removes its distinctness rule. Propagate only houses
         // whose cells are actually pairwise excluded by the compiled topology.
@@ -643,6 +643,7 @@ impl VariantPuzzle {
                 }).then_some(index)
             })
             .collect();
+        compile_line_sums(&mut compiled, &self.rules);
         compiled.extra_rule_cells = compiled.house_masks[27..]
             .iter()
             .copied()
@@ -789,6 +790,7 @@ pub struct CompiledVariant {
     pairs: Vec<PairConstraint>,
     lines: Vec<LineConstraint>,
     modular_sums: Vec<ModularSum>,
+    group_sum_houses: Vec<GroupSumHouse>,
     quadruples: Vec<Quadruple>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,
@@ -807,6 +809,17 @@ struct CompiledCage {
 }
 
 impl CompiledVariant {
+    fn shared_enforced_house(&self, first: usize, others: &[usize]) -> Option<VariantHouseKind> {
+        let cells = others.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        self.memberships[first]
+            .iter()
+            .find(|&&index| {
+                self.house_masks[index] & cells == cells
+                    && self.search_houses.binary_search(&index).is_ok()
+            })
+            .map(|&index| self.houses[index].kind)
+    }
+
     fn are_primary_peers(&self, first: usize, second: usize, enforce_regions: bool) -> bool {
         first != second
             && (first / 9 == second / 9

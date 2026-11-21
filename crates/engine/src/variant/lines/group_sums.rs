@@ -1,6 +1,46 @@
-//! Combine the remainder groups of a Modular line with a positive two-cell sum.
+//! Positive two-cell sums that interact with repeating digit groups.
 
-use super::{LineConstraint, LineKind, PuzzleRule};
+use super::{
+    CompiledVariant, LineConstraint, LineKind, PuzzleRule, VariantHouseKind, groups::DigitGroups,
+};
+use crate::hints::{digit_bit, digits};
+
+pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules: &[PuzzleRule]) {
+    let mut group_lines = puzzle
+        .lines
+        .iter()
+        .filter(|line| matches!(line.kind, LineKind::ThreeGroups(_)))
+        .peekable();
+    if group_lines.peek().is_none() {
+        return;
+    }
+
+    let mut sums = Vec::new();
+    for (index, rule) in rules.iter().enumerate() {
+        match rule {
+            PuzzleRule::AdjacentTotal { cells, sum } => sums.push((index, *cells, *sum)),
+            PuzzleRule::Xv { five, ten } => {
+                sums.extend(five.pairs.iter().map(|&cells| (index, cells, 5)));
+                sums.extend(ten.pairs.iter().map(|&cells| (index, cells, 10)));
+            }
+            _ => {}
+        }
+    }
+    let mut modular = Vec::new();
+    let mut with_houses = Vec::new();
+    for line in group_lines {
+        for &(rule, pair, sum) in &sums {
+            if let Some(joined) = ModularSum::for_pair(line, rule, pair, sum) {
+                modular.push(joined);
+            }
+            for [a, b] in [pair, [pair[1], pair[0]]] {
+                GroupSumHouse::compile(puzzle, line, rule, a, b, sum, &mut with_houses);
+            }
+        }
+    }
+    puzzle.modular_sums = modular;
+    puzzle.group_sum_houses = with_houses;
+}
 
 #[derive(Clone, Debug)]
 pub(in crate::variant) struct ModularSum {
@@ -12,37 +52,6 @@ pub(in crate::variant) struct ModularSum {
 }
 
 impl ModularSum {
-    /// Compile after all rule indices, cells and totals have been validated.
-    pub fn compile(lines: &[LineConstraint], rules: &[PuzzleRule]) -> Vec<Self> {
-        let mut modular = lines
-            .iter()
-            .filter(|line| line.rule_id == "modular")
-            .peekable();
-        if modular.peek().is_none() {
-            return Vec::new();
-        }
-        let mut sums = Vec::new();
-        for (index, rule) in rules.iter().enumerate() {
-            match rule {
-                PuzzleRule::AdjacentTotal { cells, sum } => sums.push((index, *cells, *sum)),
-                PuzzleRule::Xv { five, ten } => {
-                    sums.extend(five.pairs.iter().map(|&cells| (index, cells, 5)));
-                    sums.extend(ten.pairs.iter().map(|&cells| (index, cells, 10)));
-                }
-                _ => {}
-            }
-        }
-        let mut compiled = Vec::new();
-        for line in modular {
-            for &(rule, pair, sum) in &sums {
-                if let Some(joined) = Self::for_pair(line, rule, pair, sum) {
-                    compiled.push(joined);
-                }
-            }
-        }
-        compiled
-    }
-
     fn for_pair(line: &LineConstraint, rule: usize, pair: [usize; 2], sum: u8) -> Option<Self> {
         let LineKind::ThreeGroups(groups) = &line.kind else {
             return None;
@@ -64,6 +73,91 @@ impl ModularSum {
             cells,
             allowed,
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(in crate::variant) struct GroupSumHouse {
+    /// Same-group target, sum endpoint on the line, and its sum partner.
+    pub cells: [usize; 3],
+    pub rules: [usize; 2],
+    pub house: VariantHouseKind,
+    pub total: u8,
+    pub technique: &'static str,
+    partition: DigitGroups,
+    endpoint_in_house: bool,
+}
+
+impl GroupSumHouse {
+    fn compile(
+        puzzle: &CompiledVariant,
+        line: &LineConstraint,
+        rule: usize,
+        endpoint: usize,
+        partner: usize,
+        total: u8,
+        out: &mut Vec<Self>,
+    ) {
+        let LineKind::ThreeGroups(groups) = &line.kind else {
+            return;
+        };
+        let Some(index) = line.cells.iter().position(|&cell| cell == endpoint) else {
+            return;
+        };
+        for (i, &cell) in line.cells.iter().enumerate() {
+            if i == index || cell == partner {
+                continue;
+            }
+            let Some(partition) = groups.repeating_group(index, i) else {
+                continue;
+            };
+            let common = puzzle.shared_enforced_house(cell, &[endpoint, partner]);
+            if let Some(house) = common.or_else(|| puzzle.shared_enforced_house(cell, &[partner])) {
+                out.push(Self {
+                    cells: [cell, endpoint, partner],
+                    rules: [line.rule_index, rule],
+                    house,
+                    total,
+                    technique: line.rule_id,
+                    partition,
+                    endpoint_in_house: common.is_some(),
+                });
+            }
+        }
+    }
+
+    /// Return only removals that need the shared-house premise.
+    pub fn removals(&self, [target, endpoint, partner]: [u16; 3]) -> u16 {
+        let mut removed = 0;
+        let mut viable = 0;
+        for group in self.partition.masks() {
+            let partners = digits(endpoint & group)
+                .fold(0, |mask, digit| mask | (self.partner_bit(digit) & partner));
+            for digit in digits(target & group) {
+                let bit = digit_bit(digit);
+                // When the whole triple shares the house, the line endpoint
+                // also cannot repeat the target digit.
+                let partners = if self.endpoint_in_house && endpoint & bit != 0 {
+                    partners & !self.partner_bit(digit)
+                } else {
+                    partners
+                };
+                if partners == bit {
+                    removed |= bit;
+                }
+                viable |= partners & !bit;
+            }
+        }
+        if viable == 0 { 0 } else { removed }
+    }
+
+    fn partner_bit(&self, digit: u8) -> u16 {
+        let partner = self.total.saturating_sub(digit);
+        if partner != digit && (1..=9).contains(&partner) {
+            digit_bit(partner)
+        } else {
+            0
+        }
     }
 }
 

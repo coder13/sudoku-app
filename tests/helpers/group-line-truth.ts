@@ -9,6 +9,39 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-sum-house') {
+    const { cells, domains, rules, house, total } = proof.evidence
+    const [target, endpoint, partner] = cells
+    const [line, sum] = rules.map(index => puzzle.rules![index])
+    assert.ok(line.type === 'modular' || line.type === 'entropic')
+    assert.equal(line.type, type)
+    assert.equal(new Set(cells).size, 3)
+    const offset = line.cells.indexOf(target) - line.cells.indexOf(endpoint)
+    assert.ok(line.cells.includes(target) && line.cells.includes(endpoint))
+    assert.equal(Math.abs(offset) % 3, 0)
+    const samePair = ([a, b]: readonly number[]) => a === endpoint && b === partner || b === endpoint && a === partner
+    const printedTotal = sum.type === 'adjacent-total' && samePair(sum.cells) ? sum.sum
+      : sum.type === 'xv' && sum.five?.pairs?.some(samePair) ? 5
+      : sum.type === 'xv' && sum.ten?.pairs?.some(samePair) ? 10 : undefined
+    assert.equal(total, printedTotal)
+    const sites = variantHouseCells(house, puzzle)
+    assert.ok(sites.includes(target) && sites.includes(partner))
+
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const fits = (digit: number, index: number) => Boolean(domains[index] & (1 << (digit - 1)))
+    const withHouse = new Set<number>()
+    const withoutHouse = new Set<number>()
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) {
+      if (b === c || b + c !== total || group(a) !== group(b) || !fits(a, 0) || !fits(b, 1) || !fits(c, 2)) continue
+      if (sites.includes(endpoint) && a === b) continue
+      withoutHouse.add(a)
+      if (a !== c) withHouse.add(a)
+    }
+    assert.ok(withHouse.size)
+    assert.deepEqual(proof.actions, [...withoutHouse].filter(digit => !withHouse.has(digit))
+      .map(digit => ({ eliminate: { cell: target, digit } })))
+    return
+  }
   if (proof.evidence.type === 'group-line-house') {
     const { cells, domains, rule: index, house } = proof.evidence
     const rule = puzzle.rules![index]

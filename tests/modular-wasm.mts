@@ -25,7 +25,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 598, 27, 2178, 31, false, false, 'medium'],
+  ['HCHW', 706, 31, 2286, 35, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -164,15 +164,18 @@ test('the published HCHW stall offers two explained Modular and row hints in Pla
     { cells: [4, 7], row: 0, rule: 19, digits: [1, 2, 3] },
     { cells: [29, 32], row: 3, rule: 17, digits: [4, 5, 6] },
   ]
-  assert.equal(choices.length, expected.length)
+  const houseChoices = choices.filter(hint => 'variant' in hint.evidence &&
+    hint.evidence.variant.source?.deduction.evidence.type === 'group-line-house')
+  assert.equal(houseChoices.length, expected.length)
   assert.ok(candidates)
   const position = variantPosition(game.variant!, stalled.position)
   const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
   try {
-    assert.equal(await scan.count('modular'), 6)
+    const targets = new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.equal(await scan.count('modular'), targets.size)
   } finally { scan.close() }
   for (const [i, { cells, row, rule, digits }] of expected.entries()) {
-    const hint = choices[i]
+    const hint = houseChoices[i]
     assert.ok('variant' in hint.evidence && hint.evidence.variant.source)
     const { description, reason, source: { deduction } } = hint.evidence.variant
     assertModularProof(position.puzzle, deduction)
@@ -190,6 +193,84 @@ test('the published HCHW stall offers two explained Modular and row hints in Pla
     assert.deepEqual(undo(played).position, stalled.position)
     assert.deepEqual(redo(undo(played)).position, played.position)
   }
+})
+
+test('HCHW shows how the line and the off-line sum rule out 5 in R1C8', async () => {
+  const { code, solution } = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const { game } = await prepareImportedPuzzle(code)
+  const { eliminations } = load('hchw-sum-house')
+  const stalled = { ...game, position: { ...game.position, eliminations } }
+  const { choices, candidates } = await puzzleHints(stalled, 'all', 'modular')
+  const actions = [{ eliminate: { cell: 7, digit: 5 } }]
+  const hint = choices.find(hint => 'variant' in hint.evidence &&
+    hint.evidence.variant.source?.deduction.evidence.type === 'group-line-sum-house' &&
+    hint.evidence.variant.source.deduction.evidence.cells.join(',') === '7,4,3')
+  assert.ok(hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  assert.deepEqual(hint.actions, actions)
+  assert.notEqual(solution[7], '5')
+  const { description, reason, source: { deduction } } = hint.evidence.variant
+  assert.match(description, /R1C5 and R1C4 add to 7/i)
+  assert.match(reason, /R1C8 were 5.*Only 2.*R1C4 would also be 5.*5 in row 1/i)
+  assert.deepEqual(deduction.evidence, {
+    type: 'group-line-sum-house', rules: [19, 10], house: { row: 0 },
+    cells: [7, 4, 3], domains: [504, 7, 56], total: 7,
+  })
+  assertModularProof(game.variant!.puzzle, deduction)
+
+  const columnHint = choices.find(hint => 'variant' in hint.evidence &&
+    hint.evidence.variant.source?.deduction.evidence.type === 'group-line-sum-house' &&
+    hint.evidence.variant.source.deduction.evidence.cells.join(',') === '16,43,52')
+  assert.ok(columnHint && 'variant' in columnHint.evidence && columnHint.evidence.variant.source)
+  assert.deepEqual(columnHint.actions, [5, 8].map(digit => ({ eliminate: { cell: 16, digit } })))
+  assert.match(columnHint.evidence.variant.reason, /It cannot use 5, which would repeat in column 8.*Only 8.*R6C8 would also be 5.*5 in column 8/i)
+  assertModularProof(game.variant!.puzzle, columnHint.evidence.variant.source.deduction)
+
+  const position = variantPosition(game.variant!, stalled.position)
+  const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
+  try {
+    const targets = new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.equal(await scan.count('modular'), targets.size)
+  } finally { scan.close() }
+  assert.ok(candidates)
+  const played = applyDeduction(stalled, actions, candidates)
+  assert.ok((played.position.eliminations?.[7] ?? 0) & (1 << 4))
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+})
+
+test('a positive V combines with an Entropic Line and a shared house', async () => {
+  const position: { puzzle: VariantPuzzle; eliminations: number[] } = {
+    puzzle: { version: 1, givens: '0'.repeat(81), rules: [
+      { type: 'xv', five: { pairs: [[3, 4]], negative: false } },
+      { type: 'entropic', cells: [4, 13, 14, 7] },
+    ] },
+    eliminations: Array(81).fill(0),
+  }
+  const allow = (cell: number, digits: number[]) => {
+    position.eliminations[cell] = 511 ^ digits.reduce((mask, digit) => mask | 1 << (digit - 1), 0)
+  }
+  allow(3, [1, 3])
+  allow(4, [2, 4])
+  allow(7, [1, 3, 5])
+  const hints = async () => (await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: ['entropic'], limit: 0xffff_ffff,
+  })).filter(proof => proof.evidence.type === 'group-line-sum-house')
+  const [proof, ...others] = await hints()
+  assert.ok(proof)
+  assert.equal(others.length, 0)
+  assert.deepEqual(proof.actions, [{ eliminate: { cell: 7, digit: 3 } }])
+  assertGroupLineProof(position.puzzle, proof, 'entropic')
+
+  // The other low digit can complete the V without repeating 3.
+  allow(4, [1, 2, 4])
+  allow(3, [1, 3, 4])
+  assert.deepEqual(await hints(), [])
+  // The original domains also permit 3 when the sum partner shares no house.
+  allow(3, [1, 3])
+  allow(4, [2, 4])
+  allow(40, [1, 3, 5])
+  position.puzzle.rules = [position.puzzle.rules![0], { type: 'entropic', cells: [4, 13, 14, 40] }]
+  assert.deepEqual(await hints(), [])
 })
 
 test('a repeated group can exclude a digit across a shared house on either kind of line', async () => {

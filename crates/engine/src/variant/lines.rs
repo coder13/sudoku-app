@@ -1,7 +1,7 @@
+mod group_sums;
 mod groups;
-mod modular_sum;
 
-pub(super) use modular_sum::ModularSum;
+pub(super) use group_sums::{GroupSumHouse, ModularSum, compile_line_sums};
 
 use std::{collections::HashMap, ops::Range};
 
@@ -189,11 +189,8 @@ impl LineConstraint {
                 if removals == [0, 0] || left == pair_domains[0] || right == pair_domains[1] {
                     continue;
                 }
-                if let Some(&house) = puzzle.memberships[a].iter().find(|&&index| {
-                    puzzle.house_masks[index] & (1u128 << b) != 0
-                        && puzzle.search_houses.binary_search(&index).is_ok()
-                }) {
-                    visit(puzzle.houses[house].kind, [a, b], pair_domains, removals);
+                if let Some(house) = puzzle.shared_enforced_house(a, &[b]) {
+                    visit(house, [a, b], pair_domains, removals);
                 }
             }
         }

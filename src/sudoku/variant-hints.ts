@@ -294,6 +294,27 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'group-line-sum-house': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groupName = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const [target, endpoint, partner] = evidence.cells
+      const { total } = evidence
+      description = `${nameCell(target)} and ${nameCell(endpoint)} must use the same ${groupName} on this ${line} Line. ${nameCell(endpoint)} and ${nameCell(partner)} add to ${total}.`
+      const { digit } = focus[0]
+      const group = DIGITS.filter(value => lineGroupMask(kind, digit) & (1 << (value - 1)))
+      const otherDigit = total - digit
+      const repeatsAtEndpoint = variantHouseCells(evidence.house, puzzle).includes(endpoint) &&
+        (evidence.domains[1] & (1 << (digit - 1))) && (evidence.domains[2] & (1 << (otherDigit - 1)))
+      const house = houseLabel(evidence.house)
+      const endpointReason = repeatsAtEndpoint ? ` It cannot use ${digit}, which would repeat in ${house}.` : ''
+      const example = `If ${nameCell(target)} were ${digit}, ${nameCell(endpoint)} would need a digit from {${group.join(', ')}}.${endpointReason} Only ${otherDigit} in that group can complete the sum, so ${nameCell(partner)} would also be ${digit}. That repeats ${digit} in ${house}.`
+      reason = focus.length === 1 ? example : `Each crossed-out candidate forces a repeated digit. ${example}`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+        .map(value => ({ cell: cells[i], digit: value })))
+      break
+    }
     case 'group-line-house': {
       cells = evidence.cells
       const kind = technique === 'entropic' ? 'entropic' : 'modular'

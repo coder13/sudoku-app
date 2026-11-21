@@ -244,6 +244,19 @@ pub enum VariantEvidence {
         /// Current candidate masks, including placed digits.
         domains: [u16; 2],
     },
+    /// A repeating group and a two-cell sum force a repeat in a shared house.
+    GroupLineSumHouse {
+        /// Indices of the line and positive sum rules, in that order.
+        rules: [usize; 2],
+        /// Shared house of the first and last cells.
+        house: VariantHouseKind,
+        /// Candidate cell, its same-group partner, and the other sum endpoint.
+        cells: [usize; 3],
+        /// Input candidate masks in the same order, including placed digits.
+        domains: [u16; 3],
+        /// Positive sum on the edge between the last two cells.
+        total: u8,
+    },
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
@@ -515,6 +528,7 @@ impl VariantDeduction {
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -1063,6 +1077,25 @@ impl CompiledVariant {
                             }
                         },
                     );
+                }
+                for clue in self.group_sum_houses.iter().filter(|clue| clue.technique == technique.id()) {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let removed = position.masks[clue.cells[0]] & clue.removals(domains);
+                    if removed != 0 {
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions: digits(removed)
+                                .map(|digit| HintAction::Eliminate(Candidate { cell: clue.cells[0], digit }))
+                                .collect(),
+                            evidence: VariantEvidence::GroupLineSumHouse {
+                                rules: clue.rules,
+                                house: clue.house,
+                                cells: clue.cells,
+                                domains,
+                                total: clue.total,
+                            },
+                        });
+                    }
                 }
                 if technique == Modular {
                     for clue in &self.modular_sums {

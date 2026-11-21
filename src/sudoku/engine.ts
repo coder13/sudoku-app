@@ -580,6 +580,7 @@ export type VariantDeduction = {
   evidence:
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
+    | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
     | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }

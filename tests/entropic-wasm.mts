@@ -24,7 +24,7 @@ const expected = [
   ['EoGB', 452, 69, 982, 69, true, true],
   ['BSEJ', 116, 6, 1600, 93, false, true],
   ['Hyk5', 180, 9, 2871, 28, false, false],
-  ['Hafj', 107, 5, 107, 5, false, false],
+  ['Hafj', 309, 13, 309, 13, false, false],
   ['Ksy3', 2340, 159, 2680, 159, true, true],
 ] as const
 for (const [
