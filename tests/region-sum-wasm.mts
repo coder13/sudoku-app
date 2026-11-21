@@ -56,7 +56,7 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
       assert.equal(previous.rating.status, 'stalled')
     }
     const solution = await puzzleSolution(game)
-    assert.equal(solution.rating.scoringVersion, 14)
+    assert.equal(solution.rating.scoringVersion, 15)
     assert.equal(solution.rating.score.points, points)
     assert.equal(solution.rating.score.counts[distinctTechnique] ?? 0, newProofs)
     assert.equal(solution.steps.length, steps)
@@ -92,8 +92,8 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
 
 test('an imported Region Sum puzzle refreshes its saved score after the logical profile changes', async () => {
   const { game } = await prepareImportedPuzzle(mixed.code)
-  assert.equal(game.variantRatingVersion, 14)
-  const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 13 }
+  assert.equal(game.variantRatingVersion, 15)
+  const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 14 }
   assert.equal(needsPuzzleGrade(legacy), true)
   const updated = await prepareImportedPuzzle(mixed.code, [legacy])
   assert.equal(updated.game.score, 3830)

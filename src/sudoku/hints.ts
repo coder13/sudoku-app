@@ -68,6 +68,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'renban-sum': 'Renban and Little Killer',
   'region-sum-distinct': 'Region Sum with distinct digits',
   'region-sum-house': 'Region Sum lines in one region',
+  'thermometer-house-support': 'Thermometer and house',
   'little-killer-house-support': 'Little Killer and shared houses',
   'renban-sum-ray-houses': 'Renban sum and shared houses',
   'renban-sum-house': 'Renban and Little Killer with a shared house',

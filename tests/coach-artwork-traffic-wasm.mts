@@ -175,8 +175,9 @@ test('Sudoku Spider retains the complete Thermometer puzzle and authored fills t
       assert.equal(await scan.count('thermometer'), actions.size)
     } finally { scan.close() }
     const walkthrough = await puzzleSolution(game)
-    assert.equal(walkthrough.rating.status, 'stalled')
-    assert.ok(walkthrough.steps.length > 0)
+    assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
+    assert.equal(walkthrough.board, solution)
+    assert.equal(walkthrough.steps.length, 100)
     for (const [cell, digit] of [...walkthrough.board].entries()) {
       if (digit !== '0') assert.equal(digit, solution[cell])
     }

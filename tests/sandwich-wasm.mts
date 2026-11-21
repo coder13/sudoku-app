@@ -10,6 +10,7 @@ import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { checkSandwichProof } from './helpers/sandwich-proof.ts'
+import { assertThermometerHouseProof } from './helpers/thermometer-house-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -36,16 +37,22 @@ for (const [index, source] of sources.entries()) {
     if (index < 2) {
       assert.equal(solution.rating.score.points, index === 0 ? 2564 : 1886)
       assert.equal(solution.steps.length, index === 0 ? 87 : 76)
+    } else {
+      assert.deepEqual(solution.rating.status, { solved: 'very-hard' })
+      assert.equal(solution.rating.score.points, 5942)
+      assert.equal(solution.steps.length, 163)
     }
     let play = game
-    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: await getVariantPlayOrder() })
+    const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: await getVariantPlayOrder(source.puzzle) })
     for (const step of trace.steps) {
       for (const action of step.actions) {
         if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
         else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
       }
       const before = play
-      play = applyDeduction(play, step.actions, variantHouseMasks(source.puzzle, valuesOf(play), play.position.eliminations))
+      const masks = variantHouseMasks(source.puzzle, valuesOf(play), play.position.eliminations)
+      if (step.technique === 'thermometer-house-support') assertThermometerHouseProof(source.puzzle, valuesOf(play), masks, step)
+      play = applyDeduction(play, step.actions, masks)
       assert.deepEqual(undo(play).position, before.position)
       assert.deepEqual(redo(undo(play)).position, play.position)
     }

@@ -205,4 +205,31 @@ No browser review or screenshot approval is complete. Preserve the open checklis
 
 Sudoku Spider uses 26 grey and red background fills to illustrate the grid. Its mathematical clues are ten givens and eight encoded Thermometers. The importer checks the complete authoring data and the normalized cell shades against the reviewed export. It recognizes the same artwork when a Current State export adds known player entries, Pencil candidates, or player colors. Preview, Play, restart, reload and sharing keep the authored fills separate from the player’s annotations. The same check joins the raw, short and collection links for Pumpkin 2024 and Halloween Candy 1.
 
-An independent counter found the published completion of Sudoku Spider. The current Play profile offers ten opening hints and explains 68 steps before stalling. Every recorded action agrees with the published grid. A paired re-decode of 72 captured 9×9 codes admitted the three reviewed exports and matched all 69 other outcomes. Changed authoring data, new mathematical instructions accompanying a published code, and authored colors outside the reveal data of a Fog puzzle continue to reject.
+An independent counter found the published completion of Sudoku Spider. The Play profile before the joint Thermometer and house deduction offered ten opening hints and explained 68 steps before stalling. Every recorded action agreed with the published grid. A paired re-decode of 72 captured 9×9 codes admitted the three reviewed exports and matched all 69 other outcomes. Changed authoring data, new mathematical instructions accompanying a published code, and authored colors outside the reveal data of a Fog puzzle continue to reject.
+
+
+## Thermometer deductions with a shared house
+
+A Thermometer can share two or more cells with a row, column, region, diagonal, or extra house. A set of digits that increases from the bulb can still leave the house unable to place all its digits. The new Medium technique, worth 64 points, removes a candidate only when it fits the two rules separately and has no support when they are combined. Play, Technique Finder, the walkthrough, and practice use the same proof. The three practice examples use a row, column, and box. A separate test exercises the region order of an irregular Jigsaw partition.
+
+| Archived Sudoku Coach puzzle | Previous walkthrough | Walkthrough with Thermometer and house |
+| --- | --- | --- |
+| Sudoku Spider | 68 steps, partial at 9,312 points | 100 steps, Medium at 1,952 points |
+| Thermo Sandwich | 187 steps, Extreme at 17,026 points | 163 steps, Very Hard at 5,942 points |
+| carved out | 121 steps, Medium at 1,843 points | 121 steps, Medium at 1,843 points |
+| cauldron | 82 steps, partial at 12,215 points | 82 steps, partial at 12,215 points |
+| Thermos and Region Sums | 156 steps, Medium at 3,830 points | 156 steps, Medium at 3,830 points |
+
+All five retained the same exact completions. Each trace action agrees with the published completion, and independent assignment enumeration checks each new proof. With the technique disabled, all five replay their previous paths.
+
+Nine alternating, warmed Wasm samples on Darwin arm64 measured the median thread CPU times below in milliseconds. Rated opening-hint requests retained ten choices for the first four puzzles and eight for Thermo Sandwich.
+
+| Archived puzzle | Rating before → after | Ranked opening hints before → after |
+| --- | --- | --- |
+| Sudoku Spider | 218.169 → 0.762 | 0.326 → 1.131 |
+| carved out | 0.869 → 0.930 | 0.300 → 0.449 |
+| cauldron | 531.867 → 534.975 | 0.135 → 0.140 |
+| Thermos and Region Sums | 0.963 → 0.960 | 0.260 → 2.046 |
+| Thermo Sandwich | 634.057 → 67.196 | 238.103 → 244.454 |
+
+The lower-tier generation check treats the new deduction as a Medium move. Five former recipes could no longer reach their advertised difficulty. Checked replacements cover the same difficulty range and include two distinct Extreme recipes. The new Extreme recipes have 17 and 21 givens.

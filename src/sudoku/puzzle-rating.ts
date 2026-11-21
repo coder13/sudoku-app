@@ -7,6 +7,7 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
+const THERMOMETER_RATING_VERSION = 15
 const REGION_SUM_LINE_RATING_VERSION = 13
 const REGION_SUM_HOUSE_RATING_VERSION = 14
 const ENTROPIC_LINE_RATING_VERSION = 12
@@ -17,6 +18,7 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  if (rules?.some(rule => rule.type === 'thermometer')) return THERMOMETER_RATING_VERSION
   const regionSumCount = rules?.filter(rule => rule.type === 'region-sum').length ?? 0
   if (regionSumCount >= 2) return REGION_SUM_HOUSE_RATING_VERSION
   if (regionSumCount === 1) return REGION_SUM_LINE_RATING_VERSION

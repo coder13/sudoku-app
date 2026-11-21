@@ -664,6 +664,19 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
       break
     }
+    case 'thermometer-house': {
+      const house = houseLabel(evidence.house)
+      const shared = evidence.lineCells.filter(cell => evidence.cells.includes(cell))
+      cells = [...new Set([...evidence.cells, ...evidence.lineCells])]
+      description = `Read the Thermometer cells in ${house} from ${nameCell(shared[0])} to ${nameCell(shared[shared.length - 1])}. Fit the remaining digits into ${house}.`
+      const blocked = evidence.rejected.slice(0, 2).map(mask => Array.from({ length: 9 }, (_, i) => i + 1)
+        .filter(digit => mask & (1 << (digit - 1))).join('–'))
+      reason = [blocked.length
+        ? `The sequence${blocked.length === 1 ? '' : 's'} ${alternatives.format(blocked)} leave${blocked.length === 1 ? 's' : ''} too few places for the remaining digits in ${house}.`
+        : `Check where the remaining digits can go for each set on the Thermometer.`,
+      `None of the assignments that fill ${house} uses the crossed-out candidates.`].join(' ')
+      break
+    }
     case 'region-sum-house': {
       const region = houseLabel(evidence.house)
       const inRegion = evidence.lines.flatMap(line => line.parts[line.inRegion].cells)

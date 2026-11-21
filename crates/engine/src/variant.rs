@@ -37,7 +37,7 @@ pub use logical::{
     VariantSumPairProof, VariantTechnique, VariantTrace,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
-    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof,
+    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
 };
 use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(

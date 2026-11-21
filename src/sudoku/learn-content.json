@@ -6929,6 +6929,54 @@
       "variant": true,
       "lessons": [
         {
+          "id": "thermometer-house-support",
+          "title": "Thermometer and house",
+          "summary": "When two or more cells of a Thermometer share a row, column, or region, check which increasing assignments leave room for all the other digits.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check the rest of the row, column, or region"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find cells of a Thermometer that share a house. Their digits must increase from the bulb toward the tip. The remaining cells in that house need every digit the Thermometer leaves over.",
+                "Try a set of increasing digits and check whether the other cells can use the remaining digits. If each assignment with a candidate leaves the house short of a digit, remove that candidate."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "thermometer-house-support",
+              "copy": {
+                "description": "The Thermometer from R6C4 through R6C1 must use 5 in R6C3 and 6 in R6C2.",
+                "reason": "R6C7 can only use 2 or 6. If R6C4 is 2, the Thermometer already uses both digits in row 6. Remove 2 from R6C4."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "thermometer-house-support",
+                  "title": "Thermometer and house"
+                }
+              ],
+              "guide": {
+                "start": "Find the Thermometer cells in the same row, column, or region.",
+                "check": "For each set of increasing digits, check which digits the other cells still need.",
+                "reason": "Remove a candidate if every assignment using it leaves the house without a valid placement."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Thermometers",
+              "href": "/learn/thermometer"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "thermometer",
           "title": "Thermometers",
           "summary": "Digits on a thermometer rise from its bulb to its tip. Every cell needs room for the smaller digits before it and the larger digits after it. A long thermometer can narrow a cell even on an otherwise empty grid.",
