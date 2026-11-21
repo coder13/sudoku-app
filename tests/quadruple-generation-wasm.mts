@@ -37,7 +37,7 @@ function gameOf(value: GeneratedVariant, id: string): Game {
 
 function verify(value: GeneratedVariant) {
   assert.deepEqual(value.rating.status, { solved: 'medium' })
-  assert.equal(value.rating.scoringVersion, 13)
+  assert.equal(value.rating.scoringVersion, 14)
   assert.ok(value.rating.counts.quadruple > 0)
   assert.ok(value.givens >= 16 && value.givens <= 30)
   assertVariantCompletion(value.puzzle, value.solution)

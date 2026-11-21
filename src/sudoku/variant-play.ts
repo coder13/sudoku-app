@@ -24,8 +24,12 @@ function withGroupLineHouses(order: readonly string[]) {
   return order.flatMap(id => id === 'skyscrapers' ? ['group-line-house-support', id] : [id])
 }
 
-function withDistinctRegionSums(order: readonly string[]) {
-  return order.flatMap(id => id === 'region-sum' ? [id, 'region-sum-distinct'] : [id])
+function withRegionSumTechniques(order: readonly string[], sharedRegion = false) {
+  return order.flatMap(id => {
+    if (id === 'region-sum') return [id, 'region-sum-distinct']
+    if (id === 'skyscrapers' && sharedRegion) return [id, 'region-sum-house']
+    return [id]
+  })
 }
 
 function withLittleKillerHouses(order: readonly string[]) {
@@ -47,11 +51,11 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   const rules = puzzle?.rules ?? []
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
-  const hasRegionSumLine = rules.some(rule => rule.type === 'region-sum')
+  const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
   const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
   const hasGroupPairs = hasEntropicLine && rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasEntropicLine && !hasRegionSumLine) return playProfile
+  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -62,7 +66,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
     const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
     const groupOrder = hasEntropicLine ? withGroupLineHouses(rayOrder) : rayOrder
-    const sumOrder = hasRegionSumLine ? withDistinctRegionSums(groupOrder) : groupOrder
+    const sumOrder = regionSumLines.length ? withRegionSumTechniques(groupOrder, regionSumLines.length >= 2) : groupOrder
     const scoped = sumOrder.flatMap(id => {
       if (hasGroupPairs && id === 'group-line-house-support') return [id, 'group-order-contradiction']
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
@@ -87,7 +91,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
   const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
     : id === 'little-killer' ? withLittleKillerHouses(order)
       : id === 'entropic' ? withGroupLineHouses(order)
-        : id === 'region-sum' ? withDistinctRegionSums(order) : order
+        : id === 'region-sum' ? withRegionSumTechniques(order, true) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')

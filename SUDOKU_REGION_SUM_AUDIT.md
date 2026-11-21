@@ -185,3 +185,30 @@ The app artifacts measured 4,297,093 bytes (1,133,862 gzip) in production and 4,
 ```sh
 node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm
 ```
+
+
+## Parts from different lines in one region
+
+The 133-point Hard technique `region-sum-house` checks disjoint parts from different lines in the same box or Jigsaw region. Each part must first match a total available to the other parts of its own line. The engine then joins compatible digit sets across the region and accounts for the remaining cells. When the line parts cover the whole region, their totals sum to 45. The evidence records each part’s candidates, the earlier and remaining line totals, and the other cells in the region. Separate visits and grouped visits follow the authored layout. The app retries saved scores for puzzles with multiple Region Sum lines. Variant scoring version 14 records the revised profile. Native clients can enable the technique explicitly.
+
+In FaxQ, three parts fill box 9. Matching its digits first narrows the possible triples of totals. The intervening logical steps set one line’s total and a second region proof fixes the last total. The walkthrough reaches the published solution in 108 steps and 3,977 points (Master), using two new region proofs and seven distinct-digit Region Sum proofs. The previous order still stalls at 22 steps and 881 points with the new technique disabled. Default exact verification matches the original solution, and the 20,000-node budget still reports the search limit. Symmetease, 91BB, 8AGt, 8oer and 220V keep their complete walkthroughs and scores.
+
+The independent oracle enumerates the nine region cells in order and verifies the source line parts, their before and after totals, and every removal. The Wasm contract tests cover the full published trace, opening hints and Finder, authored grouped visits in a Jigsaw layout, and practice with both a complete and a partial region partition. Chromium checks the complete FaxQ Preview and Play flows and the Learn example on desktop and phone.
+
+The benchmarks pair the same local app toolchain builds of `5eb98e07` and the shared-region implementation. Each timing is median / p95 in thread CPU milliseconds across seven warmed alternating samples. The baseline and current hint requests use the difficulty each profile assigns.
+
+| Puzzle | Unique solution before → after | Rating before → after | Ten hints before → after |
+| --- | ---: | ---: | ---: |
+| Symmetease | 0.236 / 0.247 → 0.235 / 0.243 | 0.326 / 0.747 → 0.380 / 0.893 | 37.721 / 40.959 → 0.941 / 1.026 |
+| 91BB | 1.078 / 1.525 → 1.397 / 1.599 | 1.458 / 2.192 → 1.508 / 2.030 | 0.567 / 0.636 → 0.524 / 0.583 |
+| 8AGt | 1.025 / 1.146 → 1.007 / 1.117 | 7.545 / 9.418 → 7.588 / 9.425 | 0.373 / 0.436 → 0.365 / 0.466 |
+| 8oer | 0.733 / 0.996 → 0.758 / 1.067 | 1.216 / 1.691 → 1.318 / 1.946 | 0.508 / 0.668 → 0.473 / 0.564 |
+| FaxQ | 138.731 / 148.367 → 132.415 / 139.555 | 74.095 / 77.062 → 8.750 / 12.002 | 17.160 / 17.724 → 32.348 / 35.211 |
+| 7rs9 | 1.186 / 1.288 → 1.141 / 1.213 | 4.163 / 6.142 → 5.904 / 6.212 | 1.170 / 1.274 → 1.210 / 1.300 |
+| HCHW | 0.384 / 0.445 → 0.301 / 0.432 | 9.597 / 12.021 → 8.098 / 11.613 | 0.478 / 0.664 → 0.428 / 0.582 |
+
+Candidate and exact-solution responses match on all seven controls. Disabling the new detector reproduces the baseline hint and rating responses after normalizing the rating version. FaxQ's opening hint request takes longer under its new Master scope. Symmetease fills the ten-choice list earlier, with three additional region proofs. All twenty deterministic Medium New Puzzle outputs match apart from versioned rating metadata and the enabled order. Each generated puzzle has a unique completion and still depends on its Region Sum rules.
+
+```sh
+node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm region-sum-house
+```

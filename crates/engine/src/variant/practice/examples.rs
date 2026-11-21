@@ -107,6 +107,22 @@ fn entropic_order_practice(givens: &'static str, cell: usize, digit: u8) -> Exam
     )
 }
 
+// The paths come from the three lines crossing box 9 of Coach puzzle FaxQ.
+fn region_sum_house_seed(givens: &'static str, cell: usize, digit: u8, include_first: bool) -> ExampleSeed {
+    let lines: [&[usize]; 3] = [
+        &[20, 30, 40, 50, 60, 70, 80],
+        &[78, 79, 69, 59, 58],
+        &[62, 71, 61, 51, 42, 43],
+    ];
+    let mut example = seed(givens, cell, digit, lines.map(|cells| PuzzleRule::RegionSum {
+        cells: cells.to_vec(), group_by_region: false, segments: None,
+    }));
+    if !include_first {
+        example.rules.remove(0);
+    }
+    example
+}
+
 // Authored and seeded variant exercises. Each suggested action
 // is verified against the current detector and the unique completion.
 pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
@@ -1117,6 +1133,20 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                     },
                     PuzzleRule::Renban { cells: vec![52, 43], segments: None },
                 ],
+            ),
+        ],
+        RegionSumHouse => [
+            region_sum_house_seed(
+                "840700560306000901070156430508000200900210050127060803012000080400000620705630000",
+                79, 4, true,
+            ),
+            region_sum_house_seed(
+                "840000000356020901009006030508340209000218000007000000012079305493000000780030100",
+                61, 4, true,
+            ),
+            region_sum_house_seed(
+                "000790502306020071000106030568000009004208756127960000610479000003501000000002104",
+                60, 2, false,
             ),
         ],
         RegionSumDistinct => [

@@ -4,8 +4,9 @@ import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { useWasmWorker } from '../tests/helpers/wasm-worker.ts'
-const [mainPath, currentPath] = process.argv.slice(2)
+const [mainPath, currentPath, technique = 'region-sum-distinct'] = process.argv.slice(2)
 assert.ok(mainPath && currentPath, 'Pass the paths to the released and current app Wasm files.')
+assert.ok(['region-sum-distinct', 'region-sum-house'].includes(technique), 'Choose a Region Sum technique to compare.')
 useWasmWorker(currentPath)
 
 async function engine(path) {
@@ -36,11 +37,13 @@ const clock = process.threadCpuUsage
   ? () => { const { user, system } = process.threadCpuUsage(); return (user + system) / 1000 }
   : () => performance.now()
 console.log(JSON.stringify({ timing: process.threadCpuUsage ? 'thread-cpu-ms' : 'wall-ms', samples: 7 }))
-const expectedChange = new Set(['91BB', '8AGt', '8oer', 'FaxQ', '7rs9'])
+const expectedChange = new Set(technique === 'region-sum-house'
+  ? ['Symmetease', 'FaxQ'] : ['91BB', '8AGt', '8oer', 'FaxQ', '7rs9'])
 for (const { puzzle, solution, url } of cases) {
   const id = url.split('/').at(-1)
-  const techniqueOrder = await getVariantPlayOrder(puzzle)
-  const original = techniqueOrder.filter(id => id !== 'region-sum-distinct')
+  const techniqueOrder = (await getVariantPlayOrder(puzzle))
+    .filter(id => technique === 'region-sum-house' || id !== 'region-sum-house')
+  const original = techniqueOrder.filter(id => id !== technique)
   const gradeFor = async (engine, techniqueOrder) => {
     const rating = await engine({ type: 'variant', operation: 'rate', position: { puzzle }, techniqueOrder })
     return rating.status.solved ?? 'medium'

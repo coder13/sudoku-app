@@ -8178,6 +8178,54 @@
           "difficulty": "hard"
         },
         {
+          "id": "region-sum-house",
+          "title": "Region Sum lines in one region",
+          "summary": "Use the digits 1 to 9 to check which Region Sum parts can fit together in the same box or Jigsaw region.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Put the line parts together"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Look for separate Region Sum parts in one box or Jigsaw region. Check each part’s totals against the other parts on its line. Then keep only the combinations that give the shared region one of each digit.",
+                "If the parts fill the region, their totals add up to 45. If cells are left over, include their candidates when you check which digits fit."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "region-sum-house",
+              "copy": {
+                "description": "Three line parts fill box 9. Two of them total 9 and 20, so the third totals 45 − 9 − 20 = 16.",
+                "reason": "That third part contains a 6 in R8C7. If R9C8 is 4, R9C7 also needs to be 6 to reach 16. Remove 4 from R9C8 because the two 6s would share box 9."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "region-sum-house",
+                  "title": "Region Sum lines in one region"
+                }
+              ],
+              "guide": {
+                "start": "Find a box or Jigsaw region that contains parts of different Region Sum lines.",
+                "check": "Compare the totals of those parts and check which sets of digits fit together.",
+                "reason": "Remove a candidate if none of the remaining assignments uses it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Region Sum with distinct digits",
+              "href": "/learn/region-sum-distinct"
+            }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "region-sum-distinct",
           "title": "Region Sum with distinct digits",
           "summary": "Find totals that every part of a Region Sum line can make without repeating a digit inside a part.",

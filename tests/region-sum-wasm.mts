@@ -11,7 +11,7 @@ import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/s
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
-import { assertRegionSumDistinctProof } from './helpers/region-sum-distinct-truth.ts'
+import { assertRegionSumDistinctProof, assertRegionSumHouseProof } from './helpers/region-sum-distinct-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -24,12 +24,13 @@ const mixed = coach[0]
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
 const distinctTechnique = 'region-sum-distinct'
+const houseTechnique = 'region-sum-house'
 const appResults = [
   [published, 986, 68, true, 0],
   [mixed, 3830, 156, true, 6],
   [coach[1], 2815, 219, true, 1],
   [coach[2], 3218, 146, true, 4],
-  [coach[3], 881, 22, false, 5],
+  [coach[3], 3977, 108, true, 7],
 ] as const
 for (const [source, points, steps, complete, newProofs] of appResults) {
   test(`complete source ${source.title} imports with checked rules, retained hints and an honest solution path`, async () => {
@@ -45,14 +46,20 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
     const hints = await puzzleHints(game)
     assert.ok(hints.choices.length > 1)
     if (source === coach[3]) {
-      assert.equal(hints.choices.length, 3)
-      assert.equal(hints.choices.filter(hint => hint.technique === distinctTechnique).length, 2)
+      assert.ok(hints.choices.some(hint => hint.technique === houseTechnique))
+      const position = variantPosition(game.variant!)
+      const previousOrder = (await getVariantPlayOrder(position.puzzle)).filter(technique => technique !== houseTechnique)
+      const previous = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: previousOrder })
+      assert.equal(previous.steps.length, 22)
+      assert.equal(previous.rating.points, 881)
+      assert.equal(previous.rating.status, 'stalled')
     }
     const solution = await puzzleSolution(game)
-    assert.equal(solution.rating.scoringVersion, 13)
+    assert.equal(solution.rating.scoringVersion, 14)
     assert.equal(solution.rating.score.points, points)
     assert.equal(solution.rating.score.counts[distinctTechnique] ?? 0, newProofs)
     assert.equal(solution.steps.length, steps)
+    assert.equal(solution.rating.score.counts[houseTechnique] ?? 0, source === coach[3] ? 2 : 0)
     assert.equal(solution.rating.status === 'stalled', !complete)
     assert.equal(solution.board === source.solution, complete)
     let play = game
@@ -67,6 +74,7 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
       const values = valuesOf(play)
       const masks = variantHouseMasks(position.puzzle, values, play.position.eliminations)
       if (step.technique === distinctTechnique) assertRegionSumDistinctProof(position.puzzle, values, masks, step)
+      if (step.technique === houseTechnique) assertRegionSumHouseProof(position.puzzle, values, masks, step)
       play = applyDeduction(play, step.actions, masks)
       assert.deepEqual(undo(play).position, before.position)
       assert.deepEqual(redo(undo(play)).position, play.position)
@@ -83,8 +91,8 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
 
 test('an imported Region Sum puzzle refreshes its saved score after the logical profile changes', async () => {
   const { game } = await prepareImportedPuzzle(mixed.code)
-  assert.equal(game.variantRatingVersion, 13)
-  const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 12 }
+  assert.equal(game.variantRatingVersion, 14)
+  const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 13 }
   assert.equal(needsPuzzleGrade(legacy), true)
   const updated = await prepareImportedPuzzle(mixed.code, [legacy])
   assert.equal(updated.game.score, 3830)
@@ -135,6 +143,74 @@ test('three practice positions and a fresh drill have independently valid distin
       type: 'variant', operation: 'check-practice-move', position, technique, action: suggestion,
     }), deduction)
   }
+})
+
+test('shared-region proofs include the original candidates in Finder and Play', async () => {
+  const { game, grade } = await prepareImportedPuzzle(coach[3].code)
+  assert.ok(game.variant)
+  assert.equal(grade?.difficulty, 'master')
+  const position = variantPosition(game.variant)
+  const values = valuesOf(game)
+  const masks = variantHouseMasks(position.puzzle, values)
+  const proven = await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: [houseTechnique], limit: 0xffff_ffff,
+  })
+  assert.equal(proven.length, 2)
+  for (const proof of proven) assertRegionSumHouseProof(position.puzzle, values, masks, proof)
+  const application = await puzzleHints(game, 'all', houseTechnique)
+  assert.equal(application.available, proven.length)
+  const scan = watchTechniqueScan(values, game.position.eliminations, position)
+  try {
+    const actions = new Set(proven.flatMap(proof => proof.actions.map(action => JSON.stringify(action))))
+    assert.equal(await scan.count(houseTechnique), actions.size)
+  } finally { scan.close() }
+})
+
+test('shared-region practice retains unique grids and includes a region with unused line cells', async () => {
+  const technique = houseTechnique
+  const examples = await runEngine({ type: 'practice-examples', variant: true, technique })
+  assert.equal(examples.length, 3)
+  const fresh = await runEngine({
+    type: 'generate-practice-example', variant: true, technique, seed: 3299, exclude: examples[0].position.puzzle.givens,
+  })
+  assert.ok(fresh)
+  assert.notEqual(fresh.position.puzzle.givens, examples[0].position.puzzle.givens)
+  for (const [index, exercise] of [...examples, fresh].entries()) {
+    const { position, candidates, deduction, suggestion } = exercise
+    assertRegionSumHouseProof(position.puzzle, position.puzzle.givens, candidates, deduction)
+    if (index === 2) {
+      assert.equal(deduction.evidence.type, 'region-sum-house')
+      assert.equal(deduction.evidence.remainder.length, 3)
+      assert.ok('eliminate' in suggestion && deduction.evidence.remainder.includes(suggestion.eliminate.cell))
+    }
+    assert.deepEqual(await runEngine({
+      type: 'variant', operation: 'check-practice-move', position, technique, action: suggestion,
+    }), deduction)
+    assert.equal(countLineSolutions(position.puzzle).count, 1)
+  }
+})
+
+test('shared-region deductions use Jigsaw geometry and grouped visits', async () => {
+  const [example] = await runEngine({ type: 'practice-examples', variant: true, technique: houseTechnique })
+  const regions = Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, cell) =>
+    Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(cell / 3) * 9 + cell % 3))
+  // Exchange boundary cells holding the same published digit.
+  regions[0][regions[0].indexOf(2)] = 21
+  regions[1][regions[1].indexOf(21)] = 2
+  const puzzle: VariantPuzzle = {
+    ...example.position.puzzle,
+    regions: { type: 'jigsaw', regions },
+    rules: example.position.puzzle.rules!.map((rule, index) => rule.type === 'region-sum'
+      ? { ...rule, cells: index === 0 ? [20, 30, 60, 40, 50, 70, 80] : rule.cells, groupByRegion: true } : rule),
+  }
+  assertVariantCompletion(puzzle, coach[3].solution)
+  const position = { puzzle }
+  const proofs = await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: [houseTechnique], limit: 0xffff_ffff,
+  })
+  assert.ok(proofs.some(proof => proof.evidence.type === 'region-sum-house' &&
+    'region' in proof.evidence.house && proof.evidence.house.region === 8))
+  for (const proof of proofs) assertRegionSumHouseProof(puzzle, puzzle.givens, variantHouseMasks(puzzle, puzzle.givens), proof)
 })
 
 test('grouped repeat visits retain their distinct-digit proof when interleaved', async () => {
