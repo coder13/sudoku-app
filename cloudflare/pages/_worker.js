@@ -110,6 +110,7 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
@@ -356,6 +357,14 @@ const cellColor = value => typeof value === 'string' && (/^#(?:[0-9a-f]{3}|[0-9a
 const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
     list(cellColor, 1, 62)(shades) && new Set(shades).size === shades.length)
+const artworkSize = value => typeof value === 'number' && value > 0 && value <= .5
+const artworkCorner = list(integer(0, 9), 2, 2)
+const artworkCenter = list(value => typeof value === 'number' && value >= .5 && value <= 8.5 && Number.isInteger(value - .5), 2, 2)
+const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
+  points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
+const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
+  fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }), 1, 81)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -426,6 +435,7 @@ async function sharePuzzle(request, db, path) {
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection,
       givenCellColors: value => data.grid === undefined && data.variant === undefined && cellColors(value),
+      authoredArtwork: value => data.grid === undefined && data.variant && data.variant.fog === undefined && authoredArtwork(value),
       whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
       throw new HttpError(400, 'Invalid puzzle definition.')

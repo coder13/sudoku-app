@@ -7,6 +7,7 @@ import { isSizedSudokuPadCode } from './sized-sudoku-pad.ts'
 import { isPlayablePuzzle, isPuzzleVariantId, type VariantGame } from './variants.ts'
 import { whispersLinkCounts } from './whispers-guide.ts'
 import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
+import { validAuthoredArtwork, type AuthoredMark } from './authored-artwork.ts'
 
 export type SharedPuzzleDefinition = {
   version: 1
@@ -19,6 +20,7 @@ export type SharedPuzzleDefinition = {
   variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   whispersGuide?: true
   givenCellColors?: ImportedCellColors
+  authoredArtwork?: readonly AuthoredMark[]
   collection?: CollectionReference
 }
 
@@ -52,6 +54,7 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzlePayload {
     collection,
     ...(game.whispersGuide && { whispersGuide: true }),
     ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
+    ...(game.authoredArtwork && { authoredArtwork: game.authoredArtwork }),
     ...(algebraic && { algebraic }),
     ...(game.sized && (game.grid?.size === 6
       ? { sixRules: game.sized.rules, ...(game.sized.author && { sixAuthor: game.sized.author }) }
@@ -89,7 +92,7 @@ export async function publishSharedPuzzle(game: Game, signal?: AbortSignal): Pro
 export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Promise<SharedPuzzleDefinition> {
   if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
   const data = await sharingRequest(`/${id.toLowerCase()}`, undefined, signal) as Partial<SharedPuzzlePayload>
-  const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide, givenCellColors } = data
+  const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide, givenCellColors, authoredArtwork } = data
   const legacy = sixRules !== undefined || sixAuthor !== undefined
   const sizedRules = legacy ? sixRules : data.sizedRules
   const sizedAuthor = legacy ? sixAuthor : data.sizedAuthor
@@ -105,11 +108,13 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
       !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||
     (whispersGuide !== undefined && (whispersGuide !== true || variant?.id !== 'whispers' || !whispersLinkCounts(variant.puzzle))) ||
     (givenCellColors !== undefined && (grid !== undefined || variant !== undefined || !validImportedCellColors(givenCellColors))) ||
+    (authoredArtwork !== undefined && (grid !== undefined || !variant || variant.fog !== undefined || !validAuthoredArtwork(authoredArtwork))) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')
   }
   return { version, title, givens, variant, collection, grid, sizedRules, sizedAuthor,
-    ...(algebraic && { algebraic }), ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }) }
+    ...(algebraic && { algebraic }), ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }),
+    ...(authoredArtwork && { authoredArtwork }) }
 }
 
 function validSharedAlgebraic(value: unknown): value is NonNullable<SharedPuzzleDefinition['algebraic']> {

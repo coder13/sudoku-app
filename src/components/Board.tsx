@@ -13,7 +13,8 @@ import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
-import { BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
+import { BoardArtwork, BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
+import type { AuthoredMark } from '../sudoku/authored-artwork'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 import { importedColorFill, importedColorLabel, type ImportedCellColors } from '../sudoku/imported-colors'
 
@@ -23,6 +24,7 @@ type Props = {
   fog?: FogView
   whispersGuide?: true
   givenCellColors?: ImportedCellColors
+  authoredArtwork?: readonly AuthoredMark[]
   highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
@@ -349,7 +351,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, authoredArtwork, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
@@ -623,6 +625,7 @@ export function Board({
           onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}>
           {gridRows}
         </div>
+        {authoredArtwork && !overlay?.visible && <BoardArtwork artwork={authoredArtwork} region={visibleRegion} />}
         <BoardMarks items={variantClues} />
         {sizedGrid && sizedRules && sizedRules.length > 0 && <div className="board-variant-clues"><MemoSizedRuleClues rules={sizedRules} size={gridSize} /></div>}
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
