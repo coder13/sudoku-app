@@ -5,7 +5,7 @@ import type { NumberPosition } from '../number-puzzles/progress.ts'
 import { encodeWhispers, readWhispers } from '../latin/whispers.ts'
 import { encodeLatinParity, readLatinParity } from '../latin/parity.ts'
 import { encodeLatinQuadruples, readLatinQuadruples } from '../latin/quadruples.ts'
-import { encodeLatinExtraRegions, readLatinExtraRegions } from '../latin/extra-regions.ts'
+import { encodeLatinCellGroups, readLatinCellGroups } from '../latin/extra-regions.ts'
 import { encodeLatinPathClues, readLatinPathClues, type LatinClues } from '../latin/path-clues.ts'
 import { solveLatin } from '../latin/engine.ts'
 import { createFutoshiki, type Inequality } from './engine.ts'
@@ -16,16 +16,16 @@ export { importedFutoshikiToken, isFutoshikiSize, type FutoshikiSize } from './i
 
 export function createImportedFutoshiki(
   size: FutoshikiSize, givens: string, inequalities: readonly Inequality[],
-  { position, annotations, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
+  { position, annotations, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
 ): FutoshikiEntry {
-  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight })
+  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight })
   // Keep the one-character indices in existing links. Larger boards need two.
   const wide = size > 6
   const encoded = inequalities
     .map(({ less, greater }) => [less, greater].map(cell => cell.toString(36).padStart(wide ? 2 : 1, '0')).join(''))
     .sort().join('')
   const progress = withImportedNumberPosition(position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
-  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
+  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinCellGroups('r', extraRegions)}${encodeLatinCellGroups('u', unnumberedCages)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
     puzzle, number: 0, difficulty: difficultyBySize[size], imported: true, annotations, ...progress }
 }
 
@@ -40,7 +40,7 @@ export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
 export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined {
   const data = matchImportedFutoshiki(token)
   if (!data) return
-  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, entropy, quadruples: quadClues, parity: parityMarks, antiKnight, progress, marks } = data
+  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, unnumbered, entropy, quadruples: quadClues, parity: parityMarks, antiKnight, progress, marks } = data
   const inequalities: Inequality[] = []
   for (let index = 0; index < edges.length; index += 2 * indexLength) {
     inequalities.push({
@@ -55,7 +55,8 @@ export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined
     const entry = createImportedFutoshiki(size, givens, inequalities, {
       position, annotations, adjacentClues, whispers: whispers ? readWhispers(whispers) : undefined,
       pathClues: lines ? readLatinPathClues(lines) : undefined,
-      extraRegions: regions ? readLatinExtraRegions(regions) : undefined,
+      extraRegions: regions ? readLatinCellGroups(regions) : undefined,
+      unnumberedCages: unnumbered ? readLatinCellGroups(unnumbered) : undefined,
       globalEntropy: entropy ? true : undefined,
       quadruples: quadClues ? readLatinQuadruples(quadClues) : undefined,
       parity: parityMarks ? readLatinParity(size, parityMarks) : undefined,

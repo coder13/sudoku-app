@@ -43,7 +43,7 @@ function numberHint(hint: LatinHint, hasInequalities: boolean) {
 export const calcudoku = {
   game: 'calcudoku',
   name: 'Calcudoku',
-  rules: 'Use every number from 1 to the grid size once in each row and column. Each cage’s numbers must match its target and operation.',
+  rules: 'Use every number from 1 to the grid size once in each row and column. If a cage has a target, its digits must match the target and operation.',
   techniques: ['Row and column', 'Cage arithmetic', 'Line totals', ...subsetTechniques, lockedCandidates, xWingTechnique],
   entries: calcudokuCatalog,
   generatedEntry: generatedCalcudokuEntry,
@@ -71,8 +71,10 @@ export const calcudoku = {
         cell % size === 0 || cageAt.get(cell - 1) !== cage ? 'l' : '',
       ].join('')
       const operation = { add: 'plus', subtract: 'minus', multiply: 'times', divide: 'divided by', equal: '' }[cage.operator]
+      const caption = cage.distinct && cage.operator === 'add' ? `Cage total ${cage.target}`
+        : `${cage.target}${operation ? ` ${operation}` : ''} cage`
       const cageLabel = given && !sourceLabel ? undefined
-        : `${cage.target}${operation ? ` ${operation}` : ''} cage at ${cellLabel(anchor, size)}${cage.distinct ? ', no repeats' : ''}`
+        : `${caption} at ${cellLabel(anchor, size)}${cage.distinct ? ', no repeats' : ''}`
       const label = (cageLabel ? [cageLabel, ...labels] : labels).join(', ')
       const decoration = cell === anchor && (sourceLabel || !given)
         ? <span key="cage" className="number-puzzle-cell-label" data-below-quadruple={quadrupleCorners.has(cell) || undefined}

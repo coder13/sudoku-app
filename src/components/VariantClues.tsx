@@ -271,8 +271,9 @@ export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
   return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
 }
 
-function Cage({ cells, captionWidth, captionInset, size = 9 }: {
-  cells: readonly number[]; captionWidth: number; captionInset: number; size?: number
+/** Draw a dashed cage. Pass the width and inset when a caption needs space. */
+export function Cage({ cells, captionWidth = 0, captionInset, size = 9 }: {
+  cells: readonly number[]; captionWidth?: number; captionInset?: number; size?: number
 }) {
   const edge = 0.075
   const members = new Set(cells)
@@ -290,7 +291,7 @@ function Cage({ cells, captionWidth, captionInset, size = 9 }: {
       const y1 = row + (top ? edge : 0)
       const y2 = row + 1 - (bottom ? edge : 0)
       const segments = [
-        top && `M${cell === corner ? col + captionInset + captionWidth : x1},${y1}H${x2}`,
+        top && `M${cell === corner ? col + (captionInset ?? edge) + captionWidth : x1},${y1}H${x2}`,
         right && `M${x2},${y1}V${y2}`,
         bottom && `M${x2},${y2}H${x1}`,
         left && `M${x1},${y2}V${y1}`,

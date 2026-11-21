@@ -1082,3 +1082,28 @@ export const TouchingEntropicLines: Story = {
     await waitFor(() => expect(final.getByRole('button', { name: /^R1C3, 3, .*Entropic Line 1/ })).toBeVisible())
   },
 }
+
+const overlappingCages = prepareImportedCalcudoku({
+  size: 3, givens: '000312231', colors: [],
+  cages: [{ cells: [0], label: '1', operator: 'add', distinct: true }],
+  unnumberedCages: [[0, 1, 3]],
+})
+
+export const OverlappingUnnumberedCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={overlappingCages} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Cage total 1 .*Unnumbered cage 1/ })
+    await expect(cell).toBeEnabled()
+    await expect(cell.querySelector('.number-puzzle-cell-label')).toHaveTextContent('1')
+    const outline = grid.querySelector('[data-unnumbered-cage="1"]')!
+    await expect(outline.querySelectorAll('.variant-cage-edge')).toHaveLength(3)
+    await expect(outline.querySelector('text')).not.toBeInTheDocument()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rules = within(await canvas.findByRole('dialog', { name: 'Calcudoku rules' }))
+    await waitFor(() => expect(rules.getByText('Digits cannot repeat in a dashed cage without a total.')).toBeVisible())
+  },
+}

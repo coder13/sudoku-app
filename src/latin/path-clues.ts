@@ -2,7 +2,7 @@ import type { AdjacentClues } from './adjacent-clues.ts'
 import { arrowRule, arrowRuleNote, arrowTechnique } from './arrow.ts'
 import { bit, cellLabel, type LatinHint, type LatinRule } from './engine.ts'
 import { entropicRule, entropicRuleNote, entropicTechnique } from './entropic.ts'
-import { extraRegionTechnique } from './extra-regions.ts'
+import { extraRegionTechnique, unnumberedCageTechnique } from './extra-regions.ts'
 import { globalEntropyTechnique } from './global-entropy.ts'
 import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, lockoutTechnique } from './endpoint-lines.ts'
 import { pillArrowNote, pillArrowRule, pillArrowTechnique } from './pill-arrow.ts'
@@ -29,6 +29,7 @@ export type LatinClues = {
   whispers?: readonly WhisperLine[]
   pathClues?: readonly LatinPathClue[]
   extraRegions?: readonly (readonly number[])[]
+  unnumberedCages?: readonly (readonly number[])[]
   globalEntropy?: true
   quadruples?: readonly Quadruple[]
   parity?: readonly LatinParity[]
@@ -39,6 +40,7 @@ export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Cons
 
 export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'extra-region') return extraRegionTechnique
+  if (kind === 'unnumbered-cage') return unnumberedCageTechnique
   if (kind === 'global-entropy') return globalEntropyTechnique
   if (kind === 'quadruple') return quadrupleTechnique
   if (kind === 'parity') return latinParityTechnique

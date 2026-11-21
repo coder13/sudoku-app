@@ -457,15 +457,25 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
   }
 }
 
+function isUnnumberedCoachCage(segment: unknown): segment is Record<string, unknown> {
+  return record(segment) && (segment.parameters === undefined ||
+    record(segment.parameters) && Object.keys(segment.parameters).length === 0)
+}
+
+function coachUnnumberedCages(layer: Record<string, unknown>) {
+  return layer.type === 'cage' && Array.isArray(layer.segments) ? layer.segments.filter(isUnnumberedCoachCage) : []
+}
+
 function isCoachBoxlessOnlyLayer(layer: unknown) {
   return record(layer) && (layer.type === 'antiKnight' || layer.type === 'entropicLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+    (layer.type === 'cage' && Array.isArray(layer.segments) && layer.segments.length > 0 && layer.segments.every(isUnnumberedCoachCage)) ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
 function needsStandaloneSevenGrid(layers: readonly unknown[]) {
-  return layers.some(layer => isCoachBoxlessOnlyLayer(layer) || record(layer) && layer.type === 'region' &&
-    Array.isArray(layer.segments) && layer.segments.some(segment =>
-      record(segment) && Array.isArray(segment.cells) && segment.cells.length !== 7))
+  return layers.some(layer => isCoachBoxlessOnlyLayer(layer) || record(layer) && (coachUnnumberedCages(layer).length > 0 ||
+    layer.type === 'region' && Array.isArray(layer.segments) && layer.segments.some(segment =>
+      record(segment) && Array.isArray(segment.cells) && segment.cells.length !== 7)))
 }
 
 function isCoachBoxlessLayer(layer: unknown) {
@@ -493,7 +503,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     const colors = givenColors && Object.values(givenColors).every(shades => shades?.length === 1)
       ? Array.from({ length: size ** 2 }, (_, cell) => givenColors[cell]?.[0] ?? '') : []
     const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
-    const cages = layers.filter(layer => !isCoachBoxlessLayer(layer))
+    const cages = layers.filter(layer => !isCoachBoxlessLayer(layer)).map(layer =>
+      record(layer) && layer.type === 'cage' && Array.isArray(layer.segments)
+        ? { ...layer, segments: layer.segments.filter(segment => !isUnnumberedCoachCage(segment)) }
+        : layer)
     const calcudoku = readCoachCalcudoku({ ...data, givenConstraints: cages }, colors,
       readCoachInequalities(layers), readCoachLatinClues(layers, size))
     const position = readCoachNumberPosition(data, calcudoku.givens, calcudoku.size)
@@ -816,6 +829,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
   const extraRegions: number[][] = []
+  const unnumberedCages: number[][] = []
   const quadruples: Quadruple[] = []
   const parity: LatinParity[] = []
   let globalEntropy: true | undefined
@@ -824,6 +838,12 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
     if (layer.type === 'region') extraRegions.push(...readCoachExtraRegions(layer))
+    for (const { cells } of coachUnnumberedCages(layer)) {
+      if (hasData(layer.settings) || !Array.isArray(cells) || !cells.every(Number.isInteger)) {
+        throw new Error('This Sudoku Coach puzzle has an invalid unnumbered cage.')
+      }
+      unnumberedCages.push(cells)
+    }
     if (layer.type === 'globalEntropy') {
       checkCoachGlobalEntropy(layer)
       globalEntropy = true
@@ -879,7 +899,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   }
   return {
     adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues,
-    ...(extraRegions.length && { extraRegions }), globalEntropy, ...(quadruples.length && { quadruples }),
+    ...(extraRegions.length && { extraRegions }), ...(unnumberedCages.length && { unnumberedCages }), globalEntropy, ...(quadruples.length && { quadruples }),
     ...(parity.length && { parity: parity.sort((a, b) => a.cell - b.cell) }),
     ...(antiKnight && { antiKnight }),
   }

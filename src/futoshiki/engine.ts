@@ -1,7 +1,7 @@
 import { latinAntiKnightRules } from '../latin/anti-knight.ts'
 import { adjacentClueRules } from '../latin/adjacent-clues.ts'
 import { createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
-import { latinExtraRegionRules } from '../latin/extra-regions.ts'
+import { latinExtraRegionRules, latinUnnumberedCageRules } from '../latin/extra-regions.ts'
 import { latinGlobalEntropyRules } from '../latin/global-entropy.ts'
 import { lineSubsetRules } from '../latin/line-subsets.ts'
 import { latinParityRules } from '../latin/parity.ts'
@@ -16,7 +16,7 @@ export type FutoshikiPuzzle = LatinPuzzle & LatinClues & { inequalities: readonl
 
 export function createFutoshiki(
   size: number, givens: readonly number[], inequalities: readonly Inequality[],
-  { adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight }: LatinClues = {},
+  { adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight }: LatinClues = {},
 ): FutoshikiPuzzle {
   const puzzle = createLatinPuzzle(size, givens, [])
   const adjacent = adjacentClues ? adjacentClueRules(size, adjacentClues) : []
@@ -26,10 +26,10 @@ export function createFutoshiki(
     ...puzzle,
     rules: [
       ...latinParityRules(size, parity), ...(antiKnight ? latinAntiKnightRules(size) : []), ...basic, ...adjacent, ...(lines?.basic ?? []), ...latinPathRules(size, pathClues),
-      ...latinExtraRegionRules(size, extraRegions), ...latinGlobalEntropyRules(size, globalEntropy),
-      ...latinQuadrupleRules(size, quadruples, extraRegions), ...puzzle.rules,
+      ...latinExtraRegionRules(size, extraRegions), ...latinUnnumberedCageRules(size, unnumberedCages), ...latinGlobalEntropyRules(size, globalEntropy),
+      ...latinQuadrupleRules(size, quadruples, extraRegions, unnumberedCages), ...puzzle.rules,
       ...(lines?.advanced ?? []), ...sharedBounds, ...lineSubsetRules(size), ...lineRules, xWingRule(size), ...lineMatching,
     ],
-    inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight,
+    inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight,
   }
 }

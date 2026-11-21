@@ -7,7 +7,7 @@ import { isImportedColor } from '../sudoku/imported-colors.ts'
 import { encodeWhispers, readWhispers } from '../latin/whispers.ts'
 import { encodeLatinParity, readLatinParity } from '../latin/parity.ts'
 import { encodeLatinQuadruples, readLatinQuadruples } from '../latin/quadruples.ts'
-import { encodeLatinExtraRegions, readLatinExtraRegions } from '../latin/extra-regions.ts'
+import { encodeLatinCellGroups, readLatinCellGroups } from '../latin/extra-regions.ts'
 import { encodeLatinPathClues, readLatinPathClues, type LatinClues } from '../latin/path-clues.ts'
 import { cellLabel, solveLatin } from '../latin/engine.ts'
 import type { CalcudokuEntry } from './catalog.ts'
@@ -57,7 +57,7 @@ function importedCage(label: unknown, cells: unknown, distinct: boolean, size: n
   }
   const sign = signs.get(label.at(-1)!)
   if (distinct && sign || sign && cells.length === 1) throw new Error('This Sudoku Coach puzzle has an invalid cage operation.')
-  const operator = cells.length === 1 ? 'equal' : distinct ? 'add' : sign
+  const operator = distinct ? 'add' : cells.length === 1 ? 'equal' : sign
   return { label, cells: [...cells].sort((a, b) => a - b), operator, ...(distinct && { distinct: true }) }
 }
 
@@ -106,7 +106,7 @@ export function readCoachCalcudoku(
 }
 
 function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Partial<Record<number, CageOperator>>>): CalcudokuEntry {
-  const { size, givens, colors, annotations, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight } = source
+  const { size, givens, colors, annotations, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight } = source
   const fixed = [...givens].map(Number)
   const labels: Record<number, string> = {}
   const ruleNotes: string[] = []
@@ -133,7 +133,7 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
     if (target && !covered.has(cell)) cages.push({ cells: [cell], target, operator: 'equal' })
   }
   const inequalities = [...(source.inequalities ?? [])].sort((a, b) => a.less - b.less || a.greater - b.greater)
-  const puzzle = createCalcudoku(size, cages, fixed, { allowUncaged: true, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity, antiKnight })
+  const puzzle = createCalcudoku(size, cages, fixed, { allowUncaged: true, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight })
   if (inequalities.length) ruleNotes.push('The point of each inequality sign faces the smaller digit.')
   // Each cell index occupies two base-36 characters.
   const signs = inequalities.map(({ less, greater }) => [less, greater]
@@ -143,7 +143,7 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
   const payload = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
   const progress = withImportedNumberPosition(source.position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
   return {
-    id: `c1.${payload}${rules}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinExtraRegions(extraRegions)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
+    id: `c1.${payload}${rules}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinCellGroups('r', extraRegions)}${encodeLatinCellGroups('u', unnumberedCages)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
     imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, annotations, ...progress,
   }
 }
@@ -164,7 +164,7 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
   const match = matchImportedCalcudoku(token)
   if (!match) return
   try {
-    const [, payload, signs, adjacent, whisperLines, paths, regions, entropy, quadClues, parityMarks, antiKnight, progress, marks] = match
+    const [, payload, signs, adjacent, whisperLines, paths, regions, unnumbered, entropy, quadClues, parityMarks, antiKnight, progress, marks] = match
     const bytes = Uint8Array.from(atob(payload.replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
     const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
     if (!Array.isArray(data) || data.length !== 4) return
@@ -177,6 +177,8 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
     const cages = recipe.map((item: unknown) => {
       if (!Array.isArray(item) || item.length !== 4 || typeof item[3] !== 'boolean') throw new Error('Invalid cage.')
       const cage = importedCage(item[0], item[1], item[3], size)
+      // Older links treated single-cell Killer totals as givens.
+      if (item[3] && cage.cells.length === 1 && item[2] === 'equal') cage.operator = 'equal'
       operators[cage.cells[0]] = item[2]
       return cage
     })
@@ -188,9 +190,10 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
     const adjacentClues = adjacent ? readAdjacentClues(adjacent) : undefined
     const whispers = whisperLines ? readWhispers(whisperLines) : undefined
     const pathClues = paths ? readLatinPathClues(paths) : undefined
-    const extraRegions = regions ? readLatinExtraRegions(regions) : undefined
+    const extraRegions = regions ? readLatinCellGroups(regions) : undefined
+    const unnumberedCages = unnumbered ? readLatinCellGroups(unnumbered) : undefined
     const entry = calcudokuImportEntry({
-      size, givens, cages, colors, inequalities, adjacentClues, whispers, pathClues, extraRegions, position, annotations,
+      size, givens, cages, colors, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, position, annotations,
       globalEntropy: entropy ? true : undefined,
       quadruples: quadClues ? readLatinQuadruples(quadClues) : undefined,
       parity: parityMarks ? readLatinParity(size, parityMarks) : undefined,

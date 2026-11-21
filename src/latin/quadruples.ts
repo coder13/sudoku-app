@@ -5,24 +5,29 @@ import { tupleSupport } from './tuple-support.ts'
 
 export function latinQuadrupleRules(
   size: number, clues: readonly Quadruple[] = [], extraRegions: readonly (readonly number[])[] = [],
+  unnumberedCages: readonly (readonly number[])[] = [],
 ): LatinRule[] {
   if (clues.length > maxQuadrupleClues || clues.some(clue => !validQuadruple(clue, size))) {
     throw new Error('This puzzle has invalid Quadruple clues.')
   }
   return clues.map(({ topLeft, digits }) => {
     const cells = quadrupleCells(topLeft, size)
-    const sameRegion = (a: number, b: number) => extraRegions.some(region => region.includes(a) && region.includes(b))
-    const mainDiagonal = sameRegion(cells[0], cells[3])
-    const otherDiagonal = sameRegion(cells[1], cells[2])
+    const shares = (groups: readonly (readonly number[])[], a: number, b: number) =>
+      groups.some(group => group.includes(a) && group.includes(b))
+    const mainRegion = shares(extraRegions, cells[0], cells[3])
+    const otherRegion = shares(extraRegions, cells[1], cells[2])
+    const mainCage = shares(unnumberedCages, cells[0], cells[3])
+    const otherCage = shares(unnumberedCages, cells[1], cells[2])
     const label = `The Quadruple touching ${cellLabel(cells[0], size)} through ${cellLabel(cells[3], size)} needs ${digits.join(', ')}.`
-    const regionNote = mainDiagonal || otherDiagonal ? ' Cells in the same extra region cannot share a digit.' : ''
+    const regionNote = mainRegion || otherRegion ? ' Cells in the same extra region cannot share a digit.' : ''
+    const cageNote = mainCage || otherCage ? ' Cells in the same unnumbered cage cannot share a digit.' : ''
     let support: LatinRule['support'] | undefined
     return {
       kind: 'quadruple',
       cells,
-      label: label + regionNote,
+      label: label + regionNote + cageNote,
       support(domains) {
-        support ??= tupleSupport(cells, quadrupleTuples(size, digits, mainDiagonal, otherDiagonal))
+        support ??= tupleSupport(cells, quadrupleTuples(size, digits, mainRegion || mainCage, otherRegion || otherCage))
         return support(domains)
       },
     }
