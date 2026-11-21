@@ -386,6 +386,23 @@ svg { flex-shrink: 0; }
 .desktop-play-resizable[data-layout-resizing] :is(.standard-workspace-page, .standard-workspace-page *),
 .desktop-play-resizable .workspace[data-layout-resizing] * { cursor: col-resize !important; }
 .standard-puzzle-stack { grid-area: puzzle; min-width: 0; min-height: 0; display: grid; align-content: start; overflow: auto; }
+.standard-puzzle-stack:has(> .puzzle-column):has(> .standard-hint-slot .hint-dock) {
+  container-type: size;
+  overflow: clip;
+}
+.standard-puzzle-stack:has(> .standard-hint-slot .hint-dock) .puzzle-stage .board-frame:not(.completion-frame) {
+  max-inline-size: var(--desktop-hint-board-width, 100%);
+}
+/* Labels follow the grid height. The hidden play layer contributes no height. */
+.standard-puzzle-stack:has(> .standard-hint-slot .hint-dock) :is(.puzzle-play-layer[inert], .row-labels) {
+  contain: size;
+}
+.standard-puzzle-stack:has(> .standard-hint-slot .hint-dock) .puzzle-stage { container-type: inline-size; }
+.standard-puzzle-stack:has(> .standard-hint-slot .hint-dock) :is(.outside-clue-legend, .whispers-guide) {
+  grid-column: 1 / -1;
+  inline-size: 100cqi;
+  justify-self: center;
+}
 .standard-input-stack {
   grid-area: controls;
   min-width: 0;
@@ -1122,7 +1139,15 @@ svg { flex-shrink: 0; }
   grid-template-rows: auto minmax(0, 1fr);
   block-size: clamp(168px, 25dvh, 232px);
 }
-.standard-puzzle-stack .hint-card[data-staged] .hint-card-body { overflow: auto; scrollbar-gutter: stable; }
+.standard-puzzle-stack .hint-card[data-staged] .hint-card-body { overflow: auto; scrollbar-gutter: stable; overscroll-behavior: contain; }
+.standard-puzzle-stack:has(> .puzzle-column) .standard-hint-slot .hint-card {
+  max-block-size: min(44cqb, max(96px, calc(100cqb - 280px)));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.standard-puzzle-stack:has(> .puzzle-column) .standard-hint-slot .hint-card[data-staged] {
+  grid-template-rows: auto minmax(2rem, 1fr);
+}
 .hint-card {
   --hint-heading-action-size: 36px;
   container: hint-card / inline-size;
