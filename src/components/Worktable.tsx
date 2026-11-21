@@ -441,10 +441,11 @@ export function Worktable({
   const needsAttempt = !grid && !completed && !game.ratingAttempt && (!variant?.fog || game.score !== null)
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
-  const panelAvailable = (panel: PuzzleTool) => !placeholder && !draft &&
-    (panel !== 'chains' || !grid) && (panel !== 'subsets' || experimentalMode) && (panel !== 'rules' || mixedVariant) &&
+  const panelSupported = (panel: PuzzleTool) => !placeholder && !draft &&
+    (panel !== 'chains' || !grid) && (panel !== 'subsets' || experimentalMode) && (panel !== 'rules' || mixedVariant)
+  const panelAvailable = (panel: PuzzleTool) => panelSupported(panel) &&
     (!solved || panel === 'solution' || panel === 'techniques' || panel === 'rules')
-  const openPuzzlePanels = toolPanels.open.filter(panelAvailable)
+  const openPuzzlePanels = toolPanels.open.filter(desktop ? panelSupported : panelAvailable)
   const activeToolPanel = toolPanels.active !== 'digits' && openPuzzlePanels.includes(toolPanels.active) ? toolPanels.active : 'digits'
   const advancedPanelOpen = (panel: PuzzleTool) => openPuzzlePanels.includes(panel)
   const { mounted: desktopActionsMounted, exiting: desktopActionsExiting } = usePresence(desktop && !advancedWorkspace && actionsOpen)
@@ -2352,12 +2353,12 @@ export function Worktable({
   </button>
   function selectToolPanel(tab: ToolPanelTab, alsoOpen?: PuzzleTool) {
     if (tab !== 'digits') {
-      if (!panelAvailable(tab)) return
+      if (!openPuzzlePanels.includes(tab) && !panelAvailable(tab)) return
       if (tab !== 'rules') changeHintVisuals('player')
       if (advancedWorkspace && !showRightPanel) onOpenRightPanel()
     }
     if (tab === 'solution' || tab === 'techniques') setHintRevealed(false)
-    if (tab === 'chains' && activeToolPanel !== 'chains') setStartDrawingOnOpen(true)
+    if (tab === 'chains' && !solved && activeToolPanel !== 'chains') setStartDrawingOnOpen(true)
     playSession.set(id, 'toolPanels', current => {
       const missing = TOOL_PANEL_ORDER.filter(tool => (tool === tab || tool === alsoOpen) && !current.open.includes(tool))
       if (!missing.length && current.active === tab) return current
@@ -2426,7 +2427,7 @@ export function Worktable({
     else selectToolPanel(panel)
   }
 
-  const panelToggles = desktopInsightTabs.filter(({ id }) => panelAvailable(id)).map(({ id, label, Icon }) => (
+  const panelToggles = desktopInsightTabs.filter(({ id }) => openPuzzlePanels.includes(id) || panelAvailable(id)).map(({ id, label, Icon }) => (
     <button key={id} type="button" disabled={rearranging || game.paused}
       aria-pressed={openPuzzlePanels.includes(id)} onClick={() => togglePuzzlePanel(id)}>
       <Icon size={17} aria-hidden="true" /> {label}
