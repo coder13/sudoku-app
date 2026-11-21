@@ -94,15 +94,16 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   const canGoBack = useCanGoBack()
   const state = useLocation({ select: location => location.state })
   const fromLibrary = inPlay && state.fromNumberPuzzleLibrary
+  const fromImport = inPlay && state.fromNumberPuzzleImport
   const fromSolved = fromLibrary === 'solved'
-  const fromParent = inPlay ? fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
+  const fromParent = inPlay ? fromImport || fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
     : state.fromPuzzleGameTypes
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [title])
 
   return <header className="puzzles-page-heading number-puzzle-heading">
-    <Link to={fromSolved ? '/puzzles/solved' : fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
-      aria-label={fromSolved ? 'Back to solved puzzles' : fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
+    <Link to={fromImport ? '/import' : fromSolved ? '/puzzles/solved' : fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
+      aria-label={fromImport ? 'Back to puzzle import' : fromSolved ? 'Back to solved puzzles' : fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
       onClick={event => {
         if (fromParent && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
           event.preventDefault()
@@ -286,6 +287,83 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
       <NumberPuzzleBoard config={config} entry={entry} key={entry.id} />
     </div>
   </main>
+}
+
+function numberCellName(index: number, width: number) {
+  return `R${Math.floor(index / width) + 1}C${index % width + 1}`
+}
+
+/** Use for a standalone board preview that shares Play's cells and clues. */
+export function NumberPuzzlePreview({ board, game, label }: { board: NumberBoard; game: NumberGame; label: string }) {
+  return <div className="number-puzzle-grid number-puzzle-preview" data-game={game} role="group" aria-label={label}
+    style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
+    <NumberPuzzleCells board={board} />
+  </div>
+}
+
+function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, hintCell, contextCells, conflicts, events }: {
+  board: NumberBoard
+  selection?: number
+  values?: readonly number[]
+  digits?: readonly number[]
+  noteMasks?: readonly number[]
+  hintCell?: number
+  contextCells?: readonly number[]
+  conflicts?: ReadonlySet<number>
+  events?: {
+    locked: boolean
+    setButton: (index: number, button: HTMLButtonElement | null) => void
+    onFocus: (index: number) => void
+    onClick: (index: number, value: number) => void
+  }
+}) {
+  const { width, height, maxValue, cellChoices, mirrorEdgeClues } = board
+  const context = new Set(contextCells)
+
+  function renderBlock(index: number, copy?: 'top' | 'left' | 'corner') {
+    const { label, decoration } = board.cells[index]
+    const named = !copy && Boolean(label)
+    return <div key={copy ? `${copy}-${index}` : index} className="number-puzzle-block" data-clue={Boolean(label)}
+      data-conflict={conflicts?.has(index) ?? false} data-hint={context.has(index)}
+      role={named ? 'img' : undefined} aria-label={named ? `${numberCellName(index, width)}: ${label}` : undefined}
+      aria-hidden={named ? undefined : true}>
+      {decoration}
+    </div>
+  }
+
+  function renderCell({ label, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
+    if (block) return renderBlock(index)
+    const value = given || values?.[index] || 0
+    const marks = noteMasks ? digits.filter(digit => noteMasks[index] & (1 << (digit - 1))) : []
+    const description = printed !== undefined ? String(printed)
+      : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
+    return <button key={index} type="button" className="number-puzzle-cell"
+      data-cell={index}
+      ref={events && (button => events.setButton(index, button))}
+      tabIndex={selection === index ? 0 : -1}
+      aria-pressed={cellChoices ? value !== cellChoices.off : events ? selection === index : undefined}
+      disabled={!events} aria-disabled={cellChoices && events?.locked ? true : undefined}
+      data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
+      data-conflict={conflicts?.has(index) ?? false} data-hint={hintCell === index} data-context={context.has(index)}
+      data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
+      aria-label={`${numberCellName(index, width)}, ${description}${label ? ', ' + label : ''}`}
+      onFocus={events && (() => events.onFocus(index))}
+      onClick={events && (() => events.onClick(index, value))}>
+      {decoration}
+      {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+        : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+          : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+            <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+    </button>
+  }
+
+  return <>
+    {mirrorEdgeClues && renderBlock(board.cells.length - 1, 'corner')}
+    {mirrorEdgeClues && board.cells.slice(-width).map((_, column) => renderBlock((height - 1) * width + column, 'top'))}
+    {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
+      ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
+      : board.cells.map(renderCell)}
+  </>
 }
 
 const insightTabs = [
@@ -574,7 +652,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function cellName(index: number) {
-    return `R${Math.floor(index / width) + 1}C${index % width + 1}`
+    return numberCellName(index, width)
   }
 
   function nextPuzzle() {
@@ -597,60 +675,29 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   function renderGrid(preview?: { values: readonly number[]; hint: Hint | null }) {
     const shownHint = preview ? preview.hint : depth >= 2 ? hint : undefined
-    const context = new Set(preview || depth >= 3 ? shownHint?.marked : [])
-    function renderBlock(index: number, copy?: 'top' | 'left' | 'corner') {
-      const { label, decoration } = board.cells[index]
-      const named = !copy && Boolean(label)
-      return <div key={copy ? `${copy}-${index}` : index} className="number-puzzle-block" data-clue={Boolean(label)}
-        data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)}
-        role={named ? 'img' : undefined} aria-label={named ? `${cellName(index)}: ${label}` : undefined}
-        aria-hidden={named ? undefined : true}>
-        {decoration}
-      </div>
-    }
-
-    function renderCell({ label, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
-      if (block) return renderBlock(index)
-      const value = given || (preview?.values ?? position.values)[index]
-      const marks = preview ? [] : digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
-      const description = printed !== undefined ? String(printed)
-        : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-      return <button key={index} type="button" className="number-puzzle-cell"
-        ref={preview ? undefined : button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
-        tabIndex={selection === index ? 0 : -1}
-        aria-pressed={cellChoices ? value !== cellChoices.off : preview ? undefined : selection === index}
-        disabled={Boolean(preview)} aria-disabled={cellChoices && !preview && locked ? true : undefined}
-        data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
-        data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
-        data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
-        aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-        onFocus={() => selectCell(index)} onClick={() => {
-          selectCell(index)
-          if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
-        }}>
-        {decoration}
-        {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
-          : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
-            : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
-      </button>
-    }
-
-    return (
-      <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
-        role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
-        style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
-        onKeyDown={preview ? undefined : onGridKey}>
-        {mirrorEdgeClues && renderBlock(board.cells.length - 1, 'corner')}
-        {mirrorEdgeClues && board.cells.slice(-width).map((_, column) => renderBlock((height - 1) * width + column, 'top'))}
-        {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
-          ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
-          : board.cells.map(renderCell)}
-      </div>
-    )
+    return <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
+      role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
+      style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
+      onKeyDown={preview ? undefined : onGridKey}>
+      <NumberPuzzleCells board={board} selection={selection} values={preview?.values ?? position.values}
+        digits={digits} noteMasks={preview ? undefined : position.notes} hintCell={shownHint?.cell}
+        contextCells={preview || depth >= 3 ? shownHint?.marked : undefined} conflicts={preview ? undefined : conflictCells}
+        events={preview ? undefined : {
+          locked,
+          setButton(index, button) {
+            if (button) cellButtons.current.set(index, button)
+            else cellButtons.current.delete(index)
+          },
+          onFocus: selectCell,
+          onClick(index, value) {
+            selectCell(index)
+            if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
+          },
+        }} />
+    </div>
   }
 
-  const next = ready && result.complete && !entry.generated ? nextPuzzle() : undefined
+  const next = ready && result.complete && !entry.generated && !entry.imported ? nextPuzzle() : undefined
   const trace = useMemo<NumberSolutionTrace | null>(() => solution && ({
     status: solution.complete ? 'solved' : 'stalled',
     steps: solution.steps.map(step => step ? { title: step.technique, text: `${placement(step)}.` } : {
@@ -745,7 +792,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const puzzlePanel = <section className="surface number-puzzle-board-card">
     <NumberGameHeading game={game} title={name} inPlay>
       <div className="number-puzzle-metadata">
-        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
+        <small>{entry.imported ? `Imported · ${width} × ${height}`
+          : `${entry.generated ? 'Generated · ' : ''}${numberPuzzleDifficultyLabels[entry.difficulty]} ${number}`}</small>
         {showTimer && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(elapsed)}`}>
           {formatTime(elapsed)}
         </span>}

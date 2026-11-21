@@ -97,6 +97,8 @@
   container-type: inline-size;
 }
 
+.number-puzzle-preview { width: var(--board-frame-width, 100%); }
+
 .number-puzzle-grid > * {
   aspect-ratio: 1;
   min-width: 0;

@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
+import futoshikiCoach from '../../tests/fixtures/futoshiki-coach.json'
 import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
 import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
 import whispers from '../../tests/fixtures/whispers-coach.json'
 import { starter } from '../support/fixtures'
-import { DialogStory } from '../support/frames'
+import { DialogStory, PreviewRouter } from '../support/frames'
 
 const meta = {
   title: 'Medium/Dialogs/Import puzzle',
@@ -94,5 +95,24 @@ export const JigsawDiamondPreview: Story = {
     await expect(grid).toBeVisible()
     await expect(grid.querySelector('[data-cell="22"]')).toHaveAccessibleName(/sum diamond.*total 5/)
     await expect(canvas.getByText(/At least one edge without a diamond/)).toBeVisible()
+  },
+}
+
+export const FutoshikiPreview: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: args => <PreviewRouter shell><ImportPuzzle {...args} fullPage /></PreviewRouter>,
+  play: async ({ canvas, userEvent }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(futoshikiCoach.fourByFour.code)
+    const preview = await canvas.findByRole('button', { name: 'Preview puzzle' })
+    preview.focus()
+    await userEvent.keyboard('{Enter}')
+    const board = await canvas.findByRole('group', { name: 'Futoshiki puzzle preview' })
+    await expect(board.querySelector('[data-cell="0"]')).toHaveAccessibleName(/R1C2 is less than R1C1/)
+    await expect(board.querySelector('[data-cell="6"]')).toHaveAccessibleName(/given 1/)
+    await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Back to puzzle input' }))
+    await expect(await canvas.findByRole('textbox', { name: 'Puzzle text or link' })).toHaveValue(futoshikiCoach.fourByFour.code)
   },
 }

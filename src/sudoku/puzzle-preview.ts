@@ -1,3 +1,4 @@
+import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
 import { runEngine, type Analysis } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
 import { sameImportedDrawings } from './imported-drawings.ts'
@@ -46,6 +47,18 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
   return preparePuzzlePreview(await detectPuzzle(input), games)
 }
 
+export type PlayableImport = PuzzlePreview | { futoshiki: FutoshikiEntry; format: PuzzlePreview['format'] }
+
+/** Prepare either a Sudoku board or a standalone puzzle for the import screen. */
+export async function preparePlayableImport(input: string, games: readonly Game[] = []): Promise<PlayableImport> {
+  const imported = await detectPuzzle(input)
+  if (imported.futoshiki) {
+    const { verifiedImportedFutoshiki } = await import('../futoshiki/imported.ts')
+    return { futoshiki: verifiedImportedFutoshiki(imported.futoshiki), format: imported.format }
+  }
+  return preparePuzzlePreview(imported, games)
+}
+
 export async function prepareSharedPuzzle(id: string, games: readonly Game[], signal: AbortSignal): Promise<PuzzlePreview> {
   const existing = findSharedAttempt(games, id)
   if (existing) return { game: existing, format: 'Puzzle link' }
@@ -59,6 +72,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
+  if (imported.futoshiki) throw new Error('Open this puzzle in Futoshiki.')
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress, whispersGuide } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')

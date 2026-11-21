@@ -1,7 +1,9 @@
+import { Link } from '@tanstack/react-router'
 import { fogView } from '../sudoku/fog'
 import { Button, IconButton, buttonClassName } from './Button'
-import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { type ClipboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
+import { numberPuzzleDestination } from '../number-puzzles/catalog'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
 import { valuesOf } from '../sudoku/game'
@@ -9,7 +11,7 @@ import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
-import { findImportAttempt, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { findImportAttempt, prepareImportedPuzzle, preparePlayableImport, type PlayableImport, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade, needsPuzzleGrade } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
@@ -20,8 +22,13 @@ import { PhotoPuzzleReview } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
-function preparePuzzle(input: string): Promise<PuzzlePreview> {
-  return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
+const LazyFutoshikiImportPreview = lazy(async () => {
+  const { FutoshikiImportPreview } = await import('./Futoshiki')
+  return { default: FutoshikiImportPreview }
+})
+
+function preparePuzzle(input: string): Promise<PlayableImport> {
+  return preparePlayableImport(input, roomStore.getSnapshot().games)
 }
 
 export function finishImport(preview: PuzzlePreview, play: boolean) {
@@ -40,7 +47,7 @@ export function finishImport(preview: PuzzlePreview, play: boolean) {
 }
 
 export async function openPuzzle(input: string, cancelled: () => boolean, { freshCopy = false }: { freshCopy?: boolean } = {}) {
-  const preview = await preparePuzzle(input)
+  const preview = await prepareImportedPuzzle(input, roomStore.getSnapshot().games)
   if (cancelled()) return
   if (freshCopy) roomStore.add(preview.game)
   else finishImport(preview, true)
@@ -50,7 +57,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   close: () => void
   onPlay?: () => void
   fullPage?: boolean
-  onPreview?: (input: string) => Promise<PuzzlePreview>
+  onPreview?: (input: string) => Promise<PlayableImport>
 }) {
   const id = useId()
   const heading = useRef<HTMLHeadingElement>(null)
@@ -61,7 +68,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
-  const [preview, setPreview] = useState<PuzzlePreview>()
+  const [preview, setPreview] = useState<PlayableImport>()
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
   const title = preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
@@ -96,13 +103,31 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     }
   }
 
-  function saveAndContinue(puzzle: PuzzlePreview) {
-    const added = finishImport(puzzle, false)
+  async function saveAndContinue(puzzle: PlayableImport) {
+    let added: boolean
+    if ('futoshiki' in puzzle) {
+      setBusy(true)
+      try {
+        const { saveFutoshikiImport } = await import('../futoshiki/imported-storage')
+        const saved = saveFutoshikiImport(puzzle.futoshiki)
+        if (saved === 'unavailable') {
+          setError('This browser cannot save the puzzle. Start playing to open it.')
+          return
+        }
+        added = saved === 'added'
+      } catch {
+        setError('The app could not save the puzzle. Try again.')
+        return
+      } finally {
+        setBusy(false)
+      }
+    } else added = finishImport(puzzle, false)
+    setError('')
     setPreview(undefined)
     setPhoto(undefined)
     setInput('')
     if (!added) setStatus('This puzzle is already in Your puzzles.')
-    else if (!roomStore.getSnapshot().storageAvailable) setStatus('Puzzle available for this session. Local storage is unavailable.')
+    else if ('game' in puzzle && !roomStore.getSnapshot().storageAvailable) setStatus('Puzzle available for this session. Local storage is unavailable.')
     else setStatus('Puzzle saved for later.')
   }
 
@@ -132,47 +157,61 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setCameraOpen(false)
   }
 
-  const fog = preview && fogView(preview.game.variant, preview.game.position.entries)
+  const standalone = preview && 'futoshiki' in preview ? preview.futoshiki : undefined
+  const game = preview && 'game' in preview ? preview.game : undefined
+  const fog = game && fogView(game.variant, game.position.entries)
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
-        <strong>{preview.game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
-          : preview.game.grid ? sizedGridName(preview.game.grid) : variantName(preview.game.variant)}</strong>
-        <span className="import-preview-rating">
-          {preview.game.difficulty
-            ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
-            : <strong>{preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}</strong>}
-          {preview.game.score != null && <span><span>Score</span> <strong>{preview.game.score}</strong></span>}
-        </span>
+        {standalone && <strong>Futoshiki · {standalone.puzzle.size} × {standalone.puzzle.size}</strong>}
+        {game && <>
+          <strong>{game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
+            : game.grid ? sizedGridName(game.grid) : variantName(game.variant)}</strong>
+          <span className="import-preview-rating">
+            {game.difficulty
+              ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[game.difficulty]}</strong></span>
+              : <strong>{game.difficulty === null ? 'Unrated' : 'Rating unavailable'}</strong>}
+            {game.score != null && <span><span>Score</span> <strong>{game.score}</strong></span>}
+          </span>
+        </>}
         <span className="import-preview-format">{preview.format}</span>
       </p>
-      {preview.hasProgress && <p>This import includes your progress.</p>}
-      <Board grid={preview.game.grid} whispersGuide={preview.game.whispersGuide} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
-        position={preview.hasProgress ? preview.game.position : undefined} candidateLayout="center-corner"
-        variantPuzzle={preview.game.variant?.puzzle} fog={fog} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
-      {preview.game.algebraic ? <>
-        {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
-        <ul className="import-preview-rules">
-          {algebraicRules(preview.game.algebraic).map(rule => <li key={rule}>{rule}</li>)}
-        </ul>
-      </> : preview.game.grid?.size === 4 && <p>{MINI_RULE}</p>}
-      {preview.game.sized?.author && <p>By {preview.game.sized.author}</p>}
-      {preview.game.sized && preview.game.grid && <ul className="import-preview-rules">
-        {sizedRuleDescriptions(preview.game.grid, preview.game.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
-      </ul>}
-      {preview.game.variant && <ul className="import-preview-rules">
-        {variantRuleDescriptions(fog?.puzzle ?? preview.game.variant.puzzle, preview.game.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
-      </ul>}
+      {standalone && <Suspense fallback={<p role="status">Loading puzzle preview…</p>}>
+        <LazyFutoshikiImportPreview entry={standalone} />
+      </Suspense>}
+      {'game' in preview && game && <>
+        {preview.hasProgress && <p>This import includes your progress.</p>}
+        <Board grid={game.grid} whispersGuide={game.whispersGuide} label="Puzzle preview" givens={game.givens} values={valuesOf(game)}
+          position={preview.hasProgress ? game.position : undefined} candidateLayout="center-corner"
+          variantPuzzle={game.variant?.puzzle} fog={fog} algebraicCages={game.algebraic?.rules} sizedRules={game.sized?.rules} showGuides={false} />
+        {game.algebraic ? <>
+          {game.algebraic.source?.author && <p>By {game.algebraic.source.author}</p>}
+          <ul className="import-preview-rules">
+            {algebraicRules(game.algebraic).map(rule => <li key={rule}>{rule}</li>)}
+          </ul>
+        </> : game.grid?.size === 4 && <p>{MINI_RULE}</p>}
+        {game.sized?.author && <p>By {game.sized.author}</p>}
+        {game.sized && game.grid && <ul className="import-preview-rules">
+          {sizedRuleDescriptions(game.grid, game.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
+        </ul>}
+        {game.variant && <ul className="import-preview-rules">
+          {variantRuleDescriptions(fog?.puzzle ?? game.variant.puzzle, game.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
+        </ul>}
+      </>}
+      {error && <p className="form-error" role="alert">{error}</p>}
       <div className="dialog-actions import-preview-actions">
-        <Button type="button" className="import-edit" onClick={() => setPreview(undefined)}>
+        <Button type="button" className="import-edit" disabled={busy} onClick={() => { setPreview(undefined); setError('') }}>
           {photo ? 'Edit givens' : 'Edit input'}
         </Button>
-        <Button type="button" onClick={() => saveAndContinue(preview)}>
+        <Button type="button" disabled={busy} onClick={() => void saveAndContinue(preview)}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
         </Button>
-        <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
+        {standalone ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination('futoshiki', standalone)}
+          state={fullPage ? { fromNumberPuzzleImport: true } : undefined}>
+          <Play size={17} aria-hidden="true" /> Start playing
+        </Link> : 'game' in preview && <Button type="button" variant="primary" onClick={() => { finishImport(preview, true); onPlay?.() }}>
           <Play size={17} aria-hidden="true" /> {preview.hasProgress ? 'Open puzzle' : 'Start playing'}
-        </Button>
+        </Button>}
       </div>
     </div>
   )
@@ -237,7 +276,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       <header className="puzzles-page-heading">
         <IconButton type="button" className="puzzles-back"
           aria-label={preview && photo ? 'Back to detected givens' : preview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
-          onClick={preview ? () => setPreview(undefined) : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
+          onClick={preview ? () => { setPreview(undefined); setError('') } : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
         <h1 id={`${id}-heading`} ref={heading} tabIndex={-1}>{title}</h1>
       </header>
       {content}

@@ -1,3 +1,5 @@
+import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
+import type { Inequality } from '../futoshiki/engine.ts'
 import lzString from 'lz-string'
 import type { CollectionReference } from './collection-reference.ts'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, VariantPuzzle, VariantRule } from './engine.ts'
@@ -51,6 +53,7 @@ export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f
 export type ImportedPuzzle = {
   givens: string
   format: ImportFormat
+  futoshiki?: FutoshikiEntry
   variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   grid?: SizedGrid
   sizedRules?: SizedRuleGame['rules']
@@ -378,8 +381,20 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
+function checkStandaloneCoachPublication(publication?: CoachPublication | null) {
+  if (publication === null) throw new Error('Open this short link in Sudoku Coach, then use Copy → Puzzle.')
+  if (publication?.hasAuthorInstructions) {
+    throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
+  }
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
+  const futoshiki = await readCoachFutoshiki(data)
+  if (futoshiki) {
+    checkStandaloneCoachPublication(publication)
+    return futoshiki
+  }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const { givens, grid, rules } = readCoachSized(data)
     return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}), format: 'Sudoku Coach' }
@@ -451,6 +466,38 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   const progress = readCoachProgress(data, givens)
   return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }),
     ...(whispersGuide && { whispersGuide: true }) }
+}
+
+async function readCoachFutoshiki(data: Record<string, unknown>): Promise<ImportedPuzzle | undefined> {
+  const { gridSize: size, regions } = data
+  if (!(size === 4 || size === 5 || size === 6) || !Array.isArray(regions) || regions.length !== 0) return
+  const constraints = data.givenConstraints ?? []
+  if (!Array.isArray(constraints) || constraints.some(layer => !record(layer) || layer.type !== 'greaterLess')) return
+  if (COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
+    throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+  }
+
+  const givens = data.givenDigits === undefined ? '0'.repeat(size ** 2) : data.givenDigits
+  if (typeof givens !== 'string' || givens.length !== size ** 2 || !/^[0-6]+$/.test(givens) ||
+    [...givens].some(digit => Number(digit) > size)) {
+    throw new Error('This Sudoku Coach puzzle has invalid givens.')
+  }
+
+  const inequalities: Inequality[] = []
+  for (const layer of constraints) {
+    if (hasData(layer.settings) || !Array.isArray(layer.segments)) {
+      throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality layer.')
+    }
+    for (const segment of layer.segments) {
+      if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters)) {
+        throw new Error('This Sudoku Coach Futoshiki puzzle has an invalid inequality sign.')
+      }
+      const [less, greater] = segment.cells
+      inequalities.push({ less, greater })
+    }
+  }
+  const { createImportedFutoshiki } = await import('../futoshiki/imported.ts')
+  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {

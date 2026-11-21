@@ -1,3 +1,4 @@
+import { readFutoshikiImports } from '../futoshiki/imported-storage'
 import { calcudoku } from './Calcudoku'
 import { futoshiki } from './Futoshiki'
 import { hidato } from './Hidato'
@@ -16,6 +17,7 @@ export type NumberPuzzleQuery = { filterKey: string; filters?: SolvedPuzzleFilte
 export type NumberPuzzleActivity = {
   query: NumberPuzzleQuery
   entries: NumberPuzzleHistoryRow[]
+  saved: NumberPuzzleHistoryRow[]
   hasAny: boolean
   hasMore: boolean
   pending?: true
@@ -27,10 +29,17 @@ function catalogActivity<Entry extends NumberPuzzleEntry>(config: NumberGameConf
 }
 
 export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (result: NumberPuzzleActivity) => void) {
+  const imported = readFutoshikiImports()
+  const futoshikiResults = readCatalogNumberResults({ ...futoshiki, entries: [...futoshiki.entries, ...imported] }, status)
+  const futoshikiRow = <Entry extends NumberPuzzleEntry>(entry: Entry) => ({ ...entry, game: futoshiki.game, name: futoshiki.name })
+  const saved = status === 'started'
+    ? imported.filter(entry => !futoshikiResults.status.has(entry.id)).reverse()
+      .map(({ id, difficulty, number }) => futoshikiRow({ id, difficulty, number, imported: true }))
+    : []
   const catalog = [
     ...catalogActivity(kakuro, status),
     ...catalogActivity(calcudoku, status),
-    ...catalogActivity(futoshiki, status),
+    ...futoshikiResults.entries.map(futoshikiRow),
     ...catalogActivity(hidato, status),
     ...catalogActivity(rullo, status),
   ]
@@ -50,8 +59,8 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
       if (newFilters) {
         const { filters } = query
         visibleCatalog = catalog.filter(row => !filters || matchesSolvedNumberFilters(row, filters))
-        if (visibleCatalog.length) {
-          publish({ query, entries: visibleCatalog, hasAny: true, hasMore: false, pending: true })
+        if (visibleCatalog.length || saved.length) {
+          publish({ query, entries: visibleCatalog, saved, hasAny: catalog.length > 0, hasMore: false, pending: true })
         }
       }
       // A row after the first N from its own game cannot rank in the first N overall.
@@ -66,6 +75,7 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
         if (generated.size !== sources.length) return
         publish({
           query: current,
+          saved,
           entries: [
             ...visibleCatalog,
             ...sources.flatMap(({ game, name }) => generated.get(game)!.entries.map(entry => ({ ...entry, game, name }))),
