@@ -27,7 +27,7 @@
     "dividers": 4,
     "techniques": [
       "pill-arrow",
-      "forcing-chain"
+      "group-order-contradiction"
     ],
     "alsoFitsStandardBoxes": false
   },

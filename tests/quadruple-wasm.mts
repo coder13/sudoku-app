@@ -11,6 +11,7 @@ import { applyDeduction, conflictsOf, enter, isSolved, peer, undo, redo, valuesO
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseCells, variantHouseMasks, variantRuleSections, regionMembership } from '../src/sudoku/variants.ts'
+import { cellName } from '../src/sudoku/lesson-diagram.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { entropyTrialDomains } from './helpers/global-entropy-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -252,8 +253,16 @@ test('Entropy Quads 18 returns rule-based Forcing Chain hints at the actual stal
   const first = (await puzzleHints(checkpoint)).choices[0]
   assert.equal(first?.technique, technique)
   assert.ok('variant' in first.evidence)
-  assert.match(first.evidence.variant.description, /If R1C4 is 1/i)
-  assert.match(first.evidence.variant.reason, /leaves R1C1 without a candidate/i)
+  const firstProof = first.evidence.variant.source?.deduction.evidence
+  assert.ok(firstProof?.type === 'rule-forcing')
+  const { assumption, contradiction } = firstProof
+  assert.match(first.evidence.variant.description, new RegExp(`^If ${cellName(assumption.cell)} is ${assumption.digit},`, 'i'))
+  assert.deepEqual(first.actions, [{ eliminate: assumption }])
+  if (contradiction.type === 'empty-cell') {
+    assert.match(first.evidence.variant.reason, new RegExp(`leaves ${cellName(contradiction.cell)} without a candidate`, 'i'))
+  } else {
+    assert.match(first.evidence.variant.reason, new RegExp(`^${contradiction.digit} has no possible cell in`, 'i'))
+  }
 
   const { choices } = await puzzleHints(checkpoint, 'all', technique)
   const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
