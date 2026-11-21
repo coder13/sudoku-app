@@ -393,10 +393,14 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
 }
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
-  const data = await decodeCoach(code)
+  const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
+    if (fromCollection && (!publication || publication.hasAuthorInstructions)) {
+      throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
+    }
     const { givens, grid, rules } = readCoachSized(data)
-    return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}), format: 'Sudoku Coach' }
+    return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}),
+      ...(fromCollection && publication?.title && { title: publication.title }), format: 'Sudoku Coach' }
   }
   if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')

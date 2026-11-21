@@ -77,3 +77,22 @@ test('original Coach collection and legacy codes keep givens, authored fills, an
     sqlite.close()
   }
 })
+
+test('a plain published Classic grid opens with its original title, hints and solution', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const source = JSON.parse(readFileSync(new URL('./fixtures/coach-plain-grid.json', import.meta.url), 'utf8'))
+  const url = `${coach}/en/s/${source.sudoku_id}`
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku: source }) + '</script>'))
+    : fetcher(path, init))
+  try {
+    const { game } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, source.name)
+    assert.equal(game.givens, source.sudoku)
+    assert.equal(game.variant, undefined)
+    assert.equal(await runEngine({ type: 'solve', values: game.givens }), source.solution)
+    assert.ok((await puzzleHints(game)).choices.length > 0)
+  } finally {
+    sqlite.close()
+  }
+})

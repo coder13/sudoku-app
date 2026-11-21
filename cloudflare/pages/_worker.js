@@ -43,6 +43,7 @@ async function input(request, limit = 2048, tooLarge = 'Save is too large.') {
 const maximumPuzzleCodeLength = 20_000
 const coachId = /^[A-Za-z0-9]{1,16}$/
 const coachCollectionSegment = /^[a-z0-9-]{1,64}$/
+const isCoachClassicGrid = code => typeof code === 'string' && /^[0-9]{81}$/.test(code)
 const coachCodeSource = 'SCv(?:7_32_[0-9a-v]+\\b|[3-6]_[0-9a-z_()[\\]+.-]+)'
 const embeddedCoachCode = new RegExp('\\b' + coachCodeSource, 'gi')
 const exactCoachCode = new RegExp('^' + coachCodeSource + '$', 'i')
@@ -216,7 +217,7 @@ async function loadCoachCollectionPuzzle(collectionPath, id, signal) {
   const puzzle = await readCoachJSON(`${base}/get-sudoku/${id}`, 512 * 1024, signal)
   const code = puzzle?.sudoku
   if (puzzle?.blocked === true) throw new HttpError(404, 'The published puzzle could not be found.')
-  if (typeof code !== 'string' || code.length > maximumPuzzleCodeLength || !exactCoachCode.test(code)) {
+  if (typeof code !== 'string' || code.length > maximumPuzzleCodeLength || !(exactCoachCode.test(code) || isCoachClassicGrid(code))) {
     throw new HttpError(422, 'This collection puzzle does not contain a supported puzzle export.')
   }
   const coach = await coachPublication(puzzle, id, code)
@@ -237,11 +238,16 @@ async function loadPublicPuzzle(request, path) {
   const signal = AbortSignal.timeout(5_000)
   if (isCollection) return loadCoachCollectionPuzzle(parts.slice(1), id, signal)
   const content = await readPuzzleSource(source.url(id), source.maxBytes, signal)
-  const code = source.code(content)
+  const puzzle = provider === 'sudoku-coach' ? readCoachPage(content) : undefined
+  // Only the matching publication field identifies a plain grid. Other digits
+  // in the page may be a solution, description, or unrelated export.
+  const plainGrid = isCoachClassicGrid(puzzle?.sudoku)
+  const code = plainGrid ? puzzle.sudoku : source.code(content)
   if (!code || code.length > maximumPuzzleCodeLength) {
     throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   }
-  const coach = provider === 'sudoku-coach' ? await coachPublication(readCoachPage(content), id, code) : undefined
+  const coach = puzzle && await coachPublication(puzzle, id, code)
+  if (plainGrid && !coach) throw new HttpError(422, 'This link does not contain a supported puzzle export.')
   return json({ code, ...(coach && { coach }) })
 }
 
