@@ -58,14 +58,15 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [] }), [])
 })
 
-test('Quintuple Pattern Overlay has no deductions at the HCHW stall after the disjoint-sum and forcing deductions', async () => {
+test('Quintuple Pattern Overlay has no deductions at the HCHW stall after the line-and-box deduction', async () => {
   const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
   const trace = await runEngine({
     type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: await getVariantPlayOrder(),
   })
   assert.equal(trace.rating.status, 'stalled')
-  assert.equal(trace.steps.length, 38)
-  assert.deepEqual(trace.end.eliminations, load('overlay-hchw-linked').after)
+  assert.equal(trace.steps.length, 37)
+  const after: number[] = load('overlay-hchw-linked').after
+  assert.deepEqual(trace.end.eliminations, after.map((mask, cell) => cell === 19 ? mask | (1 << 4) : mask))
   const technique = 'quintuple-pattern-overlay'
   const position = trace.end
   assert.deepEqual(await runEngine({

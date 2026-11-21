@@ -244,6 +244,17 @@ pub enum VariantEvidence {
         /// Current candidate masks, including placed digits.
         domains: [u16; 2],
     },
+    /// Two line cells would exhaust the candidates of a third cell in their house.
+    GroupLineHouseTriplet {
+        /// Index of the Entropic or Modular rule.
+        rule: usize,
+        /// House shared by the last three cells.
+        house: VariantHouseKind,
+        /// The target and its two different-phase line cells, then the off-line cell.
+        cells: [usize; 4],
+        /// Current candidate masks in cell order, including placed digits.
+        domains: [u16; 4],
+    },
     /// A repeating group and a two-cell sum force a repeat in a shared house.
     GroupLineSumHouse {
         /// Indices of the line and positive sum rules, in that order.
@@ -548,6 +559,7 @@ impl VariantDeduction {
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineHouseTriplet { cells, .. } => cells.len(),
             VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
             VariantEvidence::GroupLineDisjointSum { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
@@ -1055,6 +1067,12 @@ impl CompiledVariant {
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+                let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
+                    let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
+                    let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))
+                        .fold(0, |mask, (cell, _)| mask | (1u128 << cell));
+                    (domains, narrow)
+                });
                 for line in self
                     .lines
                     .iter()
@@ -1098,6 +1116,26 @@ impl CompiledVariant {
                             }
                         },
                     );
+                    if let Some((domains, narrow)) = &triplet_inputs {
+                        line.visit_group_house_triplets(self, domains, &supported[..len], *narrow,
+                            |house, cells, domains, removals| {
+                                let removed = position.masks[cells[0]] & removals;
+                                if removed != 0 {
+                                    proofs.push(VariantDeduction {
+                                        technique,
+                                        actions: digits(removed)
+                                            .map(|digit| HintAction::Eliminate(Candidate { cell: cells[0], digit }))
+                                            .collect(),
+                                        evidence: VariantEvidence::GroupLineHouseTriplet {
+                                            rule: line.rule_index,
+                                            house,
+                                            cells,
+                                            domains,
+                                        },
+                                    });
+                                }
+                            });
+                    }
                 }
                 for clue in self.group_sum_houses.iter().filter(|clue| clue.technique == technique.id()) {
                     let domains = clue.cells.map(|cell| position.domain(cell));

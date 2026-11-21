@@ -23,6 +23,37 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-house-triplet') {
+    const { cells, domains, rule, house } = proof.evidence
+    const path = puzzle.rules![rule]
+    assert.ok(path.type === 'modular' || path.type === 'entropic')
+    assert.equal(path.type, type)
+    assert.equal(new Set(cells).size, 4)
+    const phases = cells.slice(0, 3).map(cell => path.cells.indexOf(cell))
+    assert.ok(phases.every(position => position >= 0))
+    assert.equal(new Set(phases.map(position => position % 3)).size, 3)
+    assert.ok(!path.cells.includes(cells[3]))
+    const sites = variantHouseCells(house, puzzle)
+    assert.ok(cells.slice(1).every(cell => sites.includes(cell)))
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const fits = (i: number, digit: number) => Boolean(domains[i] & (1 << (digit - 1)))
+    const possible = new Set<number>()
+    const supported = new Set<number>()
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) {
+      if (new Set([group(a), group(b), group(c)]).size !== 3 || !fits(0, a) || !fits(1, b) || !fits(2, c)) continue
+      possible.add(a)
+      for (let d = 1; d <= 9; d++) {
+        if (fits(3, d) && d !== b && d !== c) supported.add(a)
+      }
+    }
+    assert.ok(proof.actions.length && supported.size)
+    for (const action of proof.actions) {
+      assert.ok('eliminate' in action)
+      assert.equal(action.eliminate.cell, cells[0])
+      assert.ok(possible.has(action.eliminate.digit) && !supported.has(action.eliminate.digit))
+    }
+    return
+  }
   if (proof.evidence.type === 'group-line-disjoint-sum') {
     const { cells, domains, rules, houses, total } = proof.evidence
     assert.equal(new Set(cells).size, 4)

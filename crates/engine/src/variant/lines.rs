@@ -196,6 +196,62 @@ impl LineConstraint {
         }
     }
 
+    pub fn visit_group_house_triplets(
+        &self,
+        puzzle: &CompiledVariant,
+        domains: &[u16; CELLS],
+        basic_support: &[u16],
+        narrow: u128,
+        mut visit: impl FnMut(VariantHouseKind, [usize; 4], [u16; 4], u16),
+    ) {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return;
+        };
+        if self.cells.len() < 3 || basic_support.contains(&0) {
+            return;
+        }
+        let scope = self.cells.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        let outside = narrow & !scope;
+        if outside == 0 {
+            return;
+        }
+        for &house in &puzzle.search_houses {
+            let shared = puzzle.house_masks[house] & scope;
+            let third = puzzle.house_masks[house] & outside;
+            if shared.count_ones() < 2 || third == 0 {
+                continue;
+            }
+            for (i, &a) in self.cells.iter().enumerate() {
+                if shared & (1u128 << a) == 0 {
+                    continue;
+                }
+                for (j, &b) in self.cells.iter().enumerate().skip(i + 1) {
+                    if shared & (1u128 << b) == 0 || !line.different_phases(i, j) {
+                        continue;
+                    }
+                    for other in super::cells_in(third) {
+                        if domains[other] & !(domains[a] | domains[b]) != 0 {
+                            continue;
+                        }
+                        let blocked = line.house_triplet_removals(i, j, [domains[a], domains[b], domains[other]]);
+                        if blocked == 0 {
+                            continue;
+                        }
+                        for (target, &cell) in self.cells.iter().enumerate() {
+                            let removals = basic_support[target] & blocked;
+                            if removals != 0 && removals != basic_support[target]
+                                && line.different_phases(target, i) && line.different_phases(target, j)
+                            {
+                                visit(puzzle.houses[house].kind, [cell, a, b, other],
+                                    [domains[cell], domains[a], domains[b], domains[other]], removals);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Domains and support are in the same order as cells.
     pub fn support(&self, domains: &[u16], support: &mut [u16]) {
         debug_assert_eq!(domains.len(), self.cells.len());

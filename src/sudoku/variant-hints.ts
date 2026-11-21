@@ -294,6 +294,27 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'group-line-house-triplet': {
+      cells = evidence.cells
+      const [target, first, second, other] = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit groups' : 'remainder groups'
+      const house = houseLabel(evidence.house)
+      const groupMask = lineGroupMask(kind, focus[0].digit)
+      const example = focus.filter(({ digit }) => groupMask & (1 << (digit - 1)))
+      const guesses = alternatives.format(example.map(({ digit }) => String(digit)))
+      const blocked = DIGITS.filter(digit => evidence.domains[3] & (1 << (digit - 1)))
+      const pair = `${nameCell(first)} and ${nameCell(second)}`
+      const occupied = blocked.length === 1 ? `one of those cells would have to use ${blocked[0]}`
+        : `those cells would have to use ${blocked.join(' and ')}`
+      description = `${nameCell(target)}, ${nameCell(first)}, and ${nameCell(second)} use different ${group} on this ${line} Line. ${pair} share ${house} with ${nameCell(other)}.`
+      reason = `If ${nameCell(target)} were ${guesses}, ${pair} would need the other two ${group}. With their current candidates, ${occupied}. That leaves ${nameCell(other)} with no candidate in ${house}.`
+      if (example.length < focus.length) reason += ' Apply the same check to the other crossed-out digits.'
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & (1 << (digit - 1)))
+        .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
     case 'group-line-disjoint-sum': {
       cells = evidence.cells
       const kind = technique === 'entropic' ? 'entropic' : 'modular'

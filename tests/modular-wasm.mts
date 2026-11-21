@@ -26,7 +26,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 760, 33, 3140, 38, false, false, 'medium'],
+  ['HCHW', 787, 34, 1867, 37, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -274,6 +274,72 @@ test('HCHW surfaces both four-cell Modular hints, including the column and box p
     type: 'variant', operation: 'trace', position: variantPosition(game.variant!, played.position), techniqueOrder: ['dynamic-forcing-net'],
   })
   assert.deepEqual(trace.end.eliminations, archived.after)
+})
+
+test('Play ranks the HCHW line-and-box hint above the forcing proof', async () => {
+  const archived: { url: string; entries: string; before: number[] } =
+    JSON.parse(readFileSync(new URL('./fixtures/overlay-hchw-linked.json', import.meta.url), 'utf8'))
+  const { code, solution } = load('coach').examples.find(({ url }: { url: string }) => url === archived.url)
+  const { game } = await prepareImportedPuzzle(code)
+  const eliminations = archived.before.map((mask, cell) => [1, 10].includes(cell) ? mask | (1 << 3) | (1 << 5) : mask)
+  const stalled = { ...game, position: { ...game.position, entries: archived.entries, eliminations } }
+  const { candidates, choices } = await puzzleHints(stalled, 'all', 'modular')
+  assert.ok(candidates)
+  const hint = choices.find(hint => 'variant' in hint.evidence &&
+    hint.evidence.variant.source?.deduction.evidence.type === 'group-line-house-triplet' &&
+    hint.evidence.variant.source.deduction.evidence.cells.join(',') === '19,28,27,37')
+  assert.ok(hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  assert.deepEqual(hint.actions, [5, 8].map(digit => ({ eliminate: { cell: 19, digit } })))
+  assert.ok(![5, 8].includes(Number(solution[19])))
+  const { reason, source: { deduction } } = hint.evidence.variant
+  assert.match(reason, /r3c2 were 5 or 8/i)
+  assert.match(reason, /use 1 and 3.*r5c2 with no candidate in box 4/i)
+  assertModularProof(game.variant!.puzzle, deduction)
+  const ranked = (await puzzleHints(stalled)).choices
+  const lineIndex = ranked.findIndex(choice => choice.technique === 'modular' &&
+    choice.actions.length === 2 && choice.actions.every(action => 'eliminate' in action && action.eliminate.cell === 19))
+  const forcingIndex = ranked.findIndex(choice => choice.technique === 'dynamic-forcing-net')
+  assert.ok(lineIndex >= 0 && (forcingIndex < 0 || lineIndex < forcingIndex))
+  const position = variantPosition(game.variant!, stalled.position)
+  const finder = watchTechniqueScan(valuesOf(stalled), eliminations, position)
+  try {
+    const targets = new Set(choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.equal(await finder.count('modular'), targets.size)
+  } finally { finder.close() }
+  const played = applyDeduction(stalled, hint.actions, candidates)
+  assert.equal((played.position.eliminations?.[19] ?? 0) & (16 | 128), 16 | 128)
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: await getVariantPlayOrder() })
+  assert.equal(trace.steps[0].technique, 'modular')
+  assert.deepEqual(trace.steps[0].actions, hint.actions)
+  assert.ok(!trace.steps.some(step => step.technique === 'dynamic-forcing-net' &&
+    step.actions.some(action => 'eliminate' in action && action.eliminate.cell === 19 && action.eliminate.digit === 8)))
+})
+
+test('Entropic groups can cut off a box cell with two candidates', async () => {
+  const position: { puzzle: VariantPuzzle; eliminations: number[] } = {
+    puzzle: { version: 1, givens: '0'.repeat(81), rules: [{ type: 'entropic', cells: [19, 28, 27] }] },
+    eliminations: Array(81).fill(0),
+  }
+  const allow = (cell: number, digits: number[]) => {
+    position.eliminations[cell] = 511 ^ digits.reduce((mask, digit) => mask | 1 << (digit - 1), 0)
+  }
+  allow(19, [3, 5, 6, 7])
+  allow(28, [2, 5, 8])
+  allow(27, [2, 5, 8])
+  allow(37, [2, 8])
+  const hints = async () => (await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: ['entropic'], limit: 0xffff_ffff,
+  })).filter(proof => proof.evidence.type === 'group-line-house-triplet')
+  const [proof] = await hints()
+  assert.ok(proof)
+  assert.deepEqual(proof.actions, [5, 6].map(digit => ({ eliminate: { cell: 19, digit } })))
+  assertGroupLineProof(position.puzzle, proof, 'entropic')
+  // A third candidate lets the other cell stay distinct from both line cells.
+  allow(37, [2, 4, 8])
+  assert.deepEqual(await hints(), [])
 })
 
 test('disjoint line and sum clues work with an Entropic Line and a positive V', async () => {

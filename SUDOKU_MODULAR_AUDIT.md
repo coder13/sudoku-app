@@ -307,6 +307,18 @@ node --experimental-strip-types scripts/bench-overlay-support.mjs before-cache.w
 
 The next verified deduction uses R3C2, R4C2 and R4C1 on the same Modular Line. If R3C2 were 5 or 8, its group would force R4C2 and R4C1 to be 1 and 3 in either order. Both share box 4 with R5C2, which has only 1 and 3 left. Independent enumeration excludes both candidates before the forcing step and excludes the remaining 5 at the 38-step stall. Applying the 5 removal manually gives an additional valid move without opening another step under the current profile.
 
+### Line-and-box hints in Play
+
+Two line cells in different repeating phases share a house with a cell outside the line. For a candidate group in the third phase, the detector checks both orders of the other two groups. If every order allowed by the line exhausts the off-line cell's candidates, it removes that group from the target. A house cell with three or more candidates always has a way to differ from two assigned digits. The proof records the line, house, four cells and their input masks. The same logic works for Modular and Entropic Lines.
+
+On the archived HCHW position before forcing, Play offers the hint that eliminates 5 and 8 from R3C2 ahead of the forcing proof. R4C2 and R4C1 would have to use 1 and 3, leaving R5C2 with no candidate in box 4. Technique Finder counts both eliminations. The regression independently enumerates the four domains, verifies the published answer, applies the hint, and checks undo and redo. An Entropic control uses the same structure and restores support by adding a third candidate to the off-line cell.
+
+In the live app replay, the engine finds the hint earlier and also eliminates 2 from R3C2 in the same move. It takes 37 steps and 1,867 points, compared with 38 steps and 3,140 points before this hint. The new path reaches the previous stall with 5 also removed from R3C2. The native path grows from 33 steps and 760 points to 34 and 787. Both remain partial, with no placements. The nine other published controls keep their full app traces and scores. All ten keep their exact solutions and starting candidates.
+
+Five alternating warmed WebAssembly samples put the median CPU time for the normal HCHW walkthrough at 4,099 ms before and 1,679 ms after. From the archived position before forcing, it falls from 2,910 to 773 ms. That replay now uses one 27-point Modular hint instead of the prior 800-point forcing step. The selected Modular request returns the new proof in 0.13 ms at the warmed median. The app Wasm grows by 23,043 raw bytes and shrinks by 5,241 gzip bytes.
+
+The full Play request for up to ten hints at the archived position still scans higher tiers for additional choices. One paired run took 26.4 seconds before and 27.1 seconds after, returning one forcing hint before and the new Modular hint followed by the forcing hint after. The rating and selected-technique timings measure different requests.
+
 ## Reproduce
 
 ```sh

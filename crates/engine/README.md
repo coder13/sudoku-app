@@ -540,6 +540,8 @@ Entropic and Modular hints can also use a shared house. Two cells a multiple of 
 
 [`VariantEvidence::GroupLineDisjointSum`] covers two same-group cells and a separate two-cell sum. Its four cells list the line pair first and the sum endpoints second. The proof checks each allowed order of the sum against the shared houses connecting those cells. The recorded houses may include both a column and a box. Wasm reports the evidence type as `group-line-disjoint-sum`.
 
+[`VariantEvidence::GroupLineHouseTriplet`] records three line cells from different repeating phases and a fourth cell outside the line. The last two line cells share the recorded house with the fourth cell. When assuming the target's group would exhaust the fourth cell's one or two candidates in every possible group order, remove that group from the target. The Wasm evidence type is `group-line-house-triplet`.
+
 Non-Consecutive has four additional techniques. Each checks finite alternatives rather than searching for a solution. [`VariantEvidence::Exclusion`] records a typed [`VariantExclusionPremise`], the source rules, and any houses needed to exclude equal digits. Every alternative must conflict with each removed candidate. The detector uses the compiled binary relation, including explicit edge exceptions. House premises include Jigsaw regions, diagonals and extra houses.
 
 | Technique ID | Required pattern | Points | Tier |
