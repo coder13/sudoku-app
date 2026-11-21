@@ -14,7 +14,6 @@ import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE,
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
 import { puzzleTechniqueCatalog, variantHintProblem } from '../sudoku/puzzle-help'
 import { variantPosition } from '../sudoku/variant-play'
-import { Modal } from './Modal'
 
 const SCAN_DELAY_MS = 100
 const HIDE_ZERO_KEY = 'sudoku-app:v1:hide-zero-techniques'
@@ -302,12 +301,4 @@ export function PlacementAnalysis({ title, techniques, counts, solved, unit = 'P
         : <p className="analysis-empty" role="status">No techniques with {unit.toLowerCase()}.</p>}
     </>}
   </div>
-}
-
-export function PuzzleAnalysis(props: (ContentsProps | PlacementAnalysisProps) & { close: () => void }) {
-  return (
-    <Modal title={TECHNIQUE_FINDER_TITLE} onClose={props.close} className="puzzle-analysis-dialog">
-      {'game' in props ? <PuzzleAnalysisContents {...props} /> : <PlacementAnalysis {...props} />}
-    </Modal>
-  )
 }

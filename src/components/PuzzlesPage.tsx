@@ -80,7 +80,7 @@ function PuzzleRows({ puzzles, active, manage, page, numberLibrary = true }: {
       {puzzles.slice(0, limit).map((game, index) => {
         const ref = visible > puzzleRowBatchSize && index === visible - puzzleRowBatchSize ? firstNewLink : undefined
         if ('game' in game) {
-          const title = `${game.name} · ${numberPuzzleDifficultyLabels[game.difficulty]} ${game.number}`
+          const title = `${game.name} · ${game.imported ? 'Imported' : numberPuzzleDifficultyLabels[game.difficulty]} ${game.number}`
           const time = game.elapsed === undefined ? undefined : formatTime(game.elapsed)
           const status = numberLibrary === 'solved' ? (time ? `Solved in ${time}` : 'Solved') : time
           const detail = [game.generated && 'Generated puzzle', status].filter(Boolean).join(' · ')
@@ -155,6 +155,7 @@ function useNumberPuzzleHistory(status: NumberResultStatus, filters?: SolvedPuzz
   const loading = !unavailable && (matching?.query !== query || matching.pending === true)
   return {
     entries: matching?.entries,
+    saved: activity?.saved,
     hasAny: activity?.hasAny,
     filterKey,
     page: {
@@ -253,7 +254,7 @@ function PuzzleLibrary({ games, active, manage, loading }: {
   games: Game[]; active: string | null; manage: (id: string) => void; loading: boolean
 }) {
   const title = useId()
-  const { entries: numberPuzzles, page } = useNumberPuzzleHistory('started')
+  const { entries: numberPuzzles, saved: savedNumberPuzzles, page } = useNumberPuzzleHistory('started')
   const sudoku = useMemo(() => activeHistory(games), [games])
   const activePuzzles = useMemo(() => {
     if (!numberPuzzles?.length) return sudoku.map(({ game }) => game)
@@ -262,7 +263,7 @@ function PuzzleLibrary({ games, active, manage, loading }: {
       ...numberPuzzles.map(puzzle => ({ puzzle, playedAt: puzzle.lastPlayed ?? 0 })),
     ].sort((a, b) => b.playedAt - a.playedAt).map(({ puzzle }) => puzzle)
   }, [sudoku, numberPuzzles, page.limit])
-  const saved = games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived))
+  const saved = [...games.filter((game) => !isSolved(game) && (game.savedForLater || game.archived)), ...(savedNumberPuzzles ?? [])]
   return <div className="main-menu-section puzzle-library">
     {activePuzzles.length > 0 ? <section className="puzzle-library-section" aria-labelledby={`${title}-active`}>
       <h2 id={`${title}-active`}>Active Puzzles</h2>

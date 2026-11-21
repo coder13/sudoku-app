@@ -2722,13 +2722,6 @@ svg { flex-shrink: 0; }
 .resize-step-controls { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .resize-step-controls + .resize-step-controls, .resize-options-reset { margin-block-start: var(--space-8); }
 
-.dialog.puzzle-analysis-dialog { width: min(540px, calc(100vw - 28px)); }
-.dialog.mobile-solution-dialog { width: min(540px, calc(100vw - 20px)); max-height: calc(100dvh - 20px); }
-.mobile-solution-dialog .board-frame { width: min(100%, 360px); margin-inline: auto; }
-.mobile-solution-dialog .solution-path { display: flex; margin-top: var(--space-14); }
-.mobile-solution-dialog .solution-path-steps { height: clamp(112px, 32dvh, 300px); flex: none; }
-.mobile-solution-explanation { margin-top: var(--space-14); font-size: 0.875rem; line-height: 1.5; }
-.mobile-solution-explanation h3 { margin-bottom: var(--space-4); font-size: 1rem; }
 .puzzle-analysis-card {
   display: flex;
   flex-direction: column;
@@ -2749,18 +2742,6 @@ svg { flex-shrink: 0; }
 }
 .puzzle-analysis-card-heading h2 { font-size: 0.9375rem; font-weight: 760; }
 .puzzle-analysis-card-body { min-height: 0; padding: 10px 12px; overflow-y: auto; overscroll-behavior: contain; }
-/* Full-width summary dialogs on the mobile workspace. Desktop stays compact. */
-@media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
-  .dialog.puzzle-analysis-dialog {
-    width: 100vw;
-    max-width: 100vw;
-    max-height: 100dvh;
-    border-radius: 0;
-  }
-  .dialog.puzzle-analysis-dialog .dialog-inner {
-    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
-  }
-}
 .puzzle-analysis-content { display: grid; gap: 10px; }
 .analysis-zero-filter {
   display: flex;

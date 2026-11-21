@@ -16,6 +16,7 @@ export function numberHistoryEntry(entry: NumberPuzzleEntry, saved: SavedNumberP
   return {
     id: entry.id, number: entry.number, difficulty: entry.difficulty,
     ...(entry.generated && { generated: true }),
+    ...(entry.imported && { imported: true }),
     ...(lastPlayed !== undefined && { lastPlayed }),
     ...(clock && clock !== 'untimed' && { elapsed: clock.elapsed }),
   }

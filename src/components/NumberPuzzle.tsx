@@ -1,11 +1,12 @@
 import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
-import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { Calculator, Check, ChevronLeft, ChevronRight, Hash, MoveHorizontal, Route as PathIcon, Delete, Eraser, Info, Lightbulb, ListFilter, ListOrdered, Pencil, Redo2, Sigma, Undo2 } from 'lucide-react'
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { numberPuzzleDestination, numberPuzzleDifficulties, numberPuzzleDifficultyLabels, type NumberGame, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog'
 import {
   summarizeDifficultySolves, type DifficultyStatistics, type DifficultyTotals,
 } from '../sudoku/difficulty-statistics'
 import type { GeneratedNumberGame } from '../number-puzzles/generated'
+import { hasPlayerNumberAnnotations, type NumberImportAnnotations } from '../number-puzzles/imported-annotations'
 import { requestGeneratedNumberResults } from '../number-puzzles/difficulty-history'
 import { numberHistoryEntry, recordNumberResult, type NumberHistoryEntry, type NumberResultStatus } from '../number-puzzles/generated-results'
 import {
@@ -14,31 +15,36 @@ import {
 import {
   advanceNumberClock, emptyNumberPosition, hasNumberMoves, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
   parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberClock, saveNumberProgress,
-  type NumberClock, type NumberMove, type NumberProgress,
+  type NumberCellMove, type NumberClock, type NumberMove, type NumberPosition, type NumberProgress,
 } from '../number-puzzles/progress'
+import { BoardQuickDraw } from './BoardAnnotations'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
 import { PuzzlesSectionNav } from './PuzzlesSectionNav'
 import { DeductionExplanation, HintCard } from './HintCard'
 import { Modal } from './Modal'
+import { MobileInputTabs } from './MobileInputTabs'
 import { PlayActionsButton, PlayHint, PlayLayout } from './PlayLayout'
-import { PlacementAnalysis, PuzzleAnalysis } from './PuzzleAnalysis'
+import { PlacementAnalysis } from './PuzzleAnalysis'
 import { PuzzleCheckResult, type DialogResult } from './PuzzleCheckResult'
-import { SolutionDialog, SolutionPath, solutionEndSummary, type NumberSolutionTrace } from './SolutionPath'
+import { SolutionPath, SolutionReveal, solutionEndSummary, type NumberSolutionTrace } from './SolutionPath'
 import { useMobileLayout } from './mobile-layout'
 import { numberSolution } from '../number-puzzles/solution'
+import { importedColorFill, importedColorLabel, importedColorValue } from '../sudoku/imported-colors'
 import { formatTime } from '../sudoku/game'
+import { HINT_ERROR, NO_HINT } from '../sudoku/hints'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { usePuzzleTimer } from './usePuzzleTimer'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { PuzzleKeypad } from './PuzzleKeypad'
+import { CandidatePositionSwitch, PuzzleKeypad } from './PuzzleKeypad'
 import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
 
 type BoardCell = {
   label?: string
+  color?: string
   given?: number
   printed?: number
   decoration?: ReactNode
@@ -57,6 +63,7 @@ export type NumberBoard = {
   height: number
   maxValue: number
   cells: readonly BoardCell[]
+  ruleNotes?: readonly string[]
   cellChoices?: { labels: readonly string[]; off: number }
   mirrorEdgeClues?: boolean
   check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
@@ -86,6 +93,25 @@ function editableCells(board: NumberBoard) {
   return board.cells.map(cell => !cell.block && !cell.given)
 }
 
+function mistakesAgainstSolution(board: NumberBoard, values: readonly number[], editable: readonly boolean[]) {
+  if (!values.some(Boolean)) return null
+  const solved = board.solve()
+  if (!solved) return null
+  return values.flatMap((value, cell) => editable[cell] && value && value !== solved[cell] ? [cell] : [])
+}
+
+type PositionConflict = { conflict: 'rules' | 'solution'; marked: readonly number[] }
+type TechniqueReport = { hints: readonly Hint[]; conflict?: never; marked?: never }
+  | (PositionConflict & { hints?: never })
+
+function findPositionConflict(
+  board: NumberBoard, values: readonly number[], editable: readonly boolean[], marked: readonly number[],
+): PositionConflict | undefined {
+  if (marked.length) return { conflict: 'rules', marked }
+  const mistakes = mistakesAgainstSolution(board, values, editable)
+  if (mistakes?.length) return { conflict: 'solution', marked: mistakes }
+}
+
 function NumberGameHeading({ game, title, inPlay, children }: {
   game: NumberGame; title: string; inPlay?: boolean; children?: ReactNode
 }) {
@@ -94,15 +120,16 @@ function NumberGameHeading({ game, title, inPlay, children }: {
   const canGoBack = useCanGoBack()
   const state = useLocation({ select: location => location.state })
   const fromLibrary = inPlay && state.fromNumberPuzzleLibrary
+  const fromImport = inPlay && state.fromNumberPuzzleImport
   const fromSolved = fromLibrary === 'solved'
-  const fromParent = inPlay ? fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
+  const fromParent = inPlay ? fromImport || fromLibrary || state.fromNumberDifficulty === game || game === 'kakuro' && state.fromKakuroDifficulty
     : state.fromPuzzleGameTypes
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [title])
 
   return <header className="puzzles-page-heading number-puzzle-heading">
-    <Link to={fromSolved ? '/puzzles/solved' : fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
-      aria-label={fromSolved ? 'Back to solved puzzles' : fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
+    <Link to={fromImport ? '/import' : fromSolved ? '/puzzles/solved' : fromLibrary ? '/puzzles/browse' : inPlay ? `/puzzles/${game}` : '/puzzles/games'} className={iconButtonClassName('secondary', inPlay ? undefined : 'puzzles-back')}
+      aria-label={fromImport ? 'Back to puzzle import' : fromSolved ? 'Back to solved puzzles' : fromLibrary ? 'Back to active puzzles' : inPlay ? `Back to ${title} difficulty` : 'Back to game types'}
       onClick={event => {
         if (fromParent && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
           event.preventDefault()
@@ -288,12 +315,135 @@ export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry 
   </main>
 }
 
+function numberCellName(index: number, width: number) {
+  return `R${Math.floor(index / width) + 1}C${index % width + 1}`
+}
+
+/** Use for a standalone board preview that shares Play's cells and clues. */
+export function NumberPuzzlePreview({ board, game, label, position, annotations }: {
+  board: NumberBoard; game: NumberGame; label: string; position?: NumberPosition; annotations?: NumberImportAnnotations
+}) {
+  const digits = useMemo(() => position ? Array.from({ length: board.maxValue }, (_, i) => i + 1) : [], [board.maxValue, position])
+  return <div className="number-puzzle-grid number-puzzle-preview" data-game={game} role="group" aria-label={label}
+    style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
+    <NumberPuzzleCells board={board} digits={digits} values={position?.values}
+      noteMasks={position?.notes} cornerMasks={position?.cornerNotes} separateNotes={Boolean(position)}
+      annotations={annotations} showPlayerAnnotations />
+  </div>
+}
+
+function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, cornerMasks, separateNotes, annotations, showPlayerAnnotations,
+  hintCell, contextCells, conflicts, events }: {
+  board: NumberBoard
+  selection?: number
+  values?: readonly number[]
+  digits?: readonly number[]
+  noteMasks?: readonly number[]
+  cornerMasks?: readonly number[]
+  separateNotes?: boolean
+  annotations?: NumberImportAnnotations
+  showPlayerAnnotations?: boolean
+  hintCell?: number
+  contextCells?: readonly number[]
+  conflicts?: ReadonlySet<number>
+  events?: {
+    locked: boolean
+    setButton: (index: number, button: HTMLButtonElement | null) => void
+    onFocus: (index: number) => void
+    onClick: (index: number, value: number) => void
+  }
+}) {
+  const { width, height, maxValue, cellChoices, mirrorEdgeClues } = board
+  const drawingRegion = useMemo(() => ({ row: 0, column: 0, rows: height, columns: width }), [height, width])
+  const context = new Set(contextCells)
+
+  function renderBlock(index: number, copy?: 'top' | 'left' | 'corner') {
+    const { label, decoration } = board.cells[index]
+    const named = !copy && Boolean(label)
+    return <div key={copy ? `${copy}-${index}` : index} className="number-puzzle-block" data-clue={Boolean(label)}
+      data-conflict={conflicts?.has(index) ?? false} data-hint={context.has(index)}
+      role={named ? 'img' : undefined} aria-label={named ? `${numberCellName(index, width)}: ${label}` : undefined}
+      aria-hidden={named ? undefined : true}>
+      {decoration}
+    </div>
+  }
+
+  function renderCell({ label, color, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
+    if (block) return renderBlock(index)
+    const value = given || values?.[index] || 0
+    const marks = noteMasks?.[index] ? digits.filter(digit => noteMasks[index] & (1 << (digit - 1))) : []
+    const corners = cornerMasks?.[index] ? digits.filter(digit => cornerMasks[index] & (1 << (digit - 1))) : []
+    const centerLabel = marks.length ? `${separateNotes ? 'center ' : ''}notes ${marks.join(', ')}` : ''
+    const cornerLabel = corners.length ? `corner notes ${corners.join(', ')}` : ''
+    const shades = (showPlayerAnnotations ? annotations?.cellColors?.[index] : undefined) ?? annotations?.givenColors?.[index]
+    const candidateShades = showPlayerAnnotations ? annotations?.candidateColors?.[index] : undefined
+    const shadeLabels = !value && candidateShades ? [...new Set([...marks, ...corners])].flatMap(digit => {
+      const shade = candidateShades[digit]
+      return shade ? [`Candidate ${digit} ${importedColorLabel(shade)}`] : []
+    }) : []
+    const notesLabel = centerLabel && cornerLabel ? `${centerLabel}, ${cornerLabel}` : centerLabel || cornerLabel
+    const description = printed !== undefined ? String(printed)
+      : given ? `given ${given}` : value ? String(value) : notesLabel || 'empty'
+    const conflict = conflicts?.has(index) ?? false
+    const cellLabels = [numberCellName(index, width), description, label, shades?.map(importedColorLabel).join(', ') ?? color,
+      ...shadeLabels, conflict && 'conflict']
+    const fills = shades?.map(importedColorFill)
+    const stripes = fills && fills.length > 1 ? fills.map((fill, part) =>
+      `color-mix(in srgb, ${fill} var(--number-cell-color-weight), var(--number-cell-color-base)) ${part * 100 / fills.length}% ${(part + 1) * 100 / fills.length}%`) : undefined
+    function renderMarks(list: number[]) {
+      return candidateShades ? list.map(digit => {
+        const shade = candidateShades[digit]
+        return <span key={digit} className={shade ? 'number-imported-candidate-color' : undefined}
+          style={shade ? { '--number-candidate-color': importedColorFill(shade) } as CSSProperties : undefined}>{digit}</span>
+      }) : list.join('')
+    }
+    return <button key={index} type="button" className="number-puzzle-cell"
+      data-cell={index}
+      data-color={shades?.[0] ?? color}
+      style={shades || color ? {
+        '--number-cell-color': fills?.[0] ?? (color ? importedColorValue(color) : undefined),
+        '--number-cell-color-stripes': stripes && `linear-gradient(90deg, ${stripes.join(', ')})`,
+      } as CSSProperties : undefined}
+      ref={events && (button => events.setButton(index, button))}
+      tabIndex={selection === index ? 0 : -1}
+      aria-pressed={cellChoices ? value !== cellChoices.off : events ? selection === index : undefined}
+      disabled={!events} aria-disabled={cellChoices && events?.locked ? true : undefined}
+      data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
+      data-conflict={conflicts?.has(index) ?? false} data-hint={hintCell === index} data-context={context.has(index)}
+      data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
+      aria-label={cellLabels.filter(Boolean).join(', ')}
+      onFocus={events && (() => events.onFocus(index))}
+      onClick={events && (() => events.onClick(index, value))}>
+      {decoration}
+      {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
+        : separateNotes ? <>
+          {corners.length > 0 && <span className="number-puzzle-corner-notes" aria-hidden="true">{renderMarks(corners)}</span>}
+          {marks.length > 0 && <span className="number-puzzle-center-notes" aria-hidden="true">{renderMarks(marks)}</span>}
+        </> : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+          : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
+            <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
+    </button>
+  }
+
+  return <>
+    {mirrorEdgeClues && renderBlock(board.cells.length - 1, 'corner')}
+    {mirrorEdgeClues && board.cells.slice(-width).map((_, column) => renderBlock((height - 1) * width + column, 'top'))}
+    {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
+      ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
+      : board.cells.map(renderCell)}
+    {annotations?.givenDrawings && <BoardQuickDraw drawings={annotations.givenDrawings} region={drawingRegion} />}
+    {showPlayerAnnotations && annotations?.drawings && <BoardQuickDraw drawings={annotations.drawings}
+      region={drawingRegion} />}
+  </>
+}
+
 const insightTabs = [
   { id: 'solution', label: 'Solution', Icon: ListOrdered },
   { id: 'techniques', label: TECHNIQUE_FINDER_TITLE, Icon: ListFilter },
 ] as const
 type Insight = typeof insightTabs[number]['id']
 type HintSelection = { choices: readonly Hint[]; index: number; depth: number }
+type HintResult = HintSelection | { notice: { title: string; text: string } }
 
 function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: { config: NumberGameConfig<Entry>; entry: Entry }) {
   const { game, name, rules, hasClueCells, generatedEntry } = config
@@ -311,37 +461,52 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [number, setNumber] = useState(entry.number)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
+  const [candidatePosition, setCandidatePosition] = useState<'center' | 'corner'>('center')
+  const separateNotes = Boolean(entry.initialPosition)
   const [numberInput, setNumberInput] = useState('')
   const numberField = useRef<HTMLInputElement>(null)
-  const [showCheck, setShowCheck] = useState(false)
+  const [checkedCells, setCheckedCells] = useState<readonly number[]>()
   const [checkResult, setCheckResult] = useState<DialogResult | null>(null)
   const mobile = useMobileLayout()
-  const [hintSelection, setHint] = useState<HintSelection | null>(null)
+  const [hintResult, setHint] = useState<HintResult | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
-  const [mobileInsight, setMobileInsight] = useState<Insight | null>(null)
   const [insights, setInsights] = useState<{ open: Insight[]; active: Insight | null }>({ open: [], active: null })
   const [rearranging, setRearranging] = useState(false)
   const [solution, setSolution] = useState<ReturnType<typeof numberSolution<Hint>> | null>(null)
+  const [solutionRevealed, setSolutionRevealed] = useState(false)
   const [solutionIndex, setSolutionIndex] = useState(0)
   const [showSolutionHint, setShowSolutionHint] = useState(false)
-  const [status, setStatus] = useState('')
   const [storageError, setStorageError] = useState(false)
   const lastSave = useRef(0)
   const cellButtons = useRef(new Map<number, HTMLButtonElement>())
   const actionsButton = useRef<HTMLButtonElement>(null)
   const actionsMenu = useRef<HTMLDivElement>(null)
+  const mobileTab = useRef<HTMLButtonElement>(null)
+  const desktopInsightTabs = useRef<HTMLDivElement>(null)
+  const focusTabAfterMenu = useRef(false)
+  const restoreInputFocus = useRef(false)
   const result = useMemo(() => board.check(position.values), [board, position.values])
-  const conflictCells = new Set(showCheck ? result.marked : [])
+  const hintSelection = hintResult && 'choices' in hintResult ? hintResult : null
+  const hintNotice = hintResult && 'notice' in hintResult ? hintResult.notice : null
   const hint = hintSelection?.choices[hintSelection.index]
   const depth = hintSelection?.depth ?? 0
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const previewing = mobile ? mobileInsight === 'solution' : insights.active === 'solution'
-  const analysisOpen = mobile ? mobileInsight === 'techniques' : insights.active === 'techniques'
-  const found = useMemo(() => analysisOpen && !result.complete && !result.marked.length ? board.hints(position.values) : [],
-    [analysisOpen, board, position.values, result])
+  const activeInsight = insights.active ?? (mobile ? null : insights.open.at(-1))
+  const solutionActive = activeInsight === 'solution'
+  const previewing = solutionActive && solutionRevealed
+  const analysisOpen = activeInsight === 'techniques'
+  const readTechniqueReport = useMemo(() => {
+    // Keep one report per position so changing tabs does not repeat the scan.
+    let report: TechniqueReport | undefined
+    return (): TechniqueReport => report ??= findPositionConflict(board, position.values, editable, result.marked)
+      ?? { hints: board.hints(position.values) }
+  }, [board, editable, position.values, result.marked])
+  const techniqueReport = analysisOpen && !result.complete ? readTechniqueReport() : undefined
+  const found = techniqueReport?.hints ?? []
+  const conflictCells = new Set(techniqueReport?.marked ?? checkedCells)
   const locked = !ready || result.complete || previewing
-  const overlayOpen = actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null
+  const overlayOpen = actionsOpen || rulesOpen || checkResult !== null
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const timed = clock !== undefined && clock !== 'untimed'
   const elapsed = timed ? clock.elapsed : 0
@@ -391,9 +556,15 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       })
       return () => { active = false }
     }
-    restore(load())
+    const stored = load()
+    if (stored || !entry.initialPosition) restore(stored)
+    else {
+      const imported: NumberProgress = { position: entry.initialPosition, past: [], future: [], clock: 'untimed', lastPlayed: Date.now() }
+      setStorageError(!saveNumberProgress(key, imported))
+      restore(imported)
+    }
     setReady(true)
-  }, [editable, entry.id, generatedGame, load, maxValue])
+  }, [editable, entry.id, entry.initialPosition, generatedGame, key, load, maxValue])
 
   function positionActionsMenu(menu: HTMLDivElement) {
     const anchor = actionsButton.current?.getBoundingClientRect()
@@ -417,42 +588,57 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
         if (save === lastSave.current) setStorageError(!saved)
       })
     } else setStorageError(!saveNumberProgress(key, next))
-    setShowCheck(false)
+    setCheckedCells(undefined)
     setHint(null)
-    setStatus('')
   }
 
-  function readCell(cell: number): NumberMove {
-    return [cell, position.values[cell], position.notes[cell]]
+  function readCell(cell: number): NumberCellMove {
+    const corner = position.cornerNotes?.[cell]
+    return corner ? [cell, position.values[cell], position.notes[cell], corner] : [cell, position.values[cell], position.notes[cell]]
   }
 
-  function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
-    const next = { values: [...position.values], notes: [...position.notes] }
+  function applyMove(move: NumberMove, past: NumberMove[], future: NumberMove[]) {
+    if (typeof move === 'boolean') {
+      update({ position: { ...position, annotationsHidden: move }, past, future })
+      return
+    }
+    const [cell, value, marks, corner = 0] = move
+    const next = { ...position, values: [...position.values], notes: [...position.notes] }
     next.values[cell] = value
     next.notes[cell] = marks
-    update({ position: next, past, future })
+    const cornerNotes = position.cornerNotes?.slice() ?? (corner ? Array<number>(next.values.length).fill(0) : undefined)
+    if (cornerNotes) cornerNotes[cell] = corner
+    update({ position: { ...next, ...(cornerNotes && { cornerNotes }) }, past, future })
   }
 
   function enter(value: number, cell = selection, pencil = notes) {
     if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
     const previous = readCell(cell)
-    const [, digit, marks] = previous
+    const [, digit, marks, corner = 0] = previous
     const addNote = value > 0 && pencil
-    if (addNote ? digit !== 0 : value === digit && !marks) return
-    const next: NumberMove = addNote ? [cell, 0, marks ^ (1 << (value - 1))] : [cell, value, 0]
+    if (addNote ? digit !== 0 : value === digit && !marks && !corner) return
+    let next: NumberCellMove = [cell, value, 0]
+    if (addNote) {
+      const bit = 1 << (value - 1)
+      const center = candidatePosition === 'center' ? marks ^ bit : marks
+      const nextCorner = candidatePosition === 'corner' ? corner ^ bit : corner
+      next = nextCorner ? [cell, 0, center, nextCorner] : [cell, 0, center]
+    }
     applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), previous], [])
   }
 
   function undo() {
     const previous = past.at(-1)
-    if (locked || !previous) return
-    applyMove(previous, past.slice(0, -1), [...future.slice(1 - NUMBER_HISTORY_SIZE), readCell(previous[0])])
+    if (locked || previous === undefined) return
+    const inverse = typeof previous === 'boolean' ? Boolean(position.annotationsHidden) : readCell(previous[0])
+    applyMove(previous, past.slice(0, -1), [...future.slice(1 - NUMBER_HISTORY_SIZE), inverse])
   }
 
   function redo() {
     const next = future.at(-1)
-    if (locked || !next) return
-    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), readCell(next[0])], future.slice(0, -1))
+    if (locked || next === undefined) return
+    const inverse = typeof next === 'boolean' ? Boolean(position.annotationsHidden) : readCell(next[0])
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), inverse], future.slice(0, -1))
   }
 
   const onPlayKey = useEffectEvent((event: KeyboardEvent) => {
@@ -479,7 +665,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }, [])
 
   function onGridKey(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape' && hintSelection) {
+    if (event.key === 'Escape' && hintResult) {
       closeHint()
       return
     }
@@ -520,19 +706,37 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   const conflictMessage = hasClueCells ? 'Resolve the highlighted clues first.' : 'Resolve the highlighted entries first.'
+  const solutionConflictMessage = cellChoices ? 'The highlighted choices cannot fit the solution.'
+    : 'The highlighted numbers cannot fit the solution.'
 
   function requestHint() {
     closeActions()
+    const conflict = findPositionConflict(board, position.values, editable, result.marked)
+    setCheckedCells(conflict?.marked)
+    if (conflict) {
+      setHint({ notice: { title: HINT_ERROR.title,
+        text: conflict.conflict === 'rules' ? conflictMessage : solutionConflictMessage } })
+      return
+    }
+
     const choices = board.hints(position.values, 1)
-    setHint(choices.length ? { choices, index: 0, depth: 0 } : null)
-    setShowCheck(!choices.length && result.marked.length > 0)
-    setStatus(choices.length ? '' : result.marked.length ? conflictMessage
-      : cellChoices ? 'No choice follows from the current clues.' : 'No logical placement found for these entries.')
+    setHint(choices.length ? { choices, index: 0, depth: 0 } : {
+      notice: { title: NO_HINT.title,
+        text: cellChoices ? 'No choice follows from the current clues.' : 'No logical placement found for these entries.' },
+    })
   }
 
   function closeHint() {
     setHint(null)
-    actionsButton.current?.focus({ preventScroll: true })
+    const target = mobileTab.current ?? actionsButton.current
+    target?.focus({ preventScroll: true })
+  }
+
+  function closeSolutionHint() {
+    setShowSolutionHint(false)
+    const target = mobileTab.current
+      ?? desktopInsightTabs.current?.querySelector<HTMLButtonElement>('[data-insight-tab="solution"]')
+    target?.focus({ preventScroll: true })
   }
 
   function applyHint() {
@@ -546,35 +750,50 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     setSelection(index)
   }
 
-  function closeInsight(id: Insight, fromMenu = false) {
-    if (mobile) setMobileInsight(null)
-    else setInsights(current => {
+  useLayoutEffect(() => {
+    if (!restoreInputFocus.current) return
+    restoreInputFocus.current = false
+    const target = mobileTab.current ?? actionsButton.current
+    target?.focus({ preventScroll: true })
+  }, [insights])
+
+  function closeInsight(id: Insight, restoreFocus = true) {
+    if (restoreFocus && mobile) restoreInputFocus.current = true
+    else if (restoreFocus) actionsButton.current?.focus({ preventScroll: true })
+    if (id === 'solution') {
+      setSolutionRevealed(false)
+      setShowSolutionHint(false)
+    }
+    setInsights(current => {
       const open = current.open.filter(tab => tab !== id)
-      return { open, active: current.active === id ? open.at(-1) ?? null : current.active }
+      return { open, active: current.active === id ? mobile ? null : open.at(-1) ?? null : current.active }
     })
-    if (!fromMenu) actionsButton.current?.focus({ preventScroll: true })
   }
 
-  function openInsight(id: Insight, fromMenu = false) {
-    if (!fromMenu) closeActions()
-    if (id === 'solution') {
-      if (!solution) setSolution(numberSolution(board, editable))
-      setSolutionIndex(0)
-      setShowSolutionHint(false)
-      setShowCheck(false)
-      setHint(null)
-      setStatus('')
-    }
-    if (id === 'techniques' && result.marked.length) setShowCheck(true)
-    if (mobile) setMobileInsight(id)
-    else setInsights(current => ({
+  function selectInsight(active: Insight | null) {
+    if (active === 'solution' || active === 'techniques') setHint(null)
+    setInsights(current => ({ ...current, active }))
+  }
+
+  function openInsight(id: Insight) {
+    if (mobile && actionsOpen) focusTabAfterMenu.current = true
+    closeActions()
+    setHint(null)
+    setInsights(current => ({
       open: current.open.includes(id) ? current.open : [...current.open, id],
       active: id,
     }))
   }
 
+  function revealSolution() {
+    if (!solution) setSolution(numberSolution(board, editable))
+    setSolutionRevealed(true)
+    setCheckedCells(undefined)
+    setHint(null)
+  }
+
   function cellName(index: number) {
-    return `R${Math.floor(index / width) + 1}C${index % width + 1}`
+    return numberCellName(index, width)
   }
 
   function nextPuzzle() {
@@ -597,60 +816,31 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   function renderGrid(preview?: { values: readonly number[]; hint: Hint | null }) {
     const shownHint = preview ? preview.hint : depth >= 2 ? hint : undefined
-    const context = new Set(preview || depth >= 3 ? shownHint?.marked : [])
-    function renderBlock(index: number, copy?: 'top' | 'left' | 'corner') {
-      const { label, decoration } = board.cells[index]
-      const named = !copy && Boolean(label)
-      return <div key={copy ? `${copy}-${index}` : index} className="number-puzzle-block" data-clue={Boolean(label)}
-        data-conflict={!preview && conflictCells.has(index)} data-hint={context.has(index)}
-        role={named ? 'img' : undefined} aria-label={named ? `${cellName(index)}: ${label}` : undefined}
-        aria-hidden={named ? undefined : true}>
-        {decoration}
-      </div>
-    }
-
-    function renderCell({ label, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
-      if (block) return renderBlock(index)
-      const value = given || (preview?.values ?? position.values)[index]
-      const marks = preview ? [] : digits.filter(digit => position.notes[index] & (1 << (digit - 1)))
-      const description = printed !== undefined ? String(printed)
-        : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-      return <button key={index} type="button" className="number-puzzle-cell"
-        ref={preview ? undefined : button => { if (button) cellButtons.current.set(index, button); else cellButtons.current.delete(index) }}
-        tabIndex={selection === index ? 0 : -1}
-        aria-pressed={cellChoices ? value !== cellChoices.off : preview ? undefined : selection === index}
-        disabled={Boolean(preview)} aria-disabled={cellChoices && !preview && locked ? true : undefined}
-        data-entry={Boolean(value && !given)} data-choice={cellChoices && value}
-        data-conflict={!preview && conflictCells.has(index)} data-hint={shownHint?.cell === index} data-context={context.has(index)}
-        data-edges={edges} data-given={Boolean(given)} data-endpoint={endpoint} data-decorated={Boolean(decoration)}
-        aria-label={`${cellName(index)}, ${description}${label ? ', ' + label : ''}`}
-        onFocus={() => selectCell(index)} onClick={() => {
-          selectCell(index)
-          if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
-        }}>
-        {decoration}
-        {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
-          : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
-            : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
-              <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
-      </button>
-    }
-
-    return (
-      <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
-        role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
-        style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
-        onKeyDown={preview ? undefined : onGridKey}>
-        {mirrorEdgeClues && renderBlock(board.cells.length - 1, 'corner')}
-        {mirrorEdgeClues && board.cells.slice(-width).map((_, column) => renderBlock((height - 1) * width + column, 'top'))}
-        {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
-          ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
-          : board.cells.map(renderCell)}
-      </div>
-    )
+    return <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
+      role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
+      style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
+      onKeyDown={preview ? undefined : onGridKey}>
+      <NumberPuzzleCells board={board} selection={selection} values={preview?.values ?? position.values}
+        digits={digits} noteMasks={preview ? undefined : position.notes} cornerMasks={preview ? undefined : position.cornerNotes}
+        separateNotes={separateNotes} annotations={entry.annotations} showPlayerAnnotations={!preview && !position.annotationsHidden}
+        hintCell={shownHint?.cell}
+        contextCells={preview || depth >= 3 ? shownHint?.marked : undefined} conflicts={preview ? undefined : conflictCells}
+        events={preview ? undefined : {
+          locked,
+          setButton(index, button) {
+            if (button) cellButtons.current.set(index, button)
+            else cellButtons.current.delete(index)
+          },
+          onFocus: selectCell,
+          onClick(index, value) {
+            selectCell(index)
+            if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
+          },
+        }} />
+    </div>
   }
 
-  const next = ready && result.complete && !entry.generated ? nextPuzzle() : undefined
+  const next = ready && result.complete && !entry.generated && !entry.imported ? nextPuzzle() : undefined
   const trace = useMemo<NumberSolutionTrace | null>(() => solution && ({
     status: solution.complete ? 'solved' : 'stalled',
     steps: solution.steps.map(step => step ? { title: step.technique, text: `${placement(step)}.` } : {
@@ -674,22 +864,18 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const analysisProps = {
     title: name, techniques: config.techniques, counts, solved: result.complete,
     unit: cellChoices ? 'Choices' : undefined,
-    problem: result.marked.length ? conflictMessage : undefined,
+    problem: techniqueReport?.conflict === 'rules' ? conflictMessage
+      : techniqueReport?.conflict === 'solution' ? solutionConflictMessage : undefined,
     onSelectTechnique: (technique: string) => {
       const choices = found.filter(move => move.technique === technique)
       if (!choices.length) return
-      if (mobile) closeInsight('techniques')
       setHint({ choices, index: 0, depth: 0 })
-      setStatus('')
     },
   }
 
   const hintChoice = hint && cellChoices?.labels[hint.value - 1]
-  const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
-    <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
-      detail={solutionStep && explanation(solutionStep)} />
-  </PlayHint> : !previewing && hint && hintSelection ? <PlayHint mobile={mobile}>
-    <HintCard hint={{
+  const playHintCard = hintNotice ? <HintCard hint={hintNotice} onClose={closeHint} />
+    : hint && hintSelection ? <HintCard hint={{
       title: depth >= 2 ? placement(hint) : hint.technique,
       text: hintChoice ? depth === 0 ? 'Use this technique to make a choice.'
         : depth === 1 ? `Look for a number to ${hintChoice.toLowerCase()}.`
@@ -701,39 +887,55 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       detail={depth === 3 && explanation(hint)}
       navigation={hintSelection.choices.length > 1 ? {
         index: hintSelection.index, count: hintSelection.choices.length,
-        onMove: offset => setHint(current => current && {
+        onMove: offset => setHint(current => current && 'choices' in current ? {
           ...current, depth: 0, index: (current.index + offset + current.choices.length) % current.choices.length,
-        }),
+        } : current),
       } : undefined}
-      detailNavigation={{ first: depth === 0, last: depth === 3, onMove: offset => setHint(current => current &&
-        { ...current, depth: Math.max(0, Math.min(3, current.depth + offset)) }) }}
+      detailNavigation={{ first: depth === 0, last: depth === 3, onMove: offset => setHint(current => current && 'choices' in current
+        ? { ...current, depth: Math.max(0, Math.min(3, current.depth + offset)) } : current) }}
       action={{ label: 'Apply hint', onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) }} />
-  </PlayHint> : null
+    : null
+  const hintCard = previewing
+    ? showSolutionHint && solutionCopy && <HintCard hint={solutionCopy} onClose={closeSolutionHint}
+      detail={solutionStep && explanation(solutionStep)} />
+    : playHintCard
+  const hintPanel = hintCard && <PlayHint mobile={mobile}>{hintCard}</PlayHint>
+
+  const insightActions = insightTabs.map(({ id, label, Icon }) => {
+    const open = insights.open.includes(id)
+    return <button key={id} type="button" disabled={!ready}
+      aria-pressed={open} onClick={() => {
+        if (open) {
+          if (mobile && actionsOpen) focusTabAfterMenu.current = true
+          closeActions()
+          closeInsight(id, !mobile || insights.open.length === 1)
+        } else openInsight(id)
+      }}><Icon size={17} aria-hidden="true" /> {label}</button>
+  })
 
   const actionItems = <>
     <button type="button" disabled={locked} onClick={requestHint}><Lightbulb size={17} /> View hint</button>
     <button type="button" disabled={locked} onClick={() => { closeActions(); checkPuzzle() }}><Check size={17} /> Check puzzle</button>
     <div className="app-menu-separator" role="separator" />
-    {insightTabs.map(({ id, label, Icon }) => {
-      const open = insights.open.includes(id)
-      const returnToPuzzle = mobile && previewing && id === 'solution'
-      return <button key={id} type="button" disabled={!ready || (result.complete && !returnToPuzzle)}
-        aria-pressed={mobile ? undefined : open} aria-label={mobile && id === 'solution' && !returnToPuzzle ? 'Open solution panel' : undefined}
-        onClick={() => {
-          if (returnToPuzzle) { closeActions(); closeInsight(id) }
-          else if (mobile) openInsight(id)
-          else if (open) closeInsight(id, true)
-          else openInsight(id, true)
-        }}><Icon size={17} aria-hidden="true" /> {returnToPuzzle ? 'Return to puzzle' : label}</button>
-    })}
+    {insightActions}
+    {hasPlayerNumberAnnotations(entry.annotations) && !position.annotationsHidden && <button type="button" disabled={locked}
+      onClick={() => { closeActions(); applyMove(true, [...past.slice(1 - NUMBER_HISTORY_SIZE), false], []) }}>
+      <Eraser size={17} aria-hidden="true" /> Clear imported annotations
+    </button>}
     <button type="button" onClick={() => { closeActions(); setRulesOpen(true) }}><Info size={17} /> How to play</button>
   </>
 
   function checkPuzzle() {
     setHint(null)
-    setShowCheck(true)
-    setStatus('')
     const conflict = result.marked.length > 0
+    const mistakes = conflict ? null : mistakesAgainstSolution(board, position.values, editable)
+    setCheckedCells(mistakes ?? result.marked)
+    if (mistakes !== null) {
+      const success = cellChoices ? 'Your choices fit the solution so far.' : 'Your numbers fit the solution so far.'
+      setCheckResult({ title: 'Puzzle check', text: mistakes.length ? solutionConflictMessage : success,
+        tone: mistakes.length ? 'error' : 'success' })
+      return
+    }
     const text = cellChoices
       ? conflict ? 'The highlighted targets cannot fit these choices.' : 'Each target fits the current choices.'
       : hasClueCells
@@ -745,13 +947,14 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const puzzlePanel = <section className="surface number-puzzle-board-card">
     <NumberGameHeading game={game} title={name} inPlay>
       <div className="number-puzzle-metadata">
-        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
+        <small>{entry.imported ? `Imported · ${width} × ${height}`
+          : `${entry.generated ? 'Generated · ' : ''}${numberPuzzleDifficultyLabels[entry.difficulty]} ${number}`}</small>
         {showTimer && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(elapsed)}`}>
           {formatTime(elapsed)}
         </span>}
       </div>
     </NumberGameHeading>
-    {renderGrid(!mobile && previewing ? solutionPreview ?? undefined : undefined)}
+    {renderGrid(previewing ? solutionPreview ?? undefined : undefined)}
   </section>
 
   const inputPanel = <div className="workspace-controls number-puzzle-input-panel">
@@ -773,6 +976,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </div>
         </div>
         {!cellChoices && <div className="keypad-stack">
+          {separateNotes && notes && <CandidatePositionSwitch position={candidatePosition} disabled={locked}
+            onChange={setCandidatePosition} />}
           {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
             event.preventDefault()
             const value = Number(numberInput)
@@ -803,13 +1008,13 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       </div>
     </section>
     <div className="number-puzzle-status" role="status" aria-live="polite">
-      {result.complete ? 'Puzzle solved.' : status}
+      {result.complete && 'Puzzle solved.'}
     </div>
     {result.complete && (next
       ? <Link className={buttonClassName('primary')} {...numberPuzzleDestination(game, next)}
         state={previous => previous.fromNumberPuzzleLibrary ? { fromNumberPuzzleLibrary: previous.fromNumberPuzzleLibrary } : { fromNumberDifficulty: game }}
         replace>Next puzzle</Link>
-      : config.generatedEntry
+      : config.generatedEntry && !entry.imported
         ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
           {generation.pending ? 'Generating…' : 'Generate next puzzle'}
         </Button>
@@ -818,30 +1023,46 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
     {storageError && <p className="form-error" role="alert">This browser cannot save your progress.</p>}
   </div>
 
+  const mobileTools = insights.open
+  const solutionPanel = solutionRevealed && solutionProps
+    ? <SolutionPath {...solutionProps} embedded />
+    : <SolutionReveal onReveal={revealSolution} />
+  const techniquesPanel = <PlacementAnalysis {...analysisProps} />
+  const mobileInput = <MobileInputTabs label={name + ' input'} inputLabel={cellChoices ? 'Controls' : game === 'hidato' ? 'Numbers' : 'Digits'}
+    active={activeInsight ?? 'digits'} open={mobileTools} activeTabRef={mobileTab}
+    panels={{ digits: inputPanel, solution: solutionActive ? solutionPanel : null, techniques: analysisOpen ? techniquesPanel : null }}
+    toolToggles={mobileTools.length ? insightActions : undefined} toolsDisabled={rearranging}
+    onSelect={tab => selectInsight(tab === 'digits' ? null : tab)} onClose={closeInsight} />
+
   return <div className="workspace number-puzzle-play motion-screen">
-    <PlayLayout desktop={!mobile} puzzle={puzzlePanel} input={inputPanel} hint={hintPanel}
+    <PlayLayout desktop={!mobile} puzzle={puzzlePanel} input={mobile ? mobileInput : inputPanel} hint={hintPanel}
       mobile={{
         puzzleId: key, rearranging, onRearrangingChange: setRearranging, withHint: Boolean(hintPanel),
-        blocked: overlayOpen, inputTitle: result.complete ? 'Next puzzle' : cellChoices ? 'Controls' : 'Keypad',
-        hintSwipe: hint ? { dismiss: closeHint, apply: depth === 3 ? { label: 'Apply hint', onClick: applyHint } : undefined } : undefined,
+        blocked: overlayOpen, inputTabCount: mobileTools.length,
+        inputTitle: mobileTools.length ? 'Input' : result.complete ? 'Next puzzle' : cellChoices ? 'Controls' : 'Keypad',
+        hintSwipe: previewing ? { dismiss: closeSolutionHint }
+          : hintResult ? { dismiss: closeHint, apply: hint && depth === 3 ? { label: 'Apply hint', onClick: applyHint } : undefined } : undefined,
       }}
-      insights={insights.active ? {
-        tabs: insightTabs.filter(tab => insights.open.includes(tab.id)), active: insights.active,
-        onSelect: active => setInsights(current => ({ ...current, active })),
-        onClose: () => { if (insights.active) closeInsight(insights.active) },
-        content: insights.active === 'solution' && solutionProps ? <SolutionPath {...solutionProps} embedded />
-          : <PlacementAnalysis {...analysisProps} />,
+      insights={activeInsight ? {
+        tabs: insightTabs.filter(tab => insights.open.includes(tab.id)), active: activeInsight,
+        tabListRef: desktopInsightTabs, onSelect: selectInsight, onClose: () => closeInsight(activeInsight),
+        content: solutionActive ? solutionPanel : techniquesPanel,
       } : undefined} />
     {mobile && <Modal title="Actions" className="puzzle-actions-sheet" open={actionsOpen}
-      motionSpeed="overlay" onClose={closeActions}>
+      motionSpeed="overlay" onClose={closeActions} returnFocus={() => {
+        const tab = focusTabAfterMenu.current ? mobileTab.current : null
+        focusTabAfterMenu.current = false
+        return tab ?? actionsButton.current
+      }}>
       <div className="app-menu puzzle-menu" id="mobile-actions-menu">{actionItems}</div>
     </Modal>}
     <Modal title={`${name} rules`} open={rulesOpen} onClose={() => setRulesOpen(false)}>
-      <div className="variant-rules-copy"><p>{rules}</p></div>
+      <div className="variant-rules-copy">
+        <p>{rules}</p>
+        {board.ruleNotes?.map(rule => <p key={rule}>{rule}</p>)}
+      </div>
     </Modal>
-    {checkResult && <PuzzleCheckResult result={checkResult} onClose={() => setCheckResult(null)} />}
-    {mobile && mobileInsight === 'techniques' && <PuzzleAnalysis {...analysisProps} close={() => closeInsight('techniques')} />}
-    {mobile && previewing && solutionProps && solutionPreview && <SolutionDialog {...solutionProps}
-      grid={renderGrid(solutionPreview)} explanation={solutionCopy} detail={solutionStep && explanation(solutionStep)} />}
+    {checkResult && <PuzzleCheckResult result={checkResult} onClose={() => setCheckResult(null)}
+      returnFocus={() => actionsButton.current} />}
   </div>
 }

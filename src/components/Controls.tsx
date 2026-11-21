@@ -12,7 +12,7 @@ import type { DigitHighlightMatch } from '../sudoku/highlighting'
 import type { AdvancedModes } from '../sudoku/preferences'
 import { penPencilShortcutKeys, shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
 import { ColorTargetPicker } from './CellColorPalette'
-import { PuzzleKeypad } from './PuzzleKeypad'
+import { CandidatePositionSwitch, PuzzleKeypad } from './PuzzleKeypad'
 import { MOBILE_LAYOUT_QUERY } from './mobile-layout'
 import { useTouchHold } from './useTouchHold'
 
@@ -194,10 +194,7 @@ export function Controls(props: Props) {
 
           <div className="keypad-stack">
             {!props.draft && props.pencil && props.advancedModes.candidateLayout === 'center-corner' && (
-              <div className="input-switch" role="group" aria-label="Candidate position">
-                <button aria-pressed={props.candidateKind === 'center'} disabled={editsDisabled} onClick={() => props.setCandidateKind('center')}>Center</button>
-                <button aria-pressed={props.candidateKind === 'corner'} disabled={editsDisabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
-              </div>
+              <CandidatePositionSwitch position={props.candidateKind} disabled={editsDisabled} onChange={props.setCandidateKind} />
             )}
             {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
             <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined}

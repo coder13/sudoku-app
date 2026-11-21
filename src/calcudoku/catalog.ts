@@ -2,7 +2,12 @@ import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle } from '../number-puzz
 import { createCalcudoku, type Cage, type CageOperator, type CalcudokuPuzzle } from './engine.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
 
-export type CalcudokuEntry = NumberPuzzleEntry & { puzzle: CalcudokuPuzzle }
+export type CalcudokuEntry = NumberPuzzleEntry & {
+  puzzle: CalcudokuPuzzle
+  cageLabels?: Readonly<Record<number, string>>
+  cellColors?: readonly (string | undefined)[]
+  ruleNotes?: readonly string[]
+}
 type Recipe = [number, CageOperator, number[]]
 const recipes: Record<typeof numberPuzzleDifficulties[number], { size: number; boards: Recipe[][] }> = {
   easy: {

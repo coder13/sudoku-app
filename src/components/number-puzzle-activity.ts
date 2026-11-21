@@ -1,3 +1,5 @@
+import { readCalcudokuImports } from '../calcudoku/imported-storage'
+import { readFutoshikiImports } from '../futoshiki/imported-storage'
 import { calcudoku } from './Calcudoku'
 import { futoshiki } from './Futoshiki'
 import { hidato } from './Hidato'
@@ -16,24 +18,36 @@ export type NumberPuzzleQuery = { filterKey: string; filters?: SolvedPuzzleFilte
 export type NumberPuzzleActivity = {
   query: NumberPuzzleQuery
   entries: NumberPuzzleHistoryRow[]
+  saved: NumberPuzzleHistoryRow[]
   hasAny: boolean
   hasMore: boolean
   pending?: true
 }
 
-function catalogActivity<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>, status: NumberResultStatus) {
+function catalogActivity<Entry extends NumberPuzzleEntry>(
+  config: NumberGameConfig<Entry>, status: NumberResultStatus, imported: readonly Entry[] = [],
+) {
   const { game, name } = config
-  return readCatalogNumberResults(config, status).entries.map(entry => ({ ...entry, game, name }))
+  const results = readCatalogNumberResults(imported.length ? { ...config, entries: [...config.entries, ...imported] } : config, status)
+  return {
+    entries: results.entries.map(entry => ({ ...entry, game, name })),
+    saved: status === 'started'
+      ? imported.filter(entry => !results.status.has(entry.id)).reverse()
+        .map(({ id, difficulty, number }) => ({ id, difficulty, number, imported: true as const, game, name }))
+      : [],
+  }
 }
 
 export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (result: NumberPuzzleActivity) => void) {
-  const catalog = [
-    ...catalogActivity(kakuro, status),
-    ...catalogActivity(calcudoku, status),
-    ...catalogActivity(futoshiki, status),
-    ...catalogActivity(hidato, status),
-    ...catalogActivity(rullo, status),
+  const games = [
+    catalogActivity(kakuro, status),
+    catalogActivity(calcudoku, status, readCalcudokuImports()),
+    catalogActivity(futoshiki, status, readFutoshikiImports()),
+    catalogActivity(hidato, status),
+    catalogActivity(rullo, status),
   ]
+  const catalog = games.flatMap(game => game.entries)
+  const saved = games.flatMap(game => game.saved)
   const sources = [kakuro, calcudoku]
   const generated = new Map<NumberGame, GeneratedNumberWindowResult>()
   let revision = 0
@@ -50,8 +64,8 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
       if (newFilters) {
         const { filters } = query
         visibleCatalog = catalog.filter(row => !filters || matchesSolvedNumberFilters(row, filters))
-        if (visibleCatalog.length) {
-          publish({ query, entries: visibleCatalog, hasAny: true, hasMore: false, pending: true })
+        if (visibleCatalog.length || saved.length) {
+          publish({ query, entries: visibleCatalog, saved, hasAny: catalog.length > 0, hasMore: false, pending: true })
         }
       }
       // A row after the first N from its own game cannot rank in the first N overall.
@@ -66,6 +80,7 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
         if (generated.size !== sources.length) return
         publish({
           query: current,
+          saved,
           entries: [
             ...visibleCatalog,
             ...sources.flatMap(({ game, name }) => generated.get(game)!.entries.map(entry => ({ ...entry, game, name }))),

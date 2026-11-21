@@ -1,6 +1,6 @@
 import { futoshikiCatalog, type FutoshikiEntry } from '../futoshiki/catalog'
 import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
-import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
+import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
 import './futoshiki.css'
 
 export const futoshiki = {
@@ -52,6 +52,13 @@ export const futoshiki = {
 
 export function FutoshikiDifficultyPage() {
   return <NumberGameDifficulty config={futoshiki} />
+}
+
+export function FutoshikiImportPreview({ entry }: { entry: FutoshikiEntry }) {
+  return <>
+    <NumberPuzzlePreview board={futoshiki.board(entry)} game="futoshiki" label="Futoshiki puzzle preview" position={entry.initialPosition} annotations={entry.annotations} />
+    <p>{futoshiki.rules}</p>
+  </>
 }
 
 export function FutoshikiPlay({ entry }: { entry: FutoshikiEntry }) {

@@ -1,11 +1,10 @@
 import { Button, IconButton } from './Button'
-import { ArrowLeft, ArrowRight, X } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, Eye, ListOrdered, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react'
 import type { Difficulty, LogicalSolution, MoveAvailability, PuzzleRating } from '../sudoku/engine'
 import type { MiniSolutionTrace } from '../sudoku/mini-play'
 import { techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
-import { Modal } from './Modal'
 
 type SudokuSolutionTrace = LogicalSolution | MiniSolutionTrace
 export type NumberSolutionTrace = { status: 'solved' | 'stalled'; steps: readonly PuzzleHint[] }
@@ -40,22 +39,20 @@ export function solutionEndSummary(status: PuzzleRating['status'] | 'solved', ex
     : { title: 'Final grid', text: 'The solution is complete. The final grid is shown.' }
 }
 
-/** Keep the read-only preview and walkthrough together on a small screen. */
-export function SolutionDialog({ grid, explanation, detail, ...props }: Props & {
-  grid: ReactNode; explanation: { title: string; text: string } | null; detail?: ReactNode
-}) {
-  return <Modal title="Solution" className="mobile-solution-dialog" onClose={props.onClose}>
-    {grid}
-    {explanation && <div className="mobile-solution-explanation">
-      <h3>{explanation.title}</h3>{explanation.text && <p>{explanation.text}</p>}{detail}
-    </div>}
-    <SolutionPath {...props} embedded />
-  </Modal>
-}
-
 function bottleneckLabel(availability?: MoveAvailability) {
   if (!availability?.bottleneck) return undefined
   return availability.easyMoves === 0 ? 'No easy moves' : 'Only one easy move'
+}
+
+/** Show the shared Solution prompt before the player reveals the walkthrough. */
+export function SolutionReveal({ disabled, onReveal }: { disabled?: boolean; onReveal: () => void }) {
+  return <section className="advanced-spoiler-panel solution-spoiler-panel" aria-label="Solution">
+    <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
+    <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
+    <Button type="button" variant="primary" disabled={disabled} onClick={onReveal}>
+      <Eye size={17} aria-hidden="true" /> Reveal solution
+    </Button>
+  </section>
 }
 
 export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false,
