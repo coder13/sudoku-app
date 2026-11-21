@@ -238,16 +238,12 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Some(_)
             if matches!(
                 operation,
-                Operation::Analyze
-                    | Operation::Solve
-                    | Operation::SolveUnique
-                    | Operation::Candidates
-                    | Operation::SolveSingles
+                Operation::Analyze | Operation::Solve | Operation::SolveUnique
             ) =>
         {
             return Err((
                 "invalid-visibility",
-                "Use a visible position to analyze only the visible clues.",
+                "Exact search requires the full puzzle definition.",
             ));
         }
         Some(visibility) => position.visible(visibility).map_err(visibility_error)?,

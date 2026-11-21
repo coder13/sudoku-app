@@ -493,6 +493,10 @@ With `wasm-api` or `cli`, [`VariantPosition`] supports JSON round-tripping via S
 
 `entries` and `eliminations` are optional fields of the position and default to empty. All cell indices are zero-based.
 
+For Fog play, pass the same `visibility` snapshot to `candidates`, `solve-singles`, `hints`, or replay. Its `cells` list selects revealed givens and its `rules` list selects complete visible rules by index in the full definition. Split positive marker layers into individual rules when their markers reveal independently. `knownRemovals` carries only candidate removals established in the revealed position. `completeKropki` and `completeXv` allow the corresponding negative rules once every marker in the family is visible. Exact verification and solving use the full definition. A request with visibility rejects an exact-search operation.
+
+The projected position retains the player's placed digits and public regions. Proof indices refer to the projected rule list in its original relative order. A singles request finishes within the supplied visibility snapshot, so the caller can refresh visibility after applying a placement that reveals more clues.
+
 | Rule ID | Parameters and effect |
 | --- | --- |
 | `diagonal`, `extra-house` | Use `diagonal` with `main` or `anti`, or supply nine distinct `cells` for an extra house. |

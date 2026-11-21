@@ -118,13 +118,13 @@ type VariantRequest = {
   type: 'variant'
   position: VariantPosition
 } & (
-  | { operation: 'candidates' }
-  | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
   | { operation: 'analyze'; maxNodes?: number }
   | { operation: 'solve'; maxNodes?: number; seed?: number }
   | { operation: 'solve-unique'; maxNodes?: number }
   | ({ visibility?: VariantVisibility } & (
     | { operation?: 'normalize' }
+    | { operation: 'candidates' }
+    | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
     | { operation: 'hints'; collection?: number; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
     | { operation: 'rate'; techniqueOrder?: readonly string[] }
     | { operation: 'trace'; techniqueOrder?: readonly string[] }
@@ -884,7 +884,9 @@ export type EngineSession = ReturnType<typeof createEngineSession>
 // an in-flight forcing search without cancelling another board or action history.
 let idleCountConnection: EngineConnection | undefined
 
-export function createCountWorker(values: string, eliminations: readonly number[] | undefined, position?: VariantPosition) {
+export function createCountWorker(values: string, eliminations: readonly number[] | undefined,
+  position?: VariantPosition, visibility?: VariantVisibility,
+) {
   let connection: EngineConnection | undefined
   return {
     count(technique: string) {
@@ -894,7 +896,8 @@ export function createCountWorker(values: string, eliminations: readonly number[
       }
       if (!position) return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
       return sendRequest(connection, { type: 'variant', operation: 'hints',
-        position: { ...position, eliminations }, techniqueOrder: [technique], limit: 0xffff_ffff,
+        position: { ...position, eliminations }, ...(visibility && { visibility }),
+        techniqueOrder: [technique], limit: 0xffff_ffff,
       }).then((hints) => new Set(hints.flatMap(({ actions }) => actions.map((action) => {
         const { cell, digit } = 'place' in action ? action.place : action.eliminate
         return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`

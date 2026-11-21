@@ -2386,8 +2386,8 @@ test('variant hints, ratings, replay, and practice use the same cage proofs', as
   assert.equal(invalid.code, 'invalid-technique')
 })
 
-test('fog hints and replay use only the revealed rules and player knowledge', async () => {
-  const { run } = engineRequests()
+test('fog play, hints, and replay use only the revealed rules and player knowledge', async () => {
+  const { run, raw } = engineRequests()
   const givens = Array<string>(81).fill('0')
   givens[12] = '6'
   givens[40] = '2'
@@ -2416,6 +2416,26 @@ test('fog hints and replay use only the revealed rules and player knowledge', as
   assert.equal(revealed.entries[40], '8')
   assert.equal(revealed.eliminations[10], 0)
   assert.deepEqual(revealed.puzzle.rules, position.puzzle.rules.slice(1))
+  const candidates = await run({ ...request, operation: 'candidates', visibility })
+  assert.deepEqual(candidates, await run({ ...request, operation: 'candidates', position: revealed }))
+  const knownRemovals = Array<number>(81).fill(0)
+  const evenDigit = 1 << 1
+  knownRemovals[50] = evenDigit
+  const limited = await run({ ...request, operation: 'candidates', visibility: { ...visibility, knownRemovals } })
+  assert.equal(candidates[50] & evenDigit, evenDigit)
+  assert.equal(limited[50] & evenDigit, 0)
+  assert.equal(await run({ ...request, operation: 'solve-singles', visibility }),
+    await run({ ...request, operation: 'solve-singles', position: revealed }))
+  for (const operation of ['analyze', 'solve', 'solve-unique'] as const) {
+    const error = await raw({ ...request, operation, visibility })
+    assert.ok('error' in error)
+    assert.equal(error.code, 'invalid-visibility')
+  }
+  for (const operation of ['candidates', 'solve-singles'] as const) {
+    const error = await raw({ ...request, operation, visibility: { cells: [81], rules: [] } })
+    assert.ok('error' in error)
+    assert.equal(error.code, 'invalid-visibility')
+  }
   const hints = await run({ ...request, visibility, operation: 'hints', techniqueOrder: ['thermometer', 'parity'] })
   assert.deepEqual(hints, await run({ ...request, operation: 'hints', position: revealed, techniqueOrder: ['thermometer', 'parity'] }))
   assert.equal(hints.length, 2)
