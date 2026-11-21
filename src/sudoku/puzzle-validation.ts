@@ -7,5 +7,5 @@ export const validation: Record<Analysis, CheckResult> = {
   unsolvable: { text: 'The current grid has no solution.', tone: 'error' },
   unique: { text: 'This puzzle has exactly one solution.', tone: 'success' },
   multiple: { text: 'This puzzle has multiple solutions. Add more givens.', tone: 'error' },
-  'search-limit': { text: 'The engine couldn’t verify this grid. Review its givens and try again.', tone: 'neutral' },
+  'search-limit': { text: 'The engine reached its search limit before it could verify this puzzle.', tone: 'neutral' },
 }

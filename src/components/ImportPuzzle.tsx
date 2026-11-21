@@ -202,7 +202,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       {'game' in ready && game && <>
         {ready.hasProgress && <p>This import includes your progress.</p>}
         <Board grid={game.grid} whispersGuide={game.whispersGuide} label="Puzzle preview" givens={game.givens} values={valuesOf(game)}
-          givenCellColors={game.givenCellColors}
+          givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
           position={ready.hasProgress ? game.position : undefined} candidateLayout="center-corner"
           variantPuzzle={game.variant?.puzzle} fog={fog} algebraicCages={game.algebraic?.rules} sizedRules={game.sized?.rules} showGuides={false} />
         {game.algebraic ? <>

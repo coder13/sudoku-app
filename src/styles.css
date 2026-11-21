@@ -1707,7 +1707,7 @@ svg { flex-shrink: 0; }
 }
 .board-body:has(> .board-links) .center-marks > [data-mark="strike"] { -webkit-text-stroke-color: var(--center-note-bg); }
 .chain-sketch .chain-candidate[data-mark="strike"] { background: transparent; box-shadow: none; }
-.board-quick-draw, .board-links, .board-outside-clues {
+.board-authored-artwork, .board-quick-draw, .board-links, .board-outside-clues {
   position: absolute;
   inset: 2px;
   width: calc(100% - 4px);
@@ -1716,6 +1716,7 @@ svg { flex-shrink: 0; }
   pointer-events: none;
 }
 .board-links { z-index: 2; }
+.board-authored-artwork { z-index: 1; overflow: hidden; }
 .board-quick-draw { z-index: 2; clip-path: inset(-100%); }
 .board-quick-draw[data-cropped] { overflow: hidden; clip-path: none; }
 .board-link-target { pointer-events: stroke; cursor: pointer; }

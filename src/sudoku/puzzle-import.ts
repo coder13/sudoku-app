@@ -9,6 +9,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
+import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
@@ -69,16 +70,18 @@ export type ImportedPuzzle = {
   collection?: CollectionReference
   progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>
   givenCellColors?: ImportedCellColors
+  authoredArtwork?: readonly AuthoredMark[]
   whispersGuide?: true
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
-  const { givens, variant, collection, title, grid, algebraic, sizedRules, sizedAuthor, whispersGuide, givenCellColors } = await downloadSharedPuzzle(id, signal)
+  const { givens, variant, collection, title, grid, algebraic, sizedRules, sizedAuthor, whispersGuide, givenCellColors, authoredArtwork } = await downloadSharedPuzzle(id, signal)
   const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
   if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the shared givens.')
   const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
   return { givens, variant, collection, title, grid, sizedRules, sizedAuthor, ...(cages && { algebraic: cages }),
-    ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
+    ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), ...(authoredArtwork && { authoredArtwork }),
+    sharedPuzzleId: id.toLowerCase(), format: 'Puzzle link' }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -450,12 +453,14 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const isFogLayer = (layer: unknown): layer is Record<string, unknown> => record(layer) && layer.type === 'fog'
   let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
+  const reviewedArtwork = await readReviewedCoachArtwork(code, constraints)
   const regions = readRegions(data.regions)
   const guideLayers = constraints.every(layer => record(layer) &&
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
-  const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper') : constraints
+  const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
+    : reviewedArtwork ? constraints.filter(layer => layer !== reviewedArtwork.layer) : constraints
   const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const palette = Array.isArray(data.colours) ? data.colours : []
@@ -512,7 +517,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }),
+  const title = publication?.title ?? reviewedArtwork?.title
+  return { ...imported, ...(title && { title }), ...(progress && { progress }),
+    ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 

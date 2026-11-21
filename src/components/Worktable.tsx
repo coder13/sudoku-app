@@ -2517,14 +2517,14 @@ export function Worktable({
   const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const solutionGrid = (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={solutionFog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={previewPosition ? lessonValues(previewPosition) : solutionFog?.puzzle.givens ?? givens}
-      givenCellColors={game.givenCellColors}
+      givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
       candidates={previewPosition?.candidates} annotations={stepDiagram?.annotations}
       label="Solution preview" showGuides={appearance.showGuides} highlighting={highlighting} />
   )
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
-      givenCellColors={game.givenCellColors}
+      givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
       candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
@@ -2541,7 +2541,7 @@ export function Worktable({
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
-      givenCellColors={game.givenCellColors}
+      givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
       showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
@@ -2751,7 +2751,8 @@ export function Worktable({
     }}>
     {placeholder ? <div className="puzzle-placeholder-stage">
       <div className="puzzle-grid-reservation" aria-hidden="true" inert>
-        <Board grid={grid} fog={fog} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} givenCellColors={game.givenCellColors} showGuides={appearance.showGuides} />
+        <Board grid={grid} fog={fog} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values}
+          givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork} showGuides={appearance.showGuides} />
       </div>
       <div className="puzzle-placeholder-message">{placeholder}</div>
     </div> : !draft && !completed ? (
