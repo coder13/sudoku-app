@@ -4,13 +4,14 @@ import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
+import { createEngineSession } from '../sudoku/engine'
 import { valuesOf } from '../sudoku/game'
 import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportAttempt, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
-import { applyPuzzleGrade, needsPuzzleGrade } from '../sudoku/puzzle-rating'
+import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
@@ -22,6 +23,10 @@ export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
 function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
+}
+
+function preparePreview(input: string): Promise<PuzzlePreview> {
+  return prepareImportedPuzzle(input, roomStore.getSnapshot().games, { deferRating: true })
 }
 
 export function finishImport(preview: PuzzlePreview, play: boolean) {
@@ -46,7 +51,7 @@ export async function openPuzzle(input: string, cancelled: () => boolean, { fres
   else finishImport(preview, true)
 }
 
-export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePuzzle }: {
+export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = preparePreview }: {
   close: () => void
   onPlay?: () => void
   fullPage?: boolean
@@ -65,14 +70,28 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
   const title = preview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
+  const previewId = preview?.game.id
 
   useEffect(() => () => pending.current?.abort(), [])
   useEffect(() => {
     if (fullPage) {
       heading.current?.closest('main')?.scrollTo(0, 0)
       heading.current?.focus({ preventScroll: true })
-    } else if (preview) summary.current?.focus({ preventScroll: true })
-  }, [fullPage, preview, title])
+    } else if (previewId) summary.current?.focus({ preventScroll: true })
+  }, [fullPage, previewId, title])
+  useEffect(() => {
+    if (!preview?.ratingPending) return
+    const engine = createEngineSession()
+    const { game } = preview
+    let current = true
+    void ratePuzzle(game.givens, game.variant, engine.run).then(grade => {
+      if (current) setPreview(latest => latest === preview
+        ? { ...preview, game: applyPuzzleGrade(game, grade), grade, ratingPending: undefined } : latest)
+    }).catch(() => {
+      if (current) setPreview(latest => latest === preview ? { ...preview, ratingPending: undefined } : latest)
+    }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [preview])
 
   async function check(source: string | File, fromPhoto = false) {
     if (pending.current) return
@@ -138,8 +157,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
         <strong>{preview.game.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
           : preview.game.grid ? sizedGridName(preview.game.grid) : variantName(preview.game.variant)}</strong>
-        <span className="import-preview-rating">
-          {preview.game.difficulty
+        <span className="import-preview-rating" aria-live="polite">
+          {preview.ratingPending ? <strong>Rating…</strong> : preview.game.difficulty
             ? <span><span>Difficulty</span> <strong>{DIFFICULTY_LABELS[preview.game.difficulty]}</strong></span>
             : <strong>{preview.game.difficulty === null ? 'Unrated' : 'Rating unavailable'}</strong>}
           {preview.game.score != null && <span><span>Score</span> <strong>{preview.game.score}</strong></span>}

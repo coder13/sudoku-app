@@ -21,6 +21,7 @@ export type PuzzlePreview = {
   game: Game
   format: ImportedPuzzle['format'] | 'Photo or screenshot'
   grade?: PuzzleGrade | null
+  ratingPending?: true
   hasProgress?: true
 }
 
@@ -51,8 +52,8 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
-export async function prepareImportedPuzzle(input: string, games: readonly Game[] = []): Promise<PuzzlePreview> {
-  return preparePuzzlePreview(await detectPuzzle(input), games)
+export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], { deferRating = false } = {}): Promise<PuzzlePreview> {
+  return preparePuzzlePreview(await detectPuzzle(input), games, deferRating)
 }
 
 export async function prepareSharedPuzzle(id: string, games: readonly Game[], signal: AbortSignal): Promise<PuzzlePreview> {
@@ -67,7 +68,7 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
   return new Error(status === 'conflict' ? 'This puzzle has conflicting givens or rules.' : validation[status].text)
 }
 
-async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
+async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[], deferRating = false): Promise<PuzzlePreview> {
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
     authoredSolution, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
   const existing = findImportedPuzzle(games, imported)
@@ -115,8 +116,11 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   game.score = existing?.score
   if (existing?.fogRatingVersion !== undefined) game.fogRatingVersion = existing.fogRatingVersion
   if (needsPuzzleGrade(game)) {
+    const savedGrade = existing?.ratingAttempt?.grade
+    if (savedGrade) return { ...preview, game: applyPuzzleGrade(game, savedGrade), grade: savedGrade }
+    if (deferRating) return { ...preview, game, ratingPending: true }
     try {
-      const grade = existing?.ratingAttempt?.grade ?? await ratePuzzle(givens, game.variant)
+      const grade = await ratePuzzle(givens, game.variant)
       return { ...preview, game: applyPuzzleGrade(game, grade), grade }
     } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }
