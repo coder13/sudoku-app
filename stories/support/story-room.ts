@@ -47,6 +47,7 @@ export const roomStore: typeof appStore = {
   playedAlgebraicPuzzles: () => [],
   getSnapshot: () => room,
   getServerSnapshot: () => room,
+  prepare: () => undefined,
   connect: () => () => {},
   select(id) {
     const game = room.games.find((game) => game.id === id)
@@ -84,6 +85,7 @@ export const roomStore: typeof appStore = {
       !Number.isSafeInteger(game.elapsed + seconds) ? game : { ...game, elapsed: game.elapsed + seconds })
   },
   flushElapsed() {},
+  async flushPuzzle() {},
   finishRatingAttempt() {},
   remove(id) {
     const games = room.games.filter((game) => game.id !== id)

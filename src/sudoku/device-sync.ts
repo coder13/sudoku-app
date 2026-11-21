@@ -1,3 +1,4 @@
+import { indexedPuzzleSaves } from './puzzle-saves.ts'
 import { settingsEditedEvent } from './settings-events.ts'
 import { createSyncEngine, syncRequest, SyncError, type Credentials } from './sync-engine.ts'
 import { createSyncSocket, type LiveConnection } from './sync-socket.ts'
@@ -130,14 +131,14 @@ function currentDevice() {
   retryAt = retryDelay = lastPull = 0
   pullAt = Infinity
   if (device) {
-    const engine = createSyncEngine(localStorage, device.id, syncRequest(device.token), (id, copiedFrom) => {
-      roomStore.refreshPuzzle(id)
+    const engine = createSyncEngine(localStorage, device.id, syncRequest(device.token), async (id, copiedFrom) => {
+      await roomStore.refreshPuzzle(id)
       if (copiedFrom && active?.engine === engine) {
         conflicts.add(copiedFrom)
         queueEdit(id, Date.now())
         puzzlesChanged()
       }
-    })
+    }, indexedPuzzleSaves)
     active = { device, engine }
     publishConnection({ ...initialConnection, mode: connectivity.available() ? 'connecting' : 'offline' })
     recoverPending = true
@@ -350,6 +351,7 @@ async function syncPuzzle(id: string) {
       uploading = edits
       const options = { uploads: new Set([id]), includeElapsed: true, settings: false }
       try {
+        await roomStore.flushPuzzle(id)
         let result = await target.engine.run(options)
         if (!stillLinked(target)) return
         if (result.retry.has(id) && !result.copies.has(id)) result = await target.engine.run(options)

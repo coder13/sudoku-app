@@ -233,11 +233,34 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
     reloading.current = navigation?.type === 'reload'
     const disconnect = roomStore.connect()
-    const local = roomStore.getSnapshot()
-    localPuzzleIdsAtLaunch.current = new Set(local.games.map(game => game.id))
-    const localPuzzles = inProgress(local.games)
-    localLaunchPuzzleId.current = (localPuzzles.find(game => game.id === local.active) ?? localPuzzles[0])?.id ?? null
-    const disconnectSync = deviceSync.connect()
+    let mounted = true
+    let disconnectSync: (() => void) | undefined
+    function rememberLocalPuzzles() {
+      const local = roomStore.getSnapshot()
+      for (const game of local.games) localPuzzleIdsAtLaunch.current.add(game.id)
+      if (!localLaunchPuzzleId.current) {
+        const localPuzzles = inProgress(local.games)
+        localLaunchPuzzleId.current = (localPuzzles.find(game => game.id === local.active) ?? localPuzzles[0])?.id ?? null
+      }
+    }
+    const requestedId = new URL(window.location.href).searchParams.get('puzzle') ?? undefined
+    const saves = roomStore.prepare(requestedId)
+    if (saves) {
+      void saves.active.then(() => {
+        if (!mounted) return
+        rememberLocalPuzzles()
+        if (localPuzzleIdsAtLaunch.current.size) setWorkspaceReady(true)
+      })
+      void saves.library.then(() => {
+        if (!mounted) return
+        rememberLocalPuzzles()
+        setWorkspaceReady(true)
+        disconnectSync = deviceSync.connect()
+      })
+    } else {
+      rememberLocalPuzzles()
+      disconnectSync = deviceSync.connect()
+    }
     const disconnectDownloads = collectionDownloads.connect()
     function refreshPreferences(key: string | null) {
       const matches = (setting: string) => key === null || key === setting
@@ -263,10 +286,11 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setAdvancedPanels(readAdvancedPanelVisibility())
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
-    setWorkspaceReady(true)
+    if (!saves) setWorkspaceReady(true)
     return () => {
+      mounted = false
       window.removeEventListener('storage', onStorage)
-      disconnect(); disconnectSync(); disconnectDownloads()
+      disconnect(); disconnectSync?.(); disconnectDownloads()
     }
   }, [])
   useLayoutEffect(() => {

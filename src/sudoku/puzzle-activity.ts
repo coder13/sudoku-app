@@ -3,11 +3,18 @@ import type { Difficulty } from './engine.ts'
 import { gameVariantId, type GameVariantId } from './new-puzzle.ts'
 
 export const activityPrefix = 'sudoku-app:v1:played:'
+const indexedActivity = new Map<string, number>()
+
+export function rememberPuzzleActivity(id: string, played: number | undefined) {
+  if (played === undefined) indexedActivity.delete(id)
+  else indexedActivity.set(id, played)
+}
 
 export function lastPlayed(game: Game, storage?: Storage) {
   const fallback = game.actionHistory?.at(-1)?.lastAt ?? game.created
   try {
-    const played = Number((storage ?? localStorage).getItem(activityPrefix + game.id)) || fallback
+    const recorded = storage ? undefined : indexedActivity.get(game.id)
+    const played = recorded ?? (Number((storage ?? localStorage).getItem(activityPrefix + game.id)) || fallback)
     return Number.isFinite(new Date(played).getTime()) ? played : 0
   } catch { return Number.isFinite(new Date(fallback).getTime()) ? fallback : 0 }
 }

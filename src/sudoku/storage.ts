@@ -1,6 +1,7 @@
 import { readCustomModeDefinition } from './custom-modes.ts'
 import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
-import { activityPrefix } from './puzzle-activity.ts'
+import { activityPrefix, rememberPuzzleActivity } from './puzzle-activity.ts'
+import { GAME_PREFIX, indexedPuzzleSaves, type PuzzleSave, type PuzzleVersion } from './puzzle-saves.ts'
 import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
@@ -22,9 +23,10 @@ import { isImportedColor, validImportedCellColors } from './imported-colors.ts'
 import { validImportedDrawings } from './imported-drawings.ts'
 import { validAuthoredArtwork } from './authored-artwork.ts'
 
+export { GAME_PREFIX } from './puzzle-saves.ts'
+
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
-export const GAME_PREFIX = PREFIX + 'game:'
 const RATING_PREFIX = PREFIX + 'rating-result:'
 const SEEN_PREFIX = PREFIX + 'seen-puzzle:'
 const ACTIVE = PREFIX + 'active'
@@ -37,7 +39,7 @@ type Room = { games: Game[]; active: string | null; stoppedPlaying: boolean; sto
 const initial: Room = { games: [], active: null, stoppedPlaying: false, storageAvailable: true, playerRating: initialPlayerRating }
 const listeners = new Set<() => void>()
 const storedSnapshots = new WeakMap<Game, string>()
-const pendingElapsed = new Map<string, { raw: string | undefined }>()
+const pendingElapsed = new Map<string, { raw: string | undefined; base: Game }>()
 const CLOCK_CHECKPOINT_MS = 5000
 let clockCheckpoint: ReturnType<typeof setTimeout> | undefined
 const playListeners = new Set<(id: string | null) => void>()
@@ -95,10 +97,11 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     (chainSketch == null || validChainSketchState(chainSketch))
 }
 
-export function readGame(id: string, data: string | null): Game | undefined {
+export function readGame(id: string, data: string | Game | null): Game | undefined {
   if (!data) return
   try {
-    const value = JSON.parse(data) as Game & { six?: Game['sized'] }
+    const value = (typeof data === 'string' ? JSON.parse(data) : data) as Game & { six?: Game['sized'] }
+    if (!value || typeof value !== 'object') return
     if (value.grid !== undefined && (!isSizedGrid(value.grid) || value.variant !== undefined)) return
     const grid = value.grid ?? CLASSIC_GRID
     const draft = value.source === 'draft'
@@ -166,7 +169,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||
           attempt.outcome.difficulty !== attempt.grade.difficulty ||
           normalizePuzzleIdentity(attempt.outcome.puzzleKey ?? attempt.outcome.givens) !== puzzleIdentity(value))))) delete value.ratingAttempt
-      storedSnapshots.set(value, data)
+      if (typeof data === 'string') storedSnapshots.set(value, data)
       return value
     }
   } catch {
@@ -210,6 +213,11 @@ function flushElapsed(id?: string) {
     if (!pending) continue
     const game = room.games.find(item => item.id === key)
     if (!game) { clearPendingElapsed(key); continue }
+    if (indexedPuzzleSaves) {
+      clearPendingElapsed(key)
+      queueSave(key, { before: pending.base, after: game, rebase: latest => latest })
+      continue
+    }
     let raw: string | null
     try { raw = readSaved(localStorage, GAME_PREFIX + key) }
     catch {
@@ -381,12 +389,13 @@ function readSaved(storage: Storage, key: string) {
   return storage.getItem(key) ?? storage.getItem(legacyKey(key))
 }
 
-function migrateStorage(storage: Storage) {
+function migrateStorage(storage: Storage, skipGames = false) {
   return persist(() => {
     for (const key of Object.keys(storage).filter((key) => key.startsWith(LEGACY_PREFIX))) {
       const value = storage.getItem(key)
       if (value === null) continue
       const next = storageKey(key)
+      if (skipGames && (next.startsWith(GAME_PREFIX) || next.startsWith(activityPrefix))) continue
       if (storage.getItem(next) === null) storage.setItem(next, value)
       storage.removeItem(key)
     }
@@ -450,7 +459,7 @@ function onStorage(event: StorageEvent) {
   if (event.storageArea !== localStorage) return
   if (event.key === null) {
     for (const id of pendingElapsed.keys()) clearPendingElapsed(id)
-    hydrate()
+    if (!indexedPuzzleSaves) hydrate()
     return
   }
   const key = storageKey(event.key)
@@ -462,7 +471,7 @@ function onStorage(event: StorageEvent) {
     publish({ ...room, playerRating: playerRatingFor(room.games) })
     return
   }
-  if (!key.startsWith(GAME_PREFIX)) return
+  if (indexedPuzzleSaves || !key.startsWith(GAME_PREFIX)) return
   const id = key.slice(GAME_PREFIX.length)
   const raw = readSaved(localStorage, key)
   const pending = pendingElapsed.get(id)
@@ -495,7 +504,22 @@ function rememberActive(storage: Storage, id: string | null) {
   }
 }
 
-function withSavedForLater(state: Room, game: Game, savedForLater: true | undefined): Room {
+function withSavedForLater(state: Room, game: Game, savedForLater: true | undefined, onlyUnstarted = false): Room {
+  if (indexedPuzzleSaves) {
+    const filePuzzle = (current?: Game) => {
+      if (!current || (onlyUnstarted && !shouldOfferPuzzleSave(current)) ||
+          (savedForLater && (current.source === 'draft' || isSolved(current)))) return current
+      const next = { ...current, savedForLater }
+      if (savedForLater) delete next.pendingSave
+      return next
+    }
+    const updated = filePuzzle(game)
+    if (!updated || updated === game) return state
+    const clock = pendingElapsed.get(game.id)
+    clearPendingElapsed(game.id)
+    queueSave(game.id, { before: clock?.base ?? game, after: updated, rebase: filePuzzle })
+    return { ...state, games: state.games.map(item => item.id === game.id ? updated : item) }
+  }
   const key = GAME_PREFIX + game.id
   let current = game
   if (state.storageAvailable || pendingElapsed.has(game.id)) {
@@ -529,10 +553,230 @@ function playPuzzle(state: Room, game: Game) {
   playListeners.forEach(listener => listener(game.id))
 }
 
+type CommittedSave = { version: PuzzleVersion; game?: Game; played?: number }
+type PuzzleEdit = {
+  before?: Game
+  after?: Game
+  rebase: (latest?: Game) => Game | undefined
+  played?: number
+  onSaved?: (before: Game | undefined, after: Game | undefined) => void
+}
+type SaveQueue = { edits: (PuzzleEdit & { sequence: number })[]; task?: Promise<void> }
+let saveWriter: string | undefined
+let saveSequence = 0
+const refreshAfterSave = new Set<string>()
+
+const committed = new Map<string, CommittedSave>()
+const saveQueues = new Map<string, SaveQueue>()
+let startup: { active: Promise<void>; library: Promise<void> } | undefined
+
+function readCommitted(record: PuzzleSave): CommittedSave {
+  const value = readGame(record.id, record.value)
+  const game = value?.source === 'starter' || record.id === BUILT_IN_STARTER_ID ? undefined : value
+  return { version: record.version, game, played: record.played }
+}
+
+function acceptSave(record: PuzzleSave) {
+  const previous = committed.get(record.id)
+  if (previous && Number(previous.version) >= Number(record.version)) return false
+  const save = readCommitted(record)
+  committed.set(record.id, save)
+  rememberPuzzleActivity(record.id, save.played)
+  return true
+}
+
+function publishCommitted(id: string) {
+  const save = committed.get(id)
+  const current = room.games.find(game => game.id === id)
+  const clock = pendingElapsed.get(id)
+  if (clock && clock.base === save?.game) return
+  if (clock) clearPendingElapsed(id)
+  rememberPuzzleActivity(id, save?.played)
+  if (current === save?.game) return
+  const games = room.games.filter(game => game.id !== id)
+  if (save?.game) games.push(save.game)
+  const sorted = orderGames(games)
+  const active = room.stoppedPlaying || sorted.some(game => game.id === room.active)
+    ? room.active : sorted.find(game => !game.savedForLater)?.id ?? null
+  const outcomeSaved = rememberOutcome(save?.game?.ratingAttempt?.outcome)
+  publish({ ...room, games: sorted, active, storageAvailable: room.storageAvailable && outcomeSaved,
+    playerRating: playerRatingFor(sorted) })
+}
+
+async function refreshIndexedPuzzle(id: string) {
+  if (!indexedPuzzleSaves) return
+  if (saveQueues.has(id)) {
+    refreshAfterSave.add(id)
+    return
+  }
+  try {
+    const record = await indexedPuzzleSaves.read(id)
+    if (saveQueues.has(id)) refreshAfterSave.add(id)
+    else if (record && acceptSave(record)) publishCommitted(id)
+  } catch {
+    if (room.storageAvailable) publish({ ...room, storageAvailable: false })
+  }
+}
+
+async function drainSaves(id: string, queue: SaveQueue) {
+  if (!indexedPuzzleSaves || !saveWriter) return
+  const writer = saveWriter
+  try {
+    while (queue.edits.length) {
+      let game: Game | undefined
+      let count = 0
+      const notifications: (() => void)[] = []
+      const result = await indexedPuzzleSaves.edit(id, record => {
+        const current = committed.get(id)
+        const base = current?.version === record?.version ? current : record && readCommitted(record)
+        game = base?.game
+        let played = base?.played
+        // Collect all edits that arrived before the transaction read completed.
+        // A rapid input sequence can commit in a single write.
+        count = queue.edits.length
+        for (let index = 0; index < count; index++) {
+          const edit = queue.edits[index]
+          if (record?.stamp?.writer === writer && record.stamp.sequence >= edit.sequence) continue
+          const before = game
+          game = edit.before === before ? edit.after : edit.rebase(before)
+          if (before === game) continue
+          played = edit.played ?? played
+          const after = game
+          if (edit.onSaved) notifications.push(() => edit.onSaved?.(before, after))
+        }
+        if (game !== base?.game) return { game: game ?? null, played,
+          stamp: { writer, sequence: queue.edits[count - 1].sequence } }
+      })
+      if (result.record) committed.set(id, { version: result.record.version, game, played: result.record.played })
+      else committed.delete(id)
+      queue.edits.splice(0, count)
+      if (result.saved) notifications.forEach(notify => notify())
+    }
+    saveQueues.delete(id)
+    publishCommitted(id)
+    if (refreshAfterSave.delete(id)) void refreshIndexedPuzzle(id)
+  } catch {
+    if (room.storageAvailable) publish({ ...room, storageAvailable: false })
+  }
+}
+
+function startSave(id: string, queue: SaveQueue) {
+  queue.task ??= drainSaves(id, queue).finally(() => { queue.task = undefined })
+  return queue.task
+}
+
+function queueSave(id: string, edit: PuzzleEdit) {
+  let queue = saveQueues.get(id)
+  if (!queue) {
+    queue = { edits: [] }
+    saveQueues.set(id, queue)
+  }
+  saveWriter ??= crypto.randomUUID()
+  queue.edits.push({ ...edit, sequence: ++saveSequence })
+  void startSave(id, queue)
+}
+
+function retrySaves() {
+  for (const [id, queue] of saveQueues) void startSave(id, queue)
+}
+
+function checkpointSaves() {
+  if (!indexedPuzzleSaves || !saveWriter) return
+  for (const [id, queue] of saveQueues) {
+    const last = queue.edits.at(-1)
+    if (!last) continue
+    const game = room.games.find(item => item.id === id)
+    let played = committed.get(id)?.played
+    for (const edit of queue.edits) played = edit.played ?? played
+    indexedPuzzleSaves.checkpoint(id, { writer: saveWriter, sequence: last.sequence, version: committed.get(id)?.version,
+      game: game ?? null, played })
+  }
+}
+
+function launchSelection() {
+  let tab: string | null = null
+  let last: string | null = null
+  try { tab = readSaved(sessionStorage, ACTIVE) } catch { /* Use the last puzzle on this device. */ }
+  try { last = tab ?? readSaved(localStorage, ACTIVE) } catch { /* Use the puzzle library. */ }
+  return { tab, last }
+}
+
+function publishLibrary(games: Game[], storageAvailable: boolean) {
+  const { tab, last } = launchSelection()
+  const sorted = orderGames(games)
+  let outcomesSaved = true
+  for (const game of sorted) outcomesSaved = rememberOutcome(game.ratingAttempt?.outcome) && outcomesSaved
+  publish({
+    games: sorted,
+    active: last === '' ? null : sorted.find(game => game.id === last && (game.id === tab || !game.savedForLater))?.id ??
+      sorted.find(game => !game.savedForLater)?.id ?? null,
+    stoppedPlaying: last === '',
+    storageAvailable: storageAvailable && outcomesSaved,
+    playerRating: playerRatingFor(sorted),
+  })
+}
+
+function prepareIndexedRoom(requested?: string) {
+  if (!indexedPuzzleSaves) return
+  if (startup) return startup
+  const saves = indexedPuzzleSaves
+  const active = (async () => {
+    const { last } = launchSelection()
+    const id = requested ?? last
+    const record = id ? await saves.read(id) : undefined
+    if (record && !saveQueues.has(record.id)) acceptSave(record)
+    const game = id ? committed.get(id)?.game : undefined
+    publishLibrary(game ? [game] : [], room.storageAvailable)
+  })().catch(() => {
+    // A failed migration leaves the original save available on this device.
+    const id = requested ?? launchSelection().last
+    let game: Game | undefined
+    try { if (id) game = readGame(id, readSaved(localStorage, GAME_PREFIX + id)) }
+    catch { /* Browser storage is unavailable. */ }
+    publishLibrary(game ? [game] : [], false)
+  })
+  const library = active.then(async () => {
+    const records = await saves.all()
+    const migrated = migrateStorage(localStorage, true)
+    const keys = Object.keys(localStorage)
+    for (const key of keys) {
+      if (!key.startsWith(RATING_PREFIX)) continue
+      const event = readRatingEvent(key.slice(RATING_PREFIX.length))
+      if (event && !unsavedRatingEvents.has(event.id)) ratingEvents.set(event.id, event)
+    }
+    for (const record of records) if (!saveQueues.has(record.id)) acceptSave(record)
+    const games = new Map(room.games.map(game => [game.id, game]))
+    for (const [id, save] of committed) {
+      if (saveQueues.has(id) || pendingElapsed.has(id)) continue
+      if (save.game) games.set(id, save.game)
+      else games.delete(id)
+    }
+    const initialized = Boolean(readSaved(localStorage, READY))
+    firstVisit ??= !initialized && !records.length && !keys.some(key => key.startsWith(SEEN_PREFIX) || key.startsWith(RATING_PREFIX))
+    const initializedStorage = initialized || persist(() => localStorage.setItem(READY, '1'))
+    publishLibrary([...games.values()], room.storageAvailable && migrated && initializedStorage)
+  }).catch(() => {
+    firstVisit = false
+    // Keep the open board and any legacy saves if IndexedDB cannot open or migrate.
+    const games = new Map(room.games.map(game => [game.id, game]))
+    try {
+      for (const key of Object.keys(localStorage).map(storageKey)) {
+        if (!key.startsWith(GAME_PREFIX)) continue
+        const id = key.slice(GAME_PREFIX.length)
+        if (games.has(id) || committed.has(id) || saveQueues.has(id)) continue
+        const game = readGame(id, readSaved(localStorage, key))
+        if (game && game.source !== 'starter' && id !== BUILT_IN_STARTER_ID) games.set(id, game)
+      }
+    } catch { /* The open board remains available. */ }
+    publishLibrary([...games.values()], false)
+  })
+  return startup = { active, library }
+}
+
 // Hydrate before React reads the store. This also keeps Vite hot replacement
 // from exposing the starter puzzle while a newly evaluated module waits for an
 // effect to reconnect it.
-if (typeof window !== 'undefined') hydrate()
+if (typeof window !== 'undefined' && !indexedPuzzleSaves) hydrate()
 
 export const roomStore = {
   subscribe(listener: () => void) {
@@ -554,7 +798,8 @@ export const roomStore = {
       publishSelection(game.savedForLater ? withSavedForLater(room, game, undefined) : room, id)
     }
   },
-  refreshPuzzle(id: string) {
+  refreshPuzzle(id: string): void | Promise<void> {
+    if (indexedPuzzleSaves) return refreshIndexedPuzzle(id)
     onStorage({ storageArea: localStorage, key: GAME_PREFIX + id } as StorageEvent)
   },
   playedMiniGivens() {
@@ -607,16 +852,32 @@ export const roomStore = {
   },
   getSnapshot: () => room,
   getServerSnapshot: () => initial,
+  prepare: prepareIndexedRoom,
   connect() {
     flushElapsed()
-    if (!pendingElapsed.size) hydrate()
-    const checkpoint = () => flushElapsed()
+    if (!indexedPuzzleSaves && !pendingElapsed.size) hydrate()
+    const unsubscribe = indexedPuzzleSaves?.subscribe(id => { void refreshIndexedPuzzle(id) })
+    const checkpoint = () => {
+      flushElapsed()
+      checkpointSaves()
+      retrySaves()
+    }
+    const visibilityChanged = () => { if (document.hidden) checkpoint() }
     window.addEventListener('storage', onStorage)
     window.addEventListener('pagehide', checkpoint)
+    if (indexedPuzzleSaves) {
+      document.addEventListener('visibilitychange', visibilityChanged)
+      window.addEventListener('focus', retrySaves)
+    }
     return () => {
-      flushElapsed()
+      checkpoint()
+      unsubscribe?.()
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('pagehide', checkpoint)
+      if (indexedPuzzleSaves) {
+        document.removeEventListener('visibilitychange', visibilityChanged)
+        window.removeEventListener('focus', retrySaves)
+      }
     }
   },
   select(id: string) {
@@ -624,10 +885,10 @@ export const roomStore = {
     const game = room.games.find((game) => game.id === id)
     if (game) playPuzzle(room, game)
   },
-  saveForLater(id: string, { notify = true } = {}) {
+  saveForLater(id: string, { notify = true, onlyUnstarted = false } = {}) {
     const game = room.games.find(item => item.id === id)
     if (!game) return
-    const next = withSavedForLater(room, game, true)
+    const next = withSavedForLater(room, game, true, onlyUnstarted)
     if (next === room) return
     if (room.active === id) {
       publishSelection(next, null)
@@ -636,7 +897,7 @@ export const roomStore = {
   },
   resolvePendingSave(id: string, save: boolean) {
     let game = room.games.find(item => item.id === id)
-    if (room.storageAvailable) {
+    if (!indexedPuzzleSaves && room.storageAvailable) {
       // Check for a move or a save from another tab before discarding anything.
       try {
         const raw = readSaved(localStorage, GAME_PREFIX + id)
@@ -644,8 +905,8 @@ export const roomStore = {
       } catch { /* Use the in-memory game when browser storage is unavailable. */ }
     }
     if (!shouldOfferPuzzleSave(game)) return
-    if (save) roomStore.saveForLater(id, { notify: false })
-    else roomStore.remove(id, { notify: false })
+    if (save) roomStore.saveForLater(id, { notify: false, onlyUnstarted: true })
+    else roomStore.remove(id, { notify: false, onlyUnstarted: true })
   },
   stopPlaying(id: string) {
     if (room.active === id) flushElapsed(id)
@@ -661,12 +922,15 @@ export const roomStore = {
     firstVisit = false
     if (game.ratingAttempt && seenPuzzle(game)) game = { ...game, ratingAttempt: undefined }
     const seenSaved = rememberPuzzle(game)
-    const saved = persist(() => writeGame(game))
+    const handoff = !game.savedForLater && game.source !== 'draft'
+    if (indexedPuzzleSaves) queueSave(game.id, { after: game, rebase: latest => latest ?? game,
+      onSaved: () => announceEdit(game.id, handoff) })
+    const saved = indexedPuzzleSaves ? true : persist(() => writeGame(game))
     const games = orderGames([game, ...room.games])
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
-    if (saved) announceEdit(game.id, !game.savedForLater && game.source !== 'draft')
+    if (!indexedPuzzleSaves && saved) announceEdit(game.id, handoff)
   },
   update(id: string, update: (game: Game) => Game, { derived = false, chainCandidates }: {
     derived?: boolean
@@ -675,7 +939,7 @@ export const roomStore = {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
     let merged = current
-    if (room.storageAvailable || pendingElapsed.has(id)) {
+    if (!indexedPuzzleSaves && (room.storageAvailable || pendingElapsed.has(id))) {
       // Another tab may have just installed a remote save or tombstone. Use
       // the latest persisted board even before its storage event is delivered.
       try {
@@ -685,32 +949,50 @@ export const roomStore = {
         if (raw === null && (room.storageAvailable || storedSnapshots.has(current))) { roomStore.refreshPuzzle(id); return }
         if (raw !== null && storedSnapshots.get(current) !== raw) merged = readGame(id, raw) ?? current
       } catch { /* Continue in memory if browser storage changes availability. */ }
-    } else {
+    } else if (!indexedPuzzleSaves) {
       merged = mergeStoredMetadata(current)
     }
-    let next = pruneChainsAfterMove(merged, update(merged), chainCandidates)
+    const apply = (before: Game) => {
+      let next = pruneChainsAfterMove(before, update(before), chainCandidates)
+      if (next === before) return next
+      if (!puzzleTiming.getSnapshot().trackTime && next.source !== 'draft' && next.started &&
+        (next.position !== before.position || !before.started) && !isSolved(before)) next = markSolveUntimed(next)
+      if (!before.ratingAttempt && next.ratingAttempt && seenPuzzle(next)) next = { ...next, ratingAttempt: undefined }
+      if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== before.position.entries && isSolved(next)) {
+        next = finishAttempt(next, 'solved')
+      }
+      if (next.pendingSave && !shouldOfferPuzzleSave(next)) next = { ...next, pendingSave: undefined }
+      return next
+    }
+    const next = apply(merged)
     if (merged === next) {
       if (merged !== current) roomStore.refreshPuzzle(id)
       return
     }
-    if (!puzzleTiming.getSnapshot().trackTime && next.source !== 'draft' && next.started &&
-      (next.position !== merged.position || !merged.started) && !isSolved(merged)) next = markSolveUntimed(next)
-    if (!merged.ratingAttempt && next.ratingAttempt && seenPuzzle(next)) next = { ...next, ratingAttempt: undefined }
-    if (next.ratingAttempt && !next.ratingAttempt.outcome && next.position.entries !== merged.position.entries && isSolved(next)) {
-      next = finishAttempt(next, 'solved')
+    const wasPlayed = (before: Game, after: Game) => after.position !== before.position || after.started !== before.started
+    const played = wasPlayed(merged, next)
+    const playedAt = played ? Date.now() : undefined
+    function notifyEdit(before?: Game, after?: Game) {
+      if (!before || !after || derived) return
+      const pauseChanged = after.paused !== before.paused
+      if (wasPlayed(before, after) || pauseChanged || after.elapsed === before.elapsed) {
+        const finished = after.position.entries !== before.position.entries && isSolved(after) && !isSolved(before)
+        announceEdit(id, pauseChanged || finished)
+      }
     }
-    if (next.pendingSave && !shouldOfferPuzzleSave(next)) next = { ...next, pendingSave: undefined }
-    const played = next.position !== merged.position || next.started !== merged.started
-    const saved = persist(() => {
+    if (indexedPuzzleSaves) {
+      const clock = pendingElapsed.get(id)
+      clearPendingElapsed(id)
+      if (playedAt !== undefined) rememberPuzzleActivity(id, playedAt)
+      queueSave(id, { before: clock?.base ?? merged, after: next, rebase: latest => latest && apply(latest),
+        played: playedAt, onSaved: notifyEdit })
+    }
+    const saved = indexedPuzzleSaves ? true : persist(() => {
       writeGame(next)
-      if (played) localStorage.setItem(activityPrefix + id, String(Date.now()))
+      if (playedAt !== undefined) localStorage.setItem(activityPrefix + id, String(playedAt))
     })
     if (!saved) retainStoredSnapshot(merged, next)
-    const pauseChanged = next.paused !== merged.paused
-    if (saved && !derived && (played || pauseChanged || next.elapsed === merged.elapsed)) {
-      const finished = next.position.entries !== merged.position.entries && isSolved(next) && !isSolved(merged)
-      announceEdit(id, pauseChanged || finished)
-    }
+    if (!indexedPuzzleSaves && saved) notifyEdit(merged, next)
     const seenSaved = puzzleIdentity(current) === puzzleIdentity(next) && current.source === next.source || rememberPuzzle(next)
     const outcome = next.ratingAttempt?.outcome
     const newOutcome = outcome && !ratingEvents.has(outcome.id)
@@ -730,27 +1012,41 @@ export const roomStore = {
     const current = room.games.find(game => game.id === id)
     if (!current || !current.started || current.paused || current.timeUntracked || isSolved(current) ||
       !Number.isSafeInteger(current.elapsed + seconds)) return
-    if (!pendingElapsed.has(id)) pendingElapsed.set(id, { raw: storedSnapshots.get(current) })
+    if (!pendingElapsed.has(id)) pendingElapsed.set(id, { raw: storedSnapshots.get(current), base: current })
     const next = { ...current, elapsed: current.elapsed + seconds }
     retainStoredSnapshot(current, next)
     publish({ ...room, games: room.games.map(game => game.id === id ? next : game) })
     scheduleClockCheckpoint()
   },
   flushElapsed,
+  async flushPuzzle(id: string) {
+    flushElapsed(id)
+    const queue = saveQueues.get(id)
+    if (queue) await startSave(id, queue)
+    if (saveQueues.has(id)) throw new Error('The puzzle could not be saved on this device.')
+  },
   finishRatingAttempt(id: string, finish: Exclude<RatingFinish, 'solved'>) {
     roomStore.update(id, (game) => isSolved(game) ? game : finishAttempt(game, finish))
   },
-  remove(id: string, { notify = true } = {}) {
+  remove(id: string, { notify = true, onlyUnstarted = false } = {}) {
+    const clock = pendingElapsed.get(id)
     clearPendingElapsed(id)
     const wasActive = room.active === id
     const removed = room.games.find((game) => game.id === id)
     const seenSaved = !removed || rememberPuzzle(removed)
     const games = room.games.filter((game) => game.id !== id)
     const active = room.active === id ? games.find((game) => !game.savedForLater)?.id ?? null : room.active
+    if (indexedPuzzleSaves) {
+      queueSave(id, { before: clock?.base ?? removed, rebase: latest =>
+        onlyUnstarted && !shouldOfferPuzzleSave(latest) ? latest : undefined,
+        onSaved: () => announceEdit(id, true) })
+    }
     const saved = persist(() => {
-      const key = GAME_PREFIX + id
-      localStorage.removeItem(legacyKey(key))
-      localStorage.removeItem(key)
+      if (!indexedPuzzleSaves) {
+        const key = GAME_PREFIX + id
+        localStorage.removeItem(legacyKey(key))
+        localStorage.removeItem(key)
+      }
       localStorage.removeItem(puzzleSelectionKey(id))
       localStorage.removeItem(puzzleTabsKey(id))
       localStorage.removeItem(activityPrefix + id)
@@ -759,7 +1055,7 @@ export const roomStore = {
     const remembered = remember(room.stoppedPlaying ? '' : active)
     publish({ ...room, games, active, playerRating: playerRatingFor(games),
       storageAvailable: room.storageAvailable && saved && remembered && seenSaved && outcomeSaved })
-    if (saved) announceEdit(id, true)
+    if (!indexedPuzzleSaves && saved) announceEdit(id, true)
     if (wasActive && notify) playListeners.forEach(listener => listener(null))
   },
 }
