@@ -2,6 +2,7 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import mixedPuzzles from '../../tests/fixtures/mixed-puzzles.json'
+import outsideClueFixture from '../../tests/fixtures/skyscrapers-jigsaw-mixed.json'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
@@ -1069,6 +1070,41 @@ export const MedusaHintStages: Story = {
 }
 
 const hintLayoutGame = { ...starter, id: 'hint-viewport' }
+const outsideClueGame: Game = {
+  ...makeGame('outside-clue-hint-viewport', outsideClueFixture.title, outsideClueFixture.puzzle.givens, 'imported'),
+  difficulty: 'easy',
+  variant: { id: 'mixed', puzzle: outsideClueFixture.puzzle as VariantPuzzle, solution: outsideClueFixture.solution },
+}
+
+export const MobileOutsideClueHint: Story = {
+  args: { game: outsideClueGame, games: [outsideClueGame] },
+  parameters: { viewport: { options: { portraitPhone: { name: 'Portrait phone', styles: { width: '390px', height: '844px' } } } } },
+  globals: { viewport: { value: 'portraitPhone', isRotated: false } },
+  beforeEach: () => {
+    const previous = playPreferenceStore.getSnapshot().experimentalMode
+    playPreferenceStore.set('experimentalMode', true)
+    playSession.set(outsideClueGame.id, 'toolPanels', { open: ['techniques'], active: 'techniques' })
+    return () => playPreferenceStore.set('experimentalMode', previous)
+  },
+  render: args => <WorktableExample {...args} withTopbar />,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'View hint' }))
+    const grid = canvas.getByRole('grid', { name: /Jigsaw.*Skyscrapers.*Sudoku grid/ })
+    const page = canvas.getByRole('main', { name: 'Sudoku workspace' })
+    const hint = within(canvas.getByRole('complementary', { name: 'Puzzle hint' }))
+    const detail = await hint.findByRole('button', { name: 'More detail' })
+    await waitFor(() => {
+      expect(grid.getBoundingClientRect().width).toBeGreaterThan(200)
+      expect(page.scrollHeight - page.clientHeight).toBeLessThanOrEqual(1)
+      expect(page.scrollWidth - page.clientWidth).toBeLessThanOrEqual(1)
+    })
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(detail)
+    await expect(hint.getByRole('button', { name: 'Apply hint' })).toBeVisible()
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toBeVisible()
+  },
+}
+
 const hintViewports = {
   shortPhone: { name: 'Short phone', styles: { width: '320px', height: '480px' } },
   tallTablet: { name: 'Tall tablet', styles: { width: '590px', height: '1090px' } },

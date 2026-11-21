@@ -20,12 +20,18 @@ const output = option('--output')
 const selectedCase = option('--case')
 const game = { ...makeGame('worktable-lifecycle', 'Lifecycle fixture', STARTER, 'imported', 1),
   started: true, difficulty: 'easy', score: 100 }
-const mixedImport = JSON.parse(await readFile(resolve(root, 'tests/fixtures/global-entropy-quadruple-preview.json'), 'utf8'))
+const importFixture = async name => JSON.parse(await readFile(resolve(root, 'tests/fixtures', name), 'utf8'))
+const mixedImport = await importFixture('global-entropy-quadruple-preview.json')
+const fzzd = (await importFixture('palindrome-coach.json')).examples.find(source => source.url.endsWith('/FzzD'))
+const outsideClues = await importFixture('skyscrapers-jigsaw-mixed.json')
+const portraitPhone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
 const gameKey = 'sudoku-app:v1:game:' + game.id
 const sourceFiles = [
   'src/components/Worktable.tsx', 'src/components/usePuzzleGeneration.ts', 'src/sudoku/engine.ts',
   'src/sudoku/puzzle-revision.ts', 'src/sudoku/storage.ts', 'scripts/check-worktable-lifecycle.mjs',
   'src/components/ImportPuzzle.tsx', 'src/sudoku/puzzle-preview.ts', 'tests/fixtures/global-entropy-quadruple-preview.json',
+  'src/components/SolutionPath.tsx', 'src/styles.css',
+  'tests/fixtures/palindrome-coach.json', 'tests/fixtures/skyscrapers-jigsaw-mixed.json',
   'package-lock.json', 'tools/react-board-performance/package-lock.json',
 ]
 const sourceHashes = Object.fromEntries(await Promise.all(sourceFiles.map(async file =>
@@ -43,7 +49,7 @@ const report = {
   ],
 }
 
-function instrument({ fixture, key, workspaceMode = 'standard', shortcuts }) {
+function instrument({ fixture, key, workspaceMode = 'standard', shortcuts, pinnedActions = ['candidates', 'singles', 'hint', 'check'] }) {
   localStorage.setItem(key, JSON.stringify(fixture))
   localStorage.setItem('sudoku-app:v1:initialized', '1')
   localStorage.setItem('sudoku-app:v1:active', fixture.id)
@@ -51,7 +57,7 @@ function instrument({ fixture, key, workspaceMode = 'standard', shortcuts }) {
   localStorage.setItem('sudoku-app:v1:workspace-mode', workspaceMode)
   if (shortcuts) localStorage.setItem('sudoku-app:v1:keyboard-shortcuts', JSON.stringify(shortcuts))
   localStorage.setItem('sudoku-app:v1:error-mode', 'none')
-  localStorage.setItem('sudoku-app:v1:play-preferences', JSON.stringify({ pinnedActions: ['candidates', 'singles', 'hint', 'check'] }))
+  localStorage.setItem('sudoku-app:v1:play-preferences', JSON.stringify({ pinnedActions }))
   localStorage.setItem('sudoku-app:v1:advanced-modes', JSON.stringify({
     candidateLayout: 'grid', autoGenerateCandidates: false, autoRemoveCandidates: true, autoPlaceNakedSingles: false,
   }))
@@ -182,6 +188,21 @@ async function withPage(name, pathname, check, { context: contextOptions, ...opt
     failures.push(error)
     console.error(JSON.stringify(detail, null, 2))
   } finally { await context.close() }
+}
+
+async function importForMobilePlay(page, code) {
+  await page.getByRole('textbox', { name: 'Puzzle text or link' }).fill(code)
+  await page.getByRole('button', { name: 'Preview puzzle' }).tap()
+  await page.getByText('Unique solution', { exact: true }).waitFor()
+  await page.getByRole('button', { name: 'Start playing' }).tap()
+  await page.waitForURL(url => url.pathname !== '/import')
+}
+
+async function openMobileTool(page, name) {
+  const options = page.getByRole('button', { name: 'Open puzzle options' })
+  await options.tap()
+  await page.locator('#puzzle-menu').getByRole('button', { name, exact: true }).tap()
+  await options.tap()
 }
 
 const checks = [
@@ -358,6 +379,64 @@ const checks = [
     assert.deepEqual(await boardSnapshot(page), before, 'viewing a step must leave the editable position and history intact')
     return { assertions: 6, viewport: { width: 390, height: 844 } }
   }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }],
+  ['mobile-partial-walkthrough', '/import', async page => {
+    await importForMobilePlay(page, fzzd.code)
+    await openMobileTool(page, 'Solution')
+    await page.getByRole('button', { name: 'Reveal solution', exact: true }).tap()
+
+    const path = page.getByRole('region', { name: 'Partial solution', exact: true })
+    await path.getByRole('status').filter({ hasText: 'This walkthrough ends with an incomplete grid.' }).waitFor()
+    const steps = path.getByRole('list', { name: 'Solving steps' })
+    assert.equal(await steps.getByRole('listitem').count(), 10)
+    assert.equal(await steps.getByRole('button', { name: /Final grid/ }).count(), 0)
+    await steps.getByRole('button', { name: /Last position/ }).tap()
+    const explanation = page.getByRole('complementary', { name: 'Puzzle hint' })
+    await explanation.getByText('The walkthrough ends before the puzzle is solved.', { exact: true }).waitFor()
+    return { assertions: 4, viewport: portraitPhone.viewport }
+  }, { context: portraitPhone }],
+  ['mobile-outside-clues-with-finder', '/import', async page => {
+    const code = '#variant=' + encodeURIComponent(JSON.stringify({ id: 'mixed', puzzle: outsideClues.puzzle }))
+    await importForMobilePlay(page, code)
+    await openMobileTool(page, 'Techniques')
+    const finder = page.getByRole('table', { name: 'Available candidates by technique' })
+    await finder.waitFor()
+    await page.getByRole('button', { name: 'Open puzzle options' }).tap()
+    await page.locator('#puzzle-menu').getByRole('button', { name: 'View hint', exact: true }).tap()
+    await page.getByRole('group', { name: 'Hint navigation' }).waitFor()
+
+    const grid = page.getByRole('grid', { name: /Jigsaw.*Skyscrapers.*Sudoku grid/ })
+    await frames(page)
+    const width = await grid.evaluate(element => element.getBoundingClientRect().width)
+    assert.ok(width > 200, `the complete outside-clue frame leaves a readable grid (width ${width}px)`)
+    const workspace = page.getByRole('main', { name: 'Sudoku workspace' })
+    const layout = await workspace.evaluate(element => {
+      const frame = element.querySelector('.board-frame.has-outside-clues').getBoundingClientRect()
+      const clues = [...element.querySelectorAll('[data-outside-clue] text')].map(clue => clue.getBoundingClientRect())
+      const badge = element.querySelector('.puzzle-mode-tab').getBoundingClientRect()
+      const inside = clues.every(bounds => bounds.left >= frame.left - 1 && bounds.right <= frame.right + 1 &&
+        bounds.top >= frame.top - 1 && bounds.bottom <= frame.bottom + 1)
+      const obscured = clues.filter(bounds => bounds.left < badge.right && bounds.right > badge.left &&
+        bounds.top < badge.bottom && bounds.bottom > badge.top).length
+      const finder = element.querySelector('[data-mobile-panel="input"]').getBoundingClientRect()
+      return { inside, obscured, clues: clues.length, finderVisible: finder.height > 0 && finder.bottom <= innerHeight + 1,
+        overflow: Math.max(element.scrollHeight - element.clientHeight, element.scrollWidth - element.clientWidth) }
+    })
+    assert.deepEqual(layout, { inside: true, obscured: 0, clues: 16, finderVisible: true, overflow: 0 })
+    const badge = page.getByRole('button', { name: 'Cycle input mode' })
+    const offset = await badge.getAttribute('style')
+    await badge.press('ArrowRight')
+    assert.notEqual(await badge.getAttribute('style'), offset)
+    await badge.tap()
+    await page.locator('.board-body[data-input-mode="pencil"]').waitFor()
+
+    const matchingTechnique = finder.getByRole('row', { name: /Hidden single/i })
+      .filter({ has: page.getByRole('cell', { name: /^[1-9]\d*$/ }) }).first()
+    await matchingTechnique.getByRole('button').tap()
+    const tools = page.getByRole('tabpanel', { name: 'Techniques' })
+    assert.ok(await tools.evaluate(element => element.scrollTop > 0), 'the technique list scrolls inside the card')
+    await page.getByRole('complementary', { name: 'Puzzle hint' }).getByRole('heading', { name: /Hidden single/i }).waitFor()
+    return { assertions: 7, viewport: portraitPhone.viewport, gridWidth: width }
+  }, { context: portraitPhone, pinnedActions: [] }],
   ['edit-import-during-verification', '/import', async page => {
     const input = page.getByRole('textbox', { name: 'Puzzle text or link' })
     const submit = page.getByRole('button', { name: 'Preview puzzle' })

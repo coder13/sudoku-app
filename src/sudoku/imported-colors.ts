@@ -1,3 +1,5 @@
+import type { VariantGame } from './variants.ts'
+
 const COACH_CELL_COLORS = {
   white: '#ffffff', grey: '#e2e2e2', lime: '#def7c5', blue: '#c5e4f7', purple: '#d1c5f7',
   red: '#f7c5c5', green: '#c5f7d3', yellow: '#f7f7c5', orange: '#f7e4c5',
@@ -32,6 +34,21 @@ export function validImportedCellColors(value: unknown): value is ImportedCellCo
     Object.entries(value).every(([cell, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(cell) &&
       Array.isArray(shades) && shades.length > 0 && shades.length <= 62 &&
       shades.every(isImportedColor) && new Set(shades).size === shades.length))
+}
+
+export function validGivenCellColors(value: unknown, variant?: Pick<VariantGame, 'puzzle' | 'fog'>): value is ImportedCellColors {
+  if (!validImportedCellColors(value)) return false
+  if (!variant) return true
+  const layout = variant.puzzle.regions
+  if (variant.fog || layout?.type !== 'jigsaw' || Object.keys(value).length !== 81) return false
+  const legend = new Set<string>()
+  for (const region of layout.regions) {
+    const shade = value[region[0]]?.[0]
+    if (!shade || legend.has(shade) || region.some(cell =>
+      value[cell]?.length !== 1 || value[cell]?.[0] !== shade)) return false
+    legend.add(shade)
+  }
+  return legend.size === 9
 }
 
 export function sameImportedCellColors(a?: ImportedCellColors, b?: ImportedCellColors): boolean {

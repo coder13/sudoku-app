@@ -429,9 +429,13 @@ fn definition_error(error: VariantDefinitionError) -> (&'static str, &'static st
             "This engine does not support the puzzle format version.",
         ),
         InvalidGiven(_) => ("invalid-grid", "Each given digit must be between 0 and 9."),
-        InvalidRegionCount | OverlappingRegion(_) | DisconnectedRegion(_) => (
+        InvalidRegionCount | OverlappingRegion(_) => (
             "invalid-regions",
-            "Jigsaw regions must be nine connected groups of nine cells and cover the grid exactly once.",
+            "Jigsaw regions must be nine groups of nine distinct cells and cover the grid exactly once.",
+        ),
+        DisconnectedRegion(_) => (
+            "invalid-regions",
+            "Jigsaw generation requires connected regions.",
         ),
         InvalidHouse(_) => (
             "invalid-house",

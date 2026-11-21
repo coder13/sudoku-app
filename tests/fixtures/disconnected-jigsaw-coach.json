@@ -1,0 +1,175 @@
+{
+  "url": "https://sudoku.coach/en/s/BCt9",
+  "title": "XXIV",
+  "code": "SCv7_32_f2eaqkprdv1i047u5srh7i8gnvbn9quo67541otbgm2b31bhl8qckvvfg7hjhbetl91jivbgs27nmsdu81mlbtd27o8cl0m1m7auqo3r53rn93j8g30hjdbert4ui1mrd4ieal8ffogs568mlkdbuqr4hn34jkhcaoqbelkq3bgu1ttlda6rficpiucea0csi399pch4802aosdmev73co4khiv4qm3ih8g1ime9p2lceu0i0s8k25gshar5c9pk9ul5d3h2grk7390ff9p5m2q23puhnu93sf5ta0je3pr57891c9f7gi2ti0j2hu48203i80bbjjqcsi838qcp5jam75sp135cchidaops365ps12pe3j90jfflhacclr6fs0lage94c3etn2huf0926k0l0utc3aeighvb3mnvg9n2unbhg5doi9b3dqeh4tv80vj8k4av1t6acrr9enh9cco7agfg4sv2t650jbi4pve27rsd372ikvrudo3u910to4mhpcsopjqadeqjs9dirporfoc7gidqvrckkchk1u97ei70ojuivsian7r87rqmhpgfc3v3po76g1htuiail153nrb6etofo14t1g7ic",
+  "solution": "146397582321764895793246158475128963582931647968572431839615274257489316614853729",
+  "puzzle": {
+    "version": 1,
+    "givens": "000000000000060000000000050000000900080000000000000000800005000000000000600000009",
+    "regions": {
+      "type": "jigsaw",
+      "regions": [
+        [
+          0,
+          1,
+          2,
+          7,
+          10,
+          18,
+          19,
+          20,
+          25
+        ],
+        [
+          3,
+          5,
+          21,
+          23,
+          58,
+          66,
+          67,
+          68,
+          76
+        ],
+        [
+          4,
+          6,
+          8,
+          22,
+          24,
+          26,
+          40,
+          42,
+          44
+        ],
+        [
+          9,
+          11,
+          13,
+          27,
+          29,
+          31,
+          45,
+          47,
+          49
+        ],
+        [
+          12,
+          14,
+          16,
+          30,
+          32,
+          34,
+          48,
+          50,
+          52
+        ],
+        [
+          15,
+          17,
+          60,
+          62,
+          69,
+          70,
+          71,
+          78,
+          80
+        ],
+        [
+          28,
+          33,
+          35,
+          36,
+          37,
+          38,
+          46,
+          51,
+          53
+        ],
+        [
+          39,
+          41,
+          43,
+          57,
+          59,
+          61,
+          75,
+          77,
+          79
+        ],
+        [
+          54,
+          55,
+          56,
+          63,
+          64,
+          65,
+          72,
+          73,
+          74
+        ]
+      ]
+    },
+    "rules": [
+      {
+        "type": "killer-cages",
+        "cages": [
+          {
+            "cells": [
+              7,
+              8,
+              16,
+              17
+            ],
+            "sum": 24
+          },
+          {
+            "cells": [
+              39,
+              40,
+              48,
+              49
+            ],
+            "sum": 24
+          },
+          {
+            "cells": [
+              19,
+              20,
+              28,
+              29
+            ],
+            "sum": 24
+          }
+        ]
+      },
+      {
+        "type": "little-killer",
+        "cells": [
+          0,
+          10,
+          20,
+          30,
+          40,
+          50,
+          60,
+          70,
+          80
+        ],
+        "direction": "south-east",
+        "sum": 24
+      }
+    ]
+  },
+  "regionColors": [
+    "green",
+    "yellow",
+    "purple",
+    "blue",
+    "grey",
+    "lime",
+    "magenta",
+    "red",
+    "orange"
+  ]
+}

@@ -101,6 +101,34 @@ fn jigsaw_replaces_box_peers_and_keeps_rows_and_columns() {
 }
 
 #[test]
+fn jigsaw_uses_disconnected_authored_membership_for_peers_and_solving() {
+    let solution = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let mut regions = irregular_regions();
+    let slot = regions[8].iter().position(|&cell| solution[cell] == solution[0]).unwrap();
+    let remote = regions[8][slot];
+    regions[8][slot] = 0;
+    regions[0][0] = remote;
+
+    let mut givens = solution;
+    givens[remote] = 0;
+    let puzzle = VariantPuzzle::jigsaw(givens, regions);
+    let compiled = puzzle.compile().unwrap();
+    assert!(compiled.peers(1).unwrap().any(|peer| peer == remote));
+    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+    assert_eq!(compiled.analyze(&EMPTY, &NO_REMOVALS, 100), Ok(Analysis::Unique));
+
+    #[cfg(feature = "generation")]
+    {
+        use sudoku_app_engine::{VariantGenerationError, VariantGenerationOptions, start_variant_generation};
+        let generation = VariantGenerationOptions::new(1, puzzle, 70..=75);
+        assert!(matches!(
+            start_variant_generation(generation),
+            Err(VariantGenerationError::Definition(VariantDefinitionError::DisconnectedRegion(0)))
+        ));
+    }
+}
+
+#[test]
 fn killer_support_assigns_digits_to_cells_and_excludes_repeats() {
     let mut puzzle = VariantPuzzle::classic(EMPTY);
     puzzle.rules.push(PuzzleRule::KillerCages {
@@ -218,10 +246,10 @@ fn invalid_definitions_report_rule_errors_before_search() {
         Err(VariantDefinitionError::OverlappingRegion(1))
     ));
     let mut regions = irregular_regions();
-    regions[0][0] = 80;
+    regions[0][0] = regions[0][1];
     assert!(matches!(
         VariantPuzzle::jigsaw(EMPTY, regions).compile(),
-        Err(VariantDefinitionError::DisconnectedRegion(0))
+        Err(VariantDefinitionError::InvalidHouse(VariantHouseKind::Region(0)))
     ));
     let mut puzzle = VariantPuzzle::classic(EMPTY);
     puzzle

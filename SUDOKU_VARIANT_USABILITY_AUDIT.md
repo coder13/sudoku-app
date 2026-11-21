@@ -56,6 +56,8 @@ Existing compatibility matrices and independently checked completion witnesses c
 
 ## Published Coach links
 
+XXIV preserves eight regions whose cells are split across the grid, one connected region, three Killer cages, and one Little Killer ray. Its nine authored colors match the encoded region membership one-to-one and remain visible in Preview, Play, and shared puzzles. The app also assigns a distinct color to each region of a separated layout without an authored palette. Independent enumeration found the unique published solution in 359 nodes and found multiple answers after removing the ray. The app offers ten opening hints and completes the full grid in 118 logical steps. [Published puzzle](https://sudoku.coach/en/s/BCt9) · [Import issue](https://github.com/coder13/sudoku-app/issues/420)
+
 The local app opens a 9×9 Coach short link when the resolver can match its publication record to the requested puzzle and the export contains supported rules. The publication title survives save and share. Unsupported author instructions and markings still require source-format work. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
 
 The actual published Between the Dots response keeps all twelve Between Lines and eleven black dots, several opening hints, matching Technique Finder counts and a 62-step partial walkthrough. A separate published Renban short link reaches its complete solution. Its short-link and pasted-code walkthroughs match. Diamond Sandwich remains rejected because its author instructions change how clues count digits. [Between the Dots](https://sudoku.coach/en/s/9KxH) · [Renban](https://sudoku.coach/en/s/Jh4o) · [Diamond Sandwich](https://sudoku.coach/en/s/D8HP)
@@ -195,8 +197,8 @@ Hyk5 and Hafj now have complete logical walkthroughs of 144 and 169 steps. They 
 
 ## Browser review and approval
 
-The user authorized the built-in browser. Its runtime currently fails with `Trusted RPC service is not configured: browser`, including after a preview tab opened. Actual app screenshots have not been captured. Existing exported SVG figures and component markup are diagnostic evidence only.
+The original FzzD Sudoku Coach export reaches the same nine logical steps in Preview and Play. It now reports an incomplete grid before the first step and at the last position. Component checks cover zero steps and the separate exact-solution fallback. The live browser check exercises the original import and selects the last position on a touch viewport.
 
-Pending captures must show the actual app at narrow and desktop sizes, light and dark themes, and increased app/grid text sizes. Review empty/full candidates, overlaps, outside clues, Jigsaw borders, focus, menus, hint stages, selected Finder results and solution navigation. Include enough context to identify the puzzle and state. Share the screenshots for approval before merging broader visual changes.
+The six-family Jigsaw fixture retains all 16 outside clues with a hint and Technique Finder open. In Chromium, the playable grid was 161 px before and 228 px after at 390 × 844. At 351 × 760 in dark mode with 125% text size, it was 105 px before and 191 px after. The mode badge covered two clue labels on the 390 px baseline. The badge now sits at the frame edge, and the mode border still follows the grid. The tested clues stay within the frame and clear of the badge. The Finder input card scrolls independently.
 
-No browser review or screenshot approval is complete. Preserve the open checklist in [SUDOKU_ENGINE_TODO.md](SUDOKU_ENGINE_TODO.md) as each part is verified.
+Current screenshots from Chromium are submitted for approval. The full review still covers the remaining variants, progressed and manually edited positions, both workspaces, themes, larger text, accessibility, and sharing. [Review issue](https://github.com/coder13/sudoku-app/issues/281)
