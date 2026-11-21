@@ -112,11 +112,19 @@ fn masks_for(technique: Technique) -> (Board, [u16; CELLS]) {
 
 #[test]
 fn every_emitted_kraken_branch_replays_from_the_original_candidates() {
-    for technique in [Technique::KrakenFish1, Technique::KrakenFish2] {
-        let example = technique.practice_example();
+    let examples = [Technique::KrakenFish1, Technique::KrakenFish2]
+        .into_iter()
+        .flat_map(|technique| {
+            technique
+                .practice_examples()
+                .map(|example| (technique, example))
+        });
+    for (technique, example) in examples {
         let position = example.position().unwrap();
         let exact = VerifiedTemplate::verify(position.givens).unwrap();
-        let (_, masks) = masks_for(technique);
+        let legal = candidates(&position.values().unwrap()).unwrap();
+        let masks: [u16; CELLS] =
+            std::array::from_fn(|cell| legal[cell] & !position.eliminations[cell]);
         let deductions = technique_deductions_at(&position, technique).unwrap();
         assert!(
             deductions

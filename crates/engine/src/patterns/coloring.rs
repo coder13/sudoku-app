@@ -8,6 +8,9 @@ use crate::{
     hints::{CandidateLink, ColoringReason},
 };
 
+#[cfg(test)]
+mod contract_tests;
+
 const UNCOLORED: u8 = 2;
 
 pub(super) fn visit(
