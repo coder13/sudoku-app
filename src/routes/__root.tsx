@@ -3,7 +3,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-r
 import { OfflineUpdates } from '../components/OfflineUpdates'
 import { SudokuShell } from '../components/Workspace'
 import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM } from '../sudoku/app-text-zoom'
-import { APPEARANCE_KEY, DEFAULT_APPEARANCE } from '../sudoku/preferences'
+import { APPEARANCE_KEY, DEFAULT_APPEARANCE, PUZZLE_BORDER_WIDTHS } from '../sudoku/preferences'
 import { THEME_TOKENS, themeVariables } from '../sudoku/themes'
 import '@fontsource-variable/dm-sans/wght.css'
 import '../styles.css'
@@ -19,6 +19,9 @@ const themeBootstrap = `(() => {
     if (Number.isFinite(saved.appTextZoom)) {
       const zoom = Math.min(${MAX_APP_TEXT_ZOOM}, Math.max(${MIN_APP_TEXT_ZOOM}, Math.round(saved.appTextZoom)))
       root.style.setProperty('--app-text-scale', zoom / 100)
+    }
+    if (${JSON.stringify(PUZZLE_BORDER_WIDTHS)}.includes(saved.puzzleBorderWidth)) {
+      root.style.setProperty('--puzzle-border-width', saved.puzzleBorderWidth + 'px')
     }
     const preference = ['system', 'light', 'dark'].includes(saved.colorMode) ? saved.colorMode : defaults.colorMode
     const mode = preference === 'system'

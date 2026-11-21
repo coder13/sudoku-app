@@ -1,7 +1,7 @@
 import type { DifficultyPreference } from './difficulty.ts'
 import type { Game } from './game.ts'
 import { rectangularLayouts, type RectangularBoxRows, type SizedGrid } from './grid.ts'
-import { generationVariant, isPuzzleVariantId, isVariantId, type PuzzleVariantId, type VariantId } from './variants.ts'
+import { generationVariant, isPuzzleVariantId, isVariantId, variantDifficulty, type PuzzleVariantId, type VariantId } from './variants.ts'
 
 export const MINI_NAME = 'Mini Sudoku'
 export const FIVE_JIGSAW_NAME = '5 × 5 Jigsaw Sudoku'
@@ -79,6 +79,10 @@ export function gameGenerationVariant(game?: Pick<Game, 'grid' | 'variant' | 'al
 
 export function miniDifficulty(preference: DifficultyPreference): MiniDifficulty {
   return preference === 'auto' || preference === 'easy' || preference === 'beginner' ? 'easy' : 'medium'
+}
+
+export function newPuzzleDifficulty(variant: NewPuzzleId, preference: DifficultyPreference): DifficultyPreference {
+  return isSizedPuzzleId(variant) ? miniDifficulty(preference) : variantDifficulty(variant, preference)
 }
 
 export function sizedGridName(grid: SizedGrid) {

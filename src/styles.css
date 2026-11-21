@@ -26,6 +26,7 @@
   --space-64: 64px;
   --radius: 19px;
   --grid-corner-radius: 8px;
+  --sudoku-border-width: var(--puzzle-border-width, 2px);
   --surface-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
   --topbar-height: 71px;
   --hint-card-width: 430px;
@@ -879,7 +880,7 @@ svg { flex-shrink: 0; }
 }
 .puzzle:has(.board-frame.guides-hidden) { --board-guide-width: 0px; --board-guide-height: 0px; --board-guide-offset: 0px; }
 :is(.puzzle, .board-body)[data-input-mode] {
-  --puzzle-mode-border-width: 3px;
+  --puzzle-mode-border-width: var(--puzzle-border-width, 3px);
   --puzzle-mode-border-inset: -1px;
   --puzzle-mode-corner-radius: var(--radius);
   overflow: visible;
@@ -1033,7 +1034,7 @@ svg { flex-shrink: 0; }
 .topbar-brand .sync-connection-dot { width: 8px; height: 8px; }
 .sync-connection-label[data-connection="live"] .sync-connection-dot { background: #2a9355; }
 .sync-connection-label[data-connection="failure"] { color: var(--danger-ink); }
-.device-sync-page > .sync-connection-label { font-size: 0.875rem; }
+.device-sync-settings > .sync-connection-label { font-size: 0.875rem; }
 
 .puzzle-stage { position: relative; min-width: 0; }
 .puzzle-peer-status { display: inline-flex; color: var(--dark-purple); }
@@ -1072,7 +1073,7 @@ svg { flex-shrink: 0; }
   place-content: center;
   justify-items: center;
   gap: 9px;
-  border: 2px solid var(--board-outline);
+  border: var(--sudoku-border-width) solid var(--board-outline);
   border-radius: 8px;
   background: var(--surface-muted);
   text-align: center;
@@ -1087,7 +1088,6 @@ svg { flex-shrink: 0; }
   color: var(--dark-purple);
 }
 .puzzle-paused h2 { margin-top: var(--space-2); font-size: 1.25rem; }
-.puzzle-paused p { color: var(--muted); font-size: 0.8125rem; }
 .puzzle-paused .button { min-height: 38px; margin-top: 5px; }
 .learn-page, .puzzle-stage, :root[data-theme="andoku"] .board-body {
   --lesson-area-fill: #edf1fb;
@@ -1111,7 +1111,7 @@ svg { flex-shrink: 0; }
 .hint-dock {
   margin-top: var(--space-12);
 }
-.completion-frame { animation: surface-enter var(--motion-standard-duration) var(--motion-enter) both; }
+.completion-frame { animation: content-enter var(--motion-standard-duration) var(--motion-enter) both; }
 .hint-dock .hint-card {
   max-height: clamp(104px, 18dvh, 180px);
   overflow: auto;
@@ -1275,7 +1275,7 @@ svg { flex-shrink: 0; }
   .board-overlay { opacity: 0; }
 }
 .sudoku-grid {
-  border: 2px solid var(--board-outline);
+  border: var(--sudoku-border-width) solid var(--board-outline);
   border-radius: var(--grid-corner-radius);
   overflow: hidden;
   width: 100%;
@@ -1709,9 +1709,9 @@ svg { flex-shrink: 0; }
 .chain-sketch .chain-candidate[data-mark="strike"] { background: transparent; box-shadow: none; }
 .board-authored-artwork, .board-quick-draw, .board-links, .board-outside-clues {
   position: absolute;
-  inset: 2px;
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
+  inset: var(--sudoku-border-width);
+  width: calc(100% - 2 * var(--sudoku-border-width));
+  height: calc(100% - 2 * var(--sudoku-border-width));
   overflow: visible;
   pointer-events: none;
 }
@@ -1996,10 +1996,12 @@ svg { flex-shrink: 0; }
 }
 .settings-dialog .dialog-inner { height: 100%; display: flex; flex-direction: column; }
 .settings-dialog .dialog-heading { flex: none; }
+.settings-dialog .dialog-heading h2:focus { outline: none; }
 .settings-desktop { flex: 1; min-height: 0; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: var(--space-24); }
-.settings-tabs { display: flex; flex-direction: column; gap: var(--space-4); padding-right: var(--space-18); border-right: 1px solid var(--border); }
+.settings-tabs { display: flex; flex-direction: column; overflow-y: auto; gap: var(--space-4); padding-right: var(--space-18); border-right: 1px solid var(--border); }
 .settings-tabs :is(button, a) {
   width: 100%;
+  flex: none;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -2014,6 +2016,7 @@ svg { flex-shrink: 0; }
   text-align: left;
   text-decoration: none;
 }
+.settings-tabs :is(button, a):focus-visible { outline-offset: -2px; }
 .settings-tabs :is(button[aria-selected="true"], a[data-status="active"]) { background: var(--selected-bg); color: var(--dark-purple); }
 .settings-panel { min-width: 0; height: 100%; overflow-y: auto; padding-right: var(--space-4); }
 :is(.settings-panel, .settings-mobile) { scrollbar-width: none; }
@@ -2074,6 +2077,9 @@ svg { flex-shrink: 0; }
 .resize-panels-option strong { font-size: 0.875rem; }
 .resize-panels-option small { margin-top: var(--space-2); color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
 .settings-select { display: grid; gap: var(--space-10); padding: 0; border: 0; background: transparent; }
+.puzzle-border-options { display: flex; align-items: center; gap: var(--space-8); }
+.puzzle-border-options .select-control { min-width: 6rem; }
+.puzzle-border-preview .variant-preview { border: var(--puzzle-border-width) solid var(--board-outline); }
 .settings-select strong, .settings-select small { display: block; }
 .settings-select strong { font-size: 0.875rem; }
 .settings-select small { margin-top: var(--space-2); color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
@@ -2240,7 +2246,7 @@ svg { flex-shrink: 0; }
 .new-puzzle-variant-copy h2 { font-size: 1.125rem; }
 .new-puzzle-variant-copy small { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .new-puzzle-variant-copy p { margin-top: var(--space-6); min-block-size: 2lh; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
-.new-puzzle-variant-summary { display: flex; align-items: center; gap: var(--space-10); font-weight: 730; }
+.new-puzzle-variant-summary { display: flex; align-items: center; justify-content: center; gap: var(--space-10); font-weight: 730; }
 .new-puzzle-page .puzzles-back { display: inline-flex; }
 .new-puzzle-page .puzzles-page-heading h1:focus { outline: none; }
 .main-menu-section > header :is(h2, h3) { margin: 0; font-size: 1.25rem; letter-spacing: -.025em; }
@@ -2307,25 +2313,16 @@ svg { flex-shrink: 0; }
 .puzzles-layout > .main-menu-panel { grid-area: content; padding-block: var(--space-2) var(--space-32); }
 .puzzle-library { max-width: 720px; gap: var(--space-24); }
 .puzzle-empty-action { justify-self: start; }
-.shortcuts-page {
-  height: calc(100dvh - var(--topbar-height));
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  padding: 34px clamp(var(--space-24), 5vw, var(--space-64)) 46px;
-}
-.shortcuts-page-inner { width: min(100%, 900px); display: grid; gap: 30px; margin-inline: auto; }
-.shortcuts-page-heading {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+.shortcut-settings { display: grid; gap: var(--space-20); padding: var(--space-6); }
+.shortcut-settings-intro {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-14);
+  justify-content: space-between;
+  gap: var(--space-8);
 }
-.shortcuts-page-heading h1 { font-size: calc(clamp(25px, 3vw, 32px) * var(--app-text-scale)); letter-spacing: -.04em; }
-.shortcuts-page-heading p { margin-top: 5px; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
-.shortcuts-back { align-self: start; }
-.shortcuts-reset-all { align-self: start; }
+.shortcut-settings-intro p { color: var(--muted); font-size: 0.875rem; }
 .shortcuts-save-note {
-  margin-top: -14px;
   padding: var(--space-10) 13px;
   border-radius: 9px;
   background: var(--surface-muted);
@@ -2334,7 +2331,7 @@ svg { flex-shrink: 0; }
 }
 .shortcut-section { display: grid; gap: var(--space-10); }
 .shortcut-section > header { display: grid; gap: 3px; }
-.shortcut-section > header h2 { font-size: 1.125rem; letter-spacing: -.025em; }
+.shortcut-section > header h3 { font-size: 1.125rem; letter-spacing: -.025em; }
 .shortcut-section > header p { color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
 .shortcut-list { border-block: 1px solid var(--border); }
 .shortcut-row {
@@ -2544,7 +2541,7 @@ svg { flex-shrink: 0; }
   display: grid;
   align-content: safe center;
   gap: clamp(var(--space-8), 2.25cqw, var(--space-12));
-  border: 2px solid var(--board-outline);
+  border: var(--sudoku-border-width) solid var(--board-outline);
   border-radius: 8px;
   background: var(--surface-soft);
   overflow: hidden;
@@ -2857,9 +2854,6 @@ svg { flex-shrink: 0; }
 }
 @keyframes action-sheet-exit {
   to { opacity: 0; transform: translateY(100%); }
-}
-@keyframes surface-enter {
-  from { opacity: 0; transform: translateY(6px); }
 }
 @keyframes content-enter {
   from { opacity: 0; }
@@ -3226,6 +3220,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .settings-dialog .dialog-heading { flex: none; margin-bottom: var(--space-18); }
   .settings-dialog .dialog-heading > .icon-button:last-child { grid-area: 1 / 3; justify-self: end; }
   .settings-desktop { display: none; }
+  .settings-single-panel { display: flex; }
+  .settings-single-panel .settings-tabs { display: none; }
+  .settings-single-panel .settings-panel { flex: 1; overscroll-behavior-y: contain; padding-right: 0; }
   .settings-mobile { display: block; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
   .settings-mobile-menu { display: grid; gap: var(--space-8); }
   .settings-mobile-menu :is(button, a) {
@@ -3258,14 +3255,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzles-page-heading h1:focus { outline: none; }
   .puzzles-back { grid-column: 1; grid-row: 1; display: inline-flex; }
   /* Browsing pages use document scroll so the browser can handle overscroll. */
-  body:has(.app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page)) {
+  body:has(.app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view))) {
     overflow: visible;
   }
-  .app-shell:has(> :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page)) {
+  .app-shell:has(> :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view))) {
     height: auto;
     min-height: 100dvh;
   }
-  .app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page) {
+  .app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view)) {
     overflow: visible;
     overscroll-behavior-y: auto;
   }
@@ -3300,12 +3297,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .puzzles-home .main-menu-tabs svg { flex: none; }
   .puzzles-layout > .main-menu-panel { overflow: visible; overscroll-behavior-y: auto; padding-inline: 0; }
-  .shortcuts-page { padding: 17px 15px var(--space-32); }
-  .shortcuts-page-inner { gap: 25px; }
-  .shortcuts-page-heading > div { display: contents; }
-  .shortcuts-page-heading p { grid-area: 2 / 1 / auto / -1; margin: 0; font-size: 0.75rem; text-align: center; }
-  .shortcuts-reset-all { grid-area: 3 / 1 / auto / -1; justify-self: center; min-height: 44px; }
-  .shortcuts-save-note { margin-top: -9px; }
+  .shortcuts-reset-all { min-height: 44px; }
   .shortcut-row { min-height: 68px; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-8); }
   .shortcut-reset { grid-column: 2; grid-row: 2; justify-self: end; min-height: 32px; }
   .shortcut-binding { grid-column: 2; grid-row: 1; min-width: 90px; }
@@ -3485,6 +3477,13 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-panel-gap { flex: 1 0 var(--space-8); }
   .mobile-panel-layout[data-fit-hint] .mobile-panel-gap { flex-grow: 0; }
   @media (orientation: portrait) {
+    /* Keep the reserved space outside the play scroller so it stays clear while scrolling. */
+    .standard-workspace-page[data-puzzle-top-space]:has(.mobile-panel-layout) {
+      margin-block-start: min(var(--puzzle-top-space), 30dvh);
+      overflow-y: auto;
+      overflow-anchor: none;
+    }
+
     /* Use a shared inset, including for new and imported puzzles. */
     .standard-workspace-page .workspace:has(.puzzle-column)
       .mobile-panel[data-mobile-panel="input"] {
@@ -3497,9 +3496,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       flex: none;
     }
 
-    /* Both panels use the same page-side gutter and neither can exceed it. */
+    /* Fit the board alongside the input card within the available portrait height. */
     .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
-      --board-frame-limit: 100%;
+      --board-frame-limit: max(var(--mobile-fit-min-board-width, 220px), var(--mobile-fit-board-height, 100dvh));
     }
     /* Center the puzzle itself as well as its zoomed content at every size. */
     .standard-workspace-page .mobile-panel[data-mobile-panel="puzzle"] .puzzle-column {
@@ -3881,6 +3880,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  .mobile-completion-actions:has(.completion-undo) {
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-8);
+  }
+  .mobile-completion-actions .completion-undo { width: 48px; min-height: 48px; }
   .mobile-completion-actions .completion-footer { gap: var(--space-8); }
   .mobile-completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
   .mobile-completion-actions .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }
@@ -3897,8 +3902,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .compact-controls .candidate-color-eraser { min-height: 44px; }
   .compact-controls .key { font-size: calc(clamp(18px, calc(var(--input-size) * .11), 27px) * var(--app-text-scale)); }
   .compact-controls .side-actions .icon-button { width: var(--mode-button-size); min-height: var(--mode-button-size); }
-  .controls .side-actions .history-button { width: 48px; min-height: 48px; }
-  .history-button svg { width: 22px; height: 22px; }
+  .controls .side-actions :is(.history-button, .actions-key) { width: 48px; min-height: 48px; }
+  :is(.history-button, .actions-key) svg { width: 22px; height: 22px; }
 
   .puzzle-actions-sheet {
     position: fixed;
@@ -4025,6 +4030,40 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
   :root[data-theme="andoku"] .compact-controls .left-actions:has(.puzzle-check-button) { height: auto; grid-template-rows: none; }
 
+  @media (max-width: 559px) and (max-height: 700px), (orientation: portrait) and (min-aspect-ratio: 2/3) {
+    .standard-workspace-page:has(.mobile-panel-layout) {
+      overflow-y: auto;
+      padding-block: var(--space-4);
+    }
+    .standard-workspace-page .puzzle-column { --puzzle-badge-gutter-block: var(--space-4); }
+    .standard-workspace-page .mobile-panel-layout .mobile-panel .puzzle.puzzle-flat {
+      /* Keep the timer and actions on one line even when the grid has to shrink. */
+      inline-size: 100%;
+      max-inline-size: none;
+      padding-block: 0;
+    }
+    .standard-workspace-page .puzzle-column:has([data-puzzle-controls="bottom"] .puzzle-mode-tab[data-edge="top"]) {
+      padding-block-start: var(--space-16);
+    }
+    .standard-workspace-page .puzzle.puzzle-flat .puzzle-quick-actions { padding-block-start: 0; margin-block-start: 0; }
+    .standard-workspace-page .puzzle-flat:has(.puzzle-quick-actions)
+      .puzzle-stage:not(:has(.puzzle-mode-tab[data-edge="bottom"])) { margin-block-end: 0; }
+    .standard-workspace-page .mobile-input-toolbar { padding-block: var(--space-2); }
+    .standard-workspace-page .mobile-panel-layout { --mobile-fit-min-board-width: 180px; }
+    .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
+      --board-frame-limit: max(var(--mobile-fit-min-board-width), var(--mobile-fit-board-height, 100dvh));
+    }
+    .standard-workspace-page .mobile-panel-layout:not(.with-hint) .compact-controls .controls-content {
+      --compact-keypad-width: min(var(--input-size, 210px), max(146px, 100dvh - 450px));
+    }
+    .standard-workspace-page .compact-controls .controls-content { column-gap: var(--space-6); }
+    .standard-workspace-page .compact-controls .highlight-controls { grid-template-columns: var(--mode-button-size); }
+    @media (min-width: 360px) {
+      .standard-workspace-page .compact-controls .right-actions { grid-template-columns: repeat(2, var(--mode-button-size)); }
+      .standard-workspace-page .compact-controls .highlight-controls { display: contents; }
+    }
+  }
+
   @container (width < 185px) {
     .standard-workspace-page .puzzle-stage .cell {
       font-size: calc(min(calc(7.5cqw * var(--board-font-scale, 1)), 9.5cqw) * var(--app-text-scale));
@@ -4074,6 +4113,88 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .puzzles-layout .main-difficulty-options label {
     grid-template-columns: 18px minmax(0, 1fr) auto 18px;
     gap: var(--space-6);
+  }
+}
+
+@media (min-width: 400px) and (max-width: 559px) and (max-height: 520px) {
+  .standard-workspace-page:has(.mobile-panel-layout:not([data-rearranging])) { overflow-y: auto; }
+  .standard-workspace-page .workspace:has(> .mobile-panel-layout:not([data-rearranging])) {
+    display: grid;
+    grid-template: auto / minmax(0, 1fr) minmax(188px, .86fr);
+    align-content: start;
+    align-items: start;
+    gap: var(--space-8);
+  }
+  .standard-workspace-page .mobile-panel-layout:not([data-rearranging]) {
+    & > .mobile-panel-gap, & .mobile-input-resize { display: none; }
+    & > .mobile-panel { margin: 0; }
+    & > .mobile-panel[data-mobile-panel="input"] { margin-inline: 0; }
+    & > [data-mobile-panel="puzzle"] { align-self: center; }
+    & > [data-mobile-panel="hint"] { grid-area: 2 / 1 / auto / -1; }
+
+    & .puzzle-column {
+      min-block-size: 0;
+      align-content: start;
+      padding-inline: var(--space-4);
+    }
+    & .mobile-panel .puzzle.puzzle-flat {
+      --board-frame-limit: 100%;
+      --puzzle-grid-inset: 0px;
+      max-inline-size: none;
+    }
+    & .puzzle-flat:has(.puzzle-mode-tab[data-edge="left"]) .puzzle-stage { padding-inline-start: var(--space-16); }
+    & .puzzle-flat:has(.puzzle-mode-tab[data-edge="right"]) .puzzle-stage { padding-inline-end: var(--space-16); }
+    & .puzzle.puzzle-flat .puzzle-quick-actions {
+      flex-wrap: wrap;
+      row-gap: 0;
+      inline-size: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+    }
+    & .puzzle.puzzle-flat .puzzle-quick-actions > .button {
+      flex: 1 1 auto;
+      min-inline-size: 0;
+      max-inline-size: 100%;
+      min-block-size: 44px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    & .mobile-panel .mobile-input-tabs { height: auto; padding: 0; }
+    & .mobile-input-panels { grid-template-rows: auto; }
+    & .mobile-input-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+    & .mobile-input-tablist {
+      grid-column: 1 / -1;
+      height: auto;
+      margin-block-end: 0;
+    }
+    & .mobile-input-tablist button { padding-inline: var(--space-4); font-size: 0.75rem; }
+    & .mobile-input-toolbar > .input-tools { grid-column: 2; }
+    & .mobile-input-toolbar > .mobile-input-close { grid-column: 3; }
+    & .mobile-input-menu-slot { position: static; display: flex; justify-content: end; }
+
+    & .compact-controls { padding: var(--space-2); }
+    & .compact-controls .controls-content {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-4);
+    }
+    & .compact-controls .side-actions {
+      grid-template-columns: repeat(4, var(--mode-button-size));
+      justify-content: center;
+      gap: var(--space-2);
+    }
+    & .compact-controls .left-actions { grid-template-columns: repeat(3, var(--mode-button-size)); }
+    & .compact-controls .side-actions :is(.history-button, .actions-key) {
+      width: var(--mode-button-size);
+      min-height: var(--mode-button-size);
+    }
+    & .compact-controls .keypad-stack {
+      inline-size: min(100%, var(--input-size, 210px), 166px);
+      margin-inline: auto;
+    }
   }
 }
 
@@ -4157,7 +4278,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-inequality-preview-digits text { fill: var(--board-ink); font-size: .62px; text-anchor: middle; dominant-baseline: central; }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
 .variant-clues { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.board-variant-clues { position: absolute; inset: 2px; pointer-events: none; z-index: 1; }
+.board-variant-clues { position: absolute; inset: var(--sudoku-border-width); pointer-events: none; z-index: 1; }
 .variant-board .cell > span { position: relative; z-index: 2; }
 .variant-board .cell > .candidate-marks { position: absolute; }
 .variant-board .cell[data-cage-total] .candidate-marks {
@@ -4304,7 +4425,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 /* One shared difficulty control for desktop, mobile, and the completion screen. */
 .difficulty-selector { border: 0; padding: 0; margin: 0; min-width: 0; width: 100%; }
-.difficulty-selector legend { font-weight: 600; margin-bottom: .65rem; }
 .difficulty-stepper-control { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: .75rem; }
 .difficulty-stepper-control .icon-button { min-width: 48px; min-height: 48px; }
 .difficulty-stepper-value { display: grid; text-align: center; gap: .15rem; }
@@ -4329,9 +4449,19 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   cursor: pointer;
 }
 .difficulty-list label:has(input:checked) { background: var(--selected-bg); color: var(--dark-purple); }
-.difficulty-list-stats { display: flex; gap: var(--space-16); color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.difficulty-list-stats > span { min-width: 7ch; text-align: end; white-space: nowrap; }
-.difficulty-list-stats > span:last-child { min-width: 10ch; }
+.difficulty-list-stats {
+  display: grid;
+  grid-template-columns: 3rem 5rem;
+  gap: var(--space-16);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+.difficulty-list-heading { justify-self: end; padding: 0 var(--space-8) var(--space-4); font-weight: 600; }
+.difficulty-list-stats[aria-busy="true"] > span { grid-column: 1 / -1; }
 .difficulty-mobile { display: none; }
 .difficulty-selection-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: var(--space-16) 0 var(--space-8); text-align: center; }
 .difficulty-selection-stats dt { color: var(--muted); font-size: 12px; }
@@ -4471,27 +4601,26 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   align-items: stretch; gap: var(--space-14); padding-block: var(--space-24);
 }
 .sync-page h1 { font-size: 1.6rem; }
-.sync-page h2 { font-size: 1.1rem; }
-.sync-page p { color: var(--muted); line-height: 1.5; }
-.sync-page section, .sync-page label { display: grid; gap: var(--space-8); }
-.sync-page input { width: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: inherit; background: var(--surface); font: inherit; }
-.sync-page details > * { margin-block: var(--space-8); }
-.sync-page .button { align-self: flex-start; justify-self: start; }
+.device-sync-settings h3 { font-size: 1.1rem; }
+:is(.sync-page, .device-sync-settings) p { color: var(--muted); line-height: 1.5; }
+.device-sync-settings section, .device-sync-settings label { display: grid; gap: var(--space-8); }
+.device-sync-settings input { width: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: inherit; background: var(--surface); font: inherit; }
+.device-sync-settings details > * { margin-block: var(--space-8); }
+:is(.sync-page, .device-sync-settings) .button { align-self: flex-start; justify-self: start; }
 a.game-row { text-decoration: none; color: inherit; }
-.page.device-sync-page { gap: var(--space-16); padding-inline: clamp(var(--space-16), 4vw, var(--space-24)); }
-.sync-heading, .sync-panel-heading { display: flex; align-items: center; gap: var(--space-8); }
-.sync-panel-heading { justify-content: space-between; }
-.device-sync-page .icon-button, .device-sync-page .button, .device-sync-page summary { min-height: 44px; }
-.device-sync-page .icon-button { width: 44px; flex: none; }
-.device-sync-page summary { align-content: center; cursor: pointer; }
-.device-sync-page details form { display: grid; gap: var(--space-8); }
+.device-sync-settings { display: grid; gap: var(--space-16); }
+.sync-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.device-sync-settings .icon-button .button summary { min-height: 44px; }
+.device-sync-settings .icon-button { width: 44px; flex: none; }
+.device-sync-settings summary { align-content: center; cursor: pointer; }
+.device-sync-settings details form { display: grid; gap: var(--space-8); }
 .sync-panel { padding: var(--space-16); border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .sync-panel.sync-invitation {
   box-sizing: border-box; width: min(100%, 19rem); align-self: flex-start;
   display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-12);
 }
 .sync-invitation .sync-panel-heading { justify-content: space-between; gap: var(--space-4); }
-.sync-invitation .sync-panel-heading h2 { margin: 0; }
+.sync-invitation .sync-panel-heading h3 { margin: 0; }
 .sync-code-frame { width: 100%; aspect-ratio: 1; }
 .sync-code { display: block; width: 100%; height: auto; background: white; image-rendering: pixelated; }
 .sync-invitation-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
@@ -4506,7 +4635,7 @@ a.game-row { text-decoration: none; color: inherit; }
 .sync-device-label small { display: block; color: var(--muted); font-size: 0.8125rem; font-weight: 400; }
 .sync-rename { display: flex; align-items: center; gap: var(--space-6); width: 100%; }
 .sync-rename input { flex: 1; min-width: 0; min-height: 44px; }
-.device-sync-page .sync-devices .button { align-self: center; }
+.device-sync-settings .sync-devices .button { align-self: center; }
 .sync-device-actions { position: relative; flex: none; }
 .sync-device-menu { top: calc(100% + 2px); width: max-content; min-width: 144px; }
 .sync-device-menu[data-above] { top: auto; bottom: calc(100% + 2px); }
@@ -4519,42 +4648,42 @@ a.game-row { text-decoration: none; color: inherit; }
 .sync-scan-origin { overflow-wrap: anywhere; }
 
 @media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
-  .app-shell:has(> :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page)) > .topbar {
+  .app-shell:has(> :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view))) > .topbar {
     position: sticky;
     inset-block-start: 0;
     z-index: 20;
   }
-  .app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view), .device-sync-page, .shortcuts-page) {
+  .app-shell > :is(.puzzles-home, .puzzles-subscreen:not(.import-image-view)) {
     --mobile-page-heading-top: var(--topbar-height);
   }
-  :is(.puzzles-page:not(.import-image-view), .shortcuts-page, .page.sync-page, .settings-dialog .dialog-inner) {
+  :is(.puzzles-page:not(.import-image-view), .page.sync-page, .settings-dialog .dialog-inner) {
     width: 100%;
     max-width: var(--mobile-page-width);
     margin-inline: auto;
     padding-inline: var(--mobile-page-gutter);
   }
-  :is(.puzzles-page-heading, .shortcuts-page-heading, .device-sync-page > .sync-heading, .settings-dialog .dialog-heading) {
+  :is(.puzzles-page-heading, .settings-dialog .dialog-heading) {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     grid-template-rows: minmax(44px, auto);
     align-items: center;
     gap: var(--space-8);
   }
-  :is(.puzzles-page-heading, .shortcuts-page-heading, .sync-page) h1, .settings-dialog .dialog-heading h2 {
+  :is(.puzzles-page-heading, .sync-page) h1, .settings-dialog .dialog-heading h2 {
     grid-area: 1 / 2;
     font-size: var(--mobile-page-title-size);
     letter-spacing: -.035em;
     text-align: center;
     overflow-wrap: anywhere;
   }
-  :is(.puzzles-page-heading, .shortcuts-page-heading, .device-sync-page > .sync-heading, .settings-dialog .dialog-heading) > .icon-button {
+  :is(.puzzles-page-heading, .settings-dialog .dialog-heading) > .icon-button {
     grid-area: 1 / 1;
     width: 44px;
     min-height: 44px;
     align-self: center;
   }
-  :is(.puzzles-page, .shortcuts-page, .page.device-sync-page) { padding-block-start: 0; }
-  :is(.puzzles-layout > .puzzles-page-heading, .import-page > .puzzles-page-heading, .shortcuts-page-heading, .device-sync-page > .sync-heading) {
+  .puzzles-page { padding-block-start: 0; }
+  :is(.puzzles-layout > .puzzles-page-heading, .import-page > .puzzles-page-heading) {
     position: sticky;
     inset-block-start: var(--mobile-page-heading-top, 0px);
     z-index: 2;
@@ -4567,6 +4696,7 @@ a.game-row { text-decoration: none; color: inherit; }
   .puzzles-difficulty-page .new-puzzle-step { width: min(100%, 420px); margin: auto; }
   .puzzles-difficulty-page .new-puzzle-variant-summary {
     display: grid;
+    justify-content: normal;
     justify-items: center;
     gap: var(--space-8);
     font-size: 1.0625rem;
@@ -4588,8 +4718,8 @@ a.game-row { text-decoration: none; color: inherit; }
 .outside-clue-legend { grid-area: legend; padding-block-start: 6px; text-align: center; font-size: 12px; color: var(--board-ink); }
 .board-frame[data-overlay="true"] > .outside-clue-legend { visibility: hidden; }
 .board-outside-clues { color: var(--board-ink); z-index: 1; }
-.has-outside-clues > .col-labels { padding-inline: 2px; }
-.has-outside-clues > .row-labels { padding-block: 2px; }
+.has-outside-clues > .col-labels { padding-inline: var(--sudoku-border-width); }
+.has-outside-clues > .row-labels { padding-block: var(--sudoku-border-width); }
 .board-outside-clues text { font-family: inherit; font-size: .36px; font-weight: 720; fill: currentColor; text-anchor: middle; dominant-baseline: central; }
 .outside-diagonal-arrow { fill: none; stroke: currentColor; stroke-width: .035; stroke-linecap: round; }
 .outside-clues-top { grid-area: top; aspect-ratio: var(--board-columns, 9) / var(--outside-top); pointer-events: none; }

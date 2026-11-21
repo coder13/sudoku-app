@@ -30,6 +30,7 @@ import { Route as PuzzlesRulloRouteImport } from './routes/puzzles.rullo'
 import { Route as PuzzlesSolvedRouteImport } from './routes/puzzles.solved'
 import { Route as PuzzlesStatisticsRouteImport } from './routes/puzzles.statistics'
 import { Route as SettingsSectionRouteImport } from './routes/settings.$section'
+import { Route as SettingsDeviceSyncRouteImport } from './routes/settings.device-sync'
 import { Route as SyncStepRouteImport } from './routes/sync.$step'
 import { Route as PuzzlesCalcudokuPuzzleRouteImport } from './routes/puzzles.calcudoku_.$puzzle'
 import { Route as PuzzlesFutoshikiPuzzleRouteImport } from './routes/puzzles.futoshiki_.$puzzle'
@@ -38,6 +39,7 @@ import { Route as PuzzlesKakuroPuzzleRouteImport } from './routes/puzzles.kakuro
 import { Route as PuzzlesNewCustomRouteImport } from './routes/puzzles.new.custom'
 import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
 import { Route as PuzzlesRulloPuzzleRouteImport } from './routes/puzzles.rullo_.$puzzle'
+import { Route as SettingsDeviceSyncStepRouteImport } from './routes/settings.device-sync.$step'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -144,6 +146,11 @@ const SettingsSectionRoute = SettingsSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsDeviceSyncRoute = SettingsDeviceSyncRouteImport.update({
+  id: '/device-sync',
+  path: '/device-sync',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SyncStepRoute = SyncStepRouteImport.update({
   id: '/$step',
   path: '/$step',
@@ -184,6 +191,11 @@ const PuzzlesRulloPuzzleRoute = PuzzlesRulloPuzzleRouteImport.update({
   path: '/rullo/$puzzle',
   getParentRoute: () => PuzzlesRoute,
 } as any)
+const SettingsDeviceSyncStepRoute = SettingsDeviceSyncStepRouteImport.update({
+  id: '/$step',
+  path: '/$step',
+  getParentRoute: () => SettingsDeviceSyncRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
+  '/settings/device-sync': typeof SettingsDeviceSyncRouteWithChildren
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
   '/puzzles/calcudoku/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
@@ -215,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
+  '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -236,6 +250,7 @@ export interface FileRoutesByTo {
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
+  '/settings/device-sync': typeof SettingsDeviceSyncRouteWithChildren
   '/sync/$step': typeof SyncStepRoute
   '/learn': typeof LearnIndexRoute
   '/puzzles/calcudoku/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
@@ -245,6 +260,7 @@ export interface FileRoutesByTo {
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
+  '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -268,6 +284,7 @@ export interface FileRoutesById {
   '/puzzles/solved': typeof PuzzlesSolvedRoute
   '/puzzles/statistics': typeof PuzzlesStatisticsRoute
   '/settings/$section': typeof SettingsSectionRoute
+  '/settings/device-sync': typeof SettingsDeviceSyncRouteWithChildren
   '/sync/$step': typeof SyncStepRoute
   '/learn/': typeof LearnIndexRoute
   '/puzzles/calcudoku_/$puzzle': typeof PuzzlesCalcudokuPuzzleRoute
@@ -277,6 +294,7 @@ export interface FileRoutesById {
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
   '/puzzles/rullo_/$puzzle': typeof PuzzlesRulloPuzzleRoute
+  '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -301,6 +319,7 @@ export interface FileRouteTypes {
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
+    | '/settings/device-sync'
     | '/sync/$step'
     | '/learn/'
     | '/puzzles/calcudoku/$puzzle'
@@ -310,6 +329,7 @@ export interface FileRouteTypes {
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo/$puzzle'
+    | '/settings/device-sync/$step'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -331,6 +351,7 @@ export interface FileRouteTypes {
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
+    | '/settings/device-sync'
     | '/sync/$step'
     | '/learn'
     | '/puzzles/calcudoku/$puzzle'
@@ -340,6 +361,7 @@ export interface FileRouteTypes {
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo/$puzzle'
+    | '/settings/device-sync/$step'
   id:
     | '__root__'
     | '/'
@@ -362,6 +384,7 @@ export interface FileRouteTypes {
     | '/puzzles/solved'
     | '/puzzles/statistics'
     | '/settings/$section'
+    | '/settings/device-sync'
     | '/sync/$step'
     | '/learn/'
     | '/puzzles/calcudoku_/$puzzle'
@@ -371,6 +394,7 @@ export interface FileRouteTypes {
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
     | '/puzzles/rullo_/$puzzle'
+    | '/settings/device-sync/$step'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -532,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSectionRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/device-sync': {
+      id: '/settings/device-sync'
+      path: '/device-sync'
+      fullPath: '/settings/device-sync'
+      preLoaderRoute: typeof SettingsDeviceSyncRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/sync/$step': {
       id: '/sync/$step'
       path: '/$step'
@@ -587,6 +618,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/puzzles/rullo/$puzzle'
       preLoaderRoute: typeof PuzzlesRulloPuzzleRouteImport
       parentRoute: typeof PuzzlesRoute
+    }
+    '/settings/device-sync/$step': {
+      id: '/settings/device-sync/$step'
+      path: '/$step'
+      fullPath: '/settings/device-sync/$step'
+      preLoaderRoute: typeof SettingsDeviceSyncStepRouteImport
+      parentRoute: typeof SettingsDeviceSyncRoute
     }
   }
 }
@@ -658,12 +696,25 @@ const PuzzlesRouteChildren: PuzzlesRouteChildren = {
 const PuzzlesRouteWithChildren =
   PuzzlesRoute._addFileChildren(PuzzlesRouteChildren)
 
+interface SettingsDeviceSyncRouteChildren {
+  SettingsDeviceSyncStepRoute: typeof SettingsDeviceSyncStepRoute
+}
+
+const SettingsDeviceSyncRouteChildren: SettingsDeviceSyncRouteChildren = {
+  SettingsDeviceSyncStepRoute: SettingsDeviceSyncStepRoute,
+}
+
+const SettingsDeviceSyncRouteWithChildren =
+  SettingsDeviceSyncRoute._addFileChildren(SettingsDeviceSyncRouteChildren)
+
 interface SettingsRouteChildren {
   SettingsSectionRoute: typeof SettingsSectionRoute
+  SettingsDeviceSyncRoute: typeof SettingsDeviceSyncRouteWithChildren
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsSectionRoute: SettingsSectionRoute,
+  SettingsDeviceSyncRoute: SettingsDeviceSyncRouteWithChildren,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(

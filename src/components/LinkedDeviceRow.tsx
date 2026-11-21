@@ -18,8 +18,8 @@ function DeviceActionMenu({ label, disabled, trigger, rename, unlink }: {
   useLayoutEffect(() => {
     if (!open) return
     const menu = first.current?.parentElement
-    const page = container.current?.closest('main')
-    if (menu && menu.getBoundingClientRect().bottom > Math.min(innerHeight, page?.getBoundingClientRect().bottom ?? innerHeight)) {
+    const panel = container.current?.closest('.settings-panel')
+    if (menu && menu.getBoundingClientRect().bottom > Math.min(innerHeight, panel?.getBoundingClientRect().bottom ?? innerHeight)) {
       menu.dataset.above = ''
     }
     const initial = focusLast.current ? last : first
@@ -89,14 +89,14 @@ export function LinkedDeviceRow({ device, current, mobile, working, rename, unli
   if (mode === 'rename') return <li><form className="sync-rename" onSubmit={async event => {
     event.preventDefault()
     if (await rename(draft)) close()
-  }} onKeyDown={event => { if (event.key === 'Escape' && !working) close() }}>
+  }} onKeyDown={event => { if (event.key === 'Escape' && !working) { event.preventDefault(); close() } }}>
     <label className="sr-only" htmlFor={'name-' + device.id}>Device name</label>
     <input id={'name-' + device.id} autoFocus autoComplete="off" maxLength={60} placeholder="Automatic name"
       value={draft} onFocus={event => event.target.select()} onChange={event => setDraft(event.target.value)} />
     <Button variant="primary" type="submit" disabled={working}>Save</Button>
     <IconButton variant="quiet" type="button" aria-label="Cancel rename" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>
   </form></li>
-  return <li onKeyDown={event => { if (mode === 'unlink' && event.key === 'Escape' && !working) close() }}>
+  return <li onKeyDown={event => { if (mode === 'unlink' && event.key === 'Escape' && !working) { event.preventDefault(); close() } }}>
     <div className="sync-device-label"><span>{device.name}</span>{current && <small>This device</small>}</div>
     {mode === 'unlink' ? <>
       <Button variant="danger" disabled={working} onClick={unlink}>Confirm unlink</Button>

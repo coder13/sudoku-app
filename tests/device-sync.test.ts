@@ -7,6 +7,7 @@ import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
 import { readTiming, TIMING_KEY } from '../src/sudoku/puzzle-timing.ts'
 import { ADVANCED_MODE_KEY, APPEARANCE_KEY, ERROR_MODE_KEY, readPreferences } from '../src/sudoku/preferences.ts'
+import { createPlayPreferenceStore, PLAY_PREFERENCES_KEY } from '../src/sudoku/play-preferences.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { syncSettings } from '../src/sudoku/sync-settings.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -396,7 +397,54 @@ test('pause on open and the last puzzle pause state travel between linked device
   } finally { sqlite.close() }
 })
 
-test('solving options and candidate size sync through their existing settings groups', async () => {
+test('linked devices seed, reorder, and clear puzzle buttons without syncing local play controls', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const phonePrefs = createPlayPreferenceStore(a.storage)
+    const computerPrefs = createPlayPreferenceStore(b.storage)
+    const pins = 'play-preferences.pinnedActions'
+    for (const [device, { id }] of [[a, creator], [b, second]] as const) {
+      await device.run()
+      const checkpoint = 'sudoku-app:sync:' + id + ':settings'
+      const previous = JSON.parse(device.storage.getItem(checkpoint)!)
+      delete previous[pins]
+      device.storage.setItem(checkpoint, JSON.stringify(previous))
+    }
+    phonePrefs.set('pinnedActions', ['colors', 'hint'])
+    phonePrefs.set('desktopLayoutWidth', 1200)
+    computerPrefs.set('pinnedActions', ['check'])
+    computerPrefs.set('desktopLayoutWidth', 1400)
+    computerPrefs.set('selectedDigit', 4)
+
+    await a.run(); await b.run()
+    computerPrefs.refreshPinnedActions()
+    assert.deepEqual(computerPrefs.getSnapshot().pinnedActions, ['colors', 'hint'])
+    assert.equal(computerPrefs.getSnapshot().selectedDigit, 4)
+    assert.equal(JSON.parse(b.storage.getItem(PLAY_PREFERENCES_KEY)!).desktopLayoutWidth, 1400)
+    assert.equal(JSON.parse(a.storage.getItem(PLAY_PREFERENCES_KEY)!).desktopLayoutWidth, 1200)
+
+    computerPrefs.set('pinnedActions', ['hint', 'colors'])
+    await b.run(); await a.run()
+    phonePrefs.refreshPinnedActions()
+    assert.deepEqual(phonePrefs.getSnapshot().pinnedActions, ['hint', 'colors'])
+
+    computerPrefs.set('pinnedActions', [])
+    await b.run(); await a.run()
+    phonePrefs.refreshPinnedActions()
+    assert.deepEqual(phonePrefs.getSnapshot().pinnedActions, [])
+
+    const newerPins = JSON.stringify(['redo', 'new-action', 'redo', 'chain'])
+    await phone('settings', 'PATCH', { seeds: {}, edits: { [pins]: newerPins } })
+    await b.run(); await b.run()
+    computerPrefs.refreshPinnedActions()
+    assert.deepEqual(computerPrefs.getSnapshot().pinnedActions, ['redo', 'chain'])
+    const { settings } = await computer<{ settings: Record<string, string> }>('changes?settings=1')
+    assert.equal(settings[pins], newerPins)
+  } finally { sqlite.close() }
+})
+
+test('solving options, candidate size, and puzzle border sync through their existing settings groups', async () => {
   const { sqlite, creator, phone, second, computer } = await library()
   try {
     const a = client(creator, phone), b = client(second, computer)
@@ -409,7 +457,7 @@ test('solving options and candidate size sync through their existing settings gr
 
     a.storage.setItem(ADVANCED_MODE_KEY, JSON.stringify({ ...defaults.advancedModes,
       autoRemoveCandidates: false, autoPlaceNakedSingles: true, keypadProgress: 'count' }))
-    a.storage.setItem(APPEARANCE_KEY, JSON.stringify({ candidateTextSize: 115 }))
+    a.storage.setItem(APPEARANCE_KEY, JSON.stringify({ candidateTextSize: 115, puzzleBorderWidth: 5 }))
     a.storage.setItem(ERROR_MODE_KEY, 'all')
     await a.run(); await b.run()
     const received = readPreferences(b.storage)
@@ -417,6 +465,7 @@ test('solving options and candidate size sync through their existing settings gr
     assert.equal(received.advancedModes.autoPlaceNakedSingles, true)
     assert.equal(received.advancedModes.keypadProgress, 'count')
     assert.equal(received.appearance.candidateTextSize, 115)
+    assert.equal(received.appearance.puzzleBorderWidth, 5)
     assert.equal(received.errorMode, 'all')
   } finally { sqlite.close() }
 })

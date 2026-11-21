@@ -1,4 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { KeyboardShortcutsPage } from '../components/KeyboardShortcutsPage'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/shortcuts')({ component: KeyboardShortcutsPage })
+export const Route = createFileRoute('/shortcuts')({
+  ssr: false,
+  component: () => <Navigate to="/settings/$section" params={{ section: 'shortcuts' }} replace />,
+})

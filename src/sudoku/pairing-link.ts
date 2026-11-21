@@ -1,4 +1,7 @@
+import { deviceSyncPath } from './sync-steps.ts'
+
 export const PRODUCTION_SYNC_ORIGIN = 'https://klyn-sudoku.pages.dev'
+const pairingPaths = new Set(['/sync', '/sync/confirm', deviceSyncPath, deviceSyncPath + '/confirm'])
 const productionOrigins = new Set([PRODUCTION_SYNC_ORIGIN, 'https://sudoku.klyn.gay'])
 
 export function isProductionSyncOrigin(origin: string): boolean {
@@ -15,7 +18,7 @@ export function readPairingLink(text: string): { origin: string; ticket: string 
     const url = new URL(text)
     const path = url.pathname.replace(/\/$/, '')
     if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password || url.search ||
-        (path !== '/sync' && path !== '/sync/confirm')) return null
+        !pairingPaths.has(path)) return null
     const ticket = /^#pair=([a-f0-9]{64})$/.exec(url.hash)?.[1]
     return ticket ? { origin: url.origin, ticket } : null
   } catch { return null }

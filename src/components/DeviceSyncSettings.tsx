@@ -1,6 +1,6 @@
-import { Button, ChoiceButton, IconButton, buttonClassName } from './Button'
-import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
-import { ArrowLeft, KeyRound, Link2, LoaderCircle, QrCode } from 'lucide-react'
+import { Button, ChoiceButton, buttonClassName } from './Button'
+import { Link, useLocation, useRouter } from '@tanstack/react-router'
+import { KeyRound, Link2, LoaderCircle, QrCode } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
@@ -9,27 +9,27 @@ import { pairingTicket, PRODUCTION_SYNC_ORIGIN } from '../sudoku/pairing-link'
 import { LinkedDeviceRow } from './LinkedDeviceRow'
 import { useMobileLayout } from './mobile-layout'
 import { deviceSync, recoveryStorage } from '../sudoku/device-sync'
-import { isSyncPage, syncPageTitles } from '../sudoku/sync-pages'
+import { deviceSyncPath, type SyncStep } from '../sudoku/sync-steps'
 
 type Invitation = { ticket: string; expires: number; issuer: string }
 const invitationStorage = 'sudoku-app:sync:tab-invitation'
+// Keep issuing links that previously installed clients can also scan.
+const pairingLinkPath = '/sync#pair='
 const productionSync = import.meta.env.SUDOKU_PRODUCTION_SYNC === true
 declare module '@tanstack/history' {
   interface HistoryState {
-    fromSyncScanner?: boolean
+    syncBack?: 'settings' | 'start' | 'scan'
   }
 }
 type LinkedDevice = Awaited<ReturnType<typeof deviceSync.devices>>[number]
 
-export function DeviceSyncPage() {
+/** Render the setup and management steps inside the Settings dialog. */
+export function DeviceSyncSettings({ step, onBack }: { step: SyncStep | null; onBack: () => void }) {
   const mobile = useMobileLayout()
   const status = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
   const connection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
   const router = useRouter()
-  const canGoBack = useCanGoBack()
   const current = useLocation()
-  const segment = current.pathname.split('/')[2] ?? ''
-  const screen = isSyncPage(segment) ? segment : 'start'
   const ticket = typeof window === 'undefined' ? null : pairingTicket(new URL(current.href, location.origin).href, location.origin)
   const pairingOrigin = productionSync ? PRODUCTION_SYNC_ORIGIN : typeof window === 'undefined' ? '' : location.origin
   const [key, setKey] = useState(() => {
@@ -55,10 +55,11 @@ export function DeviceSyncPage() {
   const [error, setError] = useState('')
   const listVersion = useRef(0)
   const inviteButton = useRef<HTMLButtonElement>(null)
+  const content = useRef<HTMLDivElement>(null)
   useEffect(() => {
     setListError('')
     setLoadingDevices(false)
-    if (!deviceId || screen !== 'devices') return
+    if (!deviceId || step !== null) return
     const owner = deviceId
     async function refresh() {
       if (document.hidden || !navigator.onLine) return
@@ -83,7 +84,7 @@ export function DeviceSyncPage() {
       listVersion.current++
       unsubscribe()
     }
-  }, [deviceId, screen])
+  }, [deviceId, step])
 
   function updateDeviceList(update: (items: LinkedDevice[]) => LinkedDevice[]) {
     if (!deviceId || deviceSync.credentials()?.id !== deviceId) return
@@ -94,11 +95,11 @@ export function DeviceSyncPage() {
     setDeviceList({ owner: deviceId, items })
   }
   useEffect(() => {
-    if (screen !== 'invite' || !invite) return
+    if (step !== 'invite' || !invite) return
     setClock(Date.now())
     const timeout = setTimeout(() => setClock(Date.now()), Math.max(0, invite.expires - Date.now()))
     return () => clearTimeout(timeout)
-  }, [screen, invite])
+  }, [step, invite])
 
   async function action(fn: () => Promise<void>) {
     setWorking(true); setError('')
@@ -113,7 +114,11 @@ export function DeviceSyncPage() {
     const invitation = { ticket, expires, issuer }
     setInvite(invitation)
     try { sessionStorage.setItem(invitationStorage, JSON.stringify(invitation)) } catch { /* Keep the open invitation usable. */ }
-    await router.navigate({ to: '/sync/$step', params: { step: 'invite' }, replace: screen === 'invite' })
+    const refreshing = step === 'invite'
+    await router.navigate({
+      to: '/settings/device-sync/$step', params: { step: 'invite' }, replace: refreshing,
+      state: { syncBack: refreshing ? current.state.syncBack : 'start' },
+    })
   }
   function enroll(mode: 'libraries' | 'join' | 'recover') {
     void action(async () => {
@@ -122,91 +127,83 @@ export function DeviceSyncPage() {
       const key = await deviceSync.enroll(mode, secret)
       setKey(key ?? '')
       if (entry !== router.history.location.href) return
-      await router.navigate({ to: '/sync/$step', params: { step: 'devices' }, replace: true, viewTransition: false })
-      if (mode === 'libraries' && router.history.location.pathname === '/sync/devices') await showCode()
+      if (step) await router.navigate({ to: '/settings/device-sync', replace: true, viewTransition: false })
+      else if (mode === 'libraries') await showCode()
     })
   }
 
   const confirmTicket = useCallback((ticket: string) => {
-    void router.navigate({ to: '/sync/$step', params: { step: 'confirm' }, hash: 'pair=' + ticket, state: { fromSyncScanner: true } })
+    void router.navigate({
+      to: '/settings/device-sync/$step', params: { step: 'confirm' }, hash: 'pair=' + ticket,
+      state: { syncBack: 'scan' },
+    })
   }, [router])
-  const heading = useRef<HTMLHeadingElement>(null)
-  const previousScreen = useRef(screen)
+  const previousStep = useRef(step)
   useEffect(() => {
-    if (previousScreen.current !== screen) {
+    if (previousStep.current !== step) {
       setRecovery('')
       setError('')
-      const target = previousScreen.current === 'invite' && screen === 'devices' ? inviteButton : heading
-      target.current?.focus({ preventScroll: true })
+      content.current?.parentElement?.scrollTo(0, 0)
+      if (previousStep.current === 'invite' && step === null) {
+        requestAnimationFrame(() => inviteButton.current?.focus({ preventScroll: true }))
+      }
     }
-    previousScreen.current = screen
-  }, [screen])
-  const backToScanner = screen === 'recover' || (screen === 'confirm' && current.state.fromSyncScanner)
-  const root = screen === 'start' || screen === 'devices'
-  function back() {
-    // Static hosts may redirect to a trailing slash on reload, resetting the router's index.
-    const navigation = (window as Window & { navigation?: { canGoBack: boolean } }).navigation
-    if (canGoBack || (navigation?.canGoBack ?? window.history.length > 1)) router.history.back()
-    else if (root) void router.navigate({ to: '/settings', replace: true })
-    else if (backToScanner || screen === 'invite') void router.navigate({
-      to: '/sync/$step', params: { step: backToScanner ? 'scan' : 'devices' }, replace: true,
-    })
-    else void router.navigate({ to: '/sync', replace: true })
-  }
+    previousStep.current = step
+  }, [step])
+
   useEffect(() => {
-    // The previous screen can stay mounted while the router transitions away.
-    if (current.pathname !== '/sync' && !current.pathname.startsWith('/sync/')) return
-    if (screen === 'start' && ticket) {
-      void router.navigate({ to: '/sync/$step', params: { step: 'confirm' }, hash: 'pair=' + ticket, replace: true, viewTransition: false })
-    } else if (!working && screen === 'start' && status.linked) {
-      void router.navigate({ to: '/sync/$step', params: { step: 'devices' }, replace: true, viewTransition: false })
+    // Don't redirect from a screen that is transitioning away.
+    const path = current.pathname.replace(/\/$/, '')
+    if (path !== (step ? deviceSyncPath + '/' + step : deviceSyncPath)) return
+    if (step === null && ticket) {
+      void router.navigate({ to: '/settings/device-sync/$step', params: { step: 'confirm' },
+        hash: 'pair=' + ticket, replace: true, viewTransition: false })
     } else if (status.ready && !working) {
-      if ((screen === 'invite' || screen === 'devices') && !status.linked) void router.navigate({ to: '/sync', replace: true, viewTransition: false })
-      else if (screen === 'confirm' && !ticket) void router.navigate({ to: '/sync/$step', params: { step: 'scan' }, replace: true, viewTransition: false })
+      if (step === 'invite' && !status.linked) {
+        void router.navigate({ to: '/settings/device-sync', replace: true, viewTransition: false })
+      } else if (step === 'confirm' && !ticket) {
+        void router.navigate({ to: '/settings/device-sync/$step', params: { step: 'scan' }, replace: true, viewTransition: false })
+      }
     }
-  }, [current.pathname, screen, ticket, status.ready, status.linked, working, router])
+  }, [current.pathname, step, ticket, status.ready, status.linked, working, router])
+
   const activeInvite = invite && invite.expires > clock && invite.issuer === deviceSync.credentials()?.id
-  return <main className="page sync-page device-sync-page">
-    <header className="sync-heading">
-      <IconButton variant="quiet" aria-label={root ? 'Back' : backToScanner ? 'Back to scanner' : 'Back to device sync'}
-        onClick={back}><ArrowLeft size={20} /></IconButton>
-      <h1 ref={heading} tabIndex={-1}>{screen === 'start' ? 'Device sync' : syncPageTitles[screen]}</h1>
-    </header>
+  return <div ref={content} className="device-sync-settings">
     {productionSync && <p><strong>Production sync.</strong> Changes here sync to the live app.</p>}
-    {status.linked && screen === 'devices' && <SyncConnectionStatus connection={connection} loadingAccount={status.loadingAccount} showLabel />}
+    {status.linked && step === null && <SyncConnectionStatus connection={connection} loadingAccount={status.loadingAccount} showLabel />}
     {status.message && <p role="status">{status.message}</p>}
     {(error || listError) && <p className="workspace-error" role="alert">{error || listError}</p>}
-    {!status.linked && status.ready && screen === 'confirm' && ticket && <>
+    {!status.linked && status.ready && step === 'confirm' && ticket && <>
       <p>Puzzles from both devices will appear together. Your settings will sync too.</p>
       <Button variant="primary" disabled={working} onClick={() => enroll('join')}>Link this device</Button>
     </>}
-    {!status.linked && status.ready && screen === 'start' && <div className="sync-choices">
-      <Link to="/sync/$step" params={{ step: 'scan' }} className={buttonClassName('secondary', 'choice-button')}>
+    {!status.linked && status.ready && step === null && <div className="sync-choices">
+      <Link to="/settings/device-sync/$step" params={{ step: 'scan' }} state={{ syncBack: 'start' }} className={buttonClassName('secondary', 'choice-button')}>
         <QrCode aria-hidden size={22} /><span><strong>Scan QR code</strong><small>Connect to a device already syncing.</small></span>
       </Link>
       <ChoiceButton disabled={working} onClick={() => enroll('libraries')}>
         <Link2 aria-hidden size={22} /><span><strong>Set up new sync</strong><small>Start here on your first device.</small></span>
       </ChoiceButton>
     </div>}
-    {!status.linked && status.ready && screen === 'scan' && <>
+    {!status.linked && status.ready && step === 'scan' && <>
         <PairingScanner pairingOrigin={pairingOrigin} onTicket={confirmTicket} />
-        <Link className={buttonClassName()} to="/sync/$step" params={{ step: 'recover' }}><KeyRound size={16} aria-hidden />Use a recovery key</Link>
+        <Link className={buttonClassName()} to="/settings/device-sync/$step" params={{ step: 'recover' }} state={{ syncBack: 'scan' }}><KeyRound size={16} aria-hidden />Use a recovery key</Link>
     </>}
-    {!status.linked && status.ready && screen === 'recover' &&
+    {!status.linked && status.ready && step === 'recover' &&
       <form className="sync-recover" onSubmit={event => { event.preventDefault(); enroll('recover') }}>
         <label>Recovery key<input autoComplete="off" spellCheck={false} value={recovery} onChange={e => setRecovery(e.target.value)} /></label>
         <Button variant="primary" type="submit" disabled={working || !recovery.trim()}>Recover puzzles and settings</Button>
       </form>}
-    {status.linked && !root && screen !== 'invite' && !working && <>
+    {status.linked && step !== null && step !== 'invite' && !working && <>
       <p>This device is already linked.</p>
-      <Link className={buttonClassName()} to="/sync/$step" params={{ step: 'devices' }} replace>View linked devices</Link>
+      <Link className={buttonClassName()} to="/settings/device-sync" replace>View linked devices</Link>
     </>}
-    {status.linked && screen === 'invite' && (activeInvite
-      ? <PairingInvitation key={invite.ticket} link={pairingOrigin + '/sync#pair=' + invite.ticket} expires={invite.expires} onClose={back} />
+    {status.linked && step === 'invite' && (activeInvite
+      ? <PairingInvitation key={invite.ticket} link={pairingOrigin + pairingLinkPath + invite.ticket} expires={invite.expires} onClose={onBack} />
       : <Button variant="primary" disabled={working} onClick={() => void action(showCode)}>Create a new link</Button>)}
-    {status.linked && screen === 'devices' && <Button ref={inviteButton} variant="primary" disabled={working}
+    {status.linked && step === null && <Button ref={inviteButton} variant="primary" disabled={working}
       onClick={() => void action(showCode)}><QrCode size={18} />Link another device</Button>}
-    {status.linked && (screen === 'devices' || screen === 'invite') && key && <details><summary>Save recovery key</summary>
+    {status.linked && (step === null || step === 'invite') && key && <details><summary>Save recovery key</summary>
         <p>Keep this key somewhere private. Use it if you lose access to your linked devices.</p>
         <input aria-label="Recovery key" readOnly value={key} onFocus={event => event.target.select()} />
         <Button onClick={() => {
@@ -214,8 +211,8 @@ export function DeviceSyncPage() {
           setKey('')
         }}>I saved my key</Button>
       </details>}
-    {status.linked && screen === 'devices' &&
-      <section><h2>Linked devices</h2>
+    {status.linked && step === null &&
+      <section><h3>Linked devices</h3>
         {loadingDevices && connection.mode !== 'offline' && <p className="sync-connection-label" role="status">
           <LoaderCircle size={14} className="loading-spinner" aria-hidden="true" /> Loading linked devices…
         </p>}
@@ -230,5 +227,5 @@ export function DeviceSyncPage() {
             updateDeviceList(items => items.filter(item => item.id !== device.id))
           })} />)}</ul></section>
     }
-  </main>
+  </div>
 }

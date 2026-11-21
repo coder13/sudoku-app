@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
+import { NEW_PUZZLE_KEY } from '../../src/sudoku/preferences'
 import { PreviewRouter } from '../support/frames'
+import { solved } from '../support/fixtures'
+import { seedRoom } from '../support/story-room'
 
 const meta = {
   title: 'Medium/Puzzles/New puzzle',
@@ -18,17 +21,45 @@ export const ChooseDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=windoku" />,
 }
 
+export const DifficultyResults: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=classic&difficulty=hard" />,
+  beforeEach: () => { seedRoom([{ ...solved, difficulty: 'hard', elapsed: 249 }]) },
+}
+
+export const RememberedDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new" />,
+  beforeEach: () => {
+    const previous = localStorage.getItem(NEW_PUZZLE_KEY)
+    localStorage.setItem(NEW_PUZZLE_KEY, JSON.stringify({ variant: 'classic', difficulty: 'hard' }))
+    return () => {
+      if (previous === null) localStorage.removeItem(NEW_PUZZLE_KEY)
+      else localStorage.setItem(NEW_PUZZLE_KEY, previous)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+    const increase = canvas.queryByRole('button', { name: 'Increase difficulty' })
+    if (increase) await userEvent.click(increase)
+    else await userEvent.click(canvas.getByRole('radio', { name: 'Very Hard' }))
+    await expect(await canvas.findByRole('button', { name: 'Start very hard puzzle' })).toBeEnabled()
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Sudoku modes' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose a Sudoku mode' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('link', { name: 'Classic' }))
+    await expect(await canvas.findByRole('button', { name: 'Start very hard puzzle' })).toBeEnabled()
+  },
+}
+
 export const Mobile: Story = {
   ...ChooseVariant,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Next variant' }))
-    await canvas.findByRole('heading', { name: 'Mini Sudoku' })
+    await canvas.findByRole('heading', { name: 'Diagonal' })
     await userEvent.click(canvas.getByRole('link', { name: 'Continue' }))
     await canvas.findByRole('heading', { name: 'Choose difficulty' })
-    await expect(canvas.getByText('Mini Sudoku', { exact: true })).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'Back to variant' }))
-    await expect(await canvas.findByRole('heading', { name: 'Mini Sudoku' })).toBeVisible()
+    await expect(canvas.getByText('X Sudoku', { exact: true })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }))
+    await expect(await canvas.findByRole('heading', { name: 'Diagonal' })).toBeVisible()
   },
 }
 
@@ -37,9 +68,9 @@ export const RectangularSix: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
     await expect(await canvas.findByRole('combobox', { name: 'Box layout' })).toHaveValue('3')
-    await userEvent.click(canvas.getByRole('button', { name: 'Create puzzle' }))
-    await userEvent.click(await canvas.findByRole('button', { name: 'Edit rules' }))
-    await expect(await canvas.findByRole('grid', { name: '6 × 6 rule editor' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('link', { name: 'Continue' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose difficulty' })).toBeVisible()
+    await expect(canvas.getByText('3 × 2 boxes', { exact: true })).toBeVisible()
   },
 }
 

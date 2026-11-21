@@ -9,7 +9,7 @@ const statuses = {
   offline: 'Offline',
 } as const
 
-/** Show account loading and the connection by the wordmark and on the Device sync page. */
+/** Show account loading and the connection by the wordmark and in Device sync settings. */
 export function SyncConnectionStatus({ connection, loadingAccount = false, showLabel = false }: {
   connection: SyncConnection
   loadingAccount?: boolean

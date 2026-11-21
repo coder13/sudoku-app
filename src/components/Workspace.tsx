@@ -1,6 +1,6 @@
 import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
-import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createContext, type CSSProperties, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
@@ -9,7 +9,7 @@ import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { isRectangularSize } from '../sudoku/grid'
-import { gameGenerationVariant } from '../sudoku/new-puzzle'
+import { gameGenerationVariant, newPuzzleDifficulty } from '../sudoku/new-puzzle'
 import { EMPTY, makeGame, shouldOfferPuzzleSave, type ErrorMode } from '../sudoku/game'
 import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
@@ -96,7 +96,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const shareParam = useMatch({ from: '/', shouldThrow: false, select: m => m.search.share })
   const learning = Boolean(useMatch({ from: '/learn', shouldThrow: false }))
   const settingsParam = useMatch({ from: '/settings/$section', shouldThrow: false, select: ({ params }) => params.section })
-  const settingsSection = isSettingsSection(settingsParam) ? settingsParam : null
+  const syncSettingsRoute = Boolean(useMatch({ from: '/settings/device-sync', shouldThrow: false }))
+  const syncStep = useMatch({ from: '/settings/device-sync/$step', shouldThrow: false, select: match => match.loaderData })
+  const settingsSection = syncSettingsRoute ? 'device-sync' : isSettingsSection(settingsParam) ? settingsParam : null
   const navigate = useNavigate()
   const locationHref = useLocation({ select: (location) => location.href })
   const { games, active, stoppedPlaying, storageAvailable } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
@@ -124,6 +126,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const shared = workspaceReady ? shareParam : undefined
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
+  const puzzleTopSpace = appearance.mobilePuzzleTopSpace
   const savedAppearance = useRef(appearance)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -196,19 +199,35 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setAppearance({ ...appearance, colorMode: nextColorMode })
   }
 
+  const openSettings = useCallback((section?: SettingsSection) => {
+    if (!settingsRoute) settingsReturnLocation.current = {
+      href: locationHref,
+      left: window.scrollX,
+      top: window.scrollY,
+      articleTop: document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTop ?? 0,
+    }
+    setMenuOpen(false)
+    setPanel(null)
+    if (section === 'device-sync') void navigate({ to: '/settings/device-sync' })
+    else if (section) void navigate({
+      to: '/settings/$section', params: { section },
+      state: section === 'shortcuts' ? { fromSettingsOverview: settingsRoute && settingsSection === null } : undefined,
+    })
+    else void navigate({ to: '/settings' })
+  }, [locationHref, navigate, settingsRoute, settingsSection])
+
   useEffect(() => {
     function openShortcutHelp(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.repeat || !shortcutMatches(event, shortcuts, 'shortcutHelp')) return
+      if (settingsSection === 'shortcuts' || event.defaultPrevented || event.repeat ||
+          !shortcutMatches(event, shortcuts, 'shortcutHelp')) return
       const target = event.target
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, select, textarea, [data-shortcut-capture]'))) return
       event.preventDefault()
-      setMenuOpen(false)
-      setPanel(null)
-      void navigate({ to: '/shortcuts' })
+      openSettings('shortcuts')
     }
     window.addEventListener('keydown', openShortcutHelp)
     return () => window.removeEventListener('keydown', openShortcutHelp)
-  }, [navigate, shortcuts])
+  }, [openSettings, settingsSection, shortcuts])
 
   useLayoutEffect(() => {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
@@ -376,23 +395,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setPanel(null)
     const variant = gameGenerationVariant(game)
     if (step === 'difficulty' && variant) {
-      void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: puzzleGenerationRuleset(game?.variant?.puzzle), boxRows } })
+      void navigate({ to: '/puzzles/new/difficulty', search: {
+        variant, difficulty: newPuzzleDifficulty(variant, newPuzzleDefaults.difficulty),
+        ruleset: puzzleGenerationRuleset(game?.variant?.puzzle), boxRows,
+      } })
     } else {
-      void navigate({ to: '/puzzles/new', search: {} })
+      void navigate({ to: '/puzzles/new', search: { step: 'variant' } })
     }
-  }
-
-  function openSettings(section?: SettingsSection) {
-    if (!settingsRoute) settingsReturnLocation.current = {
-      href: locationHref,
-      left: window.scrollX,
-      top: window.scrollY,
-      articleTop: document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTop ?? 0,
-    }
-    setMenuOpen(false)
-    setPanel(null)
-    if (section) void navigate({ to: '/settings/$section', params: { section } })
-    else void navigate({ to: '/settings' })
   }
 
   function closeSettings() {
@@ -569,7 +578,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 <BarChart3 size={17} /> Statistics
               </Link>
               <button onClick={() => openSettings()}><SlidersHorizontal size={17} /> Settings</button>
-              <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
+              <button onClick={() => openSettings('shortcuts')}><Keyboard size={17} /> Keyboard shortcuts</button>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
               <button onClick={openImport}><ArrowDownToLine size={17} /> Import</button>
@@ -595,11 +604,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           {linkError ? <p role="alert">{linkError}</p> : <p>{sync.linked
             ? sync.message || 'Open this puzzle on your other device and choose Sync now from Puzzle options.'
             : 'Link the device that has this puzzle to open it here.'}</p>}
-          <Link className={buttonClassName('primary')} to="/sync">Device sync</Link>
+          <Button variant="primary" onClick={() => openSettings('device-sync')}>Device sync</Button>
           <Link className={buttonClassName()} to="/puzzles/browse">Return to puzzles</Link>
         </main>
       ) : playing ? (
-        <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace">
+        <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace"
+          data-puzzle-top-space={game && puzzleTopSpace ? true : undefined}
+          style={game && puzzleTopSpace ? { '--puzzle-top-space': puzzleTopSpace + 'px' } as CSSProperties : undefined}>
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}
           {linkError && <p className="workspace-error" role="alert">{linkError}</p>}
           <PlayWorkspace resizable={desktopStandard}>
@@ -663,7 +674,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
       {panel === 'import' && <ImportPuzzle close={close} onPlay={close} />}
       {panel === 'share' && game && <SharePuzzle key={game.id} game={game} close={close} />}
-      {settingsRoute && <Settings close={closeSettings} section={settingsSection}
+      {settingsRoute && <Settings close={closeSettings} section={settingsSection} syncStep={syncStep}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}
         highlighting={highlighting} setHighlighting={setHighlighting}

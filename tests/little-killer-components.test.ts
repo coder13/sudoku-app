@@ -176,9 +176,9 @@ test('outside arrows and candidate links share the exact inner-cell viewport, in
   const viewport = css.match(/\.board-links, \.board-outside-clues \{([^}]+)\}/)![1]
   for (const declaration of [
     'position: absolute',
-    'inset: 2px',
-    'width: calc(100% - 4px)',
-    'height: calc(100% - 4px)',
+    'inset: var(--sudoku-border-width)',
+    'width: calc(100% - 2 * var(--sudoku-border-width))',
+    'height: calc(100% - 2 * var(--sudoku-border-width))',
     'overflow: visible',
     'pointer-events: none',
   ])

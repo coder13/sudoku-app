@@ -9,7 +9,8 @@ import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPl
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates, type Game } from '../../src/sudoku/game'
+import { EMPTY, enter, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates, valuesOf, type Game } from '../../src/sudoku/game'
+import { recordAction } from '../../src/sudoku/action-history'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
 import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
@@ -76,6 +77,31 @@ export const ClearImportedDrawings: Story = {
   },
 }
 
+
+const splitScreenGame = { ...starter, id: 'split-screen-play' }
+export const SplitScreen: Story = {
+  args: { game: splitScreenGame, games: [splitScreenGame] },
+  parameters: { viewport: { options: {
+    splitScreen: { name: 'Android split-screen proportions', styles: { width: '430px', height: '595px' } },
+    veryShortSplitScreen: { name: 'Very short split screen', styles: { width: '430px', height: '454px' } },
+  } } },
+  globals: { viewport: { value: 'splitScreen', isRotated: false } },
+  beforeEach: () => {
+    const { pinnedActions } = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('pinnedActions', ['singles', 'chain', 'strong-links', 'colors'])
+    playSession.set(splitScreenGame.id, 'toolPanels', { open: ['techniques', 'chains'], active: 'digits', height: 340 })
+    return () => {
+      playPreferenceStore.set('pinnedActions', pinnedActions)
+      playSession.activate(null)
+      localStorage.removeItem(puzzleTabsKey(splitScreenGame.id))
+    }
+  },
+  render: (args) => <WorktableExample {...args} withTopbar />,
+}
+export const VeryShortSplitScreen: Story = {
+  ...SplitScreen,
+  globals: { viewport: { value: 'veryShortSplitScreen', isRotated: false } },
+}
 export const CycleHighlightedDigit: Story = {
   args: {
     game: fillEntries(starter, [...solved.position.entries].map(digit => '139'.includes(digit) ? digit : '0').join('')),
@@ -910,7 +936,45 @@ export const SolvedMobile: Story = {
     expect(original?.position).toEqual(solved.position)
     expect(original?.elapsed).toBe(solved.elapsed)
     await userEvent.click(toggle)
-    await expect(within(results).getByText('06:27')).toBeVisible()
+    await expect(within(results).getAllByText('06:27', { exact: true })[0]).toBeVisible()
+  },
+}
+
+const solvedValues = valuesOf(solved)
+const beforeFinalMoves = { ...fillEntries(starter, solvedValues.slice(0, 2) + '00' + solvedValues.slice(4)),
+  id: 'solved-with-history', elapsed: solved.elapsed }
+const penultimateMove = recordAction(beforeFinalMoves, enter(beforeFinalMoves, [2], 'value', Number(solvedValues[2])),
+  'edit', { technique: 'naked-single' })
+const solvedWithHistory = recordAction(penultimateMove, enter(penultimateMove, [3], 'value', Number(solvedValues[3])),
+  'edit', { technique: 'naked-single' })
+
+export const UndoCompletedPuzzle: Story = {
+  args: { game: solvedWithHistory, games: [solvedWithHistory] },
+  play: async ({ canvas, userEvent }) => {
+    const result = await canvas.findByRole('region', { name: 'Solve details' })
+    await waitFor(() => expect(within(result).getAllByText('06:27', { exact: true })[0]).toBeVisible())
+    const undo = canvas.getByRole('button', { name: /^Undo$/ })
+    await expect(undo).toBeEnabled()
+    await userEvent.click(undo)
+    await expect(await canvas.findByRole('gridcell', { name: /^Row 1, column 4, empty/ })).toBeVisible()
+    await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 3, digit 4/ })).toBeVisible()
+    await expect(canvas.getByRole('timer')).toHaveTextContent('06:27')
+
+    const redo = canvas.getByRole('button', { name: /^Redo$/ })
+    await userEvent.click(redo)
+    await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 4, digit 6/ })).toBeVisible()
+    const toggle = canvas.getByRole('button', { name: 'View results' })
+    await userEvent.click(toggle)
+    await waitFor(() => expect(canvas.getByRole('region', { name: 'Solve details' })).toBeVisible())
+    await userEvent.keyboard('{Control>}z{/Control}')
+    await expect(await canvas.findByRole('gridcell', { name: /^Row 1, column 4, empty/ })).toBeVisible()
+    await expect(canvas.getByRole('timer')).toHaveTextContent('06:27')
+
+    const original = roomStore.getSnapshot().games.find(game => game.id === solvedWithHistory.id)
+    await expect(original?.position).toEqual(solvedWithHistory.position)
+    await expect(original?.past).toEqual(solvedWithHistory.past)
+    await expect(original?.actionHistory).toEqual(solvedWithHistory.actionHistory)
+    await expect(original?.elapsed).toBe(solvedWithHistory.elapsed)
   },
 }
 

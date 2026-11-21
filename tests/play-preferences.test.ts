@@ -255,3 +255,34 @@ test('pinned puzzle buttons persist in order and ignore invalid saved entries', 
     assert.deepEqual(parsePlayPreferences({ pinnedActions }).pinnedActions, [])
   }
 })
+
+test('refreshing pinned buttons keeps local tool settings and pending pin edits', () => {
+  const storage = memoryStorage(JSON.stringify({ pinnedActions: ['hint'], pencil: false }))
+  let full = false
+  const store = createPlayPreferenceStore({
+    ...storage,
+    setItem(key, value) {
+      if (full) throw new Error('Storage full')
+      storage.setItem(key, value)
+    },
+  })
+  const other = createPlayPreferenceStore(storage)
+  let notifications = 0
+  store.subscribe(() => { notifications++ })
+  other.set('pencil', true)
+  other.set('pinnedActions', ['colors', 'check'])
+  store.refreshPinnedActions()
+  store.refreshPinnedActions()
+  assert.deepEqual(store.getSnapshot().pinnedActions, ['colors', 'check'])
+  assert.equal(store.getSnapshot().pencil, false)
+  assert.equal(notifications, 1)
+
+  full = true
+  store.set('pinnedActions', ['undo'])
+  other.set('pinnedActions', ['redo'])
+  store.refreshPinnedActions()
+  assert.deepEqual(store.getSnapshot().pinnedActions, ['undo'])
+  full = false
+  store.set('multi', true)
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().pinnedActions, ['undo'])
+})

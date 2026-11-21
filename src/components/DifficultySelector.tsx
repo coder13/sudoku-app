@@ -50,22 +50,29 @@ export function DifficultyOptions<Level extends Difficulty>({ levels, selected, 
   }
 
   return <fieldset className="difficulty-selector" disabled={disabled}>
-    <legend>Difficulty</legend>
+    <legend className="sr-only">Difficulty</legend>
     <div className="difficulty-list">
-      {levels.map((level) => <label key={level}>
-        <input type="radio" name={id} value={level} checked={!auto?.active && selected === level}
-          aria-labelledby={`${id}-${level}-label`} aria-describedby={`${id}-${level}-stats`}
-          onChange={() => onChange(level)} />
-        <span id={`${id}-${level}-label`}>{DIFFICULTY_LABELS[level]}</span>
-        <span className="difficulty-list-stats" id={`${id}-${level}-stats`} aria-busy={loading}>
-          {loading ? <span>Loading results…</span> : <>
-            <span>{statistics.get(level)?.solved ?? 0} solved</span>
-            <span aria-label={averageTime(level) === '–' ? 'No average time yet' : `Average time ${averageTime(level)}`}>
-              Avg {averageTime(level)}
-            </span>
-          </>}
-        </span>
-      </label>)}
+      <div className="difficulty-list-stats difficulty-list-heading" aria-hidden="true">
+        <span>Solved</span>
+        <span>Average time</span>
+      </div>
+      {levels.map((level) => {
+        const time = averageTime(level)
+        return <label key={level}>
+          <input type="radio" name={id} value={level} checked={!auto?.active && selected === level}
+            aria-labelledby={`${id}-${level}-label`} aria-describedby={`${id}-${level}-stats`}
+            onChange={() => onChange(level)} />
+          <span id={`${id}-${level}-label`}>{DIFFICULTY_LABELS[level]}</span>
+          <span className="difficulty-list-stats" id={`${id}-${level}-stats`} aria-busy={loading}>
+            {loading ? <span>Loading results…</span> : <>
+              <span>{statistics.get(level)?.solved ?? 0}<span className="sr-only"> solved</span></span>
+              <span>{time === '–' ? <>
+                <span className="sr-only">No average time yet</span><span aria-hidden="true">{time}</span>
+              </> : <><span className="sr-only">Average time </span>{time}</>}</span>
+            </>}
+          </span>
+        </label>
+      })}
     </div>
     <div className="difficulty-mobile">
       <div className="difficulty-stepper-control" onKeyDown={(event) => {

@@ -58,7 +58,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },
   { id: 'pauseOrSwitchView', label: 'Pause or switch view', description: 'Pause or resume play. After solving, switch between the grid and results. Space always works during play.', category: 'Puzzle actions' },
   { id: 'nextPuzzle', label: 'Next puzzle', description: 'Start the next puzzle after solving.', category: 'Puzzle actions' },
-  { id: 'shortcutHelp', label: 'Keyboard shortcuts', description: 'Open this keyboard shortcut page.', category: 'Puzzle actions' },
+  { id: 'shortcutHelp', label: 'Keyboard shortcuts', description: 'Open keyboard shortcut settings.', category: 'Puzzle actions' },
 ]
 
 const ids = EDITABLE_SHORTCUTS.map(({ id }) => id)

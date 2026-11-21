@@ -82,7 +82,7 @@
   gap: 1px;
   padding: 1px;
   background: var(--grid-line);
-  border: 1px solid var(--grid-strong);
+  border: var(--puzzle-border-width, 1px) solid var(--grid-strong);
   border-radius: 8px;
   overflow: clip;
   container-type: inline-size;
