@@ -62,22 +62,32 @@ impl Quadruple {
 
     pub(super) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
         let mut supported = [0; 4];
-        self.scan::<true>(domains, &mut supported);
+        self.scan::<true, false>(domains, &mut supported);
+        supported
+    }
+
+    pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
+        let mut supported = [0; 4];
+        self.scan::<true, true>(domains, &mut supported);
         supported
     }
 
     pub(super) fn has_assignment(&self, domains: [u16; 4]) -> bool {
-        self.scan::<false>(domains, &mut [0; 4])
+        self.scan::<false, false>(domains, &mut [0; 4])
     }
 
-    fn scan<const ALL: bool>(&self, domains: [u16; 4], supported: &mut [u16; 4]) -> bool {
+    fn scan<const ALL: bool, const ENTROPY: bool>(
+        &self,
+        domains: [u16; 4],
+        supported: &mut [u16; 4],
+    ) -> bool {
         let mut found = false;
         for placement in &self.placements {
             let restricted = std::array::from_fn(|cell| {
                 let required = placement[cell];
                 domains[cell] & if required == 0 { DIGITS } else { required }
             });
-            if assign::<ALL>(restricted, 0b1111, &self.peers, supported) {
+            if assign::<ALL, ENTROPY>(restricted, 0b1111, &self.peers, 0, supported) {
                 if !ALL || *supported == domains {
                     return true;
                 }
@@ -108,10 +118,11 @@ fn place_required(required: &[u8], placement: [u16; 4], peers: &[u8; 4], out: &m
     }
 }
 
-fn assign<const ALL: bool>(
-    domains: [u16; 4],
+fn assign<const ALL: bool, const ENTROPY: bool>(
+    mut domains: [u16; 4],
     open: u8,
     peers: &[u8; 4],
+    groups: u8,
     supported: &mut [u16; 4],
 ) -> bool {
     // Keep this fixed-size check inside the recursive hot path instead of
@@ -122,6 +133,19 @@ fn assign<const ALL: bool>(
     if open.is_power_of_two() {
         // The last cell can use every digit still available. Each of the
         // other cells already contains its chosen digit.
+        if ENTROPY {
+            let missing = 0b111 & !groups;
+            if missing.count_ones() > 1 {
+                return false;
+            }
+            if missing != 0 {
+                let last = open.trailing_zeros() as usize;
+                domains[last] &= 0b111 << (missing.trailing_zeros() * 3);
+                if domains[last] == 0 {
+                    return false;
+                }
+            }
+        }
         if ALL {
             for (mask, domain) in supported.iter_mut().zip(domains) {
                 *mask |= domain;
@@ -144,7 +168,12 @@ fn assign<const ALL: bool>(
                 *domain &= !bit;
             }
         }
-        if assign::<ALL>(next, remaining, peers, supported) {
+        let next_groups = if ENTROPY {
+            groups | (1 << ((digit - 1) / 3))
+        } else {
+            0
+        };
+        if assign::<ALL, ENTROPY>(next, remaining, peers, next_groups, supported) {
             if !ALL {
                 return true;
             }
@@ -178,6 +207,7 @@ mod tests {
                 let mut domains = [DIGITS; 4];
                 domains[empty] = 0;
                 assert_eq!(clue.support(domains), [0; 4]);
+                assert_eq!(clue.support_with_entropy(domains), [0; 4]);
                 assert!(!clue.has_assignment(domains));
             }
             for sample in 0..200 {
@@ -187,6 +217,7 @@ mod tests {
                     std::array::from_fn(|_| random.next() as u16 & DIGITS)
                 };
                 let mut expected = [0; 4];
+                let mut joint = [0; 4];
                 for a in digits(domains[0]) {
                     for b in digits(domains[1]) {
                         for c in digits(domains[2]) {
@@ -216,12 +247,25 @@ mod tests {
                                     for (mask, digit) in expected.iter_mut().zip(placed) {
                                         *mask |= digit_bit(digit);
                                     }
+                                    if placed.iter().any(|&digit| digit <= 3)
+                                        && placed.iter().any(|&digit| (4..=6).contains(&digit))
+                                        && placed.iter().any(|&digit| digit >= 7)
+                                    {
+                                        for (mask, digit) in joint.iter_mut().zip(placed) {
+                                            *mask |= digit_bit(digit);
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
                 assert_eq!(clue.support(domains), expected, "{required:?} {domains:?}");
+                assert_eq!(
+                    clue.support_with_entropy(domains),
+                    joint,
+                    "{required:?} {domains:?}"
+                );
                 assert_eq!(clue.has_assignment(domains), expected[0] != 0);
             }
         }

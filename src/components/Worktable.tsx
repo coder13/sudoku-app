@@ -14,7 +14,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
+  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -30,6 +30,7 @@ import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diag
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
 import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { originalSolutionStatus } from '../sudoku/puzzle-validation'
 import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
@@ -286,6 +287,7 @@ export function Worktable({
   const [pinnedRule, setPinnedRule] = useState<VariantRuleSectionId | null>(null)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
+  const [puzzleDetailsOpen, setPuzzleDetailsOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [confirmCandidatesOpen, setConfirmCandidatesOpen] = useState(false)
@@ -362,6 +364,9 @@ export function Worktable({
   const mixedVariant = !grid && variant?.id === 'mixed'
   const ruleSections = useMemo(() => puzzle ? variantRuleSections(puzzle, variant?.fog) : [], [puzzle, variant?.fog])
   const solutionIdentity = useMemo(() => puzzleIdentity({ givens, variant, algebraic, grid, sized }), [givens, variant, algebraic, grid, sized])
+  const { source, uniquenessProof } = game
+  const verifiedOriginal = useMemo(() => hasUniquenessProof({ givens, variant, grid, source, uniquenessProof }),
+    [givens, variant, grid, source, uniquenessProof])
   const savedSolution = savedPlayState?.solutionView
   const solutionView = !draft && savedSolution?.identity === solutionIdentity ? savedSolution : null
   const solutionPathRevealed = solutionView !== null && !solutionView.hidden
@@ -2448,6 +2453,11 @@ export function Worktable({
     <button onClick={() => { void runCheck() }} disabled={busy}>
       <Check size={17} /> Check puzzle
     </button>
+    {!grid && !advancedWorkspace && !draft && !placeholder && <button onClick={() => {
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setPuzzleDetailsOpen(true)
+    }}><Info size={17} aria-hidden="true" /> Puzzle details</button>}
     {panelToggles.length > 0 && <>
       <div className="app-menu-separator" role="separator" />
       {panelToggles}
@@ -2885,6 +2895,8 @@ export function Worktable({
         <div><dt>Puzzle</dt><dd>{game.title}</dd></div>
         <div><dt>Status</dt><dd>{placeholder ? 'Waiting for puzzle' : solved ? 'Solved' : game.paused ? 'Paused' : game.started ? 'In progress' : 'Not started'}</dd></div>
         <div><dt>Difficulty</dt><dd>{difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated'}</dd></div>
+        {!grid && !draft && !placeholder && <div><dt>Original puzzle</dt>
+          <dd>{originalSolutionStatus[verifiedOriginal ? 'unique' : 'unverified']}</dd></div>}
         {showElapsedTime && <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
         <div><dt>Givens</dt><dd>{clueCount}</dd></div>
         <div><dt>Placed digits</dt><dd>{placedDigitCount}</dd></div>
@@ -2970,6 +2982,7 @@ export function Worktable({
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"
         onClose={() => setActionsOpen(false)}>{mobileActionsMenu}</Modal>
+      <Modal title="Puzzle details" open={puzzleDetailsOpen} onClose={() => setPuzzleDetailsOpen(false)}>{detailsPanel}</Modal>
       <ChainColorsDialog open={chainColorsOpen} first={sketch.active.color} second={sketch.active.secondColor}
         onSelect={sketch.setColors} onClose={() => setChainColorsOpen(false)} onEdit={onEditChainColors && (() => {
           setChainColorsOpen(false)

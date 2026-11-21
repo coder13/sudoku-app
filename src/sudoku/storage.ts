@@ -6,7 +6,7 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
+import { COLORS, createGameId, hasUniquenessProof, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
 import { isSizedRuleList, restoreSizedRuleGame } from './sized-rule-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
@@ -142,6 +142,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
         value.sized = sized
       } else if (value.grid && grid.size !== 4 && !draft) return
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
+      if (value.uniquenessProof !== undefined && !hasUniquenessProof(value)) delete value.uniquenessProof
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
