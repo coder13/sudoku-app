@@ -16,18 +16,29 @@ export function isFogDefinition(value: unknown): value is FogDefinition {
     (cellColors === undefined || validImportedCellColors(cellColors))
 }
 
+const fogNeighborhoods = Array.from({ length: 81 }, (_, cell) => {
+  const row = Math.floor(cell / 9)
+  const column = cell % 9
+  const neighbors: number[] = []
+  for (let r = Math.max(0, row - 1); r <= Math.min(8, row + 1); r++) {
+    for (let c = Math.max(0, column - 1); c <= Math.min(8, column + 1); c++) neighbors.push(r * 9 + c)
+  }
+  return neighbors
+})
+
 /** Coach reveals the neighborhood of each currently correct player entry. */
 export function revealedFogCells(fog: FogDefinition, entries: string, solution: string): ReadonlySet<number> {
   const cells = new Set(fog.initialCells)
   for (let cell = 0; cell < 81; cell++) {
     if (entries[cell] === '0' || entries[cell] !== solution[cell]) continue
-    const row = Math.floor(cell / 9)
-    const column = cell % 9
-    for (let r = Math.max(0, row - 1); r <= Math.min(8, row + 1); r++) {
-      for (let c = Math.max(0, column - 1); c <= Math.min(8, column + 1); c++) cells.add(r * 9 + c)
-    }
+    for (const neighbor of fogNeighborhoods[cell]) cells.add(neighbor)
   }
   return cells
+}
+
+/** A valid placement at any of these cells changes the visible puzzle. */
+export function fogRevealPlacements(visible: ReadonlySet<number>): number[] {
+  return fogNeighborhoods.flatMap((neighbors, cell) => neighbors.some(neighbor => !visible.has(neighbor)) ? [cell] : [])
 }
 
 function visiblePaths(path: readonly number[], visible: ReadonlySet<number>): number[][] {

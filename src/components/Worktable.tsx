@@ -29,7 +29,7 @@ import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDig
 import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
-import { applyPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
 import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
@@ -429,8 +429,8 @@ export function Worktable({
   const cages = algebraic?.rules ?? draftCages
   const sizedRules = sized?.rules ?? game.position.draftSizedRules
   const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid ? sizedGridName(grid) : MINI_NAME
-  const needsRating = !grid && (difficulty === undefined || score === undefined)
-  const needsAttempt = !grid && !completed && !game.ratingAttempt
+  const needsRating = needsPuzzleGrade(game)
+  const needsAttempt = !grid && !completed && !game.ratingAttempt && (!variant?.fog || game.score !== null)
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const panelAvailable = (panel: PuzzleTool) => !placeholder && !draft &&

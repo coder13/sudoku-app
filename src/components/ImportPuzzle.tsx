@@ -10,7 +10,7 @@ import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH } from '../sudoku/puzzle-import'
 import { findImportAttempt, prepareImportedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
-import { applyPuzzleGrade } from '../sudoku/puzzle-rating'
+import { applyPuzzleGrade, needsPuzzleGrade } from '../sudoku/puzzle-rating'
 import { roomStore } from '../sudoku/storage'
 import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
@@ -28,7 +28,7 @@ export function finishImport(preview: PuzzlePreview, play: boolean) {
   const { game, grade } = preview
   const existing = findImportAttempt(roomStore.getSnapshot().games, preview)
   if (existing) {
-    if (grade !== undefined && (existing.difficulty === undefined || existing.score === undefined)) {
+    if (grade !== undefined && needsPuzzleGrade(existing)) {
       roomStore.update(existing.id, current => applyPuzzleGrade(current, grade))
     }
     if (play) roomStore.select(existing.id)

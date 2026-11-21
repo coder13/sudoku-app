@@ -1,6 +1,7 @@
 import { fogView, playVariantPuzzle } from './fog.ts'
-import { EngineError, runEngine, type HintChoices, type LogicalSolution, type SolvePosition, type TechniqueCatalog } from './engine.ts'
-import { EMPTY, completeCandidateMasks, hintEliminations, valuesOf, type Game, type Position } from './game.ts'
+import { solveFogPath } from './fog-solution.ts'
+import { EngineError, runEngine, type HintChoices, type TechniqueCatalog } from './engine.ts'
+import { completeCandidateMasks, hintEliminations, valuesOf, type Game, type Position } from './game.ts'
 import { miniHints, miniSolutionTrace, visibleMiniHints } from './mini-play.ts'
 import { sizedRuleHintChoices, sizedRuleSolutionTrace } from './sized-rule-play.ts'
 import { algebraicHintChoices, algebraicSolutionTrace } from './algebraic-play.ts'
@@ -110,47 +111,12 @@ export async function puzzleHintPage(variant: Game['variant'], collection: numbe
   return { ...page, choices: page.choices.map(hint => variantHintChoice(hint, puzzle)) }
 }
 
-async function fogSolution(variant: NonNullable<Game['variant']>, run: typeof runEngine): Promise<LogicalSolution> {
-  const techniqueOrder = await getVariantPlayOrder()
-  const steps: LogicalSolution['steps'] = []
-  const positions: SolvePosition[] = []
-  let position = { entries: EMPTY, eliminations: Array<number>(81).fill(0) }
-  for (;;) {
-    const initialView = fogView(variant, position.entries)!
-    const path = variantSolutionPath(await run({
-      type: 'variant', operation: 'trace', position: variantPosition(variant, position), techniqueOrder,
-    }))
-    const pathPositions = path.positions!.map(snapshot => ({
-      ...snapshot,
-      // The solver clears entries at visible givens. Keep any earlier guesses
-      // there when they are the reason those givens became visible.
-      entries: [...snapshot.entries].map((digit, cell) =>
-        snapshot.givens[cell] === '0' ? digit : position.entries[cell]).join(''),
-    }))
-    const reveal = pathPositions.findIndex(({ entries }, index) => index > 0 &&
-      fogView(variant, entries)!.cells.size > initialView.cells.size)
-    if (reveal > 0 && reveal < pathPositions.length) {
-      steps.push(...path.steps.slice(0, reveal))
-      positions.push(...pathPositions.slice(0, reveal))
-      position = pathPositions[reveal]
-      continue
-    }
-    steps.push(...path.steps)
-    positions.push(...pathPositions)
-    if (path.board === variant.solution) return { ...path, steps, positions }
-    const { givens } = variant.puzzle
-    const entries = [...variant.solution].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
-    positions[positions.length - 1] = { givens, entries, eliminations: Array<number>(81).fill(0) }
-    return { ...path, board: variant.solution, steps, positions, exact: true }
-  }
-}
-
 /** Solution walkthroughs start at the givens, without changing the saved game. */
 export async function puzzleSolution(game: Game, run = runEngine) {
   if (game.sized && game.grid) return sizedRuleSolutionTrace(game.sized, game.grid, game.givens, run)
   if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens, run)
   if (game.grid) return miniSolutionTrace(game.givens, run)
-  if (game.variant?.fog) return fogSolution(game.variant, run)
+  if (game.variant?.fog) return solveFogPath(game.variant, run, true)
   return game.variant ? variantSolutionPath(await run({
     type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(),
   })) : run({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })

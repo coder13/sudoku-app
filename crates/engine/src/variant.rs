@@ -974,7 +974,7 @@ fn drawing_paths_cover(cells: &[usize], segments: &Option<Vec<Vec<usize>>>) -> b
             == cell_mask(cells)
 }
 
-fn cell_mask(cells: &[usize]) -> Option<u128> {
+pub(crate) fn cell_mask(cells: &[usize]) -> Option<u128> {
     cells.iter().try_fold(0, |mask, &cell| {
         if cell >= CELLS {
             return None;

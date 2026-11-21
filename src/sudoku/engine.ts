@@ -127,7 +127,7 @@ type VariantRequest = {
     | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
     | { operation: 'hints'; collection?: number; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
     | { operation: 'rate'; techniqueOrder?: readonly string[] }
-    | { operation: 'trace'; techniqueOrder?: readonly string[] }
+    | { operation: 'trace'; techniqueOrder?: readonly string[]; stopAfterPlacementIn?: readonly number[]; includeSteps?: boolean }
     | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
     | { operation: 'practice-position'; techniqueOrder?: readonly string[]; technique: string }
     | { operation: 'check-practice-move'; technique: string; action: DeductionAction }

@@ -563,8 +563,21 @@ impl VariantPosition {
         &self,
         order: &[VariantTechnique],
     ) -> Result<VariantTrace, VariantLogicalError> {
+        self.trace_with_boundary(order, 0, true)
+    }
+
+    pub(crate) fn trace_with_boundary(
+        &self,
+        order: &[VariantTechnique],
+        stop_after_placement_in: u128,
+        include_steps: bool,
+    ) -> Result<VariantTrace, VariantLogicalError> {
         let mut steps = Vec::new();
-        let (end, rating) = self.logical_run(order, |step| steps.push(step))?;
+        let (end, rating) = self.logical_run(order, stop_after_placement_in, |step| {
+            if include_steps {
+                steps.push(step);
+            }
+        })?;
         Ok(VariantTrace {
             start: self.clone(),
             end,
@@ -575,25 +588,37 @@ impl VariantPosition {
 
     /// Rate the logical path without retaining its proof trace.
     pub fn rate(&self, order: &[VariantTechnique]) -> Result<VariantRating, VariantLogicalError> {
-        self.logical_run(order, |_| {}).map(|(_, rating)| rating)
+        self.logical_run(order, 0, |_| {}).map(|(_, rating)| rating)
     }
 
     fn logical_run(
         &self,
         order: &[VariantTechnique],
+        stop_after_placement_in: u128,
         receive: impl FnMut(VariantDeduction),
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let compiled = self
             .puzzle
             .compile()
             .map_err(VariantLogicalError::Definition)?;
-        self.run_with_compiled(&compiled, order, receive)
+        self.run_with_boundary(&compiled, order, stop_after_placement_in, receive)
     }
 
+    #[cfg(feature = "generation")]
     pub(super) fn run_with_compiled(
         &self,
         compiled: &CompiledVariant,
         order: &[VariantTechnique],
+        receive: impl FnMut(VariantDeduction),
+    ) -> Result<(Self, VariantRating), VariantLogicalError> {
+        self.run_with_boundary(compiled, order, 0, receive)
+    }
+
+    fn run_with_boundary(
+        &self,
+        compiled: &CompiledVariant,
+        order: &[VariantTechnique],
+        stop_after_placement_in: u128,
         mut receive: impl FnMut(VariantDeduction),
     ) -> Result<(Self, VariantRating), VariantLogicalError> {
         let mut position = compiled
@@ -644,6 +669,15 @@ impl VariantPosition {
                 }
             }
             end.record_actions(&step.actions);
+            if stop_after_placement_in != 0
+                && position.board.contains(&0)
+                && step.actions.iter().any(|action| {
+                    matches!(action, HintAction::Place(candidate) if stop_after_placement_in & (1 << candidate.cell) != 0)
+                })
+            {
+                receive(step);
+                break;
+            }
             let overlay = position.overlay.take();
             position = compiled.house_position(position.board, &end.eliminations);
             if let Some(mut overlay) = overlay

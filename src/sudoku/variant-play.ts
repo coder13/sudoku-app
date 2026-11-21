@@ -1,6 +1,6 @@
 import { playVariantPuzzle } from './fog.ts'
-import { EngineError, runEngine, type Difficulty, type EngineRunner, type VariantGenerationRequest, type VariantPosition } from './engine.ts'
-import { type Game, type Position, valuesOf } from './game.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantGenerationRequest, type VariantPosition } from './engine.ts'
+import { type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
@@ -9,17 +9,24 @@ import { variantGenerationRequest, variantSeeds, variantTechniqueOrder } from '.
 import type { PlayableVariant, VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
-let playOrder: Promise<string[]> | undefined
+let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog }> | undefined
 
-export function getVariantPlayOrder() {
-  playOrder ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
-    .then(([variant, classic]) => variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder,
-      Object.fromEntries([...classic.techniques, ...variant.techniques].map((t) => [t.id, t.difficulty]))))
+export function getVariantPlayProfile() {
+  playProfile ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
+    .then(([catalog, classic]) => ({
+      catalog,
+      techniqueOrder: variantTechniqueOrder(catalog.defaultOrder, classic.difficultyOrder,
+        Object.fromEntries([...classic.techniques, ...catalog.techniques].map((t) => [t.id, t.difficulty]))),
+    }))
     .catch((error) => {
-      playOrder = undefined
+      playProfile = undefined
       throw error
     })
-  return playOrder
+  return playProfile
+}
+
+export async function getVariantPlayOrder() {
+  return (await getVariantPlayProfile()).techniqueOrder
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {
@@ -68,7 +75,7 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
 }
 
 export function variantPosition(
-  variant: VariantGame, position?: Pick<Position, 'entries' | 'eliminations'>,
+  variant: VariantGame, position?: { entries: string; eliminations?: readonly number[] },
 ): VariantPosition {
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
   const entries = variant.fog && position

@@ -125,7 +125,17 @@ The table compares the local Wasm build with `07e29fc8` using nine warm pairs wi
 | DD1N opening trace | 3.83 | 3.73 |
 | HCHW archived five-digit Pattern Overlay | 27.56 | 10.35 |
 
-The gzip-compressed Wasm grows by 4.4 KiB. The E3xE walkthrough offers its explicitly labeled exact completion after step 18. Fog walkthrough ratings remain open. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
+The gzip-compressed Wasm grows by 4.4 KiB in this comparison. The E3xE walkthrough offers its explicitly labeled exact completion after step 18. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
+
+The reveal-aware rating uses the same path as the walkthrough. Each Wasm trace ends after a placement that exposes new cells, so the next engine request can use the newly revealed rules. The app adds the cost and technique count from every applied deduction. Its difficulty follows the hardest technique across the whole path. Rating requests omit the proof steps. Older saved Fog puzzles receive a grade when opened and keep the result across reload and restart.
+
+| Puzzle | Logical moves | Points | Puzzle grade |
+| --- | ---: | ---: | --- |
+| 7HQD | 113 | 5,219 | Impossible (Pattern Overlay) |
+| E3xE | 18 | 900 | Unrated, exact finish |
+| DD1N | 11 | 354 | Unrated, exact finish |
+
+Against `8d38f89`, seven warm pairs preserved every applied deduction, replay position and final solution for all three sources. For 7HQD the previous walkthrough returned 961 proof steps across 23 requests and discarded speculative steps after each reveal. The bounded walkthrough returns its 113 applied proofs across the same 23 requests. Rating returns the same grade with zero proof steps. E3xE and DD1N run out of deductions during their opening trace and preserve their logical subtotals. The updated Wasm is 19.6 KiB smaller uncompressed and 10.0 KiB larger with gzip. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
 
 ## Play feedback performance
 

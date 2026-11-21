@@ -58,6 +58,7 @@ export type Game = {
   whispersGuide?: true
   difficulty?: Difficulty | null
   score?: number | null
+  fogRatingVersion?: number
   variant?: VariantGame
   grid?: SizedGrid
   algebraic?: AlgebraicGame
@@ -133,6 +134,7 @@ export function restartGame(game: Game): Game {
     sharedPuzzleId: game.sharedPuzzleId,
     ...(game.whispersGuide && { whispersGuide: true }),
     score: game.score,
+    ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
     variant: game.variant,
     algebraic: game.algebraic,
     sized: game.sized,

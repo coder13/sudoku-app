@@ -6,6 +6,7 @@ import { runEngine, type VariantRule, type VariantVisibility } from '../src/sudo
 import { fogView, projectFogPuzzle, revealedFogCells } from '../src/sudoku/fog.ts'
 import { EMPTY, completeCandidateMasks, enter, makeGame, puzzleIdentity, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { needsPuzzleGrade, ratePuzzle } from '../src/sudoku/puzzle-rating.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
@@ -411,6 +412,29 @@ test('published Jigsaw Fog hides authored colors alongside givens and cages unti
     assert.equal(solution.exact, undefined)
     assert.deepEqual(fogView(variant, solution.positions.at(-1)?.entries)?.cellColors, fullColors)
 
+    const catalog = await runEngine({ type: 'techniques', variant: true })
+    const techniques = new Map(catalog.techniques.map(technique => [technique.id, technique]))
+    const counts: Record<string, number> = {}
+    let points = 0
+    for (const { technique } of solution.steps) {
+      assert.equal(typeof techniques.get(technique)?.cost, 'number')
+      counts[technique] = (counts[technique] ?? 0) + 1
+      points += techniques.get(technique)!.cost
+    }
+    assert.ok(counts['pattern-overlay'] > 0)
+    assert.deepEqual(solution.rating.score, { points, hardest: 'pattern-overlay', counts })
+    assert.deepEqual(solution.rating.status, { solved: techniques.get('pattern-overlay')!.difficulty })
+    assert.equal(game.score, points)
+    assert.equal(game.difficulty, techniques.get('pattern-overlay')!.difficulty)
+    assert.deepEqual(game.ratingAttempt?.grade, {
+      points, difficulty: game.difficulty, techniqueOrder: solution.rating.techniqueOrder, scoringVersion: catalog.scoringVersion,
+    })
+    assert.equal(needsPuzzleGrade(loaded), false)
+    assert.equal(needsPuzzleGrade(restartGame(loaded)), false)
+    const legacy = { ...loaded, score: null, difficulty: null, ratingAttempt: undefined, fogRatingVersion: undefined }
+    assert.equal(needsPuzzleGrade(legacy), true)
+    assert.equal((await prepareImportedPuzzle(published.code, [legacy])).game.score, points)
+
     const id = await publishSharedPuzzle(loaded)
     const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
     assert.deepEqual(shared.game.variant, variant)
@@ -436,4 +460,47 @@ test('published Jigsaw Fog hides authored colors alongside givens and cages unti
     description += '\nEach colored area has an additional sum rule.'
     await assert.rejects(detectPuzzle(published.url), /has author instructions/)
   } finally { sqlite.close() }
+})
+
+test('trace boundaries keep the first matching placement and can return only the end and score', async () => {
+  const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const request = {
+    type: 'variant', operation: 'trace',
+    position: { puzzle: { version: 1, givens: '00' + solution.slice(2) } },
+    techniqueOrder: ['naked-single'],
+  } as const
+  const full = await runEngine(request)
+  assert.deepEqual(full.rating.status, { solved: 'easy' })
+  assert.equal(full.steps.length, 2)
+  const first = await runEngine({ ...request, stopAfterPlacementIn: [0] })
+  assert.deepEqual(first.steps, full.steps.slice(0, 1))
+  assert.equal(first.end.entries.slice(0, 2), '50')
+  assert.equal(first.rating.status, 'stalled')
+  assert.equal(first.rating.points * 2, full.rating.points)
+  const scoreOnly = await runEngine({ ...request, stopAfterPlacementIn: [0], includeSteps: false })
+  assert.deepEqual(scoreOnly, { ...first, steps: [] })
+  assert.deepEqual(await runEngine({ ...request, stopAfterPlacementIn: [1] }), full)
+  await assert.rejects(runEngine({ ...request, stopAfterPlacementIn: [81] }), { code: 'invalid-placement-boundary' })
+  await assert.rejects(runEngine({ ...request, stopAfterPlacementIn: [0, 0] }), { code: 'invalid-placement-boundary' })
+})
+
+test('an exact Fog finish leaves the attempted logical moves as a subtotal and the puzzle unrated', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/fog-coach.json', import.meta.url), 'utf8')) as
+    { id: string; code: string; solution: string }[]
+  const source = sources.find(({ id }) => id === 'E3xE')!
+  const { game, grade } = await prepareImportedPuzzle(source.code)
+  const solution = await puzzleSolution(game)
+  const catalog = await runEngine({ type: 'techniques', variant: true })
+  assert.equal(solution.board, source.solution)
+  assert.equal(solution.exact, true)
+  assert.equal(solution.rating.status, 'stalled')
+  assert.ok(solution.steps.length > 0)
+  assert.deepEqual(solution.rating.score.counts, { 'locked-candidates': solution.steps.length })
+  assert.equal(solution.rating.score.points, solution.steps.length * catalog.techniques.find(({ id }) => id === 'locked-candidates')!.cost)
+  assert.equal(grade, null)
+  assert.equal(game.difficulty, null)
+  assert.equal(game.score, null)
+  assert.equal(game.ratingAttempt, undefined)
+  assert.equal(needsPuzzleGrade(game), false)
+  assert.equal(await ratePuzzle(game.givens, game.variant), null)
 })
