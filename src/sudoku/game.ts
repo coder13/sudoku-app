@@ -59,6 +59,7 @@ export type Game = {
   whispersGuide?: true
   givenCellColors?: ImportedCellColors
   authoredArtwork?: readonly AuthoredMark[]
+  uniquenessProof?: string
   difficulty?: Difficulty | null
   score?: number | null
   fogRatingVersion?: number
@@ -138,6 +139,7 @@ export function restartGame(game: Game): Game {
     ...(game.whispersGuide && { whispersGuide: true }),
     ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
     ...(game.authoredArtwork && { authoredArtwork: game.authoredArtwork }),
+    ...(game.uniquenessProof && { uniquenessProof: game.uniquenessProof }),
     score: game.score,
     ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
     variant: game.variant,
@@ -199,6 +201,16 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
     ? { ...variant.puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
     : variant.puzzle
   return `${variant.id}:${JSON.stringify(orderedPuzzleFields(definition))}`
+}
+
+/** Bind a recorded uniqueness check to the starting givens and complete rules. */
+export function uniquenessKey(game: Parameters<typeof puzzleIdentity>[0]): string {
+  return `v1:${puzzleIdentity(game)}`
+}
+
+export function hasUniquenessProof(game: Pick<Game, 'givens' | 'variant' | 'grid' | 'source' | 'uniquenessProof'>): boolean {
+  return !game.grid && game.source !== 'draft' && typeof game.uniquenessProof === 'string' &&
+    game.uniquenessProof === uniquenessKey(game)
 }
 
 // Keep the engine's established field order so existing generated-puzzle keys

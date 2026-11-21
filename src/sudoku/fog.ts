@@ -184,18 +184,20 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
 }
 
 export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle; cellColors?: ImportedCellColors }
-const fogViews = new WeakMap<VariantGame, FogView>()
+type FogPuzzle = Pick<VariantGame, 'puzzle' | 'fog'> & Partial<Pick<VariantGame, 'solution'>>
+const fogViews = new WeakMap<FogPuzzle, FogView>()
 const emptyEntries = '0'.repeat(81)
 const fullFogView = new Set(Array.from({ length: 81 }, (_, cell) => cell))
 
 /** Derive the current view from immutable puzzle data and the saved position. */
-export function fogView(variant: VariantGame | undefined, entries = emptyEntries): FogView | undefined {
+export function fogView(variant: FogPuzzle | undefined, entries = emptyEntries): FogView | undefined {
   if (!variant?.fog) return
   const cached = fogViews.get(variant)
   if (cached?.entries === entries) return cached
-  const complete = [...variant.solution].every((digit, cell) =>
+  const { solution } = variant
+  const complete = solution && [...solution].every((digit, cell) =>
     digit === (variant.puzzle.givens[cell] === '0' ? entries[cell] : variant.puzzle.givens[cell]))
-  const cells = complete ? fullFogView : revealedFogCells(variant.fog, entries, variant.solution)
+  const cells = complete ? fullFogView : solution ? revealedFogCells(variant.fog, entries, solution) : new Set(variant.fog.initialCells)
   const { cellColors } = variant.fog
   const view: FogView = { entries, cells, puzzle: projectFogPuzzle(variant.puzzle, cells),
     ...(cellColors && { cellColors: Object.fromEntries(Object.entries(cellColors).filter(([cell]) => cells.has(Number(cell)))) }),

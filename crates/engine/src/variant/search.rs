@@ -21,6 +21,7 @@ pub(super) struct SearchPosition {
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum SearchMode {
+    Verify,
     PropagateHouses,
     // Keep calibrated sampling and bounded proof eligibility stable.
     PreserveTraversal,
@@ -56,7 +57,7 @@ impl CompiledVariant {
             entries,
             eliminations,
             max_nodes,
-            SearchMode::PropagateHouses,
+            SearchMode::Verify,
             &mut None,
         )
     }
@@ -75,7 +76,7 @@ impl CompiledVariant {
             entries,
             eliminations,
             max_nodes,
-            SearchMode::PropagateHouses,
+            SearchMode::Verify,
             &mut solution,
         )?;
         if analysis == Analysis::Unique {
@@ -284,7 +285,7 @@ impl CompiledVariant {
             }
         }
         let mut position = SearchPosition { board, masks };
-        self.restrict_domains(&mut position);
+        self.restrict_domains(&mut position, SearchMode::PreserveTraversal);
         Ok(position)
     }
 
@@ -300,9 +301,9 @@ impl CompiledVariant {
         *nodes = nodes.checked_sub(1)?;
         // MRV already selects a forced cell next. Place it before repeating
         // the complete house scan, which is useful at genuine branch points.
-        if mode == SearchMode::PropagateHouses
+        if mode != SearchMode::PreserveTraversal
             && !position.masks.iter().any(|mask| mask.is_power_of_two())
-            && !self.restrict_search_houses(&mut position)
+            && !self.restrict_search_houses(&mut position, mode)
         {
             return Some(0);
         }
@@ -325,7 +326,7 @@ impl CompiledVariant {
             for peer in cells_in(self.peers[cell]) {
                 child.masks[peer] &= !bit;
             }
-            self.restrict_domains(&mut child);
+            self.restrict_domains(&mut child, mode);
             count += self.search(child, limit - count, nodes, solution, mode, order)?;
             if count == limit {
                 break;
@@ -336,7 +337,7 @@ impl CompiledVariant {
 
     // Exact search can use forced house domains without changing public
     // candidates or deciding which human techniques the logical solver uses.
-    fn restrict_search_houses(&self, position: &mut SearchPosition) -> bool {
+    fn restrict_search_houses(&self, position: &mut SearchPosition, mode: SearchMode) -> bool {
         loop {
             if (0..CELLS).any(|cell| position.board[cell] == 0 && position.masks[cell] == 0) {
                 return false;
@@ -380,11 +381,15 @@ impl CompiledVariant {
             if !changed {
                 return true;
             }
-            self.restrict_domains(position);
+            self.restrict_domains(position, mode);
         }
     }
 
-    fn restrict_domains(&self, position: &mut SearchPosition) {
+    fn restrict_domains(&self, position: &mut SearchPosition, mode: SearchMode) {
+        // In exact search, support a Quadruple and its Global Entropy window
+        // with the same assignment. Public candidates and logical gates keep
+        // their per-rule support so their deductions retain the same meaning.
+        let join_windows = mode == SearchMode::Verify && self.global_entropy.is_some();
         loop {
             for cage in &self.cages {
                 cage.restrict(position);
@@ -427,7 +432,12 @@ impl CompiledVariant {
                     0 => position.masks[cell],
                     digit => digit_bit(digit),
                 });
-                for (cell, mask) in clue.cells.into_iter().zip(clue.support(domains)) {
+                let supported = if join_windows {
+                    clue.support_with_entropy(domains)
+                } else {
+                    clue.support(domains)
+                };
+                for (cell, mask) in clue.cells.into_iter().zip(supported) {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;
@@ -439,7 +449,10 @@ impl CompiledVariant {
                     0 => position.masks[cell],
                     digit => digit_bit(digit),
                 });
-                for (cell, mask) in cells.into_iter().zip(super::global_entropy::support(domains)) {
+                for (cell, mask) in cells
+                    .into_iter()
+                    .zip(super::global_entropy::support(domains))
+                {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;

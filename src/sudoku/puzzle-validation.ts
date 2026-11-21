@@ -9,3 +9,13 @@ export const validation: Record<Analysis, CheckResult> = {
   multiple: { text: 'This puzzle has multiple solutions. Add more givens.', tone: 'error' },
   'search-limit': { text: 'The engine reached its search limit before it could verify this puzzle.', tone: 'neutral' },
 }
+
+export const originalSolutionStatus = {
+  checking: 'Checking solutions…',
+  unique: 'Unique solution',
+  multiple: 'Multiple solutions',
+  unsolvable: 'No solution',
+  conflict: 'Conflicting givens or rules',
+  'search-limit': 'Uniqueness unverified',
+  unverified: 'Uniqueness unverified',
+} as const
