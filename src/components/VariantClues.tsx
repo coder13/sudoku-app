@@ -8,6 +8,7 @@ import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/
 import { cloneLayout } from '../sudoku/clone'
 import { ArrowClue, ArrowMarker } from './ArrowClue'
 import { EndpointPath } from './EndpointPath'
+import { ParityClue } from './ParityClue'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue, renbanClueColor } from './RenbanClue'
@@ -18,14 +19,6 @@ const y = (cell: number, size = 9) => Math.floor(cell / size)
 const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) + 0.5] as const
 const pairKey = (a: number, b: number, size = 9) => Math.min(a, b) * size ** 2 + Math.max(a, b)
 const points = (cells: readonly number[], size = 9) => cells.map(cell => center(cell, size).join(',')).join(' ')
-
-function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { type: 'parity' }> & { size?: number }) {
-  return <g className={`variant-parity variant-parity-${parity}`}>
-    {[...new Set(cells)].map(cell => parity === 'odd'
-      ? <circle key={cell} cx={center(cell, size)[0]} cy={center(cell, size)[1]} r=".36" />
-      : <rect key={cell} x={x(cell, size) + .14} y={y(cell, size) + .14} width=".72" height=".72" />)}
-  </g>
-}
 
 function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
   return <line className="variant-diagonal" x1={diagonal === 'main' ? 0 : size} y1="0"

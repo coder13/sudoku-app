@@ -6,7 +6,7 @@ type RuleEvidence = {
 }
 
 export type LatinRule = RuleEvidence & {
-  kind?: 'line' | 'extra-region' | 'global-entropy' | 'quadruple' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
+  kind?: 'line' | 'extra-region' | 'global-entropy' | 'quadruple' | 'parity' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
   // Derived rules are used for solving and hints. The board check uses the basic rules.
   afterBasic?: true
   support: (domains: readonly number[], explain?: (evidence: RuleEvidence) => void) => readonly number[] | null
@@ -200,7 +200,7 @@ function collectLatinHints(
 function isForcingClue({ kind }: LatinReason) {
   return kind === 'whispers' || kind === 'palindrome' || kind === 'consecutive' ||
     kind === 'thermometer' || kind === 'arrow' || kind === 'pill-arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between' ||
-    kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple'
+    kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple' || kind === 'parity'
 }
 
 export const latinContradictionTechnique = 'Contradiction'

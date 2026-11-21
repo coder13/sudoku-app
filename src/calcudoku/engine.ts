@@ -6,6 +6,7 @@ import { latinGlobalEntropyRules } from '../latin/global-entropy.ts'
 import { lineSubsetRules } from '../latin/line-subsets.ts'
 import { latinPathRules, type LatinClues } from '../latin/path-clues.ts'
 import { latinQuadrupleRules } from '../latin/quadruples.ts'
+import { latinParityRules } from '../latin/parity.ts'
 import { tupleSupport } from '../latin/tuple-support.ts'
 import { whispersRules } from '../latin/whispers.ts'
 import { xWingRule } from '../latin/x-wing.ts'
@@ -161,7 +162,7 @@ function lineTotalRules(puzzle: LatinPuzzle, sums: readonly (readonly [Cage, num
 export function createCalcudoku(
   size: number, cages: readonly Cage[], fixed?: readonly number[],
   {
-    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples,
+    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity,
   }: LatinClues & { allowUncaged?: boolean; inequalities?: readonly Inequality[] } = {},
 ): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
@@ -170,7 +171,7 @@ export function createCalcudoku(
   const givens = fixed ? [...fixed] : Array<number>(size * size).fill(0)
   const sums: [Cage, number][] = []
   const locks: LatinRule[] = []
-  const rules = cages.map(cage => {
+  const cageRules = cages.map(cage => {
     const { cells, operator, target } = cage
     const tuples = cageTuples(size, cage)
     if (!tuples.length) throw new Error('A Calcudoku cage has no valid arithmetic combinations.')
@@ -188,6 +189,7 @@ export function createCalcudoku(
     locks.push(...cageLineRules(size, rule, tuples))
     return rule
   })
+  const rules = [...latinParityRules(size, parity), ...cageRules]
   const comparisons = inequalities.length ? inequalityRules(size, inequalities) : undefined
   if (comparisons) rules.push(...comparisons.basic)
   if (adjacentClues) rules.push(...adjacentClueRules(size, adjacentClues))
@@ -209,12 +211,12 @@ export function createCalcudoku(
         cells: givens.map((_, cell) => cell),
         support: () => null,
       }
-      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples }
+      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity }
     }
   }
   const derived = [...(lines?.advanced ?? []), ...lineTotalRules(puzzle, sums), ...lineSubsetRules(size), ...locks]
   if (comparisons) derived.push(...comparisons.sharedBounds, ...comparisons.lineRules)
   if (size >= 4) derived.push(xWingRule(size))
   if (comparisons) derived.push(...comparisons.lineMatching)
-  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples }
+  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, globalEntropy, quadruples, parity }
 }

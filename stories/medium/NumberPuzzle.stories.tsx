@@ -859,6 +859,55 @@ const reversedPill = createImportedFutoshiki(4, '0034004334124321', [], {
   pathClues: [{ type: 'pill-arrow', cells: [11, 10, 5, 2, 3, 6] }],
 })
 
+const parityWithCage = prepareImportedCalcudoku({
+  size: 4, givens: '0034034034004003', colors: [],
+  cages: [{ label: '3+', cells: [0, 1], operator: 'add' }],
+  parity: [{ cell: 0, parity: 'odd' }, { cell: 1, parity: 'even' }],
+})
+
+export const ParityWithCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={parityWithCage} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const odd = within(grid).getByRole('button', { name: /^R1C1, empty, .*odd circle/ })
+    const even = within(grid).getByRole('button', { name: /^R1C2, empty, .*even square/ })
+    await expect(grid.querySelector('.variant-parity-odd circle')).toHaveAttribute('cx', '0.5')
+    await expect(Number(grid.querySelector('.variant-parity-even rect')?.getAttribute('x'))).toBeCloseTo(1.14)
+    await userEvent.click(odd)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(even).toHaveFocus()
+    await userEvent.keyboard('1')
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await waitFor(() => expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible())
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Odd/Even' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Odd/Even' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getByText('The circle at R1C1 requires an odd digit.')).toBeVisible())
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Calcudoku solution' })
+    await expect(final.querySelectorAll('.variant-parity > *')).toHaveLength(2)
+    await waitFor(() => expect(within(final).getByRole('button', { name: /^R1C2, 2, .*even square/ })).toBeVisible())
+  },
+}
+
 export const ReversedPillArrow: Story = {
   render: () => <PreviewRouter shell><FutoshikiPlay entry={reversedPill} /></PreviewRouter>,
   globals: { viewport: { value: 'mobile1', isRotated: false } },

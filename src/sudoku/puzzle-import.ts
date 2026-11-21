@@ -1,5 +1,6 @@
 import type { AdjacentClue, AdjacentClues } from '../latin/adjacent-clues.ts'
 import type { LatinClues, LatinPathClue } from '../latin/path-clues.ts'
+import type { LatinParity } from '../latin/parity.ts'
 import type { WhisperLine } from '../latin/whispers.ts'
 import { readCoachAuthoredPaths } from '../number-puzzles/coach-authored-paths.ts'
 import type { NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
@@ -469,7 +470,8 @@ function needsStandaloneSevenGrid(layers: readonly unknown[]) {
 
 function isCoachBoxlessLayer(layer: unknown) {
   return isCoachBoxlessOnlyLayer(layer) || record(layer) && (layer.type === 'difference' || layer.type === 'ratio' ||
-    layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban' || layer.type === 'region')
+    layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban' || layer.type === 'region' ||
+    layer.type === 'odd' || layer.type === 'even')
 }
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
@@ -782,11 +784,24 @@ function readCoachQuadruples(layer: Record<string, unknown>, size: number): Quad
   })
 }
 
+function readCoachParityCells(layer: Record<string, unknown>, size: number): number[] {
+  if (unsupportedClueStyling(layer.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
+  if (!Array.isArray(layer.segments) || !layer.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
+  return layer.segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters) ||
+      !Number.isInteger(segment.cells[0]) || segment.cells[0] < 0 || segment.cells[0] >= size ** 2) {
+      throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even cell.')
+    }
+    return segment.cells[0]
+  })
+}
+
 function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
   const extraRegions: number[][] = []
   const quadruples: Quadruple[] = []
+  const parity: LatinParity[] = []
   let globalEntropy: true | undefined
   for (const layer of layers) {
     if (!record(layer)) continue
@@ -798,6 +813,12 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     }
     if (layer.type === 'quadruple') quadruples.push(...readCoachQuadruples(layer, size))
     const type = layer.type
+    if (type === 'odd' || type === 'even') {
+      if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
+        for (const cell of readCoachParityCells(layer, size)) parity.push({ cell, parity: type })
+      }
+      continue
+    }
     if (type === 'betweenLine') {
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
         for (const cells of readCoachBetweenPaths(layer)) pathClues.push({ type: 'between', cells })
@@ -831,6 +852,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   return {
     adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues,
     ...(extraRegions.length && { extraRegions }), globalEntropy, ...(quadruples.length && { quadruples }),
+    ...(parity.length && { parity: parity.sort((a, b) => a.cell - b.cell) }),
   }
 }
 
@@ -898,16 +920,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
     }
     if (!['region', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage', 'globalEntropy'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'odd' || constraint.type === 'even') {
-      if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
-      const cells: number[] = []
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even cell.')
-        }
-        cells.push(segment.cells[0])
-      }
-      rules.push({ type: 'parity', cells, parity: constraint.type })
+      rules.push({ type: 'parity', cells: readCoachParityCells(constraint, grid?.size ?? 9), parity: constraint.type })
     } else if (constraint.type === 'littleKiller') {
       if (hasData(constraint.settings) && (!record(constraint.settings) || Object.keys(constraint.settings).some(key => key !== 'colour'))) {
         throw new Error('This Sudoku Coach Little Killer clue uses unsupported settings.')

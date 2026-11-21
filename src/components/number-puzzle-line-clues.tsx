@@ -3,6 +3,7 @@ import { cellLabel } from '../latin/engine'
 import { lockoutMinimumGap } from '../latin/endpoint-lines'
 import { extraRegionNote, extraRegionTechnique } from '../latin/extra-regions'
 import { globalEntropyNote, globalEntropyTechnique } from '../latin/global-entropy'
+import { latinParityTechnique } from '../latin/parity'
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
 import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
@@ -11,6 +12,7 @@ import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
 import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
 import { ArrowClue, PillArrowClue } from './ArrowClue'
 import { EndpointLineClues } from './EndpointLineClues'
+import { ParityClue } from './ParityClue'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue } from './RenbanClue'
@@ -18,10 +20,11 @@ import { ExtraRegion } from './VariantClues'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
-  size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [] }: LatinClues,
+  size: number, inequalities: readonly Inequality[],
+  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [], parity = [] }: LatinClues,
   artwork?: readonly AuthoredCornerPath[],
 ) {
-  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || quadruples.length > 0
+  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || quadruples.length > 0 || parity.length > 0
   if (!hasDrawing && !globalEntropy) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
@@ -31,6 +34,16 @@ export function numberPuzzleClues(
     const current = labels.get(cell) ?? new Set()
     current.add(text)
     labels.set(cell, current)
+  }
+  const odd: number[] = [], even: number[] = []
+  for (const { cell, parity: kind } of parity) {
+    if (kind === 'odd') {
+      odd.push(cell)
+      addLabel(cell, 'odd circle, digit must be odd')
+    } else {
+      even.push(cell)
+      addLabel(cell, 'even square, digit must be even')
+    }
   }
   for (const [index, cells] of extraRegions.entries()) {
     for (const cell of cells) addLabel(cell, `Extra region ${index + 1}`)
@@ -112,6 +125,8 @@ export function numberPuzzleClues(
   const regionCells = extraRegions.flat()
   const regionsOverlap = new Set(regionCells).size !== regionCells.length
   const drawing = hasDrawing ? <svg className="number-puzzle-line-clues" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+    {odd.length > 0 && <ParityClue parity="odd" cells={odd} size={size} />}
+    {even.length > 0 && <ParityClue parity="even" cells={even} size={size} />}
     {extraRegions.map((cells, index) => !artworkKeys.has(regionKeys[index]) && <ExtraRegion key={`region-${index}`} cells={cells} size={size} outlineOnly={regionsOverlap} />)}
     {pathClues.filter(line => line.type === 'thermometer').map((line, index) => <PuzzlePathClue key={`thermometer-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'renban').map((line, index) => <RenbanClue key={`renban-${index}`} {...line} number={index + 1} size={size} />)}
@@ -131,6 +146,8 @@ export function numberPuzzleClues(
   return {
     drawing, labels,
     notes: [
+      ...(odd.length ? ['A circle marks an odd digit.'] : []),
+      ...(even.length ? ['A square marks an even digit.'] : []),
       ...(quadruples.length ? [quadrupleNote] : []),
       ...(globalEntropy ? [globalEntropyNote] : []),
       ...(extraRegions.length ? [squareRegionRule ? 'Digits cannot repeat in each outlined 3 × 3 square.' : extraRegionNote] : []),
@@ -138,6 +155,7 @@ export function numberPuzzleClues(
       ...Array.from(types, type => pathClueNotes[type]),
     ],
     techniques: [
+      ...(parity.length ? [latinParityTechnique] : []),
       ...(quadruples.length ? [quadrupleTechnique] : []),
       ...(globalEntropy ? [globalEntropyTechnique] : []),
       ...(extraRegions.length ? [extraRegionTechnique] : []),
