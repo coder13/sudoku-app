@@ -68,6 +68,13 @@
   font-size: .8125rem;
 }
 
+.number-puzzle-metadata {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
 .number-puzzle-grid {
   display: grid;
   grid-template-columns: repeat(var(--number-puzzle-columns), minmax(0, 1fr));

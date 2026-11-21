@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import { enter, makeGame, type Game } from '../src/sudoku/game.ts'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
+import { renderedElements } from './component-tree.ts'
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
 let Button: (props: Record<string, unknown>) => ReactNode
@@ -37,6 +38,7 @@ function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
 }
 
 function capture(component: Component, props: Record<string, unknown>) {
+  if (component === Board) return renderedElements(component, props)
   let tree: ReactNode
   function Capture() { tree = component(props); return null }
   renderToStaticMarkup(createElement(Capture))

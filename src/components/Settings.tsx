@@ -2,7 +2,7 @@ import { Button, IconButton, iconButtonClassName } from './Button'
 import { useId, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Lightbulb, Minus, Palette, PanelsTopLeft, PenTool, Pin, Plus,
+  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Layers2, Lightbulb, Minus, Monitor, Palette, PanelsTopLeft, PenTool, Pin, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
 import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM, stepAppTextZoom } from '../sudoku/app-text-zoom'
@@ -27,7 +27,7 @@ export type SettingsSection = 'appearance' | 'input' | 'puzzle-buttons' | 'highl
 type Section = SettingsSection
 type GeneralSection = Exclude<Section, 'appearance' | 'puzzle-buttons' | 'highlighting' | 'chain-colors'>
 
-const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
+const sections: { id: Section | 'device-sync'; label: string; description: string; icon: typeof Eye }[] = [
   { id: 'appearance', label: 'Look & feel', description: 'Theme, grid labels, and sizing', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
   { id: 'puzzle-buttons', label: 'Puzzle buttons', description: 'Shortcuts pinned below the grid', icon: Pin },
@@ -35,6 +35,7 @@ const sections: { id: Section; label: string; description: string; icon: typeof 
   { id: 'chain-colors', label: 'Chain colors', description: 'Color pairs for drawing chains', icon: Palette },
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
+  { id: 'device-sync', label: 'Device sync', description: 'Link and manage devices', icon: Monitor },
 ]
 const screenLabels: Record<Section, string> = {
   appearance: 'Look & feel',
@@ -44,6 +45,22 @@ const screenLabels: Record<Section, string> = {
   'chain-colors': 'Chain colors',
   solving: 'Solving style',
   hints: 'Hints',
+}
+
+function SettingsNavigation({ mobile = false }: { mobile?: boolean }) {
+  return <nav className={mobile ? 'settings-mobile-menu' : 'settings-tabs'} aria-label="Settings sections">
+    {sections.map(({ id, label, description, icon: Icon }) => {
+      const route = id === 'device-sync' ? { to: '/sync' as const }
+        : { to: '/settings/$section' as const, params: { section: id } }
+      return <Link key={id} {...route}>
+        {mobile ? <>
+          <span className="settings-menu-icon"><Icon size={20} /></span>
+          <span><strong>{label}</strong><small>{description}</small></span>
+          <ChevronRight size={19} />
+        </> : <><Icon size={18} /><span>{label}</span></>}
+      </Link>
+    })}
+  </nav>
 }
 
 export function HighlightSettings({ highlighting, setHighlighting }: {
@@ -173,6 +190,7 @@ export function ThemeSettings({ appearance, setAppearance }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
 }) {
+  const flatAppearanceId = useId()
   return (
     <div className="settings-section theme-settings">
       <h3>Themes</h3>
@@ -195,6 +213,14 @@ export function ThemeSettings({ appearance, setAppearance }: {
           </SelectControl>
         </label>
       </div>
+      <label className="appearance-toggle">
+        <input type="checkbox" checked={appearance.flatAppearance} aria-labelledby={flatAppearanceId}
+          aria-describedby={`${flatAppearanceId}-description`}
+          onChange={(event) => setAppearance({ ...appearance, flatAppearance: event.target.checked })} />
+        <span className="settings-menu-icon" aria-hidden="true"><Layers2 size={20} /></span>
+        <span><strong id={flatAppearanceId}>Flat appearance</strong>
+          <small id={`${flatAppearanceId}-description`}>Remove shadows and simplify the keypad in all themes.</small></span>
+      </label>
     </div>
   )
 }
@@ -574,16 +600,7 @@ export function Settings({
         </Link>
       ) : undefined}>
       <div className="settings-desktop">
-        <nav className="settings-tabs" aria-label="Settings sections">
-          {sections.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link key={item.id} to="/settings/$section" params={{ section: item.id }}>
-                <Icon size={18} /><span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
+        <SettingsNavigation />
         <div className="settings-panel motion-screen" key={section ?? 'overview'}>
           {section ? renderSection(section) : <div className="settings-overview"><h3>Settings</h3><p>Choose a section to configure the app.</p></div>}
         </div>
@@ -591,18 +608,7 @@ export function Settings({
 
       <div className="settings-mobile">
         {section === null ? (
-          <nav className="settings-mobile-menu" aria-label="Settings sections">
-            {sections.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link key={item.id} to="/settings/$section" params={{ section: item.id }}>
-                  <span className="settings-menu-icon"><Icon size={20} /></span>
-                  <span><strong>{item.label}</strong><small>{item.description}</small></span>
-                  <ChevronRight size={19} />
-                </Link>
-              )
-            })}
-          </nav>
+          <SettingsNavigation mobile />
         ) : (
           <div className="settings-mobile-section motion-screen" key={section}>{renderSection(section)}</div>
         )}

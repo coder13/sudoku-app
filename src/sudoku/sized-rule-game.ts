@@ -1,5 +1,5 @@
 import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
-import { runEngine, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
+import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
 import { sizedRegionSumParts } from './region-sum.ts'
@@ -112,10 +112,10 @@ export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame
   return { ...sizedClassicPosition(grid, values), grid, rules }
 }
 
-export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution }: SizedRuleDefinition): Promise<SizedRuleGame> {
+export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution }: SizedRuleDefinition, run: EngineRunner = runEngine): Promise<SizedRuleGame> {
   if (!isSizedRuleList(rules, grid)) throw new Error('This grid has invalid or unsupported rules.')
   const position = sizedRulePosition(grid, { rules }, givens)
-  const result = await runEngine({ type: 'sized-variant', operation: 'solve-unique', position })
+  const result = await run({ type: 'sized-variant', operation: 'solve-unique', position })
   if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
   if (result.status !== 'unique') throw new Error(validation[result.status].text)
   const solution = result.solution.digits.join('')

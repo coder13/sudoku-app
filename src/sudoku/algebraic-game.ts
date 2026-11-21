@@ -1,4 +1,4 @@
-import { runEngine } from './engine.ts'
+import { runEngine, type EngineRunner } from './engine.ts'
 import { isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, MINI_GRID, sizedClassicPosition } from './grid.ts'
@@ -12,13 +12,13 @@ export function algebraicPosition({ rules }: Pick<AlgebraicGame, 'rules'>, value
   return { ...sizedClassicPosition(MINI_GRID, values), rules }
 }
 
-export function rateAlgebraicPuzzle(givens: string, rules: AlgebraicDefinition['rules']) {
-  return runEngine({ type: 'sized-variant', operation: 'rate', position: algebraicPosition({ rules }, givens) })
+export function rateAlgebraicPuzzle(givens: string, rules: AlgebraicDefinition['rules'], run: EngineRunner = runEngine) {
+  return run({ type: 'sized-variant', operation: 'rate', position: algebraicPosition({ rules }, givens) })
 }
 
-export async function verifyAlgebraicPuzzle({ givens, rules, source }: AlgebraicDefinition & { givens: string }): Promise<AlgebraicGame> {
+export async function verifyAlgebraicPuzzle({ givens, rules, source }: AlgebraicDefinition & { givens: string }, run: EngineRunner = runEngine): Promise<AlgebraicGame> {
   const position = algebraicPosition({ rules }, givens)
-  const result = await runEngine({ type: 'sized-variant', operation: 'solve-unique', position })
+  const result = await run({ type: 'sized-variant', operation: 'solve-unique', position })
   if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
   if (result.status !== 'unique') throw new Error(validation[result.status].text)
   const solution = result.solution.digits.join('')

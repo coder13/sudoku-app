@@ -186,8 +186,8 @@ function checkSizedRuleHintPosition({ solution }: SizedRuleGame, values: string,
   }
 }
 
-export async function sizedRuleCandidates(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[]) {
-  const candidates = await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'candidates' })
+export async function sizedRuleCandidates(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], run = runEngine) {
+  const candidates = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'candidates' })
   return candidates?.map((mask, cell) => mask & ~(eliminations?.[cell] ?? 0)) ?? null
 }
 
@@ -197,8 +197,8 @@ export async function sizedRuleHintChoices(game: SizedRuleGame, grid: SizedGrid,
   return result && { choices: result.choices.map(step => sizedRuleHintChoice(game, step, grid)), candidates: result.candidates }
 }
 
-export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGrid, givens: string): Promise<MiniSolutionTrace> {
-  const trace = await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, game, givens), operation: 'trace' })
+export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGrid, givens: string, run = runEngine): Promise<MiniSolutionTrace> {
+  const trace = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, givens), operation: 'trace' })
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
@@ -213,10 +213,10 @@ export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGri
   return { board, steps, positions, status: board === game.solution ? 'solved' : 'stalled' }
 }
 
-export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
+export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
   const removed = hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size)
   checkSizedRuleHintPosition(game, values, removed)
-  const trace = await runEngine({
+  const trace = await run({
     type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
   })
   return trace?.at(-1)?.digits.join('') ?? values

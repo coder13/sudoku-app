@@ -2,6 +2,7 @@ import { isSolved, shouldOfferPuzzleSave, STARTER_GAME, type Game } from '../../
 import { pruneChainsAfterMove } from '../../src/sudoku/chain-sketch'
 import { initialPlayerRating, type PlayerRating } from '../../src/sudoku/player-rating'
 import type { roomStore as appStore } from '../../src/sudoku/storage'
+import { puzzleTiming } from '../../src/sudoku/puzzle-timing'
 
 type Room = ReturnType<typeof appStore.getSnapshot>
 const starter = { ...STARTER_GAME, difficulty: 'easy' } satisfies Game
@@ -71,12 +72,18 @@ export const roomStore: typeof appStore = {
     if (game.savedForLater) publish({ ...room, games })
     else playPuzzle(games, game)
   },
-  update(id, update) {
+  update(id, update, { chainCandidates } = {}) {
     const game = room.games.find((item) => item.id === id)
     if (!game) return
-    const next = pruneChainsAfterMove(game, update(game))
+    const next = pruneChainsAfterMove(game, update(game), chainCandidates)
     if (next !== game) publish({ ...room, games: room.games.map((item) => item.id === id ? next : item) })
   },
+  advanceElapsed(id, seconds) {
+    if (!Number.isSafeInteger(seconds) || seconds <= 0 || !puzzleTiming.getSnapshot().trackTime) return
+    roomStore.update(id, game => !game.started || game.paused || game.timeUntracked || isSolved(game) ||
+      !Number.isSafeInteger(game.elapsed + seconds) ? game : { ...game, elapsed: game.elapsed + seconds })
+  },
+  flushElapsed() {},
   finishRatingAttempt() {},
   remove(id) {
     const games = room.games.filter((game) => game.id !== id)

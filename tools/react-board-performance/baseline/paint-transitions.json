@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "7e8979c43f13c6238dc0a5c20a0ccbe3c85d4272",
+  "sourceFile": "src/styles.css",
+  "sourceSha256": "7a00fadea70da90cbb1cb5c854976521d5e6d440e9428e1c5738d41433b8f135",
+  "transitions": {
+    ".cell": "background-color var(--board-mark-motion), border-color var(--board-mark-motion), color var(--board-mark-motion), box-shadow var(--board-mark-motion)",
+    ".board-candidate": "opacity var(--candidate-fade-motion, var(--board-mark-motion)), color var(--board-mark-motion), background-color var(--board-mark-motion), box-shadow var(--board-mark-motion)",
+    ".candidate-glyph": "color var(--board-mark-motion), background-color var(--board-mark-motion), box-shadow var(--board-mark-motion)",
+    ".board-links :is(line, polyline)": "stroke var(--board-shape-motion)",
+    ".board-links marker path": "fill var(--board-shape-motion)"
+  },
+  "overlaySha256": "c5e15a9d6a122fb2059cbc73b1242c369690f717ea6bb537384d14571e2d32b4",
+  "overlayScope": "#board-root"
+}

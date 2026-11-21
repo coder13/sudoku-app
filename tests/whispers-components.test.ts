@@ -95,10 +95,14 @@ test('the imported Cmdt board renders every region, diagonal, cage total and lin
   for (const node of [board, mobile]) {
     const html = renderToStaticMarkup(node)
     const expected: [string, number][] = [
-      ['variant-extra-region', 5], ['variant-diagonal', 2], ['variant-cage-total', 10],
+      ['variant-extra-region', 5], ['variant-cage-total', 10],
       ['variant-quadruple', 21], ['variant-thermometer', 18], ['variant-whispers', 16],
     ]
     for (const [clue, count] of expected) assert.equal(html.split(`class="${clue}"`).length - 1, count, clue)
+    const filledCells = [...html.matchAll(/data-cell="(\d+)"[^>]*data-house-fill="true"/g)].map(([, index]) => Number(index))
+    const diagonalCells = Array.from({ length: 81 }, (_, index) => index)
+      .filter(index => index % 10 === 0 || (index > 0 && index < 80 && index % 8 === 0))
+    assert.deepEqual(filledCells, diagonalCells)
     assert.equal(html.split('data-min-difference="2"').length - 1, 16)
     assert.equal(html.split('class="variant-whispers-gap"').length - 1, 16)
     assert.equal(html.split('class="variant-whispers-label-leader"').length - 1, 2)

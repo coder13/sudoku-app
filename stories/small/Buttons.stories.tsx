@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Check, MoreHorizontal, QrCode } from 'lucide-react'
-import { fn } from 'storybook/test'
+import { expect, fn } from 'storybook/test'
 import { Button, ChoiceButton, IconButton } from '../../src/components/Button'
 
 const meta = {
@@ -29,7 +29,14 @@ export const Usage: Story = {
     <div><Button variant="danger" onClick={onClick}>Confirm unlink</Button><p>Danger confirms a destructive change.</p></div>
     <div><IconButton variant="quiet" aria-label="Device options" onClick={onClick}><MoreHorizontal /></IconButton><p>Use an icon for a familiar action in a compact row. Give it an accessible name.</p></div>
     <div><ChoiceButton onClick={onClick}><QrCode aria-hidden size={20} /><span><strong>Scan QR code</strong><small>Join a linked device.</small></span></ChoiceButton><p>Use a choice when a short description helps someone pick a path.</p></div>
-    <div><Button disabled>Save</Button><p>Disable an action when it cannot run.</p></div>
+    <div><Button variant="primary" disabled>Apply edits</Button><p>A disabled primary button uses the same fill and text colors as a pressed button.</p></div>
     <div><GuidesToggle /><p>Use a pressed state for a persistent on/off choice.</p></div>
   </div>,
+  play: async ({ canvas }) => {
+    const disabled = canvas.getByRole('button', { name: 'Apply edits' })
+    const pressed = canvas.getByRole('button', { name: 'Guides', pressed: true })
+    const { backgroundColor, color } = getComputedStyle(pressed)
+    await expect(disabled).toBeDisabled()
+    await expect(disabled).toHaveStyle({ backgroundColor, color, opacity: '1', boxShadow: 'none' })
+  },
 }

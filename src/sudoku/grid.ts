@@ -114,6 +114,36 @@ export function jigsawMembership(grid: JigsawGrid) {
   return regions
 }
 
+export function jigsawRegionColors(membership: readonly number[], size: number) {
+  const regions = [...new Set(membership)]
+  const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
+  membership.forEach((region, cell) => {
+    const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]
+    for (const other of edges) {
+      if (other === undefined || other === region) continue
+      neighbors.get(region)!.add(other)
+      neighbors.get(other)!.add(region)
+    }
+  })
+
+  // Connected regions form a planar graph, so four colors suffice.
+  const colors: number[] = []
+  function assign(index: number): boolean {
+    if (index === regions.length) return true
+    const region = regions[index]
+    const used = new Set([...neighbors.get(region)!].map(other => colors[other]))
+    for (let color = 1; color <= 4; color++) {
+      if (used.has(color)) continue
+      colors[region] = color
+      if (assign(index + 1)) return true
+      delete colors[region]
+    }
+    return false
+  }
+  assign(0)
+  return colors
+}
+
 export function gridRegionIndex(grid: PlayGrid, cell: number) {
   if ('noRegions' in grid) return -1
   if ('regions' in grid) return jigsawMembership(grid)[cell]

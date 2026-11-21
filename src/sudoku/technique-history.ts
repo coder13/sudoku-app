@@ -1,7 +1,6 @@
-import { runEngine, type DeductionAction } from './engine'
+import { type DeductionAction, type EngineRunner } from './engine'
+import { classifyActionTechniques, createClassificationScope } from './action-classification'
 import { normalizePuzzleIdentity, puzzleIdentity, valuesOf, type Game } from './game'
-import { getVariantPlayOrder, variantPosition } from './variant-play'
-import type { VariantGame } from './variants'
 import {
   rememberTechniqueAction, summarizeTechniques, techniqueActionKey,
   summarizePuzzleTechniques, type PuzzleTechniqueHistory, type PuzzleTechniqueUse, type TechniqueObservation, type TechniqueProgress,
@@ -135,32 +134,26 @@ export const techniqueHistory = {
 export function observeTechniqueActions(game: Game, actions: readonly DeductionAction[], source: TechniqueObservation['source'],
   eliminations: readonly number[] | undefined = game.position.eliminations) {
   if (game.grid || game.source === 'draft' || actions.length === 0 || typeof indexedDB === 'undefined') return
-  const task = recordActions(game, actions, source, eliminations)
+  // This credit belongs to a saved move. It must finish even if its board closes.
+  const scope = createClassificationScope()
+  const task = recordActions(game, actions, source, eliminations, scope.run)
   pending.add(task)
-  void task.then(() => pending.delete(task), () => pending.delete(task))
-}
-
-async function classifyVariantActions(game: Game, variant: VariantGame, actions: readonly DeductionAction[], eliminations?: readonly number[]) {
-  const hints = await runEngine({
-    type: 'variant', operation: 'hints', position: { ...variantPosition(variant, game.position), eliminations },
-    techniqueOrder: await getVariantPlayOrder(), limit: 64,
-  }, { background: true })
-  const byAction = new Map<string, string>()
-  for (const hint of hints) {
-    for (const action of hint.actions) {
-      const key = techniqueActionKey(action)
-      if (!byAction.has(key)) byAction.set(key, hint.technique)
-    }
+  const finish = () => {
+    scope.close()
+    pending.delete(task)
   }
-  return actions.map((action) => byAction.get(techniqueActionKey(action)) ?? null)
+  void task.then(finish, finish)
 }
 
 async function recordActions(game: Game, actions: readonly DeductionAction[], source: TechniqueObservation['source'],
-  eliminations: readonly number[] | undefined) {
+  eliminations: readonly number[] | undefined, run: EngineRunner) {
   const at = performance.timeOrigin + performance.now()
-  const techniques = source === 'automated' ? [] : await (game.variant
-    ? classifyVariantActions(game, game.variant, actions, eliminations)
-    : runEngine({ type: 'classify-actions', values: valuesOf(game), eliminations, actions })).catch(() => [])
+  let techniques: (string | null)[] = []
+  try {
+    if (source !== 'automated') techniques = await classifyActionTechniques({ values: valuesOf(game), eliminations }, actions, game.variant, run)
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return
+  }
   if (source === 'independent' && !techniques.some(Boolean)) return
   await updateHistory(puzzleIdentity(game), (puzzle) => {
     if (at >= (puzzle.solutionRevealedAt ?? Infinity)) return false

@@ -20,7 +20,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   for (const name of ['Classic', 'X Sudoku', 'Windoku', 'Killer', 'Jigsaw']) {
     assert.ok(markup.includes(`>${name}</span>`), name)
   }
-  assert.doesNotMatch(markup, /Other grid sizes|Mini Sudoku|5 × 5 Jigsaw|6 × 6 Sudoku|7 × 7 Jigsaw|8 × 8 Sudoku|Algebraic Cages|Create puzzle/)
+  assert.doesNotMatch(markup, /Other grid sizes|Mini Sudoku|5 × 5 Jigsaw|6 × 6 Sudoku|7 × 7 Jigsaw|8 × 8 Sudoku|Algebraic Cages|Create puzzle|Create by hand/)
   assert.match(markup, /href="\/import"[^>]*>.*Import puzzle/)
   assert.match(markup, /href="\/puzzles\/new\/custom"[^>]*>.*Generate a custom puzzle/)
   assert.ok(markup.indexOf('href="/import"') < markup.indexOf('href="/puzzles/new/custom"'))

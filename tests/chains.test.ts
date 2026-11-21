@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, colorStrongLinks, completeChainLoop, completeMedusa, highlightedStrongLinks, makeChainGraph, weakLinkRun, type ChainEdge } from '../src/sudoku/chains.ts'
 import { applyChainDeduction, CHAIN_COLOR_PAIRS, cycleChainPairs, newChainSketch, nextChainId, pruneChainsAfterMove, undoChainEdit, updateChainEdges, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
-import { EMPTY, enter, makeGame, paintCandidate, redo, STARTER_GAME, undo } from '../src/sudoku/game.ts'
+import { applyDeduction, EMPTY, enter, makeGame, paintCandidate, paintCandidateStroke, redo, replaceCandidates, STARTER_GAME, undo, type Game } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { variantHouseMasks } from '../src/sudoku/variants.ts'
 
@@ -125,6 +125,38 @@ test('placing a digit saves affected chains for puzzle Undo and Redo', () => {
   const redone = pruneChainsAfterMove(restored, redo(restored))
   assert.equal(redone.position.entries[0], '1')
   assert.deepEqual(redone.chainSketch, placed.chainSketch)
+})
+
+test('a chain stays until its last elimination and is restored with puzzle Undo', () => {
+  const chain = { ...newChainSketch(1), history: [[], pathEdges(id(0), id(36), id(40), id(4))] }
+  const other = { ...newChainSketch(2), history: [[], pathEdges(id(60, 2), id(60, 4))] }
+  const masks = Array<number>(81).fill(0)
+  for (const cell of [0, 4, 7, 8, 36, 40]) masks[cell] = 1
+  masks[60] = 10
+  const chainSketch = { sketches: [chain, other], activeId: 1, pending: null }
+  const game = { ...replaceCandidates(makeGame('last-removal', 'X-chain', EMPTY, 'imported'), masks, { recordHistory: false }), chainSketch }
+  const candidateMasks = (current: Game) => current.position.corner
+  const partial = pruneChainsAfterMove(game, enter(game, [7], 'candidate', 1), candidateMasks)
+  assert.equal(partial.chainSketch, chainSketch)
+  const done = pruneChainsAfterMove(partial, enter(partial, [8], 'candidate', 1), candidateMasks)
+  assert.deepEqual(done.chainSketch, { sketches: [other], activeId: 2, pending: null })
+  const restored = pruneChainsAfterMove(done, undo(done), candidateMasks)
+  assert.deepEqual(restored.position, partial.position)
+  assert.equal(restored.chainSketch, chainSketch)
+  assert.deepEqual(pruneChainsAfterMove(restored, redo(restored), candidateMasks).chainSketch, done.chainSketch)
+
+  const batch = applyDeduction(game, [7, 8].map(cell => ({ eliminate: { cell, digit: 1 } })), masks)
+  assert.deepEqual(pruneChainsAfterMove(game, batch, candidateMasks).chainSketch, done.chainSketch)
+
+  const paint = (current: Game, cells: number[]) => pruneChainsAfterMove(current,
+    paintCandidateStroke(current, game, cells, 'candidate', 1, 'remove'), candidateMasks)
+  const first = paint(game, [7])
+  const finished = paint(first, [7, 8])
+  const extended = paint(finished, [7, 8, 40])
+  assert.deepEqual(finished.chainSketch, done.chainSketch)
+  assert.equal(extended.past.length, 1)
+  assert.equal(undo(extended).chainSketch, chainSketch)
+  assert.deepEqual(undo(extended).position, game.position)
 })
 
 test('an X-chain can use a conjugate pair as weak and remove a candidate that sees both ends', () => {

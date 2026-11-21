@@ -335,7 +335,7 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 .lesson-neighbors .button { max-width: 100%; white-space: normal; }
 .lesson-next { margin-inline-start: auto; }
 
-@media (max-width: 960px) {
+@media (max-width: 960px), (max-width: 1440px) and (pointer: coarse) {
   .learn-page { grid-template-columns: minmax(0, 1fr); gap: var(--space-14); padding-top: var(--space-8); }
   .learn-navigation {
     position: relative;
@@ -402,11 +402,27 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
 }
 
 @media (max-width: 900px), (max-width: 1440px) and (pointer: coarse) {
+  .learn-page {
+    width: min(100%, var(--mobile-page-width));
+    padding-inline: var(--mobile-page-gutter);
+  }
   .app-shell .lesson-heading {
     position: sticky;
     inset-block-start: var(--topbar-height);
     z-index: 2;
     background: var(--page-bg);
+  }
+  .learn-breadcrumbs ol { justify-content: center; flex-wrap: wrap; }
+  .lesson-title-row { display: grid; justify-items: center; text-align: center; }
+  .lesson-title { font-size: var(--mobile-page-title-size); }
+  .lesson-workbench .controls-content {
+    grid-template-columns: 48px minmax(0, var(--input-size, 210px)) max-content;
+  }
+  .lesson-workbench .highlight-controls {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 44px;
   }
   :root:has(.app-shell .learn-page) { scroll-padding-block-start: calc(var(--topbar-height) + 6rem); }
 }

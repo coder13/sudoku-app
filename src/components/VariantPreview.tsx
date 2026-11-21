@@ -2,8 +2,8 @@ import { rectangularPuzzleSize, type NewPuzzleId } from '../sudoku/new-puzzle'
 import type { SizedVariantPosition, VariantRule } from '../sudoku/engine'
 import { Crown } from 'lucide-react'
 import { jigsawLayout, variantSeeds } from '../sudoku/variant-generation'
-import { regionMembership, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
-import { fiveJigsawForSeed, jigsawMembership, rectangularGridForBoxRows, sevenJigsawForSeed, type RectangularBoxRows } from '../sudoku/grid'
+import { regionMembership, variantHouseFillCells, WINDOKU_REGIONS, type VariantId } from '../sudoku/variants'
+import { fiveJigsawForSeed, jigsawMembership, jigsawRegionColors, rectangularGridForBoxRows, sevenJigsawForSeed, type RectangularBoxRows } from '../sudoku/grid'
 import { AlgebraicCages, VariantClues } from './VariantClues'
 import { generationRuleset, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
@@ -43,6 +43,11 @@ const previews: Record<VariantId, readonly VariantRule[]> = {
 }
 
 const previewRegions = regionMembership(jigsawLayout(variantSeeds.jigsaw.easy![0].regions!).regions)
+const previewRegionColors = jigsawRegionColors(previewRegions, 9)
+const previewHouseFills = {
+  diagonal: [...new Set(previews.diagonal.flatMap(variantHouseFillCells))],
+  windoku: previews.windoku.flatMap(variantHouseFillCells),
+}
 function regionEdges(regions: readonly number[], size: number) {
   return regions.flatMap((region, cell) => {
     const x = cell % size
@@ -92,8 +97,11 @@ export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzz
   const viewBox = variant === 'inequality' ? '3 3 2 1' : variant === 'xv' ? '3 3 2 2'
     : variant === 'adjacent-total' ? '2.7 3 2.6 2'
     : variant === 'quadruple' ? '3.6 3.6 .8 .8' : undefined
+  const filledHouses = variant === 'diagonal' || variant === 'windoku' ? previewHouseFills[variant] : undefined
   return <span className="variant-preview" data-variant={variant} aria-hidden="true">
-    {rules.length > 0 && <VariantClues rules={rules} viewBox={viewBox} />}
+    {filledHouses ? <svg className="variant-clues" viewBox="0 0 9 9" focusable="false">
+      {filledHouses.map(cell => <rect key={cell} className="variant-house-fill" x={cell % 9} y={Math.floor(cell / 9)} width="1" height="1" />)}
+    </svg> : rules.length > 0 && <VariantClues rules={rules} viewBox={viewBox} />}
     {variant === 'inequality' && <svg className="variant-clues variant-inequality-preview-digits" viewBox={viewBox} focusable="false">
       <text x="3.5" y="3.5">1</text><text x="4.5" y="3.5">3</text>
     </svg>}
@@ -104,6 +112,8 @@ export function VariantPreview({ variant, ruleset, boxRows }: { variant: NewPuzz
       </g>)}
     </svg>}
     {variant === 'jigsaw' && <svg className="variant-clues" viewBox="0 0 9 9" focusable="false">
+      {previewRegions.map((region, cell) => <rect key={cell} data-region-color={previewRegionColors[region]}
+        x={cell % 9} y={Math.floor(cell / 9)} width="1" height="1" />)}
       <path className="variant-preview-regions" d={previewRegionEdges} />
     </svg>}
     {variant === 'little-killer' && <svg className="variant-clues variant-little-killer-preview" viewBox="0 0 9 9"><text x="1.8" y="2.2">12</text><path d="M3 3L6.7 6.7M5.2 6.7H6.7V5.2" /></svg>}

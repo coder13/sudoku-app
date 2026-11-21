@@ -39,12 +39,12 @@ function algebraicHintChoice({ rules }: AlgebraicGame, step: AlgebraicStep): Hin
   }
 }
 
-export function analyzeAlgebraic(game: Pick<AlgebraicGame, 'rules'>, values: string) {
-  return runEngine({ type: 'sized-variant', operation: 'analyze', position: algebraicPosition(game, values) })
+export function analyzeAlgebraic(game: Pick<AlgebraicGame, 'rules'>, values: string, run = runEngine) {
+  return run({ type: 'sized-variant', operation: 'analyze', position: algebraicPosition(game, values) })
 }
 
-export async function algebraicCandidates(game: AlgebraicGame, values: string, eliminations?: readonly number[]) {
-  const result = await runEngine({
+export async function algebraicCandidates(game: AlgebraicGame, values: string, eliminations?: readonly number[], run = runEngine) {
+  const result = await run({
     type: 'sized-variant', operation: 'hints', position: algebraicPosition(game, values), eliminations, limit: 0,
   })
   return result?.candidates ?? null
@@ -59,16 +59,16 @@ export function checkAlgebraicHintPosition(game: AlgebraicGame, values: string, 
   }
 }
 
-export async function algebraicHintChoices(game: AlgebraicGame, values: string, eliminations?: readonly number[]) {
+export async function algebraicHintChoices(game: AlgebraicGame, values: string, eliminations?: readonly number[], run = runEngine) {
   checkAlgebraicHintPosition(game, values, eliminations)
-  const result = await runEngine({
+  const result = await run({
     type: 'sized-variant', operation: 'hints', position: algebraicPosition(game, values), eliminations, limit: 256,
   })
   return result && { choices: result.choices.map(step => algebraicHintChoice(game, step)), candidates: result.candidates }
 }
 
-export async function algebraicSolutionTrace(game: AlgebraicGame, givens: string): Promise<MiniSolutionTrace> {
-  const trace = await runEngine({ type: 'sized-variant', operation: 'trace', position: algebraicPosition(game, givens) })
+export async function algebraicSolutionTrace(game: AlgebraicGame, givens: string, run = runEngine): Promise<MiniSolutionTrace> {
+  const trace = await run({ type: 'sized-variant', operation: 'trace', position: algebraicPosition(game, givens) })
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, step }) => {

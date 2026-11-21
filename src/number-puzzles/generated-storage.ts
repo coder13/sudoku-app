@@ -1,5 +1,8 @@
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
-import { parseSavedNumberProgress, saveNumberProgress, type NumberProgress, type SavedNumberProgress } from './progress.ts'
+import {
+  advanceNumberClock, numberProgressWithClock, parseSavedNumberProgress, readNumberClock, saveNumberClock,
+  saveNumberProgress, type NumberProgress, type SavedNumberProgress,
+} from './progress.ts'
 
 type GeneratedRecord = {
   game: GeneratedNumberGame
@@ -152,7 +155,10 @@ async function migrateLegacy(game: GeneratedNumberGame) {
       if (previous && (current || !saved?.progress || same)) copied.set(numberPositionKey(game, id), previous.raw)
       if (current) copied.set(pendingKey, current.raw)
       if (saved && !current && (saved.progress || !progress)) continue
-      store.put({ game, id, number: saved?.number ?? ++number, progress } satisfies GeneratedRecord)
+      store.put({
+        game, id, number: saved?.number ?? ++number,
+        progress: progress && numberProgressWithClock(progress, saved?.progress),
+      } satisfies GeneratedRecord)
       // Let the browser handle input between batches while this transaction stays open.
       if (++writes % migrationBatchSize === 0) await readRequest(store.get([game, 0]))
     }
@@ -218,7 +224,7 @@ async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progr
       const last = await readRequest(store.openKeyCursor(gameRange(game), 'prev'))
       number = last ? (last.primaryKey as [GeneratedNumberGame, number])[1] + 1 : 1
     }
-    const record: GeneratedRecord = { game, id, number, progress: next }
+    const record: GeneratedRecord = { game, id, number, progress: next && numberProgressWithClock(next, existing?.progress) }
     store.put(record)
     return { record, consumed: next ? pending : null }
   })
@@ -240,9 +246,10 @@ export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: s
   }
 }
 
-export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id: string, { position, past, future }: NumberProgress) {
-  const progress = { ...position, past, future }
+export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id: string, next: NumberProgress) {
   const key = pendingPositionKey(game, id)
+  const { position, past, future, clock } = next
+  const progress = numberProgressWithClock({ ...position, past, future, clock }, parseSavedNumberProgress(localValue(key)) ?? undefined)
   let staged: string | undefined
   // Keep the move across a reload until IndexedDB commits it.
   try {
@@ -252,7 +259,7 @@ export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id:
   } catch { /* IndexedDB can still save if local storage is full. */ }
 
   try { await prepareGeneratedHistory(game) } catch {
-    const saved = saveNumberProgress(numberPositionKey(game, id), { position, past, future })
+    const saved = saveNumberProgress(numberPositionKey(game, id), next)
     if (saved && staged !== undefined) removeLocalVersion(key, staged)
     return saved || staged !== undefined
   }
@@ -260,4 +267,20 @@ export async function saveGeneratedNumberProgress(game: GeneratedNumberGame, id:
     await writeGeneratedRecord(game, id, progress, staged)
     return true
   } catch { return staged !== undefined }
+}
+
+export async function saveGeneratedNumberClock(game: GeneratedNumberGame, id: string, change: number | 'untimed') {
+  try {
+    await prepareGeneratedHistory(game)
+    return await runTransaction('readwrite', async store => {
+      const record: GeneratedRecord | undefined = await readRequest(store.index(tokenIndex).get([game, id]))
+      if (!record?.progress) return
+      const previous = readNumberClock(record.progress.clock)
+      const clock = advanceNumberClock(previous, change)
+      if (clock !== previous) store.put({ ...record, progress: { ...record.progress, clock } })
+      return clock
+    })
+  } catch {
+    return saveNumberClock(pendingPositionKey(game, id), change) ?? saveNumberClock(numberPositionKey(game, id), change)
+  }
 }

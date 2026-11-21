@@ -31,6 +31,7 @@ const themeBootstrap = `(() => {
     const theme = mode === 'dark' ? darkTheme : lightTheme
     root.dataset.colorMode = mode
     root.dataset.theme = theme
+    root.toggleAttribute('data-flat-appearance', saved.flatAppearance === true)
     root.style.colorScheme = theme === 'andoku' ? 'dark' : mode
     for (const [name, value] of Object.entries(themes[theme][mode])) {
       root.style.setProperty('--' + name.replace(/[A-Z]/g, character => '-' + character.toLowerCase()), value)

@@ -54,18 +54,18 @@ export function puzzleTechniqueCatalog(variant: boolean) {
 }
 
 /** Use the player's current digits and removals, retaining the full rule set. */
-export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number): Promise<HintChoices & { offset?: number }> {
+export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?: string, collection?: number, run = runEngine): Promise<HintChoices & { offset?: number }> {
   if (game.sized && game.grid) {
     const values = valuesOf(game)
     const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, game.grid.size)
-    return visibleMiniHints(await sizedRuleHintChoices(game.sized, game.grid, values, eliminations), limit, technique)
+    return visibleMiniHints(await sizedRuleHintChoices(game.sized, game.grid, values, eliminations, run), limit, technique)
   }
   if (game.algebraic && game.grid) {
     const values = valuesOf(game)
     const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations, game.grid.size)
-    return visibleMiniHints(await algebraicHintChoices(game.algebraic, values, eliminations), limit, technique)
+    return visibleMiniHints(await algebraicHintChoices(game.algebraic, values, eliminations, run), limit, technique)
   }
-  if (game.grid) return miniHints(game, limit, technique)
+  if (game.grid) return miniHints(game, limit, technique, run)
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations)
   const problem = variantHintProblem(game, values, eliminations)
@@ -81,36 +81,36 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
     } as const
     const candidates = variantHouseMasks(variant.puzzle, values, eliminations)
     if (collection !== undefined) {
-      const first = await runEngine({ ...request, collection })
+      const first = await run({ ...request, collection })
       return { ...first, choices: first.choices.map((hint) => variantHintChoice(hint, variant.puzzle)), candidates }
     }
-    const found = await runEngine(request, { interactive: Boolean(technique) })
+    const found = await run(request, { interactive: Boolean(technique) })
     return { choices: found.map((hint) => variantHintChoice(hint, variant.puzzle)), available: found.length,
       candidates }
   }
-  if (!technique) return runEngine({ type: 'hints', values, eliminations, limit, collection, includePatterns: true,
+  if (!technique) return run({ type: 'hints', values, eliminations, limit, collection, includePatterns: true,
     preferProgress: true, difficulty: game.difficulty ?? 'medium' })
   const [matches, { candidates }] = await Promise.all([
-    runEngine({ type: 'deductions', values, eliminations, techniqueOrder: [technique] }, { interactive: true }),
-    runEngine({ type: 'hints', values, eliminations, includePatterns: true, limit: 0 }),
+    run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] }, { interactive: true }),
+    run({ type: 'hints', values, eliminations, includePatterns: true, limit: 0 }),
   ])
   const choices = techniqueHintsFromMatches(matches, technique)
   return { choices, available: choices.length, candidates }
 }
 
-/** Pages stay on the foreground worker that owns the exhaustive collection. */
-export async function puzzleHintPage(variant: Game['variant'], collection: number, index: number) {
-  if (!variant) return runEngine({ type: 'hint-page', collection, index })
-  const page = await runEngine({ type: 'hint-page', collection, index, variant: true })
+/** Pages use the same runner that owns the exhaustive collection. */
+export async function puzzleHintPage(variant: Game['variant'], collection: number, index: number, run = runEngine) {
+  if (!variant) return run({ type: 'hint-page', collection, index })
+  const page = await run({ type: 'hint-page', collection, index, variant: true })
   return { ...page, choices: page.choices.map(hint => variantHintChoice(hint, variant.puzzle)) }
 }
 
 /** Solution walkthroughs start at the givens, without changing the saved game. */
-export async function puzzleSolution(game: Game) {
-  if (game.sized && game.grid) return sizedRuleSolutionTrace(game.sized, game.grid, game.givens)
-  if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens)
-  if (game.grid) return miniSolutionTrace(game.givens)
-  return game.variant ? variantSolutionPath(await runEngine({
+export async function puzzleSolution(game: Game, run = runEngine) {
+  if (game.sized && game.grid) return sizedRuleSolutionTrace(game.sized, game.grid, game.givens, run)
+  if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens, run)
+  if (game.grid) return miniSolutionTrace(game.givens, run)
+  return game.variant ? variantSolutionPath(await run({
     type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(),
-  })) : runEngine({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
+  })) : run({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
 }

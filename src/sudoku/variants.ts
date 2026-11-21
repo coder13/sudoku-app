@@ -5,7 +5,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
-import { kropkiDigitExclusions } from './grid.ts'
+import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -135,6 +135,13 @@ export function quadrupleCells(topLeft: number): readonly number[] {
 
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
   Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
+
+export function variantHouseFillCells(rule: VariantRule): readonly number[] {
+  if (rule.type === 'diagonal') return gridDiagonalCells(9, rule.diagonal)
+  if (rule.type === 'extra-house' && WINDOKU_REGIONS.some(region =>
+    region.length === rule.cells.length && region.every(cell => rule.cells.includes(cell)))) return rule.cells
+  return []
+}
 
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>

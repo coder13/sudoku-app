@@ -10,11 +10,11 @@ import { chainCandidate, makeChainGraph } from '../sudoku/chains'
 import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
-import { EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type HintChoice } from '../sudoku/engine'
+import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
-  type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode,
+  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
 import { sizedRulePosition, sizedRuleDescriptions } from '../sudoku/sized-rule-game'
@@ -24,11 +24,12 @@ import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
-import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
+import { hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
 import { applyPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
+import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
@@ -71,6 +72,7 @@ import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
+import { usePuzzleTimer } from './usePuzzleTimer'
 import { usePuzzleZoom } from './usePuzzleZoom'
 import { useTouchHold } from './useTouchHold'
 
@@ -97,90 +99,21 @@ function candidateToolMasks(notes: readonly number[] | null | undefined, values:
     ? mask & (displayed?.[cell] ?? mask) & ~(eliminations?.[cell] ?? 0) : 0) ?? null
 }
 
-async function solveSingleValues({ grid, variant, algebraic, sized }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[]) {
-  if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates)
+async function solveSingleValues({ grid, variant, algebraic, sized }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
+  if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates, run)
   if (grid?.size === 4) {
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
-    return miniSingles(values, eliminations, displayedCandidates)
+    return miniSingles(values, eliminations, displayedCandidates, run)
   }
-  if (!variant) return runEngine({ type: 'solve-singles', values, eliminations, displayedCandidates })
+  if (!variant) return run({ type: 'solve-singles', values, eliminations, displayedCandidates })
   const entries = [...values].map((digit, cell) => variant.puzzle.givens[cell] === '0' ? digit : '0').join('')
-  return runEngine({ type: 'variant', operation: 'solve-singles', displayedCandidates,
+  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates,
     position: { puzzle: variant.puzzle, entries, eliminations } })
-}
-
-function useTimer(id: string, running: boolean) {
-  useEffect(() => {
-    if (!running) return
-    let started: number | null = null
-    let locks: LockManager | undefined = navigator.locks
-    let lockRequest: AbortController | undefined
-
-    function tick() {
-      if (started === null) return
-      const seconds = Math.floor((performance.now() - started) / 1000)
-      if (seconds < 1) return
-      started += seconds * 1000
-      if (!puzzleTiming.getSnapshot().trackTime) return
-      roomStore.update(id, (current) => !current.started || current.paused || current.timeUntracked || isSolved(current)
-        ? current : { ...current, elapsed: current.elapsed + seconds })
-    }
-
-    function start() {
-      if (started !== null || lockRequest) return
-      if (!locks) {
-        started = performance.now()
-        return
-      }
-      const request = new AbortController()
-      lockRequest = request
-      // One visible tab advances the saved clock. A second tab waits without counting.
-      void locks.request(`sudoku-puzzle-timer:${id}`, { signal: request.signal }, () => {
-        if (request.signal.aborted) return
-        started = performance.now()
-        return new Promise<void>(resolve => request.signal.addEventListener('abort', () => resolve(), { once: true }))
-      }).catch(() => {
-        if (request.signal.aborted) return
-        locks = undefined
-        lockRequest = undefined
-        updateVisibility()
-      })
-    }
-
-    function stop() {
-      tick()
-      started = null
-      lockRequest?.abort()
-      lockRequest = undefined
-    }
-
-    function updateVisibility() {
-      // Use the focused tab when Web Locks are unavailable.
-      if (document.visibilityState === 'visible' && (locks || document.hasFocus())) start()
-      else stop()
-    }
-
-    const timer = window.setInterval(tick, 500)
-    document.addEventListener('visibilitychange', updateVisibility)
-    window.addEventListener('focus', updateVisibility)
-    window.addEventListener('blur', updateVisibility)
-    window.addEventListener('pageshow', updateVisibility)
-    window.addEventListener('pagehide', stop)
-    updateVisibility()
-    return () => {
-      stop()
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', updateVisibility)
-      window.removeEventListener('focus', updateVisibility)
-      window.removeEventListener('blur', updateVisibility)
-      window.removeEventListener('pageshow', updateVisibility)
-      window.removeEventListener('pagehide', stop)
-    }
-  }, [id, running])
 }
 
 export type WorktableActions = { check: () => void }
 type SolvedGridSession = { current: Game }
+type PuzzleTask = { origin: Game; engine: EngineSession; hint: boolean }
 
 let nextHintCollection = 0
 
@@ -209,6 +142,9 @@ type CandidateDrag = {
   moved: boolean
   controlClick?: boolean
 }
+
+type CellPaintStroke = { gameId: string; color: number; cells: ReadonlySet<number> }
+type CellPaintDrag = CellPaintStroke & { pointerId: number; previous: number; moved: boolean }
 
 type CandidatePress = {
   pointerId: number
@@ -331,13 +267,12 @@ export function Worktable({
   const [savedPencil, setPencil] = usePlayPreference('pencil')
   // A multi-digit highlight temporarily takes precedence over the saved input mode.
   const automaticHighlightMode = candidateCount(highlightedDigitMask) > 1 && !digitHighlight.modeOverridden
-  const highlightMode = savedHighlightMode || automaticHighlightMode
-  const pencil = savedPencil && !highlightMode
+  const mainHighlightMode = savedHighlightMode || automaticHighlightMode
   const [pencilModifier, setPencilModifier] = useState(false)
   const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
   const [savedColorMode, setColorMode] = usePlayPreference('colorMode')
-  const [eraseMode, setEraseMode] = usePlayPreference('eraseMode')
+  const [savedEraseMode, setEraseMode] = usePlayPreference('eraseMode')
   const [solution, setSolution] = useState<string | null>(null)
   const [dialogResult, setDialogResult] = useState<DialogResult | null>(null)
   const [variantRulesOpen, setVariantRulesOpen] = useState(false)
@@ -347,6 +282,8 @@ export function Worktable({
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  const [confirmCandidatesOpen, setConfirmCandidatesOpen] = useState(false)
+  const candidateConfirmationOpener = useRef<HTMLElement | null>(null)
   const [cancelDraftOpen, setCancelDraftOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
@@ -358,7 +295,6 @@ export function Worktable({
   const mobile = useMobileLayout()
   const desktop = !mobile
   const wasMobile = useRef(mobile)
-  const colorMode = desktop && savedColorMode && !automaticHighlightMode
   const [mobileRearranging, setMobileRearranging] = useState(false)
   const rearranging = mobile && mobileRearranging
   const [solutionRetry, setSolutionRetry] = useState(0)
@@ -392,16 +328,17 @@ export function Worktable({
   const hintReturnFocus = useRef<HTMLElement | null>(null)
   const dragSelection = useRef<{ pointerId: number; start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
   const candidateDrag = useRef<CandidateDrag | null>(null)
+  const cellPaintDrag = useRef<CellPaintDrag | null>(null)
+  const [cellPaintPreview, setCellPaintPreview] = useState<CellPaintStroke | null>(null)
   const candidatePress = useRef<CandidatePress | null>(null)
   const hoveredCell = useRef<number | null>(null)
   const suppressCellClick = useRef(false)
   const pendingDoubleClickSingle = useRef<{ index: number; digit: number; game: Game } | null>(null)
   const techniqueHintRequest = useRef(0)
   const pageRequest = useRef(0)
-  const hintCollection = hintState?.page?.collection
-  useEffect(() => () => {
-    if (hintCollection !== undefined) void runEngine({ type: 'release-hints', collection: hintCollection }).catch(() => {})
-  }, [hintCollection])
+  const puzzleTask = useRef<PuzzleTask | null>(null)
+  const hintEngine = useRef<EngineSession | null>(null)
+  const candidateRefreshKey = useRef({})
   const values = useMemo(() => valuesOf(game), [game.givens, game.position.entries])
   const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
   const { center, corner, eliminations } = game.position
@@ -468,7 +405,8 @@ export function Worktable({
     ? { cells: new Map([[recovery.cell, { fill: 'var(--lesson-pattern-fill)', label: 'Check candidates' }]]) }
     : undefined)
   const playerVisualsSelected = visibleHint?.visuals === 'player'
-  const hintAnnotations = playerVisualsSelected ? undefined : availableHintAnnotations
+  const hintVisualsActive = !playerVisualsSelected && Boolean(deduction || recovery)
+  const hintAnnotations = hintVisualsActive ? availableHintAnnotations : undefined
   const hintCopy = recovery ? {
     title: HINT_CANDIDATES_ERROR.title,
     text: hintStage === 'technique' ? 'Your placed digits match the solution. A required candidate is missing.'
@@ -517,6 +455,23 @@ export function Worktable({
   const subsetsVisible = experimentalMode && (mobile ? activeToolPanel === 'subsets'
     : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets')
   const colorsPanelOpen = openPuzzlePanels.includes('colors')
+  const colorsVisible = mobile ? activeToolPanel === 'colors'
+    : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
+  const canPaint = !cellColorsDisabled
+  const mobileHintPreview = mobileHintOpen && !playerVisualsSelected
+  const brush = canPaint && colorsVisible && !hintAnnotations && !mobileHintPreview ? colorBrush : null
+  const colorMode = brush === null && desktop && savedColorMode && !automaticHighlightMode
+  const eraseMode = brush === null && savedEraseMode
+  const highlightMode = brush === null && mainHighlightMode
+  const pencil = savedPencil && !mainHighlightMode
+  const cellBrush = colorTarget === 'cell' && canPaint && !hintAnnotations && !mobileHintPreview
+    ? brush ?? (colorMode ? selectedColor : null) : null
+  const boardPosition = useMemo(() => {
+    const position = game.position
+    if (!cellPaintPreview || cellPaintPreview.gameId !== id || cellPaintPreview.color !== cellBrush) return position
+    return { ...position, colors: position.colors.map((color, cell) =>
+      cellPaintPreview.cells.has(cell) ? cellPaintPreview.color : color) }
+  }, [game.position, cellPaintPreview, cellBrush, id])
   const chainsPanelOpen = openPuzzlePanels.includes('chains')
   const chainKeypadVisible = !grid && chainsPanelOpen && (mobile ? activeToolPanel === 'digits'
     : advancedWorkspace && desktopInputVisible)
@@ -553,24 +508,19 @@ export function Worktable({
   const startHighlightDigit = playerHighlightMask ? onlyCandidate(playerHighlightMask) : coloringDigit
   const sketch = useChainSketch(game, chainGraph, {
     canDraw: chainsActive && !completed, graphCurrent: Boolean(masks), canAnalyze: canAnalyzeChains, startHighlightDigit,
-    drawingIntent: savedHighlightMode ? false : drawingIntent,
+    drawingIntent: savedHighlightMode || brush !== null ? false : drawingIntent,
     setDrawingIntent: intent => playSession.set(id, 'drawingIntent', intent),
   })
   const canApplyChainEdits = chainsPanelOpen && Boolean(chainMasks && canAnalyzeChains && sketch.allActions.length)
   const canApplyHintEdit = fullHint && !recovery && Boolean(deduction && hintCandidates) && (!advancedWorkspace || showBottomPanel)
   const chainHighlightDigit = sketch.active.highlightedDigit
-  const strongLinkMask = playerHighlightMask
-  const strongLinksVisible = !savedHighlightMode && showStrongLinks && chainsActive && canAnalyzeChains && !hintAnnotations
+  const strongLinkMask = highlightedDigitMask || (coloringDigit === null ? 0 : 1 << (coloringDigit - 1))
+  const strongLinksVisible = !savedHighlightMode && brush === null && showStrongLinks && chainsActive && canAnalyzeChains && !hintVisualsActive
   const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, strongLinkMask, sketch.annotations,
     sketch.colorPairs, sketch.usedColorPairs, sketch.assignedColors)
   const browsingStrongLinks = strongLinksVisible && !sketch.drawing
-  const inspectSubset = !savedHighlightMode && subsetsVisible && !hintAnnotations && !disabled && !draft && !solved && !sketch.drawing && !browsingStrongLinks
+  const inspectSubset = !savedHighlightMode && brush === null && subsetsVisible && !hintVisualsActive && !disabled && !draft && !solved && !sketch.drawing && !browsingStrongLinks
   const subset = useSubsets(inspectSubset ? subsetMasks : null, completeSubsetMasks, selected, values, grid ?? CLASSIC_GRID, variant?.puzzle)
-  const canPaint = !cellColorsDisabled
-  const colorsVisible = mobile ? activeToolPanel === 'colors'
-    : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
-  const brush = !savedHighlightMode && canPaint && colorsVisible && !hintAnnotations ? colorBrush : null
-  const mobileHintPreview = mobileHintOpen && !playerVisualsSelected
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintPreview
     ? colorMode ? selectedColor : brush : null
   const paintingCandidates = candidateBrush !== null
@@ -599,7 +549,7 @@ export function Worktable({
     : colorContinuation?.status === 'uncolored' ? colorTarget === 'cell'
       ? `Color ${colorStartLocation} to start a group for ${colorStart.digit}.`
       : `Color ${colorStart.digit} in ${colorStartLocation} to start a group.`
-    : colorContinuation?.status === 'missing-candidate' ? `Choose a cell with candidate ${colorStart.digit}.`
+    : colorContinuation?.status === 'missing-candidate' ? undefined
     : colorContinuation?.status === 'no-links' ? `${colorStart.digit} in ${colorStartLocation} has no strong links.`
     : colorContinuation?.status === 'link-conflict' ? 'This group cannot alternate shades. Check its candidates.'
     : colorConflict ? `The color at ${colorConflictLocation} conflicts with this group. Adjust or erase that color.`
@@ -607,9 +557,9 @@ export function Worktable({
     : `Continue ${colorStart.digit} from ${colorStartLocation}: ${remainingColors} more ${colorSubject}${remainingColors === 1 ? '' : 's'}.`
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintPreview &&
-    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !variantRulesOpen
+    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen && !variantRulesOpen
   const temporaryPencil = pencilModifier && canActivateTemporaryPencil
-  const pencilActive = (pencil || temporaryPencil) && !colorMode && !eraseMode
+  const pencilActive = (pencil || temporaryPencil) && brush === null && !colorMode && !eraseMode
   const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencilActive ? candidateMode : 'value'
   const penOrPencil = !draft && !highlightMode && !colorMode && !eraseMode && brush === null
   const givenHighlightSelection = penOrPencil && onlyGivensSelected(givens, selected)
@@ -618,12 +568,12 @@ export function Worktable({
     selected.length === 1 && values[selected[0]] !== '0')
   const canDragCandidates = !disabled && !draft && pencilActive && !highlightMode && !colorMode && !eraseMode &&
     !paintingCandidates && !multi && !sketch.drawing && !hintAnnotations && selectedDigit !== null && selectedDigit > 0
-  const canPreviewCandidates = canDragCandidates && selected.length === 0 && brush === null && !solved &&
-    !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen &&
+  const canPreviewCandidates = canDragCandidates && selected.length === 0 && !solved &&
+    !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen &&
     !variantRulesOpen
   const canHighlightCellCandidates = !disabled && !draft && !solved && !colorMode && !eraseMode && !sketch.drawing && brush === null &&
     !paintingCandidates && !modalOpen && !hintAnnotations && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult &&
-    !resetOpen && !variantRulesOpen
+    !resetOpen && !confirmCandidatesOpen && !variantRulesOpen
   const cellHold = useTouchHold(mobile && canHighlightCellCandidates)
   const cancelCellHold = cellHold.cancel
   useLayoutEffect(() => cancelCellHold, [cancelCellHold, hintPosition])
@@ -659,8 +609,10 @@ export function Worktable({
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || completed)
-  useTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
-    !resetOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen)
+  usePuzzleTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
+    !resetOpen && !confirmCandidatesOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen, (seconds, puzzleId) => {
+    roomStore.advanceElapsed(puzzleId, seconds)
+  }, puzzleId => roomStore.flushElapsed(puzzleId))
 
   function openSolvedGrid(position = savedGame) {
     const game = { ...position, paused: false }
@@ -690,9 +642,97 @@ export function Worktable({
         setSolvedGrid({ session, game: next })
       }
     } else if (!completed) {
-      roomStore.update(id, current => isSolved(current) ? current : transform(current))
+      roomStore.update(id, current => isSolved(current) ? current : transform(current), {
+        chainCandidates(current) {
+          if (!puzzleNotes?.masks || current.grid || current.givens !== givens || current.variant !== variant ||
+            (variant && current.position.eliminations !== puzzleNotes.eliminations)) return null
+          const currentValues = valuesOf(current)
+          if (currentValues !== puzzleNotes.values) return null
+          return candidateToolMasks(puzzleNotes.masks, currentValues, completeCandidateMasks(current), current.position.eliminations)
+        },
+      })
     }
-  }, [completed, id, session])
+  }, [completed, givens, id, puzzleNotes, session, variant])
+
+  const cancelHintWork = useCallback(() => {
+    techniqueHintRequest.current++
+    pageRequest.current++
+    hintEngine.current?.close()
+    hintEngine.current = null
+    if (puzzleTask.current?.hint) {
+      puzzleTask.current.engine.close()
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }, [])
+
+  const cancelPendingPuzzleWork = useCallback(() => {
+    const task = puzzleTask.current
+    if (!task) return
+    if (task.hint) {
+      cancelHintWork()
+      setHintRevealed(false)
+    } else {
+      task.engine.close()
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }, [cancelHintWork])
+
+  const cancelPuzzleWork = useCallback(() => {
+    cancelPendingPuzzleWork()
+    cancelHintWork()
+  }, [cancelPendingPuzzleWork, cancelHintWork])
+
+  // Pending actions belong to the full board revision, including colors and
+  // undo history. Clock ticks and rating metadata do not invalidate them.
+  useLayoutEffect(() => cancelPendingPuzzleWork, [cancelPendingPuzzleWork, id, game.source, givens, variant, grid, algebraic, sized,
+    game.position, game.past, game.future, session])
+  // Completed hint pages remain valid after color-only edits. Their worker is
+  // retained only while the hint inputs, puzzle rules, and play session match.
+  useLayoutEffect(() => () => {
+    cancelHintWork()
+    setHint(null)
+    setHintRevealed(false)
+  }, [cancelHintWork, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session])
+  useLayoutEffect(() => {
+    if (!hintRevealed) cancelHintWork()
+  }, [hintRevealed, cancelHintWork])
+  useLayoutEffect(() => {
+    if (!disabled) return
+    cancelPuzzleWork()
+    setHintRevealed(false)
+  }, [disabled, cancelPuzzleWork])
+
+  function beginPuzzleTask(hint = false, isolated = true): PuzzleTask {
+    if (hint) cancelHintWork()
+    const abort = new AbortController()
+    const engine: EngineSession = isolated ? createEngineSession() : {
+      run: (request, options) => runEngine(request, { ...options, signal: abort.signal }),
+      close: () => abort.abort(),
+    }
+    const task = { origin: game, engine, hint }
+    puzzleTask.current = task
+    if (hint) hintEngine.current = engine
+    setBusy(true)
+    return task
+  }
+
+  function currentTaskGame(task: PuzzleTask) {
+    const current = readWorkingGame()
+    return puzzleTask.current === task && canApplyPuzzleResult(task.origin, current) ? current : undefined
+  }
+
+  function finishPuzzleTask(task: PuzzleTask, keepHintCollection = false) {
+    if (!keepHintCollection || puzzleTask.current !== task) {
+      task.engine.close()
+      if (hintEngine.current === task.engine) hintEngine.current = null
+    }
+    if (puzzleTask.current === task) {
+      puzzleTask.current = null
+      setBusy(false)
+    }
+  }
 
   function resumePuzzle() {
     if (pausedOnLaunch) onResumeLaunch?.()
@@ -737,6 +777,7 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setResetOpen(false)
+    setConfirmCandidatesOpen(false)
     setVariantRulesOpen(false)
     setDialogRule(null)
     setPinnedRule(null)
@@ -750,6 +791,8 @@ export function Worktable({
     setRatingFailed(false)
     dragSelection.current = null
     candidateDrag.current = null
+    cellPaintDrag.current = null
+    setCellPaintPreview(null)
     candidatePress.current = null
     hoveredCell.current = null
     setCandidatePreviewCell(null)
@@ -851,14 +894,15 @@ export function Worktable({
     }
   }, [actionsOpen, mobile])
 
-  const requestSolution = useEffectEvent(() => puzzleSolution(game))
+  const requestSolution = useEffectEvent((run: EngineRunner) => puzzleSolution(game, run))
   useEffect(() => {
     if (game.paused || !solutionPathRevealed || cachedSolution) return
     let current = true
+    const engine = createEngineSession()
     const finish = (path: SolutionPathState) => {
       if (current) setLoadedSolution({ id, identity: solutionIdentity, retry: solutionRetry, path })
     }
-    void requestSolution().then(result => {
+    void requestSolution(engine.run).then(result => {
       if (result.positions?.length !== result.steps.length + 1) throw new Error('Missing solution positions')
       finish({ status: 'ready', trace: result })
     }).catch((error: unknown) => finish({
@@ -866,53 +910,59 @@ export function Worktable({
       message: error instanceof EngineError && error.code === 'search-limit'
         ? 'The solver reached its search limit before finding a path.'
         : 'The solution couldn’t load.',
-    }))
-    return () => { current = false }
+    })).finally(() => engine.close())
+    return () => { current = false; engine.close() }
   }, [id, game.paused, solutionIdentity, solutionPathRevealed, solutionRetry, cachedSolution])
 
   useEffect(() => {
-    if (draft || !needsRating && !needsAttempt) return
+    if (draft || game.paused || !needsRating && !needsAttempt) return
     let current = true
-    void ratePuzzle(givens, variant).then((grade) => {
+    const engine = createEngineSession()
+    void ratePuzzle(givens, variant, engine.run).then((grade) => {
       if (!current) return
       roomStore.update(id, (latest) => latest.givens === givens && latest.variant === variant ? applyPuzzleGrade(latest, grade) : latest, { derived: true })
     }).catch(() => {
       if (current) setRatingFailed(true)
-    })
-    return () => { current = false }
-  }, [id, givens, draft, needsAttempt, needsRating, variant])
+    }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [id, givens, draft, game.paused, needsAttempt, needsRating, variant])
 
   useEffect(() => {
-    if (draft || solved || !needsSinglesCheck) return
+    if (draft || solved || game.paused || !needsSinglesCheck) return
     let current = true
+    const engine = createEngineSession()
     const check = variant
-      ? solveSingleValues({ variant }, givens).then((board) => board.includes('0'))
-      : runEngine({ type: 'rate', values: givens, techniqueOrder: SINGLE_TECHNIQUES }).then(({ status }) => status === 'stalled')
+      ? solveSingleValues({ variant }, givens, undefined, undefined, engine.run).then((board) => board.includes('0'))
+      : engine.run({ type: 'rate', values: givens, techniqueOrder: SINGLE_TECHNIQUES }).then(({ status }) => status === 'stalled')
     void check.then((needsMore) => {
       if (current) setSinglesCheck({ givens, variant, needsMore })
-    }).catch(() => { /* Leave the action hidden when the starting puzzle cannot be checked. */ })
-    return () => { current = false }
-  }, [draft, givens, needsSinglesCheck, solved, variant])
+    }).catch(() => { /* Leave the action hidden when the starting puzzle cannot be checked. */ }).finally(() => engine.close())
+    return () => { current = false; engine.close() }
+  }, [draft, game.paused, givens, needsSinglesCheck, solved, variant])
 
   useEffect(() => {
-    if (!autoGenerateCandidates || !masks) return
-    updateWorkingGame((current) => current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
+    if (!autoGenerateCandidates || !masks || disabled) return
+    updateWorkingGame((current) => !current.paused && current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
       ? replaceCandidates(current, masks, { recordHistory: false })
       : current)
-  }, [autoGenerateCandidates, givens, masks, updateWorkingGame, values])
+  }, [autoGenerateCandidates, disabled, givens, masks, updateWorkingGame, values])
 
   useEffect(() => {
     let current = true
-    if (draft || solved) return
+    if (draft || solved || game.paused) return
+    const abort = new AbortController()
+    const run: EngineRunner = (request, options) => runEngine(request, {
+      ...options, latestKey: candidateRefreshKey.current, signal: abort.signal,
+    })
 
-    void playCandidates(game).then((masks) => {
+    void playCandidates(game, run).then((masks) => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks })
     }).catch(() => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks: null, failed: true })
     })
 
-    return () => { current = false }
-  }, [id, draft, solved, values, variant, algebraic, sized, variantEliminations, grid])
+    return () => { current = false; abort.abort() }
+  }, [id, draft, solved, game.paused, values, variant, algebraic, sized, variantEliminations, grid])
 
   useLayoutEffect(() => {
     if (wasMobile.current && advancedWorkspace && openPuzzlePanels.length && !showRightPanel) onOpenRightPanel()
@@ -1049,6 +1099,12 @@ export function Worktable({
     }
   }, [])
 
+  const finishCellPaint = useEffectEvent((stroke: CellPaintDrag, canceled: boolean) => {
+    setCellPaintPreview(null)
+    if (canceled || !stroke.moved || stroke.gameId !== id || stroke.color !== cellBrush) return
+    edit((current) => paintCells(current, [...stroke.cells].map(cell => ({ cell, color: stroke.color }))))
+  })
+
   useEffect(() => {
     function finishGridPointer(event: PointerEvent) {
       const press = candidatePress.current
@@ -1057,6 +1113,12 @@ export function Worktable({
         setCandidatePreviewCell(null)
       }
       let suppressClick = false
+      if (cellPaintDrag.current?.pointerId === event.pointerId) {
+        const stroke = cellPaintDrag.current
+        cellPaintDrag.current = null
+        suppressClick = stroke.moved
+        finishCellPaint(stroke, event.type === 'pointercancel')
+      }
       if (dragSelection.current?.pointerId === event.pointerId) {
         suppressClick = dragSelection.current.moved
         dragSelection.current = null
@@ -1092,14 +1154,15 @@ export function Worktable({
   const showSolutionErrors = errorMode === 'all' || errorMode === 'incorrect'
   useEffect(() => {
     let current = true
+    const engine = createEngineSession()
     setSolution(showSolutionErrors ? sized?.solution ?? algebraic?.solution ?? variant?.solution ?? null : null)
-    if (!draft && showSolutionErrors && !variant && !algebraic && !sized) {
-      void (grid ? solveMini(game.givens) : runEngine({ type: 'solve', values: game.givens }))
+    if (!draft && !game.paused && showSolutionErrors && !variant && !algebraic && !sized) {
+      void (grid ? solveMini(game.givens, engine.run) : engine.run({ type: 'solve', values: game.givens }))
         .then((result) => { if (current) setSolution(result) })
-        .catch(() => { /* Checking still works if the solution cannot be loaded. */ })
+        .catch(() => { /* Checking still works if the solution cannot be loaded. */ }).finally(() => engine.close())
     }
-    return () => { current = false }
-  }, [draft, game.givens, showSolutionErrors, variant, algebraic, sized, grid])
+    return () => { current = false; engine.close() }
+  }, [draft, game.givens, game.paused, showSolutionErrors, variant, algebraic, sized, grid])
 
   const errors = useMemo(() => {
     const result = new Set<number>()
@@ -1115,7 +1178,12 @@ export function Worktable({
   }, [conflicts, draft, errorMode, game.position.entries, showSolutionErrors, solution])
 
   const nakedSinglesRequest = useRef(0)
-  useEffect(() => () => { nakedSinglesRequest.current++ }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen])
+  const nakedSinglesAbort = useRef<AbortController | null>(null)
+  useLayoutEffect(() => () => {
+    nakedSinglesRequest.current++
+    nakedSinglesAbort.current?.abort()
+    nakedSinglesAbort.current = null
+  }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen, session])
 
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
@@ -1141,10 +1209,14 @@ export function Worktable({
 
   async function placeNakedSingles(origin: Game) {
     const request = ++nakedSinglesRequest.current
+    nakedSinglesAbort.current?.abort()
+    const abort = new AbortController()
+    nakedSinglesAbort.current = abort
     const entered = valuesOf(origin)
     if (isSolved(origin) || conflictsOf(entered, origin.variant?.puzzle, origin.grid, origin.sized?.rules).size) return
     try {
-      const available = await playCandidates(origin)
+      const run: EngineRunner = (request, options) => runEngine(request, { ...options, signal: abort.signal })
+      const available = await playCandidates(origin, run)
       if (request !== nakedSinglesRequest.current || !available || available.some((mask, cell) => entered[cell] === '0' && !mask)) return
       const placements = available.flatMap((mask, cell) => {
         const digit = entered[cell] === '0' ? onlyCandidate(mask) : null
@@ -1156,22 +1228,23 @@ export function Worktable({
       const filled = result.join('')
       if (conflictsOf(filled, origin.variant?.puzzle, origin.grid, origin.sized?.rules).size) return
       updateWorkingGame((current) => {
-        if (current.paused || current.position !== origin.position) return current
+        if (!canApplyPuzzleResult(origin, current)) return current
         const next = recordAction(current, fillEntries(current, filled, advancedModes.autoRemoveCandidates), 'singles')
         void observeTechniqueActions(current, placements, 'automated')
         return current.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(current.ratingAttempt, 'partial') } : next
       })
     } catch { /* The player's move remains saved if the engine cannot find candidates. */ }
+    finally { if (nakedSinglesAbort.current === abort) nakedSinglesAbort.current = null }
   }
 
-  function setStrongLinkHighlights(mask: SetStateAction<number>) {
+  function setStrongLinkHighlights(mask: number) {
     setSelected([])
     setColorMode(false)
     showDigitHighlights(mask, 'any')
   }
 
   function toggleStrongLinkDigit(digit: number) {
-    setStrongLinkHighlights((mask) => (colorMode || eraseMode ? 0 : mask) ^ (1 << (digit - 1)))
+    setStrongLinkHighlights(strongLinkMask ^ (1 << (digit - 1)))
   }
 
   function selectStrongLinkCandidate(candidate: Candidate) {
@@ -1212,7 +1285,6 @@ export function Worktable({
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected, placeInSelection = false) {
     if (inputMode !== 'color' && digit > gridSize) return
     if (brush !== null && inputMode === 'value') {
-      clearHighlightedDigits()
       highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
     }
@@ -1307,21 +1379,23 @@ export function Worktable({
 
   function chooseColor(color: number) {
     if (!canPaint) return
-    if (sketch.drawing) sketch.suspend()
+    if (brush === color) {
+      setColorBrush(null)
+      return
+    }
     if (colorTarget === 'cell' && selected.length) {
       edit((current) => enter(current, selected, 'color', color))
       setSelected([])
+      setSelectedDigit(coloringDigit)
     }
     changeHintVisuals('player')
-    setColorMode(false)
-    setEraseMode(false)
-    setSelectedDigit(coloringDigit)
-    setSelectedColor(color)
     setColorBrush(color)
   }
 
   function highlightColorDigit(digit: number | null) {
+    if (automaticHighlightMode) setSavedHighlightMode(true)
     setSelected([])
+    clearHighlightedDigits()
     setHighlightCandidatePairs(false)
     setSelectedDigit(digit)
   }
@@ -1331,8 +1405,8 @@ export function Worktable({
     const color = colorMode ? selectedColor : brush
     const alternate = color === null ? null : alternateColorShade(color)
     if (alternate === null) return
-    setSelectedColor(alternate)
-    if (!colorMode) setColorBrush(alternate)
+    if (colorMode) setSelectedColor(alternate)
+    else setColorBrush(alternate)
   }
 
   function setHighlightMode(enabled: boolean) {
@@ -1341,21 +1415,40 @@ export function Worktable({
     setSavedHighlightMode(enabled)
   }
 
+  function leaveChainInput() {
+    if (chainDrawingRequested || startDrawingOnOpen) sketch.suspend()
+    if (showStrongLinks) setShowStrongLinks(false)
+    setStartDrawingOnOpen(false)
+    drawingReturn.current = null
+    if (mobile && activeToolPanel === 'chains') selectToolPanel('digits')
+  }
+
   function toggleHighlightMode() {
     const enable = sketch.drawing || browsingStrongLinks || !highlightMode
+    leaveChainInput()
     if (colorsVisible) setColorBrush(null)
     setEraseMode(false)
     setColorMode(false)
+    setPencilModifier(false)
     setHighlightMode(enable)
   }
 
   function switchPenPencil(pencil: boolean) {
+    leaveChainInput()
     if (colorsVisible) setColorBrush(null)
     setEraseMode(false)
     setColorMode(false)
     setHighlightMode(false)
     setPencilModifier(false)
     setPencil(pencil)
+  }
+
+  function cycleMainInputMode() {
+    const wasHighlighting = mainHighlightMode || (drawingReturn.current?.gameId === id && drawingReturn.current.highlight)
+    if (mobile && (colorsVisible || subsetsVisible)) selectToolPanel('digits')
+    else if (subsetsVisible) closeToolPanel('subsets', true)
+    if (!wasHighlighting && pencil) toggleHighlightMode()
+    else switchPenPencil(!wasHighlighting)
   }
 
   function toggleChainDrawing() {
@@ -1422,8 +1515,8 @@ export function Worktable({
       return
     }
     setActive(index)
-    if (colorTarget === 'cell' && brush !== null && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      edit((current) => enter(current, [index], 'color', brush))
+    if (cellBrush !== null && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      edit((current) => enter(current, [index], 'color', cellBrush))
       setSelected([])
       return
     }
@@ -1475,6 +1568,13 @@ export function Worktable({
     suppressCellClick.current = false
     candidatePress.current = null
     if (desktop && isAltClick(event)) return
+    if (cellBrush !== null) {
+      if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
+        cellPaintDrag.current = { gameId: id, pointerId: event.pointerId, previous: index,
+          cells: new Set([index]), color: cellBrush, moved: false }
+      }
+      return
+    }
     const maskToHighlight = mobile ? cellHighlightMask(index) : 0
     cellHold.start(event, maskToHighlight ? () => highlightCellCandidates(maskToHighlight) : undefined)
     if (highlightMode) {
@@ -1520,6 +1620,22 @@ export function Worktable({
     }
     if (index === null) return
     const pressed = event.pointerType === 'touch' || Boolean(event.buttons & 1)
+    const paint = cellPaintDrag.current
+    if (paint) {
+      if (paint.pointerId !== event.pointerId || !pressed || paint.previous === index || paint.color !== cellBrush) return
+      event.preventDefault()
+      if (!paint.moved) {
+        paint.moved = true
+        setSelected([])
+        boardRef.current?.setPointerCapture(event.pointerId)
+      }
+      paint.cells = new Set([...paint.cells, ...cellsOnDragPath(paint.previous, index, gridSize)])
+      paint.previous = index
+      setActive(index)
+      setAnchor(index)
+      setCellPaintPreview({ gameId: paint.gameId, color: paint.color, cells: paint.cells })
+      return
+    }
     const stroke = candidateDrag.current
     if (stroke) {
       if (stroke.pointerId !== event.pointerId || !pressed || stroke.previous === index ||
@@ -1586,7 +1702,7 @@ export function Worktable({
       const applyEditsShortcut = !event.isComposing && shortcutMatches(event, shortcuts, 'applyEdits')
       const checkboxShortcut = target instanceof HTMLInputElement && target.type === 'checkbox' &&
         (drawLinksShortcut || applyEditsShortcut || ((strongLinksVisible || solvingDigitShortcuts && !sketch.drawing) && digitShortcut !== null))
-      if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || confirmCandidatesOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
       if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
       if (!draft && !placeholder && !previewing && !variantRulesOpen && (mobile || completed || game.started || game.paused) &&
@@ -1625,6 +1741,25 @@ export function Worktable({
         return
       }
       if (previewing) return
+      const historyShortcut = shortcut && (key === 'z' || key === 'y')
+      const redoShortcut = key === 'y' || event.shiftKey
+      if (historyShortcut && (sketch.drawing || browsingStrongLinks ||
+        (chainsVisible && target instanceof HTMLElement && target.closest('.chains-panel')))) {
+        event.preventDefault()
+        if (redoShortcut) sketch.redo()
+        else if (sketch.canUndo) sketch.undo()
+        return
+      }
+      if (!draft && shortcutMatches(event, shortcuts, 'digitMode')) {
+        event.preventDefault()
+        if (!event.repeat) switchPenPencil(false)
+        return
+      }
+      if (!draft && shortcutMatches(event, shortcuts, 'pencilMode')) {
+        event.preventDefault()
+        if (!event.repeat) cycleMainInputMode()
+        return
+      }
       if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved && (canApplyHintEdit || canApplyChainEdits)) {
         event.preventDefault()
         if (event.repeat) return
@@ -1642,14 +1777,22 @@ export function Worktable({
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
       }
-      const highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      const cycleDigit = key === '`' && !shortcut && !event.shiftKey && !event.isComposing &&
+        solvingDigitShortcuts && !variantRulesOpen &&
+        !(target instanceof HTMLElement && target.closest('dialog[open]'))
+      let highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      if (cycleDigit) {
+        event.preventDefault()
+        if (event.repeat) return
+        const current = strongLinksVisible ? onlyCandidate(strongLinkMask)
+          : sketch.drawing ? chainHighlightDigit : selectedDigit ?? onlyCandidate(highlightedDigitMask) ?? coloringDigit
+        highlightedDigit = nextIncompleteDigit(values, current, gridSize)
+        if (highlightedDigit === null) return
+      }
       if (sketch.drawing || browsingStrongLinks) {
         if (cancelTool && browsingStrongLinks) {
           event.preventDefault()
           if (!event.repeat) setShowStrongLinks(false)
-        } else if (shortcut && key === 'z' && !event.shiftKey) {
-          event.preventDefault()
-          if (sketch.canUndo) sketch.undo()
         } else if (strongLinksVisible && digitShortcut) {
           event.preventDefault()
           if (!event.repeat) toggleStrongLinkDigit(digitShortcut)
@@ -1676,8 +1819,10 @@ export function Worktable({
           setActive(index)
         }
         setColorBrush(null)
-        setColorMode(false)
-        if (colorMode) setSelectedColor(null)
+        if (colorMode) {
+          setColorMode(false)
+          setSelectedColor(null)
+        }
         if (mobile && colorsVisible) {
           if (!cell) focusMobileInput.current = true
           selectToolPanel('digits')
@@ -1685,9 +1830,9 @@ export function Worktable({
       } else if (!draft && !event.isComposing && shortcutMatches(event, shortcuts, 'switchColorShade')) {
         event.preventDefault()
         if (!event.repeat) switchColorShade()
-      } else if (shortcut && ['z', 'y'].includes(key)) {
+      } else if (historyShortcut) {
         event.preventDefault()
-        edit(key === 'y' || event.shiftKey ? redo : undo)
+        edit(redoShortcut ? redo : undo)
       } else if (solvingDigitShortcuts && digitShortcut) {
         if (digitShortcut > gridSize) return
         event.preventDefault()
@@ -1700,7 +1845,7 @@ export function Worktable({
         clearHighlightedDigits()
         setHighlightCandidatePairs(false)
         setSelectedDigit(highlightedDigit)
-      } else if (!draft && shortcut && !event.shiftKey && !event.isComposing) {
+      } else if (!draft && brush === null && !colorMode && shortcut && !event.shiftKey && !event.isComposing) {
         if (!shortcutDigit || shortcutDigit > gridSize) return
         const cells = !selected.length && target instanceof HTMLButtonElement &&
           target.matches('[role="gridcell"][data-cell]') && boardRef.current?.contains(target)
@@ -1750,14 +1895,6 @@ export function Worktable({
       } else if (!draft && shortcutMatches(event, shortcuts, 'solveSingles') && !solved && hasSingles && !busy) {
         event.preventDefault()
         void solveAllSingles()
-      } else if (!draft && shortcutMatches(event, shortcuts, 'digitMode')) {
-        event.preventDefault()
-        if (!event.repeat) switchPenPencil(false)
-      } else if (!draft && shortcutMatches(event, shortcuts, 'pencilMode')) {
-        event.preventDefault()
-        if (event.repeat) return
-        if (pencilActive && brush === null) toggleHighlightMode()
-        else switchPenPencil(!highlightMode)
       } else if (!draft && shortcutMatches(event, shortcuts, 'colorMode') && (desktop || mobileToolsAvailable)) {
         event.preventDefault()
         showColors(true)
@@ -1775,23 +1912,22 @@ export function Worktable({
   })
 
   async function runCheck() {
-    if (busy) return
+    if (busy || puzzleTask.current || game.paused || placeholder) return
     if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask()
+    const run = task.engine.run
     setDialogResult(null)
     try {
       if (draftCages && !isAlgebraicCageList(draftCages)) throw new Error('Add at least one cage with a letter before checking.')
       const status = sizedRules?.length && grid
-        ? await runEngine({ type: 'sized-variant', position: sizedRulePosition(grid, { rules: sizedRules }, values), operation: 'analyze' })
-        : cages ? await analyzeAlgebraic({ rules: cages }, values) : grid
-        ? await runEngine({ type: 'sized-classic', position: sizedClassicPosition(grid, values), operation: 'analyze' }) : variant
-        ? await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
-        : await runEngine({ type: 'analyze', values })
-      const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.draftCages !== draftCages || current.position.draftSizedRules !== game.position.draftSizedRules ||
-        current.position.draftRegions !== game.position.draftRegions) return
+        ? await run({ type: 'sized-variant', position: sizedRulePosition(grid, { rules: sizedRules }, values), operation: 'analyze' })
+        : cages ? await analyzeAlgebraic({ rules: cages }, values, run) : grid
+        ? await run({ type: 'sized-classic', position: sizedClassicPosition(grid, values), operation: 'analyze' }) : variant
+        ? await run({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
+        : await run({ type: 'analyze', values })
+      if (!currentTaskGame(task)) return
       if (!draft && status === 'multiple') {
         setDialogResult({ title: 'Puzzle check', text: 'This grid has more than one solution.', tone: 'neutral' })
       } else if (!draft && status !== 'search-limit') {
@@ -1802,46 +1938,54 @@ export function Worktable({
         setDialogResult({ title: 'Puzzle check', ...validation[status] })
       }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       const conflict = error instanceof EngineError && (error.code === 'conflict' || error.code === 'unsolvable')
       setDialogResult({ title: 'Puzzle check', text: conflict ? 'This puzzle is not correct yet.' : (error as Error).message,
         tone: conflict ? 'error' : 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
-  async function generateCandidates() {
-    if (busy) return
+  async function generateCandidates(confirmed = false) {
+    if (busy || puzzleTask.current || solved || disabled) return
+    if (!confirmed && hasCandidates(game.position)) {
+      candidateConfirmationOpener.current = puzzleMenuOpen ? puzzleMenuButtonRef.current
+        : actionsOpen ? actionsMenuButtonRef.current : null
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setConfirmCandidatesOpen(true)
+      return
+    }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask(false, false)
     try {
-      const masks = await playCandidates(game)
-      const current = readWorkingGame()
-      if (!current || current.position !== game.position) return
+      const masks = await playCandidates(game, task.engine.run)
+      if (!currentTaskGame(task)) return
       if (!masks) {
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
         return
       }
-      updateWorkingGame((latest) => latest.position === current.position
+      updateWorkingGame((latest) => canApplyPuzzleResult(task.origin, latest)
         ? recordAction(latest, replaceCandidates(latest, masks), 'candidates') : latest)
     } catch (error) {
+      if (!currentTaskGame(task)) return
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
   async function solveAllSingles() {
-    if (busy || solved || draft || disabled || !hasSingles) return
+    if (busy || puzzleTask.current || solved || draft || disabled || !hasSingles) return
     if (previewing) closeSolutionPath()
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
-    setBusy(true)
+    const task = beginPuzzleTask(false, false)
     try {
-      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined)
-      const current = readWorkingGame()
-      if (!current || valuesOf(current) !== values || current.position.eliminations !== eliminations) return
+      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined, task.engine.run)
+      if (!currentTaskGame(task)) return
       if (result === values) {
         setDialogResult({ title: 'Puzzle action', text: 'There are no singles to solve right now.', tone: 'neutral' })
         return
@@ -1850,7 +1994,7 @@ export function Worktable({
         values[cell] === '0' && (mask & ~displayedCandidates[cell]) !== 0))
       const assistance = values === givens && !removedCandidates && !result.includes('0') ? 'all' : 'partial'
       updateWorkingGame((latest) => {
-        if (valuesOf(latest) !== values || latest.position.eliminations !== eliminations) return latest
+        if (!canApplyPuzzleResult(task.origin, latest)) return latest
         const next = recordAction(latest, fillEntries(latest, result, advancedModes.autoRemoveCandidates), 'singles')
         if (completed) return next
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
@@ -1858,14 +2002,15 @@ export function Worktable({
         return latest.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(latest.ratingAttempt, assistance) } : next
       })
     } catch (error) {
+      if (!currentTaskGame(task)) return
       setDialogResult({ title: 'Puzzle action', text: (error as Error).message, tone: 'neutral' })
     } finally {
-      setBusy(false)
+      finishPuzzleTask(task)
     }
   }
 
   async function showHint(limit: 10 | 'all' = 10) {
-    if (busy || solved) return
+    if (busy || puzzleTask.current || solved || draft || disabled) return
     if (sketch.drawing) sketch.suspend()
     if (mobile) hintReturnFocus.current = actionsMenuButtonRef.current
     if (advancedWorkspace) {
@@ -1876,39 +2021,39 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setHintRevealed(true)
-    setBusy(true)
+    const task = beginPuzzleTask(true)
+    const run = task.engine.run
     const requestId = ++techniqueHintRequest.current
-    let result: HintState
+    let result: HintState | undefined
     const removals = hintEliminations(values, displayedCandidates, eliminations, gridSize)
     try {
       const collection = limit === 'all' && !grid ? ++nextHintCollection : undefined
-      const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection)
+      const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection, run)
       const page = collection === undefined ? undefined : { collection, offset: offset ?? 0, available }
       if (!candidates) throw new Error('Missing hint candidates')
       result = { position: hintPosition, choices, candidates, page, index: 0, stage: 'technique' }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       const incorrectCandidates = error instanceof EngineError && (error.code === 'invalid-eliminations' ||
         (error.code === 'unsolvable' && variant && [...values].every((digit, cell) => digit === '0' || digit === variant.solution[cell])))
       const copy = incorrectCandidates ? HINT_CANDIDATES_ERROR : HINT_ERROR
       result = { position: hintPosition, choices: [], index: 0, stage: 'technique', error: copy }
       if (incorrectCandidates && removals) {
         try {
-          const answer = sized?.solution ?? algebraic?.solution ?? (grid ? await solveMini(values) : variant ? await runEngine({
+          const answer = sized?.solution ?? algebraic?.solution ?? (grid ? await solveMini(values, run) : variant ? await run({
             type: 'variant', operation: 'solve', position: { puzzle: variant.puzzle, entries: game.position.entries },
-          }) : await runEngine({ type: 'solve', values }))
+          }) : await run({ type: 'solve', values }))
           if (answer) result.recovery = findCandidateRecovery(game, answer, removals)
         } catch { /* Keep the general candidate warning if recovery cannot be verified. */ }
       }
     } finally {
-      setBusy(false)
+      if (result && requestId === techniqueHintRequest.current && currentTaskGame(task)) setHint(result)
+      finishPuzzleTask(task, Boolean(result?.page && currentTaskGame(task)))
     }
-    const current = readWorkingGame()
-    if (requestId === techniqueHintRequest.current && current && matchesHintPosition(current, hintPosition)) setHint(result)
-    else if (result.page) void runEngine({ type: 'release-hints', collection: result.page.collection }).catch(() => {})
   }
 
   async function showTechniqueHints(technique: string) {
-    if (game.paused || busy || solved || draft) return
+    if (disabled || busy || puzzleTask.current || solved || draft) return
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     if (sketch.drawing) sketch.suspend()
@@ -1917,30 +2062,30 @@ export function Worktable({
       if (!showBottomPanel) onOpenHintPanel()
       setFocusHintRequest((request) => request + 1)
     }
-    const request = ++techniqueHintRequest.current
     const position = hintPosition
     setHint(null)
     setHintRevealed(true)
-    setBusy(true)
-    let result: HintState
+    const task = beginPuzzleTask(true)
+    const request = ++techniqueHintRequest.current
+    let result: HintState | undefined
     try {
-      const { choices, candidates } = await puzzleHints(game, 'all', technique)
+      const { choices, candidates } = await puzzleHints(game, 'all', technique, undefined, task.engine.run)
       if (!candidates) throw new Error('Missing candidates for the selected technique.')
       result = {
         position, choices, candidates, index: 0, stage: 'technique',
         ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
       }
     } catch (error) {
+      if (!currentTaskGame(task)) return
       result = {
         position, choices: [], index: 0, stage: 'technique',
         error: error instanceof EngineError && error.code === 'invalid-eliminations'
           ? HINT_CANDIDATES_ERROR : HINT_ERROR,
       }
     } finally {
-      setBusy(false)
+      if (result && request === techniqueHintRequest.current && currentTaskGame(task)) setHint(result)
+      finishPuzzleTask(task)
     }
-    const latest = readWorkingGame()
-    if (request === techniqueHintRequest.current && latest && matchesHintPosition(latest, position)) setHint(result)
   }
 
   async function moveHint(offset: -1 | 1) {
@@ -1953,13 +2098,15 @@ export function Worktable({
       setHint(current => current === visibleHint ? { ...current, index, stage: 'technique' } : current)
       return
     }
+    const engine = hintEngine.current
+    if (!engine) return
     try {
-      const next = await puzzleHintPage(variant, page.collection, index)
-      if (request !== pageRequest.current) return
+      const next = await puzzleHintPage(variant, page.collection, index, engine.run)
+      if (request !== pageRequest.current || hintEngine.current !== engine) return
       setHint(current => current?.page?.collection === page.collection
         ? { ...current, choices: next.choices, page: { ...page, offset: next.offset }, index, stage: 'technique' } : current)
     } catch (error) {
-      if (request === pageRequest.current) setHint(current => current?.page?.collection === page.collection
+      if (request === pageRequest.current && hintEngine.current === engine) setHint(current => current?.page?.collection === page.collection
         ? { ...current, choices: [], page: undefined, index: 0, error: { title: 'Could not load hint', text: (error as Error).message } }
         : current)
     }
@@ -2068,10 +2215,6 @@ export function Worktable({
   const applyHintAction = solutionHintPanel ? undefined
     : recovery ? { label: 'Restore candidate', onClick: applyCandidateRecovery }
       : deduction && hintCandidates ? { label: 'Apply hint', onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) } : undefined
-  const revealLabel = hintStage === 'technique' ? recovery ? 'Show cell' : 'Show digits'
-    : hintStage === 'digits' ? aicEndpoints(deduction) ? 'Show endpoints' : 'Show location'
-      : 'Show explanation'
-  const hintAction = applyHintAction && (fullHint ? applyHintAction : { label: revealLabel, onClick: () => changeHintDetail(1) })
   const closeHint = () => solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false)
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
@@ -2091,10 +2234,11 @@ export function Worktable({
           visible: !playerVisualsSelected,
           onToggle: () => changeHintVisuals(playerVisualsSelected ? 'hint' : 'player'),
         } : undefined}
-        action={hintAction}
-        lessDetail={applyHintAction ? { disabled: hintStage === 'technique', onClick: () => changeHintDetail(-1) } : undefined}
-        secondaryAction={!solutionHintPanel && recoveryLocationVisible && recovery.movesAgo
-          ? { label: 'Review move', expanded: visibleHint?.reviewingRemoval ?? false,
+        reserveVisuals={Boolean(applyHintAction && !disabled && !solved)}
+        action={applyHintAction}
+        detailNavigation={applyHintAction ? { first: hintStage === 'technique', last: fullHint, onMove: changeHintDetail } : undefined}
+        secondaryAction={!solutionHintPanel && recovery?.movesAgo
+          ? { label: 'Review move', reserved: !recoveryLocationVisible, expanded: visibleHint?.reviewingRemoval ?? false,
             onClick: () => setHint((current) => current?.recovery ? { ...current, reviewingRemoval: !current.reviewingRemoval } : current) }
           : undefined}
         explanation={recoveryExplanation ?? (explanation?.description
@@ -2344,6 +2488,7 @@ export function Worktable({
               else if (browsingStrongLinks) setShowStrongLinks(false)
               return
             }
+            leaveChainInput()
             if (inspectSubset) {
               setSelected([])
               selectToolPanel('digits')
@@ -2355,8 +2500,8 @@ export function Worktable({
             if (badgeMode === 'pen') setPencil(true)
             setHighlightMode(badgeMode === 'pencil')
           }} />
-  const showPlayerColors = colorsPanelOpen || colorMode
-  const visibleChainAnnotations = chainsPanelOpen && !hintAnnotations && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
+  const showPlayerColors = !hintVisualsActive && (colorsPanelOpen || colorMode)
+  const visibleChainAnnotations = chainsPanelOpen && !hintVisualsActive && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
     ? sketch.annotations : undefined
   const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const solutionGrid = (
@@ -2382,26 +2527,26 @@ export function Worktable({
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
   ) : (
-    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : game.position} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
       showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors}
-      candidatePreview={!inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
+      candidatePreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
       modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
       modeBadge={modeBadge}
       label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
-      highlighting={hintAnnotations || inspectSubset ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
+      highlighting={hintVisualsActive || inspectSubset ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
-      highlightedDigit={inspectSubset ? null : selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)}
-      highlightedDigitMask={hintAnnotations || inspectSubset ? 0 : playerHighlightMask}
+      highlightedDigit={hintVisualsActive || inspectSubset ? null : selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)}
+      highlightedDigitMask={hintVisualsActive || inspectSubset ? 0 : playerHighlightMask}
       highlightedDigitMatch={digitHighlight.match}
-      highlightCandidateCells={!colorMode && !eraseMode && brush === null}
+      highlightCandidateCells={!eraseMode}
       selected={inspectSubset ? subset.cells : selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
-      highlightCandidateCount={!hintAnnotations && !inspectSubset && highlightCandidatePairs ? 2 : null}
+      highlightCandidateCount={!hintVisualsActive && !inspectSubset && highlightCandidatePairs ? 2 : null}
       boardRef={boardRef} onCell={inspectSubset ? (cell) => {
         setActive(cell)
         if (values[cell] !== '0') return
@@ -2410,7 +2555,7 @@ export function Worktable({
       } : canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}
       onPaintCandidate={paintingCandidates && !inspectSubset ? colorCandidate : undefined}
-      dragSelect={canSelectCell && !inspectSubset && (highlightMode || canDragCandidates)}
+      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || highlightMode || canDragCandidates)}
       onCellPointerDown={canSelectCell && !paintingCandidates && !inspectSubset ? startCellDrag : undefined}
       onCellPointerMove={canSelectCell && !paintingCandidates && !inspectSubset ? continueCellDrag : undefined}
       onGridPointerLeave={() => {
@@ -2581,7 +2726,7 @@ export function Worktable({
       </>
     )}
   </div>
-  const puzzleStage = <div key="grid" id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}${colorTarget === 'cell' && brush !== null ? ' cell-coloring' : ''}`}
+  const puzzleStage = <div key="grid" id={puzzleStageId} ref={puzzleStageRef} data-no-panel-hold={mobile || undefined} className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}`}
     onContextMenu={(event) => { if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event) }} onPointerUp={finishControlClick}
     onBlur={(event) => {
       const cell = event.target.dataset.cell
@@ -2627,7 +2772,7 @@ export function Worktable({
   )
   const inputPanel = (
       <div ref={inputRef} className="workspace-controls" data-show-completion={showMobileResults || undefined}>
-        <Controls gridSize={gridSize} mode={mode} pencil={pencilActive} togglePencil={() => switchPenPencil(!savedPencil)}
+        <Controls gridSize={gridSize} mode={mode} pencil={pencilActive} togglePencil={() => switchPenPencil(gridInputMode !== 'pencil')}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={mobile ? () => {
             if (colorsVisible) setColorBrush(null)
@@ -2757,12 +2902,14 @@ export function Worktable({
           }),
           hintSwipe: mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined,
           blocked: Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || chainColorsOpen ||
-            dialogResult !== null || resetOpen || cancelDraftOpen,
+            dialogResult !== null || resetOpen || confirmCandidatesOpen || cancelDraftOpen,
           onRearrangingChange: active => {
             setMobileRearranging(active)
             if (!active) return
-            const pointerId = candidateDrag.current?.pointerId ?? dragSelection.current?.pointerId
+            const pointerId = cellPaintDrag.current?.pointerId ?? candidateDrag.current?.pointerId ?? dragSelection.current?.pointerId
             candidateDrag.current = null
+            cellPaintDrag.current = null
+            setCellPaintPreview(null)
             dragSelection.current = null
             pendingDoubleClickSingle.current = null
             if (pointerId !== undefined && boardRef.current?.hasPointerCapture(pointerId)) boardRef.current.releasePointerCapture(pointerId)
@@ -2814,6 +2961,17 @@ export function Worktable({
         </div>
       </Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
+      <Modal title="Generate candidates?" open={confirmCandidatesOpen} onClose={() => setConfirmCandidatesOpen(false)}
+        returnFocus={() => candidateConfirmationOpener.current}>
+        <p>Generating candidates will replace the candidates already in the grid. You can undo this change.</p>
+        <div className="dialog-actions">
+          <Button onClick={() => setConfirmCandidatesOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={() => {
+            setConfirmCandidatesOpen(false)
+            void generateCandidates(true)
+          }}>Generate candidates</Button>
+        </div>
+      </Modal>
       <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
         <p>{completed || game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
           : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>

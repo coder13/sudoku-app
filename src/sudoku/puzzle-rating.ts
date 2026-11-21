@@ -5,10 +5,10 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 
 export type PuzzleGrade = RatingAttempt['grade']
 
-export async function ratePuzzle(givens: string, variant?: Game['variant']): Promise<PuzzleGrade | null> {
+export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine): Promise<PuzzleGrade | null> {
   const rating = variant
-    ? await runEngine({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder() })
-    : await runEngine({ type: 'rate', values: givens, techniqueOrder: (await runEngine({ type: 'techniques' })).difficultyOrder })
+    ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder() })
+    : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })
   if (rating.status === 'stalled') return null
   return {
     difficulty: rating.status.solved, points: 'score' in rating ? rating.score.points : rating.points,

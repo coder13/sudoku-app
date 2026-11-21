@@ -1,16 +1,27 @@
-import { type PointerEvent, useLayoutEffect, useRef } from 'react'
+import { type PointerEvent, useLayoutEffect, useRef, useState } from 'react'
 import { mobileInputResizeBudget, mobilePreviewGridWidth, mobileResizedPuzzleHeight } from '../sudoku/mobile-input-sizing'
+
+import { Button } from './Button'
+import { Modal } from './Modal'
+import { RESIZE_STEP, ResizeStepControls } from './ResizeStepControls'
 
 const MIN_GRID_WIDTH = 180
 const MIN_GRID_WIDTH_WITH_HINT = 130
 const MIN_SCROLLABLE_INPUT_HEIGHT = 44
-const KEYBOARD_STEP = 24
 const DOUBLE_TAP_MS = 350
 const TAP_MOVE_LIMIT = 6
 const DOUBLE_TAP_DISTANCE = 24
 
 type Split = { input: number; total: number; chrome: number; naturalPuzzle: number; minPuzzle: number; min: number; max: number }
-type BoardPreview = { viewport: HTMLElement; content: HTMLElement; width: number; height: number; maxWidth: number }
+type StyleSnapshot = { element: HTMLElement; properties: { name: string; value: string; priority: string }[] }
+type BoardPreview = {
+  viewport: HTMLElement
+  content: HTMLElement
+  width: number
+  height: number
+  maxWidth: number
+  styles: StyleSnapshot[]
+}
 type Tap = { time: number; x: number; y: number; pointerType: string }
 type Drag = {
   pointerId: number
@@ -47,13 +58,10 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const minGrid = withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH
   const minPuzzle = Math.min(naturalPuzzle, chrome + minGrid)
   const workspace = layout.parentElement
-  // Only the portrait stack has flex spacers. The fixed middle gap and the
-  // puzzle's badge gutter must not count as available resize space.
-  const verticalStack = !withHint && workspace && getComputedStyle(workspace).display === 'flex' &&
-    getComputedStyle(workspace).flexDirection === 'column'
-  const unusedSpace = verticalStack
-    ? [...layout.querySelectorAll<HTMLElement>('.mobile-panel-space:not(.mobile-panel-gap)')]
-      .reduce((total, space) => total + Math.max(0, blockSize(space) || 0), 0) : 0
+  const gap = layout.querySelector<HTMLElement>('.mobile-panel-gap')
+  const gapStyle = gap && getComputedStyle(gap)
+  const unusedSpace = !withHint && workspace && getComputedStyle(workspace).display === 'flex' && gapStyle && gap
+    ? Math.max(0, blockSize(gap) - (parseFloat(gapStyle.flexBasis) || 0)) : 0
   const total = mobileInputResizeBudget(height, puzzleHeight, unusedSpace)
   const keypadHeight = blockSize(keypad)
   const minBody = withHint ? Math.min(MIN_SCROLLABLE_INPUT_HEIGHT, keypadHeight) : keypadHeight
@@ -87,24 +95,32 @@ function previewBoard(layout: HTMLElement): BoardPreview | null {
     ? column.clientWidth - parseFloat(columnStyle.paddingInlineStart) - parseFloat(columnStyle.paddingInlineEnd)
     : viewport.parentElement.clientWidth
   const maxWidth = Math.max(width, Math.min(columnWidth, inputPanel?.clientWidth ?? columnWidth))
+  const remember = (element: HTMLElement, names: string[]): StyleSnapshot => ({
+    element, properties: names.map(name => ({ name, value: element.style.getPropertyValue(name), priority: element.style.getPropertyPriority(name) })),
+  })
+  const styles = [
+    remember(viewport, ['height']), remember(content, ['width', 'height', 'scale']),
+  ]
   // Keep the grid's layout fixed while its viewport and both cards follow the pointer.
   viewport.style.height = `${height}px`
   content.style.width = `${width}px`
   content.style.height = `${height}px`
   viewport.setAttribute('data-resize-preview', '')
-  return { viewport, content, width, height, maxWidth }
+  return { viewport, content, width, height, maxWidth, styles }
 }
 
 function clearBoardPreview(board: BoardPreview | null) {
   if (!board) return
   board.viewport.removeAttribute('data-resize-preview')
-  board.viewport.style.removeProperty('height')
-  board.content.style.removeProperty('width')
-  board.content.style.removeProperty('height')
-  board.content.style.removeProperty('scale')
+  for (const { element, properties } of board.styles) for (const { name, value, priority } of properties) {
+    if (value) element.style.setProperty(name, value, priority)
+    else element.style.removeProperty(name)
+  }
 }
 
 function applySplit(layout: HTMLElement, split: Split, height: number, board?: BoardPreview | null) {
+  // Keep the outer cards current throughout the gesture. The content's CSS
+  // boundary stops these sizing values from invalidating every grid mark.
   layout.toggleAttribute('data-input-sized', true)
   layout.style.setProperty('--mobile-resized-input-height', `${height}px`)
   const puzzleHeight = mobileResizedPuzzleHeight(split.total, height, split.naturalPuzzle, split.minPuzzle)
@@ -157,6 +173,16 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
   const drag = useRef<Drag | null>(null)
   const lastTap = useRef<Tap | null>(null)
   const preferredHeight = useRef(savedHeight)
+  const optionsTimer = useRef<number | null>(null)
+  const suppressClick = useRef(false)
+  const [options, setOptions] = useState<Pick<Split, 'input' | 'min' | 'max'> | null>(null)
+
+  function cancelSizeOptions() {
+    if (optionsTimer.current === null) return
+    window.clearTimeout(optionsTimer.current)
+    optionsTimer.current = null
+  }
+
 
   function getLayout() { return handle.current?.closest<HTMLElement>('.mobile-panel-layout') }
 
@@ -164,6 +190,8 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     handle.current?.setAttribute('aria-valuemin', String(Math.round(split.min)))
     handle.current?.setAttribute('aria-valuemax', String(Math.round(split.max)))
     handle.current?.setAttribute('aria-valuenow', String(Math.round(height)))
+    setOptions(current => current && (current.input !== height || current.min !== split.min || current.max !== split.max
+      ? { input: height, min: split.min, max: split.max } : current))
   }
 
   function updateHeight(layout: HTMLElement, split: Split, height: number) {
@@ -176,6 +204,26 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     preferredHeight.current = height
     updateHeight(layout, split, height)
     onHeightChange?.(height)
+  }
+
+  function openSizeOptions() {
+    const layout = getLayout()
+    const split = layout && measureSplit(layout, withHint)
+    if (split) setOptions({ input: split.input, min: split.min, max: split.max })
+  }
+
+  function adjustSize(change: number | 'reset' | 'maximum') {
+    const layout = getLayout()
+    if (disabled || !layout || drag.current) return
+    if (change === 'reset') {
+      preferredHeight.current = undefined
+      clearSplit(layout)
+      onHeightChange?.(undefined)
+    }
+    const split = measureSplit(layout, withHint)
+    if (!split) return
+    if (change === 'reset') { describe(split); return }
+    commitHeight(layout, split, change === 'maximum' ? split.max : clampHeight(split, split.input + change))
   }
 
   function fitInput(layout: HTMLElement) {
@@ -209,6 +257,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     preferredHeight.current = savedHeight
     const fitToLayout = () => {
       stopResize()
+      cancelSizeOptions()
       lastTap.current = null
       clearSplit(layout)
       const split = measureSplit(layout, withHint)
@@ -233,6 +282,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', fitToLayout)
+      cancelSizeOptions()
       stopResize()
       clearSplit(layout)
     }
@@ -257,10 +307,13 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
   }, [savedHeight])
 
   useLayoutEffect(() => {
-    if (disabled) lastTap.current = null
+    if (!disabled) return
+    lastTap.current = null
+    cancelSizeOptions()
+    setOptions(null)
     const current = drag.current
     const layout = getLayout()
-    if (!disabled || !current || !layout) return
+    if (!current || !layout) return
     stopResize()
     restoreHeight(layout, current.split)
   }, [disabled])
@@ -272,6 +325,8 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
 
   function startResize(event: PointerEvent<HTMLDivElement>) {
     if (disabled || !event.isPrimary || event.button !== 0 || drag.current) return
+    cancelSizeOptions()
+    suppressClick.current = false
     const layout = getLayout()
     const split = layout && measureSplit(layout, withHint)
     if (!layout || !split || split.min === split.max) return
@@ -306,6 +361,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     if (current?.pointerId !== event.pointerId) return
     const { layout } = current
     const moved = current.moved || movedFromStart(current, event)
+    suppressClick.current = moved || !commit
     const height = commit && moved ? heightAtPointer(current, event.clientY) : current.split.input
     stopResize()
     if (height !== current.split.input) commitHeight(layout, current.split, height)
@@ -316,41 +372,51 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     if (!commit || moved || event.timeStamp - current.startedAt > DOUBLE_TAP_MS) return
     const tap = { time: event.timeStamp, x: event.clientX, y: event.clientY, pointerType: event.pointerType }
     if (previous && tap.pointerType === previous.pointerType && tap.time - previous.time <= DOUBLE_TAP_MS &&
-      Math.hypot(tap.x - previous.x, tap.y - previous.y) <= DOUBLE_TAP_DISTANCE) fitInput(layout)
+      Math.hypot(tap.x - previous.x, tap.y - previous.y) <= DOUBLE_TAP_DISTANCE) {
+      suppressClick.current = true
+      fitInput(layout)
+    }
     else lastTap.current = tap
   }
 
-  return <div ref={handle} className="mobile-input-resize" role="separator" aria-orientation="horizontal"
+  return <><div ref={handle} className="mobile-input-resize" role="separator" aria-orientation="horizontal"
     aria-label="Resize puzzle and input panels" aria-controls={inputId}
-    aria-keyshortcuts="Enter Space" title="Double-tap or press Enter to fit the input panel"
+    aria-haspopup="dialog" aria-keyshortcuts="Enter Space Shift+Enter" title="Tap for size options. Double-tap to fit."
     aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : 0} data-no-panel-hold
     onPointerDown={startResize} onPointerMove={moveResize}
     onPointerUp={(event) => finishResize(event, true)}
     onPointerCancel={(event) => finishResize(event, false)}
     onLostPointerCapture={(event) => finishResize(event, false)}
+    onClick={event => {
+      if (disabled || suppressClick.current) return
+      cancelSizeOptions()
+      if (event.detail === 0) openSizeOptions()
+      else optionsTimer.current = window.setTimeout(() => {
+        optionsTimer.current = null
+        openSizeOptions()
+      }, DOUBLE_TAP_MS)
+    }}
     onKeyDown={(event) => {
       const layout = getLayout()
       if (disabled || !layout || drag.current || !['ArrowUp', 'ArrowDown', 'Home', 'End', 'Enter', ' '].includes(event.key)) return
       event.preventDefault()
       event.stopPropagation()
       lastTap.current = null
+      cancelSizeOptions()
+      if (event.key === 'Enter' && event.shiftKey) { openSizeOptions(); return }
       if (event.key === 'Enter' || event.key === ' ') {
         if (!event.repeat) fitInput(layout)
         return
       }
-      if (event.key === 'Home') {
-        preferredHeight.current = undefined
-        clearSplit(layout)
-        onHeightChange?.(undefined)
-      }
-      const split = measureSplit(layout, withHint)
-      if (!split) return
-      if (event.key === 'Home') {
-        describe(split)
-        return
-      }
-      const height = event.key === 'End' ? split.max
-        : clampHeight(split, split.input + (event.key === 'ArrowUp' ? -1 : 1) * direction * KEYBOARD_STEP)
-      commitHeight(layout, split, height)
+      if (event.key === 'Home') adjustSize('reset')
+      else if (event.key === 'End') adjustSize('maximum')
+      else adjustSize(direction * (event.key === 'ArrowUp' ? -RESIZE_STEP : RESIZE_STEP))
     }} />
+    <Modal title="Resize input panel" className="resize-options-dialog" open={options !== null}
+      onClose={() => setOptions(null)} returnFocus={() => handle.current}>
+      <ResizeStepControls axis="height" onStep={adjustSize} atMin={Boolean(options && options.input <= options.min)}
+        atMax={Boolean(options && options.input >= options.max)} />
+      <Button className="resize-options-reset" onClick={() => adjustSize('reset')}>Reset size</Button>
+    </Modal>
+  </>
 }

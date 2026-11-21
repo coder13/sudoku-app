@@ -194,7 +194,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
       const [only] = chosen
       if (!negative.size && chosen.size === 1 && Object.hasOwn(variantSeeds, only) && only !== 'whispers') {
         const family = only as keyof typeof variantSeeds
-        if (variantSeeds[family][difficulty]?.length) return generatePlayableVariant(family, difficulty, seed, games, { generate: run })
+        if (variantSeeds[family][difficulty]?.length) return generatePlayableVariant(family, difficulty, seed, games, undefined, run)
       }
 
       const random = randomFor(seed)
