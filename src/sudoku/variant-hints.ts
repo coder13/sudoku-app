@@ -938,7 +938,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       description = `Try ${count} for ${digit} that fit every house and all matching cells. Carry each layout through the other clues and keep matching cells equal at each step.`
       const removal = `${target.digit} in ${nameCell(target.cell)}`
       reason = cases.length === 1 ? `The layout rules out ${removal}.` : `Every layout rules out ${removal}.`
-      const digits = (mask: number) => alternatives.format(DIGITS.filter(value => mask & (1 << (value - 1))).map(String))
+      const removedDigits = (mask: number) => conjunction.format(DIGITS.filter(value => mask & (1 << (value - 1))).map(String))
       trace = cases.map(({ cells, checks, contradicted }) => ({
         assumption: `Place ${digit} in ${conjunction.format(cells.map(nameCell))}.`,
         steps: checks.map(check => {
@@ -948,9 +948,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
             type: 'constraint', cells: check.cells, domains: check.domains, rules: check.scope.rules,
           }, puzzle, nameCell, []).description + ' ' : ''
           if (check.supported.every(mask => mask === 0)) return `${rule}No assignment fits ${scope}.`
-          const changes = check.cells.flatMap((cell, index) => check.supported[index] === check.domains[index]
-            ? [] : [`${nameCell(cell)} can use only ${digits(check.supported[index])}`])
-          return `${rule}In ${scope}, ${conjunction.format(changes)}.`
+          const changes = new Map<number, string[]>()
+          check.cells.forEach((cell, index) => {
+            const removed = check.domains[index] & ~check.supported[index]
+            if (removed) changes.set(removed, [...(changes.get(removed) ?? []), nameCell(cell)])
+          })
+          const updates = conjunction.format([...changes].map(([mask, places]) =>
+            `${removedDigits(mask)} from ${conjunction.format(places)}`))
+          return rule ? `${rule}Remove ${updates}.` : `In ${scope}, remove ${updates}.`
         }),
         conclusion: contradicted ? 'This layout leads to a contradiction.' : `This layout rules out ${removal}.`,
       }))
