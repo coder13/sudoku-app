@@ -138,7 +138,7 @@ impl SquareTransform {
 
     fn puzzle(self, puzzle: &mut VariantPuzzle) {
         puzzle.givens = self.grid(puzzle.givens);
-        if let RegionLayout::Jigsaw { regions } = &mut puzzle.regions {
+        if let RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } = &mut puzzle.regions {
             for region in &mut *regions {
                 self.unordered(region);
             }

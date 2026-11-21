@@ -211,7 +211,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows' | 'partial-regions'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -429,7 +429,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
   const reviewedArtwork = await readReviewedCoachArtwork(code, constraints)
-  const regions = readRegions(data.regions)
+  let regions: VariantPuzzle['regions'] = Array.isArray(data.regions) && data.regions.length === 0
+    ? { type: 'partial', regions: [] } : readRegions(data.regions)
+  if (publication?.authoredRule === 'partial-regions' && !reviewedArtwork?.partialRegions) {
+    throw new Error('The export does not match its published region outlines.')
+  }
   const guideLayers = constraints.every(layer => record(layer) &&
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
@@ -439,7 +443,13 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const rawQuadArrows = !publication && encodedRules.some(layer => record(layer) && layer.type === 'quadruple') &&
     await isReviewedQuadArrowsExport(code)
   const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
-  const rules = readCoachRules(encodedRules, { regions, authoredRule })
+  let rules = readCoachRules(encodedRules, { regions, authoredRule })
+  if (reviewedArtwork?.partialRegions) {
+    const marked = rules.filter(rule => rule.type === 'extra-house')
+    if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')
+    regions = { type: 'partial', regions: marked.map(rule => [...rule.cells].sort((a, b) => a - b)) }
+    rules = rules.filter(rule => rule.type !== 'extra-house')
+  }
   if (authoredRule === 'quad-arrows' && !rules.some(rule => rule.type === 'quadruple-sum')) {
     throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
   }
@@ -1209,7 +1219,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', path: strin
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' ||
-        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows') && { authoredRule: coach.authoredRule }),
+        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows' || coach.authoredRule === 'partial-regions') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }

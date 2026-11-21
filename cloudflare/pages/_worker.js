@@ -112,6 +112,8 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['FLAb', '90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936'],
+  ['FWUv', '64d94be814557c8b9e2445e0e6e9118ce7888ae6f0f41a0a2a2ca7d7f4294748'],
   ['7kvK', '3fc5d6fdf1da8e5517863b670de7ef743337ee7a9e5d6294f00edcca0c464244'],
   ['DhdV', '7b2a040b11cd623b995c7e2b78d54a0b9aaa0e48ef55b8edaf467d31d2665c2c'],
   ['HBLt', '371fca2c0cf0997409743bb24497229297638d2632e921ba99f062e915f2c07f'],
@@ -151,7 +153,10 @@ async function coachPublication(puzzle, id, code) {
   // This publication explains its encoded Renban halves and uses colours to select mirrored pairs.
   const mirroredRenbans = !puzzle.custom_constraints && id === 'Ksy3' &&
     await digest(lines.join('\n')) === 'c5728dc0b34fdb26456e7f7e0ed449cce6c6a0ccfb468fb83880660514f75801'
-  const authoredRule = coachAuthoredRule(lines) ?? (colouredLines ? 'line-colours'
+  const partialRegions = puzzle.custom_constraints && id === 'JDv2' &&
+    await digest(code) === '349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a' &&
+    await digest(lines.join('\n')) === 'f9ab780aef148150727d073d5cfeb733e2211ad162a2a50e9cb9ac1115af2fc6'
+  const authoredRule = coachAuthoredRule(lines) ?? (partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
     : mirroredRenbans ? 'mirrored-renban' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
@@ -287,13 +292,14 @@ function jigsawGrid(value) {
   if (size !== 5 && size !== 7) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
-  return value.regions.every(part => {
-    const connected = new Set([part[0]])
-    for (const cell of connected) {
-      for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
-    }
-    return connected.size === size
-  })
+  return value.regions.every(part => connectedRegion(part, size))
+}
+function connectedRegion(part, size) {
+  const connected = new Set([part[0]])
+  for (const cell of connected) {
+    for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
+  }
+  return connected.size === size
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
 const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
@@ -381,7 +387,10 @@ const artworkCorner = list(integer(0, 9), 2, 2)
 const artworkCenter = list(value => typeof value === 'number' && value >= .5 && value <= 8.5 && Number.isInteger(value - .5), 2, 2)
 const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
   points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
+const artworkDivider = points => list(artworkCorner, 2, 128)(points) &&
+  points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1]))
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
+  fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
     color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }), 1, 81)
 const pairs = list(list(cell, 2, 2), 0)
@@ -389,7 +398,9 @@ const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
-  fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) })
+  fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) ||
+  (fields(value, { type: oneOf('partial'), regions: list(uniqueCells(9, 9), 0, 9) }) &&
+    new Set(value.regions.flat()).size === 9 * value.regions.length && value.regions.every(part => connectedRegion(part, 9)))
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
 const quadruple = [{ topLeft: value => cell(value) && value < 72 && value % 9 < 8, digits: list(integer(1, 9), 1, 4) }]

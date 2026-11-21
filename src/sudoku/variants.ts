@@ -203,6 +203,10 @@ const cells = Array.from({ length: 9 }, (_, i) => i)
 const mainDiagonal = cells.map((i) => i * 10)
 const antiDiagonal = cells.map((i) => i * 8 + 8)
 
+export function hasAuthoredRegions(regions: VariantPuzzle['regions']): regions is Extract<VariantPuzzle['regions'], { type: 'jigsaw' | 'partial' }> {
+  return regions?.type === 'jigsaw' || regions?.type === 'partial'
+}
+
 export function regionMembership(regions: readonly (readonly number[])[]) {
   const membership = new Array<number>(81)
   regions.forEach((region, index) => region.forEach((cell) => { membership[cell] = index }))
@@ -217,7 +221,7 @@ export function variantHouseCells(house: VariantHouse, puzzle: VariantPuzzle): r
     const rule = puzzle.rules?.[house.extra]
     return rule?.type === 'extra-house' ? rule.cells : []
   }
-  if (puzzle.regions?.type === 'jigsaw') return puzzle.regions.regions[house.region]
+  if (hasAuthoredRegions(puzzle.regions)) return puzzle.regions.regions[house.region] ?? []
   const top = Math.floor(house.region / 3) * 27 + (house.region % 3) * 3
   return cells.map((i) => top + Math.floor(i / 3) * 9 + i % 3)
 }
@@ -251,13 +255,15 @@ export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
   if ('row' in house) return `row ${house.row + 1}`
   if ('column' in house) return `column ${house.column + 1}`
   if ('diagonal' in house) return house.diagonal === 'main' ? 'top-left to bottom-right diagonal' : 'top-right to bottom-left diagonal'
-  if ('region' in house) return `${puzzle.regions?.type === 'jigsaw' ? 'region' : 'box'} ${house.region + 1}`
+  if ('region' in house) return `${hasAuthoredRegions(puzzle.regions) ? 'region' : 'box'} ${house.region + 1}`
   return extraRegionName(puzzle.rules ?? [], house.extra)
 }
 
 export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
   const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
-  const houses: VariantHouse[] = cells.flatMap((i) => [{ row: i }, { column: i }, { region: i }])
+  const houses: VariantHouse[] = cells.flatMap(i => [{ row: i }, { column: i }])
+  const regionCount = hasAuthoredRegions(puzzle.regions) ? puzzle.regions.regions.length : 9
+  for (let i = 0; i < regionCount; i++) houses.push({ region: i })
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
     if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
     if (rule.type === 'extra-house') houses.push({ extra: index })
@@ -444,9 +450,10 @@ function validCells(list: unknown, min: number) {
     new Set(list).size === list.length && list.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < 81)
 }
 
-function validJigsawRegions(regions: unknown): boolean {
-  if (!Array.isArray(regions) || regions.length !== 9 ||
-    !regions.every((region) => validCells(region, 9) && region.length === 9) || new Set(regions.flat()).size !== 81) return false
+function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
+  if (!Array.isArray(regions) || regions.length > 9 || !partial && regions.length !== 9 ||
+    !regions.every((region) => validCells(region, 9) && region.length === 9) ||
+    new Set(regions.flat()).size !== 9 * regions.length) return false
   return regions.every((region: number[]) => {
     const reached = new Set([region[0]])
     for (const cell of reached) {
@@ -540,6 +547,7 @@ function isPlayableRule(rule: VariantRule): boolean {
 /** Identify a named recipe when all rules belong to that variant. */
 export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
   const rules = puzzle.rules ?? []
+  if (puzzle.regions?.type === 'partial') return 'mixed'
   if (puzzle.regions?.type === 'jigsaw') return rules.length ? 'mixed' : 'jigsaw'
   if (!rules.length) return 'classic'
   const first = rules[0].type
@@ -559,10 +567,12 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): p
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
   if (regions !== undefined && regions?.type !== 'boxes' &&
-    !(regions?.type === 'jigsaw' && validJigsawRegions(regions.regions))) return false
+    !(hasAuthoredRegions(regions) && validAuthoredRegions(regions.regions, regions.type === 'partial'))) return false
   // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
   // The interchange decoders bound the encoded and decoded input sizes.
   if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
+  if (regions?.type === 'partial' && rules?.some(rule => rule.type === 'region-sum' &&
+    rule.cells.some((cell: number) => !regions.regions.some(region => region.includes(cell))))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
   return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
 }
@@ -612,16 +622,21 @@ export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
   const { rules, regions } = variant.puzzle
   const names = [
-    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : []),
+    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : regions?.type === 'partial' ? ['Latin square'] : []),
     ...(rules?.map(rule => RULE_NAMES[rule.type]) ?? []),
   ]
   return [...new Set(names)].filter(Boolean).join(' + ')
 }
 
-export type VariantRuleSectionId = 'classic' | 'jigsaw' | VariantRule['type']
+export type VariantRuleSectionId = 'classic' | 'jigsaw' | 'partial-regions' | VariantRule['type']
 export type VariantRuleSection = { id: VariantRuleSectionId; title: string; descriptions: string[] }
 
 function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
+  if (puzzle.regions?.type === 'partial') {
+    const descriptions = ['Each row and column contains the digits 1–9 once each.']
+    if (puzzle.regions.regions.length) descriptions.push('Each marked region also contains the digits 1–9 once each.')
+    return { id: 'partial-regions', title: 'Latin Square', descriptions }
+  }
   return puzzle.regions?.type === 'jigsaw'
     ? { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions: [VARIANTS.jigsaw.rule] }
     : { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }

@@ -257,7 +257,7 @@ export function peer(a: number, b: number, puzzle?: VariantPuzzle, grid: PlayGri
   if (ar === br || ac === bc) return true
   if (sizedRules?.some(rule => rule.type === 'diagonal' && (rule.diagonal === 'main'
     ? ar === ac && br === bc : ar + ac === grid.size - 1 && br + bc === grid.size - 1))) return true
-  if (puzzle?.regions?.type === 'jigsaw') {
+  if (puzzle?.regions && puzzle.regions.type !== 'boxes') {
     return puzzle.regions.regions.some((region) => region.includes(a) && region.includes(b)) || variantPeers(puzzle, a, b)
   }
   if (sizedRules?.some(rule => rule.type === 'extra-house' && rule.cells.includes(a) && rule.cells.includes(b))) return true
@@ -743,7 +743,7 @@ export function singleFromCandidates(values: string, masks: readonly number[], e
   }
   const houses = grid ? DIGITS.slice(0, size).flatMap(digit => [
     gridHouseCells({ row: digit - 1 }, grid), gridHouseCells({ column: digit - 1 }, grid), gridHouseCells({ box: digit - 1 }, grid),
-  ]) : variant?.regions?.type === 'jigsaw' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
+  ]) : variant?.regions && variant.regions.type !== 'boxes' ? [...HOUSES.slice(0, 18), ...variant.regions.regions] : HOUSES
   const extra = variant?.rules?.flatMap((rule, index) => {
     if (rule.type === 'diagonal') return [variantHouseCells({ diagonal: rule.diagonal }, variant)]
     if (rule.type === 'extra-house') return [variantHouseCells({ extra: index }, variant)]

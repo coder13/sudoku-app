@@ -79,7 +79,7 @@ impl Diagonal {
     }
 }
 
-/// The nine regions used alongside the rows and columns.
+/// Regions used alongside the rows and columns.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
     feature = "wasm-api",
@@ -93,6 +93,11 @@ pub enum RegionLayout {
     /// Nine orthogonally connected regions that partition the grid.
     Jigsaw {
         /// Regions in caller-supplied order, each with nine cell indices.
+        regions: Vec<Vec<usize>>,
+    },
+    /// A Latin square with only the explicitly marked regions.
+    Partial {
+        /// Disjoint, orthogonally connected nine-cell regions.
         regions: Vec<Vec<usize>>,
     },
 }
@@ -641,6 +646,7 @@ impl VariantPuzzle {
             )?;
         }
         compiled.add_regions(&self.regions)?;
+        let primary_house_count = compiled.houses.len();
         if !enforce_regions {
             // Keep the region geometry for Region Sum lines and remove only
             // the all-different rule, for uniqueness comparisons in generation.
@@ -723,7 +729,7 @@ impl VariantPuzzle {
             .collect();
         compiled.positive_sums = positive_sums(&self.rules);
         compile_line_sums(&mut compiled);
-        compiled.extra_rule_cells = compiled.house_masks[27..]
+        compiled.extra_rule_cells = compiled.house_masks[primary_house_count..]
             .iter()
             .copied()
             .chain(
@@ -907,7 +913,16 @@ impl CompiledVariant {
         first != second
             && (first / 9 == second / 9
                 || first % 9 == second % 9
-                || enforce_regions && self.memberships[first][2] == self.memberships[second][2])
+                || enforce_regions && self.primary_region(first).is_some_and(|region| self.primary_region(second) == Some(region)))
+    }
+
+    fn primary_region(&self, cell: usize) -> Option<usize> {
+        let &house = self.memberships[cell].get(2)?;
+        if let VariantHouseKind::Region(region) = self.houses[house].kind {
+            Some(region)
+        } else {
+            None
+        }
     }
 
     /// Original givens of the compiled puzzle.
@@ -937,8 +952,8 @@ impl CompiledVariant {
         self.peers.get(cell).copied().map(cells_in)
     }
 
-    fn add_regions(&mut self, regions: &RegionLayout) -> Result<(), VariantDefinitionError> {
-        match regions {
+    fn add_regions(&mut self, regions_layout: &RegionLayout) -> Result<(), VariantDefinitionError> {
+        match regions_layout {
             RegionLayout::Boxes => {
                 for i in 0..9 {
                     self.add_house(
@@ -949,8 +964,8 @@ impl CompiledVariant {
                     )?;
                 }
             }
-            RegionLayout::Jigsaw { regions } => {
-                if regions.len() != 9 {
+            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => {
+                if regions.len() > 9 || matches!(regions_layout, RegionLayout::Jigsaw { .. }) && regions.len() != 9 {
                     return Err(VariantDefinitionError::InvalidRegionCount);
                 }
                 let mut covered = 0;
@@ -971,7 +986,6 @@ impl CompiledVariant {
                     covered |= mask;
                     self.add_house(kind, cells)?;
                 }
-                // Nine disjoint regions of nine valid cells necessarily cover the grid.
             }
         }
         Ok(())

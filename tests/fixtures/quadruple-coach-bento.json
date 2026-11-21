@@ -1,0 +1,50 @@
+[
+  {
+    "url": "https://sudoku.coach/en/s/FLAb",
+    "title": "AJT’s Bento 🍱 flavoured with Entropy",
+    "author": "AndresJonTamin",
+    "description": "Inspired by Aidan’s “Bento” series. Also my first time trying…\n(AJT is the initials of my username.)",
+    "custom": false,
+    "coach": "SCv7_32_f2eaalmbdqhj057t2v7vcblgm5suqhmhthjdfrl25gk3hl5a0e6224rlkbvfmn6s2p18oaaia5q19o7onr732s15il8ub0vq4t4pc0hhm994rnchdhvg0kl9nupdtob9dtp5btu3qkll29e9d00a8vrde44ij6ne4htlbv2mmki40eipjni2fdcgb87vvtg1gg3tgksbphh6h4ar2gba63v42q2sbi32dgor360um2n3cdpp4qagd0qvrvfe09ij0i0uakcbdi61mmqc5ij8hqqhoa7hl6a5d8olgm3j30desuqlav1jjk9ogf3meldsqipc62o9i2jsd56itgddr70d1rlkeo0fu9su71kc2eqk5l3pvfceos448rhdaote7csrnksor9jevjaprahaq7jkqjhlqg4v280l0o40eha301cq016o21av6pb8o38stl0qdj3ccfj10e08k0e2g3kk071jk463tui0sdt68o3g2tgq0d2lu2303gc65t4tqhu4onf9soktffqgluj7r7an607jebceov2vq1d5qrte2v7iql70e3uetci1rkhj65pio7e4bgjd4o6e8g5q9nkgnq9d7cf4ricedoldao636tgau73krhloln9flpqqth0ka70them7kv3j1or3rapepul6n9fhb8a3r2hvuhkgg4c55202h1eo36b3vktk2vv9psuijhduqv947bqp6kild8g12ij6g8slmp32m8sp7bigoctqlqtai758jfu3jcmpfttau5qse4j0m69u2va9orjer8d4lpphfa9203glktppd817ooo1a46b3spcu12cbdsjr0e3bmgoaki9nmoqk9t8e5eel0eduteul1rl8v25fa3nahsd85sdm2ntnqcpt5t578fab4bls7ehlm54e2dromcnq6silu2tm5i6e7qv13g6s3tbvhk6jerqv65t5bvgu5lse7dvjv7hffdt6afm8iau7svhc43vr7nrrk47mvvspr2mik",
+    "solution": "623597184748216953915483267369145728834972516492358671186724395571639842257861439",
+    "regionCount": 3,
+    "dividers": 3,
+    "techniques": [
+      "global-entropy",
+      "quadruple"
+    ],
+    "alsoFitsStandardBoxes": false
+  },
+  {
+    "url": "https://sudoku.coach/en/s/FWUv",
+    "title": "Non-con 🍱",
+    "author": "Aidan",
+    "description": "In bento puzzles, the regions (boxes containing 9 cells with numbers 1 to 9) are defined by the box outlines. For more info about bentos, see my profile.",
+    "custom": false,
+    "coach": "SCv7_32_f2e9qliddudk047t5ttns1vm3es5bffmirea470grr85acaghgdqb4fvfe3raqqcu1hcn4nlcjhjeevjeqvfgp2ltsrkvvlfcdsgdllrparsr3n55unm15fvsedevt3jt05tu373qd7ucdpcss4ths6hi74sj041tlebatfv96iqnqvhjd6m2cko0i3c622ohoq83jb02ctbsavqcblgdlojufpn0u0tpsc0dnqksdntcti5t63gv5h7gs1ksrnpjln3b1oii0954gba502ir885ihuchbdoqeml1o0q0ob2je456081ln1ssh9ttqqj8840g3kaaa1890ij2i7uil7nv9641a8gs14910cjb31ceclapsncmti7kqvfpo8r2tpvp4k0iiuv1012k06ag0nag0ja03co0r60h5uhs7h5p0pcb2j02ra02d80el77eckqe0bpo3iede96ohh44b16ohh6tm68icn13407njjefivdqpq6vjpvfnsqms9rf9g72r7ckrk9tmvfei9rr8t7dt2rqstjfvdbs2871rutsjb967jr8d3daf908s75fqg6ic2fpgu85ieqjqmoetvibnbkvurd5iil9dmbd9ijmcm8unm5tbkmum8sh4op6cac67dsm5nld61henkljnboldmrenliqgl679qgfsf7mp9luva4foj63t6p2p7790rftredumn2j8rhhgoipd2uj3ijpqi7bh6fmongdkq9bv6a2gs9jp12fru39l9rbvbtvulufm7ql859j9150guj4ig32g13fmgmktl36a1kl204jl0auntukpjbeh42m6o1klm199c02srjj17559ida6mcj419ii2ll3q7qbca3nblclulp44cgqj8umh5b49494p8gn7et5pi5mgaqrvs6rfc3lrmv5io9tonmic1dk7ffmoujtqt3mmufhdla0olevh465gtgn7u19astaebckun2ufqgmlu6n1le9hikbrmbp8ka1c6mubunku9pjlm8v61h6632fgvhjhhm47ke871pib637peno8va29jquo",
+    "solution": "417285963836419725592637481274863159958146372725391648183574296369752814641928537",
+    "regionCount": 5,
+    "dividers": 4,
+    "techniques": [
+      "pill-arrow",
+      "forcing-chain"
+    ],
+    "alsoFitsStandardBoxes": false
+  },
+  {
+    "url": "https://sudoku.coach/en/s/JDv2",
+    "title": "FUN-ky Bento II 🍱",
+    "author": "Aidan",
+    "description": "The square boxes are regions (don't assume the non-square areas are regions).\nIn bento puzzles, the regions (boxes containing 9 cells with numbers 1 to 9) are defined by the box outlines. For more info about bentos, see my profile.",
+    "custom": true,
+    "coach": "SCv7_32_f2e9qlideehj037t5sven04d7sgbf7auuvbdsehta3h2b7gic06tijhnifvrsgj18ck72o3if7hp09ptp6b2a7qps7evdmftmlm960njmpo7bldipnlhnc62vmota4vuthuedalevtt68rmb6ou05ljt6lk3461gc2mirtnm7skrepeplsh41ai0sgg80goa7g0pt8nb4rptjnjmqohumu1qnnqvcnf7lahfvjfa4r5lrtu56r8ui1434hfiia8ih06kg38i27bijh09132eg8apm595cqeg1a6090s8dc1ll0pik298ep73imp32o4409rhe4en2b8550jq919qtlf440hp0ad810aas1a81qoo0e3u91barnf12hq096k3h70a8o0i62sci2f8ovl4jbskqm0122g9088te1mgqb0679ra5qd7jnd2l75nvemagqaf3tn0hqv74gi1309kkgi5l04gqoa2h2ivsdkf1qnfphk35t0sg2d30kdjra09897bgp63gvs2b892qia8m9id9msmhii5id3krecsa48sk8drvd565s3b109s4t61sqm96338109s49ab6n26o20jo8ihmeb4lc4eas4ahdal8ojtnjm5pvihr4b3vo2tf6nvrlnqldnth2t9glbljsqi7tghaucbbtvmapbb4vvt9fh2i771vr2oib4qa91veun6rb0fupajo1bcl85199gigf0srhgjoi26sd4rlf22ackggtmbt57c31a7k2davf299iniv6o0vhelbv3uv7iphfu8r6g4gablfj22nl2rosdppsq1sj8tupmm258j3c4dfqso0qdkp60pr0nn2dcemf7dbge6hkblvj5sjt6jcojqdhuovfq31l2j4jn9oqaua3vftf7l0d7j24mhdeva50qctpdipovukgrnlu9ml6glvn25h70lkf13h0lrjnqvn6icg9angdc8v6m2lgh2sf6crcp230vvl76tjpdqbivhn4aqh7h9m5vog1c8fjl12jp5sjp4sgce6fuve8erv91l71mfcpv2jdtee0uoms9m153cvbu6gklacl1lts4heqnshltcfar4s4eau7ogqlthcvlns3tggboumrtsapopvovfq0tet2llc",
+    "solution": "472683519583219647619574823358962174967148352124357968745896231291435786836721495",
+    "regionCount": 7,
+    "dividers": 8,
+    "techniques": [
+      "lockout",
+      "renban"
+    ],
+    "alsoFitsStandardBoxes": true
+  }
+]

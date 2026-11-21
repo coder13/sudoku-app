@@ -2,7 +2,7 @@
 
 use sudoku_app_engine::{
     Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
-    Parity, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantPositionError,
+    Parity, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind, VariantPositionError,
     VariantPuzzle, analyze, candidates, parse_givens,
 };
 
@@ -999,4 +999,26 @@ fn one_region_sum_preserves_its_drawing_without_candidate_removals() {
     }];
     let compiled = puzzle.compile().unwrap();
     assert_eq!(compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap(), [511; 81]);
+}
+
+#[test]
+fn partial_regions_enforce_only_marked_houses_with_repeated_quadruple_digits() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.regions = RegionLayout::Partial { regions: vec![vec![0, 1, 2, 9, 10, 11, 18, 19, 20]] };
+    puzzle.rules = vec![PuzzleRule::Quadruple { top_left: 30, digits: vec![2, 2] }];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.houses().len(), 19);
+    assert!(!compiled.peers(30).unwrap().any(|cell| cell == 40));
+    assert!(compiled.peers(0).unwrap().any(|cell| cell == 10));
+    let mut entries = EMPTY;
+    entries[30] = 2;
+    entries[40] = 2;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_ok());
+    entries[0] = 3;
+    entries[10] = 3;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    let RegionLayout::Partial { regions } = &mut puzzle.regions else { unreachable!() };
+    regions.push(regions[0].clone());
+    assert!(matches!(puzzle.compile(), Err(VariantDefinitionError::OverlappingRegion(1))));
 }

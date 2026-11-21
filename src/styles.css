@@ -4264,8 +4264,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   outline: 3px solid var(--rule-accent);
   outline-offset: -3px;
 }
-.board-body[data-highlighted-rule="jigsaw"] [data-region-right] { border-right-color: var(--rule-accent); }
-.board-body[data-highlighted-rule="jigsaw"] [data-region-bottom] { border-bottom-color: var(--rule-accent); }
+.board-body:is([data-highlighted-rule="jigsaw"], [data-highlighted-rule="partial-regions"]) [data-region-right] { border-right-color: var(--rule-accent); }
+.board-body:is([data-highlighted-rule="jigsaw"], [data-highlighted-rule="partial-regions"]) [data-region-bottom] { border-bottom-color: var(--rule-accent); }
 .board-body[data-highlighted-rule="diagonal"] .variant-diagonal { stroke: var(--rule-accent); stroke-width: .055; opacity: .85; }
 .board-body .cell[data-rule-highlighted] { background-color: color-mix(in srgb, var(--rule-accent) 28%, var(--board-bg)); }
 .board-body[data-highlighted-rule="killer-cages"] .variant-cage-edge { stroke: var(--rule-accent); stroke-width: .04; opacity: 1; }

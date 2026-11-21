@@ -136,8 +136,11 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 cell_mask(cells).ok_or(invalid)?;
+                if cells.iter().any(|&cell| puzzle.primary_region(cell).is_none()) {
+                    return Err(invalid);
+                }
                 let mut cells = cells.clone();
-                let segments = region_sum_ranges(&mut cells, |cell| puzzle.memberships[cell][2], *group_by_region);
+                let segments = region_sum_ranges(&mut cells, |cell| puzzle.primary_region(cell).unwrap(), *group_by_region);
                 // A line within one region still has a visible path. Its sole
                 // group already satisfies equality of the group totals.
                 (cells, LineKind::EqualSums(segments))

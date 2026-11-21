@@ -137,8 +137,8 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
   for (let index = 0; index < 81; index++) givens[cell(index)] = puzzle.givens[index]
   return {
     ...puzzle, givens: givens.join(''),
-    regions: puzzle.regions?.type === 'jigsaw'
-      ? { type: 'jigsaw', regions: puzzle.regions.regions.map((region) => region.map(cell)) } : puzzle.regions,
+    regions: puzzle.regions && puzzle.regions.type !== 'boxes'
+      ? { ...puzzle.regions, regions: puzzle.regions.regions.map(region => region.map(cell)) } : puzzle.regions,
     rules: puzzle.rules?.map((rule) => {
       switch (rule.type) {
         case 'diagonal': {

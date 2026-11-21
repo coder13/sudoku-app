@@ -218,7 +218,7 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
     let puzzle = &input["puzzle"];
     if puzzle["regions"]["type"]
         .as_str()
-        .is_some_and(|id| !matches!(id, "boxes" | "jigsaw"))
+        .is_some_and(|id| !matches!(id, "boxes" | "jigsaw" | "partial"))
         || puzzle["rules"].as_array().is_some_and(|rules| {
             rules.iter().any(|rule| {
                 rule["type"]

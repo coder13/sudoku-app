@@ -457,3 +457,57 @@ test('Coach Pill Arrows and Lockout Lines work with Quadruple and Fog of War', a
     }
   }
 })
+
+test('published Bento Quadruples solve with only the marked regions and keep matching hint counts', async ({ mock }) => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-bento.json', import.meta.url), 'utf8'))
+  let changedDescription = false
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
+    if (!url.startsWith('https://sudoku.coach/en/s/')) return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {})
+    const source = sources.find((source: { url: string }) => source.url === url)
+    assert.ok(source)
+    const specificSudoku = { sudoku_id: url.split('/').at(-1), sudoku: source.coach, name: source.title, blocked: false,
+      description: changedDescription ? source.description + '\nDigits in blue cells count twice.' : source.description,
+      custom_constraints: source.custom }
+    return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+  })
+  for (const source of sources) {
+    const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+    assert.ok(game.variant)
+    const { puzzle, solution } = game.variant
+    assert.equal(solution, source.solution)
+    assert.equal(puzzle.regions?.type, 'partial')
+    assert.equal(puzzle.regions.regions.length, source.regionCount)
+    assert.equal(game.authoredArtwork?.filter(mark => mark.type === 'divider').length, source.dividers)
+    assertVariantCompletion(puzzle, source.solution)
+    assert.ok(puzzle.rules?.some(rule => rule.type === 'quadruple'))
+    const raw = await detectPuzzle(source.coach)
+    assert.deepEqual(raw.variant?.puzzle, puzzle)
+    assert.deepEqual(raw.authoredArtwork, game.authoredArtwork)
+    assert.deepEqual(readGame(game.id, JSON.stringify(game))?.authoredArtwork, game.authoredArtwork)
+    const withBoxes: VariantPuzzle = { ...puzzle, regions: { type: 'boxes' } }
+    if (source.alsoFitsStandardBoxes) assertVariantCompletion(withBoxes, source.solution)
+    else assert.throws(() => assertVariantCompletion(withBoxes, source.solution), /Every house needs nine distinct digits/)
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+    for (const step of path.steps) for (const action of step.actions) {
+      if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
+      else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
+    }
+    for (const technique of source.techniques) {
+      const index = path.steps.findIndex(step => step.technique === technique)
+      assert.ok(index >= 0, `Missing ${technique} in ${source.title}`)
+      const { entries, eliminations } = path.positions![index]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const { choices } = await puzzleHints(checkpoint, 'all', technique)
+      assert.ok(choices.some(choice => 'variant' in choice.evidence && choice.evidence.variant.description.length))
+      const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      assert.ok(actions.size)
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+      try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    }
+  }
+  changedDescription = true
+  for (const source of sources) await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+})

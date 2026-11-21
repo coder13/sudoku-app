@@ -7,7 +7,7 @@ function containingHouses(cell: number, grid: PlayGrid, puzzle?: VariantPuzzle) 
   const row = Math.floor(cell / size)
   const column = cell % size
   const box = gridRegionIndex(grid, cell)
-  const region = puzzle?.regions?.type === 'jigsaw'
+  const region = puzzle?.regions && puzzle.regions.type !== 'boxes'
     ? puzzle.regions.regions.find((region) => region.includes(cell)) ?? []
     : gridHouseCells({ box }, grid)
   return [gridHouseCells({ row }, grid), gridHouseCells({ column }, grid), region]

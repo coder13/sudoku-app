@@ -29,15 +29,15 @@ const opposite = (strength: LinkStrength): LinkStrength => strength === 'strong'
 function housesAt(cell: number, regions?: readonly number[]) {
   const row = Math.floor(cell / 9)
   const column = cell % 9
-  const region = regions?.[cell] ?? Math.floor(row / 3) * 3 + Math.floor(column / 3)
-  return [row, 9 + column, 18 + region]
+  const region = regions ? regions[cell] : Math.floor(row / 3) * 3 + Math.floor(column / 3)
+  return region === undefined ? [row, 9 + column] : [row, 9 + column, 18 + region]
 }
 
 export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle) {
   const cellCandidates = masks.map((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
   const candidates = cellCandidates.flat()
   const houseCandidates = Array.from({ length: 27 }, () => Array.from({ length: 9 }, () => [] as number[]))
-  const regions = puzzle?.regions?.type === 'jigsaw' ? regionMembership(puzzle.regions.regions) : undefined
+  const regions = puzzle?.regions && puzzle.regions.type !== 'boxes' ? regionMembership(puzzle.regions.regions) : undefined
   const houses = masks.map((_, cell) => housesAt(cell, regions))
   for (const rule of puzzle?.rules ?? []) {
     if (rule.type !== 'diagonal' && rule.type !== 'extra-house') continue

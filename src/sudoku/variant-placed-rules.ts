@@ -43,7 +43,7 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
   const placed = cells.map(cell => Number(values[cell]))
   const region = cells.map(cell => regionIndex(cell, regions))
   const peers = cells.map((cell, i) => cells.flatMap((other, j) => i !== j && (
-    Math.floor(cell / 9) === Math.floor(other / 9) || cell % 9 === other % 9 || region[i] === region[j]
+    Math.floor(cell / 9) === Math.floor(other / 9) || cell % 9 === other % 9 || region[i] >= 0 && region[i] === region[j]
   ) ? [j] : []))
   const support = [0, 0, 0, 0]
 

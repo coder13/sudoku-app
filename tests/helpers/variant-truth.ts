@@ -10,7 +10,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
   const houses = [
     ...Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, col) => row * 9 + col)),
     ...Array.from({ length: 9 }, (_, col) => Array.from({ length: 9 }, (_, row) => row * 9 + col)),
-    ...(puzzle.regions?.type === 'jigsaw' ? puzzle.regions.regions : Array.from({ length: 9 }, (_, box) =>
+    ...(puzzle.regions && puzzle.regions.type !== 'boxes' ? puzzle.regions.regions : Array.from({ length: 9 }, (_, box) =>
       Array.from({ length: 9 }, (_, i) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(i / 3) * 9 + i % 3))),
   ]
   for (const house of houses) assert.ok(distinct(house), 'Every house needs nine distinct digits')

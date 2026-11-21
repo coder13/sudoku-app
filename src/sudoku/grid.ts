@@ -115,7 +115,7 @@ export function jigsawMembership(grid: JigsawGrid) {
 }
 
 export function jigsawRegionColors(membership: readonly number[], size: number) {
-  const regions = [...new Set(membership)]
+  const regions = [...new Set(membership)].filter(region => region !== undefined)
   const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
   membership.forEach((region, cell) => {
     const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]

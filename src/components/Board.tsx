@@ -395,7 +395,7 @@ export function Board({
     disjoint.size && DISJOINT_GROUPS_RULE].filter(Boolean).join(' ')
   const regions = variantPuzzle?.regions
   const regionsAt = useMemo(() => 'regions' in grid ? jigsawMembership(grid)
-    : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined, [grid, regions])
+    : regions && regions.type !== 'boxes' ? regionMembership(regions.regions) : undefined, [grid, regions])
   const regionColors = useMemo(() => regionsAt && jigsawRegionColors(regionsAt, gridSize), [regionsAt, gridSize])
   const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined, [variantRules, variantPuzzle?.regions])
