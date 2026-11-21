@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import mixedPuzzles from '../../tests/fixtures/mixed-puzzles.json'
 import palindrome14 from '../../tests/fixtures/inequality-palindrome14.json'
+import renbanArchive from '../../tests/fixtures/renban-coach.json'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
@@ -320,11 +321,18 @@ export const RestoredMobileSolution: Story = {
 const palindromeSolutionGame: Game = {
   ...makeGame('story-palindrome-14', 'Palindrome 14', palindrome14.puzzle.givens, 'imported'),
   variant: { id: 'mixed', puzzle: palindrome14.puzzle as VariantPuzzle, solution: palindrome14.solution },
-  score: null, difficulty: null, variantRatingVersion: 19,
+  score: null, difficulty: null, variantRatingVersion: 21,
+}
+
+const stalledSource = renbanArchive.examples[2] as { puzzle: VariantPuzzle; solution: string; title: string }
+const stalledSolutionGame: Game = {
+  ...makeGame('story-renbann9', stalledSource.title, stalledSource.puzzle.givens, 'imported'),
+  variant: { id: 'renban', puzzle: stalledSource.puzzle, solution: stalledSource.solution },
+  score: null, difficulty: null, variantRatingVersion: 11,
 }
 
 export const StalledVariantSolution: Story = {
-  args: { game: palindromeSolutionGame, games: [palindromeSolutionGame] },
+  args: { game: stalledSolutionGame, games: [stalledSolutionGame] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: ({ args }) => {
     playSession.set(args.game.id, 'toolPanels', { open: ['solution'], active: 'solution', height: 308 })
@@ -340,10 +348,28 @@ export const StalledVariantSolution: Story = {
     expect(digits().length).toBeLessThan(81)
     await userEvent.keyboard('{End}')
     await expect(exact).toHaveAttribute('aria-current', 'step')
-    expect(digits()).toBe(palindrome14.solution)
+    expect(digits()).toBe(stalledSource.solution)
     await userEvent.keyboard('{ArrowUp}')
     await expect(partial).toHaveAttribute('aria-current', 'step')
     expect(digits().length).toBeLessThan(81)
+    expect(roomStore.getSnapshot().games.find(game => game.id === stalledSolutionGame.id)?.position.entries).toBe(EMPTY)
+  },
+}
+
+export const CompleteVariantSolution: Story = {
+  ...StalledVariantSolution,
+  args: { game: palindromeSolutionGame, games: [palindromeSolutionGame] },
+  play: async ({ canvas, userEvent }) => {
+    const rows = within(await canvas.findByRole('list', { name: 'Solving steps' }))
+    await userEvent.click(rows.getAllByRole('button', { name: /^Matching digit layouts/ })[2])
+    await userEvent.click(await canvas.findByText('Read the proof step by step', { exact: true }))
+    expect(await canvas.findByText('This layout leads to a contradiction.', { exact: true })).toBeVisible()
+    const final = rows.getByRole('button', { name: /^Final grid/ })
+    await userEvent.click(final)
+    await expect(final).toHaveAttribute('aria-current', 'step')
+    const digits = [...canvas.getByRole('grid', { name: 'Solution preview' }).querySelectorAll('.cell-value')]
+      .map(cell => cell.textContent).join('')
+    expect(digits).toBe(palindrome14.solution)
     expect(roomStore.getSnapshot().games.find(game => game.id === palindromeSolutionGame.id)?.position.entries).toBe(EMPTY)
   },
 }

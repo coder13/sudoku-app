@@ -7,7 +7,7 @@ const bit = (digit: number) => 1 << (digit - 1)
 const group = (type: 'entropic' | 'modular', digit: number) =>
   type === 'entropic' ? Math.floor((digit - 1) / 3) : (digit - 1) % 3
 
-function houseSupport(domains: number[]) {
+export function houseSupport(domains: number[]) {
   const support = domains.map(() => 0)
   const assignments: number[] = []
   function fill(used: number) {
@@ -27,7 +27,7 @@ function houseSupport(domains: number[]) {
   return support
 }
 
-function pairSupport(rules: VariantRule[], [a, b]: number[], domains: number[]) {
+export function pairSupport(rules: VariantRule[], [a, b]: number[], domains: number[]) {
   const marker = (clues: { pairs?: [number, number][]; negative?: boolean } | undefined) =>
     clues?.pairs?.some(([left, right]) => left === a && right === b || left === b && right === a)
   const kropki = rules.filter(rule => rule.type === 'kropki')

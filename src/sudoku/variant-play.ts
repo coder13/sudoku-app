@@ -76,6 +76,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
+      if (hasMatchingCells && id === 'aic') return ['matching-layout-forcing', id]
       if (id === firstBeyondHard) return [
         ...(hasRenbanGroups ? ['renban-group-counts'] : []),
         ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),

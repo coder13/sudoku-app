@@ -6,14 +6,14 @@ use crate::{CELLS, Candidate, HintAction, hints::digit_bit};
 
 const MAX_FORCED_PLACEMENTS: usize = 6;
 
-struct MatchingCells {
-    groups: [u128; CELLS],
+pub(super) struct MatchingCells {
+    pub(super) groups: [u128; CELLS],
     peers: [u128; CELLS],
     excluded: [u128; CELLS],
 }
 
 impl MatchingCells {
-    fn new(puzzle: &CompiledVariant) -> Option<Self> {
+    pub(super) fn new(puzzle: &CompiledVariant) -> Option<Self> {
         let mut links = puzzle
             .pair_clues
             .iter()
@@ -50,7 +50,7 @@ impl MatchingCells {
         })
     }
 
-    fn digit_sites(&self, domains: &[u16; CELLS], digit: u8) -> u128 {
+    pub(super) fn digit_sites(&self, domains: &[u16; CELLS], digit: u8) -> u128 {
         let digit = digit_bit(digit);
         let sites = domains
             .iter()
@@ -61,36 +61,51 @@ impl MatchingCells {
             .filter(|&cell| self.groups[cell] & !sites == 0)
             .fold(0, |mask, cell| mask | 1 << cell)
     }
+
+    pub(super) fn initial_placements(
+        &self,
+        board: &crate::Board,
+        digit: u8,
+        sites: u128,
+    ) -> Option<DigitPlacement> {
+        let mut state = DigitPlacement {
+            placed: 0,
+            available: sites,
+        };
+        for (cell, &value) in board.iter().enumerate() {
+            if value != digit || state.placed & (1 << cell) != 0 {
+                continue;
+            }
+            if state.available & (1 << cell) == 0 {
+                return None;
+            }
+            state.place(self, cell);
+        }
+        Some(state)
+    }
 }
 
 #[derive(Clone, Copy)]
-struct DigitPlacement {
-    placed: u128,
+pub(super) struct DigitPlacement {
+    pub(super) placed: u128,
     available: u128,
 }
 
 impl DigitPlacement {
-    fn place(&mut self, group: u128, excluded: u128) {
+    pub(super) fn place(&mut self, matching: &MatchingCells, cell: usize) {
+        let group = matching.groups[cell];
         self.placed |= group;
-        self.available &= !(group | excluded);
+        self.available &= !(group | matching.excluded[cell]);
     }
-}
 
-struct DigitProof<'a> {
-    puzzle: &'a CompiledVariant,
-    matching: &'a MatchingCells,
-    sites: u128,
-}
-
-impl DigitProof<'_> {
-    fn narrowest_house(&self, state: DigitPlacement) -> Option<(usize, u128)> {
+    pub(super) fn narrowest_house(self, puzzle: &CompiledVariant) -> Option<(usize, u128)> {
         let mut best = None;
-        for &house in &self.puzzle.search_houses {
-            let mask = self.puzzle.house_masks[house];
-            if mask & state.placed != 0 {
+        for &house in &puzzle.search_houses {
+            let mask = puzzle.house_masks[house];
+            if mask & self.placed != 0 {
                 continue;
             }
-            let available = mask & state.available;
+            let available = mask & self.available;
             if available == 0 {
                 return Some((house, available));
             }
@@ -102,11 +117,19 @@ impl DigitProof<'_> {
         }
         best
     }
+}
 
+struct DigitProof<'a> {
+    puzzle: &'a CompiledVariant,
+    matching: &'a MatchingCells,
+    sites: u128,
+}
+
+impl DigitProof<'_> {
     fn refute(&self, mut state: DigitPlacement) -> Option<Vec<VariantMatchingDigitCheck>> {
         let mut visited = [(0, state, 0); MAX_FORCED_PLACEMENTS + 1];
         for index in 0..visited.len() {
-            let (house, available) = self.narrowest_house(state)?;
+            let (house, available) = state.narrowest_house(self.puzzle)?;
             visited[index] = (house, state, available);
             if available == 0 {
                 return Some(
@@ -120,7 +143,7 @@ impl DigitProof<'_> {
                 break;
             }
             let cell = available.trailing_zeros() as usize;
-            state.place(self.matching.groups[cell], self.matching.excluded[cell]);
+            state.place(self.matching, cell);
         }
         None
     }
@@ -170,7 +193,7 @@ impl DigitProof<'_> {
     ) -> Option<VariantMatchingDigitProof> {
         let group = self.matching.groups[cell];
         let mut state = baseline;
-        state.place(group, self.matching.excluded[cell]);
+        state.place(self.matching, cell);
         let mut checks = self.refute(state)?;
         let conflict = checks.pop()?;
         let matching = group.count_ones() > 1
@@ -211,25 +234,12 @@ impl CompiledVariant {
                 matching: &matching,
                 sites,
             };
-            let mut baseline = DigitPlacement {
-                available: sites,
-                placed: 0,
+            let Some(baseline) = matching.initial_placements(&position.board, digit, sites) else {
+                continue;
             };
-            let mut consistent = true;
-            for (cell, &value) in position.board.iter().enumerate() {
-                if value != digit || baseline.placed & (1 << cell) != 0 {
-                    continue;
-                }
-                if baseline.available & (1 << cell) == 0 {
-                    consistent = false;
-                    break;
-                }
-                baseline.place(matching.groups[cell], matching.excluded[cell]);
-            }
-            if !consistent
-                || context
-                    .narrowest_house(baseline)
-                    .is_some_and(|(_, sites)| sites == 0)
+            if baseline
+                .narrowest_house(self)
+                .is_some_and(|(_, sites)| sites == 0)
             {
                 continue;
             }

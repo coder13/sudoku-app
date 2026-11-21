@@ -1,4 +1,4 @@
-import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
+import type { HintChoice, HintTrace, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { candidateCount, DIGITS, onlyCandidate } from './game.ts'
 import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
@@ -463,6 +463,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   let description: string
   let reason: string
   let reasonSteps: string[] | undefined
+  let trace: HintTrace | undefined
   let candidates = focus
   switch (evidence.type) {
     case 'single': {
@@ -930,6 +931,31 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `${examples.join(' ')} All parts can reach only ${shared}. None of the assignments for those totals uses the crossed-out candidates.`
       break
     }
+    case 'matching-layout': {
+      cells = focus.map(({ cell }) => cell)
+      const { digit, target, cases } = evidence
+      const count = cases.length === 1 ? 'one layout' : `${cases.length} layouts`
+      description = `Try ${count} for ${digit} that fit every house and all matching cells. Carry each layout through the other clues and keep matching cells equal at each step.`
+      const removal = `${target.digit} in ${nameCell(target.cell)}`
+      reason = cases.length === 1 ? `The layout rules out ${removal}.` : `Every layout rules out ${removal}.`
+      const digits = (mask: number) => alternatives.format(DIGITS.filter(value => mask & (1 << (value - 1))).map(String))
+      trace = cases.map(({ cells, checks, contradicted }) => ({
+        assumption: `Place ${digit} in ${conjunction.format(cells.map(nameCell))}.`,
+        steps: checks.map(check => {
+          const scope = check.scope.type === 'house' ? houseLabel(check.scope.house)
+            : `the clue between ${nameCell(check.cells[0])} and ${nameCell(check.cells[1])}`
+          const rule = check.scope.type === 'pair' ? constraintClue({
+            type: 'constraint', cells: check.cells, domains: check.domains, rules: check.scope.rules,
+          }, puzzle, nameCell, []).description + ' ' : ''
+          if (check.supported.every(mask => mask === 0)) return `${rule}No assignment fits ${scope}.`
+          const changes = check.cells.flatMap((cell, index) => check.supported[index] === check.domains[index]
+            ? [] : [`${nameCell(cell)} can use only ${digits(check.supported[index])}`])
+          return `${rule}In ${scope}, ${conjunction.format(changes)}.`
+        }),
+        conclusion: contradicted ? 'This layout leads to a contradiction.' : `This layout rules out ${removal}.`,
+      }))
+      break
+    }
     case 'matching-digit': {
       const explanation = explainMatchingDigit(evidence, puzzle, nameCell, houseLabel)
       cells = explanation.cells
@@ -1138,7 +1164,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   }
   return {
     technique, actions,
-    evidence: { variant: { description, reason, ...(reasonSteps && { reasonSteps }), source: { deduction, puzzle } } },
+    evidence: { variant: { description, reason, ...(reasonSteps && { reasonSteps }), ...(trace && { trace }), source: { deduction, puzzle } } },
     pattern: { houses: [], cells: [...cells], candidates },
   }
 }

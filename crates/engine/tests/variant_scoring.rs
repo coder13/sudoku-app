@@ -39,6 +39,10 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::MatchingLayout(proof) => {
+            let checks: usize = proof.cases.iter().map(|case| case.checks.len()).sum();
+            return 120 + 18 * proof.cases.len() as u16 + 4 * checks as u16;
+        }
         VariantEvidence::MatchingDigit(proof) => {
             let blockers: usize = proof.checks.iter().chain(std::iter::once(&proof.conflict))
                 .map(|check| check.blocked.len()).sum();
@@ -155,7 +159,7 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
 #[test]
 fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     let mut path_scores = Vec::new();
-    let mut tiers = [0; 5];
+    let mut tiers = [0; Difficulty::Impossible as usize + 1];
     for &technique in VariantTechnique::DEFAULT_ORDER
         .iter()
         .chain(VariantTechnique::EXPLICIT_TECHNIQUES)
@@ -176,6 +180,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         estimates.sort_unstable();
         assert_eq!(estimates[1], technique.cost(), "{}", technique.id());
         let tier = match (technique, estimates[1]) {
+            (VariantTechnique::MatchingLayoutForcing, _) => Difficulty::Extreme,
             (VariantTechnique::Arrow | VariantTechnique::PillArrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
                 Difficulty::Easy
             }
@@ -205,6 +210,16 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
                 Technique::NakedPair,
                 Technique::HiddenPair,
             ].map(VariantTechnique::Classic));
+        }
+        if technique == VariantTechnique::MatchingLayoutForcing {
+            order.extend([
+                VariantTechnique::MatchingDigitContradiction,
+                VariantTechnique::LinkedClueContradiction,
+                VariantTechnique::KropkiHouseSupport,
+                VariantTechnique::Classic(Technique::LockedPair),
+                VariantTechnique::Classic(Technique::NakedPair),
+                VariantTechnique::Classic(Technique::HiddenPair),
+            ]);
         }
         for example in examples {
             let position = example.position;

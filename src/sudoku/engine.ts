@@ -442,6 +442,7 @@ type ExocetAssignment = { bases: [number, number]; targets: [number, number] }
 type ExocetComponent = { bases: [number, number]; targets: [number, number]; covers: ExocetCover[] }
 type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
 type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
+export type HintTrace = { assumption: string; steps: string[]; conclusion: string }[]
 type Evidence =
   | { 'pattern-overlay': {
       digit: number
@@ -452,6 +453,7 @@ type Evidence =
       description: string; reason: string
       /** App display context; native proof data and worker responses stay unchanged. */
       reasonSteps?: string[]
+      trace?: HintTrace
       source?: { deduction: VariantDeduction; puzzle: VariantPuzzle }
     } }
   | { cell: number }
@@ -644,6 +646,8 @@ export type VariantDeduction = {
       houseConflict?: { cells: number[]; digits: number } }
     | { type: 'matching-digit'; digit: number; assumed: number[]; initiallyPlaced: number[];
       checks: VariantMatchingDigitCheck[]; conflict: VariantMatchingDigitCheck }
+    | { type: 'matching-layout'; digit: number; target: Candidate;
+      cases: { cells: number[]; contradicted: boolean; checks: VariantConstraintCheck[] }[] }
     | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
       remaining: number[][];
       rejected: { groups: number[]; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;

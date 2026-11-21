@@ -2299,7 +2299,9 @@ export function Worktable({
           ? [explanation.description, ...(explanation.reasonSteps ? [] : [explanation.reason])].filter(Boolean) : undefined)}
         explanationSteps={recoveryExplanation ? undefined : explanation?.reasonSteps}
         collapseExplanation={Boolean(solutionHintPanel)}
-        trace={solutionHintPanel ? undefined : hintDiagram?.trace}
+        trace={solutionHintPanel
+          ? replayedSolutionStep && 'variant' in replayedSolutionStep.deduction.evidence ? stepDiagram?.trace : undefined
+          : hintDiagram?.trace}
         navigation={!solutionHintPanel && visibleHint && hintCount > 0
           ? { index: visibleHint.index, count: hintCount, onMove: moveHint }
           : undefined} />
