@@ -120,6 +120,10 @@ pub(super) struct PairClue {
 }
 
 impl PairClue {
+    pub fn links(&self) -> &[PairConstraint] {
+        &self.links
+    }
+
     pub fn binary_relation(&self) -> Option<&PairConstraint> {
         (self.links.len() == 1).then(|| &self.links[0])
     }

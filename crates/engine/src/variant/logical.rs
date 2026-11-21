@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 17;
+pub const VARIANT_SCORING_VERSION: u32 = 18;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -203,7 +203,7 @@ catalog! {
     ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
     /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
     KropkiHouseSupport: "kropki-house-support", 48, Medium;
-    /// Reject a candidate using a bounded sequence of Between, pair and house checks.
+    /// Reject a candidate using a bounded sequence of line, pair and house checks.
     LinkedClueContradiction: "linked-clue-contradiction", 78, Hard;
 }
 

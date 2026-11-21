@@ -3,20 +3,28 @@ use crate::{DIGITS, variant::digit_set_support};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Scope {
-    Pair(usize),
+    Pair(usize, usize),
     House(usize),
     Line(usize),
 }
 
 impl CompiledVariant {
+    pub(super) fn numeric_pair_scopes(&self) -> impl Iterator<Item = Scope> + '_ {
+        self.pair_clues
+            .iter()
+            .enumerate()
+            .filter_map(|(index, clue)| {
+                (matches!(
+                    clue.source.id,
+                    "kropki" | "xv" | "adjacent-total" | "inequality"
+                ) && clue.binary_relation().is_some())
+                .then_some(Scope::Pair(index, 0))
+            })
+    }
+
     pub(super) fn scope_cells(&self, scope: Scope) -> &[usize] {
         match scope {
-            Scope::Pair(index) => {
-                &self.pair_clues[index]
-                    .binary_relation()
-                    .expect("a selected binary clue")
-                    .cells
-            }
+            Scope::Pair(clue, link) => &self.pair_clues[clue].links()[link].cells,
             Scope::House(index) => &self.houses[index].cells,
             Scope::Line(index) => &self.lines[index].cells,
         }
@@ -24,11 +32,8 @@ impl CompiledVariant {
 
     pub(super) fn scope_support(&self, scope: Scope, before: &[u16], after: &mut [u16]) {
         match scope {
-            Scope::Pair(index) => after.copy_from_slice(
-                &self.pair_clues[index]
-                    .binary_relation()
-                    .expect("a selected binary clue")
-                    .restrict([before[0], before[1]]),
+            Scope::Pair(clue, link) => after.copy_from_slice(
+                &self.pair_clues[clue].links()[link].restrict([before[0], before[1]]),
             ),
             Scope::House(_) => {
                 digit_set_support(DIGITS, before, after);
@@ -45,7 +50,7 @@ impl CompiledVariant {
     ) -> VariantConstraintCheck {
         let cells = self.scope_cells(scope).to_vec();
         let scope = match scope {
-            Scope::Pair(index) => VariantConstraintScope::Pair {
+            Scope::Pair(index, _) => VariantConstraintScope::Pair {
                 rules: self.pair_clues[index].source.indices.clone(),
             },
             Scope::House(index) => VariantConstraintScope::House {

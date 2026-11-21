@@ -31,7 +31,7 @@ test('deferred import ratings preserve uniqueness, complete proofs, and versione
       const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: game.variant.puzzle }, techniqueOrder })
       assert.deepEqual(trace.rating.status, source.status)
       assert.equal(trace.rating.points, source.points)
-      assert.equal(trace.rating.scoringVersion, 17)
+      assert.equal(trace.rating.scoringVersion, 18)
       // Compare the entire recorded proof with the previous profile metadata.
       assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
       assert.ok(techniqueOrder.includes('entropy-quadruple'))

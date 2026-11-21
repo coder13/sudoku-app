@@ -7869,7 +7869,7 @@
             {
               "type": "text",
               "paragraphs": [
-                "Start with a cell that touches a Between Line or a two-cell clue. Assume one of its candidates is placed there. Update the affected houses and clues in order.",
+                "Start with a cell on a Between Line or a two-cell clue. Assume it contains one of its candidates. Follow the clue to the next cell. A Palindrome or Clone clue can pass the same digit to a matching cell elsewhere in the grid.",
                 "Each check uses the candidates left by earlier checks. Stop at the first clue or house that cannot be filled. Remove the original candidate."
               ]
             },
