@@ -15,13 +15,14 @@ import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
 import { BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
-import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors'
+import { importedColorFill, importedColorLabel, type ImportedCellColors } from '../sudoku/imported-colors'
 
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
   fog?: FogView
   whispersGuide?: true
+  givenCellColors?: ImportedCellColors
   highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
   algebraicCages?: SizedVariantPosition['rules']
@@ -348,7 +349,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle: fullPuzzle, fog, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
@@ -547,7 +548,7 @@ export function Board({
           importedCandidateColors={showImportedAnnotations && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
           color={!fogged && showPlayerColors ? position?.colors?.[index] : undefined}
           importedColors={!fogged ? (showImportedAnnotations ? position?.importedCellColors?.[index] : undefined)
-            ?? fog?.cellColors?.[index] : undefined}
+            ?? givenCellColors?.[index] ?? fog?.cellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
@@ -567,7 +568,7 @@ export function Board({
       })}
     </div>
   )), [
-    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, layout, annotationSlots,
+    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, givenCellColors, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
     highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
