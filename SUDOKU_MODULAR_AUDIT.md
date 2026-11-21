@@ -271,6 +271,22 @@ Five alternating warmed HCHW app traces take a median of 2.25 seconds before and
 
 At the 35-step stall, R1C2 and R4C2 share a Modular remainder group. If R1C2 were 4, R4C2 would be 1. Column 2 then requires R5C2 to use its other candidate, 3, and the adjacent 7 sum makes R6C2 equal 4. If R1C2 were 6, R4C2 would be 3 and the sum would make R6C2 equal 6. Independent enumeration gives six distinct-digit assignments across those four cells. None uses 4 or 6 in R1C2. The next proof needs the two sum cells outside the line, with the line pair and both sum cells sharing column 2.
 
+### Quintuple Pattern Overlay after the four-cell edits
+
+The [saved benchmark position](tests/fixtures/overlay-hchw-linked.json) starts at the 35-step stall. It applies the verified 4 and 6 removals from R1C2 and the corresponding proof for R2C2, then replays the resulting Dynamic Forcing Net elimination of 8 from R3C2. The R2C2 proof uses its same-group partner R4C1. In each case, the group and the shared house fix R5C2, and the 7 sum would make R6C2 repeat the assumed digit in column 2.
+
+A selected Quintuple scan took 7.15 seconds of Wasm CPU in an initial probe and returned zero deductions. One native instrumented scan spent 3.01 seconds in the group for digits 4, 5, 6, 7 and 9. Digits 4 and 6 share their complete allowed-cell and layout lists, as do 7 and 9. Sharing each valid witness among interchangeable digits and choosing one layout order among the interchangeable unpinned digits brought that group's native search to 1.32 seconds. Reusing the bitset buffers and applying each cell's mask across their active words brought it to 0.56 seconds. These native timings are single measurements for the same five-digit group.
+
+The matcher keeps the layout requirement for the candidate being tested. The app regression independently checks both four-cell eliminations and replays the forcing step. Then it verifies the empty Quintuple hints and Finder count. A native direct-enumeration test checks mixed identical domains, partial witness support, family order, changed domains and layout indices on both sides of a bitset word boundary.
+
+Three alternating warm samples on macOS arm64 with Node 26.13 measured a median of 10,157 ms versus 1,688 ms of Wasm CPU for the selected Quintuple request. Both artifacts returned zero hints. The full edited replay fell from a median of 17,623 to 3,949 ms of Wasm CPU in the same run. The complete replay records match, including the one forcing deduction and the stalled result. The broader paired comparison also matched 640 replies across 30 positive practice positions and 13 retained corpus positions, including complete traces, ratings and hint pages. The app binary grows from 4,053,828 to 4,076,895 bytes, and from 1,066,814 to 1,070,501 bytes with gzip. The selected request used 2.5 MiB versus 2.44 MiB of Wasm linear-memory capacity.
+
+The pre-forcing and post-forcing scans both reach the same expensive five-digit layout group. The forcing step removes one candidate for digit 8, so it leaves the allowed cells for all five digits in that group unchanged. The saved positions can also check a later optimization that retains exact group support between steps in a solve.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=3 --warmups=1 --cases=HCHW-linked,HCHW-edited-tail,HCHW-current-stall,classic-quintuple-pattern-overlay,variant-quintuple-pattern-overlay
+```
+
 ## Reproduce
 
 ```sh

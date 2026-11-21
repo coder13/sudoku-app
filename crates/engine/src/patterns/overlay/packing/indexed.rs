@@ -3,7 +3,7 @@
 use super::{Family, cells};
 use crate::CELLS;
 
-const WIDTH: usize = 5;
+pub(super) const WIDTH: usize = 5;
 // Keep each transient index below 81 KiB of cell bitmaps. Larger families
 // retain the exact linear search without allocating this index.
 const MAX_LAYOUTS: usize = 8192;
@@ -13,6 +13,7 @@ type LayoutSets = [[u64; WORDS]; WIDTH];
 pub(super) struct Packing {
     families: [IndexedFamily; WIDTH],
     available: LayoutSets,
+    equivalent: [u8; WIDTH],
 }
 
 struct IndexedFamily {
@@ -23,7 +24,7 @@ struct IndexedFamily {
 }
 
 impl Packing {
-    pub(super) fn new(families: &[Family<'_>]) -> Option<Self> {
+    pub(super) fn new(families: &[Family<'_>], equivalent: [u8; WIDTH]) -> Option<Self> {
         let families: &[Family<'_>; WIDTH] = families.try_into().ok()?;
         if families
             .iter()
@@ -37,6 +38,7 @@ impl Packing {
         Some(Self {
             families,
             available,
+            equivalent,
         })
     }
 
@@ -44,10 +46,30 @@ impl Packing {
         let mut available = self.available;
         let family = &self.families[pinned];
         available[pinned][..family.words].copy_from_slice(family.at(target));
-        self.visit((1 << WIDTH) - 1, &available, witness)
+        let mut scratch = [[[0; WORDS]; WIDTH]; WIDTH - 1];
+        self.visit((1 << WIDTH) - 1, pinned, &available, &mut scratch, witness)
     }
 
-    fn visit(&self, remaining: u8, available: &LayoutSets, witness: &mut [u128; 9]) -> bool {
+    fn visit(
+        &self,
+        remaining: u8,
+        pinned: usize,
+        available: &LayoutSets,
+        scratch: &mut [LayoutSets],
+        witness: &mut [u128; 9],
+    ) -> bool {
+        if remaining.is_power_of_two() {
+            let index = remaining.trailing_zeros() as usize;
+            let family = &self.families[index];
+            for (word, &bits) in available[index][..family.words].iter().enumerate() {
+                if bits != 0 {
+                    witness[family.digit] =
+                        family.layouts[word * 64 + bits.trailing_zeros() as usize];
+                    return true;
+                }
+            }
+            return false;
+        }
         let mut chosen = 0;
         let mut smallest = usize::MAX;
         for index in 0..WIDTH {
@@ -68,15 +90,26 @@ impl Packing {
         }
         let family = &self.families[chosen];
         let rest = remaining & !(1 << chosen);
-        let mut next = [[0; WORDS]; WIDTH];
+        // The caller constrains only the pinned digit to a specific cell.
+        // Exchangeable followers can use their layouts in index order.
+        let equivalent = if chosen == pinned {
+            0
+        } else {
+            self.equivalent[chosen] & !(1 << pinned)
+        };
+        // Every restriction overwrites the active word range at this level.
+        // Reuse those buffers across sibling branches.
+        let (next, scratch) = scratch
+            .split_first_mut()
+            .expect("buffer for each branching level");
         for (word, &choices) in available[chosen][..family.words].iter().enumerate() {
             let mut choices = choices;
             while choices != 0 {
-                let layout = family.layouts[word * 64 + choices.trailing_zeros() as usize];
+                let layout_index = word * 64 + choices.trailing_zeros() as usize;
+                let layout = family.layouts[layout_index];
                 choices &= choices - 1;
-                if rest == 0
-                    || self.restrict(rest, layout, available, &mut next)
-                        && self.visit(rest, &next, witness)
+                if self.restrict(rest, equivalent, chosen, layout_index, available, next)
+                    && self.visit(rest, pinned, next, scratch, witness)
                 {
                     witness[family.digit] = layout;
                     return true;
@@ -89,28 +122,42 @@ impl Packing {
     fn restrict(
         &self,
         remaining: u8,
-        layout: u128,
+        equivalent: u8,
+        selected: usize,
+        layout_index: usize,
         available: &LayoutSets,
         next: &mut LayoutSets,
     ) -> bool {
+        let layout = self.families[selected].layouts[layout_index];
+        let layout_word = layout_index / 64;
+        let layout_bit = layout_index % 64;
         for index in 0..WIDTH {
             if remaining & (1 << index) == 0 {
                 continue;
             }
             let family = &self.families[index];
-            let mut has_layout = false;
-            for word in 0..family.words {
-                let mut choices = available[index][word];
-                for cell in cells(layout) {
-                    if choices == 0 {
-                        break;
-                    }
-                    choices &= !family.at(cell)[word];
+            let choices = &mut next[index][..family.words];
+            choices.copy_from_slice(&available[index][..family.words]);
+            let span = if equivalent & (1 << index) == 0 {
+                0..family.words
+            } else if index < selected {
+                choices[layout_word] &= u64::MAX >> (63 - layout_bit);
+                choices[layout_word + 1..].fill(0);
+                0..layout_word + 1
+            } else {
+                choices[..layout_word].fill(0);
+                choices[layout_word] &= u64::MAX << layout_bit;
+                layout_word..family.words
+            };
+            for cell in cells(layout) {
+                for (bits, forbidden) in choices[span.clone()]
+                    .iter_mut()
+                    .zip(&family.at(cell)[span.clone()])
+                {
+                    *bits &= !forbidden;
                 }
-                next[index][word] = choices;
-                has_layout |= choices != 0;
             }
-            if !has_layout {
+            if !choices[span].iter().any(|&bits| bits != 0) {
                 return false;
             }
         }

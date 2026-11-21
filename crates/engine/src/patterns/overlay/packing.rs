@@ -14,6 +14,41 @@ pub(super) struct Family<'a> {
     pub(super) layouts: &'a [u128],
 }
 
+// Equal domains permit any witness layout to be assigned to either digit.
+fn layout_equivalences(families: &[Family<'_>]) -> [u8; indexed::WIDTH] {
+    let mut equivalent = [0; indexed::WIDTH];
+    if families.len() == equivalent.len() {
+        for (index, family) in families.iter().enumerate() {
+            for (other, candidate) in families[..index].iter().enumerate() {
+                if family.allowed == candidate.allowed && family.layouts == candidate.layouts {
+                    equivalent[index] |= 1 << other;
+                    equivalent[other] |= 1 << index;
+                }
+            }
+        }
+    }
+    equivalent
+}
+
+fn share_support(
+    families: &[Family<'_>],
+    equivalent: [u8; indexed::WIDTH],
+    support: &mut [u128; 9],
+) {
+    for (index, family) in families.iter().enumerate() {
+        // Visit each pair once. The equivalence relation includes every pair
+        // in each interchangeable set, so all members receive the union.
+        for other in 0..index {
+            if equivalent[index] & (1 << other) != 0 {
+                let digit = families[other].digit;
+                let shared = support[digit] | support[family.digit];
+                support[digit] = shared;
+                support[family.digit] = shared;
+            }
+        }
+    }
+}
+
 // Preserve quick witnesses in the original order before trying the alternate.
 // Its work limit counts every inspected layout, including rejected patterns.
 const ORIGINAL_CHOICES: u16 = 64;
@@ -31,6 +66,10 @@ fn support_with_probes(
 ) -> [u128; 9] {
     let mut witness = [0; 9];
     let indexed = OnceCell::new();
+    let equivalent = layout_equivalences(families);
+    if equivalent != [0; indexed::WIDTH] {
+        share_support(families, equivalent, &mut support);
+    }
     for (index, family) in families.iter().enumerate() {
         let followers: Vec<_> = families[..index]
             .iter()
@@ -62,7 +101,9 @@ fn support_with_probes(
                 found
             } else if let Some(complete) = interchangeable::support(families, support) {
                 return complete;
-            } else if let Some(packing) = indexed.get_or_init(|| indexed::Packing::new(families)) {
+            } else if let Some(packing) =
+                indexed.get_or_init(|| indexed::Packing::new(families, equivalent))
+            {
                 packing.find(index, cell, &mut witness)
             } else {
                 let layout = family.layouts.iter().copied().find(|&layout| {
@@ -81,6 +122,9 @@ fn support_with_probes(
                 // Every digit in this complete witness gains support.
                 for (supported, used) in support.iter_mut().zip(witness) {
                     *supported |= used;
+                }
+                if equivalent != [0; indexed::WIDTH] {
+                    share_support(families, equivalent, &mut support);
                 }
             }
         }
@@ -342,6 +386,67 @@ mod tests {
 
         families[0].allowed = cell_bit(0);
         assert_eq!(support_with_probes(&families, [0; 9], 0, 0), [0; 9]);
+    }
+
+    #[test]
+    fn mixed_identical_domains_match_direct_packings_across_layout_words() {
+        let mut a = vec![cell_bit(80); 65];
+        a.extend([63, 64, 72].map(cell_bit));
+        let mut b = vec![cell_bit(0); 66];
+        b.extend([8, 20].map(cell_bit));
+        let fixed = [cell_bit(80) | cell_bit(0), cell_bit(63) | cell_bit(8)];
+        let allowed = (1u128 << crate::CELLS) - 1;
+        let mut families = [
+            Family {
+                digit: 7,
+                allowed,
+                layouts: &a,
+            },
+            Family {
+                digit: 2,
+                allowed,
+                layouts: &b,
+            },
+            Family {
+                digit: 1,
+                allowed,
+                layouts: &a,
+            },
+            Family {
+                digit: 4,
+                allowed,
+                layouts: &fixed,
+            },
+            Family {
+                digit: 0,
+                allowed,
+                layouts: &b,
+            },
+        ];
+        for layout_edit in [false, true] {
+            if layout_edit {
+                families[1].allowed &= !cell_bit(20);
+            }
+            for order in [false, true] {
+                if order {
+                    families.reverse();
+                }
+                let expected = direct(&families);
+                let seeded = std::array::from_fn(|digit| {
+                    if matches!(digit, 2 | 7) {
+                        expected[digit]
+                    } else {
+                        0
+                    }
+                });
+                assert_eq!(support_with_probes(&families, [0; 9], 0, 0), expected);
+                assert_eq!(support_with_probes(&families, seeded, 0, 0), expected);
+                assert_eq!(compatible_support(&families, seeded), expected);
+                if order {
+                    families.reverse();
+                }
+            }
+        }
     }
 
     #[test]

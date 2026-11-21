@@ -54,6 +54,17 @@ if (selected.includes('HCHW-current-stall')) {
   cases.push({ name: 'HCHW-current-stall', request: { type: 'variant', operation: 'hints', position: trace.end,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
 }
+if (selected.some(name => name === 'HCHW-linked' || name === 'HCHW-edited-tail')) {
+  const linked = await load('overlay-hchw-linked')
+  assert.equal(linked.url, source.url)
+  const position = { puzzle: source.puzzle, entries: linked.entries, eliminations: linked.after }
+  cases.push({ name: 'HCHW-linked', request: { type: 'variant', operation: 'hints', position,
+    techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+  const removed = (1 << (4 - 1)) | (1 << (6 - 1))
+  const edits = linked.before.map((mask, cell) => [1, 10].includes(cell) ? mask | removed : mask)
+  cases.push({ name: 'HCHW-edited-tail', request: { type: 'variant', operation: 'trace',
+    position: { ...position, eliminations: edits }, techniqueOrder: order }, expectedSteps: 1 })
+}
 const methods = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
 for (const technique of methods) {
   const [exercise] = await seed.request({ type: 'practice-examples', technique })
@@ -75,15 +86,17 @@ for (const [name, techniqueOrder, expected] of [
 for (const name of selected) assert.ok(cases.some(source => source.name === name), `Unknown case ${name}`)
 console.log(JSON.stringify({ host: `${process.platform} ${process.arch}`, node: process.version,
   artifacts: binaries.map(bytes => ({ raw: bytes.length, gzip: gzipSync(bytes).length, sha256: createHash('sha256').update(bytes).digest('hex') })),
-  samples, warmups, method: 'Fresh instances per case, alternate execution order. Include serialization; exclude assertions, instantiation, worker startup/transfer and rendering. Zero warmups retains the first request in the raw samples. Complete replies match outside timing; small-sample p95 is the maximum.' }))
+  samples, warmups, method: 'Fresh instances per case, alternate execution order. Report wall time and process CPU time. Include serialization; exclude assertions, instantiation, worker startup/transfer and rendering. Zero warmups retains the first request in the raw samples. Complete replies match outside timing; small-sample p95 is the maximum.' }))
 const summary = times => [0.5, 0.95].map(q => Number(times.toSorted((a,b) => a-b)[Math.ceil(q * times.length)-1].toFixed(3)))
 for (const source of cases.filter(source => !selected.length || selected.includes(source.name))) {
-  const pair = await Promise.all(binaries.map(engine)), times = [[], []]
+  const pair = await Promise.all(binaries.map(engine)), times = [[], []], cpuTimes = [[], []]
   let expected
   for (let round = 0; round < warmups + samples; round++) {
     for (const index of round % 2 ? [1, 0] : [0, 1]) {
       if (source.checkpoints) console.error(JSON.stringify({ status: 'started', name: source.name, round, engine: index }))
+      const cpuStart = process.cpuUsage()
       const start = performance.now(), actual = await pair[index].request(source.request), elapsed = performance.now() - start
+      const cpu = process.cpuUsage(cpuStart)
       if (source.checkpoints) console.error(JSON.stringify({ status: 'complete', name: source.name, round,
         engine: index, elapsed, warmup: round < warmups, proofCount: actual.length,
         responseSha256: createHash('sha256').update(JSON.stringify(actual)).digest('hex') }))
@@ -91,9 +104,21 @@ for (const source of cases.filter(source => !selected.length || selected.include
       else assert.deepEqual(actual, expected, `${source.name}: engine ${index}`)
       if (source.positive) assert.ok(actual.length > 0)
       else if (source.expectedError) assert.equal(actual.engineError, source.expectedError)
-      else assert.equal(actual.length, source.expected)
-      if (round >= warmups) times[index].push(elapsed)
+      else if (source.expectedSteps !== undefined) {
+        assert.equal(actual.rating.status, 'stalled')
+        assert.equal(actual.steps.length, source.expectedSteps)
+      } else assert.equal(actual.length, source.expected)
+      if (round >= warmups) {
+        times[index].push(elapsed)
+        cpuTimes[index].push((cpu.user + cpu.system) / 1_000)
+      }
     }
   }
-  console.log(JSON.stringify({ name: source.name, proofs: Array.isArray(expected) ? expected.length : undefined, error: expected.engineError, medianP95: times.map(summary), samples: times, memoryBytes: pair.map(engine => engine.memory()) }))
+  console.log(JSON.stringify({
+    name: source.name, proofs: Array.isArray(expected) ? expected.length : undefined,
+    steps: expected.steps?.length, error: expected.engineError,
+    medianP95: times.map(summary), samples: times,
+    cpuMedianP95: cpuTimes.map(summary), cpuSamples: cpuTimes,
+    memoryBytes: pair.map(engine => engine.memory()),
+  }))
 }
