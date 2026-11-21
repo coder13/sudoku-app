@@ -226,6 +226,7 @@ export function Worktable({
   // The saved solve still owns the results. Editing the grid uses a temporary session.
   const [solvedGrid, setSolvedGrid] = useState<{ session: SolvedGridSession; game: Game } | null>(null)
   const solvedGridSession = useRef<SolvedGridSession | null>(null)
+  const focusGridAfterHistory = useRef(false)
   const completed = isSolved(savedGame)
   const playground = completed && solvedGrid?.game.id === savedGame.id ? solvedGrid : null
   const session = playground?.session
@@ -458,7 +459,8 @@ export function Worktable({
   const previewing = !game.paused && !draft && !savedHighlightMode && solutionPathRevealed && solutionPath !== null &&
     (mobile ? activeToolPanel === 'solution' : advancedWorkspace ? desktopSolutionVisible : activeDesktopTab?.id === 'solution')
   const showMobileResults = mobile && showResults && !previewing
-  const disabled = Boolean(placeholder) || previewing || game.paused || rearranging
+  const historyDisabled = Boolean(placeholder) || previewing || rearranging || (!showResults && game.paused)
+  const disabled = historyDisabled || game.paused
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const puzzleControlsBelow = appearance.puzzleControlsPosition === 'bottom' && !draft && !placeholder
   const floatingPuzzleMenu = mobile || puzzleControlsBelow
@@ -1075,7 +1077,11 @@ export function Worktable({
     if (!completed) {
       solvedGridSession.current = null
       setSolvedGrid(null)
-    } else if (!mobile && showSolvedGrid) boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
+      focusGridAfterHistory.current = false
+    } else if (showSolvedGrid && (!mobile || focusGridAfterHistory.current)) {
+      focusGridAfterHistory.current = false
+      boardRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus({ preventScroll: true })
+    }
   }, [completed, mobile, showSolvedGrid])
 
   useEffect(() => {
@@ -1202,6 +1208,15 @@ export function Worktable({
 
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
+    if (showResults && (transform === undo || transform === redo)) {
+      if (historyDisabled) return
+      const next = transform(savedGame)
+      if (next !== savedGame) {
+        focusGridAfterHistory.current = true
+        openSolvedGrid(recordAction(savedGame, next, kind))
+      }
+      return
+    }
     if (disabled) return
     updateWorkingGame((current) => recordAction(current, transform(current), kind, options))
   }
@@ -1745,6 +1760,13 @@ export function Worktable({
         }
         return
       }
+      const historyShortcut = shortcut && (key === 'z' || key === 'y')
+      const redoShortcut = key === 'y' || event.shiftKey
+      if (showResults && historyShortcut && !historyDisabled && !variantRulesOpen) {
+        event.preventDefault()
+        edit(redoShortcut ? redo : undo)
+        return
+      }
       if (game.paused || (solved && !showSolvedGrid)) return
       if (!draft && shortcutMatches(event, shortcuts, 'highlightMode')) {
         event.preventDefault()
@@ -1770,8 +1792,6 @@ export function Worktable({
         return
       }
       if (previewing) return
-      const historyShortcut = shortcut && (key === 'z' || key === 'y')
-      const redoShortcut = key === 'y' || event.shiftKey
       if (historyShortcut && (sketch.drawing || browsingStrongLinks ||
         (chainsVisible && target instanceof HTMLElement && target.closest('.chains-panel')))) {
         event.preventDefault()
@@ -2614,7 +2634,6 @@ export function Worktable({
       <div className="puzzle-paused" role="status" aria-label="Puzzle paused">
         <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
         <h2>Puzzle paused</h2>
-        {showElapsedTime && <p>Your elapsed time is stopped.</p>}
         <Button type="button" variant="primary" onClick={resumePuzzle}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
       </div>
     </div>
@@ -2840,6 +2859,7 @@ export function Worktable({
           digitHighlightMatch={digitHighlight.match} onDigitHighlightMatchChange={!draft && !solved && !previewing ? changeDigitHighlightMatch : undefined}
           values={values} input={sketch.drawing || browsingStrongLinks ? toggleChainHighlight : input} chainDrawing={sketch.drawing || browsingStrongLinks}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
+          historyDisabled={historyDisabled}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
           actionsMenu={!mobile && !advancedWorkspace ? desktopActionsMenu : undefined}
@@ -2850,7 +2870,10 @@ export function Worktable({
           disabled={disabled || (solved && !showSolvedGrid)} draft={presentationDraft} inputSize={inputSize} panelHeight={panelHeight}
           setPanelHeight={setPanelHeight} beginResize={beginResize} showMultiSelectButton={!advancedWorkspace} multi={multi} toggleMulti={toggleMulti} />
         {mobile && completed && <section ref={setCompletionActionsTarget} className="surface mobile-completion-actions"
-          aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold />}
+          aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold>
+          {savedGame.past.length > 0 && <IconButton className="completion-undo" aria-label="Undo" title="Undo"
+            disabled={historyDisabled} onClick={() => edit(undo)}><Undo2 size={22} aria-hidden="true" /></IconButton>}
+        </section>}
       </div>
   )
   const advancedHintPanel = <div className="dock-hint-content">

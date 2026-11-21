@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { expect } from 'storybook/test'
 import { SizeSettings } from '../../src/components/Settings'
 import { MAX_INPUT_SIZE, MIN_INPUT_SIZE } from '../../src/sudoku/preferences'
 import { Width } from '../support/frames'
@@ -24,3 +25,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 export const Minimum: Story = { args: { inputSize: MIN_INPUT_SIZE } }
 export const Maximum: Story = { args: { inputSize: MAX_INPUT_SIZE } }
+export const PuzzleBorder: Story = {
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const select = canvas.getByRole('combobox', { name: 'Puzzle border thickness' })
+    await userEvent.selectOptions(select, '6')
+    const preview = canvasElement.querySelector('.puzzle-border-preview .variant-preview')!
+    await expect(getComputedStyle(preview).borderTopWidth).toBe('6px')
+  },
+}

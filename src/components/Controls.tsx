@@ -53,6 +53,7 @@ type Props = {
   chainDrawing?: boolean
   canUndo: boolean
   canRedo: boolean
+  historyDisabled?: boolean
   disabled: boolean
   draft: boolean
   inputSize: number
@@ -71,6 +72,7 @@ export function Controls(props: Props) {
   const [panelBounds, setPanelBounds] = useState({ min: 250, max: 420 })
   const drag = useRef<{ y: number; height: number } | null>(null)
   const editsDisabled = props.disabled || props.chainDrawing
+  const historyDisabled = props.historyDisabled ?? props.disabled
   const colors = !props.chainDrawing && props.mode === 'color'
   const toggleDigitHighlight = !props.disabled && !colors ? props.onToggleDigitHighlight : undefined
   const canHighlightDigits = Boolean(toggleDigitHighlight)
@@ -178,8 +180,8 @@ export function Controls(props: Props) {
 
       <div className="controls-content">
           <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
-            <IconButton className="history-button" onClick={props.undo} disabled={props.disabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></IconButton>
-            <IconButton className="history-button" onClick={props.redo} disabled={props.disabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></IconButton>
+            <IconButton className="history-button" onClick={props.undo} disabled={historyDisabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></IconButton>
+            <IconButton className="history-button" onClick={props.redo} disabled={historyDisabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></IconButton>
             {props.onCheck && <IconButton className="puzzle-check-button" onClick={props.onCheck} disabled={editsDisabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></IconButton>}
             {props.onActions && (

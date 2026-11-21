@@ -2,7 +2,7 @@ import { Button } from '../../src/components/Button'
 import { createContext, useContext, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { SudokuShell, Workspace } from '../../src/components/Workspace'
-import { DeviceSyncPage } from '../../src/components/DeviceSyncPage'
+import { isSyncStep } from '../../src/sudoku/sync-steps'
 import { LearnLayout } from '../../src/routes/learn'
 import { LessonPage } from '../../src/routes/learn.$technique'
 import { LessonOverview } from '../../src/routes/learn.index'
@@ -56,8 +56,11 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     const index = createRoute({ getParentRoute: () => root, path: '/', component: IndexSlot })
     const settings = createRoute({ getParentRoute: () => root, path: 'settings', component: Workspace })
     const settingsSection = createRoute({ getParentRoute: () => settings, path: '$section' })
-    const sync = createRoute({ getParentRoute: () => root, path: 'sync', component: DeviceSyncPage })
-    const syncStep = createRoute({ getParentRoute: () => sync, path: '$step' })
+    const sync = createRoute({ getParentRoute: () => settings, path: 'device-sync' })
+    const syncStep = createRoute({
+      getParentRoute: () => sync, path: '$step',
+      loader: ({ params }) => isSyncStep(params.step) ? params.step : undefined,
+    })
     const importPuzzle = createRoute({ getParentRoute: () => root, path: 'import', component: ImportRoute.options.component })
     const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
     const standalone = { standalonePuzzlePage: true }
@@ -87,6 +90,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       validateSearch: NewPuzzleRoute.options.validateSearch,
     })
     const difficulty = createRoute({ getParentRoute: () => newPuzzle, path: 'difficulty' })
+    const custom = createRoute({ getParentRoute: () => newPuzzle, path: 'custom' })
     const learn = createRoute({
       getParentRoute: () => root,
       path: 'learn',
@@ -102,8 +106,8 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     })
     return createRouter({
       routeTree: root.addChildren([
-        index, settings.addChildren([settingsSection]), sync.addChildren([syncStep]), importPuzzle,
-        puzzles.addChildren([newPuzzle.addChildren([difficulty]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
+        index, settings.addChildren([settingsSection, sync.addChildren([syncStep])]), importPuzzle,
+        puzzles.addChildren([newPuzzle.addChildren([difficulty, custom]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
       ]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,

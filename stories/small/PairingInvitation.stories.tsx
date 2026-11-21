@@ -19,7 +19,7 @@ export default meta
 export const Card: StoryObj<typeof meta> = {
   render: function Example(args) {
     const [open, setOpen] = useState(true)
-    return <div className="page sync-page device-sync-page" style={{ height: 'auto' }}>
+    return <div className="device-sync-settings">
       {open ? <PairingInvitation {...args} onClose={() => { setOpen(false); args.onClose() }} />
         : <Button onClick={() => setOpen(true)}>Show pairing code</Button>}
     </div>

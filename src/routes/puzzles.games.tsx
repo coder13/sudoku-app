@@ -20,7 +20,7 @@ function GameTypePicker() {
   return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
       <header className="puzzles-page-heading">
-        <Link to="/puzzles/new" className={iconButtonClassName()} aria-label="Back to Sudoku variants"
+        <Link to="/puzzles/new" search={{ step: 'variant' }} className={iconButtonClassName()} aria-label="Back to Sudoku variants"
           onClick={event => {
             if (fromSudokuVariant && canGoBack && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
               event.preventDefault()
@@ -32,7 +32,7 @@ function GameTypePicker() {
         <h1 ref={heading} tabIndex={-1}>Choose a game type</h1>
       </header>
       <ul className="game-list main-puzzle-list motion-screen">
-        <li><Link className="game-row" to="/puzzles/new">
+        <li><Link className="game-row" to="/puzzles/new" search={{ step: 'variant' }}>
           <Grid3X3 size={24} aria-hidden="true" />
           <span className="game-row-copy"><strong>Sudoku</strong><small>Place digits in rows, columns, and regions.</small></span>
           <ChevronRight className="row-arrow" size={18} aria-hidden="true" />

@@ -15,7 +15,7 @@ before(async () => {
 after(async () => { await server?.close() })
 
 test('the chooser offers five 9×9 modes, Import, and separate custom generation', async () => {
-  const markup = await renderNewPuzzle('/puzzles/new', { variant: 'six', difficulty: 'medium', boxRows: 3 }, false)
+  const markup = await renderNewPuzzle('/puzzles/new?step=variant', { variant: 'six', difficulty: 'medium', boxRows: 3 }, false)
   assert.match(markup, /Choose a Sudoku mode/)
   for (const name of ['Classic', 'X Sudoku', 'Windoku', 'Killer', 'Jigsaw']) {
     assert.ok(markup.includes(`>${name}</span>`), name)
@@ -49,14 +49,14 @@ test('smaller grids are configured inside custom generation and retain their dif
   assert.match(six, /<h1[^>]*>Generate a custom puzzle<\/h1>/)
   assert.match(six, /<option value="six" selected="">6 × 6 Sudoku<\/option>/)
   assert.match(six, /<option value="3" selected="">3 × 2 boxes/)
-  assert.match(six, /href="\/puzzles\/new\/difficulty\?variant=six&amp;boxRows=3"/)
+  assert.match(six, /href="\/puzzles\/new\/difficulty\?variant=six&amp;boxRows=3&amp;difficulty=medium"/)
   assert.doesNotMatch(six, /Find a rule|Create puzzle/)
   const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=six&boxRows=3')
-  assert.match(difficulty, /href="\/puzzles\/new\/custom\?variant=six&amp;boxRows=3"/)
+  assert.match(difficulty, /href="\/puzzles\/new\/custom\?variant=six&amp;boxRows=3&amp;difficulty=medium"/)
   assert.match(difficulty, /Start medium puzzle/)
   const legacy = await renderNewPuzzle('/puzzles/new?variant=mini')
   assert.match(legacy, /<h1[^>]*>Generate a custom puzzle<\/h1>/)
-  assert.match(legacy, /href="\/puzzles\/new\/difficulty\?variant=mini"/)
+  assert.match(legacy, /href="\/puzzles\/new\/difficulty\?variant=mini&amp;difficulty=medium"/)
 })
 
 test('saved mode definitions and rule choices round-trip, with nine core slots in total', () => {

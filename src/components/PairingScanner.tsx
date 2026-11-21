@@ -1,6 +1,7 @@
 import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type jsQR from 'jsqr'
+import { deviceSyncPath } from '../sudoku/sync-steps'
 import { createPairingScanTracker, isProductionSyncOrigin, readPairingLink, sharesPairingService } from '../sudoku/pairing-link'
 
 function readCode(source: CanvasImageSource, width: number, height: number, decode: typeof jsQR, maxEdge: number) {
@@ -26,7 +27,7 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
   const [cameraError, setCameraError] = useState('')
   const [error, setError] = useState('')
   const [otherOrigin, setOtherOrigin] = useState<string | null>(null)
-  const matchingScanner = otherOrigin && isProductionSyncOrigin(otherOrigin) ? new URL('/sync/scan', otherOrigin) : null
+  const matchingScanner = otherOrigin && isProductionSyncOrigin(otherOrigin) ? new URL(deviceSyncPath + '/scan', otherOrigin) : null
   const checkCode = useCallback((text: string) => {
     const link = readPairingLink(text)
     const mismatch = link && !sharesPairingService(link.origin, pairingOrigin) ? link.origin : null

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { APPEARANCE_KEY, MOBILE_PUZZLE_TOP_SPACES, PUZZLE_BORDER_WIDTHS, readPreferences } from '../src/sudoku/preferences.ts'
 import {
   clampGridTextScale,
   DEFAULT_GRID_TEXT_SCALE,
@@ -27,4 +28,22 @@ test('five increases move the 75% default to the exact 100% endpoint', () => {
   let scale = DEFAULT_GRID_TEXT_SCALE
   for (let step = 0; step < 5; step++) scale = stepGridTextScale(scale, 1)
   assert.equal(scale, MAX_GRID_TEXT_SCALE)
+})
+
+test('puzzle borders accept supported widths and keep the default for older or invalid preferences', () => {
+  const read = (width: unknown) => readPreferences({
+    getItem: key => key === APPEARANCE_KEY ? JSON.stringify({ puzzleBorderWidth: width }) : null,
+  }).appearance.puzzleBorderWidth
+
+  for (const width of PUZZLE_BORDER_WIDTHS) assert.equal(read(width), width)
+  for (const width of [undefined, null, 0, 2.5, 7, '4']) assert.equal(read(width), null)
+})
+
+test('space above the puzzle defaults to none and accepts supported saved values', () => {
+  const read = (space: unknown) => readPreferences({
+    getItem: key => key === APPEARANCE_KEY ? JSON.stringify({ mobilePuzzleTopSpace: space }) : null,
+  }).appearance.mobilePuzzleTopSpace
+
+  for (const space of MOBILE_PUZZLE_TOP_SPACES) assert.equal(read(space), space)
+  for (const space of [undefined, null, -16, 32.5, 272, '64']) assert.equal(read(space), 0)
 })

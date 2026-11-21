@@ -10,7 +10,7 @@ import { hidatoCatalog } from './src/hidato/catalog.ts'
 import { kakuroCatalog } from './src/kakuro/catalog.ts'
 import { rulloCatalog } from './src/rullo/catalog.ts'
 import { isDifficulty } from './src/sudoku/difficulty.ts'
-import { syncPageTitles } from './src/sudoku/sync-pages.ts'
+import { deviceSyncPath, syncStepTitles } from './src/sudoku/sync-steps.ts'
 import { PRODUCTION_SYNC_ORIGIN } from './src/sudoku/pairing-link.ts'
 import { lessonCatalog, type LearnContent } from './src/sudoku/lesson-content.ts'
 
@@ -63,7 +63,8 @@ function prerenderPages() {
     '/puzzles',
     '/import',
     '/sync',
-    ...Object.keys(syncPageTitles).map(step => '/sync/' + step),
+    '/sync/devices',
+    ...Object.keys(syncStepTitles).map(step => '/sync/' + step),
     '/shortcuts',
     '/puzzles/browse',
     '/puzzles/new',
@@ -86,11 +87,14 @@ function prerenderPages() {
     '/puzzles/collections',
     '/puzzles/statistics',
     '/settings',
+    deviceSyncPath,
+    ...Object.keys(syncStepTitles).map(step => deviceSyncPath + '/' + step),
     '/settings/appearance',
     '/settings/input',
     '/settings/highlighting',
     '/settings/solving',
     '/settings/hints',
+    '/settings/shortcuts',
     '/learn',
     ...[...lessonRoutes.keys()].map((id) => `/learn/${id}`),
   ].map((path) => ({ path }))

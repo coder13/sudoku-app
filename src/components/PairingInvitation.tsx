@@ -22,7 +22,7 @@ export function PairingInvitation({ link, expires, onClose }: { link: string; ex
   }
   return <section className="sync-panel sync-invitation" aria-label="Pairing code">
     <div className="sync-panel-heading">
-      <h2>Scan to link a device</h2>
+      <h3>Scan to link a device</h3>
       <IconButton variant="quiet" aria-label="Close pairing code" title="Close" onClick={onClose}><X size={18} /></IconButton>
     </div>
     {qr?.link !== link || qr.image ? <div className="sync-code-frame" style={{ maxWidth: SHARE_QR_WIDTH }} aria-busy={qr?.link !== link}>

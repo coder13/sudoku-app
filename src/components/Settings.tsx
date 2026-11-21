@@ -1,8 +1,8 @@
 import { Button, IconButton, iconButtonClassName } from './Button'
-import { useId, useSyncExternalStore } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useEffect, useId, useRef, useSyncExternalStore, type CSSProperties } from 'react'
+import { Link, useCanGoBack, useLocation, useRouter } from '@tanstack/react-router'
 import {
-  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Layers2, Lightbulb, Minus, Monitor, Palette, PanelsTopLeft, PenTool, Pin, Plus,
+  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Eye, EyeOff, Highlighter, Keyboard, Layers2, Lightbulb, Minus, Monitor, Palette, PanelsTopLeft, PenTool, Pin, Plus,
   SlidersHorizontal,
 } from 'lucide-react'
 import { MAX_APP_TEXT_ZOOM, MIN_APP_TEXT_ZOOM, stepAppTextZoom } from '../sudoku/app-text-zoom'
@@ -13,21 +13,25 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
 import {
   CANDIDATE_TEXT_SIZES, gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
-  stepGridTextScale,
+  MOBILE_PUZZLE_TOP_SPACES, PUZZLE_BORDER_WIDTHS, stepGridTextScale,
   type AdvancedModes, type AppearancePreferences, type HighlightPreferences, type ThemeId, type WorkspaceMode,
 } from '../sudoku/preferences'
+import { syncStepTitles, type SyncStep } from '../sudoku/sync-steps'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { ChainSwatches } from './ChainsPanel'
+import { DeviceSyncSettings } from './DeviceSyncSettings'
+import { KeyboardShortcutSettings } from './KeyboardShortcutSettings'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
+import { VariantPreview } from './VariantPreview'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
 
-export type SettingsSection = 'appearance' | 'input' | 'puzzle-buttons' | 'highlighting' | 'chain-colors' | 'solving' | 'hints'
+export type SettingsSection = 'appearance' | 'input' | 'puzzle-buttons' | 'highlighting' | 'chain-colors' | 'solving' | 'hints' | 'shortcuts' | 'device-sync'
 type Section = SettingsSection
-type GeneralSection = Exclude<Section, 'appearance' | 'puzzle-buttons' | 'highlighting' | 'chain-colors'>
+type GeneralSection = Exclude<Section, 'device-sync' | 'shortcuts' | 'appearance' | 'puzzle-buttons' | 'highlighting' | 'chain-colors'>
 
-const sections: { id: Section | 'device-sync'; label: string; description: string; icon: typeof Eye }[] = [
+const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
   { id: 'appearance', label: 'Look & feel', description: 'Theme, grid labels, and sizing', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
   { id: 'puzzle-buttons', label: 'Puzzle buttons', description: 'Shortcuts pinned below the grid', icon: Pin },
@@ -35,6 +39,7 @@ const sections: { id: Section | 'device-sync'; label: string; description: strin
   { id: 'chain-colors', label: 'Chain colors', description: 'Color pairs for drawing chains', icon: Palette },
   { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
+  { id: 'shortcuts', label: 'Keyboard shortcuts', description: 'View and customize key bindings', icon: Keyboard },
   { id: 'device-sync', label: 'Device sync', description: 'Link and manage devices', icon: Monitor },
 ]
 const screenLabels: Record<Section, string> = {
@@ -45,13 +50,24 @@ const screenLabels: Record<Section, string> = {
   'chain-colors': 'Chain colors',
   solving: 'Solving style',
   hints: 'Hints',
+  shortcuts: 'Keyboard shortcuts',
+  'device-sync': 'Device sync',
 }
 
-function SettingsNavigation({ mobile = false }: { mobile?: boolean }) {
+declare module '@tanstack/history' {
+  interface HistoryState {
+    fromSettingsOverview?: boolean
+  }
+}
+
+function SettingsNavigation({ mobile = false, overview = false }: { mobile?: boolean; overview?: boolean }) {
   return <nav className={mobile ? 'settings-mobile-menu' : 'settings-tabs'} aria-label="Settings sections">
     {sections.map(({ id, label, description, icon: Icon }) => {
-      const route = id === 'device-sync' ? { to: '/sync' as const }
-        : { to: '/settings/$section' as const, params: { section: id } }
+      const route = id === 'device-sync' ? { to: '/settings/device-sync' as const, state: { syncBack: overview ? 'settings' as const : undefined } }
+        : {
+          to: '/settings/$section' as const, params: { section: id },
+          state: id === 'shortcuts' ? { fromSettingsOverview: overview } : undefined,
+        }
       return <Link key={id} {...route}>
         {mobile ? <>
           <span className="settings-menu-icon"><Icon size={20} /></span>
@@ -254,6 +270,30 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
         </div>
       </div>
       <GuideSetting appearance={appearance} setAppearance={setAppearance} heading={false} />
+      <label className="settings-select settings-select-inline">
+        <strong>Puzzle border thickness</strong>
+        <span className="puzzle-border-options">
+          <span className="puzzle-border-preview"
+            style={{ '--puzzle-border-width': (appearance.puzzleBorderWidth ?? 2) + 'px' } as CSSProperties}>
+            <VariantPreview variant="classic" />
+          </span>
+          <SelectControl aria-label="Puzzle border thickness" value={appearance.puzzleBorderWidth ?? ''}
+            onChange={event => {
+              const width = Number(event.currentTarget.value)
+              setAppearance({ ...appearance, puzzleBorderWidth: PUZZLE_BORDER_WIDTHS.find(option => option === width) ?? null })
+            }}>
+            <option value="">Default</option>
+            {PUZZLE_BORDER_WIDTHS.map(width => <option key={width} value={width}>{width} px</option>)}
+          </SelectControl>
+        </span>
+      </label>
+      <label className="settings-select settings-select-inline">
+        <span><strong>Space above puzzle</strong><small>Make room for picture-in-picture video in portrait play.</small></span>
+        <SelectControl aria-label="Space above puzzle" value={appearance.mobilePuzzleTopSpace}
+          onChange={event => setAppearance({ ...appearance, mobilePuzzleTopSpace: Number(event.currentTarget.value) })}>
+          {MOBILE_PUZZLE_TOP_SPACES.map(space => <option key={space} value={space}>{space === 0 ? 'None' : space + ' px'}</option>)}
+        </SelectControl>
+      </label>
       <label className="settings-select settings-select-inline">
         <span><strong>Puzzle controls position</strong><small>Place the difficulty, timer, pause button, and puzzle menu above or below the grid.</small></span>
         <SelectControl aria-label="Puzzle controls position" value={appearance.puzzleControlsPosition}
@@ -532,6 +572,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
 type SettingsProps = {
   close: () => void
   section?: SettingsSection | null
+  syncStep?: SyncStep | null
   advancedModes: AdvancedModes
   setAdvancedModes: (modes: AdvancedModes) => void
   appearance: AppearancePreferences
@@ -550,9 +591,41 @@ type SettingsProps = {
 }
 
 export function Settings({
-  close, section = null, advancedModes, setAdvancedModes, appearance, setAppearance, highlighting, setHighlighting, errorMode, setErrorMode,
+  close, section = null, syncStep = null, advancedModes, setAdvancedModes, appearance, setAppearance, highlighting, setHighlighting, errorMode, setErrorMode,
   inputSize, setInputSize, draft, cellReferenceStyle, setCellReferenceStyle, workspaceMode, setWorkspaceMode,
 }: SettingsProps) {
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
+  const { syncBack, fromSettingsOverview } = useLocation({ select: location => location.state })
+  const syncing = section === 'device-sync'
+  const editingShortcuts = section === 'shortcuts'
+  const singlePanel = syncing || editingShortcuts
+  const heading = useRef<HTMLHeadingElement>(null)
+  const wasSinglePanel = useRef(false)
+
+  useEffect(() => {
+    if (singlePanel || wasSinglePanel.current) heading.current?.focus({ preventScroll: true })
+    wasSinglePanel.current = singlePanel
+  }, [section, singlePanel, syncStep])
+
+  const syncParent = syncStep === null ? 'settings'
+    : syncStep === 'recover' || (syncStep === 'confirm' && syncBack === 'scan') ? 'scan' : 'start'
+  const syncBackLabels = { settings: 'Back to Settings', scan: 'Back to scanner', start: 'Back to Device sync' }
+
+  function backFromSync() {
+    if (canGoBack && syncBack === syncParent) router.history.back()
+    else if (syncParent === 'settings') void router.navigate({ to: '/settings', replace: true })
+    else if (syncParent === 'scan') void router.navigate({
+      to: '/settings/device-sync/$step', params: { step: 'scan' }, replace: true,
+    })
+    else void router.navigate({ to: '/settings/device-sync', replace: true })
+  }
+
+  function backFromShortcuts() {
+    if (canGoBack && fromSettingsOverview) router.history.back()
+    else void router.navigate({ to: '/settings', replace: true })
+  }
+
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const paperStyleApplied = !timing.showTimer && errorMode === 'none' && advancedModes.keypadProgress === 'off' &&
     !advancedModes.autoGenerateCandidates && !advancedModes.autoRemoveCandidates && !advancedModes.autoPlaceNakedSingles &&
@@ -578,7 +651,7 @@ export function Settings({
       onApplyPaperStyle={applyPaperStyle} paperStyleApplied={paperStyleApplied} />
   }
 
-  function renderSection(screen: Section) {
+  function renderSection(screen: Exclude<Section, 'device-sync'>) {
     if (screen === 'appearance') {
       return <AppearanceSettings appearance={appearance} setAppearance={setAppearance} inputSize={inputSize}
         setInputSize={setInputSize} workspaceMode={workspaceMode} setWorkspaceMode={setWorkspaceMode} />
@@ -588,31 +661,43 @@ export function Settings({
     }
     if (screen === 'chain-colors') return <ChainColorSettings />
     if (screen === 'puzzle-buttons') return <PuzzleButtonSettings />
+    if (screen === 'shortcuts') return <KeyboardShortcutSettings />
     return renderGeneral(screen)
   }
 
+  const title = syncing && syncStep ? syncStepTitles[syncStep] : section ? screenLabels[section] : 'Settings'
   return (
-    <Modal title={section ? screenLabels[section] : 'Settings'} onClose={() => exitSettings()}
+    <Modal title={title} titleRef={heading} onClose={() => exitSettings()}
       className={`settings-dialog ${section ? 'settings-subscreen' : ''}`}
-      leading={section ? (
+      leading={syncing ? (
+        <IconButton className="settings-header-back"
+          aria-label={syncBackLabels[syncParent]}
+          onClick={backFromSync}><ChevronLeft size={21} /></IconButton>
+      ) : editingShortcuts ? (
+        <IconButton className="settings-header-back" aria-label="Back to Settings" onClick={backFromShortcuts}>
+          <ChevronLeft size={21} />
+        </IconButton>
+      ) : section ? (
         <Link to="/settings" className={iconButtonClassName('secondary', 'settings-header-back')} aria-label="Back to Settings">
           <ChevronLeft size={21} />
         </Link>
       ) : undefined}>
-      <div className="settings-desktop">
-        <SettingsNavigation />
+      <div className={`settings-desktop${singlePanel ? ' settings-single-panel' : ''}`}>
+        <SettingsNavigation overview={section === null} />
         <div className="settings-panel motion-screen" key={section ?? 'overview'}>
-          {section ? renderSection(section) : <div className="settings-overview"><h3>Settings</h3><p>Choose a section to configure the app.</p></div>}
+          {syncing ? <DeviceSyncSettings step={syncStep} onBack={backFromSync} />
+            : section ? renderSection(section)
+              : <div className="settings-overview"><h3>Settings</h3><p>Choose a section to configure the app.</p></div>}
         </div>
       </div>
 
-      <div className="settings-mobile">
+      {!singlePanel && <div className="settings-mobile">
         {section === null ? (
-          <SettingsNavigation mobile />
+          <SettingsNavigation mobile overview />
         ) : (
           <div className="settings-mobile-section motion-screen" key={section}>{renderSection(section)}</div>
         )}
-      </div>
+      </div>}
     </Modal>
   )
 }

@@ -1,5 +1,6 @@
 import { COLORS, type ColorTarget } from './game.ts'
 import { parsePinnedActions, type PinnedAction } from './pinned-actions.ts'
+import { notifySettingsEdit } from './settings-events.ts'
 import { CHAIN_COLORS, CHAIN_COLOR_PAIRS, type ChainColorPair } from './chain-sketch.ts'
 
 export const MODE_BADGE_EDGES = ['top', 'right', 'bottom', 'left'] as const
@@ -128,11 +129,15 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
 
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
 
-function readSavedPreferences(storage: PreferenceStorage): Record<string, unknown> | null {
+function readSavedPreferences(storage: Pick<Storage, 'getItem'>): Record<string, unknown> | null {
   try {
     const value: unknown = JSON.parse(storage.getItem(PLAY_PREFERENCES_KEY) ?? 'null')
     return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
   } catch { return null }
+}
+
+export function readPinnedActions(storage: Pick<Storage, 'getItem'>): readonly PinnedAction[] {
+  return parsePinnedActions(readSavedPreferences(storage)?.pinnedActions)
 }
 
 export function readLegacyDesktopToolPanels(storage: PreferenceStorage) {
@@ -160,6 +165,16 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
     },
     getSnapshot: () => current,
     getServerSnapshot: () => DEFAULT_PLAY_PREFERENCES,
+    refreshPinnedActions() {
+      if (pending.pinnedActions !== undefined) return
+      let pinnedActions
+      try { pinnedActions = readPinnedActions(storage ?? localStorage) }
+      catch { return }
+      if (pinnedActions.length === current.pinnedActions.length &&
+          pinnedActions.every((id, index) => id === current.pinnedActions[index])) return
+      current = { ...current, pinnedActions }
+      listeners.forEach((listener) => listener())
+    },
     set<K extends keyof PlayPreferences>(key: K, value: PlayPreferences[K] | ((previous: PlayPreferences[K]) => PlayPreferences[K])) {
       const next = typeof value === 'function' ? value(current[key]) : value
       if (Object.is(current[key], next)) return
@@ -173,7 +188,9 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
         const target = storage ?? localStorage
         // Preserve unrelated settings from other tabs, including fields from newer app versions.
         target.setItem(PLAY_PREFERENCES_KEY, JSON.stringify({ ...(readSavedPreferences(target) ?? current), ...pending }))
+        const syncedEdit = pending.pinnedActions !== undefined
         pending = {}
+        if (syncedEdit && storage === undefined) notifySettingsEdit()
       }
       catch { /* Controls remain usable for this session when storage is full or blocked. */ }
       listeners.forEach((listener) => listener())
@@ -182,3 +199,11 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
 }
 
 export const playPreferenceStore = createPlayPreferenceStore()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener?.('storage', event => {
+    if (event.storageArea === window.localStorage && (event.key === PLAY_PREFERENCES_KEY || event.key === null)) {
+      playPreferenceStore.refreshPinnedActions()
+    }
+  })
+}

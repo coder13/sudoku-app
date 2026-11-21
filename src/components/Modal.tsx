@@ -1,11 +1,12 @@
 import { IconButton } from './Button'
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { exitDelay, usePresence } from './Presence'
 
 /** Use when a task needs a blocking dialog with managed focus and dismissal. */
-export function Modal({ title, onClose, className = '', leading, children, open = true, motionSpeed = 'standard', returnFocus }: {
+export function Modal({ title, titleRef, onClose, className = '', leading, children, open = true, motionSpeed = 'standard', returnFocus }: {
   title: ReactNode
+  titleRef?: Ref<HTMLHeadingElement>
   onClose: () => void
   className?: string
   leading?: ReactNode
@@ -63,7 +64,7 @@ export function Modal({ title, onClose, className = '', leading, children, open 
       <div className="dialog-inner">
         <div className="dialog-heading">
           {leading}
-          <h2 id={id}>{title}</h2>
+          <h2 id={id} ref={titleRef} tabIndex={titleRef ? -1 : undefined}>{title}</h2>
           <IconButton aria-label="Close dialog" disabled={exiting} onClick={requestClose}><X size={21} /></IconButton>
         </div>
         {children}

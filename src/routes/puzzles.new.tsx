@@ -1,23 +1,37 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { isSudokuModeId } from '../sudoku/custom-modes'
+import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
+import type { RectangularBoxRows } from '../sudoku/grid'
 import { isNewPuzzleId, isSizedPuzzleId, rectangularBoxRows, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { isGenerationRulesetId, type GenerationRulesetId } from '../sudoku/variant-rulesets'
 
-type NewPuzzleSearch = { step?: 'difficulty'; mode?: string; variant?: NewPuzzleId; ruleset?: GenerationRulesetId; boxRows?: import('../sudoku/grid').RectangularBoxRows }
+type NewPuzzleSearch = {
+  step?: 'variant' | 'difficulty'
+  mode?: string
+  variant?: NewPuzzleId
+  difficulty?: DifficultyPreference
+  ruleset?: GenerationRulesetId
+  boxRows?: RectangularBoxRows
+}
 
 export const Route = createFileRoute('/puzzles/new')({
   validateSearch: (search): NewPuzzleSearch => {
     if (isSudokuModeId(search.mode)) return { mode: search.mode }
-    if (!isNewPuzzleId(search.variant)) return {}
-    const boxRows = rectangularBoxRows(search.variant, search.boxRows)
-    const choice: NewPuzzleSearch = { variant: search.variant,
-      ...(boxRows && { boxRows }),
-      ...(!isSizedPuzzleId(search.variant) && isGenerationRulesetId(search.variant, search.ruleset) ? { ruleset: search.ruleset } : {}) }
-    return search.step === 'difficulty' ? { step: 'difficulty', ...choice } : choice
+    const choice: NewPuzzleSearch = {}
+    if (search.step === 'variant' || search.step === 'difficulty') choice.step = search.step
+    if (isNewPuzzleId(search.variant)) {
+      choice.variant = search.variant
+      const boxRows = rectangularBoxRows(search.variant, search.boxRows)
+      if (boxRows) choice.boxRows = boxRows
+      if (!isSizedPuzzleId(search.variant) && isGenerationRulesetId(search.variant, search.ruleset)) choice.ruleset = search.ruleset
+    }
+    if (isDifficultyPreference(search.difficulty)) choice.difficulty = search.difficulty
+    return choice
   },
   beforeLoad: ({ search, location }) => {
-    if (search.step === 'difficulty' && !location.pathname.endsWith('/difficulty')) {
-      throw redirect({ to: '/puzzles/new/difficulty', search: { variant: search.variant, ruleset: search.ruleset, boxRows: search.boxRows }, replace: true })
+    const { step, ...choice } = search
+    if (step === 'difficulty' && !location.pathname.replace(/\/$/, '').endsWith('/difficulty')) {
+      throw redirect({ to: '/puzzles/new/difficulty', search: choice, replace: true })
     }
   },
 })

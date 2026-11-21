@@ -58,11 +58,18 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   const minGrid = withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH
   const minPuzzle = Math.min(naturalPuzzle, chrome + minGrid)
   const workspace = layout.parentElement
+  const stacked = workspace && getComputedStyle(workspace).display === 'flex'
   const gap = layout.querySelector<HTMLElement>('.mobile-panel-gap')
   const gapStyle = gap && getComputedStyle(gap)
-  const unusedSpace = !withHint && workspace && getComputedStyle(workspace).display === 'flex' && gapStyle && gap
+  const unusedSpace = !withHint && stacked && gapStyle && gap
     ? Math.max(0, blockSize(gap) - (parseFloat(gapStyle.flexBasis) || 0)) : 0
-  const total = mobileInputResizeBudget(height, puzzleHeight, unusedSpace)
+  let total = mobileInputResizeBudget(height, puzzleHeight, unusedSpace)
+  const page = layout.closest<HTMLElement>('.standard-workspace-page')
+  if (stacked && page && !withHint) {
+    // The default cards may exceed the available height at any stacked size.
+    // Only budget visible space when fitting a saved or dragged keypad height.
+    total -= Math.max(0, page.scrollHeight - page.clientHeight)
+  }
   const keypadHeight = blockSize(keypad)
   const minBody = withHint ? Math.min(MIN_SCROLLABLE_INPUT_HEIGHT, keypadHeight) : keypadHeight
   const inputPanel = input.closest<HTMLElement>('[data-mobile-panel="input"]')
@@ -267,8 +274,13 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
       else updateHeight(layout, split, clampHeight(split, preferred))
     }
     fitToLayout()
-    const observer = new ResizeObserver(() => {
+    const page = layout.closest<HTMLElement>('.standard-workspace-page')
+    const observer = new ResizeObserver(entries => {
       if (drag.current) return
+      if (entries.some(entry => entry.target === page)) {
+        fitToLayout()
+        return
+      }
       const split = measureSplit(layout, withHint)
       if (!split) return
       if (preferredHeight.current !== undefined && split.input < split.min) updateHeight(layout, split, split.min)
@@ -278,6 +290,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, has
     const keypad = input?.querySelector('.mobile-input-digits > .workspace-controls')
     if (input) observer.observe(input)
     if (keypad) observer.observe(keypad)
+    if (page) observer.observe(page)
     window.addEventListener('resize', fitToLayout)
     return () => {
       observer.disconnect()

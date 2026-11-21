@@ -1,6 +1,5 @@
-import { Button, iconButtonClassName } from './Button'
-import { Link } from '@tanstack/react-router'
-import { ChevronLeft, RotateCcw } from 'lucide-react'
+import { Button } from './Button'
+import { RotateCcw } from 'lucide-react'
 import { useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import {
   DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, penPencilShortcutKeys, shortcutConflict, shortcutLabel, shortcutStore,
@@ -46,18 +45,23 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
   },
 ]
 
-export function KeyboardShortcutsPage() {
+/** Display and edit keyboard bindings inside Settings. */
+export function KeyboardShortcutSettings() {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [editing, setEditing] = useState<EditableShortcutId | null>(null)
   const [message, setMessage] = useState('')
 
+  function cancelEdit() {
+    setEditing(null)
+    setMessage('Shortcut change canceled.')
+  }
+
   function edit(definition: EditableShortcutDefinition, event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.defaultPrevented) return
+    if (event.defaultPrevented || event.key === 'Tab') return
     event.preventDefault()
     event.stopPropagation()
     if (event.key === 'Escape') {
-      setEditing(null)
-      setMessage('Shortcut change canceled.')
+      cancelEdit()
       return
     }
     const key = editableShortcutKey(event.nativeEvent, definition.id)
@@ -80,26 +84,23 @@ export function KeyboardShortcutsPage() {
 
   const editableSections = ['Input modes', 'Puzzle actions'] as const
 
-  return <main className="shortcuts-page">
-    <div className="shortcuts-page-inner">
-      <header className="shortcuts-page-heading">
-        <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'shortcuts-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>
-        <div><h1>Keyboard shortcuts</h1><p>View every shortcut and change the single-key commands that fit your workflow.</p></div>
-        <Button type="button" className="shortcuts-reset-all" onClick={() => {
-          shortcutStore.resetAll()
-          setEditing(null)
-          setMessage('Keyboard shortcuts reset to their defaults.')
-        }}><RotateCcw size={17} /> Reset all</Button>
-      </header>
+  return <div className="shortcut-settings">
+    <div className="shortcut-settings-intro">
+      <p>Select a key binding to change it.</p>
+      <Button type="button" className="shortcuts-reset-all" onClick={() => {
+        shortcutStore.resetAll()
+        setEditing(null)
+        setMessage('Keyboard shortcuts reset to their defaults.')
+      }}><RotateCcw size={17} /> Reset all</Button>
+    </div>
+    <p className="shortcuts-save-note" role="status">
+      {message || 'Changes save automatically.'}
+    </p>
 
-      <p className="shortcuts-save-note" role="status" aria-live="polite">
-        {message || 'Changes save automatically.'}
-      </p>
-
-      {editableSections.map((category) => {
-        const sectionId = `shortcut-${category.toLowerCase().replaceAll(' ', '-')}`
-        return <section className="shortcut-section" key={category} aria-labelledby={sectionId}>
-        <header><h2 id={sectionId}>{category}</h2><p>{category === 'Input modes'
+    {editableSections.map((category) => {
+      const sectionId = `shortcut-${category.toLowerCase().replaceAll(' ', '-')}`
+      return <section className="shortcut-section" key={category} aria-labelledby={sectionId}>
+        <header><h3 id={sectionId}>{category}</h3><p>{category === 'Input modes'
           ? 'Press the Highlight mode shortcut again to return to Pen or Pencil.'
           : 'These commands are available while you are solving.'}</p></header>
         <div className="shortcut-list">
@@ -116,7 +117,12 @@ export function KeyboardShortcutsPage() {
               }}>Reset</Button>}
               <button type="button" className={`shortcut-binding${capturing ? ' is-capturing' : ''}`}
                 data-shortcut-capture="true" aria-label={`Change shortcut for ${definition.label}. Current shortcut ${labels}`}
-                onClick={() => { setEditing(definition.id); setMessage(`Press a new key for ${definition.label}.`) }}
+                onClick={event => {
+                  event.currentTarget.focus({ preventScroll: true })
+                  setEditing(definition.id)
+                  setMessage(`Press a new key for ${definition.label}.`)
+                }}
+                onBlur={() => { if (capturing) cancelEdit() }}
                 onKeyDown={(event) => capturing && edit(definition, event)}>
                 {capturing ? 'Press a key' : <kbd>{labels}</kbd>}
               </button>
@@ -124,12 +130,12 @@ export function KeyboardShortcutsPage() {
           })}
         </div>
       </section>
-      })}
+    })}
 
-      {fixedSections.map((section) => {
-        const sectionId = `shortcut-${section.title.toLowerCase().replaceAll(' ', '-')}`
-        return <section className="shortcut-section" key={section.title} aria-labelledby={sectionId}>
-        <header><h2 id={sectionId}>{section.title}</h2></header>
+    {fixedSections.map((section) => {
+      const sectionId = `shortcut-${section.title.toLowerCase().replaceAll(' ', '-')}`
+      return <section className="shortcut-section" key={section.title} aria-labelledby={sectionId}>
+        <header><h3 id={sectionId}>{section.title}</h3></header>
         <div className="shortcut-list">
           {section.shortcuts.map((shortcut) => <div className="shortcut-row fixed-shortcut" key={shortcut.label}>
             <span className="shortcut-copy"><strong>{shortcut.label}</strong><small>{shortcut.description}</small></span>
@@ -139,7 +145,6 @@ export function KeyboardShortcutsPage() {
           </div>)}
         </div>
       </section>
-      })}
-    </div>
-  </main>
+    })}
+  </div>
 }
