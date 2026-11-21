@@ -197,3 +197,26 @@ cargo test --locked --release -p sudoku-app-engine --all-features candidate_supp
 ```
 
 The comparison matches 5,864 complete responses across 36 corpus positions and 363 practice positions. It checks all 121 detectors, every hint page, the mixed Arrow opening and all five Region Sum sources. It also checks explicit removals, disabled techniques, and a sum off by one. Full ratings, traces, and proof fields match.
+
+
+## Renban and Little Killer release batch
+
+Scoring version 11 adds seven explicit techniques to the app profile when the puzzle contains the relevant rules. Ordinary hints, Technique Finder, replay, Learn, and practice use the same evidence. The scoped order reuses seven previously reviewed proof types. The engine's native default order still provides the earlier paths, and the unscoped app order matches the earlier proof lists and resulting positions on the paired controls.
+
+- Renban ModE starts with seven hints and reaches the published completion in 154 steps at 4,702 points, Medium. Independent enumeration checks the Renban and Little Killer assignments, including legal repeats outside the Renban and matching houses in Jigsaw layouts.
+- Renbann9 (BSms) goes from two moves and 54 points to four moves and 232 points. Both new moves test a candidate that would leave five cells in box 8 with only digits 6–9. The exported puzzle keeps all nine original lines and its exact solution. The app reports a partial walkthrough.
+- New Body Rhumba, Triforce, and the archived mixed Little Killer, Renban, and Sandwich puzzle now have complete app walkthroughs.
+
+Five warmed WebAssembly samples gave these median CPU times before the uniqueness optimization. Finder times are the exhaustive checks of one new technique.
+
+| Sample | Rating before | Rating after | Ranked hints before | Ranked hints after | Finder after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Renban ModE | 20.48 ms | 3.45 ms | 38.13 ms | 24.27 ms | 0.12 ms |
+| Renbann9 | 95.82 ms | 115 ms | 114.81 ms | 78.56 ms | 6.84 ms |
+| New Body Rhumba | 66.50 ms | 0.66 ms | 40.65 ms | 0.23 ms | 0.08 ms |
+
+The first benchmark retained identical candidate masks and published completions. The app Wasm grew from 4,153,837 to 4,188,223 bytes before the exact change. During the ModE run, the Wasm memory high-water mark rose from 1.56 MiB to 2.19 MiB.
+
+Exact uniqueness now uses the contained Renban and Little Killer sum together. The engine prepares the combined constraint once per search. The same 1,000,000-node request returned the published ModE solution in all six paired runs. Median CPU fell from 3,005 ms to 2.79 ms. The improved search also verifies at 1,000 nodes, where the earlier build hits its limit. Removing a required solution candidate gives no solution, and a zero-node budget still returns a search limit. Public candidate display and logical rating use their own existing traversal.
+
+[Joint proof integration #202](https://github.com/coder13/sudoku-app/issues/202) · [Renbann9 research #158](https://github.com/coder13/sudoku-app/issues/158)

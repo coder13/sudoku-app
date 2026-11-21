@@ -1,4 +1,7 @@
-use super::{CompiledCage, CompiledVariant, cells_in};
+use super::{
+    CompiledCage, CompiledVariant, cells_in,
+    lines::renban_sum::{ContainedJoin, contained_joins},
+};
 use crate::{
     Analysis, Board, CELLS, DIGITS, PositionSnapshot, Random,
     hints::{digit_bit, digits},
@@ -19,9 +22,9 @@ pub(super) struct SearchPosition {
     pub masks: [u16; CELLS],
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum SearchMode {
-    Verify,
+#[derive(Clone, Copy)]
+enum SearchMode<'a> {
+    Verify(&'a [ContainedJoin<'a>]),
     PropagateHouses,
     // Keep calibrated sampling and bounded proof eligibility stable.
     PreserveTraversal,
@@ -53,11 +56,12 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Analysis, VariantPositionError> {
+        let renban_sums: Vec<_> = contained_joins(self).collect();
         self.analyze_with_mode(
             entries,
             eliminations,
             max_nodes,
-            SearchMode::Verify,
+            SearchMode::Verify(&renban_sums),
             &mut None,
         )
     }
@@ -72,11 +76,12 @@ impl CompiledVariant {
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
         let mut solution = None;
+        let renban_sums: Vec<_> = contained_joins(self).collect();
         let analysis = self.analyze_with_mode(
             entries,
             eliminations,
             max_nodes,
-            SearchMode::Verify,
+            SearchMode::Verify(&renban_sums),
             &mut solution,
         )?;
         if analysis == Analysis::Unique {
@@ -108,7 +113,7 @@ impl CompiledVariant {
         entries: &Board,
         eliminations: &[u16; CELLS],
         mut max_nodes: u32,
-        mode: SearchMode,
+        mode: SearchMode<'_>,
         solution: &mut Option<Board>,
     ) -> Result<Analysis, VariantPositionError> {
         let position = match self.prepare(entries, eliminations) {
@@ -181,7 +186,7 @@ impl CompiledVariant {
         entries: &Board,
         eliminations: &[u16; CELLS],
         mut max_nodes: u32,
-        mode: SearchMode,
+        mode: SearchMode<'_>,
         mut order: impl FnMut(u16) -> D,
     ) -> Result<Board, VariantPositionError> {
         let position = self.prepare(entries, eliminations)?;
@@ -295,13 +300,13 @@ impl CompiledVariant {
         limit: u8,
         nodes: &mut u32,
         solution: &mut Option<Board>,
-        mode: SearchMode,
+        mode: SearchMode<'_>,
         order: &mut impl FnMut(u16) -> D,
     ) -> Option<u8> {
         *nodes = nodes.checked_sub(1)?;
         // MRV already selects a forced cell next. Place it before repeating
         // the complete house scan, which is useful at genuine branch points.
-        if mode != SearchMode::PreserveTraversal
+        if !matches!(mode, SearchMode::PreserveTraversal)
             && !position.masks.iter().any(|mask| mask.is_power_of_two())
             && !self.restrict_search_houses(&mut position, mode)
         {
@@ -337,7 +342,7 @@ impl CompiledVariant {
 
     // Exact search can use forced house domains without changing public
     // candidates or deciding which human techniques the logical solver uses.
-    fn restrict_search_houses(&self, position: &mut SearchPosition, mode: SearchMode) -> bool {
+    fn restrict_search_houses(&self, position: &mut SearchPosition, mode: SearchMode<'_>) -> bool {
         loop {
             if (0..CELLS).any(|cell| position.board[cell] == 0 && position.masks[cell] == 0) {
                 return false;
@@ -385,11 +390,11 @@ impl CompiledVariant {
         }
     }
 
-    fn restrict_domains(&self, position: &mut SearchPosition, mode: SearchMode) {
+    fn restrict_domains(&self, position: &mut SearchPosition, mode: SearchMode<'_>) {
         // In exact search, support a Quadruple and its Global Entropy window
         // with the same assignment. Public candidates and logical gates keep
         // their per-rule support so their deductions retain the same meaning.
-        let join_windows = mode == SearchMode::Verify && self.global_entropy.is_some();
+        let join_windows = matches!(mode, SearchMode::Verify(_)) && self.global_entropy.is_some();
         loop {
             for cage in &self.cages {
                 cage.restrict(position);
@@ -424,6 +429,25 @@ impl CompiledVariant {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;
+                    }
+                }
+            }
+            if let SearchMode::Verify(renban_sums) = mode {
+                for join in renban_sums {
+                    let cells = join.cells();
+                    let mut domains = [0; 9];
+                    for (&cell, mask) in cells.iter().zip(&mut domains) {
+                        *mask = match position.board[cell] {
+                            0 => position.masks[cell],
+                            digit => digit_bit(digit),
+                        };
+                    }
+                    let supported = join.support(&domains[..cells.len()]);
+                    for (&cell, mask) in cells.iter().zip(supported.masks) {
+                        if position.board[cell] == 0 && position.masks[cell] != mask {
+                            position.masks[cell] = mask;
+                            changed = true;
+                        }
                     }
                 }
             }

@@ -28,9 +28,13 @@ pub(crate) use search::record_support;
 pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
-    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantEntropyAreaProof, VariantLineHouseProof,
-    VariantLogicalError, VariantRating, VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEntropyAreaProof,
+    VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,
+    VariantGroupSumLinkSource, VariantLineHouseProof, VariantLogicalError, VariantRating,
+    VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
+    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
+    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
+    VariantSumPairProof, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
 #[cfg(all(

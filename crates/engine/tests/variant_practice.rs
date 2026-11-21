@@ -144,6 +144,40 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     overlaps.insert(technique);
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::RayHouses(proof) => {
+                    assert!(!proof.houses.is_empty());
+                    assert!(proof.rules.iter().all(|&index| index < position.puzzle.rules.len()));
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanGroupCounts(proof) => {
+                    assert!(proof.initial.iter().chain(&proof.subsequent).all(|projection| {
+                        matches!(&position.puzzle.rules[projection.rule], sudoku_app_engine::PuzzleRule::Renban { cells, .. }
+                            if *cells == projection.cells)
+                    }));
+                    scopes.insert(proof.conflict.cells.to_vec());
+                }
+                VariantEvidence::RenbanHouseSupport(proof) => {
+                    let sudoku_app_engine::PuzzleRule::Renban { cells, .. } =
+                        &position.puzzle.rules[proof.rule]
+                    else {
+                        panic!("proof should identify the source Renban");
+                    };
+                    assert_eq!(cells, &proof.cells[..proof.line_length]);
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanSum(proof) => {
+                    let [renban, ray] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(renban, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(ray, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanSumHouse(proof) => {
+                    let [contained, sum, other] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(contained, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(sum, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    assert!(matches!(other, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::LockedDigit { clue, .. } => {
                     assert!(
                         clue.rules
