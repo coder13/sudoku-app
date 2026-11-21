@@ -177,3 +177,51 @@ export function assertGroupOrderProof(
     return `${action.eliminate.cell}:${action.eliminate.digit}`
   }).sort(), expected.sort())
 }
+
+/** Replay a candidate assumption with independent local assignment checks. */
+export function assertLinkedClueProof(
+  puzzle: VariantPuzzle,
+  values: string,
+  masks: readonly number[],
+  deduction: VariantDeduction,
+) {
+  const { evidence, actions } = deduction
+  assert.equal(evidence.type, 'linked-clue')
+  assert.deepEqual(actions, [{ eliminate: evidence.assumption }])
+  const { cell, digit } = evidence.assumption
+  assert.equal(values[cell], '0')
+  assert.ok(masks[cell] & bit(digit))
+  const before = [...values].map((value, c) => value === '0' ? masks[c] : bit(Number(value)))
+  before[cell] = bit(digit)
+
+  for (const check of [...evidence.checks, evidence.conflict]) {
+    const { cells, scope, domains, supported } = check
+    assert.deepEqual(domains, cells.map(c => before[c]))
+    let expected: number[]
+    if (scope.type === 'house') {
+      assert.deepEqual(cells, [...variantHouseCells(scope.house, puzzle)])
+      expected = houseSupport(domains)
+    } else if (scope.type === 'pair') {
+      expected = pairSupport(scope.rules.map(index => puzzle.rules![index]), cells, domains)
+    } else {
+      const rule = puzzle.rules![scope.rule]
+      assert.equal(rule.type, 'between')
+      assert.deepEqual(cells, rule.cells)
+      // Exhaust both endpoint orders. Each middle position must stay strictly inside.
+      const right = cells.length - 1
+      expected = domains.map(() => 0)
+      for (const a of digits) for (const b of digits) {
+        if (!(domains[0] & bit(a)) || !(domains[right] & bit(b))) continue
+        const inside = digits.filter(d => Math.min(a, b) < d && d < Math.max(a, b))
+          .reduce((mask, d) => mask | bit(d), 0)
+        const inner = domains.slice(1, right).map(mask => mask & inside)
+        if (inner.includes(0)) continue
+        for (const [i, mask] of [bit(a), ...inner, bit(b)].entries()) expected[i] |= mask
+      }
+    }
+    assert.deepEqual(supported, expected)
+    assert.notDeepEqual(supported, domains)
+    assert.equal(supported.includes(0), check === evidence.conflict)
+    cells.forEach((cell, i) => { before[cell] = supported[i] })
+  }
+}

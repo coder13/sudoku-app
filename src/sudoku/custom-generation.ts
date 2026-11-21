@@ -200,7 +200,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
       const random = randomFor(seed)
       const defaultOrder = await getVariantPlayOrder()
       const usesDotHouses = markers.some(marker => marker.startsWith('kropki-'))
-      const usesHouseSupport = chosen.has('thermometer') || usesDotHouses
+      const usesScopedTechniques = chosen.has('thermometer') || chosen.has('between') || usesDotHouses
       const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
       // A full set of dots can leave fewer layouts at the requested Hard tier.
       const maxLayouts = negative.size ? (usesDotHouses && difficulty === 'hard' ? 72 : 36)
@@ -213,7 +213,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
           const solution = await run({ type: 'variant', operation: 'solve', position: { puzzle: template }, seed: samplingSeed, maxNodes: 20_000 })
           const clues = addClues(template, chosen, markers, negative, solution, difficulty, random)
           if (!clues) continue
-          const techniqueOrder = usesHouseSupport ? await getVariantPlayOrder(clues.puzzle) : defaultOrder
+          const techniqueOrder = usesScopedTechniques ? await getVariantPlayOrder(clues.puzzle, clues.layouts) : defaultOrder
           return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
             maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
             givens: [0, difficulty === 'easy' ? 40 : 35], difficulty, techniqueOrder, exclude })

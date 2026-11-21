@@ -1,13 +1,13 @@
 import { playVariantPuzzle } from './fog.ts'
 import { difficultyIndex } from './difficulty.ts'
-import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantClueLayout, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
-import { hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
+import { hasBetweenAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
@@ -36,7 +36,7 @@ function withLittleKillerHouses(order: readonly string[]) {
   return order.flatMap(id => id === 'little-killer' ? [id, 'little-killer-house-support'] : [id])
 }
 
-export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
+export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly VariantClueLayout[]) {
   playProfile ??= Promise.all([runEngine({ type: 'techniques', variant: true }), runEngine({ type: 'techniques' })])
     .then(([catalog, classic]) => {
       const tiers = Object.fromEntries([...classic.techniques, ...catalog.techniques].map(technique => [technique.id, technique.difficulty]))
@@ -52,12 +52,13 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
   const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
+  const hasLinkedClues = hasBetweenAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules)
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
   const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
   const hasGroupPairs = hasEntropicLine && rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki) return playProfile
+  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -74,11 +75,19 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']
-      if (hasRenbanGroups && id === firstBeyondHard) return ['renban-group-counts', id]
+      if (id === firstBeyondHard) return [
+        ...(hasRenbanGroups ? ['renban-group-counts'] : []),
+        ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+        id,
+      ]
       return [id]
     })
-    const renbanGroups = hasRenbanGroups && !firstBeyondHard ? [...scoped, 'renban-group-counts'] : scoped
-    const techniqueOrder = withMediumVariantTechniques(renbanGroups, tiers, [
+    const withLateChecks = firstBeyondHard ? scoped : [
+      ...scoped,
+      ...(hasRenbanGroups ? ['renban-group-counts'] : []),
+      ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+    ]
+    const techniqueOrder = withMediumVariantTechniques(withLateChecks, tiers, [
       ...(hasThermometer ? ['thermometer-house-support'] : []),
       ...(hasKropki ? ['kropki-house-support'] : []),
     ])
@@ -86,8 +95,8 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   })
 }
 
-export async function getVariantPlayOrder(puzzle?: VariantPuzzle) {
-  return (await getVariantPlayProfile(puzzle)).techniqueOrder
+export async function getVariantPlayOrder(puzzle?: VariantPuzzle, layouts?: readonly VariantClueLayout[]) {
+  return (await getVariantPlayProfile(puzzle, layouts)).techniqueOrder
 }
 
 export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {

@@ -123,6 +123,11 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::LinkedClue(proof) => {
+                    assert_eq!(exercise.suggestion, HintAction::Eliminate(proof.assumption));
+                    assert!(proof.conflict.supported.contains(&0));
+                    scopes.insert(proof.conflict.cells.to_vec());
+                }
                 VariantEvidence::KropkiHouse(proof) => {
                     assert!(proof.rules.iter().all(|&rule| {
                         matches!(position.puzzle.rules[rule], PuzzleRule::Kropki { .. })

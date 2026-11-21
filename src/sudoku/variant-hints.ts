@@ -279,6 +279,52 @@ function explainGroupOrder(
   }
 }
 
+function explainLinkedClue(
+  evidence: Extract<VariantDeduction['evidence'], { type: 'linked-clue' }>,
+  puzzle: VariantPuzzle,
+  at: (cell: number) => string,
+  houseLabel: (house: VariantHouse) => string,
+) {
+  const { assumption, checks, conflict, houseConflict } = evidence
+  const shown = new Set([assumption.cell])
+  const digits = (mask: number) => alternatives.format(DIGITS.filter(digit => mask & 1 << (digit - 1)).map(String))
+  const name = (check: typeof conflict) => {
+    switch (check.scope.type) {
+      case 'pair': return `the clue between ${at(check.cells[0])} and ${at(check.cells[1])}`
+      case 'line': return `the Between Line from ${at(check.cells[0])} to ${at(check.cells.at(-1)!)}`
+      case 'house': return houseLabel(check.scope.house)
+    }
+  }
+  const pairRule = (check: typeof conflict) => check.scope.type === 'pair' ? constraintClue({
+    type: 'constraint', rules: check.scope.rules, cells: check.cells, domains: check.domains,
+  }, puzzle, at, []).description + ' ' : ''
+  const steps = checks.map((check, index) => {
+    const later = new Set([...checks.slice(index + 1), conflict].flatMap(step => step.cells))
+    const updates = check.cells.flatMap((cell, i) => check.domains[i] === check.supported[i]
+      ? [] : [{ cell, mask: check.supported[i] }])
+    const relevant = updates.filter(({ cell }) => later.has(cell))
+    const detail = relevant.length ? relevant : updates.slice(0, 1)
+    for (const { cell } of detail) shown.add(cell)
+    const remaining = conjunction.format(detail.map(({ cell, mask }) => `${at(cell)} can use only ${digits(mask)}`))
+    return `${pairRule(check)}With ${name(check)}, ${remaining}.`
+  })
+  if (houseConflict) {
+    const required = conjunction.format(DIGITS.filter(digit => houseConflict.digits & 1 << (digit - 1)).map(String))
+    const places = conjunction.format(houseConflict.cells.map(at))
+    for (const cell of houseConflict.cells) shown.add(cell)
+    const count = candidateCount(houseConflict.digits)
+    const shortage = !places ? `there is no cell for ${required}`
+      : houseConflict.cells.length < count ? `only ${places} can use ${required}`
+        : `${places} can use only ${required}`
+    steps.push(`In ${name(conflict)}, ${shortage}. Each digit needs its own cell.`)
+  } else {
+    for (const cell of conflict.cells) shown.add(cell)
+    steps.push(`${pairRule(conflict)}No assignment fits ${name(conflict)}.`)
+  }
+  steps.push(`Remove ${assumption.digit} from ${at(assumption.cell)}.`)
+  return { cells: [...shown], description: `Start by assuming ${at(assumption.cell)} is ${assumption.digit}.`, steps }
+}
+
 function dotHouseConflict(proof: Extract<VariantDeduction['evidence'], { type: 'kropki-house' }>) {
   const remaining = proof.cells.flatMap((cell, i) => proof.pair.includes(cell) ? [] : [{ cell, domain: proof.domains[i] }])
   let shortest: { used: number; blocked: number[]; digits: number } | undefined
@@ -310,6 +356,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   let cells: readonly number[]
   let description: string
   let reason: string
+  let reasonSteps: string[] | undefined
   let candidates = focus
   switch (evidence.type) {
     case 'single': {
@@ -752,6 +799,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `${examples.join(' ')} All parts can reach only ${shared}. None of the assignments for those totals uses the crossed-out candidates.`
       break
     }
+    case 'linked-clue': {
+      const explanation = explainLinkedClue(evidence, puzzle, nameCell, houseLabel)
+      cells = explanation.cells
+      description = explanation.description
+      reasonSteps = explanation.steps
+      reason = reasonSteps.join(' ')
+      break
+    }
     case 'group-order': {
       const explanation = explainGroupOrder(evidence, puzzle, nameCell, houseLabel)
       cells = [...new Set([...explanation.cells, ...focus.map(({ cell }) => cell)])]
@@ -939,7 +994,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   }
   return {
     technique, actions,
-    evidence: { variant: { description, reason, source: { deduction, puzzle } } },
+    evidence: { variant: { description, reason, ...(reasonSteps && { reasonSteps }), source: { deduction, puzzle } } },
     pattern: { houses: [], cells: [...cells], candidates },
   }
 }

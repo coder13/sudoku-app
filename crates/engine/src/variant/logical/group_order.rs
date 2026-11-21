@@ -1,21 +1,15 @@
 use super::{
-    CompiledVariant, ProofPosition, VariantDeduction, VariantEvidence, VariantGroupOrderCheck,
+    CompiledVariant, ProofPosition, VariantDeduction, VariantEvidence,
     VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope, VariantTechnique,
+    scope_checks::Scope,
     group_line_houses::count_conflict,
 };
-use crate::{CELLS, DIGITS, variant::digit_set_support};
+use crate::{CELLS, DIGITS};
 
 const MAX_PASSES: usize = 4;
 const MAX_EXPLANATION_CHECKS: usize = 8;
 const MAX_SCOPES_TO_MINIMIZE: usize = 40;
 type Domains = [u16; CELLS];
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Scope {
-    Pair(usize),
-    House(usize),
-    Line(usize),
-}
 
 impl CompiledVariant {
     pub(super) fn group_order_proofs(
@@ -141,24 +135,7 @@ impl CompiledVariant {
 
         let mut checks = Vec::new();
         self.check_order(&used, assumed, |scope, before, after| {
-            let cells = self.order_scope_cells(scope).to_vec();
-            let scope = match scope {
-                Scope::Pair(i) => VariantGroupOrderScope::Pair {
-                    rules: self.pair_clues[i].source.indices.clone(),
-                },
-                Scope::House(i) => VariantGroupOrderScope::House {
-                    house: self.houses[i].kind,
-                },
-                Scope::Line(i) => VariantGroupOrderScope::Line {
-                    rule: self.lines[i].rule_index,
-                },
-            };
-            checks.push(VariantGroupOrderCheck {
-                scope,
-                cells,
-                domains: before.to_vec(),
-                supported: after.to_vec(),
-            });
+            checks.push(self.constraint_check(scope, before, after));
         })?;
         let conflict = checks.pop()?;
         let house_conflict =
@@ -184,19 +161,6 @@ impl CompiledVariant {
         })
     }
 
-    fn order_scope_cells(&self, scope: Scope) -> &[usize] {
-        match scope {
-            Scope::Pair(i) => {
-                &self.pair_clues[i]
-                    .binary_relation()
-                    .expect("a selected binary clue")
-                    .cells
-            }
-            Scope::House(i) => &self.houses[i].cells,
-            Scope::Line(i) => &self.lines[i].cells,
-        }
-    }
-
     fn check_order(
         &self,
         scopes: &[Scope],
@@ -206,7 +170,7 @@ impl CompiledVariant {
         for _ in 0..MAX_PASSES {
             let mut changed = false;
             for &scope in scopes {
-                let cells = self.order_scope_cells(scope);
+                let cells = self.scope_cells(scope);
                 let mut before = [0; CELLS];
                 let before = &mut before[..cells.len()];
                 for (mask, &cell) in before.iter_mut().zip(cells) {
@@ -214,24 +178,10 @@ impl CompiledVariant {
                 }
                 let mut after = [0; CELLS];
                 let after = &mut after[..cells.len()];
-                match scope {
-                    Scope::Pair(i) => after.copy_from_slice(
-                        &self.pair_clues[i]
-                            .binary_relation()
-                            .expect("a selected binary clue")
-                            .restrict([before[0], before[1]]),
-                    ),
-                    Scope::House(_) => {
-                        if before.iter().all(|&mask| mask == DIGITS) {
-                            continue;
-                        }
-                        digit_set_support(DIGITS, before, after);
-                    }
-                    Scope::Line(i) => self.lines[i]
-                        .group_line()
-                        .expect("a selected repeating line")
-                        .support(before, after),
+                if matches!(scope, Scope::House(_)) && before.iter().all(|&mask| mask == DIGITS) {
+                    continue;
                 }
+                self.scope_support(scope, before, after);
                 if before != after {
                     report(scope, before, after);
                     if after.contains(&0) {
@@ -268,7 +218,7 @@ mod tests {
         domains[9] = digit_bit(4);
         domains[10] = digit_bit(2) | digit_bit(6);
         let scope = Scope::Pair(0);
-        assert_eq!(compiled.order_scope_cells(scope), &[9, 10]);
+        assert_eq!(compiled.scope_cells(scope), &[9, 10]);
 
         let mut reports = Vec::new();
         assert_eq!(

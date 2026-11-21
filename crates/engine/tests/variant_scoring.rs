@@ -39,6 +39,10 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::LinkedClue(proof) => {
+            // Track the assumption, then verify each restriction and the final conflict.
+            return 48 + 10 * (proof.checks.len() as u16 + 1);
+        }
         VariantEvidence::KropkiHouse(proof) => {
             // Compare the dot’s number pairs against the house candidates.
             return 30 + 2 * binary_choices(&proof.domains) + 2 * proof.tested as u16;
@@ -166,9 +170,9 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
         };
         assert_eq!(technique.difficulty(), tier, "{}", technique.id());
 
-        // Rate the actual path from each example, with its target as the first
-        // technique, then the rest of the standard variant solver order.
-        let order: Vec<_> = std::iter::once(technique)
+        // Rate the actual path from each example, with its target first and
+        // the standard variant solver order for the rest.
+        let mut order: Vec<_> = std::iter::once(technique)
             .chain(
                 VariantTechnique::DEFAULT_ORDER
                     .iter()
@@ -176,6 +180,15 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
                     .filter(|&other| other != technique),
             )
             .collect();
+        if technique == VariantTechnique::LinkedClueContradiction {
+            // The archived mixed-rule positions also need the pair techniques
+            // available in the app before their later contradictions appear.
+            order.extend([
+                Technique::LockedPair,
+                Technique::NakedPair,
+                Technique::HiddenPair,
+            ].map(VariantTechnique::Classic));
+        }
         for example in examples {
             let position = example.position;
             let trace = position.solve_logically(&order).unwrap();

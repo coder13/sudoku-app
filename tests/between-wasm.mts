@@ -21,7 +21,7 @@ const published = JSON.parse(readFileSync(new URL('./fixtures/between-newman.jso
 const mixed = JSON.parse(readFileSync(new URL('./fixtures/between-coach.json', import.meta.url), 'utf8')).examples[0]
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
-for (const [source, points, steps, complete] of [[published, 958, 77, true], [mixed, 2085, 66, false]] as const) {
+for (const [source, points, steps, complete] of [[published, 958, 77, true], [mixed, 4715, 163, true]] as const) {
   test(`complete source ${source.title} imports with checked rules, several hints and an honest solution path`, async () => {
     const { game } = await prepareImportedPuzzle(source === published ? share(source.puzzle) : source.code)
     assert.deepEqual(game.variant!.puzzle, source.puzzle)

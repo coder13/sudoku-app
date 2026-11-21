@@ -20,16 +20,16 @@ const cauldron = JSON.parse(readFileSync(new URL('./fixtures/coach-clue-styles.j
 test('Cauldron imports, rates and replays to its published grid using checked dot deductions', async () => {
   const { game, grade } = await prepareImportedPuzzle(cauldron.code)
   assert.ok(game.variant)
-  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2653, 16])
+  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2653, 17])
   const oldGrade = { ...game, variantRatingVersion: 15, difficulty: null, score: null }
   assert.ok(puzzleGradeIsStale(oldGrade))
   const refreshed = applyPuzzleGrade(oldGrade, await ratePuzzle(game.givens, game.variant))
-  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2653, 16])
+  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2653, 17])
 
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)
   const trace = (techniqueOrder: readonly string[]) => runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  const before = await trace(order.filter(id => id !== technique))
+  const before = await trace(order.filter(id => id !== technique && id !== 'linked-clue-contradiction'))
   assert.equal(before.rating.status, 'stalled')
   assert.equal(before.steps.length, 82)
   const after = await trace(order)

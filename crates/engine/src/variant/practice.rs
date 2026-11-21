@@ -91,12 +91,11 @@ pub fn variant_practice_examples(
                     .ok_or(VariantPracticeError::InvalidPosition(index))?;
                 let mut puzzle = VariantPuzzle::classic(givens);
                 puzzle.rules = seed.rules;
-                exercise(
-                    index,
-                    VariantPosition::new(puzzle),
-                    technique,
-                    seed.suggestion,
-                )
+                let mut position = VariantPosition::new(puzzle);
+                for &(cell, mask) in seed.removals {
+                    position.eliminations[cell] = mask;
+                }
+                exercise(index, position, technique, seed.suggestion)
             })
             .collect()
     }
@@ -215,6 +214,7 @@ struct ExampleSeed {
     givens: &'static str,
     rules: Vec<PuzzleRule>,
     suggestion: HintAction,
+    removals: &'static [(usize, u16)],
 }
 
 fn seed<const N: usize>(
@@ -227,5 +227,6 @@ fn seed<const N: usize>(
         givens,
         rules: rules.into(),
         suggestion: HintAction::Eliminate(Candidate { cell, digit }),
+        removals: &[],
     }
 }
