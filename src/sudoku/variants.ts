@@ -1,3 +1,4 @@
+import { antiKnightNote, antiKnightTechnique, isKnightMove } from './anti-knight.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
@@ -34,8 +35,8 @@ export const VARIANTS = {
     rule: 'Fill each row, column, and outlined region with the digits 1–9 once each.',
   },
   'anti-knight': {
-    name: 'Anti-Knight',
-    rule: 'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
+    name: antiKnightTechnique,
+    rule: antiKnightNote,
   },
   'anti-king': {
     name: 'Anti-King',
@@ -272,11 +273,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const line = rule.diagonal === 'main' ? mainDiagonal : antiDiagonal
       return line.includes(a) && line.includes(b)
     }
-    if (rule.type === 'anti-knight') {
-      const rows = Math.abs(Math.floor(a / 9) - Math.floor(b / 9))
-      const columns = Math.abs(a % 9 - b % 9)
-      return rows * columns === 2
-    }
+    if (rule.type === 'anti-knight') return isKnightMove(a, b, 9)
     if (rule.type === 'anti-king') {
       return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
     }

@@ -458,7 +458,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -803,6 +803,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   const quadruples: Quadruple[] = []
   const parity: LatinParity[] = []
   let globalEntropy: true | undefined
+  let antiKnight: true | undefined
   for (const layer of layers) {
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
@@ -813,6 +814,13 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     }
     if (layer.type === 'quadruple') quadruples.push(...readCoachQuadruples(layer, size))
     const type = layer.type
+    if (type === 'antiKnight') {
+      if (hasData(layer.settings) || !Array.isArray(layer.segments) || layer.segments.length) {
+        throw new Error('This Sudoku Coach Anti-Knight rule uses unsupported cells or settings.')
+      }
+      antiKnight = true
+      continue
+    }
     if (type === 'odd' || type === 'even') {
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
         for (const cell of readCoachParityCells(layer, size)) parity.push({ cell, parity: type })
@@ -853,6 +861,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues,
     ...(extraRegions.length && { extraRegions }), globalEntropy, ...(quadruples.length && { quadruples }),
     ...(parity.length && { parity: parity.sort((a, b) => a.cell - b.cell) }),
+    ...(antiKnight && { antiKnight }),
   }
 }
 

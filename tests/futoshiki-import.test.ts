@@ -127,7 +127,7 @@ test('the standalone importer rejects invalid, ambiguous and unhandled rules', a
     ...base, givenConstraints: [
       ...withEdges([0, 1]).givenConstraints,
       { type: 'cage', segments: [{ cells: [2, 3], parameters: { sum: 3 } }] },
-      { type: 'antiKnight', segments: [] },
+      { type: 'antiKing', segments: [] },
     ],
   })), /unsupported rule/)
 })

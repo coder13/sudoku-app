@@ -70,7 +70,7 @@ test('a fully specified export can skip cage selection without dropping rules', 
   assert.deepEqual(prepared.calcudoku.ruleNotes, [])
   assert.equal(solveLatin(prepared.calcudoku.puzzle).solution?.join(''), '123312231')
   await assert.rejects(preparePlayableImport(coachCode({
-    ...data, givenConstraints: [cageLayer, { type: 'antiKnight', segments: [] }],
+    ...data, givenConstraints: [cageLayer, { type: 'antiKing', segments: [] }],
   })), /unsupported rule/)
   await assert.rejects(preparePlayableImport(coachCode({
     ...data, givenConstraints: [{ ...cageLayer, segments: [{ cells: [0, 1], parameters: { sum: '3+?', style: 'changed' } }] }],

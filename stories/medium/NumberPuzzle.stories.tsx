@@ -991,3 +991,56 @@ export const ImportedCandidatePositions: Story = {
     await expect(canvas.queryByRole('img', { name: 'Imported Quick Draw annotations' })).not.toBeInTheDocument()
   },
 }
+
+const knightWithInequality = createImportedFutoshiki(
+  4, '0000004100000000', [{ less: 1, greater: 2 }], { antiKnight: true },
+)
+
+export const AntiKnightWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={knightWithInequality} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rulesDialog = await canvas.findByRole('dialog', { name: 'Futoshiki rules' })
+    const rules = within(rulesDialog)
+    await waitFor(() => expect(rules.getByText(/Cells a chess knight’s move apart cannot share a digit/)).toBeVisible())
+    await userEvent.click(rules.getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(rulesDialog).not.toBeInTheDocument())
+
+    const target = await within(grid).findByRole('button', { name: /^R3C1, empty/ })
+    await userEvent.click(target)
+    await userEvent.keyboard('4')
+    await expect(target).toHaveAccessibleName(/^R3C1, 4/)
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const checkDialog = await canvas.findByRole('dialog', { name: 'Puzzle check' })
+    const check = within(checkDialog)
+    await waitFor(() => expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible())
+    await expect(grid.querySelector('[data-cell="6"]')).toHaveAttribute('data-conflict', 'true')
+    await expect(grid.querySelector('[data-cell="8"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(checkDialog).not.toBeInTheDocument())
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Anti-Knight' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Anti-Knight' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getAllByText(/are a knight’s move apart/)[0]).toBeVisible())
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Futoshiki solution' })
+    await waitFor(() => expect(within(final).getByRole('button', { name: /^R3C1, 3/ })).toBeVisible())
+  },
+}

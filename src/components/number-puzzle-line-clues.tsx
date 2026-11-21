@@ -8,6 +8,7 @@ import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clu
 import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { regionsInsideArtwork } from '../number-puzzles/authored-region-borders'
+import { antiKnightNote, antiKnightTechnique } from '../sudoku/anti-knight'
 import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
 import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
 import { ArrowClue, PillArrowClue } from './ArrowClue'
@@ -21,11 +22,11 @@ import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
   size: number, inequalities: readonly Inequality[],
-  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [], parity = [] }: LatinClues,
+  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [], parity = [], antiKnight }: LatinClues,
   artwork?: readonly AuthoredCornerPath[],
 ) {
   const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || quadruples.length > 0 || parity.length > 0
-  if (!hasDrawing && !globalEntropy) return
+  if (!hasDrawing && !globalEntropy && !antiKnight) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
   for (const { cells: [a, b] } of adjacentClues?.marks ?? []) markedEdges.add(key(a, b))
@@ -146,6 +147,7 @@ export function numberPuzzleClues(
   return {
     drawing, labels,
     notes: [
+      ...(antiKnight ? [antiKnightNote] : []),
       ...(odd.length ? ['A circle marks an odd digit.'] : []),
       ...(even.length ? ['A square marks an even digit.'] : []),
       ...(quadruples.length ? [quadrupleNote] : []),
@@ -155,6 +157,7 @@ export function numberPuzzleClues(
       ...Array.from(types, type => pathClueNotes[type]),
     ],
     techniques: [
+      ...(antiKnight ? [antiKnightTechnique] : []),
       ...(parity.length ? [latinParityTechnique] : []),
       ...(quadruples.length ? [quadrupleTechnique] : []),
       ...(globalEntropy ? [globalEntropyTechnique] : []),
