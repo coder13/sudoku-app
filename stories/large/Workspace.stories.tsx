@@ -16,6 +16,16 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const ReadyToPlay: Story = { beforeEach: () => { seedRoom([starter]) } }
+export const DeviceSyncFromSettings: Story = {
+  beforeEach: () => { seedRoom([starter]) },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open options menu' }))
+    await expect(canvas.queryByRole('link', { name: 'Device sync' })).toBeNull()
+    await userEvent.click(canvas.getByRole('button', { name: 'Settings' }))
+    await userEvent.click(await canvas.findByRole('link', { name: /^Device sync/ }))
+    await expect(await canvas.findByRole('heading', { name: /^Device sync$/ })).toBeVisible()
+  },
+}
 export const Empty: Story = { beforeEach: () => { seedRoom([]) } }
 export const StorageUnavailable: Story = { beforeEach: () => { seedRoom([starter], starter.id, false) } }
 export const DraftValidation: Story = {

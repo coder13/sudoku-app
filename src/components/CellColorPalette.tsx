@@ -58,17 +58,16 @@ export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<
 export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onSwitchShade, onStop, onClear,
   canContinueGroup, groupMessage, onContinueGroup }: Props) {
   const groupMessageId = useId()
-  const subject = target === 'cell' ? 'cells' : 'candidates'
-  const instructions = brush === null ? target === 'cell'
-      ? 'Pick a color, then choose cells. You can also select cells first.'
+  const instructions = brush === null
+    ? target === 'cell' ? 'Pick a color, then choose cells. You can also select cells first.'
       : 'Pick a color, then tap individual candidates.'
-    : brush === 0 ? `Choose ${subject} to erase their color.` : `Choose ${subject} to paint ${COLORS[brush - 1].toLowerCase()}.`
+    : brush === 0 ? `Choose ${target === 'cell' ? 'cells' : 'candidates'} to erase their color.` : null
 
   return (
     <section className="cell-color-palette" aria-label="Coloring">
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
-      {!disabled && <p aria-live="polite">{instructions}</p>}
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
+      {!disabled && instructions && <p aria-live="polite">{instructions}</p>}
       <div className="cell-color-actions">
         <Button type="button" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
           disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</Button>
@@ -78,7 +77,7 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
           aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</Button>}
       </div>
       <div className="color-link-tools">
-        <p className={groupMessage ? 'color-link-message' : 'sr-only'} id={groupMessageId} aria-live="polite">{groupMessage}</p>
+        {groupMessage && <p className="color-link-message" id={groupMessageId} aria-live="polite">{groupMessage}</p>}
         <Button type="button" className="color-strong-links" disabled={disabled || !canContinueGroup}
           title="Follow strong links from your starting mark, keeping its color pair and existing shades."
           aria-describedby={groupMessage ? groupMessageId : undefined} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>

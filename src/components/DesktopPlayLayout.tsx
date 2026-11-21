@@ -112,13 +112,10 @@ function PlayResizeHandle({ edge, width, min, max, onPreview, onSave, onReset }:
   </>
 }
 
-export function DesktopPlayLayout({ enabled, className, children, sizeOptionsOpen, onCloseSizeOptions, returnFocus }: {
+export function DesktopPlayLayout({ enabled, className, children }: {
   enabled: boolean
   className: string
   children: ReactNode
-  sizeOptionsOpen?: boolean
-  onCloseSizeOptions?: () => void
-  returnFocus?: () => HTMLElement | null
 }) {
   const root = useRef<HTMLDivElement>(null)
   const resizeBounds = useRef<HTMLDivElement>(null)
@@ -163,13 +160,6 @@ export function DesktopPlayLayout({ enabled, className, children, sizeOptionsOpe
         min={MIN_DESKTOP_LAYOUT_WIDTH} max={maxWidth} onPreview={setDraggedWidth} onSave={saveWidth}
         onReset={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)} />)}
     </div>}
-    {onCloseSizeOptions && <Modal title="Resize play layout" className="resize-options-dialog" open={enabled && sizeOptionsOpen}
-      onClose={onCloseSizeOptions} returnFocus={returnFocus}>
-      <ResizeStepControls axis="width" atMin={width <= MIN_DESKTOP_LAYOUT_WIDTH} atMax={width >= maxWidth}
-        onStep={(delta) => saveWidth(clampWidth(width + delta, MIN_DESKTOP_LAYOUT_WIDTH, maxWidth))} />
-      <Button className="resize-options-reset"
-        onClick={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)}>Reset size</Button>
-    </Modal>}
   </div>
 }
 
@@ -189,25 +179,27 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const puzzle = workspace.querySelector('.standard-puzzle-stack .puzzle')
     const inputStack = workspace.querySelector('.standard-input-stack')
     const input = inputStack?.querySelector('.controls')
+    const divider = workspace.querySelector<HTMLElement>(':scope > .desktop-layout-divider')
     const page = workspace.closest<HTMLElement>('.standard-workspace-page')
-    const layout = page?.closest<HTMLElement>('.desktop-play-resizable')
+    const edges = page?.closest('.desktop-play-resizable')?.querySelector<HTMLElement>(':scope > .desktop-layout-edges')
     const measure = () => {
       setMaxWidth(Math.max(MIN_DESKTOP_INPUT_WIDTH, workspace.clientWidth - gap - MIN_DESKTOP_PUZZLE_WIDTH))
-      if (puzzle && input && inputStack) {
+      if (puzzle && input && inputStack && divider) {
         const scale = Number(getComputedStyle(workspace).getPropertyValue('--desktop-layout-scale')) || 1
         const puzzleBounds = puzzle.getBoundingClientRect()
         const inputBounds = input.getBoundingClientRect()
+        const pageBounds = page?.getBoundingClientRect()
         const board = puzzle.querySelector('.puzzle-stage .board-frame') ?? puzzle
         const boardRight = board.getBoundingClientRect().right
         const dividerGap = inputBounds.left - boardRight
         const midpoint = boardRight + dividerGap / 2
         const offset = (midpoint - inputStack.getBoundingClientRect().left) / scale
-        workspace.style.setProperty('--play-divider-gap', `${Math.max(0, dividerGap) / scale}px`)
-        workspace.style.setProperty('--play-divider-offset', `${offset}px`)
-        if (layout && page) {
-          const pageBounds = page.getBoundingClientRect()
-          layout.style.setProperty('--play-left-edge-offset', `${(puzzleBounds.left - pageBounds.left) / scale - HANDLE_CARD_GAP}px`)
-          layout.style.setProperty('--play-right-edge-offset', `${(pageBounds.right - inputBounds.right) / scale - HANDLE_CARD_GAP}px`)
+        // Measure all bounds first, then update the handles without restyling the grid.
+        divider.style.setProperty('--play-divider-gap', `${Math.max(0, dividerGap) / scale}px`)
+        divider.style.setProperty('--play-divider-offset', `${offset}px`)
+        if (edges && pageBounds) {
+          edges.style.setProperty('--play-left-edge-offset', `${(puzzleBounds.left - pageBounds.left) / scale - HANDLE_CARD_GAP}px`)
+          edges.style.setProperty('--play-right-edge-offset', `${(pageBounds.right - inputBounds.right) / scale - HANDLE_CARD_GAP}px`)
         }
       }
     }
@@ -218,8 +210,8 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     if (input) observer.observe(input, { box: 'border-box' })
     return () => {
       observer.disconnect()
-      layout?.style.removeProperty('--play-left-edge-offset')
-      layout?.style.removeProperty('--play-right-edge-offset')
+      edges?.style.removeProperty('--play-left-edge-offset')
+      edges?.style.removeProperty('--play-right-edge-offset')
     }
   }, [resizable])
 

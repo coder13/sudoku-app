@@ -243,7 +243,7 @@ export function Controls(props: Props) {
           <div className="side-actions right-actions" role="group" aria-label="Input modes">
             {!props.draft && (
               <IconButton className="pencil-button" title={`Pencil mode · Use ${penPencilKeys.join(' / ')} to cycle Pen, Pencil, and Highlight · Drag with a mouse and a chosen digit to add or remove candidates`} aria-label="Pencil mode"
-                aria-pressed={props.pencil && !props.colorMode} onClick={props.togglePencil} disabled={editsDisabled}>
+                aria-pressed={!props.chainDrawing && props.pencil && !props.colorMode} onClick={props.togglePencil} disabled={props.disabled}>
                 <Pencil size={18} />
               </IconButton>
             )}

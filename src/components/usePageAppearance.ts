@@ -15,8 +15,11 @@ export function usePageAppearance(appearance: AppearancePreferences, preferences
     return () => query.removeEventListener('change', update)
   }, [])
   useEffect(() => {
-    if (preferencesReady) document.documentElement.style.setProperty('--app-text-scale', String(appearance.appTextZoom / 100))
-  }, [appearance.appTextZoom, preferencesReady])
+    if (!preferencesReady) return
+    const root = document.documentElement
+    root.style.setProperty('--app-text-scale', String(appearance.appTextZoom / 100))
+    root.toggleAttribute('data-flat-appearance', appearance.flatAppearance)
+  }, [appearance.appTextZoom, appearance.flatAppearance, preferencesReady])
   useEffect(() => {
     const root = document.documentElement
     root.dataset.colorMode = colorMode

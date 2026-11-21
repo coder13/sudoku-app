@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Candidate, DeductionAction } from '../sudoku/engine'
 import {
-  chainColor, cycleChainPairs, initialChainSketch, newChainSketch, nextChainId, removeUnavailableChains, savePrunedChains, undoChainEdit, updateChainEdges,
+  chainColor, cycleChainPairs, initialChainSketch, MAX_CHAIN_HISTORY, newChainSketch, nextChainId, removeUnavailableChains, savePrunedChains, undoChainEdit, updateChainEdges,
   type ChainColor, type ChainColorPair, type ChainSketch, type ChainSketchState,
 } from '../sudoku/chain-sketch'
 import {
@@ -16,6 +16,13 @@ import type { BoardAnnotations, BoardLink, CandidateAnnotation, CellAnnotation }
 import { usePlayPreference } from './usePlayPreference'
 
 type ChainPath = { nodes: readonly number[]; strengths: readonly LinkStrength[] }
+type ChainRedo = {
+  gameId: string
+  position: Game['position']
+  sketches: ChainSketchState['sketches']
+  activeId: number
+  future: ChainSketchState[]
+}
 export type ChainProof = {
   title: string; nodes: readonly number[]; strengths?: readonly LinkStrength[]
   actions: readonly DeductionAction[]; explanation?: string
@@ -55,9 +62,11 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   const [hovered, setHovered] = useState<number | null>(null)
   const [status, setStatus] = useState('')
   const [previewedProof, setPreviewedProof] = useState<ChainProof | null>(null)
+  const [redoHistory, setRedoHistory] = useState<ChainRedo | null>(null)
   const [colorPairs] = usePlayPreference('chainColorPairs')
   const emptySketch = useMemo(() => ({ ...initialChainSketch, sketches: [newChainSketch(1, colorPairs)] }), [colorPairs])
-  const { sketches, activeId, pending } = game.chainSketch ?? emptySketch
+  const savedSketch = game.chainSketch ?? emptySketch
+  const { sketches, activeId, pending } = savedSketch
   const active = sketches.find(({ id }) => id === activeId) ?? sketches[0]
   const edges = active.history.at(-1)!
   const enabled = canDraw && canAnalyze && Boolean(graph)
@@ -263,12 +272,18 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     }
   }, [pending, hovered, linkTargets])
 
-  function save(change: (state: ChainSketchState) => ChainSketchState) {
+  function save(change: (state: ChainSketchState, current: Game) => ChainSketchState) {
     roomStore.update(game.id, (current) => {
       const saved = current.chainSketch ?? emptySketch
-      const chainSketch = change(saved)
+      const chainSketch = change(saved, current)
       return chainSketch === saved ? current : { ...current, chainSketch }
     })
+  }
+
+  function redoFor(current: Game, state: ChainSketchState) {
+    // A snapshot can restore links and merged sketches as long as the board and drawing still match.
+    return redoHistory?.gameId === current.id && redoHistory.position === current.position &&
+      redoHistory.sketches === state.sketches && redoHistory.activeId === state.activeId ? redoHistory : null
   }
 
   function updateActive(update: (sketch: ChainSketch) => ChainSketch, endpoint?: number | null,
@@ -389,6 +404,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     hasLinks: edges.length > 0,
     contains: (candidate: Candidate) => edges.some(edge => edge.includes(candidateId(candidate))),
     canUndo: active.history.length > 1,
+    canRedo: redoFor(game, savedSketch) !== null,
     canFinishLoop: (chain: ChainAnalysis) => loopCompletions.has(chain),
     canExtendStrongLinks: strongExtension.length > 0,
     extendStrongLinks() {
@@ -447,7 +463,27 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       updateActive((sketch) => ({ ...sketch, color, secondColor }))
     },
     undo() {
-      save(state => state.activeId === active.id ? undoChainEdit(state, drawing) : state)
+      save((state, current) => {
+        if (state.activeId !== active.id) return state
+        const next = undoChainEdit(state, drawing)
+        if (next.sketches !== state.sketches) {
+          const future = [...(redoFor(current, state)?.future ?? []), state].slice(-MAX_CHAIN_HISTORY)
+          setRedoHistory({ gameId: current.id, position: current.position, sketches: next.sketches, activeId: next.activeId, future })
+        }
+        return next
+      })
+      setHovered(null)
+      setStatus('')
+    },
+    redo() {
+      save((state, current) => {
+        const history = redoFor(current, state)
+        if (!history) return state
+        const restored = history.future.at(-1)!
+        const future = history.future.slice(0, -1)
+        setRedoHistory(future.length ? { ...history, sketches: restored.sketches, activeId: restored.activeId, future } : null)
+        return drawing ? restored : { ...restored, pending: null }
+      })
       setHovered(null)
       setStatus('')
     },

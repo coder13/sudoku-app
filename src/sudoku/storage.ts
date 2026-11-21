@@ -649,7 +649,10 @@ export const roomStore = {
     else playPuzzle(next, game)
     if (saved) announceEdit(game.id, !game.savedForLater && game.source !== 'draft')
   },
-  update(id: string, update: (game: Game) => Game, { derived = false } = {}) {
+  update(id: string, update: (game: Game) => Game, { derived = false, chainCandidates }: {
+    derived?: boolean
+    chainCandidates?: (game: Game) => readonly number[] | null
+  } = {}) {
     const current = room.games.find((game) => game.id === id)
     if (!current) return
     let merged = current
@@ -666,7 +669,7 @@ export const roomStore = {
     } else {
       merged = mergeStoredMetadata(current)
     }
-    let next = pruneChainsAfterMove(merged, update(merged))
+    let next = pruneChainsAfterMove(merged, update(merged), chainCandidates)
     if (merged === next) {
       if (merged !== current) roomStore.refreshPuzzle(id)
       return

@@ -7,7 +7,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Board as BaselineBoard } from '../baseline/Board'
 import baselineManifest from '../baseline/manifest.json'
 import { Board as OptimizedBoard } from '../../../src/components/Board'
+import { CLASSIC_GRID, jigsawMembership, jigsawRegionColors } from '../../../src/sudoku/grid'
 import { applyTheme } from '../../../src/sudoku/themes'
+import { regionMembership, variantHouseFillCells } from '../../../src/sudoku/variants'
 import { runComparison, type BoardBenchmarkApi, type ComparisonOptions } from './benchmark'
 import { createFixture, reduceAction, type Action, type BoardState, type Implementation } from './model'
 import { propsFromState, scenarios, type BoardProps } from './fixtures'
@@ -55,18 +57,38 @@ async function mount(next: Implementation, nextProps = props) {
 }
 
 type NormalNode = string | { tag: string; attributes: Record<string, string>; children: NormalNode[] }
+function replacedHouseClues(): Set<Element> {
+  const rules = props.variantPuzzle?.rules ?? []
+  const replaced = rules.filter(rule => rule.type !== props.highlightedRule && variantHouseFillCells(rule).length)
+  const layer = root.querySelector('.board-variant-clues > svg.variant-clues[focusable="false"]')
+  if (!layer || !replaced.length) return new Set()
+  if (replaced.length === rules.length) return new Set([layer.parentElement!])
+
+  const diagonal = replaced.some(rule => rule.type === 'diagonal')
+  const regions = replaced.filter(rule => rule.type === 'extra-house').map(rule => new Set(rule.cells))
+  return new Set([...layer.children].filter(clue => {
+    if (clue.matches('line.variant-diagonal')) return diagonal
+    if (!clue.matches('.variant-extra-region')) return false
+    const cells = [...clue.querySelectorAll('rect')].map(rect => Number(rect.getAttribute('y')) * 9 + Number(rect.getAttribute('x')))
+    return regions.some(region => region.size === cells.length && cells.every(cell => region.has(cell)))
+  }))
+}
+
 function snapshot(includeFades = false): NormalNode[] {
   const ids = new Map([...root.querySelectorAll('[id]')].map((element, index) => [element.id, `local-id-${index}`]))
+  const replaced = implementation === 'baseline' ? replacedHouseClues() : new Set<Element>()
   function normalize(node: Node): NormalNode | null {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || null
     if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return null
+    if (replaced.has(node)) return null
     if (!includeFades && node.getAttribute('data-board-fade') === 'exit') return null
     const children = [...node.childNodes].map(normalize).filter((item): item is NormalNode => item !== null)
     if (!includeFades && node.classList.contains('candidate-marks') && !children.length) return null
     const attributes: Record<string, string> = {}
     for (const attr of [...node.attributes].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!includeFades && attr.name === 'data-board-fade') continue
-      let value = attr.name === 'class' ? attr.value.trim().split(/\s+/).filter(Boolean).sort().join(' ')
+      if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
+      let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board').sort().join(' ')
         : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
       if ((attr.name === 'class' || attr.name === 'style') && !value) continue
       if (attr.name === 'id' && ids.has(value)) value = ids.get(value)!
@@ -76,6 +98,26 @@ function snapshot(includeFades = false): NormalNode[] {
     return { tag: node.tagName.toLowerCase(), attributes, children }
   }
   return [...root.childNodes].map(normalize).filter((node): node is NormalNode => node !== null)
+}
+
+function checkVariantFills(key: string) {
+  const houses = new Set(props.variantPuzzle?.rules?.flatMap(variantHouseFillCells))
+  const grid = props.grid ?? CLASSIC_GRID
+  const regions = props.variantPuzzle?.regions
+  const membership = 'regions' in grid ? jigsawMembership(grid)
+    : regions?.type === 'jigsaw' ? regionMembership(regions.regions) : undefined
+  const colors = membership && jigsawRegionColors(membership, grid.size)
+  if (Boolean(root.querySelector('.board-body.shaded-houses-board')) !== Boolean(houses.size)) {
+    throw new Error(`${key}: unexpected shaded houses on Board.`)
+  }
+  for (const cell of root.querySelectorAll('[data-cell]')) {
+    const index = Number(cell.getAttribute('data-cell'))
+    const color = membership && colors?.[membership[index]]
+    if (cell.getAttribute('data-house-fill') !== (houses.has(index) ? 'true' : null)
+      || cell.getAttribute('data-region-color') !== (color === undefined ? null : String(color))) {
+      throw new Error(`${key}: unexpected variant fill on cell ${index}.`)
+    }
+  }
 }
 
 const api: BoardBenchmarkApi = {
@@ -108,14 +150,18 @@ async function runRegression(options: { motionOnly?: boolean; pressKey?: (key: s
   }
 
   if (!options.motionOnly) {
+    const compareScenario = (key: string) => {
+      if (implementation === 'optimized') checkVariantFills(key)
+      compare(key)
+    }
     for (const scenario of scenarios()) {
       for (const variant of ['baseline', 'optimized'] as const) {
         await mount(variant, scenario.states[0])
-        compare(`${scenario.id}:initial`)
+        compareScenario(`${scenario.id}:initial`)
         for (const [index, next] of scenario.states.slice(1).entries()) {
           dispatchProps(next)
           await settle()
-          compare(`${scenario.id}:${index}`)
+          compareScenario(`${scenario.id}:${index}`)
         }
       }
       cases.push({ id: scenario.id, checks: scenario.states.length })

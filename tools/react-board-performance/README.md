@@ -31,6 +31,8 @@ Use `--regression-only` to omit timed workloads. Use `--profile mobile` for the 
 
 The browser compares normalized DOM trees after each update. This includes tags, text, classes, styles, accessibility attributes, and SVG geometry. Generated SVG IDs use local aliases that preserve references.
 
+The regression also checks theme fills independently for diagonal, Windoku, and Jigsaw cells. It omits the superseded baseline diagonal lines and Windoku outlines from the comparison when those rules are out of focus. Focused outlines and other clues still go through the full geometry comparison.
+
 Fixtures cover every `VariantRule` type, combined rules, jigsaw regions, 4×4 and both 6×6 box shapes, center and corner notes, candidate previews, player colors, annotations, links, highlighting modes, cropped regions, guides, overlays, and mode badges. Input data is frozen.
 
 Interaction checks compare callback arguments, current targets, callback replacement, candidate focus and keyboard navigation, mouse and touch hover, painting priority, refs, link selection, and native element changes when callbacks appear or disappear.

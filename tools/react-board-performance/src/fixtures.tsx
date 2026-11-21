@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { Board } from '../../../src/components/Board'
 import type { SizedConstraintRule, VariantRule } from '../../../src/sudoku/engine'
 import { MINI_GRID, SEVEN_BOXLESS_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
+import { WINDOKU_REGIONS } from '../../../src/sudoku/variants'
 import { createFixture, type BoardState } from './model'
 
 export type BoardProps = ComponentProps<typeof Board>
@@ -136,6 +137,13 @@ export function scenarios(): Scenario[] {
       { ...dense, variantPuzzle: { ...variantPuzzle, rules: [] } },
     ] })
   }
+  const windoku: VariantRule[] = WINDOKU_REGIONS.map(cells => ({ type: 'extra-house', cells }))
+  const windokuPuzzle = { version: 1 as const, givens: dense.givens, rules: windoku }
+  const mixedHouses = { ...dense, variantPuzzle: { ...windokuPuzzle, rules: [...windoku, rules[1], rules[2]] } }
+  result.push({ id: 'windoku-fills-and-focused-outlines', states: [
+    { ...dense, variantPuzzle: windokuPuzzle }, mixedHouses,
+    { ...mixedHouses, highlightedRule: 'extra-house' },
+  ] })
   const jigsaw = { version: 1 as const, givens: dense.givens,
     regions: { type: 'jigsaw' as const, regions: Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, col) => row * 9 + col)) } }
   result.push({ id: 'jigsaw-and-combined-rules', states: [{ ...dense, variantPuzzle: jigsaw },

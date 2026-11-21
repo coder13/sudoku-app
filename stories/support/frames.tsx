@@ -2,6 +2,7 @@ import { Button } from '../../src/components/Button'
 import { createContext, useContext, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { SudokuShell, Workspace } from '../../src/components/Workspace'
+import { DeviceSyncPage } from '../../src/components/DeviceSyncPage'
 import { LearnLayout } from '../../src/routes/learn'
 import { LessonPage } from '../../src/routes/learn.$technique'
 import { LessonOverview } from '../../src/routes/learn.index'
@@ -53,6 +54,10 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       component: () => shell ? <SudokuShell><Outlet /></SudokuShell> : <Outlet />,
     })
     const index = createRoute({ getParentRoute: () => root, path: '/', component: IndexSlot })
+    const settings = createRoute({ getParentRoute: () => root, path: 'settings', component: Workspace })
+    const settingsSection = createRoute({ getParentRoute: () => settings, path: '$section' })
+    const sync = createRoute({ getParentRoute: () => root, path: 'sync', component: DeviceSyncPage })
+    const syncStep = createRoute({ getParentRoute: () => sync, path: '$step' })
     const importPuzzle = createRoute({ getParentRoute: () => root, path: 'import', component: ImportRoute.options.component })
     const puzzles = createRoute({ getParentRoute: () => root, path: 'puzzles' })
     const standalone = { standalonePuzzlePage: true }
@@ -96,7 +101,10 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
       notFoundComponent: () => null,
     })
     return createRouter({
-      routeTree: root.addChildren([index, importPuzzle, puzzles.addChildren([newPuzzle.addChildren([difficulty]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson])]),
+      routeTree: root.addChildren([
+        index, settings.addChildren([settingsSection]), sync.addChildren([syncStep]), importPuzzle,
+        puzzles.addChildren([newPuzzle.addChildren([difficulty]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
+      ]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,
     })

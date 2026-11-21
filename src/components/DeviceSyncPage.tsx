@@ -147,7 +147,7 @@ export function DeviceSyncPage() {
     // Static hosts may redirect to a trailing slash on reload, resetting the router's index.
     const navigation = (window as Window & { navigation?: { canGoBack: boolean } }).navigation
     if (canGoBack || (navigation?.canGoBack ?? window.history.length > 1)) router.history.back()
-    else if (root) void router.navigate({ to: '/puzzles/browse', replace: true })
+    else if (root) void router.navigate({ to: '/settings', replace: true })
     else if (backToScanner || screen === 'invite') void router.navigate({
       to: '/sync/$step', params: { step: backToScanner ? 'scan' : 'devices' }, replace: true,
     })

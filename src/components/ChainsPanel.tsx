@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, RotateCw, Trash2, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, Redo2, RotateCw, Trash2, Undo2 } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Deduction } from '../sudoku/engine'
 import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
@@ -251,7 +251,6 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   const drawKey = shortcutLabel(shortcuts.chainDrawing)
   const applyKey = shortcutLabel(shortcuts.applyEdits)
   const strongLinkStatus = strongLinks?.hasHighlights && !strongLinks.count ? 'No strong links between the highlighted candidates.' : ''
-  const showStrongLinkInstructions = !sketch.drawing || (sketch.pending === null && !sketch.hasLinks)
   const completablePaths = sketch.chains.filter(sketch.canFinishLoop)
   const loopPath = completablePaths.length === 1 ? completablePaths[0]
     : completablePaths.find(({ nodes }) => sketch.pending !== null && nodes.includes(sketch.pending))
@@ -270,6 +269,11 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         aria-keyshortcuts="Control+Z Meta+Z"
         disabled={!sketch.canUndo} onClick={sketch.undo}>
         <Undo2 size={16} aria-hidden="true" />
+      </IconButton>
+      <IconButton variant="quiet" aria-label="Redo edit" title="Redo edit (Ctrl+Shift+Z or Command+Shift+Z)"
+        aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
+        disabled={!sketch.canRedo} onClick={sketch.redo}>
+        <Redo2 size={16} aria-hidden="true" />
       </IconButton>
       <ChainActionsMenu actions={[
         { label: 'Choose colors', icon: Palette, disabled: false, opensDialog: true, run: onChooseColors },
@@ -298,9 +302,8 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         </div>
       </div>
       {applyFailed && <p role="status">Some chain edits conflict or the grid has changed.</p>}
-      {strongLinks?.shown && (showStrongLinkInstructions || strongLinkStatus) && <div className="strong-link-tool">
-        {showStrongLinkInstructions && <p>Select a candidate or link to start drawing.</p>}
-        {strongLinkStatus && <p role="status">{strongLinkStatus}</p>}
+      {strongLinks?.shown && strongLinkStatus && <div className="strong-link-tool">
+        <p role="status">{strongLinkStatus}</p>
       </div>}
       <ul className="chain-list" aria-label="Drawn chains">
         {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths }, index) => {

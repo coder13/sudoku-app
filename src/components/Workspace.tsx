@@ -3,7 +3,7 @@ import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanst
 import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
-  Monitor, Moon, Scaling, SlidersHorizontal, Sun,
+  Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
 import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
@@ -123,7 +123,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const requested = workspaceReady ? puzzleParam : undefined
   const shared = workspaceReady ? shareParam : undefined
   const [resizeMode, setResizeMode] = useState(false)
-  const [layoutSizeOptionsOpen, setLayoutSizeOptionsOpen] = useState(false)
   const [linkError, setLinkError] = useState('')
   const savedAppearance = useRef(appearance)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -532,8 +531,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   return (
     <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
-      enabled={canResizeDesktopLayout} sizeOptionsOpen={layoutSizeOptionsOpen}
-      onCloseSizeOptions={() => setLayoutSizeOptionsOpen(false)} returnFocus={() => menuButtonRef.current}>
+      enabled={canResizeDesktopLayout}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
           <div className="topbar-brand">
@@ -586,10 +584,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 setMenuOpen(false)
                 setWorkspaceMode(workspaceMode === 'advanced' ? 'standard' : 'advanced')
               }}><PanelsTopLeft size={17} /> {workspaceMode === 'advanced' ? 'Standard mode' : 'Advanced mode'}</button>}
-              {canResizeDesktopLayout && <button onClick={() => {
-                setMenuOpen(false)
-                setLayoutSizeOptionsOpen(true)
-              }}><Scaling size={17} /> Resize play layout</button>}
               <button className="mobile-menu-only" onClick={cycleColorMode}
                 aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}>
                 <ColorModeIcon size={17} /> Color mode: {COLOR_MODE_LABELS[appearance.colorMode]}
@@ -597,7 +591,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               <Link to="/puzzles/statistics" onClick={() => setMenuOpen(false)}>
                 <BarChart3 size={17} /> Statistics
               </Link>
-              <Link to="/sync" onClick={() => setMenuOpen(false)}><Monitor size={17} /> Device sync</Link>
               <button onClick={() => openSettings()}><SlidersHorizontal size={17} /> Settings</button>
               <Link to="/shortcuts" onClick={() => setMenuOpen(false)}><Keyboard size={17} /> Keyboard shortcuts</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}

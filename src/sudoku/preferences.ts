@@ -34,6 +34,7 @@ export type AppearancePreferences = {
   colorMode: ColorMode
   lightTheme: ThemeId
   darkTheme: ThemeId
+  flatAppearance: boolean
   showGuides: boolean
   puzzleControlsPosition: 'top' | 'bottom'
   gridTextScale: number
@@ -61,8 +62,9 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
 export const DEFAULT_ERROR_MODE: ErrorMode = 'conflicts'
 export const DEFAULT_APPEARANCE: AppearancePreferences = {
   colorMode: 'system',
-  lightTheme: 'violet',
+  lightTheme: 'ocean',
   darkTheme: DEFAULT_DARK_THEME,
+  flatAppearance: false,
   showGuides: false,
   puzzleControlsPosition: 'top',
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
@@ -141,6 +143,7 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         lightTheme: savedAppearance.lightTheme && THEME_IDS_SET.has(savedAppearance.lightTheme)
           ? savedAppearance.lightTheme : DEFAULT_APPEARANCE.lightTheme,
         darkTheme: darkTheme && THEME_IDS_SET.has(darkTheme) ? darkTheme : DEFAULT_APPEARANCE.darkTheme,
+        flatAppearance: savedAppearance.flatAppearance === true,
         showGuides: savedAppearance.showGuides === true,
         puzzleControlsPosition: savedAppearance.puzzleControlsPosition === 'bottom' ? 'bottom' : DEFAULT_APPEARANCE.puzzleControlsPosition,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),

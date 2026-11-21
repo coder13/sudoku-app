@@ -25,6 +25,8 @@
   --space-48: 48px;
   --space-64: 64px;
   --radius: 19px;
+  --grid-corner-radius: 8px;
+  --surface-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
   --topbar-height: 71px;
   --hint-card-width: 430px;
   --board-frame-limit: min(529px, max(240px, calc(100dvh - 240px)));
@@ -47,8 +49,28 @@
   --motion-standard: var(--motion-standard-duration) var(--motion-move);
   --board-mark-motion: var(--motion-fast);
   --board-shape-motion: var(--motion-standard);
+  --jigsaw-region-1: #e5e4f8;
+  --jigsaw-region-2: #f8e2ee;
+  --jigsaw-region-3: #e0f6eb;
+  --jigsaw-region-4: #f8f6df;
   transition: color var(--motion-standard), background-color var(--motion-standard);
 }
+
+:root[data-color-mode="dark"]:not([data-theme="andoku"]) {
+  --jigsaw-region-1: #353149;
+  --jigsaw-region-2: #482f3e;
+  --jigsaw-region-3: #293e36;
+  --jigsaw-region-4: #413b29;
+}
+:root[data-theme="violet"][data-color-mode="light"] { --related-cell-variant-tint: 35%; }
+:root[data-theme="forest"][data-color-mode="light"] { --related-cell-variant-tint: 20%; }
+:root[data-theme="ocean"][data-color-mode="light"] {
+  --jigsaw-region-2: #d8effa;
+  --jigsaw-region-3: #e9e3f8;
+  --jigsaw-region-4: #ddf2d8;
+}
+:root:is([data-flat-appearance], [data-theme="andoku"]) { --grid-corner-radius: 4px; }
+:root[data-flat-appearance] { --surface-shadow: none; --button-hover-shadow: none; }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -621,6 +643,13 @@ svg { flex-shrink: 0; }
 .chain-panel-tools { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8); }
 .chain-panel-end-actions { display: contents; }
 .chain-panel-tools .apply-chain-edits { margin-inline-start: auto; }
+.apply-chain-edits.button:disabled {
+  background: var(--surface-muted);
+  border-color: var(--border);
+  color: color-mix(in srgb, var(--muted) 80%, var(--surface-muted));
+  box-shadow: none;
+  opacity: 1;
+}
 .desktop-insight-body .chain-panel-tools { justify-content: flex-start; align-items: center; gap: var(--space-6); }
 .desktop-insight-body .chain-panel-tools .button { padding-inline: var(--space-6); gap: var(--space-4); }
 .desktop-insight-body .chain-panel-end-actions {
@@ -820,7 +849,6 @@ svg { flex-shrink: 0; }
 }
 .workspace > .puzzle-column { grid-area: puzzle; }
 .surface {
-  --surface-shadow: 0 2px 4px #00000005, 0 12px 26px -18px #00000024;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -861,7 +889,7 @@ svg { flex-shrink: 0; }
 /* On mobile the mode border is the Sudoku grid's border, not the outer play area. */
 .board-body[data-input-mode] {
   --puzzle-mode-border-inset: 0px;
-  --puzzle-mode-corner-radius: 8px;
+  --puzzle-mode-corner-radius: var(--grid-corner-radius);
   border-radius: var(--puzzle-mode-corner-radius);
 }
 .board-body[data-input-mode]::after { z-index: 6; }
@@ -1069,7 +1097,14 @@ svg { flex-shrink: 0; }
   overflow: auto;
 }
 .standard-puzzle-stack .hint-card { width: 100%; max-height: none; overflow: visible; }
+.standard-puzzle-stack .hint-card[data-staged] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  block-size: clamp(168px, 25dvh, 232px);
+}
+.standard-puzzle-stack .hint-card[data-staged] .hint-card-body { overflow: auto; scrollbar-gutter: stable; }
 .hint-card {
+  --hint-heading-action-size: 36px;
   container: hint-card / inline-size;
   width: var(--hint-card-width);
   max-width: 100%;
@@ -1080,6 +1115,10 @@ svg { flex-shrink: 0; }
   background: var(--surface-raised);
   box-shadow: 0 8px 20px -14px #00000045;
 }
+.hint-dock .hint-card[data-staged] { scrollbar-gutter: stable; }
+.standard-puzzle-stack .hint-dock .hint-card[data-staged],
+.dock-hint-panel .hint-dock .hint-card[data-staged] { scrollbar-gutter: auto; }
+.dock-hint-panel:has(.hint-card[data-staged]) { scrollbar-gutter: stable; }
 .hint-card-heading {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) auto;
@@ -1090,7 +1129,11 @@ svg { flex-shrink: 0; }
 .hint-card-heading h2 { margin-top: 1px; font-size: 1.125rem; letter-spacing: -.025em; overflow-wrap: anywhere; }
 .hint-card-lesson { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; color: var(--dark-purple); font-size: 0.75rem; font-weight: 720; text-underline-offset: 3px; }
 .hint-card-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--selected-bg); color: var(--dark-purple); }
-.hint-card-heading-buttons { grid-column: -2; grid-row: 1; display: flex; gap: var(--space-4); }
+.hint-card-summary { display: flex; align-items: center; gap: var(--space-8); min-inline-size: 0; }
+.hint-card-title { min-inline-size: 0; }
+.hint-card-summary :is(.hint-card-visuals, .hint-card-visuals-space) { flex: none; }
+.hint-card-visuals-space { inline-size: var(--hint-heading-action-size); block-size: var(--hint-heading-action-size); }
+.hint-card-close { grid-column: -2; grid-row: 1; }
 .hint-card-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -1099,6 +1142,7 @@ svg { flex-shrink: 0; }
   gap: var(--space-4);
 }
 .hint-card-actions .button { min-height: 32px; padding-inline: var(--space-8); font-size: 0.75rem; }
+.hint-card-actions [data-reserved] { visibility: hidden; }
 .hint-card-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1106,6 +1150,7 @@ svg { flex-shrink: 0; }
   gap: var(--space-4);
   margin-inline-start: auto;
 }
+.hint-card-detail-actions .icon-button[aria-disabled="true"] { opacity: .48; pointer-events: none; }
 .hint-card-navigation {
   display: flex;
   align-items: center;
@@ -1115,7 +1160,7 @@ svg { flex-shrink: 0; }
   font-weight: 720;
   font-variant-numeric: tabular-nums;
 }
-.hint-card-navigation .icon-button { width: 32px; min-height: 32px; }
+:is(.hint-card-navigation, .hint-card-detail-actions) .icon-button { width: 32px; min-height: 32px; }
 .hint-card-navigation .icon-button svg { width: 14px; height: 14px; }
 .hint-card-navigation span { min-width: 4ch; text-align: center; }
 .hint-card p { margin-top: var(--space-12); color: var(--ink); font-size: 0.875rem; line-height: 1.5; }
@@ -1133,8 +1178,8 @@ svg { flex-shrink: 0; }
 .hint-card-explanation p { margin-top: var(--space-4); }
 
 @container hint-card (width > 470px) {
-  .hint-card-heading:has(.hint-card-actions) { grid-template-columns: 38px minmax(0, 1fr) auto auto; }
-  .hint-card-actions { grid-column: 3; grid-row: 1; }
+  .hint-card:not([data-staged]) .hint-card-heading:has(.hint-card-actions) { grid-template-columns: 38px minmax(0, 1fr) auto auto; }
+  .hint-card:not([data-staged]) .hint-card-actions { grid-column: 3; grid-row: 1; }
 }
 
 .puzzle-metadata {
@@ -1211,7 +1256,7 @@ svg { flex-shrink: 0; }
 }
 .sudoku-grid {
   border: 2px solid var(--board-outline);
-  border-radius: 8px;
+  border-radius: var(--grid-corner-radius);
   overflow: hidden;
   width: 100%;
   aspect-ratio: var(--board-columns, 9) / var(--board-rows, 9);
@@ -1274,7 +1319,7 @@ svg { flex-shrink: 0; }
 .sudoku-grid.drag-select { touch-action: none; }
 .grid-row { display: grid; grid-template-columns: repeat(var(--board-columns, 9), minmax(0, 1fr)); min-height: 0; }
 .cell {
-  --cell-fill: var(--cell-base-bg, var(--board-bg));
+  --cell-fill: var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg)));
   background: var(--cell-fill);
   border: 0;
   border-right: 1px solid var(--cell-grid-line, var(--grid-line));
@@ -1298,14 +1343,23 @@ svg { flex-shrink: 0; }
 .jigsaw-board { --cell-grid-line: color-mix(in srgb, var(--grid-line) 80%, var(--grid-strong)); }
 .cell[data-region-right] { border-right: 3px solid var(--grid-strong); }
 .cell[data-region-bottom] { border-bottom: 3px solid var(--grid-strong); }
+[data-region-color="1"] { --region-cell-bg: var(--jigsaw-region-1); }
+[data-region-color="2"] { --region-cell-bg: var(--jigsaw-region-2); }
+[data-region-color="3"] { --region-cell-bg: var(--jigsaw-region-3); }
+[data-region-color="4"] { --region-cell-bg: var(--jigsaw-region-4); }
+:root[data-theme="ocean"][data-color-mode="light"] [data-region-color="1"] { --region-cell-bg: var(--extra-house-bg); }
+.cell[data-region-color] { --variant-cell-bg: var(--region-cell-bg); }
+.cell[data-house-fill] { --variant-cell-bg: var(--extra-house-bg); }
 .cell:last-child { border-right: 0; }
 .grid-row:last-child .cell { border-bottom: 0; }
-.cell.given { --cell-fill: var(--cell-base-bg, var(--given-bg)); color: var(--board-ink); font-weight: 800; }
+.cell.given { --cell-fill: var(--variant-cell-bg, var(--cell-base-bg, var(--given-bg))); color: var(--board-ink); font-weight: 800; }
 .cell.entry { color: var(--entry-ink); }
 .cell.peer { --cell-fill: var(--peer-bg); }
-.cell.candidate-count-match { --cell-fill: var(--candidate-count-bg); }
-.cell.matching { --cell-fill: var(--matching-digit-bg); }
-.cell.candidate-highlight-cell { --cell-fill: var(--matching-bg); }
+.cell:where([data-region-color], [data-house-fill]).peer {
+  --cell-fill: color-mix(in srgb, var(--peer-bg), var(--variant-cell-bg) var(--related-cell-variant-tint, 55%));
+}
+.cell.matching { --cell-fill: var(--matching-digit-bg, var(--matching-bg)); }
+.cell:is(.candidate-highlight-cell, .candidate-count-match) { --cell-fill: var(--matching-bg); }
 .cell.candidate-highlight-light {
   --cell-fill: color-mix(in srgb, var(--matching-bg) 45%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
 }
@@ -1316,7 +1370,9 @@ svg { flex-shrink: 0; }
   --candidate-ink: #3b3242;
   --candidate-match-surface: #fff;
 }
-.cell-coloring .cell { cursor: crosshair; }
+.board-body[data-input-mode="color"] .cell.colored:is(.matching, .candidate-highlight-cell, .candidate-highlight-light) {
+  box-shadow: inset 0 0 0 2px var(--entry-ink);
+}
 .cell.conflict { --cell-fill: var(--danger-bg); color: var(--danger-ink); }
 .cell.selected {
   --cell-fill: var(--board-selected-bg);
@@ -1462,7 +1518,6 @@ svg { flex-shrink: 0; }
   place-items: center;
   place-self: stretch;
 }
-.paint-candidate { cursor: crosshair; }
 .chain-candidate, .chain-cell-target { cursor: crosshair; }
 .candidate-button:focus-visible { outline-offset: -1px; }
 .candidate-match:where(:not(.candidate-color, [data-mark], [aria-pressed="true"])) { color: var(--entry-ink); }
@@ -3184,14 +3239,35 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   :is(.puzzle, .board-frame) { --board-guide-min-size: 14px; }
 }
 
+:root[data-flat-appearance] :is(.puzzle, .controls, .mobile-input-tabs) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+:root[data-flat-appearance] :is(
+  .brand-mark, .primary, .app-menu, .puzzle-context-menu, .hint-card, .dialog, .resize-session-bar, .update-prompt,
+  .learn-nav-panel, .desktop-insight-panel, .hint-dock, .key:not(.selected-key), .input-switch button[aria-pressed="true"]
+) { box-shadow: none; }
+:root[data-flat-appearance]:not([data-theme="andoku"]) .controls :is(
+  .key:not(.tone-key, .selected-key), .side-actions .icon-button:not([aria-pressed="true"], [aria-expanded="true"])
+) {
+  background: transparent;
+  border-color: transparent;
+}
+@media (hover: hover) {
+  :root[data-flat-appearance]:not([data-theme="andoku"]) .controls :is(
+    .key:not(.tone-key, .selected-key), .side-actions .icon-button:not([aria-pressed="true"], [aria-expanded="true"])
+  ):not(:disabled):hover { background: var(--surface-hover); }
+}
+
 :root[data-theme="andoku"] { --status-bar-bg: #313fa0; }
 :root[data-theme="andoku"] .topbar { background: var(--primary-bg); border-color: var(--status-bar-bg); }
 :root[data-theme="andoku"] .topbar-actions > :is(.button, .icon-button) { background: transparent; border-color: transparent; }
 :root[data-theme="andoku"] :is(.puzzle, .controls) { background: transparent; border: 0; box-shadow: none; }
-:root[data-theme="andoku"] .sudoku-grid { border-radius: 4px; }
 :root[data-theme="andoku"] .cell[data-box-edge]:not(:last-child) { border-right-width: 3px; }
 :root[data-theme="andoku"] .grid-row[data-box-edge]:not(:last-child) .cell { border-bottom-width: 3px; }
 :root[data-theme="andoku"] .cell[data-alternate-box] { --cell-base-bg: var(--board-box-bg); }
+.shaded-houses-board:not(.jigsaw-board) .cell { --cell-base-bg: var(--board-bg); }
 :root[data-theme="andoku"] :is(.cell, .controls) { font-family: Roboto, Arial, sans-serif; }
 :root[data-theme="andoku"] .cell {
   font-size: calc((clamp(16px, 68cqw / var(--board-columns, 9), 44px) * var(--board-font-scale, 1)) * var(--app-text-scale));
@@ -3215,7 +3291,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 :root[data-theme="andoku"] .controls :is(.key.selected-key:not(.tone-key), .side-actions .icon-button[aria-pressed="true"]) { color: var(--purple); }
 :root[data-theme="andoku"] .controls .puzzle-check-button { display: inline-flex; }
 :root[data-theme="andoku"] :is(.check-result.success .check-result-icon, .completion-icon) {
-  background: var(--matching-digit-bg);
+  background: var(--matching-digit-bg, var(--matching-bg));
   color: var(--board-ink);
 }
 :root[data-theme="andoku"] :is(.form-error, .remove-action) { color: #ffb5ba; }
@@ -3810,12 +3886,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     height: clamp(170px, 27dvh, 228px);
     padding: 0;
   }
-  .mobile-hint-panel .hint-card { width: 100%; height: 100%; padding: var(--space-4) var(--space-10) var(--space-6); }
+  .mobile-hint-panel .hint-card { --hint-heading-action-size: 44px; width: 100%; height: 100%; padding: var(--space-4) var(--space-10) var(--space-6); }
   .mobile-panel-layout .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
   .mobile-panel-layout[data-fit-hint] .mobile-hint-panel { height: clamp(72px, calc(32dvh - 64px), 205px); }
   .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 var(--space-6); }
-  .mobile-hint-panel .hint-card-heading-buttons { gap: 0; }
   .mobile-hint-panel .hint-card-icon { width: 24px; height: 24px; border-radius: 6px; }
   .mobile-hint-panel .hint-card-title small { display: none; }
   .mobile-hint-panel .hint-card-title h2 { margin: 0; line-height: 1.2; }
@@ -3827,6 +3902,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-hint-panel .hint-card-actions :is(.button, .icon-button) {
     min-width: 44px;
     min-height: 44px;
+  }
+  @container hint-card (width < 330px) {
+    .mobile-hint-panel .hint-card[data-staged] .hint-card-navigation span { min-width: 3ch; }
+    .mobile-hint-panel .hint-card[data-staged] .hint-card-detail-actions { gap: var(--space-2); }
   }
   .mobile-hint-panel .hint-card p,
   .mobile-hint-panel :is(.hint-card-reason, .hint-card-removals) { margin-top: var(--space-6); }
@@ -3926,6 +4005,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 
 .variant-preview {
+  --preview-grid-lines:
+    repeating-linear-gradient(to right, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3));
   position: relative;
   display: grid;
   place-items: center;
@@ -3933,10 +4015,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   aspect-ratio: 1;
   border: 1px solid var(--grid-strong);
   border-radius: 2px;
-  background:
-    repeating-linear-gradient(to right, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3)),
-    repeating-linear-gradient(to bottom, transparent 0 calc(100% / 3 - 1px), var(--grid-line) calc(100% / 3 - 1px) calc(100% / 3)),
-    var(--board-bg);
+  background: var(--preview-grid-lines), var(--board-bg);
   overflow: hidden;
 }
 .variant-knight, .variant-king { font-size: 1.6875rem; line-height: 1; color: var(--board-ink); }
@@ -3966,7 +4045,16 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     repeating-linear-gradient(to bottom, transparent 0 var(--preview-grid-line), var(--grid-line) var(--preview-grid-line) var(--preview-cell-size)),
     var(--board-bg);
 }
-.variant-preview[data-variant="jigsaw"] { background: var(--board-bg); }
+.variant-preview:is([data-variant="diagonal"], [data-variant="windoku"], [data-variant="jigsaw"]) { background: var(--board-bg); }
+.variant-preview:is([data-variant="diagonal"], [data-variant="windoku"])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--preview-grid-lines);
+  pointer-events: none;
+}
+.variant-preview rect[data-region-color] { fill: var(--region-cell-bg); }
+.variant-house-fill { fill: var(--extra-house-bg); }
 .variant-preview[data-variant="inequality"] { background: var(--board-bg); }
 .variant-inequality-preview-digits text { fill: var(--board-ink); font-size: .62px; text-anchor: middle; dominant-baseline: central; }
 .variant-preview-regions { fill: none; stroke: var(--grid-strong); stroke-width: .23; }
