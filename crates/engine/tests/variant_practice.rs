@@ -123,6 +123,13 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::ThermometerHouse(proof) => {
+                    let PuzzleRule::Thermometer { cells } = &position.puzzle.rules[proof.rule] else {
+                        panic!("the proof must cite its Thermometer")
+                    };
+                    assert_eq!(cells, &proof.line_cells);
+                    scopes.insert(proof.cells.to_vec());
+                }
                 VariantEvidence::RegionSumHouse(proof) => {
                     assert!(proof.lines.iter().all(|line| matches!(
                         position.puzzle.rules[line.rule], PuzzleRule::RegionSum { .. }

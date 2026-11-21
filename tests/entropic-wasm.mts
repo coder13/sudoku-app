@@ -86,7 +86,7 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
-      assert.equal(trace.rating.scoringVersion, 14)
+      assert.equal(trace.rating.scoringVersion, 15)
       if (complete) assert.deepEqual(trace.rating.status, { solved: id === 'Hyk5' || id === 'Hafj' ? 'hard' : 'medium' })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -140,7 +140,7 @@ test('the two published Entropic row-four proofs match the app replay, hint page
     })
     assert.equal(legacy.steps.length, index === 0 ? 28 : 18)
     assert.equal(legacy.rating.status, 'stalled')
-    assert.equal(legacy.rating.scoringVersion, 14)
+    assert.equal(legacy.rating.scoringVersion, 15)
     const techniqueOrder = await getVariantPlayOrder(puzzle)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
     const stepIndex = index === 0 ? 26 : 18
@@ -188,7 +188,7 @@ test('the two published Entropic row-four proofs match the app replay, hint page
     }
     const path = await puzzleSolution(game)
     assert.deepEqual(path.rating.status, { solved: 'hard' })
-    assert.equal(path.rating.scoringVersion, 14)
+    assert.equal(path.rating.scoringVersion, 15)
     const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder: await getVariantPlayOrder(puzzle), stepIndex })
     assert.deepEqual(replay?.deduction.actions, path.steps[stepIndex].actions)
   }

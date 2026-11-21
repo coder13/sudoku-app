@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 14;
+pub const VARIANT_SCORING_VERSION: u32 = 15;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -31,6 +31,7 @@ mod group_order;
 mod line_houses;
 mod entropy_quadruple;
 mod sum_pairs;
+mod thermometer_houses;
 mod group_sum_implications;
 mod ray_houses;
 mod region_sums;
@@ -181,6 +182,8 @@ catalog! {
     RegionSumDistinct: "region-sum-distinct", 67, Medium;
     /// Combine disjoint Region Sum parts using the digits in their shared region.
     RegionSumHouse: "region-sum-house", 133, Hard;
+    /// Fit increasing digits on a Thermometer together with the rest of one shared house.
+    ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -376,6 +379,8 @@ pub enum VariantEvidence {
     RegionSumDistinct(Box<VariantRegionSumProof>),
     /// Several Region Sum line parts must use disjoint digits in one region.
     RegionSumHouse(Box<VariantRegionSumHouseProof>),
+    /// Increasing Thermometer assignments checked against a shared house.
+    ThermometerHouse(Box<VariantThermometerHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -861,6 +866,28 @@ pub struct VariantRegionSumHouseLine {
     pub remaining_totals: Vec<u8>,
 }
 
+/// Candidate support from one Thermometer and a row, column, or other distinct-digit house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantThermometerHouseProof {
+    /// Index of the source Thermometer rule.
+    pub rule: usize,
+    /// Physical Thermometer cells in bulb-to-tip order.
+    pub line_cells: Vec<usize>,
+    /// Input masks in Thermometer order.
+    pub line_domains: Vec<u16>,
+    /// House shared by at least two of the Thermometer's cells.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Input masks in house order, including placed digits.
+    pub domains: [u16; 9],
+    /// Number of distinct increasing digit sets tested on the shared line cells.
+    pub tested: usize,
+    /// Tested digit sets unable to extend to the whole house.
+    pub rejected: Vec<u16>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -1124,6 +1151,7 @@ impl VariantDeduction {
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::EntropyAreas(proof) => proof.cells.len(),
             VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::ThermometerHouse(proof) => proof.cells.len() + proof.line_cells.len(),
             VariantEvidence::RenbanGroupCounts(proof) => {
                 proof.conflict.cells.len() + usize::from(proof.placement.is_some())
             }
@@ -1683,6 +1711,7 @@ impl CompiledVariant {
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
+            ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
