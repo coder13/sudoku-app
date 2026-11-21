@@ -254,6 +254,12 @@ svg { flex-shrink: 0; }
   border-color: var(--selected-border);
   color: var(--dark-purple);
 }
+.button.primary:disabled {
+  background: var(--selected-bg);
+  color: var(--dark-purple);
+  box-shadow: none;
+  opacity: 1;
+}
 .borderless { border-color: transparent; background: transparent; box-shadow: none; }
 .button:not(:disabled):active, .icon-button:not(:disabled):active { box-shadow: var(--button-press-shadow); transition-duration: var(--motion-press-duration); }
 
@@ -4421,12 +4427,7 @@ a.game-row { text-decoration: none; color: inherit; }
 }
 
 .subsets-panel .button { min-height: 40px; }
-.chain-panel-tools .button[aria-pressed="true"] {
-  border-color: var(--selected-border);
-  background: var(--selected-bg);
-  color: var(--ink);
-}
-
+.chain-panel-tools .button[aria-pressed="true"] { border-color: var(--selected-border); }
 .strong-link-tool {
   display: grid;
   justify-items: start;

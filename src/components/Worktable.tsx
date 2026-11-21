@@ -503,7 +503,7 @@ export function Worktable({
   const canApplyChainEdits = chainsPanelOpen && Boolean(chainMasks && canAnalyzeChains && sketch.allActions.length)
   const canApplyHintEdit = fullHint && !recovery && Boolean(deduction && hintCandidates) && (!advancedWorkspace || showBottomPanel)
   const chainHighlightDigit = sketch.active.highlightedDigit
-  const strongLinkMask = playerHighlightMask
+  const strongLinkMask = colorMode || eraseMode ? 0 : highlightedDigitMask || (selectedDigit === null ? 0 : 1 << (selectedDigit - 1))
   const strongLinksVisible = !savedHighlightMode && showStrongLinks && chainsActive && canAnalyzeChains && !hintAnnotations
   const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, strongLinkMask, sketch.annotations,
     sketch.colorPairs, sketch.usedColorPairs, sketch.assignedColors)
@@ -1209,14 +1209,14 @@ export function Worktable({
     finally { if (nakedSinglesAbort.current === abort) nakedSinglesAbort.current = null }
   }
 
-  function setStrongLinkHighlights(mask: SetStateAction<number>) {
+  function setStrongLinkHighlights(mask: number) {
     setSelected([])
     setColorMode(false)
     showDigitHighlights(mask, 'any')
   }
 
   function toggleStrongLinkDigit(digit: number) {
-    setStrongLinkHighlights((mask) => (colorMode || eraseMode ? 0 : mask) ^ (1 << (digit - 1)))
+    setStrongLinkHighlights(strongLinkMask ^ (1 << (digit - 1)))
   }
 
   function selectStrongLinkCandidate(candidate: Candidate) {
