@@ -6,8 +6,8 @@ import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
-import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withThermometerHouseSupport } from './variant-generation.ts'
-import type { PlayableVariant, VariantGame } from './variants.ts'
+import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
+import { hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
@@ -52,11 +52,12 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
   const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
+  const hasKropki = hasPrintedKropki(rules)
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
   const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
   const hasGroupPairs = hasEntropicLine && rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer) return playProfile
+  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -77,7 +78,10 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle) {
       return [id]
     })
     const renbanGroups = hasRenbanGroups && !firstBeyondHard ? [...scoped, 'renban-group-counts'] : scoped
-    const techniqueOrder = hasThermometer ? withThermometerHouseSupport(renbanGroups, tiers) : renbanGroups
+    const techniqueOrder = withMediumVariantTechniques(renbanGroups, tiers, [
+      ...(hasThermometer ? ['thermometer-house-support'] : []),
+      ...(hasKropki ? ['kropki-house-support'] : []),
+    ])
     return { techniqueOrder, catalog, tiers, firstBeyondHard }
   })
 }
@@ -94,7 +98,8 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     : id === 'little-killer' ? withLittleKillerHouses(order)
       : id === 'entropic' ? withGroupLineHouses(order)
         : id === 'region-sum' ? withRegionSumTechniques(order, true)
-          : id === 'thermometer' ? withThermometerHouseSupport(order, tiers) : order
+          : id === 'thermometer' ? withMediumVariantTechniques(order, tiers, ['thermometer-house-support'])
+            : id === 'kropki' ? withMediumVariantTechniques(order, tiers, ['kropki-house-support']) : order
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
   if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')

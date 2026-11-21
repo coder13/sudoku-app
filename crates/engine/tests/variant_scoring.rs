@@ -39,6 +39,10 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::KropkiHouse(proof) => {
+            // Compare the dot’s number pairs against the house candidates.
+            return 30 + 2 * binary_choices(&proof.domains) + 2 * proof.tested as u16;
+        }
         VariantEvidence::ThermometerHouse(proof) => {
             // Read the line, then check enough remaining cells to fit the house.
             return 36 + 2 * proof.line_cells.len() as u16 + 2 * binary_choices(&proof.domains)

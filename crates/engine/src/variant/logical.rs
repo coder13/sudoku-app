@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 15;
+pub const VARIANT_SCORING_VERSION: u32 = 16;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -32,6 +32,7 @@ mod line_houses;
 mod entropy_quadruple;
 mod sum_pairs;
 mod thermometer_houses;
+mod kropki_houses;
 mod group_sum_implications;
 mod ray_houses;
 mod region_sums;
@@ -184,6 +185,8 @@ catalog! {
     RegionSumHouse: "region-sum-house", 133, Hard;
     /// Fit increasing digits on a Thermometer together with the rest of one shared house.
     ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
+    /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
+    KropkiHouseSupport: "kropki-house-support", 48, Medium;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -381,6 +384,8 @@ pub enum VariantEvidence {
     RegionSumHouse(Box<VariantRegionSumHouseProof>),
     /// Increasing Thermometer assignments checked against a shared house.
     ThermometerHouse(Box<VariantThermometerHouseProof>),
+    /// Assignments of a printed Kropki dot checked against one shared house.
+    KropkiHouse(Box<VariantKropkiHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -888,6 +893,28 @@ pub struct VariantThermometerHouseProof {
     pub rejected: Vec<u16>,
 }
 
+/// Candidate support from a printed Kropki dot and a shared distinct-digit house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantKropkiHouseProof {
+    /// Indices of the rules printing a mark on this edge.
+    pub rules: Vec<usize>,
+    /// Cells joined by the dot.
+    pub pair: [usize; 2],
+    /// House shared by the two dot cells.
+    pub house: VariantHouseKind,
+    /// The nine house cells in house order.
+    pub cells: [usize; 9],
+    /// Input masks for the house, including placed digits.
+    pub domains: [u16; 9],
+    /// Number of distinct digit pairs tested.
+    pub tested: usize,
+    /// Digits used by the dot in every full house assignment.
+    pub locked: u16,
+    /// Digit pairs that could not extend to the whole house.
+    pub rejected: Vec<u16>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -1151,6 +1178,7 @@ impl VariantDeduction {
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::EntropyAreas(proof) => proof.cells.len(),
             VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::KropkiHouse(proof) => proof.cells.len(),
             VariantEvidence::ThermometerHouse(proof) => proof.cells.len() + proof.line_cells.len(),
             VariantEvidence::RenbanGroupCounts(proof) => {
                 proof.conflict.cells.len() + usize::from(proof.placement.is_some())
@@ -1714,6 +1742,7 @@ impl CompiledVariant {
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
+            KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));

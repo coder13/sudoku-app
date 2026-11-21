@@ -7075,6 +7075,54 @@
       "variant": true,
       "lessons": [
         {
+          "id": "kropki-house-support",
+          "title": "Kropki dot and house",
+          "summary": "A white or black dot can rule out a pair of digits when the other cells in its row, column, or region cannot use the digits it leaves.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Check both cells on the dot"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a dot whose two cells share a house. A white dot needs consecutive digits. A black dot needs one digit to be double the other.",
+                "For each pair that fits both cells, check whether every other cell in the house can use the remaining digits. If the dot always uses a digit, remove that digit from the other cells in the house."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "kropki-house-support",
+              "copy": {
+                "description": "The white dot joins R3C6 and R3C7. R3C6 has candidates 5 and 6. R3C7 has candidates 3, 5, and 6.",
+                "reason": "The only consecutive pair that fits is 5 and 6. The dot uses 6 either way, so remove 6 from R3C5."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "kropki-house-support",
+                  "title": "Kropki dot and house"
+                }
+              ],
+              "guide": {
+                "start": "Find the two cells joined by the dot and the house they share.",
+                "check": "List the pairs that fit the dot. Check which pairs leave enough digits for the other cells.",
+                "reason": "Remove a candidate if no assignment that fills the house can use it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Kropki dots",
+              "href": "/learn/kropki"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "kropki",
           "title": "Kropki dots",
           "summary": "A Kropki dot gives a relationship between two neighboring digits. A white dot means they differ by one. A black dot means one is twice the other. A candidate needs a partner that fits the dot.",

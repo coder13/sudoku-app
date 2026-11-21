@@ -705,6 +705,11 @@ export function variantRuleSections(puzzle: VariantPuzzle, fog?: FogDefinition):
   return [...sections.values()]
 }
 
+export function hasPrintedKropki(rules: VariantPuzzle['rules']) {
+  return Boolean(rules?.some(rule => rule.type === 'kropki' &&
+    (rule.consecutive?.pairs?.length || rule.ratioTwo?.pairs?.length)))
+}
+
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {
   if (!variant || typeof variant !== 'object') return false
   const { id, puzzle, solution, fog } = variant as VariantGame

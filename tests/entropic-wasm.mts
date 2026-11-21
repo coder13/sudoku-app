@@ -14,6 +14,7 @@ import { assertSumPairProof } from './helpers/adjacent-total-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { assertKropkiHouseProof } from './helpers/kropki-house-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 useWasmWorker()
 const load = (name: string) =>
@@ -25,8 +26,8 @@ const expected = [
   ['clover', 680, 75, 1090, 75, true, true],
   ['EoGB', 452, 69, 982, 69, true, true],
   ['BSEJ', 116, 6, 1600, 93, false, true],
-  ['Hyk5', 180, 9, 3345, 144, false, true],
-  ['Hafj', 444, 18, 4081, 169, false, true],
+  ['Hyk5', 180, 9, 3604, 153, false, true],
+  ['Hafj', 444, 18, 5062, 193, false, true],
   ['Ksy3', 2390, 162, 2730, 162, true, true],
 ] as const
 for (const [
@@ -86,8 +87,8 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
-      assert.equal(trace.rating.scoringVersion, 15)
-      if (complete) assert.deepEqual(trace.rating.status, { solved: id === 'Hyk5' || id === 'Hafj' ? 'hard' : 'medium' })
+      assert.equal(trace.rating.scoringVersion, 16)
+      if (complete) assert.deepEqual(trace.rating.status, { solved: id === 'Hyk5' ? 'hard' : id === 'Hafj' ? 'tricky' : 'medium' })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
       for (const proof of trace.steps) {
@@ -95,6 +96,8 @@ for (const [
           const c = 'place' in action ? action.place : action.eliminate
           assert.equal(Number(source.solution[c.cell]) === c.digit, 'place' in action)
         }
+        if (proof.technique === 'kropki-house-support') assertKropkiHouseProof(puzzle, valuesOf(played),
+          variantHouseMasks(puzzle, valuesOf(played), played.position.eliminations), proof)
         if (proof.technique === 'entropic') assertEntropicProof(puzzle, proof)
         if (proof.evidence.type === 'sum-pair') assertSumPairProof(puzzle, proof)
         if (proof.technique === 'group-line-house-support') assertGroupLineHouseProof(puzzle, proof)
@@ -140,10 +143,10 @@ test('the two published Entropic row-four proofs match the app replay, hint page
     })
     assert.equal(legacy.steps.length, index === 0 ? 28 : 18)
     assert.equal(legacy.rating.status, 'stalled')
-    assert.equal(legacy.rating.scoringVersion, 15)
+    assert.equal(legacy.rating.scoringVersion, 16)
     const techniqueOrder = await getVariantPlayOrder(puzzle)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-    const stepIndex = index === 0 ? 26 : 18
+    const stepIndex = index === 0 ? 29 : 18
     const deduction = trace.steps[stepIndex]
     assert.equal(deduction.technique, technique)
     let played = game
@@ -187,8 +190,8 @@ test('the two published Entropic row-four proofs match the app replay, hint page
       await runEngine({ type: 'release-hints', collection })
     }
     const path = await puzzleSolution(game)
-    assert.deepEqual(path.rating.status, { solved: 'hard' })
-    assert.equal(path.rating.scoringVersion, 15)
+    assert.deepEqual(path.rating.status, { solved: index === 0 ? 'hard' : 'tricky' })
+    assert.equal(path.rating.scoringVersion, 16)
     const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder: await getVariantPlayOrder(puzzle), stepIndex })
     assert.deepEqual(replay?.deduction.actions, path.steps[stepIndex].actions)
   }
@@ -201,7 +204,9 @@ test('mixed group-order contradictions are the same move in hints, Finder, repla
     const { game } = await prepareImportedPuzzle(source.code)
     const variant = game.variant!, { puzzle } = variant
     const position = variantPosition(variant)
-    const techniqueOrder = await getVariantPlayOrder(puzzle)
+    // Keep the explicit profile that reproduces these two contradiction proofs.
+    // The ordinary Hafj walkthrough now reaches its grid with lower-tier steps.
+    const techniqueOrder = (await getVariantPlayOrder(puzzle)).filter(id => id !== 'kropki-house-support')
     const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
     const stepIndex = trace.steps.findIndex(step => step.technique === technique)
     assert.equal(stepIndex, index === 0 ? 31 : 35)
@@ -230,7 +235,7 @@ test('mixed group-order contradictions are the same move in hints, Finder, repla
     assert.deepEqual(chosen.evidence.variant.source?.deduction, proof)
     assert.match(chosen.evidence.variant.reason,
       index === 0 ? /row 5.*row 6.*white dot.*No pair fits the clue/ : /white dot.*row 5.*box 5.*column 5.*box 8.*No order/)
-    const ordinary = await puzzleHints(played)
+    const ordinary = await puzzleHints({ ...played, difficulty: 'hard' })
     assert.ok(ordinary.choices.some(hint => hint.technique === technique))
     const scan = watchTechniqueScan(valuesOf(played), played.position.eliminations, variantPosition(variant, played.position))
     try {

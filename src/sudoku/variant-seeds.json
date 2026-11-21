@@ -331,31 +331,31 @@
       {"seed":121781355,"maxGivens":23,"dotCount":10}
     ],
     "hard": [
-      {"seed":237567354,"maxGivens":23,"dotCount":22},
-      {"seed":243080973,"maxGivens":25,"dotCount":10},
-      {"seed":178755418,"maxGivens":20,"dotCount":14},
-      {"seed":290865671,"maxGivens":26,"dotCount":18},
-      {"seed":237567354,"maxGivens":20,"dotCount":22},
-      {"seed":228377989,"maxGivens":12,"dotCount":26},
-      {"seed":125457101,"maxGivens":19,"dotCount":18}
+      {"seed":215512878,"maxGivens":28,"dotCount":22},
+      {"seed":700207726,"maxGivens":24,"dotCount":14},
+      {"seed":821905145,"maxGivens":24,"dotCount":14},
+      {"seed":3688322410,"maxGivens":24,"dotCount":14},
+      {"seed":1794063493,"maxGivens":24,"dotCount":14},
+      {"seed":152496383,"maxGivens":24,"dotCount":14},
+      {"seed":3270740308,"maxGivens":24,"dotCount":14}
     ],
     "very-hard": [
       {"seed":105240498,"maxGivens":24,"dotCount":22},
-      {"seed":261459703,"maxGivens":14,"dotCount":26},
+      {"seed":90537514,"maxGivens":20,"dotCount":14},
       {"seed":13346848,"maxGivens":22,"dotCount":14}
     ],
     "expert": [
-      {"seed":244918846,"maxGivens":16,"dotCount":14},
-      {"seed":90537514,"maxGivens":20,"dotCount":14},
-      {"seed":287189925,"maxGivens":20,"dotCount":10},
-      {"seed":66645165,"maxGivens":21,"dotCount":10},
-      {"seed":101564752,"maxGivens":21,"dotCount":14}
+      {"seed":481737,"maxGivens":22,"dotCount":10},
+      {"seed":290865671,"maxGivens":26,"dotCount":18},
+      {"seed":13346848,"maxGivens":22,"dotCount":14},
+      {"seed":55617927,"maxGivens":19,"dotCount":10},
+      {"seed":482710196,"maxGivens":24,"dotCount":14}
     ],
     "master": [
-      {"seed":123619228,"maxGivens":17,"dotCount":14},
-      {"seed":289027798,"maxGivens":16,"dotCount":14},
-      {"seed":55617927,"maxGivens":19,"dotCount":10},
-      {"seed":209999259,"maxGivens":18,"dotCount":10}
+      {"seed":29887705,"maxGivens":31,"dotCount":26},
+      {"seed":243080973,"maxGivens":25,"dotCount":10},
+      {"seed":290865671,"maxGivens":26,"dotCount":18},
+      {"seed":228377989,"maxGivens":12,"dotCount":26}
     ]
   },
   "windoku": {
