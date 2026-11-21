@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  loadNumberProgress, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress,
+  hasNumberMoves, loadNumberProgress, numberValuesWithMoves, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress,
   saveNumberClock, saveNumberProgress, type NumberProgress,
 } from '../src/number-puzzles/progress.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -48,6 +48,19 @@ test('number game progress reads old saves and saves both history stacks with th
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')
   }
+})
+
+test('corner marks count as progress and survive undo and redo storage', () => {
+  const saved = {
+    values: [0, 0, 0], notes: [0, 0, 0], cornerNotes: [1, 0, 0],
+    past: [[0, 0, 0]], future: [[0, 0, 0, 3]],
+  }
+  assert.deepEqual(numberValuesWithMoves(saved, editable, 4), [0, 0, 0])
+  const progress = parseNumberProgress(saved, editable, 4)
+  assert.ok(progress && hasNumberMoves(progress))
+  assert.deepEqual(progress.position.cornerNotes, [1, 0, 0])
+  assert.deepEqual(progress.past, [[0, 0, 0]])
+  assert.deepEqual(progress.future, [[0, 0, 0, 3]])
 })
 
 test('generated history recovers unlisted boards and saves moves when IndexedDB is unavailable', async () => {

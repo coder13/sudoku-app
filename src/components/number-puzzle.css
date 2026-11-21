@@ -317,3 +317,20 @@
   border-radius: 8px;
   font: inherit;
 }
+
+.number-puzzle-center-notes, .number-puzzle-corner-notes {
+  color: var(--candidate-ink);
+  font-size: clamp(.45rem, calc(19cqi / var(--number-puzzle-columns)), .8rem);
+  font-weight: 500;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.number-puzzle-center-notes { max-width: 92%; }
+.number-puzzle-corner-notes {
+  position: absolute;
+  inset-block-start: .35em;
+  inset-inline-end: .45em;
+  max-width: 60%;
+  text-align: end;
+}

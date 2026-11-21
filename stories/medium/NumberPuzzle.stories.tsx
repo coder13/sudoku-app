@@ -4,10 +4,11 @@ import { expect, waitFor, within } from 'storybook/test'
 import { CalcudokuPlay } from '../../src/components/Calcudoku'
 import { calcudokuCatalog } from '../../src/calcudoku/catalog'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
-import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
+import { FutoshikiDifficultyPage, FutoshikiPlay } from '../../src/components/Futoshiki'
 import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
+import { createImportedFutoshiki } from '../../src/futoshiki/imported'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { solveLatin } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
@@ -382,5 +383,41 @@ export const RulloCheck: Story = {
     await expect(correct.getByText('Your choices fit the solution so far.')).toBeVisible()
     await userEvent.click(correct.getByRole('button', { name: 'Close dialog' }))
     await waitFor(() => expect(actions).toHaveFocus())
+  },
+}
+
+const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
+  values: [1, ...Array<number>(15).fill(0)],
+  notes: [0, 6, ...Array<number>(14).fill(0)],
+  cornerNotes: [0, 10, ...Array<number>(14).fill(0)],
+})
+
+export const ImportedCandidatePositions: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={importedFutoshiki} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('futoshiki', importedFutoshiki.id)
+    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cellName = /^R1C2, center notes 2, 3, corner notes 2, 4, R1C1 is less than R1C2$/
+    const control = await waitFor(() => canvas.queryByText('Resume puzzle', { exact: true })
+      ?? canvas.getByRole('button', { name: cellName }))
+    if (control.textContent?.trim() === 'Resume puzzle') await userEvent.click(control)
+    const cell = await canvas.findByRole('button', { name: cellName })
+    await userEvent.click(cell)
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    const positions = within(canvas.getByRole('group', { name: 'Candidate position' }))
+    await expect(positions.getByRole('button', { name: 'Center' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(positions.getByRole('button', { name: 'Corner' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
+    await expect(cell).toHaveAccessibleName(/^R1C2, center notes 2, 3, corner notes 2, R1C1 is less than R1C2$/)
   },
 }

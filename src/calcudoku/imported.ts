@@ -1,3 +1,5 @@
+import { encodeNumberImportPosition, numberPositionTokenLength, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
+import type { NumberPosition } from '../number-puzzles/progress.ts'
 import { isImportedColor } from '../sudoku/imported-colors.ts'
 import { cellLabel, solveLatin } from '../latin/engine.ts'
 import type { CalcudokuEntry } from './catalog.ts'
@@ -15,6 +17,7 @@ export type CalcudokuImport = {
   givens: string
   cages: CalcudokuImportCage[]
   colors: string[]
+  position?: NumberPosition
 }
 
 const signs = new Map<string, CageOperator>([
@@ -115,9 +118,10 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
   const puzzle = createCalcudoku(size, cages, fixed)
   const bytes = new TextEncoder().encode(JSON.stringify([size, givens, recipe, colors]))
   const payload = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  const progress = withImportedNumberPosition(source.position, puzzle.givens)
   return {
-    id: `c1.${payload}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
-    imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes,
+    id: `c1.${payload}${encodeNumberImportPosition(progress.initialPosition)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
+    imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, ...progress,
   }
 }
 
@@ -133,14 +137,18 @@ export function prepareImportedCalcudoku(source: CalcudokuImport, operators: Rea
   return verifyImportedCalcudoku(calcudokuImportEntry(source, operators))
 }
 
+const importToken = /^c1\.([A-Za-z0-9_-]{1,4093})(?:\.p([0-9a-z]+))?$/
+
 export function importedCalcudokuToken(value: unknown) {
-  return typeof value === 'string' && value.length <= 4_096 && /^c1\.[A-Za-z0-9_-]+$/.test(value) ? value : undefined
+  return typeof value === 'string' && value.length <= 4096 + 2 + numberPositionTokenLength &&
+    importToken.test(value) ? value : undefined
 }
 
 export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined {
   if (!importedCalcudokuToken(token)) return
   try {
-    const bytes = Uint8Array.from(atob(token.slice(3).replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
+    const [, payload, progress] = importToken.exec(token)!
+    const bytes = Uint8Array.from(atob(payload.replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
     const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
     if (!Array.isArray(data) || data.length !== 4) return
     const [size, givens, recipe, colors] = data
@@ -155,7 +163,8 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
       operators[cage.cells[0]] = item[2]
       return cage
     })
-    const entry = calcudokuImportEntry({ size, givens, cages, colors }, operators)
+    const position = progress ? readNumberImportPosition(progress, size) : undefined
+    const entry = calcudokuImportEntry({ size, givens, cages, colors, position }, operators)
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }
 }

@@ -99,3 +99,23 @@ test('Coach color indices use capital letters before lowercase letters', async (
   assert.ok('calcudoku' in prepared)
   assert.deepEqual(prepared.calcudoku.cellColors?.slice(0, 2), ['blue', 'purple'])
 })
+
+test('Current State survives the choice of an unsigned cage operation and reopening the portable board', async () => {
+  const source = {
+    gridSize: 3, regions: [], givenDigits: '003312231',
+    givenConstraints: [{ type: 'cosmeticCage', segments: [{ cells: [0, 1], parameters: { sum: '3' } }] }],
+  }
+  const prepared = await preparePlayableImport(coachCode({
+    ...source, userDigits: '203000000',
+    userCellCandidates: '0-6-0-0-0-0-0-0-0',
+    userBoxCandidates: '0-4-0-0-0-0-0-0-0',
+  }))
+  assert.ok('calcudokuSource' in prepared)
+  const entry = prepareImportedCalcudoku(prepared.calcudokuSource, { 0: 'add' })
+  assert.equal(solveLatin(entry.puzzle).solution?.join(''), '123312231')
+  assert.deepEqual(entry.initialPosition, {
+    values: [2, 0, 0, 0, 0, 0, 0, 0, 0], notes: [0, 3, 0, 0, 0, 0, 0, 0, 0], cornerNotes: [0, 2, 0, 0, 0, 0, 0, 0, 0],
+  })
+  assert.deepEqual(readImportedCalcudoku(entry.id)?.initialPosition, entry.initialPosition)
+  assert.equal(readImportedCalcudoku(entry.id + '0000000'), undefined)
+})

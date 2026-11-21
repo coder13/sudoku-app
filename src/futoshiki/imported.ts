@@ -1,9 +1,11 @@
+import { encodeNumberImportPosition, numberPositionTokenLength, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
+import type { NumberPosition } from '../number-puzzles/progress.ts'
 import { solveLatin } from '../latin/engine.ts'
 import { createFutoshiki, type Inequality } from './engine.ts'
 import type { FutoshikiEntry } from './catalog.ts'
 
 const difficultyBySize = { 4: 'easy', 5: 'medium', 6: 'hard' } as const
-const importToken = /^f1\.([0-6]{16}|[0-6]{25}|[0-6]{36})\.([0-9a-z]{0,120})$/
+const importToken = /^f1\.([0-6]{16}|[0-6]{25}|[0-6]{36})\.([0-9a-z]{0,120})(?:\.p([0-9a-z]+))?$/
 
 export type FutoshikiSize = keyof typeof difficultyBySize
 
@@ -11,12 +13,14 @@ export function isFutoshikiSize(value: unknown): value is FutoshikiSize {
   return value === 4 || value === 5 || value === 6
 }
 
-export function createImportedFutoshiki(size: FutoshikiSize, givens: string, inequalities: readonly Inequality[]): FutoshikiEntry {
+export function createImportedFutoshiki(size: FutoshikiSize, givens: string, inequalities: readonly Inequality[], position?: NumberPosition): FutoshikiEntry {
   const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities)
   const encoded = inequalities
     .map(({ less, greater }) => less.toString(36) + greater.toString(36))
     .sort().join('')
-  return { id: `f1.${givens}.${encoded}`, puzzle, number: 0, difficulty: difficultyBySize[size], imported: true }
+  const progress = withImportedNumberPosition(position, puzzle.givens)
+  return { id: `f1.${givens}.${encoded}${encodeNumberImportPosition(progress.initialPosition)}`,
+    puzzle, number: 0, difficulty: difficultyBySize[size], imported: true, ...progress }
 }
 
 export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
@@ -28,12 +32,12 @@ export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
 }
 
 export function importedFutoshikiToken(value: unknown) {
-  return typeof value === 'string' && value.length <= 161 && importToken.test(value) ? value : undefined
+  return typeof value === 'string' && value.length <= 161 + 2 + numberPositionTokenLength && importToken.test(value) ? value : undefined
 }
 
 export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined {
   if (!importedFutoshikiToken(token)) return
-  const [, givens, edges] = importToken.exec(token)!
+  const [, givens, edges, progress] = importToken.exec(token)!
   const size = Math.sqrt(givens.length)
   if (!isFutoshikiSize(size) || edges.length % 2) return
   const inequalities: Inequality[] = []
@@ -41,7 +45,7 @@ export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined
     inequalities.push({ less: Number.parseInt(edges[index], 36), greater: Number.parseInt(edges[index + 1], 36) })
   }
   try {
-    const entry = createImportedFutoshiki(size, givens, inequalities)
+    const entry = createImportedFutoshiki(size, givens, inequalities, progress ? readNumberImportPosition(progress, size) : undefined)
     if (entry.id === token) return entry
   } catch { /* Invalid givens or inequality edges. */ }
 }

@@ -5,7 +5,7 @@ import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { solveLatin } from '../src/latin/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { preparePlayableImport } from '../src/sudoku/puzzle-preview.ts'
-import { coachCode } from './helpers/coach-code.ts'
+import { coachCode, coachWholeProgress } from './helpers/coach-code.ts'
 
 type Source = { code: string; givens: string; edges: [number, number][] }
 const fixtures: Record<string, Source> = JSON.parse(readFileSync(new URL('./fixtures/futoshiki-coach.json', import.meta.url), 'utf8'))
@@ -52,4 +52,44 @@ test('the standalone importer rejects invalid, ambiguous and unhandled rules', a
   await assert.rejects(preparePlayableImport(coachCode({
     ...base, givenConstraints: [...withEdges([0, 1]).givenConstraints, { type: 'cage', segments: [{ cells: [2, 3], parameters: { sum: 3 } }] }],
   })), /unsupported rule/)
+})
+
+test('Current State keeps placed digits and both pencil mark styles in a separate portable attempt', async () => {
+  const source = {
+    gridSize: 4, regions: [], givenDigits: '0034234134124123',
+    givenConstraints: [{ type: 'greaterLess', segments: [{ cells: [0, 1] }] }],
+  }
+  const progress = {
+    userDigits: '1034000000000000',
+    userCellCandidates: [0, 4, 0, ...Array(13).fill(0)].join('-'),
+    userBoxCandidates: [0, 10, 0, ...Array(13).fill(0)].join('-'),
+  }
+  const plain = await preparePlayableImport(coachCode(source))
+  const preview = await preparePlayableImport(coachWholeProgress([source, { ...source, ...progress }, source], 1))
+  assert.ok('futoshiki' in plain && 'futoshiki' in preview)
+  assert.notEqual(preview.futoshiki.id, plain.futoshiki.id)
+  const initial = preview.futoshiki.initialPosition
+  assert.ok(initial)
+  assert.equal(initial.values.join(''), '1000000000000000')
+  assert.equal(initial.notes[1], 2)
+  assert.equal(initial.cornerNotes?.[1], 5)
+  assert.deepEqual(readImportedFutoshiki(preview.futoshiki.id)?.initialPosition, initial)
+  assert.equal(readImportedFutoshiki(preview.futoshiki.id + '00'), undefined)
+  assert.deepEqual(preview.futoshiki.puzzle.givens, plain.futoshiki.puzzle.givens)
+  await assert.rejects(preparePlayableImport(coachCode({ ...source, userDigits: '1040000000000000' })), /replaces a given/)
+  await assert.rejects(preparePlayableImport(coachCode({ ...source, userCellCandidates: '0-2' })), /invalid candidate marks/)
+  await assert.rejects(preparePlayableImport(coachCode({
+    ...source, userBoxCandidates: [32, ...Array(15).fill(0)].join('-'),
+  })), /invalid candidate marks/)
+})
+
+test('imports the visible board from Coach’s native Whole Progress clipboard text', async () => {
+  const code = readFileSync(new URL('./fixtures/futoshiki-coach-progress.txt', import.meta.url), 'utf8')
+  const preview = await preparePlayableImport(code)
+  assert.ok('futoshiki' in preview)
+  assert.equal(preview.futoshiki.puzzle.givens.join(''), '0000001000000000')
+  assert.equal(preview.futoshiki.initialPosition?.values.join(''), '2000000000000000')
+  assert.equal(solveLatin(preview.futoshiki.puzzle).status, 'unique')
+  await assert.rejects(preparePlayableImport(coachWholeProgress([], 0)), /invalid puzzle snapshot/)
+  await assert.rejects(preparePlayableImport(coachWholeProgress([{ version: 8 }], 0)), /invalid puzzle snapshot/)
 })

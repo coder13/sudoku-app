@@ -1,3 +1,4 @@
+import type { NumberPosition } from '../number-puzzles/progress.ts'
 import type { CalcudokuImport } from '../calcudoku/imported.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
 import type { Inequality } from '../futoshiki/engine.ts'
@@ -27,10 +28,12 @@ import { cellsShareEdge, isPlayablePuzzle, isPuzzleVariantId, variantIdForPuzzle
 
 export const MAX_IMPORT_LENGTH = 20_000
 const MAX_DECODED_LENGTH = 128_000
+const MAX_COACH_PROGRESS_LENGTH = 1_048_576
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
 const COACH_BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 const DIGIT_RUNS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'
 const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
+const COACH_WHOLE_PROGRESS = /^32_/
 const LEGACY_COACH_CODE = /^SCv([3-6])_/i
 const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64}\/){0,3}[a-z0-9-]{1,64})\/s\/([A-Za-z0-9]{1,16})\/?$/
 const FP_CODE = /^fpuz(?:zles)?/i
@@ -160,7 +163,7 @@ function decodeBase32Hex(text: string) {
   return bytes
 }
 
-async function inflate(bytes: Uint8Array<ArrayBuffer>) {
+async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGTH) {
   const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate')).getReader()
   const decoder = new TextDecoder('utf-8', { fatal: true })
   const chunks: string[] = []
@@ -170,7 +173,7 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>) {
       const { done, value } = await reader.read()
       if (done) break
       length += value.byteLength
-      if (length > MAX_DECODED_LENGTH) throw new Error('This Sudoku Coach puzzle is too large.')
+      if (length > limit) throw new Error('This Sudoku Coach puzzle is too large.')
       chunks.push(decoder.decode(value, { stream: true }))
     }
     return chunks.join('') + decoder.decode()
@@ -179,9 +182,9 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>) {
   }
 }
 
-function parseJSON(text: string, format: ImportFormat): unknown {
+function parseJSON(text: string, format: ImportFormat, limit = MAX_DECODED_LENGTH): unknown {
   try {
-    if (text && text.length <= MAX_DECODED_LENGTH) return JSON.parse(text)
+    if (text && text.length <= limit) return JSON.parse(text)
   } catch { /* Show a format-specific error below. */ }
   throw new Error(`This ${format} puzzle is unreadable. Copy it again and try once more.`)
 }
@@ -190,18 +193,30 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
   const legacy = LEGACY_COACH_CODE.exec(code)
   if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as LegacyCoachVersion, MAX_DECODED_LENGTH)
+  const wholeProgress = COACH_WHOLE_PROGRESS.exec(code)
   const prefix = COACH_CODE.exec(code)
-  if (!prefix || prefix[1] !== '7' || prefix[2] !== '32') {
+  if (!wholeProgress && (!prefix || prefix[1] !== '7' || prefix[2] !== '32')) {
     throw new Error('This Sudoku Coach code uses an unsupported format. Copy the puzzle from Sudoku Coach and try again.')
   }
-  const bytes = decodeBase32Hex(code.slice(prefix[0].length))
+  const bytes = decodeBase32Hex(code.slice((wholeProgress ?? prefix)![0].length))
+  const limit = wholeProgress ? MAX_COACH_PROGRESS_LENGTH : MAX_DECODED_LENGTH
   let text: string
   try {
-    text = await inflate(bytes)
+    text = await inflate(bytes, limit)
   } catch {
     throw new Error('This Sudoku Coach code could not be opened. Copy the full puzzle code and try again.')
   }
-  const data = parseJSON(text, 'Sudoku Coach')
+  let data = parseJSON(text, 'Sudoku Coach', limit)
+  if (wholeProgress) {
+    // An export stores serialized snapshots and the index of the visible one.
+    const invalid = () => new Error('This Sudoku Coach progress has an invalid puzzle snapshot.')
+    if (!record(data) || typeof data.i !== 'number' || !Number.isSafeInteger(data.i) ||
+      !Array.isArray(data.a) || data.i < 0 || data.i >= data.a.length || typeof data.a[data.i] !== 'string') throw invalid()
+    const snapshot = parseJSON(data.a[data.i], 'Sudoku Coach')
+    if (!record(snapshot) || snapshot.version !== 7) throw invalid()
+    const { version, ...puzzle } = snapshot
+    data = puzzle
+  }
   if (!record(data)) throw new Error('This Sudoku Coach puzzle is unreadable.')
   for (const [key, value] of Object.entries(data)) {
     if (!COACH_FIELDS.has(key) && !key.startsWith('user') && hasData(value)) {
@@ -232,10 +247,11 @@ function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
 
-function readCoachCandidateMasks(value: unknown): number[] {
-  if (value === undefined || value === '') return Array(81).fill(0)
+function readCoachCandidateMasks(value: unknown, size = 9): number[] {
+  if (value === undefined || value === '') return Array(size ** 2).fill(0)
   const masks = typeof value === 'string' ? value.split('-') : []
-  if (masks.length !== 81 || masks.some(mask => !/^\d{1,4}$/.test(mask) || Number(mask) > 1022 || Number(mask) % 2)) {
+  const maxMask = (1 << (size + 1)) - 2
+  if (masks.length !== size ** 2 || masks.some(mask => !/^\d{1,4}$/.test(mask) || Number(mask) > maxMask || Number(mask) % 2)) {
     throw new Error('This Sudoku Coach progress has invalid candidate marks.')
   }
   // Coach stores digit d at bit d. Play stores digit d at bit d - 1.
@@ -280,19 +296,35 @@ function readCoachCandidateColors(palette: unknown, encoded: unknown): Candidate
   return colors
 }
 
-function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
-  const importedDrawings = readCoachQuickDraw(data)
-  if (!importedDrawings && ![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
-  const importedCellColors = readCoachPlayerColors(data)
-  const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours)
-  const digits = data.userDigits === undefined || data.userDigits === '' ? EMPTY : data.userDigits
-  if (typeof digits !== 'string' || !/^[0-9]{81}$/.test(digits)) {
+function readCoachProgressDigits(value: unknown, givens: string, size: number) {
+  const digits = value === undefined || value === '' ? '0'.repeat(givens.length) : value
+  if (typeof digits !== 'string' || digits.length !== givens.length || !/^\d+$/.test(digits) ||
+    [...digits].some(digit => Number(digit) > size)) {
     throw new Error('This Sudoku Coach progress has invalid placed digits.')
   }
   if ([...digits].some((digit, cell) => digit !== '0' && givens[cell] !== '0' && digit !== givens[cell])) {
     throw new Error('The Sudoku Coach progress has a placed digit that replaces a given.')
   }
-  const entries = [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
+  return [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
+}
+
+function readCoachNumberPosition(data: Record<string, unknown>, givens: string, size: number): NumberPosition | undefined {
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
+  if (readCoachColourCells(data.colours, data.userColours, size ** 2)?.length !== 0 || hasData(data.userCellCandidatesColours)) {
+    throw new Error('This Sudoku Coach progress has unsupported player colors.')
+  }
+  const values = Array.from(readCoachProgressDigits(data.userDigits, givens, size), Number)
+  const notes = readCoachCandidateMasks(data.userCellCandidates, size).map((mask, cell) => givens[cell] === '0' ? mask : 0)
+  const cornerNotes = readCoachCandidateMasks(data.userBoxCandidates, size).map((mask, cell) => givens[cell] === '0' ? mask : 0)
+  if (values.some(Boolean) || notes.some(Boolean) || cornerNotes.some(Boolean)) return { values, notes, cornerNotes }
+}
+
+function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
+  const importedDrawings = readCoachQuickDraw(data)
+  if (!importedDrawings && ![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
+  const importedCellColors = readCoachPlayerColors(data)
+  const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours)
+  const entries = readCoachProgressDigits(data.userDigits, givens, 9)
   const center = readCoachCandidateMasks(data.userCellCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   const corner = readCoachCandidateMasks(data.userBoxCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors || importedCandidateColors || importedDrawings) {
@@ -429,6 +461,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     }
     const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
     const calcudoku = readCoachCalcudoku(data, colors)
+    const position = readCoachNumberPosition(data, calcudoku.givens, calcudoku.size)
+    if (position) calcudoku.position = position
     return { givens: calcudoku.givens, format: 'Sudoku Coach', calcudoku }
   }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -552,7 +586,8 @@ async function readCoachFutoshiki(data: Record<string, unknown>): Promise<Import
     }
   }
   const { createImportedFutoshiki } = await import('../futoshiki/imported.ts')
-  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities) }
+  const position = readCoachNumberPosition(data, givens, size)
+  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, position) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
@@ -1254,7 +1289,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
         return fromCoach(code, publication)
       }
       const code = url.pathname.match(/^\/(?:[a-z]{2}\/)?(?:play|solver|construct)\/([^/]+)\/?$/i)?.[1] ?? ''
-      if (code.toLowerCase().startsWith('scv')) return fromCoach(decodeURIComponent(code))
+      if (code.toLowerCase().startsWith('scv') || COACH_WHOLE_PROGRESS.test(code)) return fromCoach(decodeURIComponent(code))
       if (/^[0-4.]{16}$/.test(code)) return { givens: code.replaceAll('.', '0'), format: 'Sudoku Coach', grid: MINI_GRID }
       if (/^[0-9.]{81}$/.test(code)) return { givens: parsePuzzle(code), format: 'Sudoku Coach' }
       throw new Error('This Sudoku Coach link does not contain a puzzle code. Open it and use Copy → Puzzle.')
@@ -1270,7 +1305,7 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     }
     throw new Error('This link format is not supported. Try pasting the puzzle code or its 81 givens.')
   }
-  if (text.toLowerCase().startsWith('scv')) return fromCoach(text)
+  if (text.toLowerCase().startsWith('scv') || COACH_WHOLE_PROGRESS.test(text)) return fromCoach(text)
   if (/^(scf|scl|ctc)/i.test(text)) return fromSudokuPad(text)
   if (FP_CODE.test(text)) return fromFPuzzles(text.replace(FP_CODE, ''), 'f-puzzles')
   if (text.startsWith('{') || /^N4[A-Za-z0-9+/=]+$/.test(text)) return fromFPuzzles(text, 'f-puzzles')

@@ -175,6 +175,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const futoshiki = ready && 'futoshiki' in ready ? ready.futoshiki : undefined
   const calcudoku = ready && 'calcudoku' in ready ? ready.calcudoku : undefined
   const game = ready && 'game' in ready ? ready.game : undefined
+  const hasProgress = Boolean(ready && 'hasProgress' in ready && ready.hasProgress ||
+    futoshiki?.initialPosition || calcudoku?.initialPosition)
   const fog = game && fogView(game.variant, game.position.entries)
   const destination = futoshiki ? numberPuzzleDestination('futoshiki', futoshiki)
     : calcudoku ? numberPuzzleDestination('calcudoku', calcudoku) : undefined
@@ -195,12 +197,12 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </>}
         <span className="import-preview-format">{ready.format}</span>
       </p>
+      {hasProgress && <p>This import includes your progress.</p>}
       {(futoshiki || calcudoku) && <Suspense fallback={<p role="status">Loading puzzle preview…</p>}>
         {futoshiki ? <LazyFutoshikiImportPreview entry={futoshiki} />
           : calcudoku && <LazyCalcudokuImportPreview entry={calcudoku} />}
       </Suspense>}
       {'game' in ready && game && <>
-        {ready.hasProgress && <p>This import includes your progress.</p>}
         <Board grid={game.grid} whispersGuide={game.whispersGuide} label="Puzzle preview" givens={game.givens} values={valuesOf(game)}
           givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
           position={ready.hasProgress ? game.position : undefined} candidateLayout="center-corner"
@@ -229,9 +231,9 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </Button>
         {destination ? <Link className={buttonClassName('primary')} {...destination}
           state={fullPage ? { fromNumberPuzzleImport: true } : undefined}>
-          <Play size={17} aria-hidden="true" /> Start playing
+          <Play size={17} aria-hidden="true" /> {hasProgress ? 'Open puzzle' : 'Start playing'}
         </Link> : 'game' in ready && <Button type="button" variant="primary" onClick={() => { finishImport(ready, true); onPlay?.() }}>
-          <Play size={17} aria-hidden="true" /> {ready.hasProgress ? 'Open puzzle' : 'Start playing'}
+          <Play size={17} aria-hidden="true" /> {hasProgress ? 'Open puzzle' : 'Start playing'}
         </Button>}
       </div>
     </div>

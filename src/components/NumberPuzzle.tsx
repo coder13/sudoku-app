@@ -14,7 +14,7 @@ import {
 import {
   advanceNumberClock, emptyNumberPosition, hasNumberMoves, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
   parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberClock, saveNumberProgress,
-  type NumberClock, type NumberMove, type NumberProgress,
+  type NumberClock, type NumberMove, type NumberPosition, type NumberProgress,
 } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
@@ -35,7 +35,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { usePuzzleTimer } from './usePuzzleTimer'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
-import { PuzzleKeypad } from './PuzzleKeypad'
+import { CandidatePositionSwitch, PuzzleKeypad } from './PuzzleKeypad'
 import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
 import './puzzle-games.css'
 import './number-puzzle.css'
@@ -318,19 +318,26 @@ function numberCellName(index: number, width: number) {
 }
 
 /** Use for a standalone board preview that shares Play's cells and clues. */
-export function NumberPuzzlePreview({ board, game, label }: { board: NumberBoard; game: NumberGame; label: string }) {
+export function NumberPuzzlePreview({ board, game, label, position }: {
+  board: NumberBoard; game: NumberGame; label: string; position?: NumberPosition
+}) {
+  const digits = useMemo(() => position ? Array.from({ length: board.maxValue }, (_, i) => i + 1) : [], [board.maxValue, position])
   return <div className="number-puzzle-grid number-puzzle-preview" data-game={game} role="group" aria-label={label}
     style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
-    <NumberPuzzleCells board={board} />
+    <NumberPuzzleCells board={board} digits={digits} values={position?.values}
+      noteMasks={position?.notes} cornerMasks={position?.cornerNotes} separateNotes={Boolean(position)} />
   </div>
 }
 
-function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, hintCell, contextCells, conflicts, events }: {
+function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, cornerMasks, separateNotes,
+  hintCell, contextCells, conflicts, events }: {
   board: NumberBoard
   selection?: number
   values?: readonly number[]
   digits?: readonly number[]
   noteMasks?: readonly number[]
+  cornerMasks?: readonly number[]
+  separateNotes?: boolean
   hintCell?: number
   contextCells?: readonly number[]
   conflicts?: ReadonlySet<number>
@@ -358,9 +365,13 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, h
   function renderCell({ label, color, block, decoration, edges, given, endpoint, printed }: BoardCell, index: number) {
     if (block) return renderBlock(index)
     const value = given || values?.[index] || 0
-    const marks = noteMasks ? digits.filter(digit => noteMasks[index] & (1 << (digit - 1))) : []
+    const marks = noteMasks?.[index] ? digits.filter(digit => noteMasks[index] & (1 << (digit - 1))) : []
+    const corners = cornerMasks?.[index] ? digits.filter(digit => cornerMasks[index] & (1 << (digit - 1))) : []
+    const centerLabel = marks.length ? `${separateNotes ? 'center ' : ''}notes ${marks.join(', ')}` : ''
+    const cornerLabel = corners.length ? `corner notes ${corners.join(', ')}` : ''
+    const notesLabel = [centerLabel, cornerLabel].filter(Boolean).join(', ')
     const description = printed !== undefined ? String(printed)
-      : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
+      : given ? `given ${given}` : value ? String(value) : notesLabel || 'empty'
     return <button key={index} type="button" className="number-puzzle-cell"
       data-cell={index}
       data-color={color}
@@ -377,7 +388,10 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, h
       onClick={events && (() => events.onClick(index, value))}>
       {decoration}
       {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
-        : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
+        : separateNotes ? <>
+          {corners.length > 0 && <span className="number-puzzle-corner-notes" aria-hidden="true">{corners.join('')}</span>}
+          {marks.length > 0 && <span className="number-puzzle-center-notes" aria-hidden="true">{marks.join('')}</span>}
+        </> : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
           : <span className="number-puzzle-notes" aria-hidden="true">{digits.map(digit =>
             <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span>}
     </button>
@@ -416,6 +430,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const [number, setNumber] = useState(entry.number)
   const [selection, setSelection] = useState(() => editable.indexOf(true))
   const [notes, setNotes] = useState(false)
+  const [candidatePosition, setCandidatePosition] = useState<'center' | 'corner'>('center')
+  const separateNotes = Boolean(entry.initialPosition)
   const [numberInput, setNumberInput] = useState('')
   const numberField = useRef<HTMLInputElement>(null)
   const [checkedCells, setCheckedCells] = useState<readonly number[]>()
@@ -509,9 +525,15 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       })
       return () => { active = false }
     }
-    restore(load())
+    const stored = load()
+    if (stored || !entry.initialPosition) restore(stored)
+    else {
+      const imported: NumberProgress = { position: entry.initialPosition, past: [], future: [], clock: 'untimed', lastPlayed: Date.now() }
+      setStorageError(!saveNumberProgress(key, imported))
+      restore(imported)
+    }
     setReady(true)
-  }, [editable, entry.id, generatedGame, load, maxValue])
+  }, [editable, entry.id, entry.initialPosition, generatedGame, key, load, maxValue])
 
   function positionActionsMenu(menu: HTMLDivElement) {
     const anchor = actionsButton.current?.getBoundingClientRect()
@@ -540,23 +562,32 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function readCell(cell: number): NumberMove {
-    return [cell, position.values[cell], position.notes[cell]]
+    const corner = position.cornerNotes?.[cell]
+    return corner ? [cell, position.values[cell], position.notes[cell], corner] : [cell, position.values[cell], position.notes[cell]]
   }
 
-  function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
+  function applyMove([cell, value, marks, corner = 0]: NumberMove, past: NumberMove[], future: NumberMove[]) {
     const next = { values: [...position.values], notes: [...position.notes] }
     next.values[cell] = value
     next.notes[cell] = marks
-    update({ position: next, past, future })
+    const cornerNotes = position.cornerNotes?.slice() ?? (corner ? Array<number>(next.values.length).fill(0) : undefined)
+    if (cornerNotes) cornerNotes[cell] = corner
+    update({ position: { ...next, ...(cornerNotes && { cornerNotes }) }, past, future })
   }
 
   function enter(value: number, cell = selection, pencil = notes) {
     if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
     const previous = readCell(cell)
-    const [, digit, marks] = previous
+    const [, digit, marks, corner = 0] = previous
     const addNote = value > 0 && pencil
-    if (addNote ? digit !== 0 : value === digit && !marks) return
-    const next: NumberMove = addNote ? [cell, 0, marks ^ (1 << (value - 1))] : [cell, value, 0]
+    if (addNote ? digit !== 0 : value === digit && !marks && !corner) return
+    let next: NumberMove = [cell, value, 0]
+    if (addNote) {
+      const bit = 1 << (value - 1)
+      const center = candidatePosition === 'center' ? marks ^ bit : marks
+      const nextCorner = candidatePosition === 'corner' ? corner ^ bit : corner
+      next = nextCorner ? [cell, 0, center, nextCorner] : [cell, 0, center]
+    }
     applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), previous], [])
   }
 
@@ -752,7 +783,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
       onKeyDown={preview ? undefined : onGridKey}>
       <NumberPuzzleCells board={board} selection={selection} values={preview?.values ?? position.values}
-        digits={digits} noteMasks={preview ? undefined : position.notes} hintCell={shownHint?.cell}
+        digits={digits} noteMasks={preview ? undefined : position.notes} cornerMasks={preview ? undefined : position.cornerNotes}
+        separateNotes={separateNotes} hintCell={shownHint?.cell}
         contextCells={preview || depth >= 3 ? shownHint?.marked : undefined} conflicts={preview ? undefined : conflictCells}
         events={preview ? undefined : {
           locked,
@@ -901,6 +933,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
           </div>
         </div>
         {!cellChoices && <div className="keypad-stack">
+          {separateNotes && notes && <CandidatePositionSwitch position={candidatePosition} disabled={locked}
+            onChange={setCandidatePosition} />}
           {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
             event.preventDefault()
             const value = Number(numberInput)
