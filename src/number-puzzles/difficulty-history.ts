@@ -1,4 +1,4 @@
-import { addGeneratedNumberResult, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
+import { createGeneratedNumberResultCollector, type GeneratedNumberResults, type NumberHistoryRequest } from './generated-results.ts'
 import { generatedNumberHistory, prepareGeneratedHistory } from './generated-storage.ts'
 
 export function requestGeneratedNumberResults(request: NumberHistoryRequest, publish: (result: GeneratedNumberResults) => void) {
@@ -19,12 +19,13 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
         return
       }
 
+      const collect = createGeneratedNumberResultCollector(result, request)
       let cursor = 0
       const channel = queue = new MessageChannel()
       channel.port1.onmessage = () => {
         const deadline = performance.now() + 6
         do {
-          addGeneratedNumberResult(result, request, records[cursor++])
+          collect(records[cursor++])
         } while (cursor < records.length && performance.now() < deadline)
         if (cursor < records.length) channel.port2.postMessage(null)
         else {

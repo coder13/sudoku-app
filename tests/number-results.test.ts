@@ -5,7 +5,7 @@ import { kakuroCatalog } from '../src/kakuro/catalog.ts'
 import { solveKakuro } from '../src/kakuro/engine.ts'
 import { kakuroRecipeFromPuzzle } from '../src/kakuro/generator.ts'
 import { solveLatin } from '../src/latin/engine.ts'
-import { addGeneratedNumberResult, type GeneratedNumberResults } from '../src/number-puzzles/generated-results.ts'
+import { createGeneratedNumberResultCollector, type GeneratedNumberResults } from '../src/number-puzzles/generated-results.ts'
 import { encodeGeneratedNumberPuzzle, type GeneratedNumberPuzzle } from '../src/number-puzzles/generated.ts'
 import type { SavedNumberProgress } from '../src/number-puzzles/progress.ts'
 import { summarizeDifficultySolves } from '../src/sudoku/difficulty-statistics.ts'
@@ -30,8 +30,8 @@ for (const { board, values } of [
     wrong[first] = wrong[first] === 1 ? 2 : 1
     const results: GeneratedNumberResults = { totals: new Map(), entries: [] }
     const completed: GeneratedNumberResults = { totals: new Map(), entries: [] }
-    const activeRequest = { game: board.game, status: 'started' } as const
-    const solvedRequest = { game: board.game, status: 'solved' } as const
+    const collectActive = createGeneratedNumberResultCollector(results, { game: board.game, status: 'started' })
+    const collectSolved = createGeneratedNumberResultCollector(completed, { game: board.game, status: 'solved' })
     const progress: SavedNumberProgress[] = [
       { values, notes: blank },
       { values, notes: blank, clock: { elapsed: 42, finished: true }, lastPlayed: 1_790_100_000_000 },
@@ -45,11 +45,12 @@ for (const { board, values } of [
       index ? `00000000-0000-0000-0000-${String(index).padStart(12, '0')}` : undefined))
     progress.forEach((save, index) => {
       const record = { game: board.game, id: ids[index], number: index + 1, progress: save }
-      addGeneratedNumberResult(results, activeRequest, record)
-      addGeneratedNumberResult(completed, solvedRequest, record)
+      collectActive(record)
+      collectSolved(record)
     })
-    for (const [result, request] of [[results, activeRequest], [completed, solvedRequest]] as const) {
-      addGeneratedNumberResult(result, request, { game: board.game, id: 'v1.invalid', number: 8, progress: progress[0] })
+    for (const collect of [collectActive, collectSolved]) {
+      collect({ game: board.game, id: 'v1.invalid', number: 8, progress: progress[0] })
+      collect({ game: board.game, id: ids[0].replace(/^v1\./, 'v2.') + '.invalid', number: 9, progress: progress[0] })
     }
     assert.deepEqual([...summarizeDifficultySolves(results.totals)], [['easy', { solved: 2, averageSeconds: 42 }]])
     assert.deepEqual(results.entries, [2, 3, 4].map(index => ({

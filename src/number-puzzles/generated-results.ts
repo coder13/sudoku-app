@@ -2,7 +2,7 @@ import { checkKakuro } from '../kakuro/engine.ts'
 import { checkLatin } from '../latin/engine.ts'
 import { recordDifficultySolve, type DifficultyTotals } from '../sudoku/difficulty-statistics.ts'
 import type { NumberPuzzleDifficulty, NumberPuzzleEntry } from './catalog.ts'
-import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle, kakuroFromRecipe, type GeneratedNumberGame } from './generated.ts'
+import { calcudokuFromRecipe, decodeGeneratedNumberPayload, generatedNumberPayload, kakuroFromRecipe, type GeneratedNumberGame } from './generated.ts'
 import type { GeneratedRecord } from './generated-storage.ts'
 import { hasNumberMoves, parseNumberProgress, readNumberClock, readNumberLastPlayed, type SavedNumberProgress } from './progress.ts'
 
@@ -43,23 +43,30 @@ export function recordNumberResult(
   return 'solved'
 }
 
-function generatedProgressRules(game: GeneratedNumberGame, id: string): (ProgressRules & { difficulty: NumberPuzzleDifficulty }) | null {
+type GeneratedProgressRules = ProgressRules & { difficulty: NumberPuzzleDifficulty }
+
+// Only a full grid can contribute to solve statistics.
+function fullGrid(editable: readonly boolean[], values: readonly number[]) {
+  return editable.every((canEnter, cell) => !canEnter || values[cell] > 0)
+}
+
+function generatedProgressRules(game: GeneratedNumberGame, payload: string): GeneratedProgressRules | null {
+  const decoded = decodeGeneratedNumberPayload(payload, game)
+  if (!decoded) return null
   try {
-    if (game === 'kakuro') {
-      const decoded = decodeGeneratedNumberPuzzle(id, game)
-      if (!decoded) return null
+    if (decoded.game === 'kakuro') {
       const puzzle = kakuroFromRecipe(decoded.recipe)
+      const editable = puzzle.cells.map(cell => cell === null)
       return {
-        difficulty: decoded.difficulty, maxValue: 9, editable: puzzle.cells.map(cell => cell === null),
-        complete: values => checkKakuro(puzzle, values).complete,
+        difficulty: decoded.difficulty, maxValue: 9, editable,
+        complete: values => fullGrid(editable, values) && checkKakuro(puzzle, values).complete,
       }
     }
-    const decoded = decodeGeneratedNumberPuzzle(id, game)
-    if (!decoded) return null
     const puzzle = calcudokuFromRecipe(decoded.recipe)
+    const editable = puzzle.givens.map(given => !given)
     return {
-      difficulty: decoded.difficulty, maxValue: puzzle.size, editable: puzzle.givens.map(given => !given),
-      complete: values => checkLatin(puzzle, values).complete,
+      difficulty: decoded.difficulty, maxValue: puzzle.size, editable,
+      complete: values => fullGrid(editable, values) && checkLatin(puzzle, values).complete,
     }
   } catch {
     return null
@@ -68,17 +75,28 @@ function generatedProgressRules(game: GeneratedNumberGame, id: string): (Progres
 
 export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus }
 
-export function addGeneratedNumberResult(
-  result: GeneratedNumberResults, request: NumberHistoryRequest, { id, number, progress }: GeneratedRecord,
+export function createGeneratedNumberResultCollector(
+  result: GeneratedNumberResults, { game, status }: NumberHistoryRequest,
 ) {
-  if (!progress) return
-  const rules = generatedProgressRules(request.game, id)
-  if (!rules) return
-  const { difficulty, complete, editable } = rules
-  const status = recordNumberResult(result.totals, difficulty, progress, {
-    ...rules,
-    // Only a full grid can contribute to solve statistics.
-    complete: values => editable.every((canEnter, cell) => !canEnter || values[cell] > 0) && complete(values),
-  })
-  if (status === request.status) result.entries.push(numberHistoryEntry({ id, number, difficulty, generated: true }, progress))
+  // Replays share clues, but each play keeps its own progress and result.
+  const cached = new Map<string, GeneratedProgressRules | null>()
+  return ({ id, number, progress }: GeneratedRecord) => {
+    if (!progress) return
+    const payload = generatedNumberPayload(id)
+    if (!payload) return
+    const previous = cached.get(payload)
+    const rules = previous ?? generatedProgressRules(game, payload)
+    if (!rules) return
+    if (previous === undefined) {
+      if (cached.size >= 128) cached.clear()
+      // Keep the key on first use. Retain the rules only if another play needs them.
+      cached.set(payload, null)
+    } else if (previous === null) {
+      cached.set(payload, rules)
+    }
+    const { difficulty } = rules
+    if (recordNumberResult(result.totals, difficulty, progress, rules) === status) {
+      result.entries.push(numberHistoryEntry({ id, number, difficulty, generated: true }, progress))
+    }
+  }
 }
