@@ -85,6 +85,7 @@ async function run(profile) {
   const candidate = (cell, digit = 3) => page.getByRole('grid', { name: 'Sudoku grid for drawing links' })
     .getByRole('button', { name: new RegExp(`^${digit} in row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}(?:\\D|$)`) })
   let assertions = 0
+  let phase = 'open fixture'
   const equal = (actual, expected, message) => { assert.deepEqual(actual, expected, message); assertions++ }
   async function ready() {
     await page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).waitFor()
@@ -92,12 +93,14 @@ async function run(profile) {
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create group' && !button.disabled))
   }
   async function addGroup(cells, expectedCount, keyboard = false) {
+    phase = `select group ${cells.join(',')}`
     await click(page.getByRole('button', { name: 'Create group', exact: true }))
     await click(candidate(cells[0]))
     equal(await page.getByRole('button', { name: 'Use group', exact: true }).isDisabled(), true, 'a group requires two candidates')
     if (keyboard) { await candidate(cells[1]).focus(); await page.keyboard.press('Enter') }
     else await click(candidate(cells[1]))
     for (const cell of cells) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'all selected group members are pressed')
+    phase = `use group ${cells.join(',')}`
     await click(page.getByRole('button', { name: 'Use group', exact: true }))
     await waitForEdges(page, expectedCount)
     equal((await savedGame(page)).chainSketch.pending, chainGroup(3, cells), 'the exact group is the endpoint')
@@ -106,37 +109,46 @@ async function run(profile) {
   try {
     await page.goto(report.url + '/?puzzle=' + fixture.id)
     await ready()
+    phase = 'select first candidate'
     await click(candidate(0))
     await addGroup([9, 11], 1, !profile.hasTouch)
+    phase = 'link group to R2C7'
     await click(candidate(15))
     await waitForEdges(page, 2)
+    phase = 'link R2C7 to R9C7'
     await click(candidate(78))
     await waitForEdges(page, 3)
     await addGroup([76, 77], 4)
     await addGroup([67, 68], 5)
+    phase = 'check complete grouped chain'
     const drawn = await savedGame(page)
     equal(drawn.chainSketch.sketches[0].history.at(-1), expectedEdges, 'drawing includes the group-to-group link')
     equal(await page.locator('.board-chain-group').count(), 3, 'each group has one enclosure')
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
 
+    phase = 'undo chain edit'
     await click(page.getByRole('button', { name: 'Undo edit', exact: true }))
     await waitForEdges(page, 4)
     equal((await savedGame(page)).chainSketch.pending, nodes[4], 'Undo restores the previous group endpoint')
+    phase = 'redo chain edit'
     await click(page.getByRole('button', { name: 'Redo edit', exact: true }))
     await waitForEdges(page, 5)
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'Redo restores exact membership')
+    phase = 'reload saved chain'
     await page.reload()
     await ready()
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'reload preserves exact membership')
     equal((await savedGame(page)).chainSketch.pending, nodes[5], 'reload preserves the pending group')
     for (const cell of [67, 68]) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'reload keeps all group members selected')
 
+    phase = 'cancel group selection'
     await click(page.getByRole('button', { name: 'Create group', exact: true }))
     await click(candidate(0))
     await click(page.getByRole('button', { name: 'Cancel group', exact: true }))
     equal(await page.getByRole('button', { name: 'Use group', exact: true }).count(), 0, 'cancel closes group selection')
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'cancel preserves links')
+    phase = 'apply grouped deductions'
     const beforeApply = await savedGame(page)
     await click(page.getByRole('button', { name: 'Apply edits', exact: true }))
     await page.waitForFunction(key => Boolean(JSON.parse(localStorage.getItem(key)).position.eliminations?.[63] & 4), gameKey)
@@ -144,18 +156,30 @@ async function run(profile) {
     equal(Boolean(applied.position.eliminations[63] & 4), true, 'the grouped AIC removes 3 from R8C1')
     equal(applied.chainSketch, undefined, 'applied chains are removed')
     equal(applied.past.length, beforeApply.past.length + 1, 'all deductions form one puzzle undo step')
+    phase = 'undo puzzle deductions'
+    const inputTabs = page.getByRole('tablist', { name: 'Sudoku input', exact: true })
+    if (profile.isMobile) await click(inputTabs.getByRole('tab', { name: 'Digits', exact: true }))
     await click(page.getByRole('button', { name: 'Undo', exact: true }))
     await waitForEdges(page, 5)
     const undone = await savedGame(page)
     equal(undone.position, beforeApply.position, 'puzzle Undo restores all candidates')
     equal(undone.chainSketch, beforeApply.chainSketch, 'puzzle Undo restores grouped links and endpoint')
+    phase = 'show restored grouped chain'
+    if (profile.isMobile) {
+      await click(inputTabs.getByRole('tab', { name: 'Chains', exact: true }))
+      await ready()
+    }
     await screenshot(page, profile.name, 'undo-restored')
     equal(errors, [], 'the app must not throw browser errors')
     report.checks.push({ profile: profile.name, status: 'passed', assertions })
     console.log(`Passed grouped chain drawing, reload, and apply/undo: ${profile.name} (${assertions} assertions)`)
   } catch (error) {
-    await screenshot(page, profile.name, 'failure')
-    const detail = { profile: profile.name, status: 'failed', assertions, error: error.message, errors,
+    let screenshotError
+    await screenshot(page, profile.name, 'failure').catch(error => { screenshotError = error.message })
+    const saved = await savedGame(page).catch(() => null)
+    const detail = { profile: profile.name, status: 'failed', phase, assertions, error: error.message, errors,
+      url: page.url(), screenshotError,
+      savedState: saved ? { chainSketch: saved.chainSketch, position: saved.position, past: saved.past, future: saved.future } : null,
       body: (await page.locator('body').innerText().catch(() => '')).slice(0, 5000) }
     report.checks.push(detail)
     failures.push(error)
