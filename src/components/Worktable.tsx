@@ -2644,7 +2644,10 @@ export function Worktable({
     if (!desktop || advancedWorkspace || !puzzle || !puzzleStack || !inputStack || !stage) return
     const gridBoundary = () => stage.querySelector(game.paused && !placeholder ? '.puzzle-paused' : '.board-body') ?? stage
     const alignInput = () => {
-      const scale = Number(getComputedStyle(puzzleStack).getPropertyValue('--desktop-layout-scale')) || 1
+      const page = puzzleStack.closest<HTMLElement>('.standard-workspace-page')
+      const previewScale = page?.closest('.desktop-play-resizable')?.hasAttribute('data-layout-resizing')
+        ? Number(page.style.scale) || 1 : 1
+      const scale = (Number(getComputedStyle(puzzleStack).getPropertyValue('--desktop-layout-scale')) || 1) * previewScale
       const top = (gridBoundary().getBoundingClientRect().top - puzzleStack.getBoundingClientRect().top) / scale
       inputStack.style.setProperty('--puzzle-grid-offset', `${top + puzzleStack.scrollTop}px`)
     }
