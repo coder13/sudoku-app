@@ -25,5 +25,14 @@
     "solution": "579246813813579246246813579681357924924681357357924681792468135135792468468135792",
     "blocked": false,
     "custom_constraints": false
+  },
+  {
+    "sudoku_id": "5uJS",
+    "name": "Sudoku Spider",
+    "description": "",
+    "sudoku": "SCv7_32_f2eaqkmbdb1j047sisusuob5nlm5vkpvp0ou8o32s45649u898gjbvnnp9ne491d3051q8ddaotrm8pd3ak0jfmuv97kep817ae8t9qbt2ktp9bjesil0s1ltl0orvrgrmdmuv2c84l35pksb4kcbnpgpfp2f24rilq57m6suk4g0gt4761qe8b6edrlufau7gmfdhp17s3pts8gtvt1gamv9lnto3f4dcl0b0v2umebkgvhrm2vdl5qt11clq2tqet3nsv0hr3mj9pdmi0tcc0aaqjbd7dba36hia9qhghhsl33c3qjk8s7mmlgone062680peocaaqksh81diq0d5kbanslk027a1pcc6p59amd40ieaupsp340mpfodr97uqj2hmv6m5nvqatf3sg9voan84q96rdlanfct8lbnvp18vh1dp8jlms",
+    "solution": "926785314473912856518463927384256791291847635765391248832174569649538172157629483",
+    "blocked": false,
+    "custom_constraints": false
   }
 ]

@@ -6,7 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
-import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
+import { readReviewedCoachArtwork, reviewedCoachFillTitle, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
@@ -419,14 +419,14 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const isFogLayer = (layer: unknown): layer is Record<string, unknown> => record(layer) && layer.type === 'fog'
   let fog = readCoachFog(encodedLayers.filter(isFogLayer))
   const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
-  const reviewedArtwork = await readReviewedCoachArtwork(code, constraints)
+  const artwork = await readReviewedCoachArtwork(code, constraints)
   const regions = readRegions(data.regions)
   const guideLayers = constraints.every(layer => record(layer) &&
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
-    : reviewedArtwork ? constraints.filter(layer => layer !== reviewedArtwork.layer) : constraints
+    : artwork ? constraints.filter(layer => layer !== artwork.layer) : constraints
   const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const palette = Array.isArray(data.colours) ? data.colours : []
@@ -444,14 +444,18 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unsupportedDrawings = publication && COACH_DRAWINGS.some(key => hasData(data[key]))
   if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   let givenCellColors: ImportedCellColors | undefined
+  let fillTitle: string | undefined
   if (!whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
-      if (!fog && !rules.length && (!regions || regions.type === 'boxes') &&
-        !publication?.hasAuthorInstructions && (fromCollection || LEGACY_COACH_CODE.test(code))) {
-        givenCellColors = readCoachColorNames(remaining, palette)
-        if (!givenCellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-      } else {
+      if (!fog && !publication?.hasAuthorInstructions) {
+        const plainCollectionArtwork = !rules.length && (!regions || regions.type === 'boxes') &&
+          (fromCollection || LEGACY_COACH_CODE.test(code))
+        const fills = readCoachColorNames(remaining, palette)
+        if (fills && !plainCollectionArtwork) fillTitle = await reviewedCoachFillTitle(data, fills)
+        if (plainCollectionArtwork || fillTitle) givenCellColors = fills
+      }
+      if (!givenCellColors) {
         const cellColors = fog && regions?.type === 'jigsaw' && !publication?.hasAuthorInstructions
           ? readCoachFogCellColors(fog, cellColours, palette) : undefined
         if (!fog || !cellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
@@ -483,9 +487,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? reviewedArtwork?.title
+  const title = publication?.title ?? artwork?.title ?? fillTitle
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
-    ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
+    ...(artwork && { authoredArtwork: artwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 

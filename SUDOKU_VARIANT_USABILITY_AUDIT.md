@@ -200,3 +200,9 @@ The user authorized the built-in browser. Its runtime currently fails with `Trus
 Pending captures must show the actual app at narrow and desktop sizes, light and dark themes, and increased app/grid text sizes. Review empty/full candidates, overlaps, outside clues, Jigsaw borders, focus, menus, hint stages, selected Finder results and solution navigation. Include enough context to identify the puzzle and state. Share the screenshots for approval before merging broader visual changes.
 
 No browser review or screenshot approval is complete. Preserve the open checklist in [SUDOKU_ENGINE_TODO.md](SUDOKU_ENGINE_TODO.md) as each part is verified.
+
+## Reviewed Coach fills on 9×9 puzzles
+
+Sudoku Spider uses 26 grey and red background fills to illustrate the grid. Its mathematical clues are ten givens and eight encoded Thermometers. The importer checks the complete authoring data and the normalized cell shades against the reviewed export. It recognizes the same artwork when a Current State export adds known player entries, Pencil candidates, or player colors. Preview, Play, restart, reload and sharing keep the authored fills separate from the player’s annotations. The same check joins the raw, short and collection links for Pumpkin 2024 and Halloween Candy 1.
+
+An independent counter found the published completion of Sudoku Spider. The current Play profile offers ten opening hints and explains 68 steps before stalling. Every recorded action agrees with the published grid. A paired re-decode of 72 captured 9×9 codes admitted the three reviewed exports and matched all 69 other outcomes. Changed authoring data, new mathematical instructions accompanying a published code, and authored colors outside the reveal data of a Fog puzzle continue to reject.
