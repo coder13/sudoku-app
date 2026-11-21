@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import type { VariantPuzzle } from '../src/sudoku/engine.ts'
+import type { DeductionAction, VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, completeCandidateMasks, enter, hintEliminations, redo, replaceCandidates, restartGame, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { kropkiDigitExclusions } from '../src/sudoku/grid.ts'
+import { jigsawRegionColors, kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -382,6 +382,79 @@ test('a published legacy Coach code retains its Global Entropy rule through help
     const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
     assert.deepEqual(shared.game.variant, game.variant)
     assert.equal(shared.game.title, game.title)
+  } finally { sqlite.close() }
+})
+
+test('XXIV preserves its disconnected regions, authored palette, and all sum clues through Play and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, puzzle, solution, regionColors } = JSON.parse(readFileSync(
+    new URL('./fixtures/disconnected-jigsaw-coach.json', import.meta.url), 'utf8'
+  ))
+  const givenCellColors = Object.fromEntries(puzzle.regions.regions.flatMap((cells: number[], index: number) =>
+    cells.map(cell => [cell, [regionColors[index]]])
+  ))
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('BCt9', code, title)))
+    : fetcher(path, init))
+  try {
+    const pasted = await detectPuzzle(code)
+    assert.deepEqual(pasted.variant?.puzzle, puzzle)
+    assert.deepEqual(pasted.givenCellColors, givenCellColors)
+    assert.ok(variantRuleDescriptions(puzzle).includes('Cells with the same region color belong to one region, even across gaps.'))
+    const { game, grade } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, title)
+    assert.deepEqual(game.variant?.puzzle, puzzle)
+    assert.equal(game.variant?.solution, solution)
+    assert.deepEqual(game.givenCellColors, givenCellColors)
+    assert.equal(grade?.points, 4522)
+    assertVariantCompletion(puzzle, solution)
+    assert.deepEqual(countLineSolutions(puzzle).solutions, [solution])
+    const withoutRay = { ...puzzle, rules: puzzle.rules.filter((rule: NonNullable<VariantPuzzle['rules']>[number]) => rule.type !== 'little-killer') }
+    assert.equal(countLineSolutions(withoutRay).solutions.length, 2)
+
+    const membership = Array<number>(81)
+    for (const [index, cells] of puzzle.regions.regions.entries()) {
+      for (const cell of cells) membership[cell] = index
+    }
+    assert.equal(new Set(jigsawRegionColors(membership, 9)).size, 9, 'Separated parts need a unique color for each region')
+
+    const assertSoundHints = (hints: readonly { actions: readonly DeductionAction[] }[]) => {
+      for (const hint of hints) for (const action of hint.actions) {
+        const candidate = 'place' in action ? action.place : action.eliminate
+        assert.equal(Number(solution[candidate.cell]) === candidate.digit, 'place' in action)
+      }
+    }
+    const ranked = await puzzleHints(game)
+    assert.equal(ranked.choices.length, 10)
+    assertSoundHints(ranked.choices)
+
+    assert.ok(game.variant)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+    try {
+      const selected = await puzzleHints(game, 'all', 'little-killer')
+      assertSoundHints(selected.choices)
+      const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      assert.equal(actions.size, 5)
+      assert.equal(await scan.count('little-killer'), actions.size)
+    } finally { scan.close() }
+
+    const path = await puzzleSolution(game)
+    assert.ok('rating' in path)
+    assert.deepEqual(path.rating.status, { solved: 'impossible' })
+    assert.equal(path.steps.length, 118)
+    assert.equal(path.board, solution)
+    assertSoundHints(path.steps)
+    const restored = readGame(game.id, JSON.stringify(game))
+    assert.deepEqual(restored?.variant, game.variant)
+    assert.deepEqual(restored?.givenCellColors, givenCellColors)
+    const share = await publishSharedPuzzle(game)
+    const shared = await prepareSharedPuzzle(share, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.deepEqual(shared.game.givenCellColors, givenCellColors)
+
+    const wrongColor = { ...game, givenCellColors: { ...givenCellColors, 0: ['white'] } }
+    assert.equal(readGame(game.id, JSON.stringify(wrongColor)), undefined)
+    await assert.rejects(publishSharedPuzzle(wrongColor), /Invalid puzzle definition/)
   } finally { sqlite.close() }
 })
 

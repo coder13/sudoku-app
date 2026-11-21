@@ -4,7 +4,7 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
-import { isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
+import { isImportedColor, validGivenCellColors, validImportedCellColors, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
 import { readReviewedCoachArtwork, type AuthoredMark } from './authored-artwork.ts'
 import { isFogDefinition, type FogDefinition } from './fog.ts'
@@ -443,8 +443,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const unsupportedDrawings = publication && COACH_DRAWINGS.some(key => hasData(data[key]))
   if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-  let givenCellColors: ImportedCellColors | undefined
-  if (!whispersGuide && !declaredMirroredRenban) {
+  const regionLegend = !fog && regions?.type === 'jigsaw' && cellColours.length
+    ? readCoachColorNames(cellColours, palette) : undefined
+  let givenCellColors = regionLegend && validGivenCellColors(regionLegend, { puzzle: { version: 1, givens, regions } })
+    ? regionLegend : undefined
+  if (!givenCellColors && !whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
       if (!fog && !rules.length && (!regions || regions.type === 'boxes') &&

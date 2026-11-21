@@ -56,6 +56,8 @@ Existing compatibility matrices and independently checked completion witnesses c
 
 ## Published Coach links
 
+XXIV preserves eight regions whose cells are split across the grid, one connected region, three Killer cages, and one Little Killer ray. Its nine authored colors match the encoded region membership one-to-one and remain visible in Preview, Play, and shared puzzles. The app also assigns a distinct color to each region of a separated layout without an authored palette. Independent enumeration found the unique published solution in 359 nodes and found multiple answers after removing the ray. The app offers ten opening hints and completes the full grid in 118 logical steps. [Published puzzle](https://sudoku.coach/en/s/BCt9) · [Import issue](https://github.com/coder13/sudoku-app/issues/420)
+
 The local app opens a 9×9 Coach short link when the resolver can match its publication record to the requested puzzle and the export contains supported rules. The publication title survives save and share. Unsupported author instructions and markings still require source-format work. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
 
 The actual published Between the Dots response keeps all twelve Between Lines and eleven black dots, several opening hints, matching Technique Finder counts and a 62-step partial walkthrough. A separate published Renban short link reaches its complete solution. Its short-link and pasted-code walkthroughs match. Diamond Sandwich remains rejected because its author instructions change how clues count digits. [Between the Dots](https://sudoku.coach/en/s/9KxH) · [Renban](https://sudoku.coach/en/s/Jh4o) · [Diamond Sandwich](https://sudoku.coach/en/s/D8HP)
