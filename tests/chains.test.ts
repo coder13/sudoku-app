@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainExtensionStrength, colorStrongLinks, completeChainLoop, completeMedusa, highlightedStrongLinks, makeChainGraph, weakLinkRun, type ChainEdge } from '../src/sudoku/chains.ts'
-import { applyChainDeduction, CHAIN_COLOR_PAIRS, cycleChainPairs, newChainSketch, nextChainId, pruneChainsAfterMove, undoChainEdit, updateChainEdges, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
+import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainGroup, chainNodeCandidates, chainPoint, validChainNode, chainExtensionStrength, colorStrongLinks, completeChainLoop, completeMedusa, highlightedStrongLinks, makeChainGraph, weakLinkRun, type ChainEdge, type ChainNode } from '../src/sudoku/chains.ts'
+import { applyChainDeduction, CHAIN_COLOR_PAIRS, cycleChainPairs, newChainSketch, nextChainId, pruneChainsAfterMove, undoChainEdit, updateChainEdges, validChainSketchState, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
 import { applyDeduction, EMPTY, enter, makeGame, paintCandidate, paintCandidateStroke, redo, replaceCandidates, STARTER_GAME, undo, type Game } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { variantHouseMasks } from '../src/sudoku/variants.ts'
 
 const id = (cell: number, digit = 1) => candidateId({ cell, digit })
-const pathEdges = (...nodes: number[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
+const pathEdges = (...nodes: ChainNode[]): ChainEdge[] => nodes.slice(1).map((node, i) => [nodes[i], node])
 function graph(cells: Record<number, number[]>) {
   return makeChainGraph(Array.from({ length: 81 }, (_, cell) =>
     (cells[cell] ?? []).reduce((mask, digit) => mask | (1 << (digit - 1)), 0)))
@@ -368,4 +368,110 @@ test('strong link overlay includes every visible strong link once', () => {
   assert.deepEqual(highlightedStrongLinks(example, (1 << 1) | (1 << 6)), [
     [id(0, 2), id(1, 2)], [id(0, 7), id(4, 7)], [id(4, 7), id(13, 7)], [id(0, 2), id(0, 7)],
   ])
+})
+
+
+test('group IDs preserve exact members and reject malformed saved groups', () => {
+  const group = chainGroup(4, [8, 0, 3])!
+  assert.equal(group, 'g:4:0,3,8')
+  assert.deepEqual(chainPoint(group), { digit: 4, cells: [0, 3, 8] })
+  assert.deepEqual(chainNodeCandidates(group), [{ cell: 0, digit: 4 }, { cell: 3, digit: 4 }, { cell: 8, digit: 4 }])
+  assert.equal(chainGroup(4, [0, 0]), null)
+  assert.equal(chainGroup(10, [0, 1]), null)
+  assert.equal(chainGroup(4, [0, 81]), null)
+  assert.equal(chainGroup(4, [0]), null)
+  for (const malformed of ['g:4:0', 'g:4:3,0', 'g:4:0,0', 'g:4:0,81', 'g:0:0,1', 'g:4:00,1', 'g:4:0,1:2']) {
+    assert.equal(validChainNode(malformed), false, malformed)
+  }
+  assert.equal(validChainNode(group), true)
+})
+
+test('group links require all members to conflict and a strong link covers the complete house', () => {
+  const links = graph({ 0: [1], 1: [1], 2: [1], 3: [1], 9: [1], 36: [1] })
+  const left = chainGroup(1, [0, 1])!
+  const right = chainGroup(1, [2, 3])!
+  assert.equal(links.strength(left, right), 'strong')
+  assert.equal(links.strength(left, id(2)), 'weak')
+  assert.equal(links.strength(left, id(36)), undefined, 'R5C1 sees only one group member')
+  assert.equal(links.strength(left, chainGroup(1, [1, 2])!), undefined, 'overlapping groups cannot conflict')
+  assert.equal(links.strength(left, chainGroup(1, [2, 8])!), undefined, 'missing candidates cannot form a group')
+  assert.equal(links.available(chainGroup(1, [0, 36])!), true)
+  assert.equal(links.available(chainGroup(1, [1, 36])!), false, 'a group must share one house')
+  const incomplete = graph({ 0: [1], 1: [1], 2: [1], 3: [1], 4: [1] })
+  assert.equal(incomplete.strength(left, right), 'weak', 'an omitted candidate prevents a strong link')
+})
+
+test('group availability uses the actual jigsaw and extra houses', () => {
+  const masks = Array.from({ length: 81 }, () => 1)
+  const regions = Array.from({ length: 9 }, (_, region) => Array.from({ length: 9 }, (_, offset) => region + 9 * offset))
+  const jigsaw = makeChainGraph(masks, { version: 1, givens: EMPTY, regions: { type: 'jigsaw', regions } })
+  assert.equal(jigsaw.available(chainGroup(1, [0, 10])!), false, 'a standard box does not exist in this jigsaw')
+  const extra = makeChainGraph(masks, { version: 1, givens: EMPTY, rules: [{ type: 'extra-house', cells: [0, 10, 20, 30, 40, 50, 60, 70, 80] }] })
+  assert.equal(extra.available(chainGroup(1, [0, 40])!), true)
+  assert.equal(extra.strength(chainGroup(1, [0, 40])!, id(80)), 'weak')
+})
+
+test('a grouped AIC removes only candidates that see every member of both ends', () => {
+  const links = graph({ 0: [1], 1: [1], 4: [1], 9: [1], 36: [1], 40: [1] })
+  const group = chainGroup(1, [0, 1])!
+  const [proof] = analyzeChains(links, pathEdges(group, id(4), id(40), id(36)))
+  assert.equal(proof.title, 'Grouped alternating inference chain')
+  assert.deepEqual(proof.strengths, ['strong', 'weak', 'strong'])
+  assert.deepEqual(proof.actions, [{ eliminate: { cell: 9, digit: 1 } }])
+  assert.match(proof.explanation!, /every candidate/)
+
+  // Enumerate the three required house facts directly, independently of graph links.
+  let assignments = 0
+  for (let bits = 0; bits < 64; bits++) {
+    const [a, b, c, target, d, e] = Array.from({ length: 6 }, (_, i) => (bits >> i) & 1)
+    if (a + b + c !== 1 || d + e !== 1 || c + e > 1 || target + a > 1 || target + b > 1 || target + d > 1) continue
+    assignments++
+    assert.equal(target, 0)
+  }
+  assert.ok(assignments > 0)
+})
+
+test('a grouped loop never places one arbitrary group member', () => {
+  const links = graph({ 0: [1], 1: [1], 4: [1], 9: [1], 36: [1], 40: [1] })
+  const group = chainGroup(1, [0, 1])!
+  const [proof] = analyzeChains(links, pathEdges(group, id(4), id(40), id(36), id(9), group))
+  assert.equal(proof.loop, 'discontinuous')
+  assert.ok(proof.actions.every(action => !('place' in action)), 'a true group does not identify one true member')
+  assert.deepEqual(proof.actions, [{ eliminate: { cell: 4, digit: 1 } }, { eliminate: { cell: 9, digit: 1 } }])
+})
+
+test('grouped sketches survive save, Undo and puzzle Undo without changing their members', () => {
+  const group = chainGroup(1, [0, 1])!
+  const first = { ...newChainSketch(1), history: [[], pathEdges(group, id(4))] }
+  const second = { ...newChainSketch(2), history: [[], pathEdges(id(30, 2), id(31, 2))] }
+  const state: ChainSketchState = { sketches: [first, second], activeId: 1, pending: group }
+  const extended = updateChainEdges(state, [...first.history[1], [group, id(9)]], id(9), 1)
+  const game = { ...replaceCandidates(makeGame('grouped-save', 'Grouped chain', EMPTY, 'imported'),
+    Array.from({ length: 81 }, () => 511)), chainSketch: extended }
+  const restored = readGame(game.id, JSON.stringify(game))!
+  assert.deepEqual(restored.chainSketch, extended)
+  assert.equal(undoChainEdit(restored.chainSketch!, true).pending, group)
+  const removed = pruneChainsAfterMove(game, enter(game, [1], 'candidate', 1))
+  assert.deepEqual(removed.chainSketch?.sketches.map(sketch => sketch.id), [2])
+  assert.deepEqual(undo(removed).chainSketch, extended)
+  const corrupt = structuredClone(state)
+  corrupt.pending = 'g:1:1,0'
+  assert.equal(validChainSketchState(corrupt), false)
+})
+
+
+test('automatic extensions can use known groups without generating arbitrary groups', () => {
+  const group = chainGroup(1, [0, 1])!
+  const simple = graph({ 0: [1], 1: [1], 4: [1] })
+  assert.deepEqual(completeMedusa(simple, [], id(4)), [])
+  assert.deepEqual(completeMedusa(simple, [], id(4), [group]), [[id(4), group]])
+
+  const links = graph({ 0: [1], 1: [1], 4: [1], 9: [1], 36: [1], 40: [1] })
+  const path = [id(4), id(40), id(36), id(9)]
+  const excluded = new Set<ChainNode>([id(0), id(1)])
+  assert.deepEqual(completeChainLoop(links, path, excluded), { status: 'exhausted' })
+  assert.deepEqual(completeChainLoop(links, path, excluded, [group]), {
+    status: 'found', edges: [[id(9), group], [group, id(4)]],
+  })
+  assert.deepEqual(completeChainLoop(links, path, new Set([...excluded, group]), [group]), { status: 'exhausted' })
 })

@@ -1,10 +1,10 @@
-import type { BoardAnnotations, BoardLink, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
+import type { BoardAnnotations, BoardGroup, BoardLink, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
 import type { Candidate, House, InferenceNode, PracticeExercise } from './engine'
 import type { PracticeGuide } from './lesson-content.ts'
 import { DIGITS } from './game.ts'
-import { boardPoint, candidateName, cellName, houseCells, houseName, inferenceCandidates, inferenceName } from './lesson-diagram.ts'
+import { boardPoint, candidateName, cellName, houseCells, houseName, inferenceCandidates, inferenceGroupMeaning, inferenceName } from './lesson-diagram.ts'
 
-type Focus = { houses?: House[]; cells?: number[]; candidates?: Candidate[]; accent?: Candidate[]; links?: BoardLink[] }
+type Focus = { houses?: House[]; cells?: number[]; candidates?: Candidate[]; accent?: Candidate[]; links?: BoardLink[]; groups?: BoardGroup[] }
 type Clue = Focus & { text: string }
 type Search = { start: Clue; check: Clue; follow?: string }
 
@@ -14,7 +14,7 @@ const names = (cells: readonly number[]) => list.format(cells.map(cellName))
 const digits = (values: readonly number[]) => list.format(values.map(String))
 const houses = (values: readonly House[]) => list.format(values.map(houseName))
 
-export function practiceClueAnnotations({ houses = [], cells = [], candidates = [], accent = [], links }: Focus): BoardAnnotations {
+export function practiceClueAnnotations({ houses = [], cells = [], candidates = [], accent = [], links, groups }: Focus): BoardAnnotations {
   const area = new Map<number, CellAnnotation>()
   for (const house of houses) {
     for (const cell of houseCells(house)) area.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
@@ -30,7 +30,7 @@ export function practiceClueAnnotations({ houses = [], cells = [], candidates = 
   }
   mark(candidates, patternColor, 'hint candidate')
   mark(accent, 'var(--lesson-accent)', 'second color')
-  return { cells: area, candidates: marks, links }
+  return { cells: area, candidates: marks, links, ...(groups?.length ? { groups } : {}) }
 }
 
 export function practiceSearch({ deduction: { technique, evidence, actions }, candidates, pattern }: PracticeExercise, guide?: PracticeGuide): Search {
@@ -211,14 +211,21 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     const firstLinks = links.slice(0, 2)
     const checkCells = [...seed, ...firstLinks.flatMap(({ to }) => inferenceCandidates(to))]
     const end = inferenceName(links.at(-1)!.to)
+    const grouped = links.some(({ from, to }) => !('candidate' in from) || !('candidate' in to))
+    const shownGroup = firstLinks.some(({ from, to }) => !('candidate' in from) || !('candidate' in to))
+    const groupNote = shownGroup ? ` Treat each outlined group as one end of a link. ${inferenceGroupMeaning}` : ''
+    const startGroups: BoardGroup[] = 'candidate' in a.from ? [] : [{
+      point: boardPoint(a.from), color: patternColor, label: `Chain start group: ${inferenceName(a.from)}`,
+    }]
     return {
-      start: { cells: seed.map(({ cell }) => cell), candidates: seed, text: `Start at ${inferenceName(a.from)}. Look for a ${a.strength} link${'house' in a.source ? ` in ${houseName(a.source.house)}` : ''}.` },
+      start: { cells: seed.map(({ cell }) => cell), candidates: seed, groups: startGroups,
+        text: `Start at ${inferenceName(a.from)}. Look for a ${a.strength} link${'house' in a.source ? ` in ${houseName(a.source.house)}` : ''}.${startGroups.length ? ` ${inferenceGroupMeaning}` : ''}` },
       check: { candidates: checkCells, links: firstLinks.map(({ from, to, strength }) => ({
         from: boardPoint(from), to: boardPoint(to), color: patternColor, dashed: strength === 'weak',
-      })), text: `Go from ${inferenceName(a.from)} to ${inferenceName(a.to)}. ${rule(a)}${b ? ` Next, go to ${inferenceName(b.to)}. ${rule(b)}` : ''}` },
+      })), text: `Go from ${inferenceName(a.from)} to ${inferenceName(a.to)}. ${rule(a)}${b ? ` Next, go to ${inferenceName(b.to)}. ${rule(b)}` : ''}${groupNote}` },
       follow: technique.includes('nice-loop')
-        ? `Follow the links back to ${end}. Compare the first and last links where they meet.`
-        : `${technique === 'xy-chain' ? 'Follow the shared digit to another cell with two candidates, then switch digits in that cell.' : 'Keep alternating weak and strong links.'} Trace the path to ${end}. Look for a candidate that conflicts with both ends.`,
+        ? `Follow the links back to ${end}. Compare the first and last links where they meet.${grouped ? ' A candidate conflicts with a group only if it conflicts with every member.' : ''}`
+        : `${technique === 'xy-chain' ? 'Follow the shared digit to another cell with two candidates, then switch digits in that cell.' : 'Keep alternating weak and strong links.'} Trace the path to ${end}. Look for a candidate that conflicts with ${grouped ? 'every candidate at both ends' : 'both ends'}.`,
     }
   }
   if ('unique-rectangle' in evidence) {

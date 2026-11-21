@@ -352,7 +352,9 @@ impl<'a> Paths<'a> {
         if start.node() > end.node() {
             return ControlFlow::Continue(());
         }
-        // Type 2 between single-digit endpoints uses two cells that see each other.
+        // Type 2 between individual endpoints uses two cells that see each other.
+        // A grouped endpoint can also conflict with a candidate in the other
+        // endpoint's cell. The exclusion check below requires every group member.
         if !matches!(
             self.rule.scope,
             Scope::Als | Scope::AlsCell | Scope::UniqueRectangle
@@ -362,13 +364,10 @@ impl<'a> Paths<'a> {
             .get(start.node())
             .zip(self.graph.nodes.get(end.node()))
             && left.digit != right.digit
+            && let Some((a, b)) = left.single().zip(right.single())
+            && !see_each_other(a, b)
         {
-            let Some((a, b)) = left.single().zip(right.single()) else {
-                return ControlFlow::Continue(());
-            };
-            if !see_each_other(a, b) {
-                return ControlFlow::Continue(());
-            }
+            return ControlFlow::Continue(());
         }
         let targets: Vec<_> = self
             .graph

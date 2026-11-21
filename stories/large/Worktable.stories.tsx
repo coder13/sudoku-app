@@ -7,7 +7,7 @@ import { Worktable, type WorktableActions } from '../../src/components/Worktable
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
-import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
+import { candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
 import { EMPTY, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates } from '../../src/sudoku/game'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
@@ -302,6 +302,44 @@ export const ChainShortcuts: Story = {
     await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
   },
 }
+const groupedDrawingGame = { ...starter, id: 'grouped-chain-drawing' }
+export const GroupedChainDrawing: Story = {
+  args: { game: groupedDrawingGame, games: [groupedDrawingGame] },
+  beforeEach: () => {
+    playSession.set(groupedDrawingGame.id, 'toolPanels', { open: ['chains'], active: 'chains' })
+    playSession.set(groupedDrawingGame.id, 'drawingIntent', true)
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const grid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
+    const group = chainGroup(4, [2, 5])!
+    const candidate = (column: number) => grid.getByRole('button', { name: new RegExp(`^4 in row 1, column ${column}`) })
+    await userEvent.click(canvas.getByRole('button', { name: 'Create group' }))
+    await userEvent.click(candidate(3))
+    await expect(canvas.getByRole('button', { name: 'Use group' })).toBeDisabled()
+    candidate(6).focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getByRole('button', { name: 'Use group' })).toBeEnabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Use group' }))
+    await expect(canvas.getByRole('button', { name: 'Create group' })).toHaveFocus()
+    expect(roomStore.getSnapshot().games.find(game => game.id === groupedDrawingGame.id)?.chainSketch?.pending).toBe(group)
+    await expect(canvasElement.querySelector('.board-chain-group')).toBeInTheDocument()
+    await userEvent.click(candidate(7))
+    const links = () => roomStore.getSnapshot().games.find(game => game.id === groupedDrawingGame.id)?.chainSketch?.sketches[0].history.at(-1)
+    expect(links()).toEqual([[group, candidateId({ cell: 6, digit: 4 })]])
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo edit' }))
+    expect(links()).toEqual([])
+    await userEvent.click(canvas.getByRole('button', { name: 'Redo edit' }))
+    expect(links()).toEqual([[group, candidateId({ cell: 6, digit: 4 })]])
+    await userEvent.click(canvas.getByRole('button', { name: 'Create group' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancel group' }))
+    await expect(canvas.queryByRole('button', { name: 'Use group' })).not.toBeInTheDocument()
+  },
+}
+export const GroupedChainDrawingMobile: Story = {
+  ...GroupedChainDrawing,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
 export const InputModeAfterChains: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   beforeEach: () => {

@@ -6,6 +6,19 @@ export type BoardPoint = { cell: number; digit?: number } | { cells: readonly nu
   | { candidates: readonly { cell: number; digit: number }[] }
 export type CandidateInsets = ReadonlyMap<number, { top: number; bottom: number }>
 
+export function boardPointCandidates(point: BoardPoint) {
+  const candidates = 'cells' in point ? point.cells.map(cell => ({ cell, digit: point.digit }))
+    : 'candidates' in point ? point.candidates : point.digit ? [{ cell: point.cell, digit: point.digit }] : []
+  return [...new Map(candidates.map(candidate => [candidate.cell * 9 + candidate.digit, candidate])).values()]
+    .sort((a, b) => a.cell - b.cell || a.digit - b.digit)
+}
+
+export function boardGroupKey(point: BoardPoint) {
+  if ('cell' in point) return undefined
+  const candidates = boardPointCandidates(point)
+  return candidates.length > 1 ? candidates.map(({ cell, digit }) => `${cell}:${digit}`).join('|') : undefined
+}
+
 function positions(point: BoardPoint, insets?: CandidateInsets): { x: number; y: number }[] {
   if ('cells' in point) return point.cells.flatMap(cell => positions({ cell, digit: point.digit }, insets))
   if ('candidates' in point) return point.candidates.flatMap(candidate => positions(candidate, insets))
@@ -16,6 +29,26 @@ function positions(point: BoardPoint, insets?: CandidateInsets): { x: number; y:
     x: (point.cell % 9 + (point.digit ? offset((point.digit - 1) % 3) : .5)) * 10,
     y: (Math.floor(point.cell / 9) + (point.digit ? rowOffset(Math.floor((point.digit - 1) / 3)) : .5)) * 10,
   }]
+}
+
+/** A close outline joins the marked members into one logical chain endpoint. */
+export function boardGroupOutline(point: BoardPoint, insets?: CandidateInsets): Point[] {
+  if (!boardGroupKey(point)) return []
+  const padding = 1.55
+  const corners = boardPointCandidates(point).flatMap(candidate => positions(candidate, insets).flatMap(({ x, y }) => [
+    { x: x - padding, y: y - padding }, { x: x + padding, y: y - padding },
+    { x: x + padding, y: y + padding }, { x: x - padding, y: y + padding },
+  ])).sort((a, b) => a.x - b.x || a.y - b.y)
+  const cross = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+  const half = (points: Point[]) => {
+    const hull: Point[] = []
+    for (const point of points) {
+      while (hull.length > 1 && cross(hull[hull.length - 2], hull[hull.length - 1], point) <= 0) hull.pop()
+      hull.push(point)
+    }
+    return hull.slice(0, -1)
+  }
+  return [...half(corners), ...half([...corners].reverse())]
 }
 
 export function boardLinkEndpoints(from: BoardPoint, to: BoardPoint, insets?: CandidateInsets) {
