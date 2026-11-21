@@ -1,3 +1,4 @@
+import { fogView } from './fog.ts'
 import type { Candidate, Difficulty, VariantHouse } from './engine.ts'
 import { DIGITS, hasCandidate, move, onlyCandidate, peer, valuesOf, type Game } from './game.ts'
 import { cellReference, type CellReferenceStyle } from './hints.ts'
@@ -9,7 +10,9 @@ export function findCandidateRecovery(game: Game, solution: string, removals: re
   const values = valuesOf(game)
   if (!/^[1-9]{81}$/.test(solution) || [...values].some((digit, cell) => digit !== '0' && digit !== solution[cell])) return
 
-  const cell = removals.findIndex((mask, index) => values[index] === '0' && hasCandidate(mask, Number(solution[index])))
+  const fog = fogView(game.variant, game.position.entries)
+  const cell = removals.findIndex((mask, index) => (!fog || fog.cells.has(index)) &&
+    values[index] === '0' && hasCandidate(mask, Number(solution[index])))
   if (cell < 0) return
 
   const digit = Number(solution[cell])

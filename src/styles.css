@@ -1417,6 +1417,8 @@ svg { flex-shrink: 0; }
 }
 .cell.selected.colored { --cell-fill: color-mix(in srgb, var(--tone) 76%, var(--board-selected-bg)); }
 .cell.selected.conflict { --cell-fill: color-mix(in srgb, var(--danger-bg) 76%, var(--board-selected-bg)); }
+.board-body .cell[data-fogged] { background-color: color-mix(in srgb, var(--board-ink) 24%, var(--board-bg)); }
+.cell[data-fogged].selected { box-shadow: inset 0 0 0 2px var(--entry-ink); }
 .cell:focus-visible { z-index: 1; outline-offset: -4px; }
 .cell[data-pointer-focused]:focus-visible { outline: none; }
 .color-1 { --tone: #f5c7d4; --tone-ink: light-dark(#9e3b62, #ffbad1); }

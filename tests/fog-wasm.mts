@@ -3,10 +3,15 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { inflateSync } from 'node:zlib'
 import { runEngine, type VariantRule, type VariantVisibility } from '../src/sudoku/engine.ts'
-import { projectFogPuzzle, revealedFogCells } from '../src/sudoku/fog.ts'
-import { EMPTY, enter, makeGame, redo, undo } from '../src/sudoku/game.ts'
+import { fogView, projectFogPuzzle, revealedFogCells } from '../src/sudoku/fog.ts'
+import { EMPTY, completeCandidateMasks, enter, makeGame, puzzleIdentity, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
@@ -34,8 +39,8 @@ test('the published Fog source verifies exactly and visible markers never expose
   const imported = await detectPuzzle(source.code)
   const drawingRemoved = await detectPuzzle(coachCode({ ...fields, givenConstraints: givenConstraints.filter(layer => layer.type !== 'fog') }))
   const { variant } = imported
-  assert.deepEqual(imported.fog, { initialCells: [63] })
-  assert.deepEqual(variant, drawingRemoved.variant)
+  assert.deepEqual(imported.variant?.fog, { initialCells: [63] })
+  assert.deepEqual(variant?.puzzle, drawingRemoved.variant?.puzzle)
   assert.ok(variant)
   assert.equal(variant.puzzle.rules?.length, 17)
   assertVariantCompletion(variant.puzzle, source.solution)
@@ -101,23 +106,28 @@ test('the published Fog source verifies exactly and visible markers never expose
   }
 })
 
-test('a Coach code retains the initial Fog layer and every companion rule while Play support is pending', async ({ mock }) => {
+test('both Coach import paths open the verified Fog puzzle with all companion rules', async ({ mock }) => {
   mock.method(globalThis, 'fetch', async (path: string) => {
     assert.equal(path, '/api/v1/import/sudoku-coach/Fnxt')
     return Response.json({ code: source.code, coach: { hasAuthorInstructions: false, title: 'Skipping through the fog' } })
   })
   const imported = await detectPuzzle(source.url)
-  assert.deepEqual(imported.fog, { initialCells: [63] })
+  assert.deepEqual(imported.variant?.fog, { initialCells: [63] })
   assert.equal(imported.title, 'Skipping through the fog')
   assert.equal(imported.variant?.puzzle.rules?.length, 17)
-  await assert.rejects(prepareImportedPuzzle(source.url), /Fog of War puzzles are not playable here yet/)
-  await assert.rejects(prepareImportedPuzzle(source.code), /Fog of War puzzles are not playable here yet/)
+  const linked = await prepareImportedPuzzle(source.url)
+  const pasted = await prepareImportedPuzzle(source.code)
+  assert.deepEqual(linked.game.variant, pasted.game.variant)
+  assert.equal(linked.game.variant?.solution, source.solution)
+  assert.equal(linked.game.difficulty, null)
+  assert.equal(linked.game.score, null)
+  assert.equal(fogView(linked.game.variant)?.cells.size, 1)
 })
 
 test('the authored reveal and current entries determine each projection, including after undo and redo', async () => {
-  const { fog, variant } = await detectPuzzle(source.code)
-  assert.ok(fog && variant)
-  const { puzzle } = variant
+  const { variant } = await detectPuzzle(source.code)
+  assert.ok(variant?.fog)
+  const { puzzle, fog } = variant
   const game = makeGame('fog', 'Published Fog puzzle', EMPTY, 'imported')
   const project = (position: typeof game) => {
     const cells = revealedFogCells(fog, position.position.entries, source.solution)
@@ -169,7 +179,7 @@ test('projected layers hide givens, cut paths at hidden cells, and delay negativ
   ]) {
     await assert.rejects(importFog(layer), /invalid or unsupported reveal settings/)
   }
-  assert.deepEqual((await importFog(mask([80, 0]), mask([10, 80]))).fog, { initialCells: [0, 10, 80] })
+  assert.deepEqual((await importFog(mask([80, 0]), mask([10, 80]))).variant?.fog, { initialCells: [0, 10, 80] })
   await assert.rejects(importFog(mask([0]), { type: 'terrain', segments: [{ cells: [0] }] }), /not supported yet \(terrain\)/)
 
   const puzzle = { version: 1, givens: '1' + '0'.repeat(79) + '2', rules: [
@@ -193,4 +203,85 @@ test('projected layers hide givens, cut paths at hidden cells, and delay negativ
   const later = projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 78, 79, 80]))
   assert.equal(later.givens, puzzle.givens)
   assert.deepEqual(later.rules, puzzle.rules)
+})
+
+test('normal Fog play, paged hints, Technique Finder, reload, sharing, and exact solution agree on the published grid', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  mock.method(globalThis, 'fetch', fetcher)
+  try {
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.ok(game.variant?.fog)
+    const before = await puzzleHints(game, 'all', 'kropki')
+    assert.equal(before.choices.length, 0)
+    const opening = await playCandidates(game)
+    assert.ok(opening)
+    assert.equal(opening[63], 0x155)
+    assert.equal(opening[72], 0x1ff)
+    const coveredCandidates = { ...game, position: { ...game.position, center: Array(81).fill(1) } }
+    const shownCandidates = completeCandidateMasks(coveredCandidates)
+    assert.equal(shownCandidates?.[63], 1)
+    assert.equal(shownCandidates?.[72], 0x1ff)
+
+    const wrong = enter(game, [63], 'value', 3)
+    assert.equal(fogView(wrong.variant, wrong.position.entries)?.cells.size, 1)
+    const placed = enter(wrong, [63], 'value', 1)
+    const scoped = variantPosition(game.variant, placed.position)
+    const candidates = await playCandidates(placed)
+    assert.ok(candidates)
+    assert.equal(candidates[64], 1 << 8)
+    assert.equal(candidates[72], 1 << 1)
+
+    const collection = 321
+    const first = await puzzleHints(placed, 'all', 'kropki', collection)
+    assert.ok(first.choices.length > 0)
+    const page = await puzzleHintPage(game.variant, collection, 0, runEngine, placed.position.entries)
+    assert.deepEqual(page.choices[0], first.choices[0])
+    assert.equal(page.choices[0].evidence.variant.source.puzzle.rules.length, 5)
+    const actions = new Set(first.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    const finder = watchTechniqueScan(valuesOf(placed), undefined, scoped)
+    try { assert.equal(await finder.count('kropki'), actions.size) } finally { finder.close() }
+
+    const restored = readGame(placed.id, JSON.stringify(placed))
+    assert.ok(restored)
+    assert.deepEqual(variantPosition(game.variant, restored.position), scoped)
+    assert.equal(fogView(restored.variant, undo(restored).position.entries)?.cells.size, 1)
+    assert.equal(fogView(restored.variant, redo(undo(restored)).position.entries)?.cells.size, 6)
+    assert.equal(fogView(restored.variant, restartGame(restored).position.entries)?.cells.size, 1)
+    assert.equal(puzzleIdentity(restored), puzzleIdentity(game))
+    assert.notEqual(puzzleIdentity(restored), puzzleIdentity({ ...game, variant: { ...game.variant, fog: { initialCells: [64] } } }))
+
+    const id = await publishSharedPuzzle(restored)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.equal(valuesOf(shared.game), EMPTY)
+    assert.equal(fogView(shared.game.variant)?.cells.size, 1)
+
+    const solution = await puzzleSolution(restored)
+    assert.equal(solution.board, source.solution)
+    assert.equal(solution.exact, true)
+    assert.equal(solution.rating.status, 'stalled')
+    assert.equal(solution.positions.length, solution.steps.length + 1)
+    assert.equal(solution.positions.at(-1).entries, source.solution)
+    assert.equal(valuesOf(restored)[63], '1')
+  } finally { sqlite.close() }
+})
+
+test('classic Fog hides authored givens until a logical placement starts the reveal', async () => {
+  const code = coachCode({
+    givenDigits: Array.from(source.solution, (digit, cell) => cell === 63 || cell === 72 ? '0' : digit).join(''),
+    givenConstraints: [{ type: 'fog', segments: [{ cells: Array.from({ length: 81 }, (_, cell) => cell)
+      .filter(cell => ![54, 55, 63, 64, 72, 73].includes(cell)) }] }],
+  })
+  const { game } = await prepareImportedPuzzle(code)
+  assert.ok(game.variant?.fog)
+  assert.equal(game.givens[54], '8')
+  assert.equal(valuesOf(game)[54], '0')
+  const placed = enter(game, [63], 'value', 1)
+  assert.equal(valuesOf(placed)[54], '8')
+  const logical = await puzzleSolution(game)
+  assert.equal(logical.board, source.solution)
+  assert.equal(logical.exact, undefined)
+  assert.ok(logical.steps.length > 1)
+  assert.equal(logical.positions[0].givens[54], '0')
+  assert.equal(logical.positions.at(-1).givens[54], '8')
 })

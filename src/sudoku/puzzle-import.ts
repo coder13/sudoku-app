@@ -51,7 +51,7 @@ export type ImportFormat = 'Sudoku Coach' | 'Sudoku Exchange' | 'SudokuPad' | 'f
 export type ImportedPuzzle = {
   givens: string
   format: ImportFormat
-  variant?: Pick<VariantGame, 'id' | 'puzzle'>
+  variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   grid?: SizedGrid
   sizedRules?: SizedRuleGame['rules']
   sizedAuthor?: string
@@ -62,7 +62,6 @@ export type ImportedPuzzle = {
   collection?: CollectionReference
   progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>
   whispersGuide?: true
-  fog?: FogDefinition
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
@@ -120,14 +119,14 @@ function hasMiniBoxes(labels: unknown): boolean {
     label === expected[Math.floor(cell / 8) * 2 + Math.floor(cell % 4 / 2)])
 }
 
-function makeImportedPuzzle(format: ImportFormat, givens: string, rules: VariantRule[], regions: VariantPuzzle['regions']): ImportedPuzzle {
+function makeImportedPuzzle(format: ImportFormat, givens: string, rules: VariantRule[], regions: VariantPuzzle['regions'], fog?: FogDefinition): ImportedPuzzle {
   const puzzle: VariantPuzzle = { version: 1, givens, ...(regions && { regions }), ...(rules.length && { rules }) }
   // Validate the complete rule list before using it to choose a display name.
-  if (!rules.length && !regions) return { givens, format }
-  if (!isPlayablePuzzle('mixed', puzzle)) throw new Error('This puzzle has unsupported or invalid rules.')
-  const id = variantIdForPuzzle(puzzle)
+  if (!rules.length && !regions && !fog) return { givens, format }
+  if (!isPlayablePuzzle('mixed', puzzle, fog)) throw new Error('This puzzle has unsupported or invalid rules.')
+  const id = fog ? 'mixed' : variantIdForPuzzle(puzzle)
   if (id === 'classic') return { givens, format }
-  return { givens, format, variant: { id, puzzle } }
+  return { givens, format, variant: { id, puzzle, ...(fog && { fog }) } }
 }
 
 function decodeBase32Hex(text: string) {
@@ -431,10 +430,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   )) {
     throw new Error('The Sudoku Coach export is missing rules from the published description.')
   }
-  const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
+  const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
   return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }),
-    ...(whispersGuide && { whispersGuide: true }), ...(fog && { fog }) }
+    ...(whispersGuide && { whispersGuide: true }) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
@@ -1113,10 +1112,10 @@ export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
     }
     if (url.hash.startsWith('#variant=')) {
       const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '', 'Puzzle link')
-      if (!record(shared) || !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle)) {
+      if (!record(shared) || !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle, shared.fog)) {
         throw new Error('This link is missing a valid Sudoku variant.')
       }
-      const variant: NonNullable<ImportedPuzzle['variant']> = { id: shared.id, puzzle: shared.puzzle }
+      const variant: NonNullable<ImportedPuzzle['variant']> = { id: shared.id, puzzle: shared.puzzle, ...(isFogDefinition(shared.fog) && { fog: shared.fog }) }
       return { givens: variant.puzzle.givens, format: 'Puzzle link', variant }
     }
     if (url.hash.startsWith('#puzzle=')) return { givens: parsePuzzle(url.href), format: 'Puzzle link' }

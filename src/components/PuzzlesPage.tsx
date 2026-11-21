@@ -69,7 +69,7 @@ function PuzzleRows({ puzzles, active, manage }: {
         const variant = gameVariantId(game)
         const variantLabel = variant === 'algebraic-cages' ? ALGEBRAIC_CAGES_NAME
           : game.grid ? sizedGridName(game.grid)
-          : variant === 'mixed' ? 'Mixed rules' : variantName(game.variant)
+          : variant === 'mixed' && !game.variant?.fog ? 'Mixed rules' : variantName(game.variant)
         const detail = (manage
           ? [useRatingTitle && variant !== 'classic' && variantLabel, !useRatingTitle && rating, puzzleStatus(game)]
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')

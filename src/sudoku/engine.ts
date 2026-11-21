@@ -536,6 +536,8 @@ export type LogicalSolution = {
   rating: PuzzleRating
   positions?: SolvePosition[]
   moveAvailability?: MoveAvailability[]
+  /** The final grid comes from exact verification when logical play has stalled. */
+  exact?: true
 }
 export type PathComparison = { withTechnique: LogicalSolution; withoutTechnique: LogicalSolution }
 export type AlternatePath =

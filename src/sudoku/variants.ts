@@ -1,3 +1,4 @@
+import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
@@ -146,7 +147,7 @@ export function variantHouseFillCells(rule: VariantRule): readonly number[] {
 export type VariantId = keyof typeof VARIANTS
 export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type PuzzleVariantId = keyof typeof PUZZLE_VARIANTS | 'mixed'
-export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string }
+export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string; fog?: FogDefinition }
 
 export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
@@ -503,7 +504,7 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
   return isPuzzleVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
 }
 
-export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is VariantPuzzle {
+export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
   if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
@@ -515,7 +516,7 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown): puzzle is Varian
   if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
   if (rules?.some(rule => rule.type === 'region-sum' && regionSumParts(rule, regions).length < 2)) return false
-  return kind !== 'classic' && (id === 'mixed' || kind === id)
+  return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
 }
 
 const RULE_NAMES: Record<VariantRule['type'], string> = {
@@ -549,8 +550,9 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
 }
 
 /** Describe the active puzzle independently of its generation recipe. */
-export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle'>): string {
+export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>): string {
   if (!variant) return VARIANTS.classic.name
+  if (variant.fog) return 'Fog of War'
   if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
   const { rules, regions } = variant.puzzle
   const names = [
@@ -686,14 +688,14 @@ function describedVariantRules(puzzle: VariantPuzzle) {
 }
 
 /** Explain every active rule, including the direction and negative dot clues. */
-export function variantRuleDescriptions(puzzle: VariantPuzzle): string[] {
-  return [...new Set([...baseRuleSection(puzzle).descriptions, ...describedVariantRules(puzzle).flatMap(rule => rule.descriptions)])]
+export function variantRuleDescriptions(puzzle: VariantPuzzle, fog?: FogDefinition): string[] {
+  return [...new Set([...(fog ? [FOG_RULE] : []), ...baseRuleSection(puzzle).descriptions, ...describedVariantRules(puzzle).flatMap(rule => rule.descriptions)])]
 }
 
-export function variantRuleSections(puzzle: VariantPuzzle): VariantRuleSection[] {
+export function variantRuleSections(puzzle: VariantPuzzle, fog?: FogDefinition): VariantRuleSection[] {
   const sections = new Map<VariantRuleSectionId, VariantRuleSection>()
   const base = baseRuleSection(puzzle)
-  sections.set(base.id, base)
+  sections.set(base.id, fog ? { ...base, descriptions: [FOG_RULE, ...base.descriptions] } : base)
   for (const { id, descriptions } of describedVariantRules(puzzle)) {
     if (!descriptions.length) continue
     const current = sections.get(id)
@@ -705,7 +707,7 @@ export function variantRuleSections(puzzle: VariantPuzzle): VariantRuleSection[]
 
 export function validVariantSave(variant: unknown, givens: string): variant is VariantGame {
   if (!variant || typeof variant !== 'object') return false
-  const { id, puzzle, solution } = variant as VariantGame
-  return isPlayablePuzzle(id, puzzle) && puzzle.givens === givens && typeof solution === 'string' &&
+  const { id, puzzle, solution, fog } = variant as VariantGame
+  return isPlayablePuzzle(id, puzzle, fog) && puzzle.givens === givens && typeof solution === 'string' &&
     /^[1-9]{81}$/.test(solution) && [...givens].every((digit, cell) => digit === '0' || digit === solution[cell])
 }

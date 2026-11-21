@@ -29,7 +29,7 @@ The [Coach corpus](tests/fixtures/modular-coach.json) preserves eight original e
 | [kicking modular lines…](https://sudoku.coach/en/s/7hzU), vajrajames | A 5 × 5 Latin-square puzzle with Anti-King, two Modular and four Entropic paths. Preserve its grid and region semantics. |
 | [Modular Colouring](https://sudoku.coach/en/s/GYTv), cyboogie | Six Modular paths, eight Consecutive Lines, seven difference-three circles and a printed XI total. Requires [Consecutive Lines](https://github.com/coder13/sudoku-app/issues/89) and [General Difference](https://github.com/coder13/sudoku-app/issues/85). |
 | [220V](https://sudoku.coach/en/s/7rs9), vajrajames | The verified short link imports Non-Consecutive, four Entropic paths, two Modular paths, and nine Region Sum lines. The authored legend accounts for the drawn orange and blue paths. An independent counter verifies the unique published answer. [Verification](SUDOKU_VARIANT_USABILITY_AUDIT.md#published-coach-links) |
-| [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. Preserve the complete export pending [Fog app support](https://github.com/coder13/sudoku-app/issues/91). |
+| [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. The complete export now opens through 9×9 Fog import. [Fog app audit](https://github.com/coder13/sudoku-app/issues/91) |
 
 Six raw exports remain deferred. The 220V short link supplies the author legend required to recover its drawn paths. The other deferred sources still need the rules or grid layouts listed above.
 

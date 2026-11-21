@@ -3,7 +3,7 @@ import type { ActionMatcher } from './action-history.ts'
 import { withHintPreferences } from './hint-preferences.ts'
 import { withSolverProfile } from './solver-profile.ts'
 import { techniqueActionKey } from './technique-progress.ts'
-import { getVariantPlayOrder } from './variant-play.ts'
+import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 import type { VariantGame } from './variants.ts'
 
 const MAX_CACHED_REQUESTS = 32
@@ -107,9 +107,11 @@ export function createClassificationScope() {
 type ActionPosition = Parameters<ActionMatcher>[0]
 
 export async function variantActionProofs(position: ActionPosition, variant: VariantGame, run: EngineRunner = runEngine) {
+  const board = variant.fog ? variantPosition(variant, { entries: position.entries ?? position.values })
+    : { puzzle: variant.puzzle, entries: position.values }
   return run({
     type: 'variant', operation: 'hints',
-    position: { puzzle: variant.puzzle, entries: position.values, eliminations: position.eliminations },
+    position: { ...board, eliminations: position.eliminations },
     techniqueOrder: await getVariantPlayOrder(), limit: 64,
   }, { background: true })
 }

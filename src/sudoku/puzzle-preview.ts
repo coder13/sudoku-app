@@ -59,11 +59,10 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  if (imported.fog) throw new Error('Fog of War puzzles are not playable here yet.')
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress, whispersGuide } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
-    : variant?.id === 'mixed' ? 'Imported mixed-rule puzzle'
+    : variant?.id === 'mixed' && !variant.fog ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle`
       : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
         : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`

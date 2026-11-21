@@ -330,7 +330,7 @@ const rule = value => {
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
   puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: list(rule, 0) }),
-})
+}, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),
   puzzleId: id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id),

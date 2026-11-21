@@ -150,7 +150,9 @@ async function recordActions(game: Game, actions: readonly DeductionAction[], so
   const at = performance.timeOrigin + performance.now()
   let techniques: (string | null)[] = []
   try {
-    if (source !== 'automated') techniques = await classifyActionTechniques({ values: valuesOf(game), eliminations }, actions, game.variant, run)
+    if (source !== 'automated') techniques = await classifyActionTechniques({
+      values: valuesOf(game), ...(game.variant?.fog && { entries: game.position.entries }), eliminations,
+    }, actions, game.variant, run)
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') return
   }

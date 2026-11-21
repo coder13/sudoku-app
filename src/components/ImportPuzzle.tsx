@@ -1,3 +1,4 @@
+import { fogView } from '../sudoku/fog'
 import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
@@ -131,6 +132,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setCameraOpen(false)
   }
 
+  const fog = preview && fogView(preview.game.variant, preview.game.position.entries)
   const puzzlePreview = preview && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
@@ -147,7 +149,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       {preview.hasProgress && <p>This import includes your progress.</p>}
       <Board grid={preview.game.grid} whispersGuide={preview.game.whispersGuide} label="Puzzle preview" givens={preview.game.givens} values={valuesOf(preview.game)}
         position={preview.hasProgress ? preview.game.position : undefined} candidateLayout="center-corner"
-        variantPuzzle={preview.game.variant?.puzzle} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
+        variantPuzzle={preview.game.variant?.puzzle} fog={fog} algebraicCages={preview.game.algebraic?.rules} sizedRules={preview.game.sized?.rules} showGuides={false} />
       {preview.game.algebraic ? <>
         {preview.game.algebraic.source?.author && <p>By {preview.game.algebraic.source.author}</p>}
         <ul className="import-preview-rules">
@@ -159,7 +161,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         {sizedRuleDescriptions(preview.game.grid, preview.game.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       {preview.game.variant && <ul className="import-preview-rules">
-        {variantRuleDescriptions(preview.game.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
+        {variantRuleDescriptions(fog?.puzzle ?? preview.game.variant.puzzle, preview.game.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
       </ul>}
       <div className="dialog-actions import-preview-actions">
         <Button type="button" className="import-edit" onClick={() => setPreview(undefined)}>

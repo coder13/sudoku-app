@@ -6,6 +6,7 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 export type PuzzleGrade = RatingAttempt['grade']
 
 export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine): Promise<PuzzleGrade | null> {
+  if (variant?.fog) return null
   const rating = variant
     ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder() })
     : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })

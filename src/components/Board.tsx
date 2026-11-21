@@ -1,3 +1,4 @@
+import type { FogView } from '../sudoku/fog'
 import { cloneElement, memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import type { Candidate, SizedConstraintRule, SizedVariantPosition, VariantPuzzle } from '../sudoku/engine'
@@ -19,6 +20,7 @@ import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors
 type Props = {
   descriptionId?: string
   variantPuzzle?: VariantPuzzle
+  fog?: FogView
   whispersGuide?: true
   highlightedRule?: VariantRuleSectionId | null
   grid?: SizedGrid
@@ -120,6 +122,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   geometry: CellGeometry
   value: number
   fixed: boolean
+  fogged: boolean
   center: number
   corner: number
   centerMask: number
@@ -164,7 +167,7 @@ function candidateColorClass(color: number | undefined, imported: string | undef
 // A cell receives its own values and visual flags, never the whole board selection
 // or position. An edit can therefore leave unrelated cells and their marks intact.
 const BoardCell = memo(function BoardCell({
-  geometry, value, fixed, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
+  geometry, value, fixed, fogged, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
   preview, candidateColors, importedCandidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
   linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted,
@@ -207,6 +210,7 @@ const BoardCell = memo(function BoardCell({
     }).filter(Boolean).join(', '), [candidateAnnotations, candidateColors, importedCandidateColors, gridCandidates, centerCandidates])
   const label = [
     `Row ${row}, column ${col}`,
+    fogged && 'covered by fog',
     value ? (fixed ? `given ${value}` : `digit ${value}`) : 'empty',
     !value && gridCandidates.length ? `${digitSlots ? '' : 'corner '}candidates ${gridCandidates.join(' ')}` : '',
     !value && centerCandidates.length ? `center candidates ${centerCandidates.join(' ')}` : '',
@@ -318,7 +322,7 @@ const BoardCell = memo(function BoardCell({
     ...cellItems,
   ], [cageTotal, geometry.cageStyle, cellItems])
 
-  return <Cell role="gridcell" data-cell={index} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
+  return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
     data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
@@ -344,7 +348,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  variantPuzzle: fullPuzzle, fog, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
@@ -355,6 +359,8 @@ export function Board({
   const slotsAcross = Math.ceil(Math.sqrt(gridSize))
   const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
   const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
+  const variantPuzzle = fog?.puzzle ?? fullPuzzle
+  const givens = fog?.puzzle.givens ?? fullGivens
   const variantRules = variantPuzzle?.rules
   const linkCounts = useMemo(() => whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined,
     [whispersGuide, variantPuzzle])
@@ -483,16 +489,18 @@ export function Board({
     <div className="grid-row" role="row" data-box-edge={rectangularBoxes && row % boxRows === 0 || undefined} key={row}>
       {columns.map((col) => {
         const index = (row - 1) * gridSize + col - 1
-        const value = Number(values[index])
-        const center = position?.center[index] ?? 0, corner = position?.corner[index] ?? 0
+        const fogged = Boolean(fog && !fog.cells.has(index))
+        const value = Number(fogged ? fog!.entries[index] : values[index])
+        const center = fogged ? 0 : position?.center[index] ?? 0
+        const corner = fogged ? 0 : position?.corner[index] ?? 0
         const digitSlots = layout === 'grid' || Boolean(annotationSlots?.has(index))
         const centerMarks = digitSlots ? 0 : center
-        const gridMarks = candidates?.[index] ?? (corner | (digitSlots ? center : 0))
-        const linkedDigits = annotationSlots?.get(index)
+        const gridMarks = fogged ? 0 : candidates?.[index] ?? (corner | (digitSlots ? center : 0))
+        const linkedDigits = fogged ? undefined : annotationSlots?.get(index)
         let displayedGridMarks = gridMarks
         for (const digit of linkedDigits?.keys() ?? []) displayedGridMarks |= 1 << (digit - 1)
-        const candidateMask = candidates?.[index] ?? (center | corner)
-        const preview = !value && candidatePreview?.cell === index ? candidatePreview : undefined
+        const candidateMask = fogged ? 0 : candidates?.[index] ?? (center | corner)
+        const preview = !fogged && !value && candidatePreview?.cell === index ? candidatePreview : undefined
         const visibleCandidateMask = displayedGridMarks | centerMarks | (preview ? 1 << (preview.digit - 1) : 0)
         let linkTargetMask = 0
         if (isLinkTarget && !value) for (const digit of marksOf(visibleCandidateMask)) {
@@ -518,16 +526,16 @@ export function Board({
             : highlightsFocusDigit ? `candidate ${focusDigit} highlighted` : ''
         const countLabel = candidateCountMatches ? highlightCandidateCells ? `${highlightCandidateCount}-candidate cell highlighted`
           : `all ${highlightCandidateCount} candidates highlighted` : ''
-        return <BoardCell key={col} geometry={geometry[index]} value={value} fixed={givens[index] !== '0'}
+        return <BoardCell key={col} geometry={geometry[index]} value={value} fixed={givens[index] !== '0'} fogged={fogged}
           center={center} corner={corner} centerMask={centerMarks} gridMask={gridMarks} displayedGridMask={displayedGridMarks}
           digitSlots={digitSlots} annotatedSlots={Boolean(linkedDigits)} preview={preview}
           candidateColors={showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined}
           importedCandidateColors={showImportedAnnotations && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
-          color={showPlayerColors ? position?.colors?.[index] : undefined}
-          importedColors={showImportedAnnotations ? position?.importedCellColors?.[index] : undefined}
+          color={!fogged && showPlayerColors ? position?.colors?.[index] : undefined}
+          importedColors={!fogged && showImportedAnnotations ? position?.importedCellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
-          error={Boolean(errors?.has(index))} related={relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
+          error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
           ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
           cellHighlight={highlightsLinkTargetCell || (highlightsCell && !matchesWithExtras) ? 'candidate-highlight-cell'
             : highlightsCell ? 'candidate-highlight-light' : ''}
@@ -544,7 +552,7 @@ export function Board({
       })}
     </div>
   )), [
-    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
+    rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
     highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,

@@ -1,4 +1,7 @@
 import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
+import type { VariantGame } from './variants.ts'
+
+export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
 export type FogDefinition = { initialCells: readonly number[] }
 
@@ -107,4 +110,27 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
   })
   const givens = [...puzzle.givens].map((digit, cell) => visible.has(cell) ? digit : '0').join('')
   return { ...puzzle, givens, rules: shown }
+}
+
+
+export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle }
+const fogViews = new WeakMap<VariantGame, FogView>()
+const emptyEntries = '0'.repeat(81)
+const fullFogView = new Set(Array.from({ length: 81 }, (_, cell) => cell))
+
+/** Derive the current view from immutable puzzle data and the saved position. */
+export function fogView(variant: VariantGame | undefined, entries = emptyEntries): FogView | undefined {
+  if (!variant?.fog) return
+  const cached = fogViews.get(variant)
+  if (cached?.entries === entries) return cached
+  const complete = [...variant.solution].every((digit, cell) =>
+    digit === (variant.puzzle.givens[cell] === '0' ? entries[cell] : variant.puzzle.givens[cell]))
+  const cells = complete ? fullFogView : revealedFogCells(variant.fog, entries, variant.solution)
+  const view = { entries, cells, puzzle: projectFogPuzzle(variant.puzzle, cells) }
+  fogViews.set(variant, view)
+  return view
+}
+
+export function playVariantPuzzle(variant: VariantGame | undefined, entries?: string): VariantPuzzle | undefined {
+  return fogView(variant, entries)?.puzzle ?? variant?.puzzle
 }

@@ -1,3 +1,4 @@
+import { playVariantPuzzle } from './fog.ts'
 import { EngineError, runEngine, type Difficulty, type EngineRunner, type VariantGenerationRequest, type VariantPosition } from './engine.ts'
 import { type Game, type Position, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
@@ -69,7 +70,11 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
 export function variantPosition(
   variant: VariantGame, position?: Pick<Position, 'entries' | 'eliminations'>,
 ): VariantPosition {
-  return { puzzle: variant.puzzle, entries: position?.entries, eliminations: position?.eliminations }
+  const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
+  const entries = variant.fog && position
+    ? [...position.entries].map((digit, cell) => puzzle.givens[cell] === '0' ? digit : '0').join('')
+    : position?.entries
+  return { puzzle, entries, eliminations: position?.eliminations }
 }
 
 export async function playCandidates(game: Game, run: EngineRunner = runEngine) {

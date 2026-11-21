@@ -1,3 +1,4 @@
+import { fogView } from '../sudoku/fog'
 import { Link } from '@tanstack/react-router'
 import { Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -39,6 +40,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
   }, [id, attempt, hasCopy, valid])
 
   const puzzle = existing ?? preview?.game
+  const fog = fogView(puzzle?.variant)
   const holdingForSync = linked && !syncReady && !existing
   const failure = valid ? error : 'This puzzle link is invalid.'
   return <main className="page sync-page shared-puzzle-page">
@@ -49,7 +51,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
           : puzzle.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
             : puzzle.grid ? sizedGridName(puzzle.grid) : variantName(puzzle.variant)}</strong></p>
         <Board grid={puzzle.grid} whispersGuide={puzzle.whispersGuide} label="Puzzle preview" givens={puzzle.givens} values={puzzle.givens}
-          variantPuzzle={puzzle.variant?.puzzle} algebraicCages={puzzle.algebraic?.rules} sizedRules={puzzle.sized?.rules} showGuides={false} />
+          variantPuzzle={puzzle.variant?.puzzle} fog={fog} algebraicCages={puzzle.algebraic?.rules} sizedRules={puzzle.sized?.rules} showGuides={false} />
         {puzzle.algebraic && <>
           {puzzle.algebraic.source?.author && <p>By {puzzle.algebraic.source.author}</p>}
           <ul className="import-preview-rules">
@@ -61,7 +63,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
           {sizedRuleDescriptions(puzzle.grid, puzzle.sized.rules).map(rule => <li key={rule}>{rule}</li>)}
         </ul>}
         {puzzle.variant && <ul className="import-preview-rules">
-          {variantRuleDescriptions(puzzle.variant.puzzle).map(rule => <li key={rule}>{rule}</li>)}
+          {variantRuleDescriptions(fog?.puzzle ?? puzzle.variant.puzzle, puzzle.variant.fog).map(rule => <li key={rule}>{rule}</li>)}
         </ul>}
         <PuzzleCollectionCredit game={puzzle} />
       </div>
