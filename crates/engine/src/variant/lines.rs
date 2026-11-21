@@ -2,6 +2,7 @@ mod group_sums;
 pub(super) mod groups;
 mod inside_grid;
 pub(super) mod ray_houses;
+pub(super) mod region_sums;
 pub(super) mod renban_sum;
 
 pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums};
@@ -26,7 +27,7 @@ pub(super) struct LineConstraint {
 
 #[derive(Clone, Debug)]
 enum LineKind {
-    EqualSums(Vec<Range<usize>>),
+    EqualSums { parts: Vec<Range<usize>>, distinct_parts: bool },
     PillArrow,
     Sum(u16),
     Renban,
@@ -49,7 +50,7 @@ enum OutsideClue {
 impl LineConstraint {
     pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
         match &self.kind {
-            LineKind::EqualSums(parts) if self.technique == VariantTechnique::RegionSum => Some(parts),
+            LineKind::EqualSums { parts, .. } if self.technique == VariantTechnique::RegionSum => Some(parts),
             _ => None,
         }
     }
@@ -72,6 +73,7 @@ impl LineConstraint {
         puzzle: &mut CompiledVariant,
         index: usize,
         rule: &PuzzleRule,
+        enforce_regions: bool,
     ) -> Result<Self, VariantDefinitionError> {
         let invalid = VariantDefinitionError::InvalidRule(index);
         let (cells, kind, technique) = match rule {
@@ -83,7 +85,7 @@ impl LineConstraint {
                     .chain(cells.iter().copied())
                     .collect();
                 let ranges = vec![0..1, 1..cells.len()];
-                (cells, LineKind::EqualSums(ranges), VariantTechnique::Arrow)
+                (cells, LineKind::EqualSums { parts: ranges, distinct_parts: false }, VariantTechnique::Arrow)
             }
             PuzzleRule::PillArrow { pill, cells, .. } => {
                 let [tens, ones] = *pill;
@@ -169,7 +171,9 @@ impl LineConstraint {
                 let segments = region_sum_ranges(&mut cells, |cell| puzzle.primary_region(cell).unwrap(), *group_by_region);
                 // A line within one region still has a visible path. Its sole
                 // group already satisfies equality of the group totals.
-                (cells, LineKind::EqualSums(segments), VariantTechnique::RegionSum)
+                let distinct_parts = enforce_regions && segments.len() > 1
+                    && segments.iter().any(|part| part.len() > 1);
+                (cells, LineKind::EqualSums { parts: segments, distinct_parts }, VariantTechnique::RegionSum)
             }
             PuzzleRule::LittleKiller {
                 cells,
@@ -331,6 +335,20 @@ impl LineConstraint {
         }
     }
 
+    pub(super) fn supports_distinct_sums(&self) -> bool {
+        matches!(self.kind, LineKind::EqualSums { distinct_parts: true, .. })
+    }
+
+    pub(super) fn support_exact(&self, domains: &[u16], support: &mut [u16]) {
+        if let LineKind::EqualSums { parts, distinct_parts: true } = &self.kind {
+            if !domains.contains(&0) {
+                region_sums::distinct_support(parts, domains, support);
+            }
+        } else {
+            self.support(domains, support);
+        }
+    }
+
     // Domains and support are in the same order as cells.
     pub fn support(&self, domains: &[u16], support: &mut [u16]) {
         debug_assert_eq!(domains.len(), self.cells.len());
@@ -339,7 +357,7 @@ impl LineConstraint {
             return;
         }
         match &self.kind {
-            LineKind::EqualSums(segments) => {
+            LineKind::EqualSums { parts: segments, .. } => {
                 let totals = segments.iter().fold(u128::MAX, |totals, range| {
                     totals & reachable(&domains[range.clone()])
                 });

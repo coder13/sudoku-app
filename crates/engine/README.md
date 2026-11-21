@@ -532,6 +532,8 @@ Exact verification and deterministic solving also propagate Hidden Singles withi
 
 The compiler distinguishes enforced houses from retained region geometry. Generation can remove region uniqueness while retaining borders for Region Sum lines. Only houses whose cells remain pairwise excluded participate in exact house propagation. Rows, irregular regions, diagonals and extra houses use the same mechanism.
 
+Exact verification and deterministic solving also check that every Region Sum part can reach the shared total with distinct digits in its enforced region. The solver uses the authored grouping mode, including each separate visit where the rule calls for it. Checks that remove region uniqueness retain the ordinary sum constraint and its region geometry. Public candidates and logical proofs use their existing rule support.
+
 Each recursive visit still consumes one search node, including the starting visit. Stronger propagation can complete a proof within a budget that previously exhausted. Seeded sampling and bounded logical uniqueness eligibility retain their established traversal. This keeps calibrated recipes and hint search scheduling stable. Generation's uniqueness checks use the faster verification path. Run the variant benchmark with `-- --exact-search` to measure compilation, prepared candidates, verification and solving separately.
 
 ### Variant logical solves and ratings

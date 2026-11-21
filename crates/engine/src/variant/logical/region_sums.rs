@@ -6,68 +6,10 @@ use super::{
 };
 use crate::{
     CELLS,
-    hints::{digit_bit, digits},
-    variant::{cells_in, digit_sum, lines::LineConstraint},
+    variant::{cells_in, digit_sum, lines::{
+        LineConstraint, region_sums::{DIGIT_SETS, PartSums},
+    }},
 };
-
-const DIGIT_SETS: usize = 512;
-
-struct PartSums {
-    // A set at depth i can be assigned to the first i cells in some order.
-    prefixes: Vec<Vec<u16>>,
-    totals: u64,
-}
-
-impl PartSums {
-    fn new(domains: &[u16]) -> Self {
-        let mut prefixes = vec![vec![0]];
-        for &domain in domains {
-            let mut seen = [false; DIGIT_SETS];
-            let mut next = Vec::new();
-            for &used in prefixes.last().expect("empty prefix") {
-                for digit in digits(domain & !used) {
-                    let with_digit = used | digit_bit(digit);
-                    if !std::mem::replace(&mut seen[with_digit as usize], true) {
-                        next.push(with_digit);
-                    }
-                }
-            }
-            prefixes.push(next);
-        }
-        let totals = prefixes
-            .last()
-            .expect("complete prefix")
-            .iter()
-            .fold(0, |mask, &set| mask | 1 << digit_sum(set));
-        Self { prefixes, totals }
-    }
-
-    fn complete_sets(&self) -> &[u16] {
-        self.prefixes.last().expect("complete prefix")
-    }
-
-    fn support(&self, domains: &[u16], allows: impl Fn(u16) -> bool, support: &mut [u16]) {
-        let mut viable = [false; DIGIT_SETS];
-        for &set in &self.prefixes[domains.len()] {
-            viable[set as usize] = allows(set);
-        }
-
-        // Follow only the assignments that reach one of the common totals.
-        for (index, &domain) in domains.iter().enumerate().rev() {
-            let mut previous = [false; DIGIT_SETS];
-            for &used in &self.prefixes[index] {
-                for digit in digits(domain & !used) {
-                    let bit = digit_bit(digit);
-                    if viable[(used | bit) as usize] {
-                        support[index] |= bit;
-                        previous[used as usize] = true;
-                    }
-                }
-            }
-            viable = previous;
-        }
-    }
-}
 
 fn totals_list(mask: u64) -> Vec<u8> {
     (1..=45).filter(|&sum| mask & (1 << sum) != 0).collect()

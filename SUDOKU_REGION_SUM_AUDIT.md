@@ -214,3 +214,21 @@ With the shared-region technique enabled, FaxQ’s Master hint request initially
 ```sh
 node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm region-sum-house
 ```
+
+## Distinct Region Sum parts in exact verification
+
+Exact verification now checks each part of a Region Sum line against the distinct digits required by its region. It intersects the totals across parts and retains the digits that can reach those totals. The rule still determines whether a return to the same region begins a separate part or joins the first visit. Verification uses regular boxes or the authored Jigsaw membership. When generation checks remove region distinctness, the sum still uses the retained geometry and no additional region distinctness is inferred.
+
+The five published controls have identical opening candidates, ten-hint responses, full logical traces, and default exact results. Independent enumeration checks grouped visits in a Jigsaw grid and checks the support for short and long parts against distinct-digit assignments. The engine's reduced-region test verifies a Latin completion that needs a repeated digit within a part.
+
+Thirteen alternating warm samples used the direct Node Wasm request handler and the same default exact verification request. Times are milliseconds. The p95 is the largest sample in this run.
+
+| Published puzzle | Before median / p95 | After median / p95 |
+| --- | ---: | ---: |
+| Symmetease | 0.146 / 0.179 | 0.102 / 0.109 |
+| Thermos and Region Sums | 0.581 / 0.608 | 0.229 / 1.275 |
+| Non Con and Anti Royal Region Sums | 0.595 / 0.611 | 0.386 / 0.411 |
+| Region Lines and Dots | 0.380 / 0.456 | 0.203 / 0.279 |
+| Region Sum, Easy | 76.771 / 77.832 | 20.973 / 21.326 |
+
+FaxQ returns the published grid within a 20,000-node budget. The prior build exhausted 40,000 nodes and the new build still reports the search limit at 10,000. All eight square transformations preserve its exact completion. Thermos and Region Sums now verifies at 100 nodes, a budget the earlier build exhausted.
