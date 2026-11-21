@@ -53,6 +53,21 @@ jobs:
           node --experimental-strip-types scripts/check-worktable-lifecycle.mjs --output tools/react-board-performance/results/lifecycle-ci.json
           node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
 
+      - name: Check grouped chain tools
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        run: node --experimental-strip-types scripts/check-grouped-chains.mjs --output tools/react-board-performance/results/grouped-chains-ci.json --screenshots tools/react-board-performance/results/grouped-chains-screenshots
+
+      - name: Upload grouped chain checks
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: grouped-chain-checks
+          path: |
+            tools/react-board-performance/results/grouped-chains-ci.json
+            tools/react-board-performance/results/grouped-chains-screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Deploy to Cloudflare Pages
         id: pages
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3

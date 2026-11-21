@@ -129,6 +129,90 @@ fn ordinary_graph_uses_exact_cell_and_house_constraints_for_every_pair() {
     }
 }
 
+#[test]
+fn grouped_type_two_chain_uses_every_member_of_its_endpoint() {
+    // (1 R1C1 or R1C2) = (1 R1C4) - (1 R4C4) = (2 R4C4)
+    //                   - (2 R4C1) = (2 R2C1)
+    // The two ends rule out 1 in R2C1 by box 1 and by its own cell.
+    let mut masks = [0; CELLS];
+    for cell in [0, 1, 3, 9, 27, 30] {
+        masks[cell] |= digit_bit(1);
+    }
+    for cell in [9, 10, 27, 30] {
+        masks[cell] |= digit_bit(2);
+    }
+    let positions = std::array::from_fn(|digit| {
+        masks.iter().enumerate().fold(0, |positions, (cell, mask)| {
+            positions
+                | if mask & (1 << digit) != 0 {
+                    cell_bit(cell)
+                } else {
+                    0
+                }
+        })
+    });
+    let graph = InferenceGraph::new(&masks, positions);
+    let group = InferenceNode::Group {
+        digit: 1,
+        cells: vec![0, 1],
+    };
+    let single = InferenceNode::Candidate(Candidate { cell: 9, digit: 2 });
+    let expected = HintAction::Eliminate(Candidate { cell: 9, digit: 1 });
+    let witness = Rule::for_technique(Technique::GroupedAic)
+        .unwrap()
+        .visit(&graph, &mut |step| {
+            let HintEvidence::Inference { links } = &step.evidence else {
+                panic!("a grouped chain must publish its nodes");
+            };
+            let first = &links[0].from;
+            let last = &links.last().unwrap().to;
+            let endpoints =
+                (first == &group && last == &single) || (first == &single && last == &group);
+            if endpoints && step.actions().contains(&expected) {
+                ControlFlow::Break(step)
+            } else {
+                ControlFlow::Continue(())
+            }
+        })
+        .break_value()
+        .expect("different-digit grouped endpoints must reach the exclusion check");
+    assert_eq!(witness.actions(), [expected]);
+    let HintEvidence::Inference { links } = witness.evidence else {
+        unreachable!();
+    };
+    assert!(links.len() >= 3);
+    assert_eq!(links[0].strength, LinkStrength::Strong);
+    assert_eq!(links.last().unwrap().strength, LinkStrength::Strong);
+    assert!(
+        links.windows(2).all(|pair| {
+            pair[0].to == pair[1].from && pair[0].strength != pair[1].strength
+        })
+    );
+
+    let group_id = graph
+        .nodes
+        .iter()
+        .position(|node| node.evidence() == group)
+        .unwrap();
+    let partial_peer = graph
+        .nodes
+        .iter()
+        .position(|node| node.single() == Some(Candidate { cell: 27, digit: 2 }))
+        .unwrap();
+    assert!(
+        graph.excluded_by_either(group_id, partial_peer).next().is_none(),
+        "R4C1 sees only R1C1, so the group cannot remove 1 in R4C1"
+    );
+
+    // Different-digit multi-cell groups have no common conflicting candidate.
+    let other_group = graph
+        .nodes
+        .iter()
+        .position(|node| node.digit == 2 && node.members == (cell_bit(9) | cell_bit(10)))
+        .unwrap();
+    assert!(graph.excluded_by_either(group_id, other_group).next().is_none());
+}
+
 #[derive(Clone, Copy, Debug)]
 enum Relation {
     None,

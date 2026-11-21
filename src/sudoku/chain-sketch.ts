@@ -1,4 +1,4 @@
-import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, makeChainGraph, sameEdge, type ChainEdge } from './chains.ts'
+import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, chainNodeCandidates, chainNodeDigit, makeChainGraph, sameEdge, validChainNode, type ChainEdge, type ChainNode } from './chains.ts'
 import type { DeductionAction } from './engine.ts'
 import { applyDeduction, conflictsOf, fillEntries, hasCandidate, move, valuesOf, type Game } from './game.ts'
 
@@ -30,7 +30,7 @@ export function cycleChainPairs(pairs: readonly ChainColorPair[], assigned: read
   }
 }
 
-type ChainSelection = { activeId: number; pending: number | null }
+type ChainSelection = { activeId: number; pending: ChainNode | null }
 
 export type ChainSketch = {
   id: number
@@ -66,7 +66,7 @@ export function nextChainId(sketches: readonly ChainSketch[]) {
   return latest + 1
 }
 
-export function updateChainEdges(state: ChainSketchState, next: ChainEdge[], pending: number | null,
+export function updateChainEdges(state: ChainSketchState, next: ChainEdge[], pending: ChainNode | null,
   highlightedDigit?: number, reveal = false): ChainSketchState {
   const current = state.sketches.find(sketch => sketch.id === state.activeId)!
   const before = current.history.at(-1)!
@@ -123,12 +123,12 @@ export function undoChainEdit(state: ChainSketchState, restoreEndpoint = false):
   if (originIndex < 0 || sketches[originIndex].hidden) return undone
   const origin = sketches[originIndex]
   const pending = selection.pending
-  if (pending !== null) sketches[originIndex] = { ...origin, highlightedDigit: chainCandidate(pending).digit }
+  if (pending !== null) sketches[originIndex] = { ...origin, highlightedDigit: chainNodeDigit(pending) }
   return { sketches, activeId: origin.id, pending }
 }
 
 /** Older saves only recorded links. A single added link points from the previous endpoint to the selected candidate. */
-function legacyUndoSelection(active: ChainSketch, restored: readonly ChainSketch[], pending: number | null): ChainSelection | null {
+function legacyUndoSelection(active: ChainSketch, restored: readonly ChainSketch[], pending: ChainNode | null): ChainSelection | null {
   if (pending === null) return null
   const previous = restored.flatMap(sketch => sketch.history.at(-1)!)
   const added = active.history.at(-1)!.filter(edge => !previous.some(link => sameEdge(edge, link)))
@@ -172,14 +172,11 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
   }
 }
 
-function validNode(node: unknown): node is number {
-  return typeof node === 'number' && Number.isInteger(node) && node >= 0 && node < 729
-}
 
 export function validChainSketchState(value: unknown): value is ChainSketchState {
   if (!value || typeof value !== 'object') return false
   const { sketches, activeId, pending } = value as ChainSketchState
-  if (!(pending === null || validNode(pending)) || !Array.isArray(sketches) || !sketches.some(sketch => sketch?.id === activeId)) return false
+  if (!(pending === null || validChainNode(pending)) || !Array.isArray(sketches) || !sketches.some(sketch => sketch?.id === activeId)) return false
   const ids = new Set<number>()
   const queue = [...sketches]
   for (const sketch of queue) {
@@ -190,10 +187,10 @@ export function validChainSketchState(value: unknown): value is ChainSketchState
       !Array.isArray(sketch.history) || !sketch.history.length || sketch.history.length > MAX_CHAIN_HISTORY) return false
     ids.add(sketch.id)
     if (!sketch.history.every(edges => Array.isArray(edges) && edges.every(edge =>
-      Array.isArray(edge) && edge.length === 2 && edge.every(validNode) && edge[0] !== edge[1]))) return false
+      Array.isArray(edge) && edge.length === 2 && edge.every(validChainNode) && edge[0] !== edge[1]))) return false
     if (sketch.undoSelections !== undefined && (!Array.isArray(sketch.undoSelections) || sketch.undoSelections.length !== sketch.history.length ||
       !sketch.undoSelections.every(selection => selection === null || selection && Number.isSafeInteger(selection.activeId) &&
-        selection.activeId > 0 && (selection.pending === null || validNode(selection.pending))))) return false
+        selection.activeId > 0 && (selection.pending === null || validChainNode(selection.pending))))) return false
     if (sketch.merges === undefined) continue
     if (!Array.isArray(sketch.merges)) return false
     let previousStep = 0
@@ -212,7 +209,8 @@ export function validChainSketchState(value: unknown): value is ChainSketchState
 
 export function removeUnavailableChains(state: ChainSketchState, unavailable: (node: number) => boolean,
   resolved?: (edges: readonly ChainEdge[]) => boolean): ChainSketchState {
-  const missingEndpoint = (edge: ChainEdge) => edge.some(unavailable)
+  const missingNode = (node: ChainNode) => chainNodeCandidates(node).some(candidate => unavailable(candidateId(candidate)))
+  const missingEndpoint = (edge: ChainEdge) => edge.some(missingNode)
   const before = state.sketches.findIndex(({ id }) => id === state.activeId)
   const sketches = state.sketches.filter(({ history }) => {
     const edges = history.at(-1)!
@@ -227,7 +225,7 @@ export function removeUnavailableChains(state: ChainSketchState, unavailable: (n
     }
     const previousSelections = sketch.undoSelections
     const undoSelections = previousSelections?.filter((_, step) => steps.has(step)).map(selection =>
-      selection?.pending != null && unavailable(selection.pending) ? { ...selection, pending: null } : selection)
+      selection?.pending != null && missingNode(selection.pending) ? { ...selection, pending: null } : selection)
     const selectionsUnchanged = previousSelections?.every((selection, step) => selection === undoSelections?.[step]) ?? true
     if (history.length === sketch.history.length && selectionsUnchanged) return sketch
     const updated = { ...sketch, history }
@@ -242,7 +240,7 @@ export function removeUnavailableChains(state: ChainSketchState, unavailable: (n
   })
   if (!sketches.length) return initialChainSketch
   const activeId = sketches.some(({ id }) => id === state.activeId) ? state.activeId : sketches[Math.min(before, sketches.length - 1)].id
-  const pending = activeId !== state.activeId || (state.pending !== null && unavailable(state.pending)) ? null : state.pending
+  const pending = activeId !== state.activeId || (state.pending !== null && missingNode(state.pending)) ? null : state.pending
   return pending === state.pending && sketches.length === state.sketches.length && sketches.every((sketch, i) => sketch === state.sketches[i])
     ? state : { sketches, activeId, pending }
 }

@@ -268,6 +268,7 @@ fn assert_coloring(hint: &Hint, masks: &[u16; 81], solution: &Board) {
 
 #[test]
 fn practice_chain_catalog_replays_all_returned_proofs_against_their_premises_and_solution() {
+    let mut grouped_type_two = 0;
     for (technique, proof) in CHAIN_TECHNIQUES {
         for (index, example) in technique.practice_examples().into_iter().enumerate() {
             let position = example.position().unwrap();
@@ -308,7 +309,18 @@ fn practice_chain_catalog_replays_all_returned_proofs_against_their_premises_and
                         assert_chain(&path, &hint, proof, &masks, &solution);
                     }
                     (HintEvidence::Inference { links }, proof) => {
-                        assert_chain(links, &hint, proof, &masks, &solution)
+                        assert_chain(links, &hint, proof, &masks, &solution);
+                        if technique == GroupedAic {
+                            let first = &links[0].from;
+                            let last = &links.last().unwrap().to;
+                            let grouped_endpoint = [first, last]
+                                .iter()
+                                .any(|node| matches!(node, InferenceNode::Group { .. }));
+                            let first_digit = first.candidates().next().unwrap().digit;
+                            let last_digit = last.candidates().next().unwrap().digit;
+                            grouped_type_two +=
+                                usize::from(grouped_endpoint && first_digit != last_digit);
+                        }
                     }
                     (HintEvidence::Coloring { .. }, Proof::Coloring) => {
                         assert_coloring(&hint, &masks, &solution)
@@ -318,6 +330,10 @@ fn practice_chain_catalog_replays_all_returned_proofs_against_their_premises_and
             }
         }
     }
+    assert!(
+        grouped_type_two > 0,
+        "the catalog must exercise different-digit grouped endpoints"
+    );
 }
 
 #[cfg(all(feature = "wasm-api", feature = "teaching"))]

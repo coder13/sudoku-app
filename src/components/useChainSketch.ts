@@ -5,17 +5,17 @@ import {
   type ChainColor, type ChainColorPair, type ChainSketch, type ChainSketchState,
 } from '../sudoku/chain-sketch'
 import {
-  analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, chainComponents, completeChainLoop, completeMedusa, sameEdge, weakLinkRun,
-  type ChainAnalysis, type ChainEdge, type ChainGraph, type LinkStrength,
+  analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, chainComponents, chainGroup, chainNodeCandidates, chainNodeDigit, chainPoint, completeChainLoop, completeMedusa, sameEdge, weakLinkRun,
+  type ChainAnalysis, type ChainEdge, type ChainGraph, type ChainGroup, type ChainNode, type LinkStrength,
 } from '../sudoku/chains'
 import type { Game } from '../sudoku/game'
 import { cellName } from '../sudoku/lesson-diagram'
 import { roomStore } from '../sudoku/storage'
 import { techniqueActionKey } from '../sudoku/technique-progress'
-import type { BoardAnnotations, BoardLink, CandidateAnnotation, CellAnnotation } from './BoardAnnotations'
+import type { BoardAnnotations, BoardGroup, BoardLink, CandidateAnnotation, CellAnnotation } from './BoardAnnotations'
 import { usePlayPreference } from './usePlayPreference'
 
-type ChainPath = { nodes: readonly number[]; strengths: readonly LinkStrength[] }
+type ChainPath = { nodes: readonly ChainNode[]; strengths: readonly LinkStrength[] }
 type ChainRedo = {
   gameId: string
   position: Game['position']
@@ -24,12 +24,12 @@ type ChainRedo = {
   future: ChainSketchState[]
 }
 export type ChainProof = {
-  title: string; nodes: readonly number[]; strengths?: readonly LinkStrength[]
+  title: string; nodes: readonly ChainNode[]; strengths?: readonly LinkStrength[]
   actions: readonly DeductionAction[]; explanation?: string
 }
 
 function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): ChainPath[] {
-  const paths: { nodes: number[]; strengths: LinkStrength[] }[] = []
+  const paths: { nodes: ChainNode[]; strengths: LinkStrength[] }[] = []
   for (const [from, to] of edges) {
     const strength = graph.strength(from, to)
     if (!strength) continue
@@ -43,10 +43,11 @@ function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): ChainPath[
 }
 
 function recognizedPath(chain: ChainAnalysis) {
-  if (chain.loop) return 'Nice Loop'
+  const grouped = chain.nodes.some(node => typeof node === 'string')
+  if (chain.loop) return grouped ? 'Grouped Nice Loop' : 'Nice Loop'
   const { strengths } = chain
   return strengths.length >= 3 && strengths[0] === 'strong' && strengths.at(-1) === 'strong' &&
-    strengths.every((strength, index) => strength !== strengths[index - 1]) ? 'AIC' : undefined
+    strengths.every((strength, index) => strength !== strengths[index - 1]) ? grouped ? 'Grouped AIC' : 'AIC' : undefined
 }
 
 function drawnEdges(sketches: readonly ChainSketch[], activeId: number) {
@@ -54,6 +55,7 @@ function drawnEdges(sketches: readonly ChainSketch[], activeId: number) {
 }
 
 const weakLinkStatus = 'A path can have at most two weak links in a row.'
+const EMPTY_GROUP_SELECTION: number[] = []
 
 export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent }: {
   canDraw: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
@@ -61,6 +63,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
   const [status, setStatus] = useState('')
+  const [groupSelection, setGroupSelection] = useState<number[] | null>(null)
   const [previewedProof, setPreviewedProof] = useState<ChainProof | null>(null)
   const [redoHistory, setRedoHistory] = useState<ChainRedo | null>(null)
   const [colorPairs] = usePlayPreference('chainColorPairs')
@@ -72,14 +75,24 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   const enabled = canDraw && canAnalyze && Boolean(graph)
   const drawing = enabled && (drawingIntent ?? pending !== null)
   const allDrawnEdges = useMemo(() => drawnEdges(sketches, active.id), [sketches, active.id])
+  const grouping = drawing && groupSelection !== null
+  const selectedGroup = useMemo(() => {
+    if (!grouping || groupSelection.length < 2 || !graph) return null
+    const candidates = groupSelection.map(chainCandidate)
+    const group = chainGroup(candidates[0].digit, candidates.map(({ cell }) => cell))
+    return group && graph.available(group) ? group : null
+  }, [grouping, groupSelection, graph])
+  const groups = useMemo(() => [...new Set([...allDrawnEdges.flat(), ...(pending === null ? [] : [pending])])]
+    .filter((node): node is ChainGroup => typeof node === 'string' && Boolean(graph?.available(node))), [allDrawnEdges, pending, graph])
   const exceedsWeakLinkLimit = useMemo(() => graph && weakLinkRun(graph, allDrawnEdges), [graph, allDrawnEdges])
 
   const analyzed = useMemo(() => graph ? sketches.map((sketch) => {
     const edges = sketch.history.at(-1)!
     const medusas = analyzeMedusa(graph, edges).map(proof => ({
       ...proof,
-      title: proof.nodes.length >= 3 && proof.nodes.some(node => chainCandidate(node).digit !== chainCandidate(proof.nodes[0]).digit)
-        ? '3D Medusa' : 'Strong-link coloring',
+      title: proof.nodes.some(node => typeof node === 'string') ? 'Grouped strong-link coloring'
+        : proof.nodes.length >= 3 && proof.nodes.some(node => chainNodeDigit(node) !== chainNodeDigit(proof.nodes[0]))
+          ? '3D Medusa' : 'Strong-link coloring',
     }))
     const chains = analyzeChainPaths(graph, edges).filter(proof => {
       if (!recognizedPath(proof) || proof.loop || proof.nodes.some((node, i) => i > 0 && graph.strength(proof.nodes[i - 1], node) === 'weak')) return true
@@ -114,41 +127,46 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       if (!chain.canComplete) continue
       const otherNodes = new Set(drawnNodes)
       for (const node of chain.nodes) otherNodes.delete(node)
-      const result = completeChainLoop(graph, chain.nodes, otherNodes)
+      const result = completeChainLoop(graph, chain.nodes, otherNodes, groups)
       if (result.status === 'found' && !result.edges.some(weakLinkRun(graph, [...allDrawnEdges, ...result.edges]))) {
         completions.set(chain, result.edges)
       }
     }
     return completions
-  }, [graph, canAnalyze, activeAnalysis, edges, allDrawnEdges])
+  }, [graph, canAnalyze, activeAnalysis, edges, allDrawnEdges, groups])
   const linkTargets = useMemo(() => {
-    const targets = new Map<number, LinkStrength>()
+    const targets = new Map<ChainNode, LinkStrength>()
     if (!graph || !drawing || active.hidden || pending === null) return targets
-    for (const candidate of graph.candidates) {
+    for (const candidate of [...graph.candidates, ...groups]) {
       const edge: ChainEdge = [pending, candidate]
       if (edges.some((existing) => sameEdge(edge, existing))) continue
       const strength = graph.strength(...edge)
       if (strength && !exceedsWeakLinkLimit?.(edge)) targets.set(candidate, strength)
     }
     return targets
-  }, [graph, drawing, pending, edges, active.hidden, exceedsWeakLinkLimit])
+  }, [graph, drawing, pending, edges, active.hidden, exceedsWeakLinkLimit, groups])
   const strongExtension = useMemo(() => graph && drawing && !active.hidden && pending !== null
-    ? completeMedusa(graph, edges, pending) : [], [graph, drawing, active.hidden, pending, edges])
+    ? completeMedusa(graph, edges, pending, groups) : [], [graph, drawing, active.hidden, pending, edges, groups])
 
   useEffect(() => {
     setHovered(null)
     setStatus('')
+    setGroupSelection(null)
   }, [game.id])
 
   useEffect(() => {
-    if (!drawing) setHovered(null)
+    if (!drawing) {
+      setHovered(null)
+      setGroupSelection(null)
+    }
   }, [drawing])
 
   useEffect(() => {
     const saved = game.chainSketch
     if (!graph || !graphCurrent || !saved) return
-    const candidates = new Set(graph.candidates)
-    const next = removeUnavailableChains(saved, (node) => !candidates.has(node))
+    const pruned = removeUnavailableChains(saved, (node) => !graph.available(node),
+      edges => edges.some(edge => !edge.every(node => graph.available(node))))
+    const next = pruned.pending !== null && !graph.available(pruned.pending) ? { ...pruned, pending: null } : pruned
     if (next === saved) return
     roomStore.update(game.id, (current) => current.chainSketch === saved &&
       current.givens === game.givens && current.position.entries === game.position.entries &&
@@ -161,17 +179,19 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
     const assigned = new Map<number, { pair: ChainColorPair; side: 0 | 1 }>()
     const links: BoardLink[] = []
+    const groupMarks: BoardGroup[] = []
     const activeProofs = canAnalyze && activeAnalysis && !active.hidden ? [...activeAnalysis.chains, ...activeAnalysis.medusas] : []
     const proof = previewedProof && activeProofs.some(proof => proof === previewedProof) ? previewedProof : null
     const proofNodes = new Set(proof?.nodes)
     const proofEdges: ChainEdge[] = proof?.strengths ? proof.nodes.slice(1).map((to, i) => [proof.nodes[i], to]) : []
     for (const action of proof?.actions ?? []) proofNodes.add(candidateId('place' in action ? action.place : action.eliminate))
 
-    function mark(id: number, annotation: CandidateAnnotation, preview = false) {
-      const { cell, digit } = chainCandidate(id)
-      const row = candidateMarks.get(cell) ?? new Map()
-      row.set(digit, preview && proof && !proofNodes.has(id) ? { ...annotation, opacity: 0.5 } : annotation)
-      candidateMarks.set(cell, row)
+    function mark(node: ChainNode, annotation: CandidateAnnotation, preview = false) {
+      for (const { cell, digit } of chainNodeCandidates(node)) {
+        const row = candidateMarks.get(cell) ?? new Map()
+        row.set(digit, preview && proof && !proofNodes.has(node) ? { ...annotation, opacity: 0.5 } : annotation)
+        candidateMarks.set(cell, row)
+      }
     }
 
     const visible = analyzed.filter(sketch => !sketch.hidden)
@@ -182,7 +202,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
 
     const colorings = new Map(visible.map(sketch => {
       const sides = new Map(sketch.medusas.flatMap(proof => [...proof.sides]))
-      const coloring = new Map<number, { pair: ChainColorPair; side: 0 | 1 }>()
+      const coloring = new Map<ChainNode, { pair: ChainColorPair; side: 0 | 1 }>()
       let useSketchPair = true
       for (const nodes of sketch.components) {
         const coloredNodes = nodes.filter(node => sides.has(node))
@@ -208,20 +228,23 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
           const inProof = proof?.strengths ? proofEdges.some(edge => sameEdge(edge, [from, to]))
             : strength === 'strong' && proofNodes.has(from) && proofNodes.has(to)
           const opacity = proof && sketch.id === active.id && !inProof ? 0.5 : undefined
-          links.push({ from: chainCandidate(from), to: chainCandidate(to), dashed: strength === 'weak', opacity,
+          links.push({ from: chainPoint(from), to: chainPoint(to), dashed: strength === 'weak', opacity,
             color: strength === 'strong' && color ? chainColor(color.pair[0]) : neutral })
         })
       }
 
       for (const node of sketch.components.flat()) {
         const color = coloring.get(node)
+        if (typeof node === 'string') groupMarks.push({ point: chainPoint(node),
+          color: color ? chainColor(color.pair[color.side]) : neutral,
+          opacity: proof && sketch.id === active.id && !proofNodes.has(node) ? 0.5 : undefined, label: 'Candidate group' })
         if (color) {
-          assigned.set(node, color)
+          for (const candidate of chainNodeCandidates(node)) assigned.set(candidateId(candidate), color)
           mark(node, { color: chainColor(color.pair[color.side]),
-            mark: 'emphasized', label: `Chain color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === active.id)
+            mark: 'emphasized', label: `${typeof node === 'string' ? 'Group' : 'Chain'} color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === active.id)
         } else {
-          assigned.delete(node)
-          mark(node, { color: neutral, mark: 'emphasized', label: 'Linked candidate' }, sketch.id === active.id)
+          for (const candidate of chainNodeCandidates(node)) assigned.delete(candidateId(candidate))
+          mark(node, { color: neutral, mark: 'emphasized', label: typeof node === 'string' ? 'Linked candidate group' : 'Linked candidate' }, sketch.id === active.id)
         }
       }
     }
@@ -254,23 +277,31 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       }
     }
     if (!active.hidden && pending !== null) {
-      const { cell, digit } = chainCandidate(pending)
-      if (!candidateMarks.get(cell)?.has(digit)) {
-        mark(pending, { color: neutral, mark: 'emphasized', label: 'Selected for linking' })
+      if (typeof pending === 'string') groupMarks.push({ point: chainPoint(pending), color: neutral, label: 'Group selected for linking' })
+      for (const candidate of chainNodeCandidates(pending)) {
+        if (!candidateMarks.get(candidate.cell)?.has(candidate.digit)) {
+          mark(candidateId(candidate), { color: neutral, mark: 'emphasized', label: typeof pending === 'string' ? 'Group selected for linking' : 'Selected for linking' })
+        }
       }
     }
-    const annotations: BoardAnnotations = { cells: contradictionCells, candidates: candidateMarks, links }
+    if (grouping) {
+      for (const node of groupSelection) {
+        mark(node, { color: 'var(--chain-placement)', mark: 'ring', label: 'Selected group member' })
+      }
+      groupMarks.push({ point: { candidates: groupSelection.map(chainCandidate) }, color: 'var(--chain-placement)', label: 'Selected group members' })
+    }
+    const annotations: BoardAnnotations = { cells: contradictionCells, candidates: candidateMarks, links, groups: groupMarks }
     return { annotations, assigned, usedPairs }
-  }, [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs, previewedProof])
+  }, [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs, previewedProof, grouping, groupSelection])
 
   const preview = useMemo<BoardLink | undefined>(() => {
-    if (pending === null || hovered === null) return
+    if (grouping || pending === null || hovered === null) return
     const strength = linkTargets.get(hovered)
     if (!strength) return
     return {
-      from: chainCandidate(pending), to: chainCandidate(hovered), color: 'var(--chain-neutral)', dashed: strength === 'weak',
+      from: chainPoint(pending), to: chainCandidate(hovered), color: 'var(--chain-neutral)', dashed: strength === 'weak',
     }
-  }, [pending, hovered, linkTargets])
+  }, [pending, hovered, linkTargets, grouping])
 
   function save(change: (state: ChainSketchState, current: Game) => ChainSketchState) {
     roomStore.update(game.id, (current) => {
@@ -286,7 +317,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       redoHistory.sketches === state.sketches && redoHistory.activeId === state.activeId ? redoHistory : null
   }
 
-  function updateActive(update: (sketch: ChainSketch) => ChainSketch, endpoint?: number | null,
+  function updateActive(update: (sketch: ChainSketch) => ChainSketch, endpoint?: ChainNode | null,
     requireCurrentPath = false) {
     save((state) => {
       if (state.activeId !== active.id) return state
@@ -309,19 +340,21 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }
 
   function endPath() {
+    setGroupSelection(null)
     save((state) => state.pending === null ? state : { ...state, pending: null })
     setHovered(null)
     setStatus('')
   }
 
   function switchSketch(id: number) {
+    setGroupSelection(null)
     save((state) => id === state.activeId || !state.sketches.some(sketch => sketch.id === id)
       ? state : { ...state, activeId: id, pending: null })
     setHovered(null)
     setStatus('')
   }
 
-  function changeEdges(next: ChainEdge[], endpoint: number | null = null, highlightedDigit?: number, reveal = false) {
+  function changeEdges(next: ChainEdge[], endpoint: ChainNode | null = null, highlightedDigit?: number, reveal = false) {
     const weakAdditions = graph ? next.filter(edge => graph.strength(...edge) === 'weak' &&
       !edges.some(existing => sameEdge(edge, existing))) : []
     save((state) => {
@@ -340,42 +373,73 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     const node = candidateId(candidate)
     const additions = component.filter(edge => !edges.some(existing => sameEdge(edge, existing)))
     setDrawingIntent(true)
+    setGroupSelection(null)
     setHovered(null)
     setStatus('')
     if (additions.length) changeEdges([...edges, ...additions], node, candidate.digit, true)
     else updateActive(sketch => ({ ...sketch, hidden: false, highlightedDigit: candidate.digit }), node, true)
   }
 
-  function select(candidate: Candidate) {
-    if (!enabled || !drawing || !graph || active.hidden) return
-    const id = candidateId(candidate)
+  function selectNode(id: ChainNode) {
+    if (!enabled || !drawing || !graph || active.hidden || !graph.available(id)) return false
     if (pending === id) {
       const remaining = edges.filter(edge => !edge.includes(id))
       if (remaining.length === edges.length - 1) {
         changeEdges(remaining)
         setStatus('Branch tip removed.')
-        return
+        return true
       }
     }
-    const mark = (sketch: ChainSketch) => sketch.highlightedDigit === candidate.digit ? sketch : { ...sketch, highlightedDigit: candidate.digit }
-    const name = `${candidate.digit} in ${cellName(candidate.cell)}`
+    const digit = chainNodeDigit(id)
+    const mark = (sketch: ChainSketch) => sketch.highlightedDigit === digit ? sketch : { ...sketch, highlightedDigit: digit }
+    const name = chainNodeCandidates(id).map(candidate => `${candidate.digit} in ${cellName(candidate.cell)}`).join(' or ')
     const alreadyLinked = edges.some(edge => edge.includes(id))
-    if (pending === null || pending === id || (alreadyLinked && !linkTargets.has(id))) {
+    const link: ChainEdge | undefined = pending === null ? undefined : [pending, id]
+    const strength = link && graph.strength(...link)
+    const canLink = strength && !edges.some(edge => sameEdge(edge, link!)) && !exceedsWeakLinkLimit?.(link!)
+    if (pending === null || pending === id || (alreadyLinked && !canLink)) {
       updateActive(mark, pending === id ? null : id)
       setHovered(null)
       setStatus('')
+      return true
+    }
+    if (canLink && link) {
+      changeEdges([...edges, link], id, digit)
+      setStatus('')
+      return true
+    }
+    if (link && exceedsWeakLinkLimit?.(link)) setStatus(weakLinkStatus)
+    else {
+      setHighlightedDigit(digit)
+      setStatus(`No link to ${name}. Every candidate at one end must conflict with every candidate at the other end.`)
+    }
+    return false
+  }
+
+  function select(candidate: Candidate) {
+    if (!enabled || !drawing || !graph || active.hidden) return
+    const id = candidateId(candidate)
+    if (!graph.available(id)) return
+    if (!grouping) { selectNode(id); return }
+    if (groupSelection.includes(id)) {
+      setGroupSelection(groupSelection.filter(node => node !== id))
+      setStatus('')
       return
     }
-    const link: ChainEdge = [pending, id]
-    if (linkTargets.has(id)) {
-      changeEdges([...edges, link], id, candidate.digit)
-      setStatus('')
-    } else if (exceedsWeakLinkLimit?.(link)) {
-      setStatus(weakLinkStatus)
-    } else {
-      setHighlightedDigit(candidate.digit)
-      setStatus(`No link to ${name}. Choose a candidate that conflicts with the selected one.`)
+    if (groupSelection.length && chainNodeDigit(groupSelection[0]) !== candidate.digit) {
+      setStatus('All candidates in a group must have the same digit.')
+      return
     }
+    const next = [...groupSelection, id]
+    const group = next.length > 1 ? chainGroup(candidate.digit, next.map(node => chainCandidate(node).cell)) : null
+    if (next.length > 1 && (!group || !graph.available(group))) {
+      setStatus('All candidates in a group must share a row, column, box, or extra house.')
+      return
+    }
+    setHighlightedDigit(candidate.digit)
+    setGroupSelection(next)
+    setHovered(null)
+    setStatus('')
   }
 
   function finishLoop(chain: ChainAnalysis) {
@@ -392,17 +456,33 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }
 
   return {
-    drawing,
+    drawing, grouping, groupSelection: grouping ? groupSelection : EMPTY_GROUP_SELECTION, groups,
+    canUseGroup: selectedGroup !== null,
+    startGroup() {
+      if (!enabled || active.hidden) return
+      setDrawingIntent(true)
+      setGroupSelection([])
+      setHovered(null)
+      setStatus('')
+    },
+    cancelGroup() { setGroupSelection(null); setStatus('') },
+    useGroup() {
+      if (selectedGroup && selectNode(selectedGroup)) setGroupSelection(null)
+    },
+    selectGroup(group: ChainGroup) {
+      setGroupSelection(null)
+      selectNode(group)
+    },
     annotations: preview ? { ...committed.annotations, links: [preview, ...(committed.annotations.links ?? [])] } : committed.annotations,
     colorPairs, assignedColors: committed.assigned, usedColorPairs: committed.usedPairs,
     sketches: analyzed, active, status, pending, beginAt, select, finishLoop, stop, endPath, setHighlightedDigit,
-    suspend: () => setDrawingIntent(false),
+    suspend: () => { setDrawingIntent(false); setGroupSelection(null) },
     setPreviewedProof,
     chains: canAnalyze ? activeAnalysis?.chains ?? [] : [],
     medusas: canAnalyze ? activeAnalysis?.medusas ?? [] : [],
     allActions: applicable.actions, appliedChainIds: applicable.chainIds,
     hasLinks: edges.length > 0,
-    contains: (candidate: Candidate) => edges.some(edge => edge.includes(candidateId(candidate))),
+    contains: (candidate: Candidate) => edges.some(edge => edge.some(node => chainNodeCandidates(node).some(member => candidateId(member) === candidateId(candidate)))),
     canUndo: active.history.length > 1,
     canRedo: redoFor(game, savedSketch) !== null,
     canFinishLoop: (chain: ChainAnalysis) => loopCompletions.has(chain),
@@ -412,7 +492,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       changeEdges([...edges, ...strongExtension], pending)
       setStatus('')
     },
-    isLinkTarget: (candidate: Candidate) => linkTargets.has(candidateId(candidate)),
+    isLinkTarget: (candidate: Candidate) => grouping ? groupSelection.includes(candidateId(candidate)) : linkTargets.has(candidateId(candidate)),
     hover(candidate: Candidate | null) {
       setHovered(candidate && candidateId(candidate))
     },
@@ -426,6 +506,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     },
     switchSketch,
     addSketch() {
+      setGroupSelection(null)
       save((state) => {
         const current = state.sketches.find(({ id }) => id === state.activeId)!
         if (!current.history.at(-1)?.length) return state
@@ -438,6 +519,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       setStatus('')
     },
     toggleVisibility(id: number) {
+      setGroupSelection(null)
       save((state) => {
         const target = state.sketches.find(sketch => sketch.id === id)
         if (!target || (!target.hidden && !target.history.at(-1)?.length)) return state
@@ -448,6 +530,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       setStatus('')
     },
     deleteSketch(id: number) {
+      setGroupSelection(null)
       save((state) => {
         const index = state.sketches.findIndex((sketch) => sketch.id === id)
         if (index === -1) return state
@@ -463,6 +546,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       updateActive((sketch) => ({ ...sketch, color, secondColor }))
     },
     undo() {
+      setGroupSelection(null)
       save((state, current) => {
         if (state.activeId !== active.id) return state
         const next = undoChainEdit(state, drawing)
@@ -476,6 +560,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       setStatus('')
     },
     redo() {
+      setGroupSelection(null)
       save((state, current) => {
         const history = redoFor(current, state)
         if (!history) return state
@@ -488,6 +573,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       setStatus('')
     },
     clear() {
+      setGroupSelection(null)
       changeEdges([])
       setStatus('Links cleared.')
     },
