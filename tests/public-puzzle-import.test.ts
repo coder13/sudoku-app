@@ -185,6 +185,7 @@ test('the mirrored Renban publication accepts only encoded halves and matching p
     : worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {}))
 
   const imported = await detectPuzzle(source.url)
+  assert.deepEqual((await detectPuzzle(publication.sudoku)).variant, imported.variant)
   assert.deepEqual(imported.variant?.puzzle.rules, [
     { type: 'palindrome', cells: [0, 10, 20, 30, 40] },
     { type: 'renban', cells: [40, 30, 20] },
@@ -193,12 +194,14 @@ test('the mirrored Renban publication accepts only encoded halves and matching p
   for (const givenConstraints of [[palindrome], [palindrome, { ...renban, segments: [{ cells: [40, 30] }] }], [renban]]) {
     specificSudoku = { ...publication, sudoku: coachCode({ ...data, givenConstraints }) }
     await assert.rejects(detectPuzzle(source.url), /does not match its published mirrored Renban/)
+    await assert.rejects(detectPuzzle(specificSudoku.sudoku), /unsupported authored markings/)
   }
 
   cellColours.set(20, cellColours.get(40)!)
   cellColours.delete(40)
   specificSudoku = { ...publication, sudoku: coachCode({ ...data, givenColours: coloursAtCells() }) }
   await assert.rejects(detectPuzzle(source.url), /does not match its published mirrored Renban/)
+  await assert.rejects(detectPuzzle(specificSudoku.sudoku), /unsupported authored markings/)
 
   for (const override of [
     { description: publication.description + '\nRed cells also count twice.' },

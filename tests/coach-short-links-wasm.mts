@@ -625,30 +625,73 @@ test('the published Cmdt short link preserves its full mixed puzzle, hints, Find
   } finally { sqlite.close() }
 })
 
-test('published markings require exact colour-to-region membership', async ({ mock }) => {
+test('pasted and published markings require encoded regions or mirrored Renban pairs', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()
-  const house = [0, 1, 2, 9, 10, 11, 18, 19, 20]
+  const house = [0, 1, 2, 9, 10, 11, 18, 19, 27]
   const marks = (cells: number[]) => Array.from({ length: 81 }, (_, cell) => cells.includes(cell) ? '0' : '').join(',')
   const region = { type: 'region', segments: [{ cells: house }] }
+  const palindrome = { type: 'palindromeLine', segments: [{ cells: [0, 10, 20, 30, 40] }, { cells: [15, 25, 35] }] }
+  const renban = { type: 'renban', segments: [{ cells: [40, 30, 20] }] }
+  const marksWithPair = (otherCell: number) => marks(house).split(',')
+    .map((shades, cell) => cell === 0 || cell === otherCell ? shades + '1' : shades).join(',')
+  const solution = '534876912872195346196342587659781423428653791713924658981537264267419835345268179'
+  const givenDigits = [...solution].map((digit, cell) => cell % 10 === 0 ? '0' : digit).join('')
+  const mixed = { givenDigits, colours: ['blue', 'orange'], givenColours: marksWithPair(40), givenConstraints: [region, palindrome, renban] }
   const cases = {
+    Mixed: mixed,
+    WrongPair: { ...mixed, givenColours: marksWithPair(20) },
     Exact: { givenColours: marks(house) },
+    UnusedPalette: { colours: ['blue', 'red'], givenColours: marks(house) },
+    PaletteOnly: { colours: ['blue'], givenColours: marks([]) },
     Partial: { givenColours: marks(house.slice(1)) },
     Other: { givenColours: marks([...house.slice(1), 80]) },
     Unknown: { givenColours: marks(house).replace('0', '1') },
     Truncated: { givenColours: '0,0' },
     Missing: { givenColours: marks(house), givenConstraints: [] },
   } as const
+  const codeFor = (id: keyof typeof cases) => coachCode({ colours: ['blue'], givenConstraints: [region], ...cases[id] })
   mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
     if (!path.startsWith('https://sudoku.coach/')) return fetcher(path, init)
     const id = path.split('/').at(-1)! as keyof typeof cases
-    const source = coachCode({ colours: ['blue'], givenConstraints: [region], ...cases[id] })
-    return Promise.resolve(new Response(coachPage(id, source, 'Colored region')))
+    return Promise.resolve(new Response(coachPage(id, codeFor(id), 'Colored region')))
   })
   try {
-    const exact = await detectPuzzle('https://sudoku.coach/en/s/Exact')
-    assert.deepEqual(exact.variant?.puzzle.rules, [{ type: 'extra-house', cells: house }])
-    for (const id of Object.keys(cases).filter(key => key !== 'Exact')) {
-      await assert.rejects(detectPuzzle(`https://sudoku.coach/en/s/${id}`), /unsupported authored markings/)
+    for (const id of ['Exact', 'UnusedPalette', 'PaletteOnly', 'Mixed'] as const) {
+      const code = codeFor(id)
+      for (const input of [code, `https://sudoku.coach/en/play/${code}`, `https://sudoku.coach/en/s/${id}`]) {
+        const imported = await detectPuzzle(input)
+        assert.deepEqual(imported.variant?.puzzle.rules, id === 'Mixed' ? [
+          { type: 'extra-house', cells: house },
+          { type: 'palindrome', cells: [0, 10, 20, 30, 40] },
+          { type: 'palindrome', cells: [15, 25, 35] },
+          { type: 'renban', cells: [40, 30, 20] },
+        ] : [{ type: 'extra-house', cells: house }], id)
+      }
+    }
+    const { game } = await prepareImportedPuzzle('https://sudoku.coach/en/s/Mixed')
+    const { variant } = game
+    assert.equal(variant?.solution, solution)
+    assertVariantCompletion(variant.puzzle, solution)
+    const ranked = await puzzleHints(game)
+    assert.ok(ranked.choices.length > 1)
+    const technique = ranked.choices[0].technique
+    const selected = await puzzleHints(game, 'all', technique)
+    const actions = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+    assert.ok(actions.size > 0)
+    const scan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(variant, game.position))
+    try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    assert.equal((await puzzleSolution(game)).board, solution)
+    const played = applyDeduction(game, ranked.choices[0].actions, ranked.candidates!)
+    assert.notEqual(played, game)
+    assert.deepEqual(readGame(played.id, JSON.stringify(played))?.variant, variant)
+    const shared = await prepareSharedPuzzle(await publishSharedPuzzle(played), [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, variant)
+    assert.equal(valuesOf(shared.game), givenDigits)
+    for (const id of ['Partial', 'Other', 'Unknown', 'Truncated', 'Missing', 'WrongPair'] as const) {
+      const code = codeFor(id)
+      for (const input of [code, `https://sudoku.coach/en/play/${code}`, `https://sudoku.coach/en/s/${id}`]) {
+        await assert.rejects(detectPuzzle(input), /unsupported authored markings/, id)
+      }
     }
   } finally { sqlite.close() }
 })

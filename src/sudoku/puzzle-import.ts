@@ -236,34 +236,41 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean)) return { entries, center, corner }
 }
 
-function readCoachCellColours({ colours, givenColours }: Record<string, unknown>) {
-  if (!hasData(colours) && !hasData(givenColours)) return { cellColours: [], paletteSize: 0 }
-  if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
-    !colours.every(colour => typeof colour === 'string' && colour.length > 0) ||
-    typeof givenColours !== 'string') return
-  const palette = COACH_BASE62.slice(0, colours.length)
+function readCoachCellColours({ colours, givenColours }: Record<string, unknown>): string[] | undefined {
+  if (givenColours === undefined || givenColours === '') return []
+  if (typeof givenColours !== 'string') return
   const cellColours = givenColours.split(',')
-  if (cellColours.length !== 81 || cellColours.some(shades =>
+  if (cellColours.length !== 81) return
+  if (!cellColours.some(Boolean)) return []
+  if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
+    !colours.every(colour => typeof colour === 'string' && colour.length > 0)) return
+  const palette = COACH_BASE62.slice(0, colours.length)
+  if (cellColours.some(shades =>
     new Set(shades).size !== shades.length || [...shades].some(shade => !palette.includes(shade)))) return
-  return { cellColours, paletteSize: colours.length }
+  return cellColours
 }
 
-function coachColoursMatchExtraHouses(data: Record<string, unknown>, rules: readonly VariantRule[]): boolean {
-  const colours = readCoachCellColours(data)
-  if (!colours) return false
-  const groups = Array.from({ length: colours.paletteSize }, (): number[] => [])
-  for (const [cell, shades] of colours.cellColours.entries()) {
-    for (const shade of shades) groups[COACH_BASE62.indexOf(shade)].push(cell)
+function coachColoursWithoutExtraHouses(cellColours: string[], rules: readonly VariantRule[]): string[] {
+  if (!cellColours.length) return cellColours
+  const groups = new Map<string, number[]>()
+  for (const [cell, shades] of cellColours.entries()) {
+    for (const shade of shades) {
+      const group = groups.get(shade)
+      if (group) group.push(cell)
+      else groups.set(shade, [cell])
+    }
   }
   // The built-in region drawing already shows a colour group with this exact membership.
   const houses = rules.filter(rule => rule.type === 'extra-house')
-  return groups.every(group => group.length === 9 &&
-    houses.some(house => house.cells.length === group.length && group.every(cell => house.cells.includes(cell))))
+  const covered = new Set<string>()
+  for (const [shade, group] of groups) {
+    if (group.length === 9 && houses.some(house => house.cells.length === group.length &&
+      group.every(cell => house.cells.includes(cell)))) covered.add(shade)
+  }
+  return covered.size ? cellColours.map(shades => [...shades].filter(shade => !covered.has(shade)).join('')) : cellColours
 }
 
-function coachMirroredRenbansMatch(data: Record<string, unknown>, rules: readonly VariantRule[]): boolean {
-  const colours = readCoachCellColours(data)
-  if (!colours) return false
+function coachMirroredRenbansMatch(cellColours: readonly string[], rules: readonly VariantRule[], allPalindromes: boolean): boolean {
   const cellSetKey = (cells: readonly number[]) => [...cells].sort((a, b) => a - b).join(',')
   const renbans = new Set(rules.filter(rule => rule.type === 'renban').map(rule => cellSetKey(rule.cells)))
   const palindromes = rules.filter(rule => rule.type === 'palindrome')
@@ -274,7 +281,10 @@ function coachMirroredRenbansMatch(data: Record<string, unknown>, rules: readonl
     // A Renban on either half applies to both halves through the mirrored digits.
     // Both halves include the middle cell of an odd-length Palindrome.
     const half = Math.ceil(cells.length / 2)
-    if (!renbans.has(cellSetKey(cells.slice(0, half))) && !renbans.has(cellSetKey(cells.slice(-half)))) return false
+    if (!renbans.has(cellSetKey(cells.slice(0, half))) && !renbans.has(cellSetKey(cells.slice(-half)))) {
+      if (allPalindromes) return false
+      continue
+    }
     for (let index = 0; index < Math.floor(cells.length / 2); index++) {
       mirrorPairs.add(cellSetKey([cells[index], cells[cells.length - 1 - index]]))
     }
@@ -283,7 +293,7 @@ function coachMirroredRenbansMatch(data: Record<string, unknown>, rules: readonl
   // The same pair of colours selects the two mirrored cells. Individual colours
   // are reused on several pairs, so compare the whole combination on each cell.
   const groups = new Map<string, number[]>()
-  for (const [cell, shades] of colours.cellColours.entries()) {
+  for (const [cell, shades] of cellColours.entries()) {
     if (!shades) continue
     const combination = [...shades].sort().join('')
     const group = groups.get(combination)
@@ -320,13 +330,18 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
     throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
   }
-  const mirroredRenban = publication?.authoredRule === 'mirrored-renban'
-  if (mirroredRenban && !coachMirroredRenbansMatch(data, rules)) {
+  const cellColours = readCoachCellColours(data)
+  const declaredMirroredRenban = publication?.authoredRule === 'mirrored-renban'
+  if (declaredMirroredRenban && (!cellColours || !coachMirroredRenbansMatch(cellColours, rules, true))) {
     throw new Error('The Sudoku Coach export does not match its published mirrored Renban rules and markings.')
   }
-  if ((publication || whispersGuide) && (COACH_DRAWINGS.some(key => hasData(data[key])) ||
-    !whispersGuide && !mirroredRenban && !coachColoursMatchExtraHouses(data, rules))) {
-    throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+  const unsupportedDrawings = (publication || whispersGuide) && COACH_DRAWINGS.some(key => hasData(data[key]))
+  if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+  if (!whispersGuide && !declaredMirroredRenban) {
+    const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
+    if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
+      throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+    }
   }
   if (publication?.authoredRule === 'all-black-dots') {
     const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
