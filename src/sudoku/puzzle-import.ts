@@ -1,3 +1,4 @@
+import type { NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
 import type { NumberPosition } from '../number-puzzles/progress.ts'
 import type { CalcudokuImport } from '../calcudoku/imported.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
@@ -269,8 +270,8 @@ function readCoachColorNames(cells: readonly string[], palette: readonly unknown
   return colors
 }
 
-function readCoachPlayerColors(data: Record<string, unknown>): ImportedCellColors | undefined {
-  const cells = readCoachColourCells(data.colours, data.userColours)
+function readCoachPlayerColors(data: Record<string, unknown>, size = 9): ImportedCellColors | undefined {
+  const cells = readCoachColourCells(data.colours, data.userColours, size ** 2)
   if (!cells) throw new Error('This Sudoku Coach progress has invalid cell colors.')
   if (!cells.length) return
   const colors = readCoachColorNames(cells, data.colours as unknown[])
@@ -278,18 +279,18 @@ function readCoachPlayerColors(data: Record<string, unknown>): ImportedCellColor
   return colors
 }
 
-function readCoachCandidateColors(palette: unknown, encoded: unknown): CandidateColors<string> | undefined {
+function readCoachCandidateColors(palette: unknown, encoded: unknown, size = 9): CandidateColors<string> | undefined {
   if (encoded === undefined || encoded === '') return
   const marks = typeof encoded === 'string' ? encoded.split('-') : []
   const invalid = () => new Error('This Sudoku Coach progress has invalid or unsupported candidate colors.')
-  if (!marks.length || marks.length > 81 * 9 || !Array.isArray(palette) || palette.length > COACH_BASE62.length) throw invalid()
+  if (!marks.length || marks.length > size ** 3 || !Array.isArray(palette) || palette.length > COACH_BASE62.length) throw invalid()
   const colors: CandidateColors<string> = {}
   for (const mark of marks) {
     // Coach stores one color for each cell and digit, using a base62 palette index.
     const match = /^([1-7]\d|80|\d)\+([1-9])\+([0-9A-Za-z])$/.exec(mark)
     if (!match) throw invalid()
     const cell = Number(match[1]), digit = Number(match[2]), shade = palette[COACH_BASE62.indexOf(match[3])]
-    if (!isImportedColor(shade) || colors[cell]?.[digit] !== undefined) throw invalid()
+    if (cell >= size ** 2 || digit > size || !isImportedColor(shade) || colors[cell]?.[digit] !== undefined) throw invalid()
     const cellColors = colors[cell] ??= {}
     cellColors[digit] = shade
   }
@@ -309,14 +310,24 @@ function readCoachProgressDigits(value: unknown, givens: string, size: number) {
 }
 
 function readCoachNumberPosition(data: Record<string, unknown>, givens: string, size: number): NumberPosition | undefined {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
-  if (readCoachColourCells(data.colours, data.userColours, size ** 2)?.length !== 0 || hasData(data.userCellCandidatesColours)) {
-    throw new Error('This Sudoku Coach progress has unsupported player colors.')
-  }
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
   const values = Array.from(readCoachProgressDigits(data.userDigits, givens, size), Number)
   const notes = readCoachCandidateMasks(data.userCellCandidates, size).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   const cornerNotes = readCoachCandidateMasks(data.userBoxCandidates, size).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   if (values.some(Boolean) || notes.some(Boolean) || cornerNotes.some(Boolean)) return { values, notes, cornerNotes }
+}
+
+function readCoachNumberAnnotations(data: Record<string, unknown>, size: number, published: boolean): NumberImportAnnotations | undefined {
+  const codes = readCoachColourCells(data.colours, data.givenColours, size ** 2)
+  const givenColors = codes?.length ? readCoachColorNames(codes, data.colours as unknown[]) : undefined
+  if (!codes || codes.length && !givenColors) throw new Error('This Sudoku Coach puzzle has unsupported cell colors.')
+  const cellColors = readCoachPlayerColors(data, size)
+  const candidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, size)
+  const quickDraw = readCoachQuickDraw(data, size)
+  if (givenColors || cellColors || candidateColors || quickDraw) {
+    return { ...(givenColors && { givenColors }), ...(cellColors && { cellColors }), ...(candidateColors && { candidateColors }),
+      ...(quickDraw && (published ? { givenDrawings: quickDraw } : { drawings: quickDraw })) }
+  }
 }
 
 function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
@@ -441,7 +452,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
-  const futoshiki = await readCoachFutoshiki(data)
+  const futoshiki = await readCoachFutoshiki(data, Boolean(publication))
   if (futoshiki) {
     checkStandaloneCoachPublication(publication)
     return futoshiki
@@ -450,19 +461,17 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     Array.isArray(data.regions) && data.regions.length === 0 && Array.isArray(data.givenConstraints) &&
     data.givenConstraints.some(layer => record(layer) && (layer.type === 'cosmeticCage' || data.gridSize !== 7 && layer.type === 'cage'))) {
     checkStandaloneCoachPublication(publication)
-    if (COACH_DRAWINGS.some(key => hasData(data[key]))) {
-      throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-    }
-    const codes = readCoachColourCells(data.colours, data.givenColours, data.gridSize ** 2)
-    const palette = data.colours as unknown[] | undefined
-    const colors = codes?.map(code => code ? palette?.[COACH_BASE62.indexOf(code)] : '')
-    if (!codes || codes.some(code => code.length > 1) || !colors?.every(color => color === '' || isImportedColor(color))) {
-      throw new Error('This Sudoku Coach puzzle has unsupported cell colors.')
-    }
+    const annotations = readCoachNumberAnnotations(data, data.gridSize, Boolean(publication))
+    const { givenColors, ...otherAnnotations } = annotations ?? {}
+    // Keep the same portable definition for the existing single-color cages.
+    const colors = givenColors && Object.values(givenColors).every(shades => shades?.length === 1)
+      ? Array.from({ length: data.gridSize ** 2 }, (_, cell) => givenColors[cell]?.[0] ?? '') : []
     const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
     const calcudoku = readCoachCalcudoku(data, colors)
     const position = readCoachNumberPosition(data, calcudoku.givens, calcudoku.size)
     if (position) calcudoku.position = position
+    const retainedAnnotations = colors.length ? otherAnnotations : annotations
+    if (retainedAnnotations && Object.keys(retainedAnnotations).length) calcudoku.annotations = retainedAnnotations
     return { givens: calcudoku.givens, format: 'Sudoku Coach', calcudoku }
   }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -557,15 +566,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 
-async function readCoachFutoshiki(data: Record<string, unknown>): Promise<ImportedPuzzle | undefined> {
+async function readCoachFutoshiki(data: Record<string, unknown>, published: boolean): Promise<ImportedPuzzle | undefined> {
   const { gridSize: size, regions } = data
   if (!(size === 4 || size === 5 || size === 6) || !Array.isArray(regions) || regions.length !== 0) return
   const constraints = data.givenConstraints ?? []
   if (!Array.isArray(constraints) || constraints.some(layer => !record(layer) || layer.type !== 'greaterLess')) return
-  if (COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
-    throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-  }
-
   const givens = data.givenDigits === undefined ? '0'.repeat(size ** 2) : data.givenDigits
   if (typeof givens !== 'string' || givens.length !== size ** 2 || !/^[0-6]+$/.test(givens) ||
     [...givens].some(digit => Number(digit) > size)) {
@@ -587,7 +592,8 @@ async function readCoachFutoshiki(data: Record<string, unknown>): Promise<Import
   }
   const { createImportedFutoshiki } = await import('../futoshiki/imported.ts')
   const position = readCoachNumberPosition(data, givens, size)
-  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, position) }
+  const annotations = readCoachNumberAnnotations(data, size, published)
+  return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, position, annotations) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {

@@ -80,6 +80,7 @@
 }
 
 .number-puzzle-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(var(--number-puzzle-columns), minmax(0, 1fr));
   width: 100%;
@@ -94,7 +95,7 @@
 
 .number-puzzle-preview { width: var(--board-frame-width, 100%); }
 
-.number-puzzle-grid > * {
+.number-puzzle-grid > :not(.board-quick-draw) {
   aspect-ratio: 1;
   min-width: 0;
   min-height: 0;
@@ -116,7 +117,9 @@
 }
 
 .number-puzzle-cell[data-color] {
-  background: color-mix(in srgb, var(--number-cell-color) 30%, var(--board-bg));
+  --number-cell-color-base: var(--board-bg);
+  --number-cell-color-weight: 30%;
+  background: var(--number-cell-color-stripes, color-mix(in srgb, var(--number-cell-color) var(--number-cell-color-weight), var(--number-cell-color-base)));
 }
 
 .number-puzzle-grid:not([data-toggle-cells]) .number-puzzle-cell[aria-pressed="true"] {
@@ -125,7 +128,8 @@
 }
 
 .number-puzzle-grid .number-puzzle-cell[data-color][aria-pressed="true"]:not([data-conflict="true"]) {
-  background: color-mix(in srgb, var(--number-cell-color) 30%, var(--surface-active));
+  --number-cell-color-base: var(--surface-active);
+  background: var(--number-cell-color-stripes, color-mix(in srgb, var(--number-cell-color) var(--number-cell-color-weight), var(--number-cell-color-base)));
 }
 
 .number-puzzle-cell:focus-visible {
@@ -324,6 +328,13 @@
   font-weight: 500;
   line-height: 1;
   overflow-wrap: anywhere;
+}
+
+.number-imported-candidate-color {
+  color: #171717;
+  border-radius: .2em;
+  background-color: var(--number-candidate-color);
+  box-shadow: 0 0 0 .08em var(--number-candidate-color);
 }
 
 .number-puzzle-center-notes { max-width: 92%; }

@@ -112,3 +112,17 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     else Reflect.deleteProperty(globalThis, 'localStorage')
   }
 })
+
+test('imported annotations alone count as progress and can be cleared, undone, and redone after reload', () => {
+  const position = { values: [0, 0, 0], notes: [0, 0, 0], annotationsHidden: false }
+  assert.deepEqual(numberValuesWithMoves(position, editable, 4), [0, 0, 0])
+  assert.ok(hasNumberMoves({ position, past: [], future: [] }))
+  const cleared = { ...position, annotationsHidden: true }
+  assert.deepEqual(parseNumberProgress({ ...cleared, past: [[0, 0, 0], false] }, editable, 4), {
+    position: cleared, past: [[0, 0, 0], false], future: [],
+  })
+  assert.deepEqual(parseNumberProgress({ ...position, future: [true] }, editable, 4), {
+    position, past: [], future: [true],
+  })
+  assert.deepEqual(numberValuesWithMoves({ ...cleared, past: [false] }, editable, 4), [0, 0, 0])
+})

@@ -101,7 +101,7 @@ export function CalcudokuImportChoices({ source, onResolve }: {
 
 export function CalcudokuImportPreview({ entry }: { entry: CalcudokuEntry }) {
   return <>
-    <NumberPuzzlePreview board={calcudoku.board(entry)} game="calcudoku" label="Calcudoku puzzle preview" position={entry.initialPosition} />
+    <NumberPuzzlePreview board={calcudoku.board(entry)} game="calcudoku" label="Calcudoku puzzle preview" position={entry.initialPosition} annotations={entry.annotations} />
     <p>{calcudoku.rules}</p>
     {Boolean(entry.ruleNotes?.length) && <ul className="import-preview-rules">
       {entry.ruleNotes?.map(rule => <li key={rule}>{rule}</li>)}

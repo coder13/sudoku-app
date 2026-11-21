@@ -1,3 +1,4 @@
+import { encodeNumberImportAnnotations, hasPlayerNumberAnnotations, numberAnnotationTokenLength, readNumberImportAnnotations, type NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
 import { encodeNumberImportPosition, numberPositionTokenLength, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
 import type { NumberPosition } from '../number-puzzles/progress.ts'
 import { isImportedColor } from '../sudoku/imported-colors.ts'
@@ -18,6 +19,7 @@ export type CalcudokuImport = {
   cages: CalcudokuImportCage[]
   colors: string[]
   position?: NumberPosition
+  annotations?: NumberImportAnnotations
 }
 
 const signs = new Map<string, CageOperator>([
@@ -89,7 +91,7 @@ export function readCoachCalcudoku(data: Record<string, unknown>, colors: string
 }
 
 function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Partial<Record<number, CageOperator>>>): CalcudokuEntry {
-  const { size, givens, colors } = source
+  const { size, givens, colors, annotations } = source
   const fixed = [...givens].map(Number)
   const labels: Record<number, string> = {}
   const ruleNotes: string[] = []
@@ -118,10 +120,10 @@ function calcudokuImportEntry(source: CalcudokuImport, operators: Readonly<Parti
   const puzzle = createCalcudoku(size, cages, fixed)
   const bytes = new TextEncoder().encode(JSON.stringify([size, givens, recipe, colors]))
   const payload = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-  const progress = withImportedNumberPosition(source.position, puzzle.givens)
+  const progress = withImportedNumberPosition(source.position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
   return {
-    id: `c1.${payload}${encodeNumberImportPosition(progress.initialPosition)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
-    imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, ...progress,
+    id: `c1.${payload}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`, number: 0, difficulty: size <= 3 ? 'easy' : size === 4 ? 'medium' : 'hard',
+    imported: true, puzzle, cageLabels: labels, cellColors: colors, ruleNotes, annotations, ...progress,
   }
 }
 
@@ -137,17 +139,17 @@ export function prepareImportedCalcudoku(source: CalcudokuImport, operators: Rea
   return verifyImportedCalcudoku(calcudokuImportEntry(source, operators))
 }
 
-const importToken = /^c1\.([A-Za-z0-9_-]{1,4093})(?:\.p([0-9a-z]+))?$/
+const importToken = /^c1\.([A-Za-z0-9_-]{1,4093})(?:\.p([0-9a-z]+))?(?:\.a([A-Za-z0-9_-]+))?$/
 
 export function importedCalcudokuToken(value: unknown) {
-  return typeof value === 'string' && value.length <= 4096 + 2 + numberPositionTokenLength &&
+  return typeof value === 'string' && value.length <= 4096 + 2 + numberPositionTokenLength + 2 + numberAnnotationTokenLength &&
     importToken.test(value) ? value : undefined
 }
 
 export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined {
   if (!importedCalcudokuToken(token)) return
   try {
-    const [, payload, progress] = importToken.exec(token)!
+    const [, payload, progress, marks] = importToken.exec(token)!
     const bytes = Uint8Array.from(atob(payload.replaceAll('-', '+').replaceAll('_', '/')), value => value.charCodeAt(0))
     const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
     if (!Array.isArray(data) || data.length !== 4) return
@@ -164,7 +166,8 @@ export function readImportedCalcudoku(token: string): CalcudokuEntry | undefined
       return cage
     })
     const position = progress ? readNumberImportPosition(progress, size) : undefined
-    const entry = calcudokuImportEntry({ size, givens, cages, colors, position }, operators)
+    const annotations = marks ? readNumberImportAnnotations(marks, size) : undefined
+    const entry = calcudokuImportEntry({ size, givens, cages, colors, position, annotations }, operators)
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }
 }

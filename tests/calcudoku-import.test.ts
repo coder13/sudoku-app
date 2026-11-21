@@ -119,3 +119,30 @@ test('Current State survives the choice of an unsigned cage operation and reopen
   assert.deepEqual(readImportedCalcudoku(entry.id)?.initialPosition, entry.initialPosition)
   assert.equal(readImportedCalcudoku(entry.id + '0000000'), undefined)
 })
+
+test('Calcudoku retains player annotations after assigning an unsigned operation', async () => {
+  const preview = await preparePlayableImport(coachCode({
+    gridSize: 3, regions: [], givenDigits: '003312231',
+    givenConstraints: [{ type: 'cosmeticCage', segments: [{ cells: [0, 1], parameters: { sum: '3' } }] }],
+    colours: ['green', 'blue', 'orange'],
+    givenColours: '01,,,,,,,,',
+    userColours: '2,,,,,,,,',
+    cells: { 3: { quickSymbol: { shape: 'square', colour: 'orange' } } },
+  }))
+  assert.ok('calcudokuSource' in preview)
+  const entry = prepareImportedCalcudoku(preview.calcudokuSource, { 0: 'add' })
+  assert.equal(entry.initialPosition?.annotationsHidden, false)
+  assert.ok(entry.initialPosition?.values.every(value => value === 0))
+  assert.deepEqual(entry.annotations?.givenColors, { 0: ['blue', 'green'] })
+  assert.deepEqual(entry.annotations?.cellColors, { 0: ['orange'] })
+  assert.deepEqual(entry.annotations?.drawings, [{ shape: 'square', at: [.5, 1.5], color: 'orange' }])
+  const reopened = readImportedCalcudoku(entry.id)
+  assert.equal(reopened?.id, entry.id)
+  assert.deepEqual(reopened?.annotations, entry.annotations)
+  assert.deepEqual(reopened?.initialPosition, entry.initialPosition)
+  await assert.rejects(preparePlayableImport(coachCode({
+    gridSize: 3, regions: [], givenDigits: '003312231',
+    givenConstraints: [{ type: 'cosmeticCage', segments: [{ cells: [0, 1], parameters: { sum: '3+' } }] }],
+    colours: ['green'], userCellCandidatesColours: '0+4+0',
+  })), /invalid or unsupported candidate colors/)
+})

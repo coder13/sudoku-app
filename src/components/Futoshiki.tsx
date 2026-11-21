@@ -56,7 +56,7 @@ export function FutoshikiDifficultyPage() {
 
 export function FutoshikiImportPreview({ entry }: { entry: FutoshikiEntry }) {
   return <>
-    <NumberPuzzlePreview board={futoshiki.board(entry)} game="futoshiki" label="Futoshiki puzzle preview" position={entry.initialPosition} />
+    <NumberPuzzlePreview board={futoshiki.board(entry)} game="futoshiki" label="Futoshiki puzzle preview" position={entry.initialPosition} annotations={entry.annotations} />
     <p>{futoshiki.rules}</p>
   </>
 }

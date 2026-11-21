@@ -390,6 +390,11 @@ const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less
   values: [1, ...Array<number>(15).fill(0)],
   notes: [0, 6, ...Array<number>(14).fill(0)],
   cornerNotes: [0, 10, ...Array<number>(14).fill(0)],
+}, {
+  givenColors: { 0: ['green'] },
+  cellColors: { 0: ['blue', 'orange'] },
+  candidateColors: { 1: { 2: 'blueHeavy' } },
+  drawings: [{ shape: 'circle', at: [1.5, 1.5], color: 'blue' }],
 })
 
 export const ImportedCandidatePositions: Story = {
@@ -397,20 +402,15 @@ export const ImportedCandidatePositions: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: () => {
     const key = numberPositionKey('futoshiki', importedFutoshiki.id)
-    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
-    for (const name of saved.keys()) localStorage.removeItem(name)
+    const saved = localStorage.getItem(key)
+    localStorage.removeItem(key)
     return () => {
-      for (const [name, value] of saved) {
-        if (value === null) localStorage.removeItem(name)
-        else localStorage.setItem(name, value)
-      }
+      if (saved === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, saved)
     }
   },
   play: async ({ canvas, userEvent }) => {
-    const cellName = /^R1C2, center notes 2, 3, corner notes 2, 4, R1C1 is less than R1C2$/
-    const control = await waitFor(() => canvas.queryByText('Resume puzzle', { exact: true })
-      ?? canvas.getByRole('button', { name: cellName }))
-    if (control.textContent?.trim() === 'Resume puzzle') await userEvent.click(control)
+    const cellName = /^R1C2, center notes 2, 3, corner notes 2, 4, R1C1 is less than R1C2, Candidate 2 deep blue$/
     const cell = await canvas.findByRole('button', { name: cellName })
     await userEvent.click(cell)
     await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
@@ -418,6 +418,19 @@ export const ImportedCandidatePositions: Story = {
     await expect(positions.getByRole('button', { name: 'Center' })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(positions.getByRole('button', { name: 'Corner' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
-    await expect(cell).toHaveAccessibleName(/^R1C2, center notes 2, 3, corner notes 2, R1C1 is less than R1C2$/)
+    await expect(cell).toHaveAccessibleName(/^R1C2, center notes 2, 3, corner notes 2, R1C1 is less than R1C2, Candidate 2 deep blue$/)
+    const drawing = canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })
+    const colored = canvas.getByRole('button', { name: /^R1C1, 1, .*blue, orange$/ })
+    await expect(drawing).toHaveAttribute('viewBox', '0 0 4 4')
+    await expect(colored).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Clear imported annotations' }))
+    await expect(canvas.getByRole('button', { name: /^R1C1, 1, .*green$/ })).toBeVisible()
+    await expect(drawing).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await expect(colored).toBeVisible()
+    await expect(canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Redo' }))
+    await expect(canvas.queryByRole('img', { name: 'Imported Quick Draw annotations' })).not.toBeInTheDocument()
   },
 }

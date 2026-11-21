@@ -1,3 +1,4 @@
+import type { NumberImportAnnotations } from './imported-annotations.ts'
 import type { NumberPosition } from './progress.ts'
 
 export const numberGameNames = {
@@ -12,7 +13,15 @@ export function isNumberGame(value: unknown): value is NumberGame {
 export const numberPuzzleDifficulties = ['easy', 'medium', 'hard'] as const
 export type NumberPuzzleDifficulty = typeof numberPuzzleDifficulties[number]
 export const numberPuzzleDifficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const
-export type NumberPuzzleEntry = { id: string; difficulty: NumberPuzzleDifficulty; number: number; generated?: true; imported?: true; initialPosition?: NumberPosition }
+export type NumberPuzzleEntry = {
+  id: string
+  difficulty: NumberPuzzleDifficulty
+  number: number
+  generated?: true
+  imported?: true
+  initialPosition?: NumberPosition
+  annotations?: NumberImportAnnotations
+}
 
 export function numberPuzzleDestination(game: NumberGame, entry: NumberPuzzleEntry) {
   return {

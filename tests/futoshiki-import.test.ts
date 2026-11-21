@@ -93,3 +93,53 @@ test('imports the visible board from Coach’s native Whole Progress clipboard t
   await assert.rejects(preparePlayableImport(coachWholeProgress([], 0)), /invalid puzzle snapshot/)
   await assert.rejects(preparePlayableImport(coachWholeProgress([{ version: 8 }], 0)), /invalid puzzle snapshot/)
 })
+
+test('Futoshiki copies authored fills and player annotations into a portable attempt', async () => {
+  const definition = {
+    gridSize: 4, regions: [], givenDigits: '0034234134124123',
+    givenConstraints: [{ type: 'greaterLess', segments: [{ cells: [0, 1] }] }],
+    colours: ['green', 'blueHeavy', 'orange', '#c0ffee'],
+    givenColours: '0' + ','.repeat(15),
+  }
+  const source = {
+    ...definition, userColours: '12' + ','.repeat(15),
+    userCellCandidates: [0, 4, ...Array(14).fill(0)].join('-'),
+    userCellCandidatesColours: '1+2+1',
+    quickDrawLineSegments: { '0.5/0.5=>1.5/1.5': { colour: 'blueHeavy' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'blueHeavy' } },
+    cells: { 15: { quickSymbol: { shape: 'circle', colour: '#c0ffee' } } },
+  }
+  const original = await preparePlayableImport(coachCode(definition))
+  assert.ok('futoshiki' in original)
+  assert.equal(original.futoshiki.initialPosition, undefined)
+  const preview = await preparePlayableImport(coachWholeProgress([definition, source], 1))
+  assert.ok('futoshiki' in preview)
+  const { futoshiki } = preview
+  assert.deepEqual(futoshiki.annotations?.givenColors, { 0: ['green'] })
+  assert.deepEqual(futoshiki.annotations?.cellColors, { 0: ['blueHeavy', 'orange'] })
+  assert.deepEqual(futoshiki.annotations?.candidateColors, { 1: { 2: 'blueHeavy' } })
+  assert.deepEqual(futoshiki.annotations?.drawings, [
+    { shape: 'line', from: [.5, .5], to: [1.5, 1.5], color: 'blueHeavy' },
+    { shape: 'cross', at: [1, .5], color: 'blueHeavy' },
+    { shape: 'circle', at: [3.5, 3.5], color: '#c0ffee' },
+  ])
+  assert.equal(futoshiki.initialPosition?.annotationsHidden, false)
+  const reopened = readImportedFutoshiki(futoshiki.id)
+  assert.equal(reopened?.id, futoshiki.id)
+  assert.deepEqual(reopened?.annotations, futoshiki.annotations)
+  assert.deepEqual(reopened?.initialPosition, futoshiki.initialPosition)
+  assert.notEqual(futoshiki.id, original.futoshiki.id)
+  await assert.rejects(preparePlayableImport(coachCode({ ...source, userCellCandidatesColours: '16+2+1' })), /invalid or unsupported candidate colors/)
+  await assert.rejects(preparePlayableImport(coachCode({ ...source, cells: { 16: source.cells[15] } })), /unsupported Quick Draw/)
+})
+
+test('Coach’s native Whole Progress export keeps two cell colors and a Quick Draw circle', async () => {
+  const code = readFileSync(new URL('./fixtures/futoshiki-coach-annotations.txt', import.meta.url), 'utf8')
+  const preview = await preparePlayableImport(code)
+  assert.ok('futoshiki' in preview)
+  assert.equal(preview.futoshiki.initialPosition?.values[0], 2)
+  assert.deepEqual(preview.futoshiki.annotations, {
+    cellColors: { 0: ['blue', 'green'] },
+    drawings: [{ shape: 'circle', at: [.5, 1.5], color: 'blueHeavy' }],
+  })
+})

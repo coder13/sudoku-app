@@ -4,8 +4,9 @@ import { emptyNumberPosition, type NumberPosition } from './progress.ts'
 const cellLength = 7
 export const numberPositionTokenLength = 81 * cellLength
 
-export function withImportedNumberPosition(position: NumberPosition | undefined, givens: readonly number[]) {
-  if (!position) return {}
+export function withImportedNumberPosition(source: NumberPosition | undefined, givens: readonly number[], playerAnnotations = false) {
+  if (!source && !playerAnnotations) return {}
+  const position = source ?? emptyNumberPosition(givens.length)
   const values = position.values.slice()
   const notes = position.notes.slice()
   const cornerNotes = position.cornerNotes?.slice()
@@ -17,8 +18,9 @@ export function withImportedNumberPosition(position: NumberPosition | undefined,
     values[cell] = notes[cell] = 0
     if (cornerNotes) cornerNotes[cell] = 0
   }
-  if (values.some(Boolean) || notes.some(Boolean) || cornerNotes?.some(Boolean)) {
-    return { initialPosition: { values, notes, ...(cornerNotes?.some(Boolean) && { cornerNotes }) } }
+  if (values.some(Boolean) || notes.some(Boolean) || cornerNotes?.some(Boolean) || playerAnnotations) {
+    return { initialPosition: { values, notes, ...(cornerNotes?.some(Boolean) && { cornerNotes }),
+      ...(playerAnnotations && { annotationsHidden: false }) } }
   }
   return {}
 }
