@@ -604,7 +604,7 @@ impl VariantPosition {
         self.run_with_boundary(&compiled, order, stop_after_placement_in, receive)
     }
 
-    #[cfg(feature = "generation")]
+    #[cfg(any(feature = "generation", test))]
     pub(super) fn run_with_compiled(
         &self,
         compiled: &CompiledVariant,
