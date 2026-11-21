@@ -25,7 +25,7 @@ function gameOf(result: GeneratedVariant, id = 'whispers-generated') {
 function verify(result: GeneratedVariant, minDifference: number) {
   assert.deepEqual(result.puzzle.rules, geometry.lines.map(cells => ({ type: 'whispers', cells, minDifference })))
   assert.deepEqual(result.rating.status, { solved: 'medium' })
-  assert.equal(result.rating.scoringVersion, 18)
+  assert.equal(result.rating.scoringVersion, 19)
   assert.ok(result.rating.counts.whispers || result.rating.counts['whispers-house-support'])
   assert.ok(result.givens <= 20)
   const independent = countWhispersSolutions(result.puzzle)

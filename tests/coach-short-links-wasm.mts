@@ -332,7 +332,7 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     try { assert.equal(await scan.count('kropki'), actions.size) } finally { scan.close() }
 
     const walkthrough = await puzzleSolution(game)
-    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 18])
+    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 19])
     assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
     assert.equal(walkthrough.board, solution)
     assert.ok(walkthrough.steps.some(step => step.technique === 'kropki-house-support'))

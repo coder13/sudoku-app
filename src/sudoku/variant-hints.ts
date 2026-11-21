@@ -333,6 +333,40 @@ function explainLinkedClue(
   return { cells: [...shown], description: `Start by assuming ${at(assumption.cell)} is ${assumption.digit}.`, steps }
 }
 
+function explainMatchingDigit(
+  evidence: Extract<VariantDeduction['evidence'], { type: 'matching-digit' }>,
+  puzzle: VariantPuzzle,
+  at: (cell: number) => string,
+  houseLabel: (house: VariantHouse) => string,
+) {
+  const { digit, assumed, checks, conflict } = evidence
+  const shown = new Set(assumed)
+  const [first, ...partners] = assumed.map(at)
+  const description = partners.length
+    ? `If ${first} is ${digit}, ${conjunction.format(partners)} must also be ${digit}.`
+    : `Try ${digit} in ${first}.`
+  const steps = [...checks, conflict].flatMap(check => {
+    const house = houseLabel(check.house)
+    const blocked = check.blocked.map(({ cell, matched, placed, house }) => {
+      shown.add(cell)
+      shown.add(matched)
+      shown.add(placed)
+      const collision = `${at(matched)} shares ${houseLabel(house)} with ${at(placed)}, which would be ${digit}.`
+      return cell === matched ? collision : `${at(cell)} must match ${at(matched)}. ${collision}`
+    })
+    if (check.forced.length === 0) return [`In ${house}, no cell can use ${digit}.`, ...blocked]
+    for (const cell of check.forced) shown.add(cell)
+    const members = variantHouseCells(check.house, puzzle)
+    const inside = check.forced.find(cell => members.includes(cell))!
+    const cells = check.forced.map(at)
+    const forced = `In ${house}, ${digit} can go only in ${at(inside)}.`
+    const matching = cells.length > 1 ? ` ${conjunction.format(cells)} must match.` : ''
+    return [forced + matching, ...blocked]
+  })
+  steps.push(`Remove ${digit} from ${conjunction.format(assumed.map(at))}.`)
+  return { cells: [...shown], description, steps }
+}
+
 function dotHouseConflict(proof: Extract<VariantDeduction['evidence'], { type: 'kropki-house' }>) {
   const remaining = proof.cells.flatMap((cell, i) => proof.pair.includes(cell) ? [] : [{ cell, domain: proof.domains[i] }])
   let shortest: { used: number; blocked: number[]; digits: number } | undefined
@@ -805,6 +839,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const start = rule?.type === 'region-sum' ? rule.cells[0] : cells[0]
       description = `The Region Sum line starts at ${nameCell(start)}. Each part has the same total, and its cells share a region, so its digits must be distinct.`
       reason = `${examples.join(' ')} All parts can reach only ${shared}. None of the assignments for those totals uses the crossed-out candidates.`
+      break
+    }
+    case 'matching-digit': {
+      const explanation = explainMatchingDigit(evidence, puzzle, nameCell, houseLabel)
+      cells = explanation.cells
+      description = explanation.description
+      reasonSteps = explanation.steps
+      reason = reasonSteps.join(' ')
       break
     }
     case 'linked-clue': {

@@ -20,7 +20,7 @@ const spider = JSON.parse(readFileSync(new URL('./fixtures/coach-artwork-traffic
 test('Sudoku Spider finishes with independently checked Thermometer and house deductions', async () => {
   const { game, grade } = await prepareImportedPuzzle(spider.sudoku)
   assert.ok(game.variant)
-  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 1952, 18])
+  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 1952, 19])
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)
   const runTrace = (techniqueOrder: readonly string[]) => runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })

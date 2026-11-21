@@ -7702,6 +7702,50 @@
           "difficulty": "easy"
         },
         {
+          "id": "matching-digit-contradiction",
+          "title": "Matching cell contradiction",
+          "summary": "Follow one digit through cells that must match. If a row, column, or box then has no place for that digit, remove the starting candidate.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "follow-the-matching-cells",
+              "title": "Follow the matching cells"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Choose a candidate in an empty cell. If the cell lies on a Palindrome or belongs to a Clone group, place the same digit in every matching cell as part of the assumption.",
+                "Check which houses still need that digit. A candidate stops working if any cell that must match it would repeat the digit in its row, column, or box. If a house has exactly one place left, follow that placement and its matching cells too.",
+                "Stop when a house has no place for the digit. Remove the original candidate and the same candidate from the cells that must match it."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "matching-digit-contradiction"
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "matching-digit-contradiction",
+                  "title": "Matching cell contradiction"
+                }
+              ],
+              "guide": {
+                "start": "Choose one candidate and identify its matching cells.",
+                "check": "Check the houses where those placements rule out another candidate for the digit.",
+                "reason": "Remove the original candidate if a house has no place left for the digit."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Palindrome 14 by CodeNameVerity",
+              "href": "https://sudoku.coach/en/s/FzzD"
+            }
+          ]
+        },
+        {
           "id": "linked-clue-contradiction",
           "title": "Linked clue contradiction",
           "summary": "Try one candidate and follow the restrictions it puts on neighboring clues. Remove it if a clue or house runs out of valid assignments.",

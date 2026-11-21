@@ -294,7 +294,7 @@ export const RestoredMobileSolution: Story = {
 const palindromeSolutionGame: Game = {
   ...makeGame('story-palindrome-14', 'Palindrome 14', palindrome14.puzzle.givens, 'imported'),
   variant: { id: 'mixed', puzzle: palindrome14.puzzle as VariantPuzzle, solution: palindrome14.solution },
-  score: null, difficulty: null, variantRatingVersion: 18,
+  score: null, difficulty: null, variantRatingVersion: 19,
 }
 
 export const StalledVariantSolution: Story = {

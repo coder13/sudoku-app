@@ -3,7 +3,7 @@
 use std::collections::{BTreeSet, HashSet};
 
 use sudoku_app_engine::{
-    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, PuzzleRule, VariantEvidence,
+    Analysis, Candidate, DEFAULT_VARIANT_SEARCH_NODES, HintAction, PuzzleRule, VariantEvidence,
     VariantExclusionPremise, VariantTechnique, canonical_variant, variant_practice_examples,
 };
 
@@ -122,6 +122,14 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                         sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
                     ));
                     scopes.insert(proof.cells.to_vec());
+                }
+                VariantEvidence::MatchingDigit(proof) => {
+                    assert!(proof.conflict.forced.is_empty());
+                    assert!(proof.assumed.len() > 1);
+                    assert!(proof.assumed.iter().any(|&cell| {
+                        exercise.suggestion == HintAction::Eliminate(Candidate { cell, digit: proof.digit })
+                    }));
+                    scopes.insert(proof.assumed);
                 }
                 VariantEvidence::LinkedClue(proof) => {
                     assert_eq!(exercise.suggestion, HintAction::Eliminate(proof.assumption));

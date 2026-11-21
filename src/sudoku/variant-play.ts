@@ -52,13 +52,14 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
   const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
+  const hasMatchingCells = rules.some(rule => rule.type === 'palindrome' || rule.type === 'clone')
   const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules)
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
   const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
   const hasGroupPairs = hasEntropicLine && rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues) return playProfile
+  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -78,6 +79,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
       if (id === firstBeyondHard) return [
         ...(hasRenbanGroups ? ['renban-group-counts'] : []),
         ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+        ...(hasMatchingCells ? ['matching-digit-contradiction'] : []),
         id,
       ]
       return [id]
@@ -86,6 +88,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
       ...scoped,
       ...(hasRenbanGroups ? ['renban-group-counts'] : []),
       ...(hasLinkedClues ? ['linked-clue-contradiction'] : []),
+      ...(hasMatchingCells ? ['matching-digit-contradiction'] : []),
     ]
     const techniqueOrder = withMediumVariantTechniques(withLateChecks, tiers, [
       ...(hasThermometer ? ['thermometer-house-support'] : []),
