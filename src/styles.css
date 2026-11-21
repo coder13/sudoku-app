@@ -954,6 +954,22 @@ svg { flex-shrink: 0; }
 .desktop-play-resizable .standard-puzzle-stack {
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
 }
+.desktop-play-resizable .standard-puzzle-stack .board-body {
+  /* The frame consumes layout widths. Stop those changing inherited values
+     here, before they reach every cell, candidate and annotation. */
+  --desktop-layout-base-width: initial;
+  --desktop-layout-content-width: initial;
+  --desktop-layout-scale: initial;
+  --play-input-default-width: initial;
+  --play-input-width: initial;
+  --play-input-scale: initial;
+  --saved-play-columns-width: initial;
+  --play-columns-width: initial;
+  --puzzle-column-padding: initial;
+  --board-frame-limit: initial;
+  --board-frame-width: initial;
+  --puzzle-grid-inset: initial;
+}
 .puzzle:has(.draft-tip) { grid-template: ". actions" auto "grid grid" auto "draft draft" auto / minmax(0, 1fr) auto; }
 .puzzle[data-puzzle-controls="bottom"] {
   grid-template: "grid grid" auto "metadata actions" auto / minmax(0, 1fr) auto;
