@@ -517,8 +517,25 @@ test('Firework chains expose crossing-house links and replay a published removal
   assert.equal(trace.rating.score.points, trace.steps.length * 360)
   const evidence = wide.deduction.evidence
   assert.ok('inference' in evidence)
-  assert.ok(evidence.inference.links.some(link => 'firework' in link.source &&
-    [link.from, link.to].some(node => 'group' in node && node.group.cells.length >= 5)))
+  assert.deepEqual(wide.suggestion, { eliminate: { cell: 74, digit: 1 } })
+  assert.deepEqual(wide.deduction.actions, [wide.suggestion])
+  const wideLinks = evidence.inference.links
+  assert.equal(wideLinks[0].strength, 'strong')
+  assert.equal(wideLinks.at(-1)?.strength, 'strong')
+  for (let i = 1; i < wideLinks.length; i++) {
+    assert.deepEqual(wideLinks[i - 1].to, wideLinks[i].from)
+    assert.notEqual(wideLinks[i - 1].strength, wideLinks[i].strength)
+  }
+  // A shorter grouped Type 2 proof can come first. The authored wide-group
+  // proof must still be available for exactly the same published removal.
+  const wideValues = [...wide.givens].map((digit, cell) => wide.entries[cell] === '0' ? digit : wide.entries[cell]).join('')
+  const wideMoves = await run({ type: 'deductions', values: wideValues, eliminations: wide.eliminations, techniqueOrder: [technique] })
+  const sameRemoval = wideMoves.filter(move => move.actions.length === 1 &&
+    'eliminate' in move.actions[0] && move.actions[0].eliminate.cell === 74 && move.actions[0].eliminate.digit === 1)
+    .flatMap(move => move.proofs)
+  assert.ok(sameRemoval.some(proof => 'inference' in proof.evidence &&
+    proof.evidence.inference.links.some(link => 'firework' in link.source &&
+      [link.from, link.to].some(node => 'group' in node && node.group.cells.length >= 5))))
 })
 
 test('Firework chain practice exposes an almost locked set in the proof', async () => {

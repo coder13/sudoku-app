@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
-import type { Deduction, HintChoice } from '../src/sudoku/engine.ts'
+import type { Deduction, HintChoice, InferenceNode } from '../src/sudoku/engine.ts'
 import { hintLocation, lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { findDisallowedTeachingWord, validateContent } from '../tools/lesson-editor/validate.mjs'
 
@@ -73,6 +73,82 @@ test('Grouped AIC location shows all candidates in an endpoint group', () => {
   assert.equal(marks?.get(0)?.get(4)?.label, 'chain start')
   assert.equal(marks?.get(1)?.get(4)?.label, 'chain start')
   assert.equal(marks?.get(2)?.get(4)?.label, 'chain end')
+  assert.deepEqual(clue.annotations.groups, [{
+    point: { cells: [0, 1], digit: 4 }, color: 'var(--lesson-pattern)', label: 'Chain start group: 4 in r1c1 or r1c2',
+  }])
+  assert.equal(clue.annotations.links, undefined)
+})
+
+test('AIC location outlines both endpoint groups without exposing internal groups', () => {
+  const start: InferenceNode = { group: { cells: [0, 1], digit: 4 } }
+  const inner: InferenceNode = { group: { cells: [36, 37], digit: 4 } }
+  const end: InferenceNode = { 'mixed-group': [{ cell: 6, digit: 4 }, { cell: 6, digit: 7 }] }
+  const hint: HintChoice = {
+    technique: 'tridagon-aic', actions: [{ eliminate: { cell: 3, digit: 4 } }],
+    evidence: { inference: { links: [
+      { from: start, to: inner, source: { peers: {} }, strength: 'strong' },
+      { from: inner, to: end, source: { peers: {} }, strength: 'weak' },
+    ] } },
+  }
+  const clue = hintLocation(hint, 'concise')!
+  assert.deepEqual(clue.annotations.groups?.map(({ point }) => point), [
+    { cells: [0, 1], digit: 4 }, { candidates: [{ cell: 6, digit: 4 }, { cell: 6, digit: 7 }] },
+  ])
+  assert.equal(clue.annotations.candidates?.has(36), false)
+  assert.equal(clue.annotations.candidates?.has(37), false)
+  assert.equal(clue.annotations.candidates?.has(3), false)
+  assert.equal(clue.annotations.links, undefined)
+})
+
+test('grouped AIC explanation treats every member as one endpoint', () => {
+  const group: InferenceNode = { group: { cells: [0, 1], digit: 1 } }
+  const a: InferenceNode = { candidate: { cell: 3, digit: 1 } }
+  const b: InferenceNode = { candidate: { cell: 30, digit: 1 } }
+  const c: InferenceNode = { candidate: { cell: 30, digit: 2 } }
+  const d: InferenceNode = { candidate: { cell: 27, digit: 2 } }
+  const end: InferenceNode = { candidate: { cell: 9, digit: 2 } }
+  const deduction: Deduction = {
+    technique: 'grouped-aic', actions: [{ eliminate: { cell: 9, digit: 1 } }],
+    evidence: { inference: { links: [
+      { from: group, to: a, source: { house: { row: 0 } }, strength: 'strong' },
+      { from: a, to: b, source: { house: { column: 3 } }, strength: 'weak' },
+      { from: b, to: c, source: { cell: 30 }, strength: 'strong' },
+      { from: c, to: d, source: { house: { row: 3 } }, strength: 'weak' },
+      { from: d, to: end, source: { house: { column: 0 } }, strength: 'strong' },
+    ] } },
+  }
+  const diagram = lessonDiagram({ deduction, candidates: Array(81).fill(mask(1, 2, 3)) })
+  assert.match(diagram.description, /each outlined group as one end of a link/)
+  assert.match(diagram.reason, /at least one member is true/)
+  assert.match(diagram.reason, /false only when every member is false/)
+  assert.match(diagram.reason, /conflicts with every candidate at both ends/)
+  assert.deepEqual(diagram.annotations.links?.[0].from, { cells: [0, 1], digit: 1 })
+  for (const cell of [0, 1]) assert.equal(diagram.annotations.candidates?.get(cell)?.get(1)?.label, 'Grouped candidates')
+  assert.equal(diagram.annotations.candidates?.get(9)?.get(1)?.mark, 'strike')
+})
+
+test('a discontinuous loop at a group explains the group conclusion without choosing a member', () => {
+  const group: InferenceNode = { group: { cells: [0, 1], digit: 4 } }
+  const a: InferenceNode = { candidate: { cell: 3, digit: 4 } }
+  const b: InferenceNode = { candidate: { cell: 30, digit: 4 } }
+  for (const seam of ['strong', 'weak'] as const) {
+    const deduction: Deduction = {
+      technique: 'grouped-discontinuous-nice-loop', actions: seam === 'strong'
+        ? [{ eliminate: { cell: 9, digit: 4 } }]
+        : [{ eliminate: { cell: 0, digit: 4 } }, { eliminate: { cell: 1, digit: 4 } }],
+      evidence: { inference: { links: [
+        { from: group, to: a, source: { peers: {} }, strength: seam },
+        { from: a, to: b, source: { peers: {} }, strength: seam === 'strong' ? 'weak' : 'strong' },
+        { from: b, to: group, source: { peers: {} }, strength: seam },
+      ] } },
+    }
+    const diagram = lessonDiagram({ deduction, candidates: Array(81).fill(mask(4, 7)) })
+    assert.match(diagram.description, /back to the same group/)
+    assert.doesNotMatch(diagram.reason, /starting candidate|Place 4/)
+    assert.match(diagram.reason, seam === 'strong'
+      ? /starting group is true\. Remove candidates that conflict with every member/
+      : /Every member of the starting group is false\. Remove each member/)
+  }
 })
 
 test('3D Medusa location marks only cells in the coloring proof', () => {

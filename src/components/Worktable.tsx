@@ -7,7 +7,7 @@ import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, 
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
-import { chainCandidate, makeChainGraph } from '../sudoku/chains'
+import { chainCandidate, chainNodeCandidates, makeChainGraph } from '../sudoku/chains'
 import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
@@ -526,6 +526,8 @@ export function Worktable({
     drawingIntent: savedHighlightMode || brush !== null ? false : drawingIntent,
     setDrawingIntent: intent => playSession.set(id, 'drawingIntent', intent),
   })
+  const selectedChainCandidates = useMemo(() => sketch.grouping ? sketch.groupSelection.map(chainCandidate)
+    : sketch.pending === null ? [] : chainNodeCandidates(sketch.pending), [sketch.grouping, sketch.groupSelection, sketch.pending])
   const canApplyChainEdits = chainsPanelOpen && Boolean(chainMasks && canAnalyzeChains && sketch.allActions.length)
   const canApplyHintEdit = fullHint && !recovery && Boolean(deduction && hintCandidates) && (!advancedWorkspace || showBottomPanel)
   const chainHighlightDigit = sketch.active.highlightedDigit
@@ -1286,7 +1288,7 @@ export function Worktable({
   }
 
   function selectStrongLinkCandidate(candidate: Candidate) {
-    if (sketch.drawing && !sketch.active.hidden && (sketch.pending !== null || sketch.contains(candidate))) sketch.select(candidate)
+    if (sketch.drawing && !sketch.active.hidden && (sketch.grouping || sketch.pending !== null || sketch.contains(candidate))) sketch.select(candidate)
     else startStrongLinkChain(candidate)
   }
 
@@ -2603,7 +2605,7 @@ export function Worktable({
       onLinkSelect={strongLinksVisible ? startStrongLinkChain : undefined}
       onCandidateHover={sketch.drawing ? sketch.hover : undefined}
       isLinkTarget={sketch.isLinkTarget}
-      selectedCandidate={sketch.pending === null ? undefined : chainCandidate(sketch.pending)} />
+      selectedCandidates={selectedChainCandidates} />
   ) : (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}

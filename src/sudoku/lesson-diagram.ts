@@ -1,4 +1,4 @@
-import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
+import type { BoardAnnotations, BoardGroup, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
 import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, HintTrace, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
 import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
@@ -43,6 +43,7 @@ export const inferenceCandidates = (node: InferenceNode): Candidate[] => {
 export const inferenceName = (node: InferenceNode, nameCell = cellName) => 'group' in node
   ? `${node.group.digit} in ${either.format(node.group.cells.map(nameCell))}`
   : either.format(inferenceCandidates(node).map(({ digit, cell }) => `${digit} in ${nameCell(cell)}`))
+export const inferenceGroupMeaning = 'A group is true when at least one member is true. It is false only when every member is false.'
 export const boardPoint = (node: InferenceNode) => {
   if ('candidate' in node) return node.candidate
   if ('group' in node) return node.group
@@ -89,7 +90,11 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
     mark(end, 'chain end', accentColor)
     const nameCell = (cell: number) => cellReference(cell, style, difficulty, grid.size)
     const text = `Start at ${inferenceName(start, nameCell)}. The other end is ${inferenceName(end, nameCell)}.`
-    const annotations: BoardAnnotations = { cells, candidates }
+    const groups: BoardGroup[] = [start, end].flatMap((node, index) => 'candidate' in node ? [] : [{
+      point: boardPoint(node), color: index === 0 ? patternColor : accentColor,
+      label: `Chain ${index === 0 ? 'start' : 'end'} group: ${inferenceName(node, nameCell)}`,
+    }])
+    const annotations: BoardAnnotations = { cells, candidates, ...(groups.length ? { groups } : {}) }
     return { text, annotations }
   }
 
@@ -354,7 +359,11 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       ...cellLinks.map(({ evidence, inside, forced, blocked }) =>
         `If the set at ${setNames(evidence.set.cells)} skips ${inside.digit}, it must use ${list.format(blocked.map(String))}. That forces ${nameCandidate(forced)}.`),
     ])]
-    const explainInference = (reason: string) => alsSteps.length ? explainSteps([...alsSteps, reason]) : { reason }
+    const group = nodes.find(node => !('candidate' in node))
+    const explainInference = (reason: string) => {
+      const steps = [...(group ? [inferenceGroupMeaning] : []), ...alsSteps, reason]
+      return steps.length > 1 ? explainSteps(steps) : { reason }
+    }
     const pattern = {
       candidates: singles, links: path, cells: [...singles, ...grouped].map(({ cell }) => cell)
         .concat(alsLinks.flatMap(({ set }) => set.cells), cellLinks.flatMap(({ evidence }) => evidence.set.cells)),
@@ -362,15 +371,19 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     }
     const firstName = nameInference(start)
     const second = nameInference(chain[0].to)
-    const group = nodes.find(node => !('candidate' in node))
-    const groupNote = group ? ` Read the marked group as “${nameInference(group)}.”` : ''
+    const groupNote = group ? ' Read each outlined group as one end of a link.' : ''
     if (technique.includes('discontinuous-')) {
       const assumed = chain[0].strength === 'weak' ? 'true' : 'false'
       const other = assumed === 'true' ? 'false' : 'true'
+      const startsWithGroup = !('candidate' in start)
+      const startType = startsWithGroup ? 'group' : 'candidate'
+      const conclusion = !startsWithGroup ? `The starting candidate must be ${other}.`
+        : other === 'false' ? 'Every member of the starting group is false. Remove each member.'
+          : 'The starting group is true. Remove candidates that conflict with every member.'
       return {
         ...pattern,
-        description: `Start at ${firstName}. Follow the alternating links back to the same candidate.${groupNote}`,
-        ...explainInference(`Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. The starting candidate must be ${other}.`),
+        description: `Start at ${firstName}. Follow the alternating links back to the same ${startType}.${groupNote}`,
+        ...explainInference(`Suppose ${firstName} is ${assumed}. The first link makes ${second} ${other}. By the time you come back, the loop makes ${firstName} ${other}. ${conclusion}`),
       }
     }
     if (technique.includes('continuous-')) {
@@ -405,14 +418,14 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       return {
         ...pattern,
         description: `The links alternate all the way around the loop, including at ${firstName}.${groupNote}`,
-        ...explainInference(`If you rule out ${left}, the rest of the loop forces ${right}. ${capital(nameCandidate(first))} conflicts with both. Check each other removal against the weak link it blocks.`),
+        ...explainInference(`If you rule out ${left}, the rest of the loop forces ${right}. ${capital(nameCandidate(first))} conflicts with ${group ? 'every candidate at both ends' : 'both'}. Check each other removal against the weak link it blocks.`),
       }
     }
     const last = nameInference(closing.to)
     return {
       ...pattern,
       description: `The chain starts and ends with a solid link, at ${firstName} and ${last}.${groupNote}`,
-      ...explainInference(`If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. At least one end must be true. Remove any candidate that conflicts with both ends.`),
+      ...explainInference(`If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. At least one end must be true. Remove any candidate that conflicts with ${group ? 'every candidate at both ends' : 'both ends'}.`),
     }
   }
   if ('multi-coloring' in evidence) {
