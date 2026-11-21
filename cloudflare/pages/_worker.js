@@ -84,6 +84,11 @@ function coachAuthoredRule(lines) {
 // A published legend can refer to fully encoded rules. The app checks those
 // rules against the export before it accepts the publication.
 function coachTypedDeclaration(lines) {
+  const cages = lines.length === 1 && /^All cages are (\d{1,2}) or (\d{1,2})[.!]?$/i.exec(lines[0])
+  if (cages) {
+    const totals = cages.slice(1).map(Number)
+    if (totals.every(sum => sum >= 1 && sum <= 45) && totals[0] !== totals[1]) return { cageTotals: totals }
+  }
   const requirements = [
     /^VII\s*=\s*7[.!]?$/i, /^XIII\s*=\s*13[.!]?$/i, /^Note global entropy[.!]?$/i,
   ]
