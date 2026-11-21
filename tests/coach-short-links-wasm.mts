@@ -753,6 +753,7 @@ test('short links reject unknown and authored rules even when the numeric grid w
     Custom: coachPage('Custom', between.code, 'Custom rule', { custom_constraints: true }),
     Text: coachPage('Text', between.code, 'Author text', { description: 'Reverse the digits on blue cells.' }),
     Markings: coachPage('Markings', coachCode({ givenColours: [{ cells: [0] }] }), 'Colored cells'),
+    Drawing: coachPage('Drawing', coachCode({ quickDrawLineSegments: { '0/1=>1/1': { colour: 'red' } } }), 'Drawn clue'),
     Unknown: coachPage('Unknown', coachCode({ givenConstraints: [{ type: 'globalModularity', segments: [] }] }), 'Unknown rule'),
   }
   mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
@@ -765,7 +766,7 @@ test('short links reject unknown and authored rules even when the numeric grid w
   try {
     for (const id of ['Blank', 'Wrong']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /use Copy → Puzzle/)
     for (const id of ['Custom', 'Text']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /has author instructions/)
-    await assert.rejects(detectPuzzle('sudoku.coach/s/Markings'), /unsupported authored markings/)
+    for (const id of ['Markings', 'Drawing']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /unsupported authored markings/)
     await assert.rejects(detectPuzzle('sudoku.coach/s/Unknown'), /not supported yet.*globalModularity/)
   } finally { sqlite.close() }
 })

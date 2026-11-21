@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
-import { applyDeduction, clearCandidateColors, EMPTY, enter, isSolved, needsInitialCandidates, paintCandidate, paintCells, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, clearCandidateColors, clearImportedDrawings, EMPTY, enter, isSolved, needsInitialCandidates, paintCandidate, paintCells, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { STARTER } from '../src/sudoku/formats.ts'
 import { findImportAttempt, findImportedPuzzle, prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
@@ -136,6 +137,46 @@ test('Coach Current State reopens a mixed-rule attempt independently of puzzle v
   assert.deepEqual(cached.game.position, game.position)
   assert.deepEqual(cached.game.variant, game.variant)
   assert.equal(cached.game.score, plain.score)
+})
+
+test('drawing-only Coach imports preserve attempts, exact rating, and undo after reload', async () => {
+  const original = { givenDigits: STARTER }
+  const state = {
+    ...original, quickDrawLineSegments: { '0.5/0.5=>2.5/3.5': { colour: 'blueHeavy' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'redHeavy' } },
+    cells: { 10: { quickSymbol: { shape: 'circle', colour: 'orangeHeavy' } } },
+  }
+  const plain = await prepareImportedPuzzle(coachCode(original))
+  const preview = await prepareImportedPuzzle(coachCode(state), [plain.game])
+  const { game } = preview
+  assert.equal(preview.hasProgress, true)
+  assert.deepEqual(valuesOf(game), valuesOf(plain.game))
+  assert.deepEqual([game.difficulty, game.score], [plain.game.difficulty, plain.game.score])
+  assert.equal(game.timeUntracked, true)
+  assert.equal(game.position.importedDrawings?.length, 3)
+  assert.equal(findImportAttempt([plain.game], preview), undefined)
+  const loaded = readGame(game.id, JSON.stringify(game))
+  assert.ok(loaded)
+  assert.equal(findImportAttempt([loaded], preview), loaded)
+  const reversed = await prepareImportedPuzzle(coachCode({ ...state,
+    quickDrawLineSegments: { '2.5/3.5=>0.5/0.5': { colour: 'blueHeavy' } },
+  }), [plain.game])
+  assert.equal(findImportAttempt([loaded], reversed), loaded)
+  const changed = await prepareImportedPuzzle(coachCode({ ...state,
+    quickDrawSymbols: { '2/0.5': { shape: 'cross', colour: 'redHeavy' } },
+  }), [plain.game])
+  assert.equal(findImportAttempt([loaded], changed), undefined)
+
+  const marked = enter(loaded, [2], 'value', 4)
+  assert.deepEqual(marked.position.importedDrawings, loaded.position.importedDrawings)
+  const cleared = clearImportedDrawings(marked)
+  assert.equal(cleared.position.importedDrawings, undefined)
+  assert.deepEqual(valuesOf(cleared), valuesOf(marked))
+  const clearedReloaded = readGame(cleared.id, JSON.stringify(cleared))
+  assert.ok(clearedReloaded)
+  assert.deepEqual(undo(clearedReloaded).position, marked.position)
+  assert.deepEqual(redo(undo(clearedReloaded)).position, cleared.position)
+  assert.equal(restartGame(loaded).position.importedDrawings, undefined)
 })
 
 for (const [name, fixture] of Object.entries(mixedFixtures)) test(`${name} imports, plays, rates, and replays with every rule intact`, async () => {

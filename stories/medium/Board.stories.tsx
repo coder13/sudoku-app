@@ -157,6 +157,21 @@ export const ImportedColors: Story = {
   decorators: [(Story) => <Width width={320}><Story /></Width>],
 }
 
+export const ImportedQuickDraw: Story = {
+  render: args => <SelectableGrid {...args} />,
+  args: {
+    values: valuesOf(inProgress),
+    position: { ...inProgress.position, importedDrawings: [
+      { shape: 'line', from: [.5, .5], to: [2.5, 2.5], color: 'purpleHeavy' },
+      { shape: 'line', from: [0, 1], to: [2, 1], color: 'orangeHeavy' },
+      { shape: 'cross', at: [2, 1.5], color: 'redHeavy' },
+      { shape: 'square', at: [4.5, 2.5], color: 'greenHeavy' },
+      { shape: 'circle', at: [3.5, 3.5], color: 'blueHeavy' },
+    ] },
+  },
+  decorators: [(Story) => <Width width={320}><Story /></Width>],
+}
+
 export const ConflictingDigits: Story = {
   render: (args) => {
     const values = valuesOf(enter(starter, [2], 'value', 5))

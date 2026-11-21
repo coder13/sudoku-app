@@ -5,6 +5,7 @@ import { parsePuzzle, textGridCells } from './formats.ts'
 import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from './grid.ts'
 import { EMPTY, type Position } from './game.ts'
 import { isImportedColor, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
+import { readCoachQuickDraw } from './imported-drawings.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
@@ -28,9 +29,9 @@ const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
 const FP_CODE = /^fpuz(?:zles)?/i
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
-  'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'acid', 'givenColours',
+  'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'cells', 'acid', 'givenColours',
 ])
-const COACH_DRAWINGS = ['quickDrawLineSegments', 'quickDrawSymbols']
+const COACH_DRAWINGS = ['quickDrawLineSegments', 'quickDrawSymbols', 'cells']
 const COACH_AUTHORED_MARKINGS = [...COACH_DRAWINGS, 'givenColours', 'colours']
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
@@ -58,7 +59,7 @@ export type ImportedPuzzle = {
   title?: string
   sharedPuzzleId?: string
   collection?: CollectionReference
-  progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors'>
+  progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>
   whispersGuide?: true
 }
 
@@ -257,7 +258,8 @@ function readCoachCandidateColors(palette: unknown, encoded: unknown): Candidate
 }
 
 function readCoachProgress(data: Record<string, unknown>, givens: string): ImportedPuzzle['progress'] {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
+  const importedDrawings = readCoachQuickDraw(data)
+  if (!importedDrawings && ![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours, data.userCellCandidatesColours].some(hasData)) return
   const importedCellColors = readCoachPlayerColors(data)
   const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours)
   const digits = data.userDigits === undefined || data.userDigits === '' ? EMPTY : data.userDigits
@@ -270,8 +272,9 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   const entries = [...digits].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
   const center = readCoachCandidateMasks(data.userCellCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
   const corner = readCoachCandidateMasks(data.userBoxCandidates).map((mask, cell) => givens[cell] === '0' ? mask : 0)
-  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors || importedCandidateColors) {
-    return { entries, center, corner, ...(importedCellColors && { importedCellColors }), ...(importedCandidateColors && { importedCandidateColors }) }
+  if (entries !== EMPTY || center.some(Boolean) || corner.some(Boolean) || importedCellColors || importedCandidateColors || importedDrawings) {
+    return { entries, center, corner, ...(importedCellColors && { importedCellColors }),
+      ...(importedCandidateColors && { importedCandidateColors }), ...(importedDrawings && { importedDrawings }) }
   }
 }
 
@@ -378,7 +381,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   if (declaredMirroredRenban && (!cellColours || !coachMirroredRenbansMatch(cellColours, rules, true))) {
     throw new Error('The Sudoku Coach export does not match its published mirrored Renban rules and markings.')
   }
-  const unsupportedDrawings = (publication || whispersGuide) && COACH_DRAWINGS.some(key => hasData(data[key]))
+  const unsupportedDrawings = publication && COACH_DRAWINGS.some(key => hasData(data[key]))
   if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   if (!whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)

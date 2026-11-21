@@ -12,7 +12,7 @@ import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset, sizedRuleClueLabels, variantCellLabels } from './VariantClues'
-import { BoardLinks, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
+import { BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion, type CandidateAnnotation, type CellAnnotation } from './BoardAnnotations'
 import { BoardMarks, type BoardMark } from './BoardMarks'
 import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors'
 
@@ -26,7 +26,7 @@ type Props = {
   sizedRules?: readonly SizedConstraintRule[]
   givens: string
   values: string
-  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors' | 'importedCellColors' | 'importedCandidateColors'>>
+  position?: Pick<Position, 'center' | 'corner'> & Partial<Pick<Position, 'colors' | 'candidateColors' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>>
   errors?: ReadonlySet<number>
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
@@ -34,7 +34,7 @@ type Props = {
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
   showPlayerColors?: boolean
-  showImportedColors?: boolean
+  showImportedAnnotations?: boolean
   region?: BoardRegion
   label?: string
   showGuides: boolean
@@ -347,7 +347,7 @@ export function Board({
   variantPuzzle, whispersGuide, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedColors = showPlayerColors,
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
   const grid = sizedGrid ?? CLASSIC_GRID
@@ -522,9 +522,9 @@ export function Board({
           center={center} corner={corner} centerMask={centerMarks} gridMask={gridMarks} displayedGridMask={displayedGridMarks}
           digitSlots={digitSlots} annotatedSlots={Boolean(linkedDigits)} preview={preview}
           candidateColors={showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined}
-          importedCandidateColors={showImportedColors && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
+          importedCandidateColors={showImportedAnnotations && (!candidates || onCandidate) ? position?.importedCandidateColors?.[index] : undefined}
           color={showPlayerColors ? position?.colors?.[index] : undefined}
-          importedColors={showImportedColors ? position?.importedCellColors?.[index] : undefined}
+          importedColors={showImportedAnnotations ? position?.importedCellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
@@ -547,7 +547,7 @@ export function Board({
     rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
-    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedColors,
+    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidate?.cell, selectedCandidate?.digit, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
     setCandidateFocus, boardEvents, Boolean(onCell), Boolean(onCellDoubleClick), Boolean(onCellPointerDown),
@@ -604,6 +604,8 @@ export function Board({
         {algebraicCages && algebraicCages.length > 0 && <div className="board-variant-clues"><MemoAlgebraicCages rules={algebraicCages} /></div>}
         {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} />}
         {linkedDoubleArrows.length > 0 && <MemoLinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
+        {showImportedAnnotations && position?.importedDrawings && <BoardQuickDraw drawings={position.importedDrawings}
+          region={visibleRegion} hidden={overlay?.visible} />}
         <BoardLinks links={annotations?.links} region={visibleRegion} candidateInsets={candidateInsets} onSelect={onLinkSelect ? boardEvents.onLinkSelect : undefined} />
         {overlay && <div className="board-overlay" aria-hidden={!overlay.visible || undefined} inert={!overlay.visible || undefined}
           data-no-panel-hold>{overlay.content}</div>}

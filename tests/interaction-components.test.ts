@@ -84,7 +84,7 @@ test('imported cell colors retain each named shade and yield to conflicts and hi
   assert.equal(conflict.style, undefined)
   assert.match(String(conflict.className), /conflict/)
   assert.doesNotMatch(String(cells(false)[0].props['aria-label']), /Cell colors/)
-  const importedOnly = boardTree({ position: { ...position, colors: [0, 0, 0, 2] }, showPlayerColors: false, showImportedColors: true })
+  const importedOnly = boardTree({ position: { ...position, colors: [0, 0, 0, 2] }, showPlayerColors: false, showImportedAnnotations: true })
     .filter(({ props }) => props.role === 'gridcell')
   assert.match(String(importedOnly[0].props['aria-label']), /Cell colors/)
   assert.doesNotMatch(String(importedOnly[3].props['aria-label']), /Peach/)
@@ -93,7 +93,7 @@ test('imported cell colors retain each named shade and yield to conflicts and hi
 test('imported candidate colors label and shade visible digits in read-only and painting views', () => {
   const position = { center: [2, ...Array(80).fill(0)], corner: [0, 16, ...Array(79).fill(0)],
     importedCandidateColors: { 0: { 2: 'blueHeavy', 9: 'orangeHeavy' }, 1: { 5: 'cyan' } } }
-  const props = { position, candidates: undefined, candidateLayout: 'center-corner', showPlayerColors: false, showImportedColors: true }
+  const props = { position, candidates: undefined, candidateLayout: 'center-corner', showPlayerColors: false, showImportedAnnotations: true }
   const readOnly = boardTree(props)
   const shaded = readOnly.filter(({ props }) => String(props.className).includes('imported-candidate-color'))
   assert.deepEqual(shaded.map(({ props }) => props.children), [2, 5])
@@ -105,7 +105,32 @@ test('imported candidate colors label and shade visible digits in read-only and 
   const buttons = painted.filter(({ props }) => String(props.className).includes('paint-candidate'))
   assert.deepEqual(buttons.map(({ props }) => props['aria-label']), ['2 in row 1, column 1, deep blue', '5 in row 1, column 2, cyan'])
   assert.ok(buttons.every(({ props }) => String((props.children as ReactElement<{ className: string }>).props.className).includes('imported-candidate-color')))
-  assert.ok(!boardTree({ ...props, showImportedColors: false }).some(({ props }) => String(props.className).includes('imported-candidate-color')))
+  assert.ok(!boardTree({ ...props, showImportedAnnotations: false }).some(({ props }) => String(props.className).includes('imported-candidate-color')))
+})
+
+test('Quick Draw keeps lines and symbols aligned with the imported grid and its crop', () => {
+  const position = {
+    center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedDrawings: [
+      { shape: 'line', from: [.5, .5], to: [2, 3], color: 'blueHeavy' },
+      { shape: 'cross', at: [1, 1.5], color: 'redHeavy' },
+      { shape: 'circle', at: [2.5, 2.5], color: 'cyan' },
+      { shape: 'square', at: [4.5, 4.5], color: 'green' },
+    ],
+  }
+  const draw = (props = {}) => renderToStaticMarkup(createElement(Board, {
+    givens: '0'.repeat(81), values: '0'.repeat(81), position, showGuides: true, ...props,
+  }))
+  const full = draw()
+  assert.match(full, /class="board-quick-draw" viewBox="0 0 9 9"[^>]*role="img" aria-label="Imported Quick Draw annotations"/)
+  assert.match(full, /deep blue line from row 1, column 1 to grid coordinates 2, 3/)
+  assert.match(full, /<line x1="0.5" y1="0.5" x2="2" y2="3"/)
+  assert.match(full, /<path d="M 0.9 1.4 L 1.1 1.6 M 0.9 1.6 L 1.1 1.4"/)
+  assert.match(full, /<circle cx="2.5" cy="2.5" r=".3"/)
+  assert.match(full, /<rect x="4.2" y="4.2" width=".6" height=".6"/)
+  assert.match(draw({ region: { row: 1, column: 2, rows: 3, columns: 4 } }), /class="board-quick-draw" viewBox="2 1 4 3" data-cropped="true"/)
+  assert.doesNotMatch(draw({ showImportedAnnotations: false }), /board-quick-draw/)
+  assert.match(draw({ overlay: { content: 'Paused', visible: true } }), /class="board-quick-draw"[^>]*aria-hidden="true"/)
 })
 
 test('the shared grid uses 4×4 coordinates, box edges and candidate slots for Mini Sudoku', () => {

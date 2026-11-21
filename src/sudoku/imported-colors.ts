@@ -43,10 +43,14 @@ export function sameImportedCellColors(a?: ImportedCellColors, b?: ImportedCellC
   })
 }
 
+export function importedColorValue(shade: string): string {
+  if (Object.hasOwn(COACH_CELL_COLORS, shade)) return COACH_CELL_COLORS[shade as CoachCellColor]
+  return HEX_COLOR.test(shade) ? shade : '#ffffff'
+}
+
 export function importedColorFill(shade: string): string {
-  if (Object.hasOwn(COACH_CELL_COLORS, shade) && shade !== 'error') return COACH_CELL_COLORS[shade as CoachCellColor]
-  const raw = shade === 'error' ? COACH_CELL_COLORS.error : HEX_COLOR.test(shade) ? shade : '#ffffff'
-  return `color-mix(in srgb, ${raw} 34%, white)`
+  const raw = importedColorValue(shade)
+  return shade === 'error' || HEX_COLOR.test(shade) ? `color-mix(in srgb, ${raw} 34%, white)` : raw
 }
 
 export function importedColorLabel(shade: string): string {

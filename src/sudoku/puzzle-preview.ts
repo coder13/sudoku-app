@@ -1,5 +1,6 @@
 import { runEngine, type Analysis } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
+import { sameImportedDrawings } from './imported-drawings.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
 import { createGameId, makeGame, markSolveUntimed, puzzleIdentity, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
@@ -27,7 +28,7 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
   const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
   if (!hasProgress) return findImportedPuzzle(attempts, game)
-  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors } = game.position
+  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings } = game.position
   const identity = puzzleIdentity(game)
   return attempts.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
     center.every((mask, cell) => mask === saved.position.center[cell]) &&
@@ -36,6 +37,7 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
     sameImportedCellColors(importedCellColors, saved.position.importedCellColors) &&
     sameCandidateColors(candidateColors, saved.position.candidateColors) &&
     sameCandidateColors(importedCandidateColors, saved.position.importedCandidateColors) &&
+    sameImportedDrawings(importedDrawings, saved.position.importedDrawings) &&
     puzzleIdentity(saved) === identity)
 }
 

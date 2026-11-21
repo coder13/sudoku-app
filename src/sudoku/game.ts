@@ -22,6 +22,7 @@ import type { AlgebraicGame } from './algebraic-game.ts'
 import type { CustomModeDefinition } from './custom-modes.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
 import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
+import type { ImportedDrawing } from './imported-drawings.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -38,6 +39,7 @@ export type Position = {
   importedCellColors?: ImportedCellColors
   candidateColors?: CandidateColors<number>
   importedCandidateColors?: CandidateColors<string>
+  importedDrawings?: readonly ImportedDrawing[]
   eliminations?: number[]
   draftCages?: readonly AlgebraicCage[]
   draftSizedRules?: SizedRuleGame['rules']
@@ -450,6 +452,13 @@ export function clearCandidateColors(game: Game): Game {
   const position = { ...game.position }
   delete position.candidateColors
   delete position.importedCandidateColors
+  return move(game, position)
+}
+
+export function clearImportedDrawings(game: Game): Game {
+  if (!game.position.importedDrawings) return game
+  const position = { ...game.position }
+  delete position.importedDrawings
   return move(game, position)
 }
 

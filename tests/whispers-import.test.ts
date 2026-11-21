@@ -146,10 +146,13 @@ test('the Coach Whispers lesson retains every link and derives its guide from th
 
   const colours = ['blue', ...state.colours]
   const givenColours = state.givenColours.split(',').map((shade: string) => shade ? String(Number(shade) + 1) : '').join(',')
-  const marked = await detectPuzzle(coachCode({ ...state, colours, givenColours, userColours: '0' + ','.repeat(80) }))
+  const marked = await detectPuzzle(coachCode({ ...state, colours, givenColours, userColours: '0' + ','.repeat(80),
+    quickDrawLineSegments: { '2/1=>3/2': { colour: 'blueHeavy' } },
+  }))
   assert.equal(marked.whispersGuide, true)
   assert.deepEqual(marked.variant, variant)
   assert.deepEqual(marked.progress?.importedCellColors, { 0: ['blue'] })
+  assert.deepEqual(marked.progress?.importedDrawings, [{ shape: 'line', from: [2, 1], to: [3, 2], color: 'blueHeavy' }])
 
   for (const mutate of [
     (data: typeof state) => { data.givenColours = data.givenColours.replace('0', '1') },

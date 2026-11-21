@@ -19,6 +19,7 @@ import {
 } from './player-rating.ts'
 import { puzzleTiming } from './puzzle-timing.ts'
 import { isImportedColor, validImportedCellColors } from './imported-colors.ts'
+import { validImportedDrawings } from './imported-drawings.ts'
 
 const PREFIX = 'sudoku-app:v1:'
 const LEGACY_PREFIX = 'gridroom:v1:'
@@ -70,7 +71,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
     const layout = { size: grid.size, regions: draftRegions }
     if (!isJigsawGrid(layout)) return false
@@ -88,6 +89,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     (candidateColors === undefined || validCandidateColors(candidateColors, grid, shade =>
       typeof shade === 'number' && Number.isInteger(shade) && shade >= 1 && shade <= COLORS.length)) &&
     (importedCandidateColors === undefined || !draft && grid.size === 9 && validCandidateColors(importedCandidateColors, grid, isImportedColor)) &&
+    (importedDrawings === undefined || !draft && grid.size === 9 && validImportedDrawings(importedDrawings)) &&
     (eliminations === undefined || validDigits(eliminations, mask)) &&
     (chainSketch == null || validChainSketchState(chainSketch))
 }

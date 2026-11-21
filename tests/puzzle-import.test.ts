@@ -193,6 +193,49 @@ test('Coach Current State decodes candidate colors without changing either candi
   await assert.rejects(detectPuzzle(coach({ ...data, colours: ['var(--bad)'] })), /invalid or unsupported candidate colors/)
 })
 
+test('Coach Current State preserves Quick Draw lines, edge crosses, and cell symbols', async () => {
+  const diagonal = { type: 'diagonalNegative', segments: [] }
+  const data = {
+    givenDigits: STARTER, givenConstraints: [diagonal],
+    quickDrawLineSegments: {
+      '0.5/0.5=>2.5/3.5': { colour: 'blueHeavy' },
+      '0/1=>1/1': { colour: '#3af89c' },
+      '-0.5/0.5=>0.5/0.5': { colour: 'grey' },
+    },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'redHeavy' } },
+    cells: {
+      0: { quickSymbol: { shape: 'circle', colour: 'greenHeavy' } },
+      40: { quickSymbol: { shape: 'square', colour: 'orangeHeavy' } },
+      80: { quickSymbol: { shape: 'cross', colour: 'purpleHeavy' } },
+    },
+  }
+  const result = await detectPuzzle(coach(data))
+  assert.equal(result.givens, STARTER)
+  assert.deepEqual(result.variant?.puzzle.rules, [{ type: 'diagonal', diagonal: 'main' }])
+  assert.deepEqual(result.progress, {
+    entries: EMPTY, center: Array(81).fill(0), corner: Array(81).fill(0),
+    importedDrawings: [
+      { shape: 'line', from: [.5, .5], to: [2.5, 3.5], color: 'blueHeavy' },
+      { shape: 'line', from: [0, 1], to: [1, 1], color: '#3af89c' },
+      { shape: 'line', from: [-.5, .5], to: [.5, .5], color: 'grey' },
+      { shape: 'cross', at: [1, .5], color: 'redHeavy' },
+      { shape: 'circle', at: [.5, .5], color: 'greenHeavy' },
+      { shape: 'square', at: [4.5, 4.5], color: 'orangeHeavy' },
+      { shape: 'cross', at: [8.5, 8.5], color: 'purpleHeavy' },
+    ],
+  })
+  for (const override of [
+    { quickDrawLineSegments: { '1.2/1=>1/1': { colour: 'red' } } },
+    { quickDrawLineSegments: { '1/1=>1/1': { colour: 'red' } } },
+    { quickDrawLineSegments: { '0/0=>1/1': { colour: 'var(--unsafe)' } } },
+    { quickDrawSymbols: { '1/1': { shape: 'cross', colour: 'red' } } },
+    { quickDrawSymbols: { '1/0.5': { shape: 'circle', colour: 'red' } } },
+    { cells: { 81: data.cells[0] } },
+    { cells: { 0: { ...data.cells[0], predefinedLetters: 'A' } } },
+    { cells: { 0: { quickSymbol: { shape: 'triangle', colour: 'red' } } } },
+  ]) await assert.rejects(detectPuzzle(coach({ ...data, ...override })), /invalid or unsupported Quick Draw/)
+})
+
 test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
   const emptyMasks = Array(81).fill('0').join('-')
   assert.deepEqual(await detectPuzzle(coach({

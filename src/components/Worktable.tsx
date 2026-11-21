@@ -2,7 +2,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -12,7 +12,7 @@ import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
+  COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, enter, fillEntries,
   formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
@@ -2435,6 +2435,10 @@ export function Worktable({
       </button>
       {syncMenuStatus && <p className="puzzle-sync-menu-status" role="status">{syncMenuStatus}</p>}
     </>}
+    {game.position.importedDrawings && <button type="button" disabled={disabled}
+      onClick={() => { setPuzzleMenuOpen(false); edit(clearImportedDrawings) }}>
+      <Eraser size={17} aria-hidden="true" /> Clear imported drawings
+    </button>}
     <button onClick={() => { setPuzzleMenuOpen(false); setResetOpen(true) }}>
       <RotateCcw size={17} /> Reset puzzle
     </button>
@@ -2511,7 +2515,7 @@ export function Worktable({
   const livePuzzleStage = previewing ? solutionGrid : !mobile && completionPanel ? completionPanel
   : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={givens} values={values} position={game.position} errors={errors}
-      candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors} showImportedColors={!hintVisualsActive}
+      candidates={chainMasks} annotations={strongLinksVisible ? strongLinks.annotations : sketch.annotations} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
       label={sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links'}
       descriptionId={badgeMode ? modeBadgeId : undefined}
       modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
@@ -2529,7 +2533,7 @@ export function Worktable({
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
-      showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedColors={!hintVisualsActive}
+      showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
       candidatePreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null && selectedDigit !== null
         ? { cell: candidatePreviewCell, digit: selectedDigit, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
