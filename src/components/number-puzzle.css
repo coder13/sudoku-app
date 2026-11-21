@@ -49,11 +49,6 @@
   gap: var(--space-8);
 }
 
-.mobile-solution-dialog .number-puzzle-grid {
-  max-width: 360px;
-  margin-inline: auto;
-}
-
 .number-puzzle-board-card {
   min-width: 0;
   display: grid;
@@ -234,6 +229,10 @@
     flex: none;
     height: auto;
     overflow: visible;
+  }
+
+  .number-puzzle-play .mobile-input-panels:has(> .mobile-input-tool:not([hidden])) {
+    min-block-size: 10rem;
   }
 
   .number-puzzle-board-card,

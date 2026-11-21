@@ -68,7 +68,7 @@ import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionPath, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
+import { SolutionPath, SolutionReveal, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
@@ -2843,15 +2843,7 @@ export function Worktable({
       cellReferenceStyle={cellReferenceStyle} gridSize={gridSize} techniqueDifficulties={techniqueDifficulties}
       onSelect={selectSolutionStep} onRetry={() => showSolutionPath(true)} onClose={closeSolutionPath}
       onReveal={markSolutionVisible} embedded={!advancedWorkspace} />
-  ) : (
-    <section className="advanced-spoiler-panel solution-spoiler-panel" aria-label="Solution">
-      <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
-      <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
-      <Button variant="primary" disabled={busy || draft} onClick={() => showSolutionPath()}>
-        <Eye size={17} /> Reveal solution
-      </Button>
-    </section>
-  )
+  ) : <SolutionReveal disabled={busy || draft} onReveal={() => showSolutionPath()} />
   const clueCount = [...visibleGivens].filter((digit) => digit !== '0').length
   const placedDigitCount = [...game.position.entries].filter((digit) => digit !== '0').length
   const candidateTotal = game.position.center.reduce((sum, mask, index) => (
