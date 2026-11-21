@@ -64,6 +64,7 @@ export function numberPuzzleClues(
       }
     }
   }
+  let entropicNumber = 0
   for (const { type, cells, segments } of pathClues) {
     if (type === 'consecutive') {
       for (const path of segments ?? [cells]) {
@@ -107,6 +108,11 @@ export function numberPuzzleClues(
       for (const cell of cells.slice(1, -1)) {
         addLabel(cell, `Lockout Line, digit below both or above both diamonds at ${first} and ${last}`)
       }
+    } else if (type === 'entropic') {
+      entropicNumber++
+      const rule = cells.length === 1 ? 'one-cell path, any digit' : cells.length === 2 ? 'two positions from different digit groups'
+        : 'every three successive positions need one digit from each group'
+      for (const cell of cells) addLabel(cell, `Entropic Line ${entropicNumber}, ${rule}`)
     } else if (type === 'renban') {
       for (const cell of cells) addLabel(cell, `Renban line of ${cells.length} consecutive digits`)
     } else {
@@ -133,6 +139,7 @@ export function numberPuzzleClues(
     {pathClues.filter(line => line.type === 'renban').map((line, index) => <RenbanClue key={`renban-${index}`} {...line} number={index + 1} size={size} />)}
     {pathClues.filter(line => line.type === 'palindrome').map((line, index) => <PuzzlePathClue key={`palindrome-${index}`} line={line} size={size} />)}
     {whispers.map((line, index) => <WhispersLineClue key={`whispers-${index}`} line={line} size={size} />)}
+    {pathClues.filter(line => line.type === 'entropic').map((line, index) => <PuzzlePathClue key={`entropic-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'consecutive').map((line, index) => <PuzzlePathClue key={`consecutive-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'arrow').map(({ cells: [circle, ...cells] }, index) =>
       <ArrowClue key={`arrow-${index}`} circle={circle} cells={cells} size={size} />)}

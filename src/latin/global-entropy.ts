@@ -1,14 +1,9 @@
 import { ENTROPY_AREAS } from '../sudoku/global-entropy.ts'
 import { cellLabel, type LatinRule } from './engine.ts'
+import { availableBands, digitsInBands } from './entropy-groups.ts'
 
 export const globalEntropyTechnique = 'Global Entropy'
 export const globalEntropyNote = 'Every 2 × 2 area contains a low digit (1–3), a medium digit (4–6), and a high digit (7–9).'
-
-const bands = [7, 56, 448]
-const availableBands = Uint8Array.from({ length: 512 }, (_, digits) =>
-  bands.reduce((mask, band, index) => mask | ((digits & band) ? 1 << index : 0), 0))
-const digitsInBands = Uint16Array.from({ length: 8 }, (_, groups) =>
-  bands.reduce((mask, band, index) => mask | ((groups & (1 << index)) ? band : 0), 0))
 
 // Same four-cell support table as the Sudoku engine. Store three band bits per cell.
 function buildSupportTable() {

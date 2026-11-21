@@ -568,9 +568,9 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
           return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} cells={cage.cells} captionWidth={cage.sum < 10 ? .17 : .3}
             captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
         case 'whispers': return <WhispersLineClue key={index} line={rule} />
-        case 'palindrome':
+        case 'palindrome': case 'entropic':
           return <PuzzlePathClue key={index} line={rule} />
-        case 'entropic': case 'modular':
+        case 'modular':
           return <g key={index} className={`variant-${rule.type}`}>
             {rule.cells.length === 1 ? <circle cx={center(rule.cells[0])[0]} cy={center(rule.cells[0])[1]} r=".12" />
               : <polyline points={points(rule.cells)} />}

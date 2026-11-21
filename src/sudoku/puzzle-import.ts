@@ -458,7 +458,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'entropicLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -796,6 +796,22 @@ function readCoachParityCells(layer: Record<string, unknown>, size: number): num
   })
 }
 
+function readCoachGroupPaths(layer: Record<string, unknown>, size: number, name: 'Entropic' | 'Modular') {
+  const { segments, settings } = layer
+  if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key)))) {
+    throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
+  }
+  if (!Array.isArray(segments) || !segments.length) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
+  // Each segment imposes its own rule, including segments that share cells.
+  return segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
+      segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2)) {
+      throw new Error(`This Sudoku Coach puzzle has an invalid ${name} path.`)
+    }
+    return segment.cells as number[]
+  })
+}
+
 function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
@@ -825,6 +841,10 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
         for (const cell of readCoachParityCells(layer, size)) parity.push({ cell, parity: type })
       }
+      continue
+    }
+    if (type === 'entropicLine') {
+      for (const cells of readCoachGroupPaths(layer, size, 'Entropic')) pathClues.push({ type: 'entropic', cells })
       continue
     }
     if (type === 'betweenLine') {
@@ -1055,18 +1075,8 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       }
     } else if (constraint.type === 'entropicLine' || constraint.type === 'modularLine') {
       const name = constraint.type === 'entropicLine' ? 'Entropic' : 'Modular'
-      if (hasData(constraint.settings) && (!record(constraint.settings) || Object.keys(constraint.settings).some(key => !LINE_STYLING.has(key)))) {
-        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
-      }
-      if (!constraint.segments.length) throw new Error(`This Sudoku Coach puzzle has no ${name} cells.`)
-      // Coach jX1r7/jX1r8 compile each segment independently. Touching paths
-      // must not use the connected-component grouping of Renban/Palindrome.
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length || hasData(segment.parameters) ||
-          segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= 81)) {
-          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} path.`)
-        }
-        rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
+      for (const cells of readCoachGroupPaths(constraint, 9, name)) {
+        rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells })
       }
     } else if (constraint.type === 'betweenLine') {
       for (const cells of readCoachBetweenPaths(constraint)) rules.push({ type: 'between', cells })

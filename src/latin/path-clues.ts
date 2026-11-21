@@ -1,6 +1,7 @@
 import type { AdjacentClues } from './adjacent-clues.ts'
 import { arrowRule, arrowRuleNote, arrowTechnique } from './arrow.ts'
 import { bit, cellLabel, type LatinHint, type LatinRule } from './engine.ts'
+import { entropicRule, entropicRuleNote, entropicTechnique } from './entropic.ts'
 import { extraRegionTechnique } from './extra-regions.ts'
 import { globalEntropyTechnique } from './global-entropy.ts'
 import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, lockoutTechnique } from './endpoint-lines.ts'
@@ -12,7 +13,7 @@ import { maxPathCells, maxPathClueTokenLength } from '../number-puzzles/import-t
 import { antiKnightTechnique } from '../sudoku/anti-knight.ts'
 import { quadrupleTechnique, type Quadruple } from '../sudoku/quadruple.ts'
 
-const pathClueKinds = { palindrome: 'p', consecutive: 'c', thermometer: 't', arrow: 'a', 'pill-arrow': 'i', renban: 'r', lockout: 'k', between: 'b' } as const
+const pathClueKinds = { palindrome: 'p', consecutive: 'c', thermometer: 't', arrow: 'a', 'pill-arrow': 'i', renban: 'r', lockout: 'k', between: 'b', entropic: 'e' } as const
 
 type LatinPathClueType = keyof typeof pathClueKinds
 const pathClueTypes = new Map<string, LatinPathClueType>(Object.entries(pathClueKinds).map(([type, code]) => [code, type as LatinPathClueType]))
@@ -34,7 +35,7 @@ export type LatinClues = {
   antiKnight?: true
 }
 
-export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, 'pill-arrow': pillArrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
+export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, 'pill-arrow': pillArrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique, entropic: entropicTechnique } as const
 
 export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'extra-region') return extraRegionTechnique
@@ -63,29 +64,32 @@ export const pathClueNotes = {
   renban: renbanRuleNote,
   lockout: lockoutRuleNote,
   between: betweenRuleNote,
+  entropic: entropicRuleNote,
 } as const
 
 export function latinPathRules(size: number, clues: readonly LatinPathClue[] = []): LatinRule[] {
   let count = 0
   return clues.flatMap(({ type, cells, segments }) => {
     const endpointLine = type === 'between' || type === 'lockout'
+    const entropic = type === 'entropic'
     const directed = type === 'thermometer' || type === 'arrow' || type === 'pill-arrow' || endpointLine
     const drawing = segments ?? [cells]
     count += cells.length + (segments?.reduce((total, path) => total + path.length, 0) ?? 0)
     const members = new Set(cells)
     if (count > maxPathCells || !Object.hasOwn(pathClueNames, type) || !cells.length ||
-      members.size !== cells.length || cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
-      !drawing.length || drawing.some(path => !path.length || path.some((cell, index) => !members.has(cell) || cell === path[index - 1])) ||
+      (!entropic && members.size !== cells.length) || cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
+      !drawing.length || drawing.some(path => !path.length || path.some((cell, index) => !members.has(cell) || (!entropic && cell === path[index - 1]))) ||
       (type === 'arrow' && (cells.length < 2 || cells.length > size + 1)) ||
       (type === 'pill-arrow' && cells.length < 4) ||
       (endpointLine && cells.length < (type === 'between' ? 3 : 2)) ||
-      segments && (directed || new Set(segments.flat()).size !== cells.length)) {
+      segments && (directed || entropic || new Set(segments.flat()).size !== cells.length)) {
       throw new Error('This puzzle has invalid line clues.')
     }
     if (type === 'arrow') return [arrowRule(size, cells)]
     if (type === 'pill-arrow') return [pillArrowRule(size, cells)]
     if (endpointLine) return [endpointLineRule(size, cells, type)]
     if (type === 'thermometer') return [thermometerRule(size, cells)]
+    if (entropic) return cells.length > 1 ? [entropicRule(size, cells)] : []
     if (type === 'renban') return cells.length > 1 ? [renbanRule(size, cells)] : []
     if (type === 'palindrome') {
       return cells.slice(0, Math.floor(cells.length / 2)).map((a, index): LatinRule => {

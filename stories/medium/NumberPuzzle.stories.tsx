@@ -1044,3 +1044,41 @@ export const AntiKnightWithInequality: Story = {
     await waitFor(() => expect(within(final).getByRole('button', { name: /^R3C1, 3/ })).toBeVisible())
   },
 }
+
+const touchingEntropic = createImportedFutoshiki(
+  9, '120056789200567891005678912056789120567891200678912005789120056891200567912005678',
+  [{ less: 1, greater: 2 }],
+  { pathClues: [{ type: 'entropic', cells: [2, 12, 22] }, { type: 'entropic', cells: [22, 13] }] },
+)
+
+export const TouchingEntropicLines: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={touchingEntropic} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const lines = grid.querySelectorAll('.variant-entropic polyline')
+    await expect(lines).toHaveLength(2)
+    await expect(lines[0]).toHaveAttribute('points', '2.5,0.5 3.5,1.5 4.5,2.5')
+    await expect(lines[1]).toHaveAttribute('points', '4.5,2.5 4.5,1.5')
+    await expect(within(grid).getByRole('button', { name: /^R3C5, given 7, .*Entropic Line 1.*Entropic Line 2/ })).toBeVisible()
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Entropic Lines' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Entropic Lines' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getAllByText(/one digit from each group/)[0]).toBeVisible()
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = within(await canvas.findByRole('group', { name: 'Futoshiki solution' }))
+    await waitFor(() => expect(final.getByRole('button', { name: /^R1C3, 3, .*Entropic Line 1/ })).toBeVisible())
+  },
+}
