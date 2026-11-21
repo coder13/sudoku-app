@@ -399,9 +399,22 @@ async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progr
   return record
 }
 
-export async function openGeneratedNumberPuzzle(game: GeneratedNumberGame, id: string): Promise<GeneratedRecord> {
+async function readGeneratedRecord(game: GeneratedNumberGame, id: string) {
+  const db = await openDatabase()
+  const store = db.transaction(storeName).objectStore(storeName)
+  return readRequest<GeneratedRecord | undefined>(store.index(tokenIndex).get([game, id]))
+}
+
+export async function openGeneratedNumberPuzzle(
+  game: GeneratedNumberGame, id: string, { readOnlyIfSaved = false } = {},
+): Promise<GeneratedRecord> {
   try {
     await prepareGeneratedHistory(game)
+    if (readOnlyIfSaved) {
+      const record = await readGeneratedRecord(game, id).catch(() => undefined)
+      // A staged move must pass through the regular write and recovery path.
+      if (record && localValue(pendingPositionKey(game, id)) === null) return record
+    }
     return await writeGeneratedRecord(game, id)
   } catch {
     const { ids, positions, pending } = await readLegacy(game)

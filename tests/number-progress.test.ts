@@ -80,7 +80,7 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     const newest = { values: [0, 0, 2], notes: [0, 0, 0], past: [[2, 0, 4]], future: [] }
     storage.setItem(pendingKey, JSON.stringify(newest))
     assert.deepEqual((await generatedNumberHistory('calcudoku')).at(-1)?.progress, newest)
-    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next)).progress, newest)
+    assert.deepEqual((await openGeneratedNumberPuzzle('calcudoku', next, { readOnlyIfSaved: true })).progress, newest)
     assert.equal(await saveGeneratedNumberProgress('calcudoku', next, {
       position: newest, past: [[2, 0, 4]], future: [],
     }), true)

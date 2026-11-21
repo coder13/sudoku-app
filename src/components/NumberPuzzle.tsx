@@ -382,7 +382,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
     if (generatedGame) {
       let active = true
-      void openGeneratedNumberPuzzle(generatedGame, entry.id).then(record => {
+      void openGeneratedNumberPuzzle(generatedGame, entry.id, { readOnlyIfSaved: true }).then(record => {
         if (!active) return
         const stored = record.progress && parseNumberProgress(record.progress, editable, maxValue)
         restore(stored)
