@@ -4,13 +4,13 @@ import { assertGroupLineProof } from './group-line-truth.ts'
 
 export function assertModularProof(puzzle: VariantPuzzle, proof: VariantDeduction) {
   const { evidence } = proof
-  assert.equal(evidence.type, 'constraint')
-  if (evidence.rules.length === 1) {
+  if (evidence.type === 'group-line-house' || evidence.type === 'constraint' && evidence.rules.length === 1) {
     assertGroupLineProof(puzzle, proof, 'modular')
     return
   }
 
   assert.equal(proof.technique, 'modular')
+  assert.equal(evidence.type, 'constraint')
   const { cells, domains, rules } = evidence
   assert.equal(rules.length, 2)
   const line = puzzle.rules![rules[0]]

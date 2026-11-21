@@ -66,6 +66,34 @@ impl GroupLine {
         self.phases[a] != self.phases[b]
     }
 
+    pub(super) fn house_pair_removals(
+        &self,
+        left: usize,
+        right: usize,
+        domains: [u16; 2],
+    ) -> [u16; 2] {
+        if !self.consistent || self.different_phases(left, right) {
+            return [0; 2];
+        }
+        let mut removals = [0; 2];
+        let common = domains[0] & domains[1];
+        for group in self.partition.masks() {
+            let shared = common & group;
+            if shared == 0 {
+                continue;
+            }
+            // If one cell has only this digit in the group, the other
+            // cannot use it without making the house repeat that digit.
+            if domains[0] & group == shared && shared.is_power_of_two() {
+                removals[1] |= shared;
+            }
+            if domains[1] & group == shared && shared.is_power_of_two() {
+                removals[0] |= shared;
+            }
+        }
+        removals
+    }
+
     pub(super) fn modular_sum_groups(&self, left: usize, right: usize, sum: u8) -> Option<Vec<u16>> {
         if !self.consistent {
             return None;

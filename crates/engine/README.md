@@ -534,6 +534,8 @@ Use [`VariantPosition::solve_logically`] for a trace or [`VariantPosition::rate`
 
 Singles and Locked Candidates use all active houses. Local variant techniques explain deductions from the individual constraints. Binary exclusions can also combine a rule with an exhaustive set of cell candidates or house locations. Proofs record the rule indices, cells, and candidate masks before the move. A rule can produce several proofs, such as separate Clone groups.
 
+Entropic and Modular hints can also use a shared house. Two cells a multiple of three positions apart on the same line must use the same digit group. If they share a house, a candidate can be removed when the other cell would need the same digit. [`VariantEvidence::GroupLineHouse`] identifies the line's rule index, the shared house, the two cells, and their input candidate masks. In Wasm, its evidence type is `group-line-house`.
+
 Non-Consecutive has four additional techniques. Each checks finite alternatives rather than searching for a solution. [`VariantEvidence::Exclusion`] records a typed [`VariantExclusionPremise`], the source rules, and any houses needed to exclude equal digits. Every alternative must conflict with each removed candidate. The detector uses the compiled binary relation, including explicit edge exceptions. House premises include Jigsaw regions, diagonals and extra houses.
 
 | Technique ID | Required pattern | Points | Tier |
@@ -557,7 +559,7 @@ Use `replay-step` with a zero-based `stepIndex` to get the position before and a
 
 Use [`variant_practice_examples`] to load three exercises for a technique. In Wasm or `batch-variant`, send `practice-examples` with `variant: true` and the technique ID. Send `techniques` with `variant: true` to read the variant catalog, point costs, and default order. Each exercise includes its rules, the position before the move, the candidate masks, valid actions, and a suggested action with its proof.
 
-The engine uses scoring version 8 for variants. The four Non-Consecutive techniques and Whispers shared-house support extend the default path, while older technique costs remain unchanged. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. Exclusions count each alternative to inspect; house sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
+The engine uses scoring version 9 for variants. It identifies the addition of Modular sum and Entropic and Modular shared-house deductions to the existing techniques. The point costs, difficulty thresholds, and technique order stay the same as version 8. It estimates the effort of each example proof from the cells to inspect, the choices in their candidate masks, and the reasoning the rule requires. The median of three estimates sets the technique cost. Exclusions count each alternative to inspect; house sums also account for the house and source cages. The estimate is independent of how many actions the proof justifies. Shared singles and Locked Candidates use their classic point costs.
 
 The variant technique tiers use costs through 26 points for Easy and through 68 for Medium. Cage Combinations and Arrow also start at Easy because they apply the basic rules of Killer and Arrow Sudoku. Higher costs start at Hard. Total points do not raise the difficulty. A complete path uses its hardest technique tier, and generation checks the requested tier and the lower-tier profile. A stalled path reports a partial total and keeps the selected rule set, technique order, and scoring version.
 
@@ -635,7 +637,7 @@ Use `entropic` with the original ordered `cells` walk. Every three successive po
 
 The compiler retains repeated references and closed paths. It maps the walk onto distinct cells and their repeating phases. A cell revisited in different phases makes the constraint unsatisfiable. Every support request checks at most six group orders. Drawings and serialized rules keep their original order.
 
-The logical technique costs 27 points at Medium difficulty, as in the research catalog. Existing scoring version 8 and prior costs stay unchanged. Proof evidence records the original rule index, distinct cells and input domains. The three checked practice positions also support generated drills. Fixed templates support generation and required-family dependence. App presets require separate difficulty calibration.
+The logical technique costs 27 points at Medium difficulty, as in the research catalog. A basic proof records the original rule index, distinct cells and input domains. When a proof also uses a shared house, it identifies that house and the two cells it constrains. The three checked practice positions also support generated drills. Fixed templates support generation and required-family dependence. App presets require separate difficulty calibration.
 
 
 ## Global Entropy

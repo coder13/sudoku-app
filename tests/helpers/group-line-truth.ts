@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import type { VariantDeduction, VariantPuzzle } from '../../src/sudoku/engine.ts'
+import { variantHouseCells } from '../../src/sudoku/variants.ts'
 
 /** Independently enumerate groups under each original sliding-window rule. */
 export function assertGroupLineProof(
@@ -8,6 +9,35 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-house') {
+    const { cells, domains, rule: index, house } = proof.evidence
+    const rule = puzzle.rules![index]
+    assert.ok(rule.type === 'entropic' || rule.type === 'modular')
+    assert.equal(rule.type, type)
+    const [first, second] = cells.map(cell => rule.cells.indexOf(cell))
+    assert.ok(first >= 0 && second > first)
+    assert.equal((second - first) % 3, 0)
+    assert.ok(cells.every(cell => variantHouseCells(house, puzzle).includes(cell)))
+
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const supported = [0, 0]
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) {
+      const left = 1 << (a - 1), right = 1 << (b - 1)
+      if (a !== b && group(a) === group(b) && (domains[0] & left) && (domains[1] & right)) {
+        supported[0] |= left
+        supported[1] |= right
+      }
+    }
+    assert.ok(supported.every(Boolean))
+    assert.ok(proof.actions.length)
+    for (const action of proof.actions) {
+      assert.ok('eliminate' in action)
+      const cell = cells.indexOf(action.eliminate.cell), bit = 1 << (action.eliminate.digit - 1)
+      assert.ok(cell >= 0 && (domains[cell] & bit))
+      assert.equal(supported[cell] & bit, 0)
+    }
+    return
+  }
   assert.equal(proof.evidence.type, 'constraint')
   const { cells, domains, rules } = proof.evidence
   assert.equal(rules.length, 1)

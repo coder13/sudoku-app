@@ -5,7 +5,9 @@ pub(super) use modular_sum::ModularSum;
 
 use std::{collections::HashMap, ops::Range};
 
-use super::{ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, cell_mask};
+use super::{
+    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind, cell_mask,
+};
 use crate::{
     CELLS, DIGITS,
     hints::{digit_bit, digits},
@@ -161,6 +163,40 @@ impl LineConstraint {
             rule_id: rule.id(),
             rule_index: index,
         })
+    }
+
+    pub fn visit_group_house_removals(
+        &self,
+        puzzle: &CompiledVariant,
+        domains: &[u16],
+        basic_support: &[u16],
+        mut visit: impl FnMut(VariantHouseKind, [usize; 2], [u16; 2], [u16; 2]),
+    ) {
+        let LineKind::ThreeGroups(line) = &self.kind else {
+            return;
+        };
+        if basic_support.contains(&0) {
+            return;
+        }
+        for (i, &a) in self.cells.iter().enumerate() {
+            for (j, &b) in self.cells.iter().enumerate().skip(i + 1) {
+                if puzzle.peers[a] & (1u128 << b) == 0 {
+                    continue;
+                }
+                let pair_domains = [domains[i], domains[j]];
+                let [left, right] = line.house_pair_removals(i, j, pair_domains);
+                let removals = [left & basic_support[i], right & basic_support[j]];
+                if removals == [0, 0] || left == pair_domains[0] || right == pair_domains[1] {
+                    continue;
+                }
+                if let Some(&house) = puzzle.memberships[a].iter().find(|&&index| {
+                    puzzle.house_masks[index] & (1u128 << b) != 0
+                        && puzzle.search_houses.binary_search(&index).is_ok()
+                }) {
+                    visit(puzzle.houses[house].kind, [a, b], pair_domains, removals);
+                }
+            }
+        }
     }
 
     // Domains and support are in the same order as cells.

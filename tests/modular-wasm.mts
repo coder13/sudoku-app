@@ -10,6 +10,7 @@ import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { assertGroupLineProof } from './helpers/group-line-truth.ts'
 import { assertModularProof } from './helpers/modular-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -24,7 +25,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 517, 24, 2097, 28, false, false, 'medium'],
+  ['HCHW', 598, 27, 2178, 31, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -111,6 +112,7 @@ for (const [
     }
     assert.ok((await puzzleHints(game, 10)).choices.length > 1)
     const path = await puzzleSolution(game)
+    assert.ok('rating' in path)
     assert.equal(path.steps.length, appSteps)
     if (appComplete) assert.equal(path.board, source.solution)
     else {
@@ -127,7 +129,7 @@ for (const [
       assert.equal(previous.steps.length, 25)
       const { entries, eliminations } = previous.end
       assert.equal(entries, '0'.repeat(81))
-      const stalled = { ...game, position: { ...game.position, entries, eliminations } }
+      const stalled = { ...game, position: { ...game.position, entries, eliminations: [...eliminations] } }
       const choices = await puzzleHints(stalled, 'all', 'modular')
       const combined = choices.choices.find(hint => 'variant' in hint.evidence &&
         hint.evidence.variant.source?.deduction.evidence.type === 'constraint' &&
@@ -151,6 +153,95 @@ for (const [
     }
   })
 }
+
+test('the published HCHW stall offers two explained Modular and row hints in Play and Finder', async () => {
+  const { code, solution } = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const { game } = await prepareImportedPuzzle(code)
+  const { eliminations } = load('hchw-stall')
+  const stalled = { ...game, position: { ...game.position, eliminations } }
+  const { choices, candidates } = await puzzleHints(stalled, 'all', 'modular')
+  const expected = [
+    { cells: [4, 7], row: 0, rule: 19, digits: [1, 2, 3] },
+    { cells: [29, 32], row: 3, rule: 17, digits: [4, 5, 6] },
+  ]
+  assert.equal(choices.length, expected.length)
+  assert.ok(candidates)
+  const position = variantPosition(game.variant!, stalled.position)
+  const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
+  try {
+    assert.equal(await scan.count('modular'), 6)
+  } finally { scan.close() }
+  for (const [i, { cells, row, rule, digits }] of expected.entries()) {
+    const hint = choices[i]
+    assert.ok('variant' in hint.evidence && hint.evidence.variant.source)
+    const { description, reason, source: { deduction } } = hint.evidence.variant
+    assertModularProof(position.puzzle, deduction)
+    assert.deepEqual(deduction.evidence, {
+      type: 'group-line-house', rule, house: { row }, cells,
+      domains: cells.map(cell => 511 ^ eliminations[cell]),
+    })
+    assert.match(description, new RegExp(`same remainder group and different digits in row ${row + 1}`))
+    assert.match(reason, /only candidate in that group/)
+    assert.deepEqual(hint.actions, digits.map(digit => ({ eliminate: { cell: cells[1], digit } })))
+    assert.ok(digits.every(digit => Number(solution[cells[1]]) !== digit))
+    const played = applyDeduction(stalled, hint.actions, candidates)
+    assert.equal(valuesOf(played), valuesOf(stalled))
+    assert.notEqual(played, stalled)
+    assert.deepEqual(undo(played).position, stalled.position)
+    assert.deepEqual(redo(undo(played)).position, played.position)
+  }
+})
+
+test('a repeated group can exclude a digit across a shared house on either kind of line', async () => {
+  for (const [type, digits] of [
+    ['modular', [1, 2, 3]],
+    ['entropic', [1, 4, 7]],
+  ] as const) {
+    const eliminationMask = 511 ^ digits.reduce((mask, digit) => mask | (1 << (digit - 1)), 0)
+    const position: { puzzle: VariantPuzzle; eliminations: number[] } = {
+      puzzle: { version: 1, givens: '0'.repeat(81), rules: [{ type, cells: [0, 10, 11, 3] }] },
+      eliminations: Array(81).fill(0),
+    }
+    position.eliminations[0] = eliminationMask
+    const hints = (techniqueOrder: string[] = [type]) => runEngine({
+      type: 'variant', operation: 'hints', position, techniqueOrder, limit: 0xffff_ffff,
+    })
+    const [proof, ...others] = await hints()
+    assert.ok(proof)
+    assert.equal(others.length, 0)
+    assert.deepEqual(proof.evidence, {
+      type: 'group-line-house', rule: 0, house: { row: 0 }, cells: [0, 3], domains: [511 ^ eliminationMask, 511],
+    })
+    assert.deepEqual(proof.actions, digits.map(digit => ({ eliminate: { cell: 3, digit } })))
+    assertGroupLineProof(position.puzzle, proof, type)
+    assert.deepEqual(await hints([]), [])
+
+    // Add another possible digit to the first cell's group containing 1.
+    position.eliminations[0] &= ~(1 << (type === 'modular' ? 3 : 1))
+    const [restored] = await hints()
+    assert.deepEqual(restored.actions, digits.slice(1).map(digit => ({ eliminate: { cell: 3, digit } })))
+
+    // Two cells in the same group can repeat when they share no house.
+    position.puzzle.rules = [{ type, cells: [0, 10, 11, 40] }]
+    assert.deepEqual(await hints(), [])
+    // A shared house cannot supply a group equality when phases differ.
+    position.puzzle.rules = [{ type, cells: [0, 10, 3] }]
+    assert.deepEqual(await hints(), [])
+
+    // The same proof works across a declared diagonal. The two cells do not
+    // share a row, column, or box.
+    position.eliminations[0] = eliminationMask
+    position.puzzle.rules = [{ type, cells: [0, 10, 20, 30] }, { type: 'diagonal', diagonal: 'main' }]
+    const [diagonal] = await hints()
+    assertGroupLineProof(position.puzzle, diagonal, type)
+    assert.deepEqual(diagonal.evidence, {
+      type: 'group-line-house', rule: 0, house: { diagonal: 'main' }, cells: [0, 30], domains: [511 ^ eliminationMask, 511],
+    })
+    assert.deepEqual(diagonal.actions, digits.map(digit => ({ eliminate: { cell: 30, digit } })))
+    position.puzzle.rules = [{ type, cells: [0, 10, 20, 30] }]
+    assert.deepEqual(await hints(), [])
+  }
+})
 
 test('selected Modular proofs survive every page and Finder without changing exact validation', async () => {
   const rules = [...newman.puzzle.rules!]

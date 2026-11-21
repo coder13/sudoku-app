@@ -39,7 +39,7 @@ function positions(puzzle: VariantPuzzle) {
 }
 function verify(value: GeneratedVariant, difficulty: 'easy' | 'medium') {
   assert.ok(fixture.layouts.some(layout => JSON.stringify(layout.pairs.map(pair => [...pair].sort((a, b) => a - b))) === JSON.stringify(positions(value.puzzle))))
-  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 8)
+  assert.deepEqual(value.rating.status, { solved: difficulty }); assert.equal(value.rating.scoringVersion, 9)
   assert.ok(value.rating.counts.inequality); assert.ok(value.givens >= (difficulty === 'medium' ? 18 : 0) && value.givens <= 30)
   const truth = countLineSolutions(value.puzzle)
   assert.equal(truth.count, 1); assert.equal(truth.solution, value.solution)

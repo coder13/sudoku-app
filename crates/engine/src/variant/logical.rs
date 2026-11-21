@@ -18,8 +18,8 @@ use crate::{
 #[path = "logical_tests.rs"]
 mod tests;
 
-/// Version of the point costs and difficulty thresholds for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 8;
+/// Version of the rating behavior for structured puzzles.
+pub const VARIANT_SCORING_VERSION: u32 = 9;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -232,6 +232,17 @@ pub enum VariantEvidence {
         cells: Vec<usize>,
         /// Candidate masks, including singleton masks for placed digits.
         domains: Vec<u16>,
+    },
+    /// Two cells in the same group on a line also share a house.
+    GroupLineHouse {
+        /// Index of the Entropic or Modular rule in the puzzle definition.
+        rule: usize,
+        /// House requiring the cells to contain different digits.
+        house: VariantHouseKind,
+        /// Cells in the same repeating group, in first-visit order.
+        cells: [usize; 2],
+        /// Current candidate masks, including placed digits.
+        domains: [u16; 2],
     },
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
@@ -503,6 +514,7 @@ impl VariantDeduction {
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -1028,6 +1040,29 @@ impl CompiledVariant {
                     ) {
                         proofs.push(proof);
                     }
+                    line.visit_group_house_removals(
+                        self,
+                        &domains[..len],
+                        &supported[..len],
+                        |house, cells, domains, removals| {
+                            let actions = position.removals(
+                                &cells,
+                                removals.into_iter().map(|mask| DIGITS & !mask),
+                            );
+                            if !actions.is_empty() {
+                                proofs.push(VariantDeduction {
+                                    technique,
+                                    actions,
+                                    evidence: VariantEvidence::GroupLineHouse {
+                                        rule: line.rule_index,
+                                        house,
+                                        cells,
+                                        domains,
+                                    },
+                                });
+                            }
+                        },
+                    );
                 }
                 if technique == Modular {
                     for clue in &self.modular_sums {

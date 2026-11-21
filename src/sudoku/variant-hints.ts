@@ -1,6 +1,6 @@
 import type { HintChoice, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
 import { DIGITS, onlyCandidate } from './game.ts'
-import { lineGroups } from './line-groups.ts'
+import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
 import { cloneLayout } from './clone.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
@@ -292,6 +292,22 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         description = `This cage must add to ${evidence.sum} using different digits.`
       }
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
+      break
+    }
+    case 'group-line-house': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const [first, second] = evidence.cells
+      description = `${nameCell(first)} and ${nameCell(second)} are a multiple of three positions apart on a ${line} Line. They must use the same ${group} and different digits in ${houseLabel(evidence.house)}.`
+      const { cell, digit } = focus[0]
+      const partner = cell === first ? second : first
+      const groupDigits = DIGITS.filter(value => lineGroupMask(kind, digit) & 1 << (value - 1))
+      const example = `If ${nameCell(cell)} were ${digit}, ${nameCell(partner)} would need a digit from {${groupDigits.join(', ')}}. Its only candidate in that group is ${digit}, which would repeat in ${houseLabel(evidence.house)}.`
+      reason = focus.length === 1 ? example : `Each crossed-out digit would force the same digit in the other cell. ${example}`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+        .map(digit => ({ cell: cells[i], digit })))
       break
     }
     case 'line-houses': {

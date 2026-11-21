@@ -22,7 +22,7 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   const expectedPuzzle = {
     ...source.puzzle,
     regions: source.puzzle.regions ?? { type: 'boxes' },
-    rules: source.puzzle.rules.map(rule => rule.type === 'kropki' ? {
+    rules: (source.puzzle.rules ?? []).map(rule => rule.type === 'kropki' ? {
       ...rule,
       consecutive: rule.consecutive ?? { negative: false, pairs: [] },
       ratioTwo: rule.ratioTwo ?? { negative: false, pairs: [] },
@@ -58,13 +58,13 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [] }), [])
 })
 
-test('Quintuple Pattern Overlay has no deductions at the new HCHW stall', async () => {
+test('Quintuple Pattern Overlay has no deductions at the HCHW stall after same-group house deductions', async () => {
   const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
   const trace = await runEngine({
     type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: await getVariantPlayOrder(),
   })
   assert.equal(trace.rating.status, 'stalled')
-  assert.equal(trace.steps.length, 28)
+  assert.equal(trace.steps.length, 31)
   const technique = 'quintuple-pattern-overlay'
   const position = trace.end
   assert.deepEqual(await runEngine({

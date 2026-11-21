@@ -20,10 +20,10 @@ const clover = load('clover') as { puzzle: VariantPuzzle; solution: string }
 const share = (puzzle: VariantPuzzle) =>
   '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 const expected = [
-  ['clover', 626, 73, 1036, 73, true, true],
+  ['clover', 680, 75, 1090, 75, true, true],
   ['EoGB', 452, 69, 982, 69, true, true],
-  ['BSEJ', 89, 5, 1573, 92, false, true],
-  ['Hyk5', 180, 9, 1680, 12, false, false],
+  ['BSEJ', 116, 6, 1600, 93, false, true],
+  ['Hyk5', 180, 9, 2871, 28, false, false],
   ['Hafj', 107, 5, 107, 5, false, false],
   ['Ksy3', 2340, 159, 2680, 159, true, true],
 ] as const

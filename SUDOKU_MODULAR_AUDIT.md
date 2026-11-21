@@ -247,6 +247,20 @@ The combined changes add 4,581 raw bytes and 5,736 gzip bytes to the app engine.
 node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=5 --warmups=1 --cases=HCHW-22,HCHW-current-stall
 ```
 
+### Combine repeating groups with shared houses
+
+Two cells a multiple of three positions apart on a Modular or Entropic Line use the same digit group. If they share a house, they must use different digits. A crossed-out candidate would force its partner to repeat that digit, because the partner has no other candidate in the same group. The proof records the exact line, house, cells and candidate masks. It works with rows, columns, regions, and declared houses such as diagonals.
+
+The [captured 28-step HCHW stall](tests/fixtures/modular-hchw-stall.json) now offers two Modular hints in Play. R1C5 only has candidates 1, 2 and 3, one per remainder group, and R1C8 shares its group and row. Remove 1, 2 and 3 from R1C8. R4C3 only has 4, 5 and 6, so it rules those digits out of R4C6 the same way. Technique Finder counts all six removals. Testing independently enumerates valid digit pairs and checks the published answer, hint text, application, undo and redo.
+
+In a full walkthrough the detector also finds a line-and-column proof earlier in HCHW. The native path reaches 27 steps and 598 points, up from 24 and 517. The app path reaches 31 steps and 2,178 points, up from 28 and 2,097. The app path for 220V reaches 32 steps and 1,045 points, up from 29 and 980. Both puzzles still stall before placing a digit. Newman, Hu9m, Ksy3 and EoGB preserve their full app deduction sequences and scores. The technique costs stay the same and variant scoring advances to version 9 to identify the changed paths. [HCHW coverage](https://github.com/coder13/sudoku-app/issues/175)
+
+The app still solves the published Clover and Entropic Web puzzles at Medium. Clover moves from 73 steps and 1,036 points to 75 and 1,090. Entropic Web moves from 92 and 1,573 to 93 and 1,600. Entropic Loop moves from 12 and 1,680 to 28 and 2,871, still without a placement. The Entropic Loop native path and both Entropic Hafj paths stay the same. [Entropic coverage](https://github.com/coder13/sudoku-app/issues/162)
+
+Raw app WebAssembly grows from 4,031,922 to 4,067,229 bytes. Gzip grows from 1,065,545 to 1,068,933 bytes. On the saved HCHW position, the selected Modular request moves from zero hints to two, with a warmed median of 0.034 to 0.073 ms over 100 samples. Five alternating warmed full app traces put the HCHW median at 1.24 to 1.53 seconds, with overlapping timings. Four alternating warmed Entropic Loop traces take a median of 1.21 to 2.03 seconds as the solver explores the longer path. On the final Entropic Loop positions, the forcing searches take 431 to 536 ms in a separate diagnostic and find no move. That is the largest measured family at the stall.
+
+The 31-step stall still has a three-cell deduction that the engine does not find. If R1C8 were 5, its Modular partner R1C5 would need a digit from {2, 5, 8}. R1C5 has candidates 1, 2 and 3, so it would have to be 2. The adjacent sum of 7 would make R1C4 a 5, repeating 5 in row 1. Independently enumerating the three domains with the sum, remainder equality and row distinctness gives five assignments, including the published one. None uses 5 in R1C8. This proof needs the sum partner even though it lies off the Modular Line.
+
 ## Reproduce
 
 ```sh

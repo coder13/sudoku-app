@@ -457,8 +457,10 @@ test('220V imports its complete published rules and centered paths through the s
     assert.ok((await regionSumChoices(undo(pencilled))).actions.has(JSON.stringify(removal)))
 
     const path = await puzzleSolution(game)
+    assert.ok('rating' in path)
     assert.equal(path.rating.status, 'stalled')
-    assert.ok(path.steps.length > 0)
+    assert.equal(path.steps.length, 32)
+    assert.equal(path.rating.score.points, 1045)
     let played = game
     for (const step of path.steps) {
       for (const action of step.actions) {

@@ -42,7 +42,7 @@ function verify(value: GeneratedVariant, difficulty: typeof difficulties[number]
   const rules = totals(value.puzzle)
   assert.ok(rules.some(rule => rule.sum !== 5 && rule.sum !== 10))
   assert.deepEqual(value.rating.status, { solved: difficulty })
-  assert.equal(value.rating.scoringVersion, 8)
+  assert.equal(value.rating.scoringVersion, 9)
   assert.ok(value.rating.counts[variant] > 0)
   assert.ok(value.givens >= (difficulty === 'medium' ? 16 : 0) && value.givens <= 30)
   assertVariantCompletion(value.puzzle, value.solution)
