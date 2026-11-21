@@ -7,7 +7,7 @@ use crate::{
     Candidate, ForcingBranch, ForcingCase, ForcingConflict, ForcingInference, ForcingLiteral,
     ForcingScope,
 };
-use std::collections::BTreeSet;
+use std::{cell::OnceCell, collections::BTreeSet};
 
 mod advanced;
 mod witnesses;
@@ -19,6 +19,7 @@ const WORDS: usize = STATES.div_ceil(64);
 pub(super) struct ForcingGraph {
     clauses: Vec<Clause>,
     available: Vec<usize>,
+    intersections: OnceCell<IntersectionIndex>,
 }
 
 struct Clause {
@@ -30,10 +31,35 @@ struct Clause {
 
 struct Intersection {
     scope: ForcingScope,
+    digit: usize,
     shared_cells: u128,
     premise_cells: u128,
     premises: Vec<usize>,
-    targets: Vec<usize>,
+    target_cells: u128,
+}
+
+struct IntersectionIndex {
+    items: Vec<Intersection>,
+    by_premise: Vec<Vec<(usize, u64)>>,
+}
+
+impl IntersectionIndex {
+    fn new(items: Vec<Intersection>) -> Self {
+        let mut by_premise = vec![Vec::<(usize, u64)>::new(); CANDIDATE_COUNT];
+        for (index, intersection) in items.iter().enumerate() {
+            let word = index / 64;
+            let bit = 1 << (index % 64);
+            for &premise in &intersection.premises {
+                let words = &mut by_premise[premise];
+                if let Some((_, mask)) = words.last_mut().filter(|(last, _)| *last == word) {
+                    *mask |= bit;
+                } else {
+                    words.push((word, bit));
+                }
+            }
+        }
+        Self { items, by_premise }
+    }
 }
 
 impl Intersection {
@@ -68,7 +94,11 @@ impl ForcingGraph {
                 });
             }
         }
-        Self { clauses, available }
+        Self {
+            clauses,
+            available,
+            intersections: OnceCell::new(),
+        }
     }
 
     pub(super) fn visit(
@@ -240,7 +270,7 @@ impl ForcingGraph {
         ControlFlow::Continue(())
     }
 
-    fn intersections(&self) -> Vec<Intersection> {
+    fn build_intersections(&self) -> Vec<Intersection> {
         let mut intersections = Vec::new();
         for source_clause in &self.clauses[CELLS..] {
             let ForcingScope::House {
@@ -269,23 +299,21 @@ impl ForcingGraph {
                 if shared.len() < 2 || premises.is_empty() {
                     continue;
                 }
-                let targets: Vec<_> = self.clauses[CELLS + index * 9 + usize::from(digit - 1)]
-                    .members
-                    .iter()
-                    .copied()
-                    .filter(|&id| source_cells & (1 << (id / 9)) == 0)
-                    .collect();
-                if !targets.is_empty() {
+                let digit_index = usize::from(digit - 1);
+                let target_cells =
+                    self.clauses[CELLS + index * 9 + digit_index].domain & !source_cells;
+                if target_cells != 0 {
                     intersections.push(Intersection {
                         scope: ForcingScope::Intersection {
                             source,
                             target,
                             digit,
                         },
+                        digit: digit_index,
                         shared_cells: shared.iter().fold(0, |mask, id| mask | (1 << (id / 9))),
                         premise_cells: premises.iter().fold(0, |mask, id| mask | (1 << (id / 9))),
                         premises,
-                        targets,
+                        target_cells,
                     });
                 }
             }
@@ -542,7 +570,8 @@ fn guardian_clause_can_advance(words: &[(usize, u64)], reached: &[u64; WORDS]) -
 struct BranchSearch<'a> {
     graph: &'a ForcingGraph,
     mode: Mode,
-    intersections: Vec<Intersection>,
+    intersections: Option<&'a IntersectionIndex>,
+    pending_intersections: Vec<u64>,
     advanced: Option<Box<advanced::State>>,
     guardians: Vec<usize>,
     seen: [usize; STATES],
@@ -554,14 +583,17 @@ struct BranchSearch<'a> {
 
 impl<'a> BranchSearch<'a> {
     fn new(graph: &'a ForcingGraph, mode: Mode) -> Self {
+        let intersections = (mode >= Mode::Dynamic).then(|| {
+            graph
+                .intersections
+                .get_or_init(|| IntersectionIndex::new(graph.build_intersections()))
+        });
         Self {
             graph,
             mode,
-            intersections: if mode >= Mode::Dynamic {
-                graph.intersections()
-            } else {
-                Vec::new()
-            },
+            intersections,
+            pending_intersections: intersections
+                .map_or_else(Vec::new, |index| vec![0; index.items.len().div_ceil(64)]),
             advanced: (mode == Mode::Advanced).then(|| Box::new(advanced::State::new(graph))),
             guardians: Vec::new(),
             seen: [UNSEEN; STATES],
@@ -577,6 +609,8 @@ impl<'a> BranchSearch<'a> {
     }
 
     fn rollback(&mut self, len: usize) {
+        // Branch starts and split checkpoints have no pending intersections.
+        self.pending_intersections.fill(0);
         if let Some(advanced) = &mut self.advanced {
             advanced.rollback(&self.facts, len);
         }
@@ -733,6 +767,10 @@ impl<'a> BranchSearch<'a> {
                     && possible.is_power_of_two()
                 {
                     let last = first + possible.trailing_zeros() as usize * stride;
+                    let positive = last * 2 + 1;
+                    if self.seen[positive] != UNSEEN {
+                        continue;
+                    }
                     let mut mode = fact.mode;
                     if source.members.len() > 2 {
                         mode = mode.max(Mode::Net);
@@ -744,7 +782,7 @@ impl<'a> BranchSearch<'a> {
                         }
                     }
                     if let Some(conflict) =
-                        self.add(last * 2 + 1, Cause::LastCandidate { clause }, mode)
+                        self.add(positive, Cause::LastCandidate { clause }, mode)
                     {
                         return Some(conflict);
                     }
@@ -756,12 +794,27 @@ impl<'a> BranchSearch<'a> {
     }
 
     fn apply_intersections(&mut self) -> Option<Conflict> {
-        for index in 0..self.intersections.len() {
-            let intersection = &self.intersections[index];
-            let ForcingScope::Intersection { digit, .. } = intersection.scope else {
-                unreachable!();
-            };
-            if !intersection.can_advance(self.removed[usize::from(digit - 1)]) {
+        let Some(intersections) = self.intersections else {
+            return None;
+        };
+        let mut cursor = 0;
+        while let Some(word) = self.pending_intersections.get_mut(cursor / 64) {
+            let pending = *word & (u64::MAX << (cursor % 64));
+            if pending == 0 {
+                cursor += 64 - cursor % 64;
+                continue;
+            }
+            let bit = pending.trailing_zeros() as usize;
+            *word &= !(1 << bit);
+            let index = cursor / 64 * 64 + bit;
+            // New removals can trigger later intersections in this sweep.
+            // Earlier ones run on the next sweep, after ordinary propagation.
+            cursor = index + 1;
+            let intersection = &intersections.items[index];
+            let digit = intersection.digit;
+            let removed = self.removed[digit];
+            let targets = intersection.target_cells & !removed;
+            if targets == 0 || !intersection.can_advance(removed) {
                 continue;
             }
             let mode = if self.mode == Mode::Advanced {
@@ -771,8 +824,8 @@ impl<'a> BranchSearch<'a> {
             } else {
                 Mode::Dynamic
             };
-            for offset in 0..intersection.targets.len() {
-                let target = self.intersections[index].targets[offset];
+            for cell in cells(targets) {
+                let target = cell * 9 + digit;
                 if let Some(conflict) = self.add(target * 2, Cause::Intersection { index }, mode) {
                     return Some(conflict);
                 }
@@ -814,6 +867,11 @@ impl<'a> BranchSearch<'a> {
             let (cell, digit) = (id / 9, id % 9);
             self.removed[digit] |= 1 << cell;
             self.removed_from_cell[cell] |= 1 << digit;
+            if let Some(intersections) = self.intersections {
+                for &(word, mask) in &intersections.by_premise[id] {
+                    self.pending_intersections[word] |= mask;
+                }
+            }
         }
         (self.seen[state ^ 1] != UNSEEN).then(|| Conflict::Opposite([self.seen[state ^ 1], index]))
     }
@@ -862,7 +920,7 @@ impl<'a> BranchSearch<'a> {
     }
 
     fn intersection_causes(&self, index: usize) -> impl Iterator<Item = usize> + '_ {
-        self.intersections[index]
+        self.intersections.unwrap().items[index]
             .premises
             .iter()
             .map(|&id| self.seen[id * 2])
@@ -954,7 +1012,7 @@ impl<'a> BranchSearch<'a> {
                         .collect(),
                 ),
                 Cause::Intersection { index } => (
-                    self.intersections[index].scope,
+                    self.intersections.unwrap().items[index].scope,
                     self.intersection_causes(index)
                         .map(|source| indices[source])
                         .collect(),
@@ -1042,6 +1100,65 @@ mod guardian_tests {
     use super::*;
 
     #[test]
+    fn intersection_work_preserves_sweep_order_and_does_not_leak_across_splits() {
+        let masks = [0x1ff; CELLS];
+        let positions = super::super::candidate_positions(&masks);
+        let graph = ForcingGraph::new(&masks, &positions);
+        let intersection = |premise: usize, target: usize| Intersection {
+            scope: ForcingScope::Intersection {
+                source: House::Row(0),
+                target: House::Box(0),
+                digit: 1,
+            },
+            digit: 0,
+            shared_cells: (1 << 12) | (1 << 13),
+            premise_cells: 1 << premise,
+            premises: vec![premise * 9],
+            target_cells: 1 << target,
+        };
+        let mut intersections = vec![intersection(6, 8)];
+        intersections.extend((1..64).map(|_| intersection(80, 42)));
+        intersections.extend([intersection(0, 6), intersection(6, 7)]);
+        assert!(
+            graph
+                .intersections
+                .set(IntersectionIndex::new(intersections))
+                .is_ok()
+        );
+
+        let mut branch = BranchSearch::new(&graph, Mode::Dynamic);
+        branch.add(17 * 18, Cause::Assumption, Mode::Chain);
+        assert!(branch.apply_intersections().is_none());
+        let checkpoint = branch.facts.len();
+
+        branch.add(0, Cause::Assumption, Mode::Chain);
+        assert!(branch.apply_intersections().is_none());
+        assert_eq!(branch.pending_intersections[0], 1);
+        branch.rollback(checkpoint);
+        assert!(branch.pending_intersections.iter().all(|&word| word == 0));
+
+        for _ in 0..2 {
+            branch.add(0, Cause::Assumption, Mode::Chain);
+            assert!(branch.apply_intersections().is_none());
+            // Index 65 runs in the current pass. Index 0 waits for the next pass.
+            let sites = branch
+                .facts
+                .iter()
+                .map(|fact| fact.state / 18)
+                .collect::<Vec<_>>();
+            assert_eq!(sites, [17, 0, 6, 7]);
+            assert!(branch.apply_intersections().is_none());
+            assert!(matches!(
+                branch.facts.last(),
+                Some(Fact { state, cause: Cause::Intersection { index: 0 }, .. }) if *state == 8 * 18
+            ));
+            branch.rollback(checkpoint);
+            assert!(branch.apply_intersections().is_none());
+            assert_eq!(branch.facts.len(), checkpoint);
+        }
+    }
+
+    #[test]
     fn intersection_eligibility_requires_a_confined_source_with_two_remaining_sites() {
         // Every subset of every source house covers removals on both sides of
         // each shared boundary, including the high bits at cells 64 through 80.
@@ -1058,10 +1175,11 @@ mod guardian_tests {
                         target,
                         digit: 9,
                     },
+                    digit: 8,
                     shared_cells: shared,
                     premise_cells: house_cells(source) & !shared,
                     premises: Vec::new(),
-                    targets: Vec::new(),
+                    target_cells: 0,
                 };
                 for selection in 0u16..512 {
                     let removed = source_cells.iter().enumerate().fold(0, |mask, (i, &cell)| {
