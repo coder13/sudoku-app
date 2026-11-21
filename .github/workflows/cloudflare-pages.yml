@@ -20,6 +20,51 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  desktop-resize:
+    name: Check desktop resize
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix tools/react-board-performance ci
+      - run: npm exec --prefix tools/react-board-performance -- playwright install --with-deps chromium
+      - name: Fetch pinned desktop resize baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: f5dcace8f5115d6752c63ee826ee27a0380d232e
+          path: .desktop-resize-baseline
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            src/components/DesktopPlayLayout.tsx
+            src/components/Board.tsx
+            src/styles.css
+      - name: Check desktop resize behavior and performance
+        run: |
+          node node_modules/typescript/bin/tsc --project tests/browser/desktop-resize/tsconfig.json
+          node scripts/check-desktop-resize.mjs --baseline-root .desktop-resize-baseline --rounds 2 --trace-current-divider --output tools/react-board-performance/results/desktop-resize-ci.json
+      - name: Upload desktop resize results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-resize-checks
+          path: |
+            tools/react-board-performance/results/desktop-resize-ci.json
+            tools/react-board-performance/results/desktop-resize-current-dense-divider-trace.json
+            tools/react-board-performance/results/desktop-resize-failures/
+          if-no-files-found: ignore
+          retention-days: 14
+
   deploy:
     name: ${{ github.event_name == 'pull_request' && 'Build and check Sudoku' || 'Build and deploy Sudoku' }}
     if: >-
@@ -69,7 +114,7 @@ jobs:
           RUSTUP_TOOLCHAIN: stable
           VITE_EXPERIMENTAL_MODE: ${{ (github.event_name == 'pull_request' || steps.preview.outputs.sha != '') && 'true' || 'false' }}
 
-      - name: Check board, startup, resize, and solver lifecycles
+      - name: Check board, startup, mobile resize, and solver lifecycles
         if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
         run: |
           npm run check
@@ -82,6 +127,17 @@ jobs:
           node scripts/check-mobile-resize.mjs --regression-only --output tools/react-board-performance/results/resize-ci.json
           node --experimental-strip-types scripts/check-worktable-lifecycle.mjs --output tools/react-board-performance/results/lifecycle-ci.json
           node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
+
+      - name: Upload browser check results
+        if: always() && (github.event_name == 'pull_request' || steps.preview.outputs.sha != '')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: performance-and-browser-checks
+          path: |
+            tools/react-board-performance/results/
+            results/motion-ci.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Deploy to Cloudflare Pages
         id: pages
