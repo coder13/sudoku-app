@@ -1242,6 +1242,48 @@ export const MedusaHintStages: Story = {
   },
 }
 
+export const DesktopHintFits: Story = {
+  args: { game: medusaHintGame, games: [medusaHintGame] },
+  parameters: { viewport: { options: {
+    shortDesktop: { name: 'Short desktop', styles: { width: '1280px', height: '720px' } },
+  } } },
+  globals: { viewport: { value: 'shortDesktop', isRotated: false } },
+  beforeEach: () => {
+    const { desktopPanelWidths, pinnedActions } = playPreferenceStore.getSnapshot()
+    playPreferenceStore.set('desktopPanelWidths', { puzzle: 560, input: 350 })
+    playPreferenceStore.set('pinnedActions', ['hint'])
+    return () => {
+      playPreferenceStore.set('desktopPanelWidths', desktopPanelWidths)
+      playPreferenceStore.set('pinnedActions', pinnedActions)
+    }
+  },
+  render: (args) => <WorktableExample {...args} withTopbar resizable />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const stack = canvasElement.querySelector<HTMLElement>('.standard-puzzle-stack')
+    if (!stack) return
+    const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
+    const initialWidth = grid.getBoundingClientRect().width
+    await userEvent.click(canvas.getByRole('button', { name: /^Hint$/ }))
+    const more = await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
+    const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
+    const slot = card.closest('.standard-hint-slot')!
+    await Promise.allSettled(slot.getAnimations({ subtree: true }).map(animation => animation.finished))
+    const expectFit = () => {
+      const bounds = stack.getBoundingClientRect()
+      expect(grid.getBoundingClientRect().bottom).toBeLessThan(card.getBoundingClientRect().top)
+      expect(card.getBoundingClientRect().bottom).toBeLessThanOrEqual(bounds.bottom + 1)
+      expect(stack.scrollHeight).toBeLessThanOrEqual(stack.clientHeight + 1)
+    }
+    expectFit()
+    for (let step = 0; step < 3; step++) await userEvent.click(more)
+    await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
+    expectFit()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+    await waitFor(() => expect(grid.getBoundingClientRect().width).toBeCloseTo(initialWidth, 0))
+  },
+}
+
 const hintLayoutGame = { ...starter, id: 'hint-viewport' }
 const hintViewports = {
   shortPhone: { name: 'Short phone', styles: { width: '320px', height: '480px' } },

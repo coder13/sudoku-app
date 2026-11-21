@@ -29,6 +29,43 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   mobile: MobilePlay
   advanced?: ReactNode
 }) {
+  const puzzleStack = useRef<HTMLDivElement>(null)
+  const hintOpen = Boolean(hint)
+  const standardDesktop = desktop && !advanced
+  useLayoutEffect(() => {
+    if (!standardDesktop || !hintOpen) return
+    const stack = puzzleStack.current
+    const column = stack?.querySelector<HTMLElement>(':scope > .puzzle-column')
+    const dock = stack?.querySelector<HTMLElement>('.standard-hint-slot .hint-dock')
+    if (!stack || !column || !dock) return
+
+    const fitBoard = () => {
+      if (stack.closest('[data-layout-resizing]')) return
+      const frame = column.querySelector<HTMLElement>('.puzzle-stage .board-frame:not(.completion-frame, [inert] .board-frame)')
+      if (!frame) return
+      const scale = Number(getComputedStyle(stack).getPropertyValue('--desktop-layout-scale')) || 1
+      const style = getComputedStyle(frame)
+      const dimension = (name: string) => Number(style.getPropertyValue(name))
+      const rows = (dimension('--board-rows') || 9) + dimension('--outside-top') + dimension('--outside-bottom')
+      const columns = (dimension('--board-columns') || 9) + dimension('--outside-left') + dimension('--outside-right')
+      const hintHeight = dock.getBoundingClientRect().height + parseFloat(getComputedStyle(dock).marginBlockStart) * scale
+      const spareHeight = stack.getBoundingClientRect().height - column.getBoundingClientRect().height - hintHeight
+      // Convert spare height to width using the ratio of the grid and outside clues.
+      const frameWidth = frame.getBoundingClientRect().width
+      const width = Math.max(0, Math.floor((frameWidth + spareHeight * columns / rows) / scale))
+      const limit = `${width}px`
+      if (stack.style.getPropertyValue('--desktop-hint-board-width') !== limit) {
+        stack.style.setProperty('--desktop-hint-board-width', limit)
+      }
+    }
+
+    fitBoard()
+    const observer = new ResizeObserver(fitBoard)
+    for (const element of [stack, column, dock]) observer.observe(element, { box: 'border-box' })
+    // Keep the width limit until the hint's exit animation removes its card.
+    return () => observer.disconnect()
+  }, [standardDesktop, hintOpen])
+
   if (advanced) return advanced
   if (!desktop) {
     const { inputTitle, hintPlaceholder, ...layout } = mobile
@@ -39,7 +76,7 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
     }} />
   }
   return <>
-    <div className="standard-puzzle-stack">
+    <div ref={puzzleStack} className="standard-puzzle-stack">
       {puzzle}
       <div className="standard-hint-slot" data-open={Boolean(hint)}>
         <div><MotionSurface>{hint}</MotionSurface></div>
