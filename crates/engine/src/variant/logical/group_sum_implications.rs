@@ -109,7 +109,7 @@ impl CompiledVariant {
         };
         self.lines
             .iter()
-            .any(|line| line.rule_index == *rule && line.rule_id == technique.id())
+            .any(|line| line.rule_index == *rule && line.technique == technique)
     }
 }
 

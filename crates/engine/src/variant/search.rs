@@ -1,5 +1,5 @@
 use super::{
-    CompiledCage, CompiledVariant, cells_in,
+    CompiledVariant, cells_in,
     lines::renban_sum::{ContainedJoin, contained_joins},
 };
 use crate::{
@@ -267,17 +267,7 @@ impl CompiledVariant {
             }
         }
         for cage in &self.cages {
-            let fixed = cage
-                .cells
-                .iter()
-                .filter(|&&cell| board[cell] != 0)
-                .map(|&cell| digit_bit(board[cell]))
-                .fold(0, |mask, bit| mask | bit);
-            if !cage
-                .combinations
-                .iter()
-                .any(|&digits| digits & fixed == fixed)
-            {
+            if !cage.permits_placements(&board) {
                 return Err(VariantPositionError::Puzzle(Analysis::Conflict));
             }
         }
@@ -604,50 +594,6 @@ mod exact_house_tests {
                 .analyze(&[0; CELLS], &[0; CELLS], 1),
             Ok(Analysis::Conflict)
         );
-    }
-}
-
-impl CompiledCage {
-    pub(super) fn support(&self, domains: &[u16]) -> [u16; 9] {
-        self.support_with_placed_digits(domains, 0)
-    }
-
-    fn support_with_placed_digits(&self, domains: &[u16], fixed: u16) -> [u16; 9] {
-        let mut support = [0; 9];
-        // A subset is useful only if its digits can be assigned to the cells.
-        for &digits in self
-            .combinations
-            .iter()
-            .filter(|&&digits| digits & fixed == fixed)
-        {
-            record_support(digits & !fixed, domains, &mut support, &mut [None; 512]);
-        }
-        support
-    }
-
-    fn restrict(&self, position: &mut SearchPosition) {
-        let mut candidates = [0; 9];
-        let mut open = [0; 9];
-        let mut fixed = 0;
-        let mut len = 0;
-        for &cell in &self.cells {
-            let digit = position.board[cell];
-            if digit == 0 {
-                open[len] = cell;
-                candidates[len] = position.masks[cell];
-                len += 1;
-            } else {
-                fixed |= digit_bit(digit);
-            }
-        }
-        if len == 0 {
-            return;
-        }
-
-        let support = self.support_with_placed_digits(&candidates[..len], fixed);
-        for (index, &cell) in open[..len].iter().enumerate() {
-            position.masks[cell] &= support[index];
-        }
     }
 }
 

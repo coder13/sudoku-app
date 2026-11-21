@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, cell_mask};
+use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, VariantTechnique, cell_mask};
 use crate::{
     CELLS, DIGITS, SizedDotRelation,
     hints::{digit_bit, digits},
@@ -108,7 +108,7 @@ impl<const N: usize> PairConstraint<N> {
 
 #[derive(Debug)]
 pub(super) struct RuleSource {
-    pub id: &'static str,
+    pub technique: VariantTechnique,
     pub indices: Vec<usize>,
 }
 
@@ -198,12 +198,8 @@ impl PairCompiler {
                 .then_some(())
                 .ok_or(invalid)
         };
-        let source = Arc::new(RuleSource {
-            id: match rule {
-                PuzzleRule::Minimum { .. } | PuzzleRule::Maximum { .. } => "inequality",
-                PuzzleRule::LabeledDots { .. } => "kropki",
-                _ => rule.id(),
-            },
+        let source = |technique| Arc::new(RuleSource {
+            technique,
             indices: vec![index],
         });
         match rule {
@@ -223,6 +219,7 @@ impl PairCompiler {
                 }
             }
             PuzzleRule::Clone { groups } => {
+                let source = source(VariantTechnique::Clone);
                 if groups.is_empty() {
                     return Err(invalid);
                 }
@@ -234,6 +231,11 @@ impl PairCompiler {
             }
             PuzzleRule::AntiKnight {} | PuzzleRule::AntiKing {} => {
                 let knight = matches!(rule, PuzzleRule::AntiKnight {});
+                let source = source(if knight {
+                    VariantTechnique::AntiKnight
+                } else {
+                    VariantTechnique::AntiKing
+                });
                 for [a, b] in geometric_pairs(|row, col| {
                     if knight {
                         row.max(col) == 2 && row.min(col) == 1
@@ -247,6 +249,7 @@ impl PairCompiler {
                 }
             }
             PuzzleRule::NonConsecutive { except } => {
+                let source = source(VariantTechnique::NonConsecutive);
                 let mut excluded = BTreeSet::new();
                 for cells in except {
                     valid_cells(cells, 2..=2)?;
@@ -265,12 +268,14 @@ impl PairCompiler {
                 }
             }
             PuzzleRule::Inequality { less, greater } => {
+                let source = source(VariantTechnique::Inequality);
                 let cells = [*less, *greater];
                 valid_cells(&cells, 2..=2)?;
                 self.clues.push(pair(&source, cells, |a, b| a < b));
             }
             PuzzleRule::Minimum { cells, ignore_marked_neighbors }
             | PuzzleRule::Maximum { cells, ignore_marked_neighbors } => {
+                let source = source(VariantTechnique::Inequality);
                 let marked = cell_mask(cells).filter(|&mask| mask != 0).ok_or(invalid)?;
                 let minimum = matches!(rule, PuzzleRule::Minimum { .. });
                 for [a, b] in orthogonal_pairs() {
@@ -297,6 +302,7 @@ impl PairCompiler {
                 )?;
             }
             PuzzleRule::LabeledDots { relation, marks, negative } => {
+                let source = source(VariantTechnique::Kropki);
                 if marks.len() > 144 || marks.is_empty() && !negative {
                     return Err(invalid);
                 }
@@ -328,6 +334,7 @@ impl PairCompiler {
                 add_markers(&mut self.xv, index, [five, ten], XV, invalid)?;
             }
             PuzzleRule::AdjacentTotal { cells, sum } => {
+                let source = source(VariantTechnique::AdjacentTotal);
                 valid_cells(cells, 2..=2)?;
                 let [a, b] = *cells;
                 if !(3..=17).contains(sum)
@@ -343,10 +350,12 @@ impl PairCompiler {
                 self.clues.push(pair(&source, *cells, |a, b| a != b && a + b == *sum));
             }
             PuzzleRule::Thermometer { cells } => {
+                let source = source(VariantTechnique::Thermometer);
                 valid_cells(cells, 2..=9)?;
                 self.clues.push(path(&source, cells, |a, b| a < b));
             }
             PuzzleRule::Palindrome { cells, segments } => {
+                let source = source(VariantTechnique::Palindrome);
                 valid_cells(cells, 2..=CELLS)?;
                 if !super::drawing_paths_cover(cells, segments) {
                     return Err(invalid);
@@ -367,6 +376,7 @@ impl PairCompiler {
                 cells,
                 min_difference,
             } => {
+                let source = source(VariantTechnique::Whispers);
                 if !(2..=CELLS + 1).contains(&cells.len())
                     || cells.iter().any(|&cell| cell >= CELLS)
                     || cells.windows(2).any(|pair| pair[0] == pair[1])
@@ -386,11 +396,11 @@ impl PairCompiler {
     }
 
     pub fn finish(mut self, puzzle: &mut CompiledVariant) {
-        puzzle.kropki_marks = finish_markers(&mut self.clues, self.kropki, "kropki", KROPKI);
-        finish_markers(&mut self.clues, self.xv, "xv", XV);
+        puzzle.kropki_marks = finish_markers(&mut self.clues, self.kropki, VariantTechnique::Kropki, KROPKI);
+        finish_markers(&mut self.clues, self.xv, VariantTechnique::Xv, XV);
         for (kind, rule) in self.labeled_negative.into_iter().enumerate() {
             let Some(index) = rule else { continue };
-            let source = Arc::new(RuleSource { id: "kropki", indices: vec![index] });
+            let source = Arc::new(RuleSource { technique: VariantTechnique::Kropki, indices: vec![index] });
             for cells in orthogonal_pairs().filter(|edge| !self.labeled_marked[kind].contains(edge)) {
                 self.clues.push(pair(&source, cells, |a, b| !KROPKI[kind](a, b)));
             }
@@ -398,7 +408,7 @@ impl PairCompiler {
         let mut allowed = BTreeMap::<_, Allowed>::new();
         for clue in &self.clues {
             // The chess rules already contribute to the exact solver's peer table.
-            if matches!(clue.source.id, "anti-knight" | "anti-king") {
+            if matches!(clue.source.technique, VariantTechnique::AntiKnight | VariantTechnique::AntiKing) {
                 continue;
             }
             for link in &clue.links {
@@ -473,12 +483,12 @@ fn add_markers(
 fn finish_markers(
     clues: &mut Vec<PairClue>,
     markers: Markers,
-    id: &'static str,
+    technique: VariantTechnique,
     relations: [Relation; 2],
 ) -> Range<usize> {
     if markers.negative.into_iter().any(|active| active) {
         let source = Arc::new(RuleSource {
-            id,
+            technique,
             indices: markers.rule_indices,
         });
         for cells in orthogonal_pairs().filter(|pair| {
@@ -496,7 +506,7 @@ fn finish_markers(
     let start = clues.len();
     for (cells, marker) in markers.marked {
         let source = Arc::new(RuleSource {
-            id,
+            technique,
             indices: marker.rule_indices,
         });
         clues.push(PairClue {

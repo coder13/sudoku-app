@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn bounded_support_matches_direct_triples_for_every_middle_domain_and_gap() {
         let source = Arc::new(RuleSource {
-            id: "whispers",
+            technique: crate::VariantTechnique::Whispers,
             indices: vec![0],
         });
         for gap in 1..=8 {
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn an_exhausted_assignment_search_never_returns_partial_negative_support() {
         let source = Arc::new(RuleSource {
-            id: "whispers",
+            technique: crate::VariantTechnique::Whispers,
             indices: vec![0],
         });
         let clue = path(&source, &[0, 10, 20], |a, b| a.abs_diff(b) >= 5);

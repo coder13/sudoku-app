@@ -17,7 +17,7 @@ impl CompiledVariant {
         for line in self
             .lines
             .iter()
-            .filter(|line| line.rule_id == "renban" && (2..9).contains(&line.cells.len()))
+            .filter(|line| line.technique.id() == "renban" && (2..9).contains(&line.cells.len()))
         {
             let length = line.cells.len();
             let scope = cell_mask(&line.cells).expect("compiled Renban");

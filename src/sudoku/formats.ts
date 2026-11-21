@@ -31,6 +31,10 @@ export function parsePuzzle(input: string): string {
     cells = textGridCells(text)
   }
 
+  return normalizeGivens(cells)
+}
+
+export function normalizeGivens(cells: string): string {
   if (!GRID.test(cells)) {
     throw new Error('Enter exactly 81 cells. Use a dot or 0 for each empty cell.')
   }

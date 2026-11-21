@@ -15,7 +15,7 @@ impl CompiledVariant {
             .enumerate()
             .filter_map(|(index, clue)| {
                 (matches!(
-                    clue.source.id,
+                    clue.source.technique.id(),
                     "kropki" | "xv" | "adjacent-total" | "inequality"
                 ) && clue.binary_relation().is_some())
                 .then_some(Scope::Pair(index, 0))

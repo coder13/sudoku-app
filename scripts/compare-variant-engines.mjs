@@ -2,10 +2,13 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
 const paths = process.argv.slice(2)
-assert.ok(paths.length >= 2, 'Usage: node --experimental-strip-types scripts/compare-variant-engines.mjs before.wasm after.wasm [fixture.json ...]')
+const ruleScaling = paths[0] === '--rule-scaling'
+if (ruleScaling) paths.shift()
+assert.ok(paths.length >= 2, 'Usage: node --experimental-strip-types scripts/compare-variant-engines.mjs [--rule-scaling] before.wasm after.wasm [fixture.json ...]')
 let id = 0
 async function engine(path) {
   const bytes = await readFile(path)
@@ -35,6 +38,16 @@ fixtures.push({ name: 'x-killer', position: mixed['x-killer'].puzzle }, { name: 
 const quad = oldCatalog.techniques.some(technique => technique.id === 'quadruple')
   ? JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-clover.json', import.meta.url), 'utf8')) : undefined
 if (quad) fixtures.push({ name: 'quadruple', position: quad.puzzle })
+if (ruleScaling) {
+  const publications = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8'))
+  const fixturesBySize = [...publications].filter(example =>
+    ['Buffet of Variants', 'Anti-Ratio constraint boxes'].includes(example.title))
+  const puzzles = await Promise.all(fixturesBySize.map(async example => ({
+    name: example.title,
+    position: (await detectPuzzle(example.coach)).variant.puzzle,
+  })))
+  fixtures.splice(0, fixtures.length, { name: 'all-families', position: combined.puzzle }, ...puzzles.sort((a, b) => a.position.rules.length - b.position.rules.length))
+}
 const added = []
 for (const path of paths.slice(2)) {
   const source = JSON.parse(await readFile(path, 'utf8'))
@@ -51,33 +64,53 @@ const summarize = values => {
 console.log(`Paired Wasm requests on ${process.platform} ${process.arch}, Node ${process.version}; milliseconds, median/p95.`)
 console.log(`Before ${before.bytes} raw / ${before.gzip} gzip; after ${after.bytes} raw / ${after.gzip} gzip.`)
 console.log(`Variant scoring versions ${oldCatalog.scoringVersion} -> ${newCatalog.scoringVersion}; explicit before-catalog order for both engines.`)
+const operations = ['candidates', 'analyze', 'solve', 'rate', 'hints', 'trace']
+const directRules = new Set([
+  'anti-king', 'anti-knight', 'clone', 'inequality', 'kropki', 'non-consecutive', 'palindrome',
+  'thermometer', 'whispers', 'xv', 'adjacent-total', 'arrow', 'pill-arrow', 'between', 'lockout',
+  'consecutive-run', 'inside-grid', 'distinct-cells', 'entropic', 'modular', 'little-killer', 'region-sum', 'renban',
+  'sandwich', 'skyscrapers', 'x-sum',
+])
 for (const fixture of fixtures) {
   const result = {}
-  if (oldCatalog.techniques.some(technique => technique.id === 'nested-forcing-net')) {
+  if (!ruleScaling && oldCatalog.techniques.some(technique => technique.id === 'nested-forcing-net')) {
     const query = { type: 'variant', operation: 'hints', position: { puzzle: fixture.position },
       techniqueOrder: ['nested-forcing-net'], limit: 0xffff_ffff }
     assert.deepEqual(await after.request(query), await before.request(query), `${fixture.name} complete nested proofs`)
   }
-  for (const operation of ['candidates', 'analyze', 'solve', 'rate', 'hints', 'trace']) {
-    const request = { type: 'variant', operation, position: { puzzle: fixture.position }, maxNodes: 20_000,
-      ...(['rate', 'hints', 'trace'].includes(operation) && { techniqueOrder }), ...(operation === 'hints' && { limit: 10 }) }
-    assert.deepEqual(behavior(await after.request(request)), behavior(await before.request(request)), `${fixture.name} ${operation}`)
-    if (operation === 'trace') continue
+  const requests = operations.map(operation => [
+    operation,
+    { type: 'variant', operation, position: { puzzle: fixture.position }, maxNodes: ruleScaling ? 500_000 : 20_000,
+      ...(['rate', 'hints', 'trace'].includes(operation) && { techniqueOrder }), ...(operation === 'hints' && { limit: 10 }) },
+  ])
+  if (ruleScaling) {
+    for (const [label, order] of [
+      ['direct-rule-hints', techniqueOrder.filter(id => directRules.has(id))],
+      ['cage-house-hints', techniqueOrder.filter(id => id === 'cage-house-sum')],
+    ]) {
+      assert.ok(order.length, `No techniques for ${label}`)
+      requests.push([label, { type: 'variant', operation: 'hints', position: { puzzle: fixture.position },
+        techniqueOrder: order, limit: 0xffff_ffff }])
+    }
+  }
+  for (const [label, request] of requests) {
+    assert.deepEqual(behavior(await after.request(request)), behavior(await before.request(request)), `${fixture.name} ${label}`)
+    if (label === 'trace') continue
     for (let i = 0; i < 10; i++) { await before.request(request); await after.request(request) }
     const times = [[], []]
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < (ruleScaling ? 25 : 80); i++) {
       for (const index of i % 2 ? [1, 0] : [0, 1]) {
         const start = performance.now()
         await [before, after][index].request(request)
         times[index].push(performance.now() - start)
       }
     }
-    result[operation] = `${summarize(times[0])} -> ${summarize(times[1])}`
+    result[label] = `${summarize(times[0])} -> ${summarize(times[1])}`
   }
-  console.log(fixture.name, result)
+  console.log(ruleScaling ? `${fixture.name} (${fixture.position.rules?.length ?? 0} rules)` : fixture.name, result)
 }
 console.log(`Retained catalogs, candidates, statuses, completions, ratings, hints, and full traces agree on all ${fixtures.length} fixtures.`)
-if (quad || added.length) {
+if (!ruleScaling && (quad || added.length)) {
   const classic = await before.request({ type: 'techniques' })
   const appOrder = variantTechniqueOrder(oldCatalog.defaultOrder, classic.difficultyOrder,
     Object.fromEntries([...classic.techniques, ...oldCatalog.techniques].map(technique => [technique.id, technique.difficulty])))

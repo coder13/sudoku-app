@@ -40,7 +40,7 @@ impl CompiledVariant {
         proofs: &mut Vec<VariantDeduction>,
     ) {
         for clue in &self.pair_clues {
-            if clue.source.id != "thermometer" {
+            if clue.source.technique.id() != "thermometer" {
                 continue;
             }
             let line = &clue.cells;

@@ -9,7 +9,7 @@ pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, Grou
 use std::{collections::HashMap, ops::Range};
 
 use super::{
-    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind, cell_mask,
+    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantTechnique, cell_mask,
 };
 use crate::{
     CELLS, DIGITS,
@@ -19,7 +19,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(super) struct LineConstraint {
     pub cells: Vec<usize>,
-    pub rule_id: &'static str,
+    pub technique: VariantTechnique,
     pub rule_index: usize,
     kind: LineKind,
 }
@@ -49,7 +49,7 @@ enum OutsideClue {
 impl LineConstraint {
     pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
         match &self.kind {
-            LineKind::EqualSums(parts) if self.rule_id == "region-sum" => Some(parts),
+            LineKind::EqualSums(parts) if self.technique == VariantTechnique::RegionSum => Some(parts),
             _ => None,
         }
     }
@@ -74,7 +74,7 @@ impl LineConstraint {
         rule: &PuzzleRule,
     ) -> Result<Self, VariantDefinitionError> {
         let invalid = VariantDefinitionError::InvalidRule(index);
-        let (cells, kind) = match rule {
+        let (cells, kind, technique) = match rule {
             PuzzleRule::Arrow { circle, cells } => {
                 if !(1..=9).contains(&cells.len()) {
                     return Err(invalid);
@@ -83,7 +83,7 @@ impl LineConstraint {
                     .chain(cells.iter().copied())
                     .collect();
                 let ranges = vec![0..1, 1..cells.len()];
-                (cells, LineKind::EqualSums(ranges))
+                (cells, LineKind::EqualSums(ranges), VariantTechnique::Arrow)
             }
             PuzzleRule::PillArrow { pill, cells, .. } => {
                 let [tens, ones] = *pill;
@@ -91,14 +91,14 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 let cells = pill.iter().chain(cells).copied().collect();
-                (cells, LineKind::PillArrow)
+                (cells, LineKind::PillArrow, VariantTechnique::PillArrow)
             }
             PuzzleRule::Renban { cells, segments } => {
                 if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
-                (cells.clone(), LineKind::Renban)
+                (cells.clone(), LineKind::Renban, VariantTechnique::Renban)
             }
             PuzzleRule::ConsecutiveRun { cells, color, .. } | PuzzleRule::DistinctCells { cells, color } => {
                 let run = matches!(rule, PuzzleRule::ConsecutiveRun { .. });
@@ -111,21 +111,23 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
-                let kind = match rule {
-                    PuzzleRule::ConsecutiveRun { from_bulb, .. } => LineKind::ConsecutiveRun { from_bulb: *from_bulb },
-                    _ => LineKind::DistinctCells,
+                let (kind, technique) = match rule {
+                    PuzzleRule::ConsecutiveRun { from_bulb, .. } => (
+                        LineKind::ConsecutiveRun { from_bulb: *from_bulb }, VariantTechnique::ConsecutiveRun,
+                    ),
+                    _ => (LineKind::DistinctCells, VariantTechnique::DistinctCells),
                 };
-                (cells.clone(), kind)
+                (cells.clone(), kind, technique)
             }
             PuzzleRule::InsideGrid { rows } => {
                 let grid = inside_grid::InsideGrid::compile(puzzle, rows).ok_or(invalid)?;
-                (rows.iter().flatten().copied().collect(), LineKind::InsideGrid(grid))
+                (rows.iter().flatten().copied().collect(), LineKind::InsideGrid(grid), VariantTechnique::InsideGrid)
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
-                let partition = if matches!(rule, PuzzleRule::Entropic { .. }) {
-                    groups::DigitGroups::Entropic
+                let (partition, technique) = if matches!(rule, PuzzleRule::Entropic { .. }) {
+                    (groups::DigitGroups::Entropic, VariantTechnique::Entropic)
                 } else {
-                    groups::DigitGroups::Modular
+                    (groups::DigitGroups::Modular, VariantTechnique::Modular)
                 };
                 let (cells, line) = groups::GroupLine::compile(cells, partition).ok_or(invalid)?;
                 // Different phases cannot contain the same digit. Equal phases
@@ -137,19 +139,19 @@ impl LineConstraint {
                         }
                     }
                 }
-                (cells, LineKind::ThreeGroups(line))
+                (cells, LineKind::ThreeGroups(line), technique)
             }
             PuzzleRule::Between { cells } => {
                 if cells.len() < 3 {
                     return Err(invalid);
                 }
-                (cells.clone(), LineKind::Between)
+                (cells.clone(), LineKind::Between, VariantTechnique::Between)
             }
             PuzzleRule::Lockout { cells } => {
                 if cells.len() < 2 {
                     return Err(invalid);
                 }
-                (cells.clone(), LineKind::Lockout)
+                (cells.clone(), LineKind::Lockout, VariantTechnique::Lockout)
             }
             PuzzleRule::RegionSum {
                 cells,
@@ -167,7 +169,7 @@ impl LineConstraint {
                 let segments = region_sum_ranges(&mut cells, |cell| puzzle.primary_region(cell).unwrap(), *group_by_region);
                 // A line within one region still has a visible path. Its sole
                 // group already satisfies equality of the group totals.
-                (cells, LineKind::EqualSums(segments))
+                (cells, LineKind::EqualSums(segments), VariantTechnique::RegionSum)
             }
             PuzzleRule::LittleKiller {
                 cells,
@@ -179,7 +181,7 @@ impl LineConstraint {
                 {
                     return Err(invalid);
                 }
-                (cells.clone(), LineKind::Sum(*sum))
+                (cells.clone(), LineKind::Sum(*sum), VariantTechnique::LittleKiller)
             }
             PuzzleRule::Sandwich {
                 cells,
@@ -192,6 +194,7 @@ impl LineConstraint {
                 (
                     cells.clone(),
                     LineKind::Outside(OutsideClue::Sandwich(*sum as u8)),
+                    VariantTechnique::Sandwich,
                 )
             }
             PuzzleRule::XSum {
@@ -205,6 +208,7 @@ impl LineConstraint {
                 (
                     cells.clone(),
                     LineKind::Outside(OutsideClue::XSum(*sum as u8)),
+                    VariantTechnique::XSum,
                 )
             }
             PuzzleRule::Skyscrapers {
@@ -218,6 +222,7 @@ impl LineConstraint {
                 (
                     cells.clone(),
                     LineKind::Outside(OutsideClue::Skyscrapers(*count)),
+                    VariantTechnique::Skyscrapers,
                 )
             }
             _ => unreachable!("other constraints compile separately"),
@@ -226,7 +231,7 @@ impl LineConstraint {
         Ok(Self {
             cells,
             kind,
-            rule_id: rule.id(),
+            technique,
             rule_index: index,
         })
     }
@@ -366,7 +371,15 @@ impl LineConstraint {
             LineKind::Between => endpoint_support(domains, support, false),
             LineKind::Lockout => endpoint_support(domains, support, true),
             LineKind::Outside(clue) => {
-                clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
+                if domains.iter().all(|mask| mask.is_power_of_two()) {
+                    if clue.permits_fixed_row(domains) {
+                        for (supported, &domain) in support.iter_mut().zip(domains) {
+                            *supported |= domain;
+                        }
+                    }
+                } else {
+                    clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
+                }
             }
         }
     }
@@ -650,6 +663,25 @@ fn endpoint_support(domains: &[u16], support: &mut [u16], lockout: bool) {
 }
 
 impl OutsideClue {
+    // A fixed row has only one sequence to check. Reuse the same transitions
+    // as the candidate search without building a memo table.
+    fn permits_fixed_row(self, domains: &[u16]) -> bool {
+        let mut remaining = DIGITS;
+        let mut state = [0, 0];
+        for &bit in domains {
+            if remaining & bit == 0 {
+                return false;
+            }
+            let digit = bit.trailing_zeros() as u8 + 1;
+            let Some(next) = self.advance(remaining, digit, state) else {
+                return false;
+            };
+            remaining ^= bit;
+            state = next;
+        }
+        remaining == 0
+    }
+
     // Every row or column is a permutation of 1–9. The digits remaining and
     // the incremental clue state determine which suffixes are possible.
     fn record_support(
@@ -805,7 +837,7 @@ mod renban_support_tests {
     fn check(domains: &[u16]) {
         let constraint = LineConstraint {
             cells: (0..domains.len()).collect(),
-            rule_id: "renban",
+            technique: VariantTechnique::Renban,
             rule_index: 0,
             kind: LineKind::Renban,
         };
@@ -893,5 +925,51 @@ mod renban_support_tests {
         support.fill(0);
         wide_renban_support(16, &domains, &mut support);
         assert_eq!(support, [0; 16]);
+    }
+}
+
+#[cfg(test)]
+mod fixed_outside_tests {
+    use super::*;
+
+    #[test]
+    fn outside_clues_check_fixed_rows_and_reject_duplicate_digits() {
+        let board = [2, 1, 3, 4, 9, 5, 7, 8, 6];
+        for (technique, clues) in [
+            (
+                VariantTechnique::Sandwich,
+                [OutsideClue::Sandwich(7), OutsideClue::Sandwich(8)],
+            ),
+            (
+                VariantTechnique::XSum,
+                [OutsideClue::XSum(3), OutsideClue::XSum(4)],
+            ),
+            (
+                VariantTechnique::Skyscrapers,
+                [OutsideClue::Skyscrapers(4), OutsideClue::Skyscrapers(5)],
+            ),
+        ] {
+            for (clue, expected) in clues.into_iter().zip([true, false]) {
+                let line = LineConstraint {
+                    cells: (0..9).collect(),
+                    technique,
+                    rule_index: 0,
+                    kind: LineKind::Outside(clue),
+                };
+                let domains = board.map(digit_bit);
+                let mut searched = [0; 9];
+                clue.record_support(DIGITS, [0, 0], &domains, &mut searched, &mut HashMap::new());
+                let mut fixed = [0; 9];
+                line.support(&domains, &mut fixed);
+                assert_eq!(fixed, searched);
+                assert_eq!(fixed[0] != 0, expected);
+
+                let mut duplicate = domains;
+                duplicate[1] = duplicate[0];
+                let mut support = [0; 9];
+                line.support(&duplicate, &mut support);
+                assert_eq!(support, [0; 9]);
+            }
+        }
     }
 }

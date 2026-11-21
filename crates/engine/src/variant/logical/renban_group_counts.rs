@@ -26,7 +26,7 @@ impl CompiledVariant {
         let lines: Vec<_> = self
             .lines
             .iter()
-            .filter(|line| line.rule_id == "renban" && (3..=4).contains(&line.cells.len()))
+            .filter(|line| line.technique.id() == "renban" && (3..=4).contains(&line.cells.len()))
             .collect();
         if lines.len() < 3 {
             return;

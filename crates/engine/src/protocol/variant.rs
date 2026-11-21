@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 #[cfg(feature = "teaching")]
 use super::INVALID_LESSON;
 #[cfg(feature = "generation")]
-use super::{
+use super::generation::{
     ActiveGeneration, ClueCount, GenerationOutput, GenerationProfile, TechniqueRequest,
     rating_target,
 };
