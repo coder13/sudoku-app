@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { betweenState } from '../src/sudoku/between.ts'
+import { endpointLineState } from '../src/sudoku/between.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, makeGame, redo, undo } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
@@ -73,7 +73,7 @@ test('placed-digit restrictions match direct full triples for every partial trip
       const partial = [a, b, c]
       const matches = complete.filter(tuple => partial.every((digit, i) => digit === 0 || digit === tuple[i]))
       const expected = path.map((_, i) => matches.reduce((mask, tuple) => mask | bit(tuple[i]), 0))
-      const state = betweenState(puzzle, position(path, partial))!
+      const state = endpointLineState(puzzle, position(path, partial))!
       assert.deepEqual(path.map(cell => state.allowed[cell]), expected, JSON.stringify({ path, partial }))
       assert.deepEqual([...state.conflicts].sort((a, b) => a - b), matches.length ? [] : path.filter((_, i) => partial[i] !== 0).sort((a, b) => a - b))
       assert.equal(state.allowed[13], 511)
@@ -84,13 +84,13 @@ test('placed-digit restrictions match direct full triples for every partial trip
 test('interior digits may repeat across houses while endpoints exclude equal digits', () => {
   const cells = [0, 13, 26, 39, 80]
   const puzzle: VariantPuzzle = { version: 1, givens: empty, rules: [{ type: 'between', cells }] }
-  const state = betweenState(puzzle, position(cells, [2, 5, 5, 5, 8]))!
+  const state = endpointLineState(puzzle, position(cells, [2, 5, 5, 5, 8]))!
   assert.equal(state.conflicts.size, 0)
   assert.equal(variantPeers(puzzle, 13, 26), false)
   assert.equal(variantPeers(puzzle, 0, 26), true)
   assert.equal(variantPeers(puzzle, 80, 0), true)
-  assert.ok(betweenState(puzzle, position(cells, [2, 2, 5, 5, 8]))!.conflicts.has(13))
-  assert.equal(betweenState(undefined, empty), undefined)
+  assert.ok(endpointLineState(puzzle, position(cells, [2, 2, 5, 5, 8]))!.conflicts.has(13))
+  assert.equal(endpointLineState(undefined, empty), undefined)
 })
 
 test('both Pencil modes retain compatible candidates and histories restore endpoint edits', () => {

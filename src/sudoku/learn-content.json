@@ -6974,7 +6974,7 @@
     },
     {
       "title": "Arrow",
-      "overview": "The digits along the arrow add to the digit in its circle.",
+      "overview": "The digits along the arrow add to the number in its circle or pill.",
       "variant": true,
       "lessons": [
         {
@@ -7013,6 +7013,45 @@
                 "start": "Find the circle and follow its arrow. Count the cells on the arrow after the circle.",
                 "check": "Try a possible total in the circle. Find a digit for each arrow cell so their sum equals that total.",
                 "reason": "Every part of the sum must fit its own cell. Digits on the arrow can repeat only where the other puzzle rules permit it."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
+          "id": "pill-arrow",
+          "title": "Pill arrows",
+          "summary": "The arrow digits add to the two-digit number in its pill. A pill with 1 in the tens cell and 2 in the ones cell gives a total of 12.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Count the cells on the arrow"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Read the pill as a two-digit number. A short arrow can reach only small totals, so start by checking the tens digit.",
+                "If you know some arrow digits, subtract their sum from the pill number. The empty arrow cells must supply the rest."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "pill-arrow",
+              "copy": {
+                "description": "The pill reads 12. The arrow already has 8 in R2C9, so the other arrow cell needs 4. Remove 3 from R2C8."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "pill-arrow", "title": "Pill arrows" }
+              ],
+              "guide": {
+                "start": "Find the two pill cells and follow the shaft to the tip.",
+                "check": "Add the arrow digits. Compare the total with the two-digit number in the pill.",
+                "reason": "Remove a candidate if no matching total uses it in that cell."
               }
             }
           ],
@@ -7717,6 +7756,45 @@
                 "start": "Read the two circles at the ends. Every digit between them must be larger than the smaller end and smaller than the larger end.",
                 "check": "Try an endpoint pair. Find at least one digit in that range for every interior cell. The interior digits can appear in any order.",
                 "reason": "Reject a pair if any interior cell cannot fit. Remove an interior candidate if no possible pair leaves room for it."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        },
+        {
+          "id": "lockout",
+          "title": "Lockout lines",
+          "summary": "The digits in the endpoint diamonds differ by at least 4. Each interior digit must be smaller than both endpoints or larger than both.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a gap of at least 4"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Try a candidate in each diamond. Keep the pair only if the difference is at least 4 and every interior cell has a digit outside that range.",
+                "The diamonds cannot be 1 and 9 if the line has an interior cell. No digit is smaller than 1 or larger than 9."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "lockout",
+              "copy": {
+                "description": "The diamonds hold 9 in R1C7 and 2 in R1C9. R1C8 must be below 2 or above 9, so remove 5."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "lockout", "title": "Lockout lines" }
+              ],
+              "guide": {
+                "start": "Read the endpoint diamonds.",
+                "check": "Find a pair at least 4 apart. Find an interior digit outside the range from the lower endpoint to the higher endpoint.",
+                "reason": "Remove a candidate if no valid endpoint pair lets that digit fit."
               }
             }
           ],

@@ -183,9 +183,15 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'whispers':
       return { description: `Neighbors on this line must differ by at least ${rule.minDifference}.`,
         reason: 'A crossed-out digit leaves no way to keep that difference along the line.' }
+    case 'lockout':
+      return { description: `The diamonds at ${at(a)} and ${at(cells.at(-1)!)} need digits at least 4 apart. Interior digits must lie outside their range.`,
+        reason: 'A crossed-out digit fits no pair of endpoints that works for the whole line.' }
     case 'arrow':
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
+    case 'pill-arrow':
+      return { description: `The arrow adds to the two-digit number with tens in ${at(a)} and ones in ${at(b)}.`,
+        reason: 'A crossed-out candidate fits no arrow sum that matches the pill.' }
     case 'entropic': case 'modular': {
       const sumRule = rules[1]
       const sum = sumRule?.type === 'adjacent-total' ? sumRule.sum : sumRule?.type === 'xv'

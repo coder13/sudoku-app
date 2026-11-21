@@ -4197,7 +4197,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer-overlap { color: var(--board-ink); opacity: .5; }
 .variant-thermometer-overlap line { stroke-linecap: round; }
 [data-sized-rule-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
-.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
+.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head, .variant-arrow-pill {
   fill: none;
   stroke: var(--board-ink);
   stroke-width: .047;
@@ -4206,6 +4206,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   opacity: .64;
 }
 .variant-arrow-head { stroke-width: .11; }
+.variant-arrow-pill { fill: var(--board-bg); opacity: .86; }
+.variant-arrow-tens { fill: var(--board-ink); font-size: .17px; text-anchor: middle; }
 .variant-dot { stroke-width: .033; }
 .variant-labeled-dot text {
   font: 650 .153px var(--font-sans, sans-serif);
@@ -4278,7 +4280,13 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .board-body[data-highlighted-rule="quadruple-sum"] .variant-quadruple[data-quadruple-sum] text { font-weight: 800; }
 .board-body[data-highlighted-rule="parity"] .variant-parity { fill: var(--rule-accent); fill-opacity: .2; stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="kropki"] .variant-dot { stroke: var(--rule-accent); stroke-width: .055; }
-.board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head) { stroke: var(--rule-accent); opacity: 1; }
+.board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head):not(.variant-pill-arrow *) {
+  stroke: var(--rule-accent); opacity: 1;
+}
+.board-body[data-highlighted-rule="pill-arrow"] .variant-pill-arrow :is(.variant-arrow-pill, .variant-arrow-line),
+.board-body[data-highlighted-rule="lockout"] :is(.variant-lockout, .variant-lockout-overlap, .variant-lockout-endpoints) :is(polyline, line, path) {
+  stroke: var(--rule-accent); opacity: 1;
+}
 .board-body[data-highlighted-rule="thermometer"] :is(.variant-thermometer, .variant-thermometer-overlap) { color: var(--rule-accent); opacity: .85; }
 .board-body[data-highlighted-rule="extra-house"] .variant-extra-region rect { fill: var(--rule-accent); opacity: .25; }
 .board-body[data-highlighted-rule="extra-house"] .variant-extra-region path { stroke: var(--rule-accent); stroke-opacity: 1; }
@@ -4366,7 +4374,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .5;
 }
-.variant-between polyline, .variant-between line {
+.variant-between polyline, .variant-between line, .variant-lockout polyline, .variant-lockout line {
   fill: none;
   stroke: var(--board-ink);
   stroke-width: .075;
@@ -4374,8 +4382,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .4;
 }
-.variant-between .variant-between-jump { stroke-dasharray: .1 .08; }
+.variant-between .variant-between-jump, .variant-lockout .variant-between-jump { stroke-dasharray: .1 .08; }
 .variant-between-node { fill: var(--board-ink); opacity: .65; }
+.variant-clues { --lockout-ink: light-dark(#764eaa, #c2a2ee); }
+.variant-lockout polyline, .variant-lockout line { stroke: var(--lockout-ink); opacity: .8; }
+.variant-lockout .variant-between-node { fill: var(--lockout-ink); }
 .variant-region-sum polyline, .variant-region-sum line {
   fill: none;
   stroke: currentColor;
@@ -4386,11 +4397,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-region-sum .variant-region-sum-jump { stroke-dasharray: .1 .08; }
 .variant-region-sum-node { fill: currentColor; opacity: .8; }
-.variant-between-endpoints circle {
+.variant-between-endpoints circle, .variant-lockout-endpoints path {
   fill: var(--board-bg);
   stroke: var(--board-ink);
   stroke-width: .055;
 }
+.variant-lockout-endpoints path { stroke: var(--lockout-ink); }
 .variant-inequality polyline, .variant-extremum polyline { fill: none; stroke-linejoin: miter; }
 .variant-inequality-halo { stroke: var(--board-bg); stroke-width: .14; }
 .variant-inequality-sign { stroke: var(--board-ink); stroke-width: .045; }

@@ -172,8 +172,9 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
         case 'palindrome': case 'renban': case 'region-sum': return { ...rule, cells: rule.cells.map(cell),
           ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
-        case 'thermometer': case 'between': return { ...rule, cells: rule.cells.map(cell) }
+        case 'thermometer': case 'between': case 'lockout': return { ...rule, cells: rule.cells.map(cell) }
         case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
+        case 'pill-arrow': return { ...rule, pill: [cell(rule.pill[0]), cell(rule.pill[1])], cells: rule.cells.map(cell) }
         case 'kropki': {
           const reflectMarks = (marks: typeof rule.consecutive) =>
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }

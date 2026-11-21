@@ -6,7 +6,8 @@ import { variantPlacedRuleState } from './variant-placed-rules.ts'
 import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
-import { betweenState } from './between.ts'
+import { endpointLineState } from './between.ts'
+import { pillArrowState } from './pill-arrow.ts'
 import { whispersState } from './whispers.ts'
 import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
@@ -278,9 +279,9 @@ export function valuesOf(game: Game): string {
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
   const rules = puzzle?.rules ?? sizedRules
   const states = [
-    globalEntropyState(puzzle, values), betweenState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
+    globalEntropyState(puzzle, values), endpointLineState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
-    variantPlacedRuleState(puzzle, values), sizedArrowState(rules, values, grid.size),
+    variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
   ]
     .filter(state => state !== undefined)

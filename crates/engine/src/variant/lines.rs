@@ -26,12 +26,14 @@ pub(super) struct LineConstraint {
 #[derive(Clone, Debug)]
 enum LineKind {
     EqualSums(Vec<Range<usize>>),
+    PillArrow,
     Sum(u16),
     Renban,
     ConsecutiveRun,
     DistinctCells,
     ThreeGroups(groups::GroupLine),
     Between,
+    Lockout,
     Outside(OutsideClue),
 }
 
@@ -66,6 +68,14 @@ impl LineConstraint {
                     .collect();
                 let ranges = vec![0..1, 1..cells.len()];
                 (cells, LineKind::EqualSums(ranges))
+            }
+            PuzzleRule::PillArrow { pill, cells, .. } => {
+                let [tens, ones] = *pill;
+                if cells.is_empty() || (tens / 9).abs_diff(ones / 9) > 1 || (tens % 9).abs_diff(ones % 9) > 1 {
+                    return Err(invalid);
+                }
+                let cells = pill.iter().chain(cells).copied().collect();
+                (cells, LineKind::PillArrow)
             }
             PuzzleRule::Renban { cells, segments } => {
                 if !(1..=9).contains(&cells.len()) || !super::drawing_paths_cover(cells, segments) {
@@ -111,6 +121,12 @@ impl LineConstraint {
                 }
                 (cells.clone(), LineKind::Between)
             }
+            PuzzleRule::Lockout { cells } => {
+                if cells.len() < 2 {
+                    return Err(invalid);
+                }
+                (cells.clone(), LineKind::Lockout)
+            }
             PuzzleRule::RegionSum {
                 cells,
                 group_by_region,
@@ -122,9 +138,8 @@ impl LineConstraint {
                 cell_mask(cells).ok_or(invalid)?;
                 let mut cells = cells.clone();
                 let segments = region_sum_ranges(&mut cells, |cell| puzzle.memberships[cell][2], *group_by_region);
-                if segments.len() < 2 {
-                    return Err(invalid);
-                }
+                // A line within one region still has a visible path. Its sole
+                // group already satisfies equality of the group totals.
                 (cells, LineKind::EqualSums(segments))
             }
             PuzzleRule::LittleKiller {
@@ -302,6 +317,7 @@ impl LineConstraint {
                     }
                 }
             }
+            LineKind::PillArrow => pill_arrow_support(domains, support),
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
             LineKind::ConsecutiveRun => consecutive_run_support(domains, support),
@@ -319,7 +335,8 @@ impl LineConstraint {
                 }
             }
             LineKind::ThreeGroups(line) => line.support(domains, support),
-            LineKind::Between => between_support(domains, support),
+            LineKind::Between => endpoint_support(domains, support, false),
+            LineKind::Lockout => endpoint_support(domains, support, true),
             LineKind::Outside(clue) => {
                 clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
             }
@@ -558,13 +575,36 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
     matched
 }
 
-fn between_support(domains: &[u16], support: &mut [u16]) {
+fn pill_arrow_support(domains: &[u16], support: &mut [u16]) {
+    let ones = u128::from(domains[1]);
+    let shift = |tens: u8| 10 * tens + 1;
+    let totals = digits(domains[0]).fold(0, |totals, tens| totals | (ones << shift(tens)));
+    let [matched] = sum_support_with_prefix(
+        &domains[2..], [totals], &mut support[2..], &mut [[0]; CELLS],
+    );
+    for tens in digits(domains[0]) {
+        let trailing = ((matched >> shift(tens)) & ones) as u16;
+        if trailing != 0 {
+            support[0] |= digit_bit(tens);
+            support[1] |= trailing;
+        }
+    }
+}
+
+fn endpoint_support(domains: &[u16], support: &mut [u16], lockout: bool) {
     let last = domains.len() - 1;
     for left in digits(domains[0]) {
         for right in digits(domains[last]) {
             let lower = left.min(right);
             let upper = left.max(right);
-            let interior = (digit_bit(upper) - 1) & !((1 << lower) - 1);
+            let interior = if lockout {
+                if upper - lower < 4 {
+                    continue;
+                }
+                (digit_bit(lower) - 1) | (DIGITS & !((1 << upper) - 1))
+            } else {
+                (digit_bit(upper) - 1) & !((1 << lower) - 1)
+            };
             if domains[1..last]
                 .iter()
                 .any(|&domain| domain & interior == 0)

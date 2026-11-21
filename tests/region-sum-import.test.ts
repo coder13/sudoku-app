@@ -52,15 +52,26 @@ test('connected Coach paths retain insertion order and closed paths cut at a reg
   assert.deepEqual(joined.variant?.puzzle.rules, [{ type: 'region-sum', cells: [0, 1, 3, 4], groupByRegion: false, segments: [[0, 1, 3], [1, 4]] }])
 })
 
-test('unsupported semantics, invalid geometry and single-part Region Sum definitions are rejected', async () => {
+test('unsupported semantics and invalid Region Sum geometry are rejected', async () => {
   for (const rule of [
-    { cells: [0, 1] }, { cells: [0, 3, 0] }, { cells: [0, 81] }, { cells: [0, 3], groupByRegion: 'true' },
+    { cells: [0, 3, 0] }, { cells: [0, 81] }, { cells: [0, 3], groupByRegion: 'true' },
     { cells: [0, 3], segments: [] }, { cells: [0, 3], segments: [[0]] }, { cells: [0, 3], segments: [[0, 4]] },
     { cells: [0, 3], minimum: 3 },
   ]) assert.equal(isPlayablePuzzle('region-sum', { version: 1, givens: empty, rules: [{ type: 'region-sum', ...rule }] }), false)
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'regionSumLine', settings: { combineRegions: true }, segments: [{ cells: [0, 3], parameters: {} }] }] })), /unsupported settings/)
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'regionSumLine', settings: {}, segments: [{ cells: [0, 3], parameters: { total: 5 } }] }] })), /invalid Region Sum segment/)
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'thermometer', settings: { strict: false }, segments: [{ cells: [0, 3], parameters: {} }] }] })), /unsupported settings/)
+})
+
+test('a published Region Sum path within one region is preserved without restricting digits', async () => {
+  const { variant } = await detectPuzzle(coachCode({ givenConstraints: [
+    { type: 'regionSumLine', segments: [{ cells: [28, 27, 36, 45], parameters: {} }] },
+  ] }))
+  assert.deepEqual(variant?.puzzle.rules, [
+    { type: 'region-sum', cells: [28, 27, 36, 45], groupByRegion: false },
+  ])
+  const state = regionSumState(variant?.puzzle, empty)
+  assert.deepEqual(state?.allowed, Array(81).fill(511))
 })
 
 test('explicit drawing paths retain their declared equal-total groups in the rule explanation', () => {

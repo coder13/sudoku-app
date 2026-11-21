@@ -359,6 +359,16 @@ rules! {
         /// Distinct cell indices in path order, excluding the circle.
         cells: Vec<usize>,
     }
+    /// Require the path sum to equal the two-digit number in a pill.
+    PillArrow => "pill-arrow" {
+        /// The tens cell followed by the ones cell.
+        pill: [usize; 2],
+        /// Distinct path cells in drawing order, excluding the pill cells.
+        cells: Vec<usize>,
+        /// The arrow leaves the tens cell instead of the ones cell when true.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_tens: bool,
+    }
     /// Require a set of consecutive digits in any order without repetition.
     Renban => "renban" {
         /// Distinct cells in logical order, up to the grid's digit count.
@@ -392,6 +402,11 @@ rules! {
     GlobalEntropy => "global-entropy" {}
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
+        /// Cell indices in line order, including both endpoints.
+        cells: Vec<usize>,
+    }
+    /// Endpoints differ by at least four and interior digits lie outside their range.
+    Lockout => "lockout" {
         /// Cell indices in line order, including both endpoints.
         cells: Vec<usize>,
     }
@@ -675,12 +690,14 @@ impl VariantPuzzle {
                     compiled.quadruples.push(clue);
                 }
                 PuzzleRule::Arrow { .. }
+                | PuzzleRule::PillArrow { .. }
                 | PuzzleRule::Renban { .. }
                 | PuzzleRule::ConsecutiveRun { .. }
                 | PuzzleRule::DistinctCells { .. }
                 | PuzzleRule::Entropic { .. }
                 | PuzzleRule::Modular { .. }
                 | PuzzleRule::Between { .. }
+                | PuzzleRule::Lockout { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }
                 | PuzzleRule::LittleKiller { .. }

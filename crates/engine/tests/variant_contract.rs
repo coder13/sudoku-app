@@ -13,6 +13,30 @@ const X_SOLUTION: &str =
 const EMPTY: [u8; 81] = [0; 81];
 const NO_REMOVALS: [u16; 81] = [0; 81];
 
+#[test]
+fn lockout_support_respects_both_ends_and_strict_outside_digits() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.push(PuzzleRule::Lockout { cells: vec![0, 40, 80] });
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[0] = 2;
+    entries[80] = 7;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[40], 0b110000001);
+    for digit in 2..=7 {
+        entries[40] = digit;
+        assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    }
+    entries[40] = 0;
+    entries[80] = 5;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+    entries[0] = 1;
+    entries[80] = 9;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    puzzle.rules = vec![PuzzleRule::Lockout { cells: vec![0, 80] }];
+    assert!(puzzle.compile().unwrap().candidates(&entries, &NO_REMOVALS).is_ok());
+}
+
 fn irregular_regions() -> Vec<Vec<usize>> {
     let mut regions: Vec<Vec<usize>> = (0..9)
         .map(|region| {
@@ -904,7 +928,7 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
         PuzzleRule::Renban { cells: vec![], segments: None },
         PuzzleRule::Between { cells: vec![0, 1] },
         PuzzleRule::RegionSum {
-            cells: vec![0, 1, 2],
+            cells: vec![0, 1, 0],
             group_by_region: false,
             segments: None,
         },
@@ -936,4 +960,43 @@ fn line_and_outside_clue_definitions_require_valid_geometry_and_values() {
             Err(VariantDefinitionError::InvalidRule(0))
         ));
     }
+}
+
+#[test]
+fn pill_arrow_uses_ordered_digits_and_supports_sums_above_eighty_one() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::PillArrow {
+        pill: [7, 8],
+        cells: vec![16, 17],
+        from_tens: false,
+    }];
+    let compiled = puzzle.compile().unwrap();
+    let mut entries = EMPTY;
+    entries[7] = 1;
+    entries[8] = 2;
+    entries[17] = 8;
+    assert_eq!(compiled.candidates(&entries, &NO_REMOVALS).unwrap()[16], 0b1000);
+    entries[16] = 3;
+    assert!(compiled.candidates(&entries, &NO_REMOVALS).is_err());
+
+    // A long arrow sums to 87. The first pill digit is deliberately in the
+    // later cell index so the engine must use the explicit place-value order.
+    let full = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let cells = [32, 78, 57, 30, 49, 41, 62, 66, 56, 52, 38, 70, 50, 51, 67, 76, 48, 45, 44, 42];
+    assert_eq!(full[5] * 10 + full[4], 87);
+    assert_eq!(cells.iter().map(|&cell| u16::from(full[cell])).sum::<u16>(), 87);
+    puzzle.rules = vec![PuzzleRule::PillArrow { pill: [5, 4], cells: cells.into(), from_tens: true }];
+    assert_eq!(puzzle.compile().unwrap().analyze(&full, &NO_REMOVALS, 100), Ok(Analysis::Unique));
+}
+
+#[test]
+fn one_region_sum_preserves_its_drawing_without_candidate_removals() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules = vec![PuzzleRule::RegionSum {
+        cells: vec![28, 27, 36, 45],
+        group_by_region: false,
+        segments: None,
+    }];
+    let compiled = puzzle.compile().unwrap();
+    assert_eq!(compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap(), [511; 81]);
 }

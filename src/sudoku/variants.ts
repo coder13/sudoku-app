@@ -129,7 +129,17 @@ export const VARIANTS = {
   },
 } as const
 
-export const PUZZLE_VARIANTS = VARIANTS
+export const PUZZLE_VARIANTS = {
+  ...VARIANTS,
+  'pill-arrow': {
+    name: 'Pill Arrows',
+    rule: 'The digits on the arrow add to the two-digit number in the pill.',
+  },
+  lockout: {
+    name: 'Lockout Lines',
+    rule: 'The two diamonds differ by at least 4. Every interior digit is smaller than both diamonds or larger than both.',
+  },
+} as const
 
 export function isQuadrupleRule(rule: VariantRule | undefined): rule is Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }> {
   return rule?.type === 'quadruple' || rule?.type === 'quadruple-sum'
@@ -293,7 +303,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
       (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
     if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
-    if (rule.type === 'between' && rule.cells.includes(a) && rule.cells.includes(b)) {
+    if ((rule.type === 'between' || rule.type === 'lockout') && rule.cells.includes(a) && rule.cells.includes(b)) {
       const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
       return ends.includes(a) || ends.includes(b)
     }
@@ -486,6 +496,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.minDifference) && rule.minDifference >= 1 && rule.minDifference <= 8
     case 'thermometer': return validCells(rule.cells, 2)
     case 'between': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 3)
+    case 'lockout': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validCells(rule.cells, 2)
     case 'region-sum': return Object.keys(rule).every(key => ['type', 'cells', 'groupByRegion', 'segments'].includes(key)) &&
       validCells(rule.cells, 2) && (rule.groupByRegion === undefined || typeof rule.groupByRegion === 'boolean') &&
       (rule.segments === undefined || Array.isArray(rule.segments) && rule.segments.length > 0 &&
@@ -498,6 +509,10 @@ function isPlayableRule(rule: VariantRule): boolean {
         path.every(cell => Number.isInteger(cell) && rule.cells.includes(cell))) &&
       new Set(rule.segments.flat()).size === rule.cells.length)
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
+    case 'pill-arrow': return Object.keys(rule).every(key => ['type', 'pill', 'cells', 'fromTens'].includes(key)) &&
+      Array.isArray(rule.pill) && rule.pill.length === 2 && Array.isArray(rule.cells) && validCells([...rule.pill, ...rule.cells], 3) &&
+      Math.abs(Math.floor(rule.pill[0] / 9) - Math.floor(rule.pill[1] / 9)) <= 1 && Math.abs(rule.pill[0] % 9 - rule.pill[1] % 9) <= 1 &&
+      (rule.fromTens === undefined || typeof rule.fromTens === 'boolean')
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
     case 'labeled-dots': {
@@ -549,7 +564,6 @@ export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): p
   // The interchange decoders bound the encoded and decoded input sizes.
   if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule))) return false
   const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
-  if (rules?.some(rule => rule.type === 'region-sum' && regionSumParts(rule, regions).length < 2)) return false
   return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
 }
 
@@ -578,10 +592,12 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'anti-knight': VARIANTS['anti-knight'].name,
   thermometer: VARIANTS.thermometer.name,
   arrow: VARIANTS.arrow.name,
+  'pill-arrow': PUZZLE_VARIANTS['pill-arrow'].name,
   kropki: VARIANTS.kropki.name,
   whispers: PUZZLE_VARIANTS.whispers.name,
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
+  lockout: PUZZLE_VARIANTS.lockout.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   'quadruple-sum': 'Quad-Arrows',
   parity: PUZZLE_VARIANTS.parity.name,
@@ -649,10 +665,21 @@ function describedVariantRules(puzzle: VariantPuzzle) {
           descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
         }
         break
+      case 'pill-arrow':
+        descriptions.push(PUZZLE_VARIANTS['pill-arrow'].rule)
+        break
+      case 'lockout':
+        descriptions.push(PUZZLE_VARIANTS.lockout.rule)
+        if (lineSkipsCells(rule.cells)) {
+          descriptions.push('A dashed Lockout connector skips cells. Only the endpoint diamonds and cells with a small dot belong to that line.')
+        }
+        break
       case 'region-sum': {
         descriptions.push(VARIANTS['region-sum'].rule)
         const number = puzzle.rules!.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
-        if (rule.segments) {
+        if (regionSumParts(rule, puzzle.regions).length === 1) {
+          descriptions.push('This line stays in one region, so there is only one total.')
+        } else if (rule.segments) {
           const at = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
           descriptions.push(`Region Sum line ${number}: ${regionSumParts(rule, puzzle.regions)
             .map(part => part.map(at).join(' + ')).join(' = ')}. Each listed group has the same total.`)

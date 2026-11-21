@@ -59,6 +59,7 @@ export type VariantRule =
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
   | { type: 'thermometer'; cells: readonly number[] }
   | { type: 'between'; cells: readonly number[] }
+  | { type: 'lockout'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }
@@ -66,6 +67,7 @@ export type VariantRule =
   | { type: 'global-entropy' }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
+  | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
   | { type: 'sandwich'; direction: ClueDirection; cells: readonly number[]; sum: number }
   | { type: 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }

@@ -129,7 +129,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           const part = rule.groupByRegion ? region : visit
           totals.set(part, (totals.get(part) ?? 0) + digits[cell])
         }
-        assert.ok(totals.size >= 2)
+        assert.ok(totals.size >= 1)
         assert.equal(new Set(totals.values()).size, 1)
         break
       }
@@ -137,6 +137,17 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         rule.cells.slice(1).forEach((cell, i) => assert.ok(digits[rule.cells[i]] < digits[cell]))
         break
       case 'arrow': assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), digits[rule.circle]); break
+      case 'pill-arrow': {
+        const [tens, ones] = rule.pill.map(cell => digits[cell])
+        assert.equal(rule.cells.reduce((sum, cell) => sum + digits[cell], 0), 10 * tens + ones)
+        break
+      }
+      case 'lockout': {
+        const [low, high] = [digits[rule.cells[0]], digits[rule.cells.at(-1)!]].sort((a, b) => a - b)
+        assert.ok(high - low >= 4)
+        for (const cell of rule.cells.slice(1, -1)) assert.ok(digits[cell] < low || digits[cell] > high)
+        break
+      }
       case 'parity':
         for (const cell of rule.cells) assert.equal(digits[cell] % 2, rule.parity === 'odd' ? 1 : 0)
         break

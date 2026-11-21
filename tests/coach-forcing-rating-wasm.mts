@@ -32,7 +32,7 @@ test('deferred import ratings preserve uniqueness, complete proofs, and versione
       assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
       assert.ok(techniqueOrder.includes('entropy-quadruple'))
       const value = { ...trace, rating: { ...trace.rating, scoringVersion: 9,
-        techniqueOrder: techniqueOrder.filter(id => !['entropy-quadruple', 'consecutive-run', 'distinct-cells'].includes(id)) } }
+        techniqueOrder: techniqueOrder.filter(id => !['entropy-quadruple', 'consecutive-run', 'distinct-cells', 'pill-arrow', 'lockout'].includes(id)) } }
       assert.equal(createHash('sha256').update(JSON.stringify({ value })).digest('hex'), source.traceDigest)
       if (source.status === 'stalled') assert.equal(trace.steps.length, 16)
     })

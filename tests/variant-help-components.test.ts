@@ -282,3 +282,26 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
     } finally { playSession.getServerSnapshot = previous }
   })
 }
+
+test('the board draws Lockout diamonds and labels the endpoint and interior rules', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Lockout Lines Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'lockout', cells: [0, 40, 80] }] },
+  }))
+  assert.match(html, /class="variant-lockout-endpoints"><path[^>]+><\/path><path/)
+  assert.match(html, /Lockout diamond, difference of at least 4 with row 9, column 9/)
+  assert.match(html, /Lockout interior, digit below both or above both diamonds at row 1, column 1 and row 9, column 9/)
+})
+
+test('the board draws a pill and identifies each place value', () => {
+  const givens = '0'.repeat(81)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: 'Pill Arrow Sudoku grid',
+    variantPuzzle: { version: 1, givens, rules: [{ type: 'pill-arrow', pill: [8, 7], cells: [16, 17] }] },
+  }))
+  assert.match(html, /class="variant-arrow-pill"/)
+  assert.match(html, /class="variant-arrow-tens">10s/)
+  assert.match(html, /Pill Arrow tens digit, ones digit at row 1, column 8/)
+  assert.match(html, /Pill Arrow ones digit, tens digit at row 1, column 9/)
+})

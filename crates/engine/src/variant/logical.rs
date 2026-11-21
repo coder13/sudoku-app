@@ -120,6 +120,8 @@ catalog! {
     NonConsecutiveBivalue: "non-consecutive-bivalue", 22, Easy;
     /// Bound the interior of a line using the two endpoint digits.
     Between: "between", 23, Easy;
+    /// Find possible Lockout endpoints and digits outside their range.
+    Lockout: "lockout", 21, Easy;
     /// A house confines a digit to alternatives spanning three cells with a target.
     NonConsecutiveLockedTriple: "non-consecutive-locked-candidates-3", 24, Easy;
     /// Candidates spanning three consecutive digits exclude their middle digit nearby.
@@ -140,6 +142,8 @@ catalog! {
     CageCombinations: "cage-combinations", 34, Easy;
     /// Find assignments whose path digits add to the digit in the circle.
     Arrow: "arrow", 36, Easy;
+    /// Match the path sum with the tens and ones digits in a pill.
+    PillArrow: "pill-arrow", 34, Easy;
     /// Check a Whispers line together with the houses shared by its cells.
     WhispersHouseSupport: "whispers-house-support", 39, Medium;
     /// Find consecutive sets that fit a Renban line.
@@ -1501,7 +1505,7 @@ impl CompiledVariant {
             }
             RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
-            Arrow | Between | ConsecutiveRun | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            Arrow | PillArrow | Between | Lockout | ConsecutiveRun | DistinctCells | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
                     let narrow = position.masks.iter().enumerate().filter(|(_, mask)| matches!(mask.count_ones(), 1 | 2))

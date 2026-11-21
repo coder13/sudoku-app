@@ -591,7 +591,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'pillArrow', 'betweenLine', 'lockoutLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
     if (constraint.type === 'minimum' || constraint.type === 'maximum') {
       const { type, segments } = constraint
       if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
@@ -808,18 +808,20 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         }
         rules.push({ type: constraint.type === 'entropicLine' ? 'entropic' : 'modular', cells: segment.cells })
       }
-    } else if (constraint.type === 'betweenLine') {
+    } else if (constraint.type === 'betweenLine' || constraint.type === 'lockoutLine') {
+      const lockout = constraint.type === 'lockoutLine'
+      const name = lockout ? 'Lockout' : 'Between'
       const settings = constraint.settings
       if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key =>
         !LINE_STYLING.has(key) && !BULB_STYLING.has(key)))) {
-        throw new Error('This Sudoku Coach Between line uses unsupported settings.')
+        throw new Error(`This Sudoku Coach ${name} line uses unsupported settings.`)
       }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Between lines.')
+      if (!constraint.segments.length && !lockout) throw new Error('This Sudoku Coach puzzle has no Between lines.')
       for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Between line.')
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < (lockout ? 2 : 3) || hasData(segment.parameters)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${name} line.`)
         }
-        rules.push({ type: 'between', cells: segment.cells })
+        rules.push({ type: lockout ? 'lockout' : 'between', cells: segment.cells })
       }
     } else if (constraint.type === 'whisper') {
       const settings = constraint.settings
@@ -835,6 +837,20 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
           throw new Error('This Sudoku Coach puzzle has an unsupported Whispers line.')
         }
         rules.push({ type: 'whispers', cells: segment.cells, minDifference: Number(difference) })
+      }
+    } else if (constraint.type === 'pillArrow') {
+      const settings = constraint.settings
+      if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key) && !BULB_STYLING.has(key) && key !== 'arrowHeadLength'))) {
+        throw new Error('This Sudoku Coach Pill Arrow uses unsupported settings.')
+      }
+      for (const segment of constraint.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length < 3 || hasData(segment.parameters)) {
+          throw new Error('This Sudoku Coach puzzle has an invalid Pill Arrow.')
+        }
+        const [first, start, ...cells] = segment.cells
+        // Coach reads its two pill digits in row-major order even when drawn in reverse.
+        const fromTens = start < first
+        rules.push({ type: 'pill-arrow', pill: fromTens ? [start, first] : [first, start], cells, ...(fromTens && { fromTens }) })
       }
     } else if (constraint.type === 'thermometer' || constraint.type === 'arrow') {
       const settings = constraint.settings

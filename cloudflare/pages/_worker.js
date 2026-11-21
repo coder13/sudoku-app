@@ -112,6 +112,9 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['7kvK', '3fc5d6fdf1da8e5517863b670de7ef743337ee7a9e5d6294f00edcca0c464244'],
+  ['DhdV', '7b2a040b11cd623b995c7e2b78d54a0b9aaa0e48ef55b8edaf467d31d2665c2c'],
+  ['HBLt', '371fca2c0cf0997409743bb24497229297638d2632e921ba99f062e915f2c07f'],
   ['7VAC', '356ebef8107975d494da2efccf6e89eb133d4d90a03d9b7f6a6cbe8236c7c644'],
   ['9Rji', '0bb9dda666e5938694d17d6c76d10ce39e3823700e1ed161bcbe349afb17c5df'],
   ['A2s7', '2f1a693b6d99e6598fce81ee680c8930a6027beff58e3bcba49a588f7862abdd'],
@@ -393,6 +396,7 @@ const quadruple = [{ topLeft: value => cell(value) && value < 72 && value % 9 < 
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
+  lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
   entropic: [{ cells: list(cell, 1) }],
   'global-entropy': [{}],
@@ -410,6 +414,7 @@ const ruleFields = {
   'anti-king': [{}],
   'anti-knight': [{}],
   arrow: [{ circle: cell, cells }],
+  'pill-arrow': [{ pill: uniqueCells(2, 2), cells: uniqueCells(1, 79) }, { fromTens: boolean }],
   diagonal: [{ diagonal: oneOf('main', 'anti') }],
   'extra-house': [{ cells: house }],
   'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
@@ -428,7 +433,11 @@ const rule = value => {
   if (value?.type === 'labeled-dots') return numberedDotRule(value, 9)
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
-  return fields(value, { type: oneOf(value.type), ...required }, optional)
+  if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
+  if (value.type !== 'pill-arrow') return true
+  const [a, b] = value.pill
+  return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) <= 1 && Math.abs(a % 9 - b % 9) <= 1 &&
+    !value.cells.some(cell => value.pill.includes(cell))
 }
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),

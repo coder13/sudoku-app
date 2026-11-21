@@ -406,3 +406,54 @@ test('Quad-Arrows keeps the published sum in hints, Technique Finder and the ful
   specificSudoku = { ...publication, description: publication.description + '\nDigits in purple cells count twice.' }
   await assert.rejects(detectPuzzle(source.url), /author instructions/i)
 })
+
+test('Coach Pill Arrows and Lockout Lines work with Quadruple and Fog of War', async ({ mock }) => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-pill-arrow-lockout.json', import.meta.url), 'utf8'))
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
+    if (!url.startsWith('https://sudoku.coach/en/s/')) return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {})
+    const source = sources.find((source: { url: string }) => source.url === url)
+    assert.ok(source)
+    const specificSudoku = { sudoku_id: url.split('/').at(-1), sudoku: source.coach, name: source.title,
+      description: source.description, blocked: false, custom_constraints: false }
+    return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+  })
+  for (const source of sources) {
+    const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+    assert.ok(game.variant)
+    const { puzzle, fog, solution } = game.variant
+    assert.equal(solution, source.solution)
+    assertVariantCompletion(puzzle, source.solution)
+    const raw = (await detectPuzzle(source.coach)).variant
+    assert.deepEqual(raw?.puzzle, puzzle)
+    assert.deepEqual(raw?.fog, fog)
+    assert.deepEqual(readGame(game.id, JSON.stringify(game))?.variant?.puzzle, puzzle)
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+    for (const step of path.steps) for (const action of step.actions) {
+      if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
+      else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
+    }
+    if (source.url.endsWith('/DhdV')) {
+      const pill = puzzle.rules!.find(rule => rule.type === 'pill-arrow')
+      assert.deepEqual(pill, { type: 'pill-arrow', pill: [77, 78], cells: [68, 59], fromTens: true })
+      assert.equal(fog?.initialCells.length, 22)
+      assert.ok(path.steps.some(step => step.technique === 'quadruple'))
+      continue
+    }
+    const techniques = source.url.endsWith('/7kvK') ? ['pill-arrow', 'lockout'] as const : ['lockout'] as const
+    for (const technique of techniques) {
+      const index = path.steps.findIndex(step => step.technique === technique)
+      assert.ok(index >= 0, `Missing ${technique} in ${source.title}`)
+      const { entries, eliminations } = path.positions![index]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const { choices } = await puzzleHints(checkpoint, 'all', technique)
+      const witness = technique === 'pill-arrow' ? /tens.*ones/ : /diamonds.*at least 4/
+      assert.ok(choices.some(choice => 'variant' in choice.evidence && witness.test(choice.evidence.variant.description)))
+      const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      assert.ok(actions.size)
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+      try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    }
+  }
+})

@@ -204,6 +204,21 @@ test('public share links preserve the Quad-Arrows arithmetic', async () => {
   } finally { sqlite.close() }
 })
 
+test('sharing preserves Pill Arrow place value, Lockout Lines and Fog', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-pill-arrow-lockout.json', import.meta.url), 'utf8'))
+    const source = sources.find(({ url }: { url: string }) => url.endsWith('/DhdV'))
+    const { variant, givens } = await detectPuzzle(source.coach)
+    assert.ok(variant?.fog)
+    const game = { ...makeGame(createGameId(), source.title, givens, 'imported'), variant: { ...variant, solution: source.solution } }
+    const definition = puzzleDefinitionForSharing(game)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+  } finally { sqlite.close() }
+})
+
 test('the sharing API rejects save state and malformed or oversized definitions', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

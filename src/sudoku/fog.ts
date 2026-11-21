@@ -177,6 +177,8 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       }
       case 'arrow':
         return visible.has(rule.circle) && allVisible(rule.cells) ? [rule] : []
+      case 'pill-arrow':
+        return allVisible(rule.pill) && allVisible(rule.cells) ? [rule] : []
       case 'non-consecutive':
         return !rule.except || rule.except.every(allVisible) ? [rule] : []
       case 'anti-knight':
@@ -197,7 +199,7 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
 }
 
 const lineFragments = {
-  between: 'Between line', 'consecutive-run': 'Consecutive Line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
+  between: 'Between line', lockout: 'Lockout Line', 'consecutive-run': 'Consecutive Line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
   renban: 'Renban line', 'region-sum': 'Region Sum line', thermometer: 'thermometer', whispers: 'Whispers line',
 } as const
 
@@ -223,12 +225,15 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
           addFragment(quadrupleCells(rule.topLeft), rule.type === 'quadruple-sum' ? 'part of a Quad-Arrows clue' : 'part of a Quadruple clue')
         }
         break
-      case 'between': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
+      case 'between': case 'lockout': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
       case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
         addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
         break
       case 'distinct-cells':
         addFragment(rule.cells, 'part of a shaded group')
+        break
+      case 'pill-arrow':
+        addFragment([...rule.pill, ...rule.cells], 'part of a Pill Arrow clue')
         break
       case 'arrow':
         addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')
