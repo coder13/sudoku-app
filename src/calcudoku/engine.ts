@@ -1,6 +1,7 @@
 import { adjacentClueRules } from '../latin/adjacent-clues.ts'
 import { inequalityRules, type Inequality } from '../futoshiki/inequality-rules.ts'
 import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle, type LatinRule } from '../latin/engine.ts'
+import { latinExtraRegionRules } from '../latin/extra-regions.ts'
 import { lineSubsetRules } from '../latin/line-subsets.ts'
 import { latinPathRules, type LatinClues } from '../latin/path-clues.ts'
 import { whispersRules } from '../latin/whispers.ts'
@@ -158,7 +159,7 @@ function lineTotalRules(puzzle: LatinPuzzle, sums: readonly (readonly [Cage, num
 export function createCalcudoku(
   size: number, cages: readonly Cage[], fixed?: readonly number[],
   {
-    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues,
+    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues, extraRegions,
   }: LatinClues & { allowUncaged?: boolean; inequalities?: readonly Inequality[] } = {},
 ): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
@@ -190,7 +191,7 @@ export function createCalcudoku(
   if (adjacentClues) rules.push(...adjacentClueRules(size, adjacentClues))
   const lines = whispers?.length ? whispersRules(size, whispers) : undefined
   if (lines) rules.push(...lines.basic)
-  rules.push(...latinPathRules(size, pathClues))
+  rules.push(...latinPathRules(size, pathClues), ...latinExtraRegionRules(size, extraRegions))
   const puzzle = createLatinPuzzle(size, givens, rules)
   // The rows and the cages each partition the grid into known totals.
   if (coversGrid && sums.length === cages.length) {
@@ -203,12 +204,12 @@ export function createCalcudoku(
         cells: givens.map((_, cell) => cell),
         support: () => null,
       }
-      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues }
+      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions }
     }
   }
   const derived = [...(lines?.advanced ?? []), ...lineTotalRules(puzzle, sums), ...lineSubsetRules(size), ...locks]
   if (comparisons) derived.push(...comparisons.sharedBounds, ...comparisons.lineRules)
   if (size >= 4) derived.push(xWingRule(size))
   if (comparisons) derived.push(...comparisons.lineMatching)
-  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues }
+  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions }
 }

@@ -338,9 +338,12 @@ function cellBoundary(cells: readonly number[], size = 9) {
   return edge
 }
 
-function ExtraRegion({ cells, size = 9 }: { cells: readonly number[]; size?: number }) {
+/** Draw the authored cells of an extra region in a grid-sized SVG. */
+export function ExtraRegion({ cells, size = 9, outlineOnly = false }: {
+  cells: readonly number[]; size?: number; outlineOnly?: boolean
+}) {
   return <g className="variant-extra-region">
-    {cells.map((cell) => <rect key={cell} x={x(cell, size)} y={y(cell, size)} width="1" height="1" />)}
+    {!outlineOnly && cells.map((cell) => <rect key={cell} x={x(cell, size)} y={y(cell, size)} width="1" height="1" />)}
     <path d={cellBoundary(cells, size)} />
   </g>
 }

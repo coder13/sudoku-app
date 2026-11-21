@@ -5,7 +5,7 @@ import { operatorSymbol, type CageOperator } from '../calcudoku/engine'
 import { adjacentClueNotes, adjacentClueTechnique } from '../latin/adjacent-clues'
 import { cellLabel, checkLatin, findLatinHints, findLatinSolutionHints, latinContradictionTechnique, solveLatin, type LatinHint } from '../latin/engine'
 import { subsetTechnique, subsetTechniques } from '../latin/line-subsets'
-import { pathClueTechnique, supportingPathClueTechniques } from '../latin/path-clues'
+import { latinClueTechnique, supportingLatinClueTechniques } from '../latin/path-clues'
 import { whispersTechnique } from '../latin/whispers'
 import { xWingTechnique } from '../latin/x-wing'
 import { Button } from './Button'
@@ -29,11 +29,11 @@ function numberHint(hint: LatinHint, hasInequalities: boolean) {
       : hint.rules[0].kind === 'contradiction' ? latinContradictionTechnique
       : hint.rules[0].kind === 'whispers' ? whispersTechnique
       : hint.rules[0].kind === 'adjacent-clue' ? adjacentClueTechnique
-      : pathClueTechnique(hint.rules[0].kind) ?? comparison ??
+      : latinClueTechnique(hint.rules[0].kind) ?? comparison ??
         (hint.rules.some(rule => rule.kind === 'cage-line') ? lockedCandidates
           : subsetTechnique(hint) ?? (hint.rules[0].kind === 'line-total' ? 'Line totals'
             : hint.rules[0].kind === 'line' ? 'Row and column' : 'Cage arithmetic')),
-    supportingTechniques: supportingPathClueTechniques(hint.rules),
+    supportingTechniques: supportingLatinClueTechniques(hint.rules),
     marked: hint.rules.flatMap(rule => rule.cells),
     reasons: hint.rules.map(rule => rule.label),
     trace: hint.trace,

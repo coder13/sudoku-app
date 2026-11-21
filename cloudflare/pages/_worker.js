@@ -108,7 +108,7 @@ function coachTypedDeclaration(lines) {
 const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s go)[.!]?$/i
 
 // These descriptions cover construction, the author's solve, or where to ask
-// for hints. Bind the full note to its publication so added rules stay visible.
+// for hints. When a note repeats encoded rules, also bind the reviewed export.
 const reviewedCoachNotes = new Map([
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
@@ -116,6 +116,8 @@ const reviewedCoachNotes = new Map([
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
   ['GLaG', 'bd5b8a2bfdffb354b5051f5a4b445ca217379f1a346e9c885643f4b37ddbb1fa'],
   ['9GTz', 'af231855226a445d6f43ac86ea74c266533b4168a8b3de35c8ea4a44e43668e3'],
+  ['Ghje', ['41fa332ec16f84c8482d29ec078adaf096edca337f32cd8143578403425524d5',
+    'fa89d8bd12b691cbdee873107f97ffdb6deb31b40d53f66c3d2522abfe70e518']],
 ])
 
 // Coach publishes the puzzle code and its author instructions separately.
@@ -148,8 +150,9 @@ async function coachPublication(puzzle, id, code) {
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
   const reviewedNote = reviewedCoachNotes.get(id)
+  const [descriptionDigest, exportDigest] = Array.isArray(reviewedNote) ? reviewedNote : [reviewedNote]
   const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
-    (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
+    (!descriptionDigest || await digest(lines.join('\n')) !== descriptionDigest || exportDigest !== undefined && await digest(code) !== exportDigest)
   return {
     hasAuthorInstructions,
     ...(authoredRule && { authoredRule }),

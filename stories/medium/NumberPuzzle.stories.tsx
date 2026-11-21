@@ -703,6 +703,49 @@ export const BetweenWithInequality: Story = {
   },
 }
 
+const regionPuzzle = createImportedFutoshiki(4, '0034341200434321', [], {
+  extraRegions: [[0, 4, 5, 7], [0, 7]],
+})
+
+export const OverlappingExtraRegions: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={regionPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Extra region 1, Extra region 2$/ })
+    await expect(grid.querySelectorAll('.variant-extra-region path')).toHaveLength(2)
+    await expect(grid.querySelectorAll('.variant-extra-region rect')).toHaveLength(0)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R1C2, empty$/ })).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(cell).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 2' }))
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible()
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Extra region' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Extra region' })).toBeVisible()
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Futoshiki solution' })
+    await expect(final.querySelectorAll('.variant-extra-region path')).toHaveLength(2)
+    await expect(within(final).getByRole('button', { name: /^R1C1, 1, Extra region 1, Extra region 2$/ })).toBeVisible()
+  },
+}
+
 const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
   position: {
     values: [1, ...Array<number>(15).fill(0)],

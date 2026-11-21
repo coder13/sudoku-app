@@ -6,7 +6,7 @@ type RuleEvidence = {
 }
 
 export type LatinRule = RuleEvidence & {
-  kind?: 'line' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'renban' | 'lockout' | 'between' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
+  kind?: 'line' | 'extra-region' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'renban' | 'lockout' | 'between' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
   // Derived rules are used for solving and hints. The board check uses the basic rules.
   afterBasic?: true
   support: (domains: readonly number[], explain?: (evidence: RuleEvidence) => void) => readonly number[] | null
@@ -52,7 +52,7 @@ export function cellLabel(cell: number, size: number) {
   return `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
 }
 
-function lineSupport(cells: readonly number[], domains: readonly number[], all: number): number[] | null {
+export function distinctCellSupport(cells: readonly number[], domains: readonly number[], requiredDigits: number): number[] | null {
   let fixed = 0
   for (const cell of cells) {
     const mask = domains[cell]
@@ -63,7 +63,7 @@ function lineSupport(cells: readonly number[], domains: readonly number[], all: 
   }
 
   const supported = cells.map(cell => counts[domains[cell]] === 1 ? domains[cell] : domains[cell] & ~fixed)
-  for (let choices = all & ~fixed; choices; choices &= choices - 1) {
+  for (let choices = requiredDigits & ~fixed; choices; choices &= choices - 1) {
     const digit = choices & -choices
     let only = -1
     for (let i = 0; i < supported.length; i++) {
@@ -94,7 +94,7 @@ export function latinLineRules(size: number): readonly LatinRule[] {
   ] as const) {
     for (const line of indices) {
       const cells = indices.map(offset => at(line, offset))
-      rules.push({ kind: 'line', label: `${axis} ${line + 1}`, cells, support: domains => lineSupport(cells, domains, all) })
+      rules.push({ kind: 'line', label: `${axis} ${line + 1}`, cells, support: domains => distinctCellSupport(cells, domains, all) })
     }
   }
   linesBySize[size] = rules
@@ -192,14 +192,15 @@ function collectLatinHints(
     }
   })
   if (conflict) return []
-  if (hints.length || limit <= 0 || !puzzle.rules.some(isForcingLine)) return hints
+  if (hints.length || limit <= 0 || !puzzle.rules.some(isForcingClue)) return hints
   const forced = tryCandidatePlacements(puzzle, domains, dependencies)
   return forced ? [forced] : []
 }
 
-function isForcingLine({ kind }: LatinReason) {
+function isForcingClue({ kind }: LatinReason) {
   return kind === 'whispers' || kind === 'palindrome' || kind === 'consecutive' ||
-    kind === 'thermometer' || kind === 'arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between'
+    kind === 'thermometer' || kind === 'arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between' ||
+    kind === 'extra-region'
 }
 
 export const latinContradictionTechnique = 'Contradiction'
@@ -261,7 +262,7 @@ function trialConflict(puzzle: LatinPuzzle, domains: readonly number[], cell: nu
   const result = describeTrialConflict(puzzle.size, conflict, trial)
   const proof = new Set(result.cells.flatMap(peer => changes[peer] ?? []))
   for (const change of proof) for (const prior of change.causes) proof.add(prior)
-  if (!isForcingLine(conflict) && ![...proof].some(change => isForcingLine(change.rule))) return
+  if (!isForcingClue(conflict) && ![...proof].some(change => isForcingClue(change.rule))) return
   const steps = [...proof].sort((a, b) => a.order - b.order).map(change => {
     const choices = digitsInMask(change.mask, puzzle.size)
     const target = cellLabel(change.cell, puzzle.size)

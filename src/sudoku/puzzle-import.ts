@@ -458,9 +458,15 @@ function isCoachBoxlessOnlyLayer(layer: unknown) {
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
+function needsStandaloneSevenGrid(layers: readonly unknown[]) {
+  return layers.some(layer => isCoachBoxlessOnlyLayer(layer) || record(layer) && layer.type === 'region' &&
+    Array.isArray(layer.segments) && layer.segments.some(segment =>
+      record(segment) && Array.isArray(segment.cells) && segment.cells.length !== 7))
+}
+
 function isCoachBoxlessRuleLayer(layer: unknown) {
   return isCoachBoxlessOnlyLayer(layer) || record(layer) && (layer.type === 'difference' || layer.type === 'ratio' ||
-    layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban')
+    layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban' || layer.type === 'region')
 }
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
@@ -474,7 +480,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (typeof size === 'number' && Number.isInteger(size) && size >= 3 && size <= 9 &&
     Array.isArray(encodedRegions) && encodedRegions.length === 0 && Array.isArray(layers) &&
     layers.some(layer => record(layer) && (layer.type === 'cosmeticCage' || layer.type === 'cage' &&
-      (size !== 7 || layers.some(isCoachBoxlessOnlyLayer))))) {
+      (size !== 7 || needsStandaloneSevenGrid(layers))))) {
     checkStandaloneCoachPublication(publication)
     const annotations = readCoachNumberAnnotations(data, size, Boolean(publication))
     const { givenColors, ...otherAnnotations } = annotations ?? {}
@@ -589,7 +595,7 @@ async function readCoachFutoshiki(data: Record<string, unknown>, published: bool
   if (!Array.isArray(constraints) || constraints.some(layer => !isCoachBoxlessRuleLayer(layer))) return
   const size = data.gridSize
   // Keep the existing Sudoku route for 7 × 7 boxless grids with its supported rules.
-  if (size === 7 && !constraints.some(isCoachBoxlessOnlyLayer)) return
+  if (size === 7 && !needsStandaloneSevenGrid(constraints)) return
 
   const { createImportedFutoshiki, isFutoshikiSize } = await import('../futoshiki/imported.ts')
   if (!isFutoshikiSize(size)) return
@@ -736,12 +742,29 @@ function readCoachBetweenPaths(constraint: Record<string, unknown>): number[][] 
   })
 }
 
+function readCoachExtraRegions(layer: Record<string, unknown>): number[][] {
+  if (unsupportedClueStyling(layer.settings)) {
+    throw new Error('This Sudoku Coach extra region uses unsupported settings.')
+  }
+  if (!Array.isArray(layer.segments) || !layer.segments.length) {
+    throw new Error('This Sudoku Coach puzzle has no extra regions.')
+  }
+  return layer.segments.map(segment => {
+    if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.every(Number.isInteger) || hasData(segment.parameters)) {
+      throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
+    }
+    return segment.cells
+  })
+}
+
 function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClues {
   const whispers: WhisperLine[] = []
   const pathClues: LatinPathClue[] = []
+  const extraRegions: number[][] = []
   for (const layer of layers) {
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
+    if (layer.type === 'region') extraRegions.push(...readCoachExtraRegions(layer))
     const type = layer.type
     if (type === 'betweenLine') {
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
@@ -773,7 +796,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     const pathType = type === 'palindromeLine' ? 'palindrome' : type === 'consecutiveLine' ? 'consecutive' : 'renban'
     for (const line of coachConnectedLines(paths)) pathClues.push({ ...line, type: pathType })
   }
-  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues }
+  return { adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues, ...(extraRegions.length && { extraRegions }) }
 }
 
 function coachOutsideRay(side: OutsideSide, index: number) {
@@ -952,16 +975,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
         ? { type: 'kropki', consecutive: marks }
         : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
-      if (unsupportedClueStyling(constraint.settings)) {
-        throw new Error('This Sudoku Coach extra region uses unsupported settings.')
-      }
-      if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no extra regions.')
-      for (const segment of constraint.segments) {
-        if (!record(segment) || !Array.isArray(segment.cells) || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid extra region.')
-        }
-        rules.push({ type: 'extra-house', cells: segment.cells })
-      }
+      for (const cells of readCoachExtraRegions(constraint)) rules.push({ type: 'extra-house', cells })
     } else if (constraint.type === 'palindromeLine' || constraint.type === 'renban' || constraint.type === 'regionSumLine') {
       const name = constraint.type === 'renban' ? 'Renban' : constraint.type === 'regionSumLine' ? 'Region Sum' : 'Palindrome'
       const settings = constraint.settings

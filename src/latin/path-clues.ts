@@ -1,6 +1,7 @@
 import type { AdjacentClues } from './adjacent-clues.ts'
 import { arrowRule, arrowRuleNote, arrowTechnique } from './arrow.ts'
 import { bit, cellLabel, type LatinHint, type LatinRule } from './engine.ts'
+import { extraRegionTechnique } from './extra-regions.ts'
 import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, lockoutTechnique } from './endpoint-lines.ts'
 import { renbanRule, renbanRuleNote, renbanTechnique } from './renban.ts'
 import type { WhisperLine } from './whispers.ts'
@@ -21,18 +22,20 @@ export type LatinClues = {
   adjacentClues?: AdjacentClues
   whispers?: readonly WhisperLine[]
   pathClues?: readonly LatinPathClue[]
+  extraRegions?: readonly (readonly number[])[]
 }
 
 export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
 
-export function pathClueTechnique(kind: LatinRule['kind']) {
+export function latinClueTechnique(kind: LatinRule['kind']) {
+  if (kind === 'extra-region') return extraRegionTechnique
   if (kind && Object.hasOwn(pathClueNames, kind)) return pathClueNames[kind as LatinPathClueType]
 }
 
-export function supportingPathClueTechniques(rules: LatinHint['rules']) {
+export function supportingLatinClueTechniques(rules: LatinHint['rules']) {
   let techniques: Set<string> | undefined
   for (const { kind } of rules) {
-    const technique = pathClueTechnique(kind)
+    const technique = latinClueTechnique(kind)
     if (technique) (techniques ??= new Set()).add(technique)
   }
   return techniques && [...techniques]

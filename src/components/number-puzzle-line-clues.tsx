@@ -1,18 +1,20 @@
 import type { Inequality } from '../futoshiki/inequality-rules'
 import { cellLabel } from '../latin/engine'
 import { lockoutMinimumGap } from '../latin/endpoint-lines'
+import { extraRegionNote, extraRegionTechnique } from '../latin/extra-regions'
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { ArrowClue } from './ArrowClue'
 import { EndpointLineClues } from './EndpointLineClues'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { RenbanClue } from './RenbanClue'
+import { ExtraRegion } from './VariantClues'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleLines(
-  size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [] }: LatinClues,
+  size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [], extraRegions = [] }: LatinClues,
 ) {
-  if (!whispers.length && !pathClues.length) return
+  if (!whispers.length && !pathClues.length && !extraRegions.length) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
   for (const { cells: [a, b] } of adjacentClues?.marks ?? []) markedEdges.add(key(a, b))
@@ -21,6 +23,9 @@ export function numberPuzzleLines(
     const current = labels.get(cell) ?? new Set()
     current.add(text)
     labels.set(cell, current)
+  }
+  for (const [index, cells] of extraRegions.entries()) {
+    for (const cell of cells) addLabel(cell, `Extra region ${index + 1}`)
   }
   for (const { cells, minDifference } of whispers) {
     for (let index = 1; index < cells.length; index++) {
@@ -75,7 +80,10 @@ export function numberPuzzleLines(
       }
     }
   }
+  const regionCells = extraRegions.flat()
+  const regionsOverlap = new Set(regionCells).size !== regionCells.length
   const drawing = <svg className="number-puzzle-line-clues" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+    {extraRegions.map((cells, index) => <ExtraRegion key={`region-${index}`} cells={cells} size={size} outlineOnly={regionsOverlap} />)}
     {pathClues.filter(line => line.type === 'thermometer').map((line, index) => <PuzzlePathClue key={`thermometer-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'renban').map((line, index) => <RenbanClue key={`renban-${index}`} {...line} number={index + 1} size={size} />)}
     {pathClues.filter(line => line.type === 'palindrome').map((line, index) => <PuzzlePathClue key={`palindrome-${index}`} line={line} size={size} />)}
@@ -90,7 +98,7 @@ export function numberPuzzleLines(
   const types = new Set(pathClues.map(line => line.type))
   return {
     drawing, labels,
-    notes: [...(whispers.length ? [whispersRuleNote] : []), ...Array.from(types, type => pathClueNotes[type])],
-    techniques: [...(whispers.length ? [whispersTechnique] : []), ...Array.from(types, type => pathClueNames[type])],
+    notes: [...(extraRegions.length ? [extraRegionNote] : []), ...(whispers.length ? [whispersRuleNote] : []), ...Array.from(types, type => pathClueNotes[type])],
+    techniques: [...(extraRegions.length ? [extraRegionTechnique] : []), ...(whispers.length ? [whispersTechnique] : []), ...Array.from(types, type => pathClueNames[type])],
   }
 }

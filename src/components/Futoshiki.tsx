@@ -2,7 +2,7 @@ import { futoshikiCatalog, type FutoshikiEntry } from '../futoshiki/catalog'
 import { adjacentClueNotes, adjacentClueTechnique } from '../latin/adjacent-clues'
 import { checkLatin, findLatinHints, findLatinSolutionHints, latinContradictionTechnique, solveLatin, type LatinHint } from '../latin/engine'
 import { subsetTechnique, subsetTechniques } from '../latin/line-subsets'
-import { pathClueTechnique, supportingPathClueTechniques } from '../latin/path-clues'
+import { latinClueTechnique, supportingLatinClueTechniques } from '../latin/path-clues'
 import { whispersTechnique } from '../latin/whispers'
 import { xWingTechnique } from '../latin/x-wing'
 import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
@@ -19,10 +19,10 @@ function numberHint(hint: LatinHint) {
       : hint.rules[0].kind === 'contradiction' ? latinContradictionTechnique
       : hint.rules[0].kind === 'whispers' ? whispersTechnique
       : hint.rules[0].kind === 'adjacent-clue' ? adjacentClueTechnique
-      : pathClueTechnique(hint.rules[0].kind) ??
+      : latinClueTechnique(hint.rules[0].kind) ??
         advancedInequalityTechnique(hint) ?? subsetTechnique(hint) ??
         (hint.rules[0].kind === 'line' ? 'Row and column' : inequalityTechniqueNames.inequality),
-    supportingTechniques: supportingPathClueTechniques(hint.rules),
+    supportingTechniques: supportingLatinClueTechniques(hint.rules),
     marked: (matching.length ? matching : hint.rules).flatMap(rule => rule.cells),
     reasons: hint.rules.map(rule => rule.label),
     trace: hint.trace,
