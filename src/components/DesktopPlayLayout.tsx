@@ -332,20 +332,28 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     if (!workspace || !inputStack) return null
     const restoreWorkspace = rememberInlineStyles(workspace, ['grid-template-columns'])
     const restoreInput = rememberInlineStyles(inputStack, ['--play-input-scale'])
-    const puzzles = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle-flat')].flatMap(puzzle => {
-      const parent = puzzle.parentElement
+    const widthPreviews = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle-flat')].flatMap(element => {
+      const parent = element.parentElement
       if (!parent) return []
-      const parentStyle = getComputedStyle(parent), puzzleStyle = getComputedStyle(puzzle)
+      const parentStyle = getComputedStyle(parent), elementStyle = getComputedStyle(element)
       const horizontalSpace = (style: CSSStyleDeclaration) =>
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
         + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth)
       const available = parseFloat(parentStyle.width) - (parentStyle.boxSizing === 'border-box' ? horizontalSpace(parentStyle) : 0)
-      const actual = parseFloat(puzzleStyle.width) + (puzzleStyle.boxSizing === 'content-box' ? horizontalSpace(puzzleStyle) : 0)
+      const actual = parseFloat(elementStyle.width) + (elementStyle.boxSizing === 'content-box' ? horizontalSpace(elementStyle) : 0)
       if (!(available > 0 && actual > 0)) return []
-      return [{ puzzle, inset: Math.max(0, available - actual), restore: rememberInlineStyles(puzzle, ['max-inline-size']) }]
+      return [{ element, inset: Math.max(0, available - actual), restore: rememberInlineStyles(element, ['max-inline-size']) }]
     })
+    const hintPreviews = [...workspace.querySelectorAll<HTMLElement>('.standard-hint-slot .hint-dock')].map(element => ({
+      element, restore: rememberInlineStyles(element, ['max-inline-size']),
+    }))
     const clearBoards = previewDesktopBoards(workspace)
-    for (const { puzzle, inset } of puzzles) puzzle.style.maxInlineSize = `calc(100% - ${inset}px)`
+    // Puzzle cards keep their measured gutters. Hints keep the existing width
+    // clamp, applied locally so the saved board-width cap cannot override it.
+    for (const { element, inset } of widthPreviews) element.style.maxInlineSize = `calc(100% - ${inset}px)`
+    for (const { element } of hintPreviews) {
+      element.style.maxInlineSize = 'max(240px, calc(100% - 2 * var(--puzzle-badge-gutter-inline)))'
+    }
     workspace.setAttribute('data-layout-resizing', '')
     const update = (input: number) => {
       // Native track sizing does not change inherited variables on every cell.
@@ -356,7 +364,8 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       update,
       clear() {
         clearBoards()
-        for (const puzzle of puzzles) puzzle.restore()
+        for (const preview of widthPreviews) preview.restore()
+        for (const preview of hintPreviews) preview.restore()
         restoreWorkspace()
         restoreInput()
         workspace.removeAttribute('data-layout-resizing')

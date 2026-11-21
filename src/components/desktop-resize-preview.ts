@@ -16,13 +16,12 @@ export function rememberInlineStyles(element: HTMLElement, names: string[]) {
 
 const CANDIDATE_PREVIEW_ATTRIBUTE = 'data-desktop-candidate-preview'
 
-// Keep the nine notes in each cell fixed while the board, borders, pen digits,
-// center notes and clues use their real sizes. The live cell supplies the exact
-// space inside its borders, including the wider box and jigsaw boundaries.
+// Replace each note's container-unit font calculation with one pixel font size
+// per group. The live cell supplies the exact space inside its borders, while
+// text keeps its native shaping and hinting at the size that is actually shown.
 export function previewDesktopBoards(workspace: HTMLElement) {
   const boards = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle .board-body')]
-    // Marked candidates can paint above a link outside their parent. A group
-    // transform creates a stacking context, so these boards stay fully live.
+    // Keep candidate and link layering on the fully native rendering path.
     .filter(body => !body.querySelector('.board-links'))
   const groups = boards.flatMap(body => [...body.querySelectorAll<HTMLElement>('.candidate-marks')]
     .flatMap(group => {
@@ -48,7 +47,7 @@ export function previewDesktopBoards(workspace: HTMLElement) {
       const attribute = group.getAttribute(CANDIDATE_PREVIEW_ATTRIBUTE)
       const restoreStyle = rememberInlineStyles(group, [
         'position', 'top', 'right', 'bottom', 'left', 'width', 'height', 'font-size',
-        'container-type', '--candidate-shape-size', 'translate', 'scale', 'transform-origin', 'will-change',
+        'container-type', '--candidate-shape-size', 'isolation',
       ])
       let restored = false
       return [{
@@ -82,32 +81,35 @@ export function previewDesktopBoards(workspace: HTMLElement) {
       if (!preview || !preview.group.isConnected) continue
       const width = entry.contentRect.width + preview.paddingX
       const height = entry.contentRect.height + preview.paddingY
-      const x = width * (1 - preview.left - preview.right) / preview.width
-      const y = height * (1 - preview.top - preview.bottom) / preview.height
-      if (!(x > 0 && y > 0)) continue
-      preview.group.style.translate = `${width * preview.left}px ${height * preview.top}px`
-      preview.group.style.scale = `${x} ${y}`
+      const groupWidth = width * (1 - preview.left - preview.right)
+      const groupHeight = height * (1 - preview.top - preview.bottom)
+      if (!(groupWidth > 0 && groupHeight > 0)) continue
+      const minimum = Math.min(groupWidth, groupHeight)
+      preview.group.style.left = `${width * preview.left}px`
+      preview.group.style.top = `${height * preview.top}px`
+      preview.group.style.width = `${groupWidth}px`
+      preview.group.style.height = `${groupHeight}px`
+      preview.group.style.fontSize = `${preview.fontSize * minimum / Math.min(preview.width, preview.height)}px`
+      preview.group.style.setProperty('--candidate-shape-size', `min(1.35em, ${minimum / 3}px)`)
     }
   })
-  // Read all groups before freezing any of them. New groups that arrive during
+  // Read all groups before changing any of them. New groups that arrive during
   // the gesture stay native; new notes in an existing group inherit its size.
   for (const preview of groups) {
     const { group, cell, width, height, fontSize } = preview
     group.setAttribute(CANDIDATE_PREVIEW_ATTRIBUTE, '')
     group.style.position = 'absolute'
-    group.style.top = '0'
-    group.style.left = '0'
+    group.style.top = `${preview.cellHeight * preview.top}px`
+    group.style.left = `${preview.cellWidth * preview.left}px`
     group.style.right = 'auto'
     group.style.bottom = 'auto'
     group.style.width = `${width}px`
     group.style.height = `${height}px`
     group.style.fontSize = `${fontSize}px`
     group.style.containerType = 'normal'
+    // Preserve the stacking context supplied by the normal size container.
+    group.style.isolation = 'isolate'
     group.style.setProperty('--candidate-shape-size', `min(1.35em, ${Math.min(width, height) / 3}px)`)
-    group.style.translate = `${preview.cellWidth * preview.left}px ${preview.cellHeight * preview.top}px`
-    group.style.scale = '1 1'
-    group.style.transformOrigin = 'top left'
-    group.style.willChange = 'scale, translate'
     observer.observe(cell)
   }
   return () => {

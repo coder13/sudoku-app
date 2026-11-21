@@ -960,9 +960,6 @@ svg { flex-shrink: 0; }
   --board-frame-width: 100%;
   --puzzle-grid-inset: var(--board-guide-width);
 }
-.desktop-play-resizable .workspace[data-layout-resizing] .standard-hint-slot .hint-dock {
-  max-inline-size: max(240px, calc(100% - 2 * var(--puzzle-badge-gutter-inline)));
-}
 .desktop-play-resizable .standard-puzzle-stack .board-body {
   /* The frame consumes layout widths. Stop those changing inherited values
      here, before they reach every cell, candidate and annotation. */
