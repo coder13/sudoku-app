@@ -307,3 +307,5 @@ Palindrome 14 reaches 48 logical steps at the new stall, up from 12. Its three P
 The cost is 80 points at Hard. The three practice examples estimate 80, 80, and 72 points. They include both Palindrome and Clone definitions, and the generated drill verifies a fresh position. The full published puzzle still has a partial walkthrough. Its verified complete grid remains available in the Solution panel.
 
 The 13 related control puzzles keep their logical walks, and all 15 fixture representations keep the same exact verification result. Variant step replay stops after the requested deduction. The bounded request checked the same before and after positions as the full trace at every step.
+
+Eleven alternating warm Wasm samples compared two builds with the same technique order and the same replay replies. Median CPU time for step 13 fell from 209.4 to 2.0 ms. Step 48 fell from 200.2 to 15.2 ms. A request for missing step 49 still checks the entire path. Full rating explores the entire 48-step path and its terminal search.
