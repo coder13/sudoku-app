@@ -50,17 +50,26 @@ for (const [name, appPoints, nativePoints, steps] of [['clover',1260,940,77],['k
 }
 
 test('original modern Coach sources retain checked complete and partial profiles', async () => {
-  const expected = [[15870,122,484,16],[2744,69,308,8],[54,2,54,2]]
+  const expected = [
+    { app: [7470, 117, 16], original: [15870, 122], native: [484, 16] },
+    { app: [1404, 69, 1], original: [2744, 69], native: [308, 8] },
+    { app: [232, 4, 0], original: [54, 2], native: [54, 2] },
+  ] as const
   let index = 0
   for (const source of load('coach').examples.filter((source: { deferred?: string }) => !source.deferred)) {
     const { game } = await prepareImportedPuzzle(source.code), puzzle = game.variant!.puzzle
     assert.deepEqual(puzzle, source.puzzle); assert.equal(game.variant!.solution, source.solution)
     assertVariantCompletion(puzzle, source.solution)
-    const [appPoints, appSteps, nativePoints, nativeSteps] = expected[index]
-    const orders = [[await getVariantPlayOrder(),appPoints,appSteps,index < 2],[(await runEngine({ type: 'techniques', variant: true })).defaultOrder,nativePoints,nativeSteps,false]] as const
-    for (const [techniqueOrder, points, steps, complete] of orders) {
+    const { app: [appPoints, appSteps, locks], original, native } = expected[index]
+    const orders = [
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, index < 2, locks],
+      [await getVariantPlayOrder(), ...original, index < 2, 0],
+      [(await runEngine({ type: 'techniques', variant: true })).defaultOrder, ...native, false, 0],
+    ] as const
+    for (const [techniqueOrder, points, steps, complete, expectedLocks] of orders) {
       const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder })
       assert.equal(trace.steps.length, steps); assert.equal(trace.rating.points, points)
+      assert.equal(trace.rating.counts['renban-locked-digit'] ?? 0, expectedLocks)
       if (!complete) assert.equal(trace.rating.status, 'stalled')
       let played = game
       for (const step of trace.steps) {
@@ -76,11 +85,64 @@ test('original modern Coach sources retain checked complete and partial profiles
     }
     const path = await puzzleSolution(game)
     assert.equal(path.steps.length, appSteps)
+    assert.equal(path.rating.score.points, appPoints)
     if (index === 2) { assert.equal(path.rating.status, 'stalled'); assert.notEqual(path.board, source.solution) }
     else assert.equal(path.board, source.solution)
     assert.ok((await puzzleHints(game, 10)).choices.length >= 1)
     index++
   }
+})
+
+test('Renbann9 offers both group-count proofs at its genuine two-step stall', async () => {
+  const source = load('coach').examples.find((item: { url: string }) => item.url.endsWith('/BSms'))
+  const { game } = await prepareImportedPuzzle(source.code)
+  const variant = game.variant!
+  const position = variantPosition(variant)
+  const technique = 'renban-group-counts'
+  const order = await getVariantPlayOrder(variant.puzzle)
+  assert.ok(order.includes(technique) && order.indexOf(technique) < order.indexOf('aic'))
+  const prior = await runEngine({
+    type: 'variant', operation: 'trace', position, techniqueOrder: order.filter(id => id !== technique),
+  })
+  assert.equal(prior.rating.status, 'stalled')
+  assert.equal(prior.steps.length, 2)
+  let played = game
+  for (const { actions } of prior.steps)
+    played = applyDeduction(played, actions, variantHouseMasks(variant.puzzle, valuesOf(played)))
+
+  const requested = await puzzleHints(played, 'all', technique, 659)
+  const ordinary = await puzzleHints(played)
+  const expected = [75, 49].map(cell => [{ eliminate: { cell, digit: 3 } }])
+  assert.deepEqual(requested.choices.map(choice => choice.actions), expected)
+  assert.deepEqual(ordinary.choices.map(choice => choice.actions), expected)
+  const first = requested.choices[0].evidence
+  const later = requested.choices[1].evidence
+  assert.ok('variant' in first && 'variant' in later)
+  assert.match(first.variant.reason, /box 8.*five distinct digits from 6–9.*Remove 3 from r9c4/i)
+  assert.match(later.variant.reason, /column 4.*r3c4 to be 3.*box 8.*Remove 3 from r6c5/i)
+  const scan = watchTechniqueScan(valuesOf(played), played.position.eliminations, variantPosition(variant, played.position))
+  try {
+    assert.equal(await scan.count(technique), 2)
+    assert.deepEqual((await puzzleHintPage(variant, 659, 0)).choices, requested.choices)
+  } finally {
+    scan.close()
+    await runEngine({ type: 'release-hints', collection: 659 })
+  }
+
+  const path = await puzzleSolution(game)
+  assert.deepEqual(path.steps.slice(2).map(choice => choice.actions), expected)
+  assert.equal(path.rating.score.counts[technique], 2)
+  assert.equal(path.rating.score.points, 232)
+  assert.equal(path.rating.status, 'stalled')
+  assert.deepEqual(path.rating.techniqueOrder, order)
+  for (const [index, choice] of requested.choices.entries()) {
+    assert.ok('variant' in choice.evidence)
+    const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder: order, stepIndex: 2 + index })
+    assert.deepEqual(replay?.deduction, choice.evidence.variant.source?.deduction)
+    played = applyDeduction(played, choice.actions, variantHouseMasks(variant.puzzle, valuesOf(played)))
+  }
+  assert.deepEqual(redo(undo(played)).position, played.position)
+  assert.equal(await runEngine({ type: 'variant', operation: 'solve', position: variantPosition(variant, played.position) }), source.solution)
 })
 
 test('pages and Finder preserve every Renban proof and disabled profiles still enforce exact rules', async () => {

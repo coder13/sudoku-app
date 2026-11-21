@@ -8,11 +8,15 @@ export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
 const ENTROPY_QUADRUPLE_RATING_VERSION = 10
+const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
+    return RENBAN_AND_LITTLE_KILLER_RATING_VERSION
+  }
   if (rules?.some(rule => rule.type === 'global-entropy') && rules.some(rule => rule.type === 'quadruple')) {
     return ENTROPY_QUADRUPLE_RATING_VERSION
   }
@@ -30,7 +34,7 @@ export function needsPuzzleGrade(game: GradedPuzzle) {
 
 export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine): Promise<PuzzleGrade | null> {
   const rating = variant?.fog ? (await solveFogPath(variant, run, false)).rating
-    : variant ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder() })
+    : variant ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(variant.puzzle) })
       : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })
   if (rating.status === 'stalled') return null
   return {

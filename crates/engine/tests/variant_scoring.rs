@@ -19,7 +19,7 @@ fn binary_choices(domains: &[u16]) -> u16 {
 
 fn estimate(deduction: &VariantDeduction) -> u16 {
     use VariantTechnique::*;
-    let (cells, domains, cages) = match &deduction.evidence {
+    let (cells, domains, supporting_rules): (&[usize], &[u16], u16) = match &deduction.evidence {
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {
                 VariantExclusionPremise::Cell { cell, domain } => {
@@ -50,7 +50,20 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             return 26 + 2 * proof.cells.len() as u16 + 2 * binary_choices(&proof.domains) + 10 * overlap;
         }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
+        VariantEvidence::LockedDigit { clue, domains, .. } => (&clue.cells, domains, 0),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
+        VariantEvidence::RayHouses(proof) => {
+            (&proof.cells, &proof.domains, proof.houses.len() as u16)
+        }
+        VariantEvidence::RenbanGroupCounts(proof) => {
+            // Read each affected line, count five cells, then re-check the
+            // forced placement when one additional Renban set must be ruled out.
+            return 74 + 5 * (proof.initial.len() + proof.subsequent.len()) as u16
+                + proof.placement.as_ref().map_or(0, |step| 15 + 3 * step.rejected.len() as u16);
+        }
+        VariantEvidence::RenbanHouseSupport(proof) => (&proof.cells, &proof.domains[..], 0),
+        VariantEvidence::RenbanSum(proof) => (&proof.cells, &proof.domains, 0),
+        VariantEvidence::RenbanSumHouse(proof) => (&proof.cells, &proof.domains, 0),
         VariantEvidence::CageSum {
             cells,
             domains,
@@ -69,7 +82,15 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Whispers | Entropic | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
-        CageHouseSum => 34 + 18 + 3 * cages + span + 2 * choices,
+        RenbanLockedDigit => 24 + span + choices,
+        RenbanHouseSupport => 22 + span + 2 * choices,
+        // Compare each possible Renban interval's sum with the remainders on the ray.
+        RenbanSum => 42 + span + 2 * choices,
+        LittleKillerHouseSupport => 32 + span + 2 * choices + 3 * supporting_rules,
+        RenbanSumRayHouses => 46 + span + 2 * choices + 3 * supporting_rules,
+        // Match intervals in two lines and check the conflict in their house.
+        RenbanSumHouse => 54 + span + 2 * choices,
+        CageHouseSum => 34 + 18 + 3 * supporting_rules + span + 2 * choices,
         Skyscrapers | Sandwich | XSum => 40 + span + 2 * choices,
         technique => panic!("no variant scoring model for {}", technique.id()),
     }
@@ -79,7 +100,10 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
 fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     let mut path_scores = Vec::new();
     let mut tiers = [0; 5];
-    for &technique in VariantTechnique::DEFAULT_ORDER {
+    for &technique in VariantTechnique::DEFAULT_ORDER
+        .iter()
+        .chain(VariantTechnique::EXPLICIT_TECHNIQUES)
+    {
         if matches!(
             technique,
             VariantTechnique::FullHouse
@@ -167,7 +191,7 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
     }
     assert_eq!(
         path_scores.len(),
-        3 * (VariantTechnique::DEFAULT_ORDER.len() - 3)
+        3 * (VariantTechnique::DEFAULT_ORDER.len() + VariantTechnique::EXPLICIT_TECHNIQUES.len() - 3)
     );
     path_scores.sort_unstable();
     println!(

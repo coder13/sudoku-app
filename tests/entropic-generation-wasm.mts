@@ -27,7 +27,7 @@ function verify(value: GeneratedVariant) {
   assert.ok(value.puzzle.rules!.every(rule => rule.type === 'entropic'))
   const lines = value.puzzle.rules!.map(rule => rule.type === 'entropic' ? rule.cells : [])
   assert.ok(fixture.sources.some(source => JSON.stringify(source.lines) === JSON.stringify(lines)))
-  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 10)
+  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 11)
   assert.ok(value.rating.counts.entropic); assert.ok(value.givens >= 14 && value.givens <= 20)
   const independent = countLineSolutions(value.puzzle)
   assert.equal(independent.count, 1); assert.equal(independent.solution, value.solution)
