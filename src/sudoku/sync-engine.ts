@@ -205,10 +205,11 @@ export function createSyncEngine(storage: Storage, deviceId: string, request: Sy
       if (matchesProgress(base, here) && !(includeElapsed && elapsed > base.elapsed) && !base.pending) continue
       if (!here.game && !base.revision && !base.pending) continue
       const played = here.game ? lastPlayed(here.game, storage) : Date.now()
+      const game = here.game && { ...here.game, pendingSave: undefined }
       remember(id, { ...base, pending: here.hash })
       try {
         const result = await request<{ revision: number }>('puzzles/' + encodeURIComponent(id), 'PUT',
-          { revision: base.revision, hash: here.hash, played, game: here.game })
+          { revision: base.revision, hash: here.hash, played, game })
         remember(id, { revision: result.revision, hash: here.hash, elapsed, progressHash: here.progressHash })
       } catch (error) {
         if (!(error instanceof SyncError)) throw error

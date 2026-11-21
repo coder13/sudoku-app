@@ -679,11 +679,14 @@ async function api(request, { DB: db, SYNC_EVENTS: events }, ctx, url) {
           !Number.isSafeInteger(game.elapsed) || game.elapsed < 0 || typeof game.title !== 'string' || !game.position)) {
         throw new HttpError(400, 'Invalid puzzle save.')
       }
+      let body = null
       if (game) {
-        const { elapsed, savedForLater, ...content } = game
+        // Older clients send the local save-prompt flag but omit it from the fingerprint.
+        const { pendingSave, ...save } = game
+        const { elapsed, savedForLater, ...content } = save
         if (await digest(JSON.stringify(content)) !== hash) throw new HttpError(400, 'Puzzle fingerprint does not match the save.')
+        body = JSON.stringify(save)
       }
-      const body = game === null ? null : JSON.stringify(game)
       const sequence = '(SELECT COALESCE(MAX(sequence), 0) + 1 FROM puzzles WHERE library = ?)'
       // Both the revision check and sequence allocation happen in one SQLite statement.
       const result = revision === 0

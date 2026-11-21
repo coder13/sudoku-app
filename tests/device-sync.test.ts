@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { test } from 'node:test'
 import { makeGame, EMPTY, enter, isSolved, setGamePaused, undo, type Game } from '../src/sudoku/game.ts'
 import { GAME_PREFIX } from '../src/sudoku/storage.ts'
@@ -205,6 +206,46 @@ test('two devices resume full independent saves, order by play, and retain both 
     b.write(enter(b.read('two')!, [4], 'value', 5)); await b.run(); await a.run()
     assert.equal(a.read('two'), null)
     assert.ok(a.games().some(game => game.title.startsWith('Second (conflict copy)') && game.position.entries[4] === '5'))
+  } finally { sqlite.close() }
+})
+
+test('an unstarted puzzle syncs without sending its local save prompt', async () => {
+  const { sqlite, creator, second, computer, fetcher } = await library()
+  try {
+    const puzzle = makeGame('unstarted', 'Unstarted puzzle', EMPTY, 'generated')
+    let sentSavePrompt: boolean | undefined
+    const inspectUpload: typeof fetch = (path, init) => {
+      if (init?.method === 'PUT') {
+        sentSavePrompt = Object.hasOwn(JSON.parse(String(init.body)).game, 'pendingSave')
+      }
+      return fetcher(path, init)
+    }
+    const first = client(creator, syncRequest(creator.token, inspectUpload))
+    const other = client(second, computer)
+    first.write({ ...puzzle, pendingSave: true })
+    assert.deepEqual((await first.run()).failures, new Map())
+    assert.equal(sentSavePrompt, false)
+    await other.run()
+    assert.equal(first.read(puzzle.id)?.pendingSave, true)
+    assert.deepEqual(other.read(puzzle.id), JSON.parse(JSON.stringify(puzzle)))
+  } finally { sqlite.close() }
+})
+
+test('the server accepts an older client save prompt without storing it or skipping fingerprint verification', async () => {
+  const { sqlite, phone, computer } = await library()
+  try {
+    const puzzle = makeGame('older-unstarted', 'Older unstarted puzzle', EMPTY, 'generated')
+    const { elapsed, ...content } = puzzle
+    const hash = createHash('sha256').update(JSON.stringify(content)).digest('hex')
+    const path = 'puzzles/' + puzzle.id
+    const body = { revision: 0, hash, played: 0, game: { ...puzzle, pendingSave: true } }
+    await assert.rejects(phone(path, 'PUT', { ...body, game: { ...body.game, title: 'Changed title' } }), {
+      status: 400, message: 'Puzzle fingerprint does not match the save.',
+    })
+    assert.deepEqual(await phone(path, 'PUT', body), { revision: 1 })
+    const downloaded = await computer<{ game: Game; hash: string }>(path)
+    assert.equal(downloaded.hash, hash)
+    assert.deepEqual(downloaded.game, JSON.parse(JSON.stringify(puzzle)))
   } finally { sqlite.close() }
 })
 
