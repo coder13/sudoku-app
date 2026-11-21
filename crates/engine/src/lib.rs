@@ -92,6 +92,7 @@ pub use variant::{
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
     VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
     VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
+    VariantMatchingLayoutCase, VariantMatchingLayoutProof,
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
     canonical_variant,

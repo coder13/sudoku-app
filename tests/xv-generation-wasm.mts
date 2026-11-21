@@ -40,7 +40,7 @@ function verify(value: GeneratedVariant, difficulty: typeof difficulties[number]
   assert.ok(five?.pairs?.length && ten?.pairs?.length)
   assert.equal(Boolean(five.negative) || Boolean(ten.negative), false)
   assert.deepEqual(value.rating.status, { solved: difficulty })
-  assert.equal(value.rating.scoringVersion, 19)
+  assert.equal(value.rating.scoringVersion, 21)
   assert.ok(value.rating.counts.xv > 0)
   assert.ok(value.givens >= (difficulty === 'medium' ? 16 : 0) && value.givens <= 30)
   assertVariantCompletion(value.puzzle, value.solution)

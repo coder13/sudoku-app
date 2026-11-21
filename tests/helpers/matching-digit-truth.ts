@@ -5,16 +5,7 @@ import { variantHouseCells } from '../../src/sudoku/variants.ts'
 const indexes = Array.from({ length: 9 }, (_, index) => index)
 const cells = Array.from({ length: 81 }, (_, index) => index)
 
-export function assertMatchingDigitProof(
-  puzzle: VariantPuzzle,
-  values: string,
-  masks: readonly number[],
-  deduction: VariantDeduction,
-) {
-  const { evidence, actions } = deduction
-  assert.equal(evidence.type, 'matching-digit')
-  const { digit, assumed, initiallyPlaced, checks, conflict } = evidence
-  const bit = 1 << (digit - 1)
+export function matchingGeometry(puzzle: VariantPuzzle) {
   const groups: number[][] = []
   const houses: VariantHouse[] = indexes.flatMap(index => [{ row: index }, { column: index }, { region: index }])
   for (const [index, rule] of (puzzle.rules ?? []).entries()) {
@@ -35,7 +26,20 @@ export function assertMatchingDigitProof(
       if (seen.size === size) return [...seen].sort((left, right) => left - right)
     }
   }
-  const matches = cells.map(matching)
+  return { matches: cells.map(matching), houses }
+}
+
+export function assertMatchingDigitProof(
+  puzzle: VariantPuzzle,
+  values: string,
+  masks: readonly number[],
+  deduction: VariantDeduction,
+) {
+  const { evidence, actions } = deduction
+  assert.equal(evidence.type, 'matching-digit')
+  const { digit, assumed, initiallyPlaced, checks, conflict } = evidence
+  const bit = 1 << (digit - 1)
+  const { matches, houses } = matchingGeometry(puzzle)
   const eligible = (cell: number) => matches[cell].every(member =>
     values[member] === String(digit) || (values[member] === '0' && (masks[member] & bit) !== 0))
   const occupants = new Set(cells.filter(cell => values[cell] === String(digit)).flatMap(cell => matches[cell]))

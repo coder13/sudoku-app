@@ -133,6 +133,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::MatchingLayout(proof) => {
+                    assert!((2..=7).contains(&proof.cases.len()));
+                    assert!(proof.cases.iter().any(|case| !case.contradicted));
+                    assert!(proof.cases.iter().all(|case| case.cells.len() == 9));
+                    scopes.insert(vec![proof.target.cell]);
+                }
                 VariantEvidence::MatchingDigit(proof) => {
                     assert!(proof.conflict.forced.is_empty());
                     assert!(proof.assumed.len() > 1);

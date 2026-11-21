@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 19;
+pub const VARIANT_SCORING_VERSION: u32 = 21;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -36,6 +36,7 @@ mod group_line_houses;
 mod group_order;
 mod linked_clues;
 mod matching_digits;
+mod matching_layouts;
 mod scope_checks;
 mod line_houses;
 mod entropy_quadruple;
@@ -212,6 +213,8 @@ catalog! {
     LinkedClueContradiction: "linked-clue-contradiction", 78, Hard;
     /// Follow a digit through matching cells and the houses that require it.
     MatchingDigitContradiction: "matching-digit-contradiction", 80, Hard;
+    /// Check every layout of a digit under the matching cells and enforced houses.
+    MatchingLayoutForcing: "matching-layout-forcing", 246, Extreme;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -407,6 +410,8 @@ pub enum VariantEvidence {
     LinkedClue(Box<VariantLinkedClueProof>),
     /// Matching cells and forced placements leave a house without the digit.
     MatchingDigit(Box<VariantMatchingDigitProof>),
+    /// A candidate that fits none of the examined same-digit layouts.
+    MatchingLayout(Box<VariantMatchingLayoutProof>),
     /// A Region Sum line whose parts must each use distinct digits.
     RegionSumDistinct(Box<VariantRegionSumProof>),
     /// Several Region Sum line parts must use disjoint digits in one region.
@@ -871,6 +876,30 @@ pub struct VariantMatchingDigitProof {
     pub conflict: VariantMatchingDigitCheck,
 }
 
+/// One geometrically valid layout of a digit and its consequences.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantMatchingLayoutCase {
+    /// Cells containing the digit in this layout.
+    pub cells: Vec<usize>,
+    /// Whether a rule has no valid assignment.
+    pub contradicted: bool,
+    /// Checks replayed in their original order.
+    pub checks: Vec<VariantConstraintCheck>,
+}
+
+/// Exhaustive layouts of one digit under the matching cells and houses.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantMatchingLayoutProof {
+    /// The digit whose layouts were checked.
+    pub digit: u8,
+    /// Candidate that fails in every layout.
+    pub target: Candidate,
+    /// Every layout before checking the companion clues.
+    pub cases: Vec<VariantMatchingLayoutCase>,
+}
+
 /// A candidate that leaves a linked clue or house without an assignment.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
@@ -1310,6 +1339,7 @@ impl VariantDeduction {
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
             VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
             VariantEvidence::MatchingDigit(proof) => proof.checks.len() + 1,
+            VariantEvidence::MatchingLayout(proof) => proof.cases.len() + proof.cases.iter().map(|case| case.checks.len()).sum::<usize>(),
             VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
             VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
                 .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
@@ -1678,6 +1708,10 @@ impl CompiledVariant {
             let mut proofs = Vec::new();
             self.matching_digit_proofs(position, &mut proofs, true);
             proofs.into_iter().next()
+        } else if technique == VariantTechnique::MatchingLayoutForcing {
+            let mut proofs = Vec::new();
+            self.matching_layout_proofs(position, &mut proofs, true);
+            proofs.into_iter().next()
         } else {
             self.local_proofs(position, technique)
                 .into_iter()
@@ -1851,6 +1885,7 @@ impl CompiledVariant {
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             LinkedClueContradiction => self.linked_clue_proofs(position, &mut proofs),
             MatchingDigitContradiction => self.matching_digit_proofs(position, &mut proofs, false),
+            MatchingLayoutForcing => self.matching_layout_proofs(position, &mut proofs, false),
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),

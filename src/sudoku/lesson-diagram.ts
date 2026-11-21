@@ -1,5 +1,5 @@
 import type { BoardAnnotations, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
-import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
+import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, HintTrace, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
 import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
 import { cellReference, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
@@ -16,7 +16,7 @@ type Pattern = {
   description: string
   reason: string
   reasonSteps?: string[]
-  trace?: { assumption: string; steps: string[]; conclusion: string }[]
+  trace?: HintTrace
 }
 
 const patternColor = 'var(--lesson-pattern)'
@@ -762,7 +762,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
     if ('variant' in copy) variant = copy.variant
   }
   const pattern: Pattern | undefined = variant
-    ? proof && { ...proof, description: variant.description, reason: variant.reason, reasonSteps: variant.reasonSteps }
+    ? proof && { ...proof, description: variant.description, reason: variant.reason, reasonSteps: variant.reasonSteps, trace: variant.trace }
     : describePattern(deduction, candidates, displayCellName(displayOptions)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(displayOptions)) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()

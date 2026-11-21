@@ -9,7 +9,7 @@ export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
 const FOG_QUADRUPLE_RATING_VERSION = 2
-const MATCHING_DIGIT_RATING_VERSION = 19
+const MATCHING_LAYOUT_RATING_VERSION = 21
 const LINKED_CLUE_RATING_VERSION = 17
 const KROPKI_HOUSE_RATING_VERSION = 16
 const THERMOMETER_RATING_VERSION = 15
@@ -23,8 +23,8 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  if (rules?.some(rule => rule.type === 'palindrome' || rule.type === 'clone')) return MATCHING_LAYOUT_RATING_VERSION
   if (rules?.some(isQuadrupleRule)) return QUADRUPLE_RATING_VERSION
-  if (rules?.some(rule => rule.type === 'palindrome' || rule.type === 'clone')) return MATCHING_DIGIT_RATING_VERSION
   if (hasBetweenAndPairClues(rules)) return LINKED_CLUE_RATING_VERSION
   if (hasPrintedKropki(rules)) return KROPKI_HOUSE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'thermometer')) return THERMOMETER_RATING_VERSION

@@ -76,6 +76,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'thermometer-house-support': 'Thermometer and house',
   'linked-clue-contradiction': 'Linked clue contradiction',
   'matching-digit-contradiction': 'Matching cell contradiction',
+  'matching-layout-forcing': 'Matching digit layouts',
   'kropki-house-support': 'Kropki dot and house',
   'little-killer-house-support': 'Little Killer and shared houses',
   'renban-sum-ray-houses': 'Renban sum and shared houses',
