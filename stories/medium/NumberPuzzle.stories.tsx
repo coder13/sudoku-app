@@ -1,16 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { expect, waitFor, within } from 'storybook/test'
+import { prepareImportedCalcudoku } from '../../src/calcudoku/imported'
+import { calcudoku, CalcudokuPlay } from '../../src/components/Calcudoku'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
-import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
+import { FutoshikiDifficultyPage, FutoshikiPlay } from '../../src/components/Futoshiki'
+import { HidatoPlay } from '../../src/components/Hidato'
 import { KakuroDifficultyPage, KakuroPlay } from '../../src/components/Kakuro'
-import { RulloPlay } from '../../src/components/Rullo'
+import { rullo, RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
+import { createImportedFutoshiki } from '../../src/futoshiki/imported'
+import { hidatoCatalog } from '../../src/hidato/catalog'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { solveLatin } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
 import { numberPositionKey } from '../../src/number-puzzles/generated-storage'
 import { rulloCatalog } from '../../src/rullo/catalog'
+import { findRulloSolutionHints, REMOVE } from '../../src/rullo/engine'
+import { APPEARANCE_KEY, DEFAULT_APPEARANCE } from '../../src/sudoku/preferences'
 import { PreviewRouter } from '../support/frames'
 
 const meta = {
@@ -26,18 +33,22 @@ export const LoadingDifficultyResults: Story = {
     return <main className="puzzles-page puzzles-difficulty-page">
       <h1 id="puzzles-page-title">Choose difficulty</h1>
       <PuzzleDifficultyStep name="Calcudoku" preview={null} startLabel={`Start ${difficulty} puzzle`} onStart={() => {}}>
-        <DifficultyOptions levels={numberPuzzleDifficulties} selected={difficulty} onChange={setDifficulty} statistics={null} />
+        <DifficultyOptions levels={numberPuzzleDifficulties} selected={difficulty} onChange={setDifficulty}
+          statistics={null} descriptions={calcudoku.difficultyDescriptions} />
       </PuzzleDifficultyStep>
     </main>
   },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByLabelText('Easy results')).toHaveAttribute('aria-busy', 'true')
+    await expect(canvas.getByRole('status')).toHaveTextContent('3 × 3 grid')
     await expect(canvas.getByRole('button', { name: 'Start easy puzzle' })).toBeEnabled()
     const increase = canvas.getByRole('button', { name: 'Increase difficulty' })
     await userEvent.click(increase)
     await expect(canvas.getByRole('button', { name: 'Start medium puzzle' })).toBeEnabled()
+    await expect(canvas.getByRole('status')).toHaveTextContent('4 × 4 grid')
     await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByRole('status')).toHaveTextContent('3 × 3 grid')
     await expect(canvas.getByRole('button', { name: 'Start easy puzzle' })).toBeEnabled()
   },
 }
@@ -122,12 +133,27 @@ export const Kakuro: Story = {
     const cell = await canvas.findByRole('button', { name: /^R2C3,/ })
     const actions = canvas.getByRole('button', { name: 'Actions' })
     await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(canvas.getByRole('button', { name: /^R2C4,/ })).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(cell).toHaveFocus()
     await userEvent.click(canvas.getByRole('button', { name: 'Enter 9' }))
     await userEvent.keyboard('{Control>}z{/Control}')
     await expect(cell).toHaveAccessibleName(/^R2C3, empty/)
     await expect(canvas.getByRole('button', { name: 'Redo' })).toBeEnabled()
     await userEvent.keyboard('{Control>}{Shift>}Z{/Shift}{/Control}')
     await expect(cell).toHaveAccessibleName(/^R2C3, 9/)
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    const conflictHint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(conflictHint.getByRole('heading', { name: 'Hint unavailable' })).toBeVisible()
+    await expect(conflictHint.getByText('Resolve the highlighted clues first.')).toBeVisible()
+    await expect(conflictHint.queryByRole('button', { name: 'Apply hint' })).toBeNull()
+    cell.focus()
+    await userEvent.keyboard('{Escape}')
+    await expect(canvas.queryByRole('complementary', { name: 'Puzzle hint' })).toBeNull()
+    await expect(actions).toHaveFocus()
+
     await userEvent.click(actions)
     await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
     const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
@@ -136,18 +162,138 @@ export const Kakuro: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
     await userEvent.click(actions)
     await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
-    const finder = within(await canvas.findByRole('dialog', { name: 'Techniques' }))
+    const tabs = within(await canvas.findByRole('tablist', { name: 'Kakuro input' }))
+    const techniquesTab = tabs.getByRole('tab', { name: 'Techniques' })
+    const finder = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
     await userEvent.click(await finder.findByRole('button', { name: 'Crossing run sums' }))
     await expect(await canvas.findByRole('complementary', { name: 'Puzzle hint' })).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
-    await userEvent.click(actions)
-    await userEvent.click(await canvas.findByRole('button', { name: 'Open solution panel' }))
-    const solution = within(await canvas.findByRole('dialog', { name: 'Solution' }))
+    await expect(techniquesTab).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const tools = within(await canvas.findByRole('group', { name: 'Input tools' }))
+    await userEvent.click(tools.getByRole('button', { name: 'Solution' }))
+    await userEvent.keyboard('{Escape}')
+
+    const solutionTab = tabs.getByRole('tab', { name: 'Solution' })
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await expect(solution.queryByRole('list', { name: 'Solving steps' })).not.toBeInTheDocument()
+    cell.focus()
+    await userEvent.keyboard('9')
+    await expect(cell).toHaveAccessibleName(/^R2C3, 9/)
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
     await userEvent.click(solution.getByRole('button', { name: 'Next step' }))
-    await expect(solution.getByRole('button', { name: /^R4C2, 3/ })).toBeVisible()
+    const preview = within(canvas.getByRole('group', { name: 'Kakuro solution' }))
+    await expect(preview.getByRole('button', { name: /^R4C2, 3/ })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+    await expect(solutionTab).toHaveFocus()
     await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
-    await userEvent.click(solution.getByRole('button', { name: 'Close dialog' }))
-    await expect(cell).toHaveAccessibleName(/^R2C3, empty/)
+
+    solutionTab.focus()
+    await userEvent.keyboard('{ArrowLeft}')
+    const digitsTab = tabs.getByRole('tab', { name: 'Digits' })
+    await expect(digitsTab).toHaveFocus()
+    await expect(cell).toHaveAccessibleName(/^R2C3, 9/)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(solution.getByRole('button', { name: 'Final grid' })).toHaveAttribute('aria-current', 'step')
+    await userEvent.click(canvas.getByRole('button', { name: 'Close solution panel' }))
+    await expect(digitsTab).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close techniques panel' }))
+    await expect(actions).toHaveFocus()
+  },
+}
+
+export const DesktopInsights: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={calcudoku.entries[0]} /></PreviewRouter>,
+  beforeEach: () => {
+    const key = numberPositionKey('calcudoku', calcudoku.entries[0].id)
+    const saved = localStorage.getItem(key)
+    localStorage.removeItem(key)
+    return () => {
+      if (saved === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, saved)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const actions = await canvas.findByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    await expect(actions).toHaveAttribute('aria-expanded', 'false')
+    const table = within(await canvas.findByRole('table', { name: 'Available placements by technique' }))
+    await userEvent.click(table.getByRole('button', { name: 'Row and column' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    await expect(actions).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toBeVisible()
+    const solutionTab = canvas.getByRole('tab', { name: 'Solution' })
+    await expect(solutionTab).toHaveAttribute('aria-selected', 'true')
+    canvas.getByRole('button', { name: 'Reveal solution' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await userEvent.click(canvas.getByRole('button', { name: 'Next step' }))
+    canvas.getByRole('button', { name: 'Close hint' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(solutionTab).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close solution tab' }))
+    await expect(canvas.getByRole('tab', { name: 'Techniques' })).toHaveAttribute('aria-selected', 'true')
+    await expect(actions).toHaveFocus()
+  },
+}
+
+export const AndokuSelection: Story = {
+  render: () => <PreviewRouter shell><KakuroPlay entry={kakuroCatalog[0]} /></PreviewRouter>,
+  parameters: { appTheme: 'andoku' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const positionKey = numberPositionKey('kakuro', kakuroCatalog[0].id)
+    const saved = new Map([positionKey, APPEARANCE_KEY].map(key => [key, localStorage.getItem(key)]))
+    localStorage.removeItem(positionKey)
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify({
+      ...DEFAULT_APPEARANCE, colorMode: 'light', lightTheme: 'andoku', themeDefaultsVersion: 2,
+    }))
+    return () => {
+      for (const [key, value] of saved) {
+        if (value === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R2C3,/ })
+    await userEvent.click(cell)
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 9' }))
+    await expect(cell).toHaveAccessibleName(/^R2C3, 9/)
+    await expect(cell).toHaveStyle({ backgroundColor: 'rgb(255, 218, 50)', color: 'rgb(17, 17, 17)' })
+  },
+}
+
+export const PausedKakuro: Story = {
+  render: () => <PreviewRouter shell><KakuroPlay entry={kakuroCatalog[0]} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('kakuro', kakuroCatalog[0].id)
+    const saved = new Map([key, key + '.paused', 'sudoku-app:v1:puzzle-timing'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, previous] of saved) {
+        if (previous === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, previous)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R2C3,/ })
+    await userEvent.click(cell)
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 1' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Pause puzzle$/ }))
+    const paused = within(await canvas.findByRole('status', { name: 'Puzzle paused' }))
+    await expect(canvas.queryByRole('group', { name: 'Kakuro board' })).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Enter 1' })).toBeDisabled()
+    paused.getByRole('button', { name: 'Resume puzzle' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(cell).toHaveFocus())
+    await expect(cell).toHaveAccessibleName(/^R2C3, 1/)
+    await userEvent.keyboard(' ')
+    await expect(canvas.getByRole('status', { name: 'Puzzle paused' })).toBeVisible()
   },
 }
 
@@ -161,7 +307,7 @@ export const Rullo: Story = {
     await expect(canvas.queryByRole('button', { name: /^Keep$/ })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument()
     await expect(cell).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(cell)
+    await userEvent.click(within(cell).getByText('3', { exact: true }))
     await expect(cell).toHaveAttribute('aria-pressed', 'false')
     await userEvent.keyboard('{Control>}z{/Control}')
     await expect(cell).toHaveAttribute('aria-pressed', 'true')
@@ -175,7 +321,1006 @@ export const Rullo: Story = {
     for (let stage = 0; stage < 3; stage++) await userEvent.click(more)
     await userEvent.click(canvas.getByRole('button', { name: 'Apply hint' }))
     await expect(cell).toHaveAttribute('aria-pressed', 'false')
+    await expect(cell).toHaveFocus()
     await userEvent.click(cell)
     await expect(cell).toHaveAttribute('aria-pressed', 'true')
+  },
+}
+
+export const SolvedRulloReview: Story = {
+  render: () => <PreviewRouter shell><RulloPlay entry={rulloCatalog[0]} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const entry = rulloCatalog[0]
+    const key = numberPositionKey('rullo', entry.id)
+    const pauseKey = key + '.paused'
+    const saved = new Map([key, pauseKey].map(name => [name, localStorage.getItem(name)]))
+    // R1C1 is the last number left to remove.
+    const values = rullo.board(entry).solve()!.map((choice, cell) => cell !== 0 && choice === REMOVE ? REMOVE : 0)
+    localStorage.setItem(key, JSON.stringify({ values, notes: values.map(() => 0) }))
+    localStorage.setItem(pauseKey, '1')
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const paused = within(await canvas.findByRole('status', { name: 'Puzzle paused' }))
+    await userEvent.click(paused.getByRole('button', { name: 'Resume puzzle' }))
+    const cell = await canvas.findByRole('button', { name: /^R1C1,/ })
+    await userEvent.click(cell)
+    await expect(await canvas.findByText('Puzzle solved.')).toBeVisible()
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    const openPanel = async (name: 'Solution' | 'Techniques') => {
+      await userEvent.click(actions)
+      await userEvent.click(await canvas.findByRole('button', { name }))
+      return within(await canvas.findByRole('tabpanel', { name }))
+    }
+
+    const solution = await openPanel('Solution')
+    await expect(canvas.getByRole('group', { name: 'Rullo board' })).toBeVisible()
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const preview = within(canvas.getByRole('group', { name: 'Rullo solution' }))
+    const previewCell = preview.getByRole('button', { name: /^R1C1,/ })
+    await expect(previewCell).toHaveAttribute('data-choice', String(REMOVE))
+    await expect(previewCell).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close solution panel' }))
+    await expect(actions).toHaveFocus()
+
+    const reopened = await openPanel('Solution')
+    await expect(reopened.queryByRole('list', { name: 'Solving steps' })).not.toBeInTheDocument()
+    await userEvent.click(reopened.getByRole('button', { name: 'Reveal solution' }))
+    await expect(reopened.getByRole('button', { name: 'Final grid' })).toHaveAttribute('aria-current', 'step')
+    await expect(canvas.queryByRole('complementary', { name: 'Puzzle hint' })).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close solution panel' }))
+
+    const techniques = await openPanel('Techniques')
+    await expect(techniques.queryByRole('button', { name: 'Line sum' })).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close techniques panel' }))
+    const live = within(canvas.getByRole('group', { name: 'Rullo board' }))
+    await expect(live.getByRole('button', { name: /^R1C1,/ })).toHaveAttribute('data-choice', String(REMOVE))
+    await expect(canvas.getByText('Puzzle solved.')).toBeVisible()
+  },
+}
+
+const futoshikiHard12 = futoshikiCatalog.find(entry => entry.id === 'hard-12')!
+export const FutoshikiLineMatching: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={futoshikiHard12} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('futoshiki', futoshikiHard12.id)
+    const previous = localStorage.getItem(key)
+    localStorage.removeItem(key)
+    return () => {
+      if (previous === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, previous)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(await solution.findByRole('button', { name: /Inequality line matching.*Place 1 in R4C4/ }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByText(/If R4C4 is 2, R3C3, R4C3, and R5C3 need 3 different digits/)).toBeVisible()
+    const grid = within(canvas.getByRole('group', { name: 'Futoshiki solution' }))
+    await expect(grid.getByRole('button', { name: /^R3C3,/ })).toHaveAttribute('data-context', 'true')
+  },
+}
+
+const hidatoHard9 = hidatoCatalog.find(entry => entry.id === 'hard-9')!
+export const HidatoContradiction: Story = {
+  render: () => <PreviewRouter shell><HidatoPlay entry={hidatoHard9} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('hidato', hidatoHard9.id)
+    const previous = localStorage.getItem(key)
+    localStorage.removeItem(key)
+    return () => {
+      if (previous === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, previous)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    const more = hint.getByRole('button', { name: 'More detail' })
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(more)
+    await userEvent.click(hint.getByText('Read the proof step by step'))
+    await expect(hint.getByText('Assume 17 goes in R2C4.')).toBeVisible()
+    await expect(hint.getByText('No candidate cell for 14 touches R1C5. 15 cannot go there.')).toBeVisible()
+    await expect(hint.getByText('No number can go in R1C5. Remove 17 from R2C4.')).toBeVisible()
+  },
+}
+
+const rulloMedium4 = rulloCatalog.find(entry => entry.id === 'medium-4')!
+export const RulloCrossingChoices: Story = {
+  render: () => <PreviewRouter shell><RulloPlay entry={rulloMedium4} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('rullo', rulloMedium4.id)
+    const pauseKey = key + '.paused'
+    const saved = new Map([key, pauseKey].map(name => [name, localStorage.getItem(name)]))
+    localStorage.removeItem(key)
+    localStorage.setItem(pauseKey, '1')
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const paused = within(await canvas.findByRole('status', { name: 'Puzzle paused' }))
+    await userEvent.click(paused.getByRole('button', { name: 'Resume puzzle' }))
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await waitFor(() => expect(actions).toBeEnabled())
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(await solution.findByRole('button', { name: /Crossing line sums.*Keep 2 in R1C1/ }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await userEvent.click(hint.getByText('Show hint steps'))
+    await expect(hint.getByText('Row 1 option A and row 2 option A fail. Column 6 cannot reach 17.')).toBeVisible()
+    await expect(hint.getByText('Row 1 option A and row 2 option B fail. Column 1 cannot reach 10.')).toBeVisible()
+  },
+}
+
+const rulloHard7 = rulloCatalog.find(entry => entry.id === 'hard-7')!
+export const RulloContradiction: Story = {
+  render: () => <PreviewRouter shell><RulloPlay entry={rulloHard7} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const { id, puzzle } = rulloHard7
+    const key = numberPositionKey('rullo', id)
+    const pauseKey = key + '.paused'
+    const saved = new Map([key, pauseKey].map(name => [name, localStorage.getItem(name)]))
+    const hints = findRulloSolutionHints(puzzle, [])
+    const index = hints.findIndex(hint => hint.technique === 'Contradiction')
+    const { width, height } = puzzle
+    const values = Array<number>((width + 1) * (height + 1)).fill(0)
+    for (const { cell, value } of hints.slice(0, index)) {
+      values[Math.floor(cell / width) * (width + 1) + cell % width] = value
+    }
+    localStorage.setItem(key, JSON.stringify({ values, notes: values.map(() => 0) }))
+    localStorage.setItem(pauseKey, '1')
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const paused = within(await canvas.findByRole('status', { name: 'Puzzle paused' }))
+    await userEvent.click(paused.getByRole('button', { name: 'Resume puzzle' }))
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await waitFor(() => expect(actions).toBeEnabled())
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Contradiction' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    const more = hint.getByRole('button', { name: 'More detail' })
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(more)
+    await userEvent.click(hint.getByText('Show hint steps'))
+    await expect(hint.getByText('If you remove 8 in R1C3, these choices follow.')).toBeVisible()
+    await expect(hint.getByText('No combination in column 8 adds up to 16.')).toBeVisible()
+    await expect(hint.getByText('Keep 8 in R1C3.', { selector: 'li' })).toBeVisible()
+    await userEvent.click(hint.getByRole('button', { name: 'Apply hint' }))
+    await expect(canvas.getByRole('button', { name: /^R1C3,/ })).toHaveAttribute('data-choice', '1')
+  },
+}
+
+export const RulloCheck: Story = {
+  render: () => <PreviewRouter shell><RulloPlay entry={rulloCatalog.find(entry => entry.id === 'hard-6')!} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('rullo', 'hard-6')
+    const saved = localStorage.getItem(key)
+    localStorage.removeItem(key)
+    return () => {
+      if (saved === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, saved)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R1C2,/ })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    const check = async () => {
+      await userEvent.click(actions)
+      await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+      return within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    }
+
+    const message = 'The highlighted choices cannot fit the solution.'
+    await userEvent.click(cell)
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await expect(panel.getByRole('alert')).toHaveTextContent(message)
+    await expect(cell).toHaveAttribute('data-conflict', 'true')
+    cell.focus()
+    await userEvent.keyboard(' ')
+    await expect(await panel.findByRole('table', { name: 'Available choices by technique' })).toBeVisible()
+    await expect(cell).toHaveAttribute('data-conflict', 'false')
+    await userEvent.click(canvas.getByRole('tab', { name: 'Controls' }))
+
+    await userEvent.click(cell)
+    await expect(cell).toHaveAttribute('aria-pressed', 'false')
+    const wrong = await check()
+    await expect(wrong.getByText(message)).toBeVisible()
+    wrong.getByRole('button', { name: 'Close dialog' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(canvas.queryByRole('dialog', { name: 'Puzzle check' })).toBeNull())
+    await expect(actions).toHaveFocus()
+    await expect(cell).toHaveAccessibleName(/conflict$/)
+    await expect(cell).toHaveAttribute('data-conflict', 'true')
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'View hint' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Hint unavailable' })).toBeVisible()
+    await expect(hint.getByText(message)).toBeVisible()
+    await expect(hint.queryByRole('button', { name: 'Apply hint' })).toBeNull()
+    await expect(cell).toHaveAttribute('data-conflict', 'true')
+    cell.focus()
+    await userEvent.keyboard(' ')
+    await expect(canvas.queryByRole('complementary', { name: 'Puzzle hint' })).toBeNull()
+    await expect(cell).toHaveAttribute('data-conflict', 'false')
+    await expect(cell).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(canvas.getByRole('button', { name: /^R1C1,/ }))
+    const correct = await check()
+    await expect(correct.getByText('Your choices fit the solution so far.')).toBeVisible()
+    await userEvent.click(correct.getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(actions).toHaveFocus())
+  },
+}
+
+const calcudokuWithInequalities = prepareImportedCalcudoku({
+  size: 3, givens: '000100000', colors: [],
+  cages: [{ label: '5+', cells: [0, 1], operator: 'add' }],
+  inequalities: [{ less: 1, greater: 4 }],
+})
+
+export const CalcudokuWithInequalities: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={calcudokuWithInequalities} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('calcudoku', calcudokuWithInequalities.id)
+    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R1C2, empty, 5 plus cage .*R1C2 is less than R2C2$/ })
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty, R1C2 is less than R2C2$/ })).toBeVisible()
+    await expect(cell.querySelector('[data-side="bottom"]')).toBeVisible()
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(cell)
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 3' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible()
+    await expect(cell).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Inequality' }))
+    await expect(await canvas.findByRole('complementary', { name: 'Puzzle hint' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const finalGrid = within(await canvas.findByRole('group', { name: 'Calcudoku solution' }))
+    await expect(finalGrid.getByRole('button', { name: /^R1C2, 2,/ })).toBeVisible()
+    await expect(finalGrid.getByRole('button', { name: /^R2C2, 3,/ })).toBeVisible()
+  },
+}
+
+const adjacentCluePuzzle = createImportedFutoshiki(3, '100000000', [
+  { less: 0, greater: 1 }, { less: 1, greater: 2 },
+], {
+  adjacentClues: { marks: [
+    { type: 'difference', value: 1, cells: [0, 1] },
+    { type: 'ratio', value: 2, cells: [0, 1] },
+    { type: 'sum', value: 3, cells: [0, 1] },
+    { type: 'sum', value: 3, cells: [0, 3] },
+  ] },
+})
+
+export const AdjacentClueCombinations: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={adjacentCluePuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('futoshiki', adjacentCluePuzzle.id)
+    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const first = await canvas.findByRole('button', { name: /^R1C1, given 1, .*differ by 1.*1:2 ratio.*add up to 3/ })
+    await expect(canvas.getByRole('button', { name: /^R1C2, empty, .*differ by 1.*1:2 ratio.*add up to 3/ })).toBeVisible()
+    const edge = first.querySelector('[data-side="right"]')!
+    await expect(edge).toBeVisible()
+    await expect(edge).toHaveTextContent('<III')
+    const marks = Array.from(edge.children, mark => mark.getBoundingClientRect())
+    await expect(marks).toHaveLength(4)
+    for (let index = 1; index < marks.length; index++) {
+      await expect(marks[index].top).toBeGreaterThanOrEqual(marks[index - 1].bottom)
+    }
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Adjacent clues' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Adjacent clues' })).toBeVisible()
+  },
+}
+
+const whispersCalcudoku = prepareImportedCalcudoku({
+  size: 3, givens: '000000000', colors: [],
+  cages: [{ label: '3+', cells: [0, 1], operator: 'add' }],
+  inequalities: [{ less: 0, greater: 1 }],
+  adjacentClues: { marks: [{ type: 'ratio', value: 2, cells: [0, 1] }] },
+  whispers: [{ cells: [0, 1], minDifference: 1 }, { cells: [0, 6], minDifference: 2 }],
+})
+
+export const WhispersWithEdgeClues: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={whispersCalcudoku} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('calcudoku', whispersCalcudoku.id)
+    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const first = await canvas.findByRole('button', { name: /^R1C1, empty, .*1:2 ratio.*Whispers line with R3C1, difference at least 2/ })
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const drawing = grid.querySelector('.number-puzzle-line-clues')!
+    await expect(drawing).toHaveAttribute('viewBox', '0 0 3 3')
+    await expect(drawing.querySelectorAll('.variant-whispers-label-leader')).toHaveLength(1)
+    await expect(first.querySelector('.futoshiki-sign')).toBeVisible()
+    await expect(first.querySelector('[data-kind="ratio"]')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Whispers' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Whispers' })).toBeVisible()
+  },
+}
+
+const pathCluePuzzle = createImportedFutoshiki(3, '100000000', [], {
+  pathClues: [
+    { type: 'consecutive', cells: [1, 0, 2], segments: [[1, 0], [1, 2]] },
+    { type: 'palindrome', cells: [1, 8, 3], segments: [[1, 8], [8, 3]] },
+  ],
+})
+
+export const PalindromeAndConsecutiveLines: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={pathCluePuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const cell = await canvas.findByRole('button', { name: /^R1C2, empty, .*Consecutive Line, next to R1C1.*Consecutive Line, next to R1C3.*Palindrome Line, same digit as R2C1/ })
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    await expect(grid.querySelectorAll('.variant-consecutive polyline')).toHaveLength(2)
+    await expect(grid.querySelectorAll('.variant-palindrome polyline')).toHaveLength(2)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Consecutive Line' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Consecutive Line' })).toBeVisible()
+  },
+}
+
+const thermometerPuzzle = createImportedFutoshiki(3, '000000000', [{ less: 3, greater: 4 }], {
+  pathClues: [
+    { type: 'thermometer', cells: [0, 1, 2] },
+    { type: 'thermometer', cells: [0, 3] },
+  ],
+})
+
+export const ThermometersWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={thermometerPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const bulb = await canvas.findByRole('button', { name: /^R1C1, empty, Thermometer bulb.*less than R2C1/ })
+    const tip = canvas.getByRole('button', { name: /^R1C3, empty, Thermometer tip.*greater than R1C2/ })
+    await expect(tip).toBeVisible()
+    await expect(grid.querySelectorAll('.variant-thermometer circle')).toHaveLength(2)
+    await userEvent.click(bulb)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(canvas.getByRole('button', { name: /^R1C2, empty/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Thermometer' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Thermometer' })).toBeVisible()
+  },
+}
+
+const arrowPuzzle = prepareImportedCalcudoku({
+  size: 3, givens: '000000000', colors: [],
+  cages: [{ label: '5+', cells: [3, 4], operator: 'add' }],
+  pathClues: [{ type: 'arrow', cells: [2, 1, 0] }, { type: 'thermometer', cells: [0, 1] }],
+})
+
+export const ArrowWithThermometer: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={arrowPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const bulb = await canvas.findByRole('button', { name: /^R1C3, empty, Arrow bulb, sum of R1C2, R1C1/ })
+    const path = grid.querySelector('.variant-arrow-line')!
+    const marker = grid.querySelector('defs > marker')!
+    await expect(path).toHaveAttribute('marker-end', `url(#${marker.id})`)
+    await expect(grid.querySelector('.variant-thermometer')).toBeVisible()
+    await userEvent.click(bulb)
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByRole('button', { name: /^R1C2, empty, .*Arrow with its bulb at R1C3/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: /^Arrow$/ }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: /^Arrow$/ })).toBeVisible()
+  },
+}
+
+const renbanPuzzle = createImportedFutoshiki(3, '100000000', [{ less: 1, greater: 2 }], {
+  pathClues: [{ type: 'renban', cells: [1, 0, 4], segments: [[1, 0], [0, 4]] }],
+})
+
+export const RenbanWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={renbanPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = await canvas.findByRole('button', { name: /^R1C2, empty, .*Renban line of 3 consecutive digits/ })
+    await expect(grid.querySelectorAll('.variant-renban polyline')).toHaveLength(2)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(canvas.getByRole('button', { name: /^R2C2, empty, Renban line of 3 consecutive digits/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Renban' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Renban' })).toBeVisible()
+  },
+}
+
+const lockoutPuzzle = createImportedFutoshiki(6, '023056034061345612056023061034612345', [{ less: 6, greater: 7 }], {
+  pathClues: [{ type: 'lockout', cells: [19, 20, 21] }, { type: 'lockout', cells: [14, 15, 21] }],
+})
+
+export const LockoutWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={lockoutPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const diamond = await canvas.findByRole('button', { name: /^R4C4, empty, Lockout diamond/ })
+    await expect(grid.querySelectorAll('.variant-lockout polyline')).toHaveLength(2)
+    await expect(grid.querySelectorAll('.variant-lockout-endpoints path')).toHaveLength(3)
+    await userEvent.click(diamond)
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(canvas.getByRole('button', { name: /^R4C3, .*Lockout Line, digit below both or above both diamonds/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Lockout Line' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Lockout Line' })).toBeVisible()
+  },
+}
+
+const betweenPuzzle = createImportedFutoshiki(6, '023056034061345612056023061034612345', [{ less: 6, greater: 7 }], {
+  pathClues: [{ type: 'between', cells: [2, 3, 4] }, { type: 'between', cells: [2, 1, 0] }],
+})
+
+export const BetweenWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={betweenPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const circle = await canvas.findByRole('button', { name: /^R1C3, .*Between Line end circle/ })
+    await expect(grid.querySelectorAll('.variant-between polyline')).toHaveLength(2)
+    await expect(grid.querySelectorAll('.variant-between-endpoints circle')).toHaveLength(3)
+    await userEvent.click(circle)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(canvas.getByRole('button', { name: /^R1C4, empty, Between Line, digit strictly between/ })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Between Line' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Between Line' })).toBeVisible()
+  },
+}
+
+const regionPuzzle = createImportedFutoshiki(4, '0034341200434321', [], {
+  extraRegions: [[0, 4, 5, 7], [0, 7]],
+})
+
+export const OverlappingExtraRegions: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={regionPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Extra region 1, Extra region 2$/ })
+    await expect(grid.querySelectorAll('.variant-extra-region path')).toHaveLength(2)
+    await expect(grid.querySelectorAll('.variant-extra-region rect')).toHaveLength(0)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R1C2, empty$/ })).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect(cell).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 2' }))
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible()
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Extra region' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Extra region' })).toBeVisible()
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Futoshiki solution' })
+    await expect(final.querySelectorAll('.variant-extra-region path')).toHaveLength(2)
+    await expect(within(final).getByRole('button', { name: /^R1C1, 1, Extra region 1, Extra region 2$/ })).toBeVisible()
+  },
+}
+
+const authoredRegionPuzzle = createImportedFutoshiki(4, '0034341200434321', [], {
+  extraRegions: [[0, 1, 4, 5], [0, 7]],
+  annotations: { authoredPaths: [{ type: 'corner-path', points: [[2, 0], [2, 2], [0, 2]],
+    opacity: 1, thickness: .05, color: '#000000' }] },
+})
+
+export const AuthoredExtraRegion: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={authoredRegionPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Extra region 1, Extra region 2$/ })
+    await expect(grid.querySelectorAll('.board-authored-artwork polyline')).toHaveLength(1)
+    await expect(grid.querySelectorAll('.variant-extra-region path')).toHaveLength(1)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R1C2, empty, Extra region 1$/ })).toHaveFocus()
+  },
+}
+
+const globalEntropyPuzzle = createImportedFutoshiki(9,
+  '623597184748216953915483267369145728804072516402058671186724395571639842257861439',
+  [], { globalEntropy: true })
+
+export const GlobalEntropy: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={globalEntropyPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R5C2, empty$/ })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await expect(grid).not.toHaveAttribute('data-line-clues')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rules = within(await canvas.findByRole('dialog', { name: 'Futoshiki rules' }))
+    await expect(rules.getByText(/^Every 2 × 2 area contains a low digit/)).toBeVisible()
+    await userEvent.click(rules.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(cell)
+    await userEvent.keyboard('9')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const result = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await expect(result.getByText('The highlighted entries conflict with the rules.')).toBeVisible()
+    await expect(grid.querySelector('[data-cell="37"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(result.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Global Entropy' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Global Entropy' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/The 2 × 2 area from R4C2 to R5C3 needs a low, a medium, and a high digit/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="29"]')).toHaveAttribute('data-context', 'true')
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const solution = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(solution.getByRole('button', { name: 'Final grid' }))
+    const final = within(await canvas.findByRole('group', { name: 'Futoshiki solution' }))
+    await expect(final.getByRole('button', { name: /^R5C2, 3$/ })).toBeVisible()
+  },
+}
+
+const quadrupleWithCage = prepareImportedCalcudoku({
+  size: 4, givens: '0034004334124321', colors: [],
+  cages: [{ label: '3+', cells: [10, 11], operator: 'add' }],
+  quadruples: [{ topLeft: 5, digits: [1, 1, 4, 4] }],
+})
+
+export const QuadrupleWithCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={quadrupleWithCage} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const cell = within(grid).getByRole('button', { name: /^R2C2, empty, Quadruple 1, 1, 4, 4/ })
+    await expect(grid.querySelector('.variant-quadruple circle')).toHaveAttribute('cx', '2')
+    await expect(grid.querySelector('.variant-quadruple')).toHaveTextContent('1144')
+    await expect(grid.querySelector('[data-cell="10"] [data-below-quadruple]')).toHaveTextContent('3+')
+
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R2C3, .*Quadruple 1, 1, 4, 4/ })).toHaveFocus()
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Quadruple' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Quadruple' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/The Quadruple touching R2C2 through R3C3 needs 1, 1, 4, 4/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="9"]')).toHaveAttribute('data-context', 'true')
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Calcudoku solution' })
+    await expect(final.querySelector('.variant-quadruple')).toHaveTextContent('1144')
+    await expect(within(final).getByRole('button', { name: /^R2C2, 1, Quadruple 1, 1, 4, 4/ })).toBeVisible()
+  },
+}
+
+const reversedPill = createImportedFutoshiki(4, '0034004334124321', [], {
+  pathClues: [{ type: 'pill-arrow', cells: [11, 10, 5, 2, 3, 6] }],
+})
+
+const parityWithCage = prepareImportedCalcudoku({
+  size: 4, givens: '0034034034004003', colors: [],
+  cages: [{ label: '3+', cells: [0, 1], operator: 'add' }],
+  parity: [{ cell: 0, parity: 'odd' }, { cell: 1, parity: 'even' }],
+})
+
+export const ParityWithCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={parityWithCage} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const odd = within(grid).getByRole('button', { name: /^R1C1, empty, .*odd circle/ })
+    const even = within(grid).getByRole('button', { name: /^R1C2, empty, .*even square/ })
+    await expect(grid.querySelector('.variant-parity-odd circle')).toHaveAttribute('cx', '0.5')
+    await expect(Number(grid.querySelector('.variant-parity-even rect')?.getAttribute('x'))).toBeCloseTo(1.14)
+    await userEvent.click(odd)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(even).toHaveFocus()
+    await userEvent.keyboard('1')
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const check = within(await canvas.findByRole('dialog', { name: 'Puzzle check' }))
+    await waitFor(() => expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible())
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Odd/Even' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Odd/Even' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getByText('The circle at R1C1 requires an odd digit.')).toBeVisible())
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Calcudoku solution' })
+    await expect(final.querySelectorAll('.variant-parity > *')).toHaveLength(2)
+    await waitFor(() => expect(within(final).getByRole('button', { name: /^R1C2, 2, .*even square/ })).toBeVisible())
+  },
+}
+
+export const ReversedPillArrow: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={reversedPill} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const tens = within(grid).getByRole('button', { name: /^R3C3, .*Pill Arrow tens digit, ones digit at R3C4/ })
+    const pill = grid.querySelector('.variant-pill-arrow')!
+    await expect(pill.querySelector('.variant-arrow-circle')).toHaveAttribute('transform', 'rotate(180 3.5 2.5)')
+    await expect(pill.querySelector('.variant-arrow-line')).toHaveAttribute('points', '2.5,2.5 1.5,1.5 2.5,0.5 3.5,0.5 2.5,1.5')
+    await userEvent.click(tens)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R3C4, .*Pill Arrow ones digit/ })).toHaveFocus()
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Pill Arrow' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Pill Arrow' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/two-digit number read from R3C3 to R3C4/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="10"]')).toHaveAttribute('data-context', 'true')
+  },
+}
+
+const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
+  position: {
+    values: [1, ...Array<number>(15).fill(0)],
+    notes: [0, 6, ...Array<number>(14).fill(0)],
+    cornerNotes: [0, 10, ...Array<number>(14).fill(0)],
+  },
+  annotations: {
+    givenColors: { 0: ['green'] },
+    authoredPaths: [{ type: 'corner-path', points: [[0, 2], [2, 2], [2, 4]], thickness: .08,
+      color: '#000000', opacity: 1 }],
+    cellColors: { 0: ['blue', 'orange'] },
+    candidateColors: { 1: { 2: 'blueHeavy' } },
+    drawings: [{ shape: 'circle', at: [1.5, 1.5], color: 'blue' }],
+  },
+})
+
+export const ImportedCandidatePositions: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={importedFutoshiki} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const key = numberPositionKey('futoshiki', importedFutoshiki.id)
+    const saved = new Map([key, key + '.paused'].map(name => [name, localStorage.getItem(name)]))
+    for (const name of saved.keys()) localStorage.removeItem(name)
+    return () => {
+      for (const [name, value] of saved) {
+        if (value === null) localStorage.removeItem(name)
+        else localStorage.setItem(name, value)
+      }
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    const cellName = /^R1C2, center notes 2, 3, corner notes 2, 4, R1C1 is less than R1C2, Candidate 2 deep blue$/
+    const control = await waitFor(() => canvas.queryByText('Resume puzzle', { exact: true })
+      ?? canvas.getByRole('button', { name: cellName }))
+    if (control.textContent?.trim() === 'Resume puzzle') await userEvent.click(control)
+    const cell = await canvas.findByRole('button', { name: cellName })
+    await userEvent.click(cell)
+    await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
+    const positions = within(canvas.getByRole('group', { name: 'Candidate position' }))
+    await expect(positions.getByRole('button', { name: 'Center' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(positions.getByRole('button', { name: 'Corner' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
+    await expect(cell).toHaveAccessibleName(/^R1C2, center notes 2, 3, corner notes 2, R1C1 is less than R1C2, Candidate 2 deep blue$/)
+    const artwork = canvas.getByRole('group', { name: 'Futoshiki board' }).querySelector('.board-authored-artwork')!
+    await expect(artwork).toHaveAttribute('viewBox', '0 0 4 4')
+    await expect(artwork.querySelector('polyline')).toHaveAttribute('points', '0,2 2,2 2,4')
+    const drawing = canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })
+    const colored = canvas.getByRole('button', { name: /^R1C1, 1, .*blue, orange$/ })
+    await expect(drawing).toHaveAttribute('viewBox', '0 0 4 4')
+    await expect(colored).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Clear imported annotations' }))
+    await expect(canvas.getByRole('button', { name: /^R1C1, 1, .*green$/ })).toBeVisible()
+    await expect(drawing).not.toBeInTheDocument()
+    await expect(artwork).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await expect(colored).toBeVisible()
+    await expect(canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Redo' }))
+    await expect(canvas.queryByRole('img', { name: 'Imported Quick Draw annotations' })).not.toBeInTheDocument()
+  },
+}
+
+const knightWithInequality = createImportedFutoshiki(
+  4, '0000004100000000', [{ less: 1, greater: 2 }], { antiKnight: true },
+)
+
+export const AntiKnightWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={knightWithInequality} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rulesDialog = await canvas.findByRole('dialog', { name: 'Futoshiki rules' })
+    const rules = within(rulesDialog)
+    await waitFor(() => expect(rules.getByText(/Cells a chess knight’s move apart cannot share a digit/)).toBeVisible())
+    await userEvent.click(rules.getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(rulesDialog).not.toBeInTheDocument())
+
+    const target = await within(grid).findByRole('button', { name: /^R3C1, empty/ })
+    await userEvent.click(target)
+    await userEvent.keyboard('4')
+    await expect(target).toHaveAccessibleName(/^R3C1, 4/)
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const checkDialog = await canvas.findByRole('dialog', { name: 'Puzzle check' })
+    const check = within(checkDialog)
+    await waitFor(() => expect(check.getByText('The highlighted entries conflict with the rules.')).toBeVisible())
+    await expect(grid.querySelector('[data-cell="6"]')).toHaveAttribute('data-conflict', 'true')
+    await expect(grid.querySelector('[data-cell="8"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(check.getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(checkDialog).not.toBeInTheDocument())
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Anti-Knight' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Anti-Knight' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getAllByText(/are a knight’s move apart/)[0]).toBeVisible())
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = await canvas.findByRole('group', { name: 'Futoshiki solution' })
+    await waitFor(() => expect(within(final).getByRole('button', { name: /^R3C1, 3/ })).toBeVisible())
+  },
+}
+
+const touchingEntropic = createImportedFutoshiki(
+  9, '120056789200567891005678912056789120567891200678912005789120056891200567912005678',
+  [{ less: 1, greater: 2 }],
+  { pathClues: [{ type: 'entropic', cells: [2, 12, 22] }, { type: 'entropic', cells: [22, 13] }] },
+)
+
+export const TouchingEntropicLines: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={touchingEntropic} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const lines = grid.querySelectorAll('.variant-entropic polyline')
+    await expect(lines).toHaveLength(2)
+    await expect(lines[0]).toHaveAttribute('points', '2.5,0.5 3.5,1.5 4.5,2.5')
+    await expect(lines[1]).toHaveAttribute('points', '4.5,2.5 4.5,1.5')
+    await expect(within(grid).getByRole('button', { name: /^R3C5, given 7, .*Entropic Line 1.*Entropic Line 2/ })).toBeVisible()
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Entropic Lines' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Entropic Lines' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getAllByText(/one digit from each group/)[0]).toBeVisible()
+    await userEvent.click(hint.getByRole('button', { name: 'Close hint' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Solution' }))
+    const panel = within(await canvas.findByRole('tabpanel', { name: 'Solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Final grid' }))
+    const final = within(await canvas.findByRole('group', { name: 'Futoshiki solution' }))
+    await waitFor(() => expect(final.getByRole('button', { name: /^R1C3, 3, .*Entropic Line 1/ })).toBeVisible())
+  },
+}
+
+const overlappingCages = prepareImportedCalcudoku({
+  size: 3, givens: '000312231', colors: [],
+  cages: [{ cells: [0], label: '1', operator: 'add', distinct: true }],
+  unnumberedCages: [[0, 1, 3]],
+})
+
+export const OverlappingUnnumberedCage: Story = {
+  render: () => <PreviewRouter shell><CalcudokuPlay entry={overlappingCages} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Calcudoku board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Cage total 1 .*Unnumbered cage 1/ })
+    await expect(cell).toBeEnabled()
+    await expect(cell.querySelector('.number-puzzle-cell-label')).toHaveTextContent('1')
+    const outline = grid.querySelector('[data-unnumbered-cage="1"]')!
+    await expect(outline.querySelectorAll('.variant-cage-edge')).toHaveLength(3)
+    await expect(outline.querySelector('text')).not.toBeInTheDocument()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rules = within(await canvas.findByRole('dialog', { name: 'Calcudoku rules' }))
+    await waitFor(() => expect(rules.getByText('Digits cannot repeat in a dashed cage without a total.')).toBeVisible())
+  },
+}
+
+const kingWithInequality = createImportedFutoshiki(
+  5, '0030004002002000000005023', [{ less: 0, greater: 1 }], { antiKing: true },
+)
+
+export const AntiKingWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={kingWithInequality} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rulesDialog = await canvas.findByRole('dialog', { name: 'Futoshiki rules' })
+    await waitFor(() => expect(within(rulesDialog).getByText('Cells that touch at a corner must have different digits.')).toBeVisible())
+    await userEvent.click(within(rulesDialog).getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(rulesDialog).not.toBeInTheDocument())
+
+    const target = within(grid).getByRole('button', { name: /^R1C1, empty/ })
+    await userEvent.click(target)
+    await userEvent.keyboard('4')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const checkDialog = await canvas.findByRole('dialog', { name: 'Puzzle check' })
+    await waitFor(() => expect(grid.querySelector('[data-cell="0"]')).toHaveAttribute('data-conflict', 'true'))
+    await expect(grid.querySelector('[data-cell="6"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(within(checkDialog).getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(checkDialog).not.toBeInTheDocument())
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Anti-King' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Anti-King' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getAllByText(/touch at a corner/)[0]).toBeVisible())
   },
 }

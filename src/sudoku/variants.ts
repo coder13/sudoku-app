@@ -1,13 +1,18 @@
+import { antiKingTechnique, isKingCornerMove } from './anti-king.ts'
+import { antiKnightNote, antiKnightTechnique, isKnightMove } from './anti-knight.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
+import { quadrupleNote, quadrupleTechnique, validQuadruple } from './quadruple.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
 import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
+
+export { quadrupleCells } from './quadruple.ts'
 
 export const VARIANTS = {
   classic: {
@@ -31,11 +36,11 @@ export const VARIANTS = {
     rule: 'Fill each row, column, and outlined region with the digits 1–9 once each.',
   },
   'anti-knight': {
-    name: 'Anti-Knight',
-    rule: 'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
+    name: antiKnightTechnique,
+    rule: antiKnightNote,
   },
   'anti-king': {
-    name: 'Anti-King',
+    name: antiKingTechnique,
     rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
   },
   'non-consecutive': {
@@ -123,16 +128,12 @@ export const VARIANTS = {
     rule: 'Digits joined by a Roman numeral have that total. For example, XV means 15. Unmarked pairs can have any total unless a negative V or X rule is stated.',
   },
   quadruple: {
-    name: 'Quadruple',
-    rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
+    name: quadrupleTechnique,
+    rule: quadrupleNote,
   },
 } as const
 
 export const PUZZLE_VARIANTS = VARIANTS
-
-export function quadrupleCells(topLeft: number): readonly number[] {
-  return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
-}
 
 export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
   Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
@@ -273,14 +274,8 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       const line = rule.diagonal === 'main' ? mainDiagonal : antiDiagonal
       return line.includes(a) && line.includes(b)
     }
-    if (rule.type === 'anti-knight') {
-      const rows = Math.abs(Math.floor(a / 9) - Math.floor(b / 9))
-      const columns = Math.abs(a % 9 - b % 9)
-      return rows * columns === 2
-    }
-    if (rule.type === 'anti-king') {
-      return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
-    }
+    if (rule.type === 'anti-knight') return isKnightMove(a, b, 9)
+    if (rule.type === 'anti-king') return isKingCornerMove(a, b, 9)
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
@@ -444,9 +439,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
-    case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
-      Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
-      rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
+    case 'quadruple': return Array.isArray(rule.digits) && validQuadruple(rule, 9)
     case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>

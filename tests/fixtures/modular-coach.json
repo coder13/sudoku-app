@@ -620,7 +620,6 @@
       "solution": "5234141523234151523434152",
       "imageUrl": "https://sudoku.coach/open_graph_images/7hzU.png",
       "imageSha256": "28212b1d6057848c78e33dfb8fec7eb0f347a8be814d3d821a0bb8db965652f8",
-      "deferred": "The original Latin-square export uses a 5×5 grid. Preserve its relaxed regions and complete rule list.",
       "description": "Thin lines = entropic, thick = modular"
     },
     {

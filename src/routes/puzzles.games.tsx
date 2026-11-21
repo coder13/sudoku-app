@@ -74,5 +74,6 @@ declare module '@tanstack/history' {
     fromKakuroDifficulty?: boolean
     fromNumberDifficulty?: NumberGame
     fromNumberPuzzleLibrary?: true | 'solved'
+    fromNumberPuzzleImport?: true
   }
 }

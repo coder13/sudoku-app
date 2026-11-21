@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  loadNumberProgress, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress,
-  saveNumberClock, saveNumberProgress, type NumberProgress,
+  hasNumberMoves, loadNumberProgress, numberValuesWithMoves, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberPause, readNumberProgress,
+  saveNumberClock, saveNumberPause, saveNumberProgress, type NumberProgress,
 } from '../src/number-puzzles/progress.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
@@ -20,7 +20,13 @@ test('number game progress reads old saves and saves both history stacks with th
 
     const progress: NumberProgress = { position: noted, past: [[2, 0, 0]], future: [[2, 3, 0]] }
     assert.equal(saveNumberProgress(key, progress), true)
+    assert.equal(readNumberPause(key), false)
+    saveNumberPause(key, true)
+    assert.equal(readNumberPause(key), true)
+    assert.equal(readNumberPause('calcudoku.position.v1.easy-2'), false)
     assert.deepEqual(loadNumberProgress(key, editable, 4), progress)
+    saveNumberPause(key, false)
+    assert.equal(readNumberPause(key), false)
     const saved = readNumberProgress(key)
     assert.ok(saved)
     assert.deepEqual(parseNumberProgress(saved, editable, 4), progress)
@@ -50,6 +56,19 @@ test('number game progress reads old saves and saves both history stacks with th
   }
 })
 
+test('corner marks count as progress and survive undo and redo storage', () => {
+  const saved = {
+    values: [0, 0, 0], notes: [0, 0, 0], cornerNotes: [1, 0, 0],
+    past: [[0, 0, 0]], future: [[0, 0, 0, 3]],
+  }
+  assert.deepEqual(numberValuesWithMoves(saved, editable, 4), [0, 0, 0])
+  const progress = parseNumberProgress(saved, editable, 4)
+  assert.ok(progress && hasNumberMoves(progress))
+  assert.deepEqual(progress.position.cornerNotes, [1, 0, 0])
+  assert.deepEqual(progress.past, [[0, 0, 0]])
+  assert.deepEqual(progress.future, [[0, 0, 0, 3]])
+})
+
 test('generated history recovers unlisted boards and saves moves when IndexedDB is unavailable', async () => {
   const storage = new MemoryStorage()
   const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
@@ -63,6 +82,7 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     const saved = { ...noted, past: [[2, 0, 0]], future: [[2, 3, 0]] }
     storage.setItem(history, JSON.stringify([first, first, 'invalid']))
     storage.setItem(orphanKey, JSON.stringify(saved))
+    saveNumberPause(`calcudoku.position.v1.v1.YQ`, true)
 
     assert.deepEqual((await generatedNumberHistory('calcudoku')).map(({ id }) => id), [first, orphan])
     assert.deepEqual(await openGeneratedNumberPuzzle('calcudoku', orphan), {
@@ -98,4 +118,18 @@ test('generated history recovers unlisted boards and saves moves when IndexedDB 
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')
   }
+})
+
+test('imported annotations alone count as progress and can be cleared, undone, and redone after reload', () => {
+  const position = { values: [0, 0, 0], notes: [0, 0, 0], annotationsHidden: false }
+  assert.deepEqual(numberValuesWithMoves(position, editable, 4), [0, 0, 0])
+  assert.ok(hasNumberMoves({ position, past: [], future: [] }))
+  const cleared = { ...position, annotationsHidden: true }
+  assert.deepEqual(parseNumberProgress({ ...cleared, past: [[0, 0, 0], false] }, editable, 4), {
+    position: cleared, past: [[0, 0, 0], false], future: [],
+  })
+  assert.deepEqual(parseNumberProgress({ ...position, future: [true] }, editable, 4), {
+    position, past: [], future: [true],
+  })
+  assert.deepEqual(numberValuesWithMoves({ ...cleared, past: [false] }, editable, 4), [0, 0, 0])
 })

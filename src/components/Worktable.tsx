@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, PencilLine, Pin, PinOff, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -62,14 +62,14 @@ import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
 import { MobileInputTabs } from './MobileInputTabs'
 import { VariantRules } from './VariantRules'
-import { PlayHint, PlayLayout } from './PlayLayout'
+import { PlayHint, PlayLayout, PlayPauseButton, PlayPauseLayers } from './PlayLayout'
 import { useMobileLayout } from './mobile-layout'
 import { useGridClickAway } from './useGridClickAway'
 import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionPath, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
+import { SolutionPath, SolutionReveal, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
@@ -2607,25 +2607,11 @@ export function Worktable({
         setCandidatePreviewCell(null)
       }} />
   )
-  const pausedPuzzleStage = (
-    <div className={`board-frame puzzle-paused-frame ${appearance.showGuides ? '' : 'guides-hidden'}`}>
-      <div className="puzzle-paused" role="status" aria-label="Puzzle paused">
-        <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
-        <h2>Puzzle paused</h2>
-        {showElapsedTime && <p>Your elapsed time is stopped.</p>}
-        <Button type="button" variant="primary" onClick={resumePuzzle}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
-      </div>
-    </div>
-  )
   const puzzlePlayLayers = (
-    <div className="puzzle-play-layers" data-paused={game.paused || undefined}>
-      <div className="puzzle-play-layer puzzle-live-layer" aria-hidden={game.paused || undefined} inert={game.paused}>
-        {livePuzzleStage}
-      </div>
-      <div className="puzzle-play-layer puzzle-pause-layer" aria-hidden={!game.paused || undefined} inert={!game.paused}>
-        {pausedPuzzleStage}
-      </div>
-    </div>
+    <PlayPauseLayers paused={game.paused} showElapsedTime={showElapsedTime} onResume={resumePuzzle}
+      frameClassName={`board-frame puzzle-paused-frame ${appearance.showGuides ? '' : 'guides-hidden'}`}>
+      {livePuzzleStage}
+    </PlayPauseLayers>
   )
 
   const quickActions: Record<PinnedAction, {
@@ -2748,15 +2734,7 @@ export function Worktable({
     ) : (
       <>
         {!puzzleControlsBelow && puzzleUtilityActions}
-        {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
-          aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
-          title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
-          aria-pressed={game.paused} aria-keyshortcuts={pauseKeys.join(' ')} onClick={togglePause}>
-          <span className="pause-toggle-icons" aria-hidden="true">
-            <Pause className="pause-toggle-pause" size={18} />
-            <Play className="pause-toggle-play" size={18} />
-          </span>
-        </IconButton>}
+        {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <PlayPauseButton paused={game.paused} shortcuts={pauseKeys} onToggle={togglePause} />}
         <div className="puzzle-menu-wrap" ref={puzzleMenuRef}>
           <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
             title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
@@ -2874,15 +2852,7 @@ export function Worktable({
       cellReferenceStyle={cellReferenceStyle} gridSize={gridSize} techniqueDifficulties={techniqueDifficulties}
       onSelect={selectSolutionStep} onRetry={() => showSolutionPath(true)} onClose={closeSolutionPath}
       onReveal={markSolutionVisible} embedded={!advancedWorkspace} />
-  ) : (
-    <section className="advanced-spoiler-panel solution-spoiler-panel" aria-label="Solution">
-      <span className="advanced-spoiler-icon" aria-hidden="true"><ListOrdered size={21} /></span>
-      <div><h2>Solution</h2><p>The solving steps stay hidden until you choose to reveal them.</p></div>
-      <Button variant="primary" disabled={busy || draft} onClick={() => showSolutionPath()}>
-        <Eye size={17} /> Reveal solution
-      </Button>
-    </section>
-  )
+  ) : <SolutionReveal disabled={busy || draft} onReveal={() => showSolutionPath()} />
   const clueCount = [...visibleGivens].filter((digit) => digit !== '0').length
   const placedDigitCount = [...game.position.entries].filter((digit) => digit !== '0').length
   const candidateTotal = game.position.center.reduce((sum, mask, index) => (

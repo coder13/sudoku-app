@@ -2,7 +2,7 @@ import { type ReactNode, type Ref, useId, useLayoutEffect, useRef, useState } fr
 import { MoreHorizontal, X } from 'lucide-react'
 import { IconButton } from './Button'
 import { scrollActiveTabIntoView } from './PlayLayout'
-import { TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { TOOL_PANEL_ORDER, type PuzzleTool } from '../sudoku/play-session'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 
 const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', subsets: 'Subsets', rules: 'Rules' }
@@ -70,20 +70,23 @@ function InputToolsMenu({ disabled, onShow, children }: {
   </div>
 }
 
-/** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
-  active: ToolPanelTab
-  open: PuzzleTool[]
-  panels: Record<ToolPanelTab, ReactNode>
-  activeTabRef: Ref<HTMLButtonElement>
-  toolsDisabled: boolean
+/** Show the puzzle input and its open solving tools in the shared mobile card. */
+export function MobileInputTabs<Tool extends PuzzleTool>({ active, open, panels, activeTabRef, toolsDisabled = false, toolToggles,
+  onShowTools, onSelect, onClose, label = 'Sudoku input', inputLabel = 'Digits' }: {
+  active: 'digits' | Tool
+  open: readonly Tool[]
+  panels: Record<'digits' | Tool, ReactNode>
+  activeTabRef?: Ref<HTMLButtonElement>
+  toolsDisabled?: boolean
+  label?: string
+  inputLabel?: string
   toolToggles?: ReactNode
   onShowTools?: (opener: HTMLButtonElement) => void
-  onSelect: (tab: ToolPanelTab) => void
-  onClose: (tab: PuzzleTool) => void
+  onSelect: (tab: 'digits' | Tool) => void
+  onClose: (tab: Tool) => void
 }) {
   const id = useId()
-  const visibleTools = TOOL_PANEL_ORDER.filter(tool => open.includes(tool))
+  const visibleTools = TOOL_PANEL_ORDER.filter((tool): tool is Tool => open.some(shown => shown === tool))
   const tabs = ['digits', ...visibleTools] as const
   const toolToClose = active === 'digits' ? visibleTools.at(0) : active
   const hasInputCard = Boolean(open.length || toolToggles)
@@ -93,7 +96,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
   return <div className={hasInputCard ? 'surface mobile-input-tabs' : undefined} data-tools-open={open.length > 0 || undefined}>
     {hasInputCard && <div className={open.length ? 'mobile-input-toolbar' : 'mobile-input-menu-slot'} data-no-panel-hold>
       {open.length > 0 && (
-        <div ref={tabList} role="tablist" aria-label="Sudoku input" className="mobile-input-tablist" onKeyDown={(event) => {
+        <div ref={tabList} role="tablist" aria-label={label} className="mobile-input-tablist" onKeyDown={(event) => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
           event.preventDefault()
           const step = event.key === 'ArrowLeft' ? -1 : 1
@@ -104,7 +107,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
         }}>
           {tabs.map((tab) => <button type="button" key={tab} ref={active === tab ? activeTabRef : undefined}
             id={`${id}-tab-${tab}`} role="tab" aria-selected={active === tab} aria-controls={`${id}-panel-${tab}`}
-            tabIndex={active === tab ? 0 : -1} onClick={() => onSelect(tab)}>{labels[tab]}</button>)}
+            tabIndex={active === tab ? 0 : -1} onClick={() => onSelect(tab)}>{tab === 'digits' ? inputLabel : labels[tab]}</button>)}
         </div>
       )}
       {toolToggles && <InputToolsMenu disabled={toolsDisabled} onShow={onShowTools}>{toolToggles}</InputToolsMenu>}

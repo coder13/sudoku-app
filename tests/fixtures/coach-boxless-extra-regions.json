@@ -1,0 +1,13 @@
+{
+  "url": "https://sudoku.coach/en/s/Ghje",
+  "publication": {
+    "sudoku_id": "Ghje",
+    "name": "SUDOKU ENIGMA",
+    "author": "u/Academic_Proposal404",
+    "sudoku": "SCv7_32_f2ear5mddqe30545rv2tr7k5vs6r6jenr5q1ipc168n456hg2684lqc8evnr2o96h4a5alit1cndfhngo4sudjis8gvgrhovofnig3hdoj9vit3ujlj72u70f1u173ogafm8fssogrcej1qve7u3tt63o80i2srbmu1gpn3dpqdb9ees94jrrf1l4evmgthvd8kndgmtukog8ridfrc3t3euuoaeabfr73v9emts4f3nj6dqc566vtjg271l274kghcdsnh8pmn049ufm5votlq99von8ikpgrh3qmt82pd44afg9bal1bsndrl9tooiqetlplnl65erub63r2jvtbhmtvveqprec9er34ql47cs4g174aspl4dpg793aq2th3r71c098uk2dl21mdlmnk5623ei1g7f8j6sgf20v4db8bdlb8j9el833lg3o313eft5spdn5eimuqhb304t7giab3j1khmlq1uijnb7mmsuc35cgpim9rj0l960v1bkiffpkkije0dm06dj0ajar89nknq29siluq67cmbs5dlugr99rlm2spu76fdair21hnnrld5sa5o96ltrelo1d3mhcs5mlfhoblee5l76ea9dq19oop6vo6mvelkpbooamtsrakrg5vghj68rn2d1laqb1cenatipednh0d024dpgenvjonkt4mn76r0nq8ki3cc9jcvkarslsmnbl1r35ei98hp068vj2qvadknaq9d4f5vtsps9ne518khh25627tuuv77h7b3ujavv6nvqf28to2jrvqu6sdoep5honvhngujvm65rhrveo4ujvqd7t7kgfm5etft0eu4j08gg",
+    "solution": "387456912592817463416932857825741639973685241641293785258174396169328574734569128",
+    "description": "Every gray cell is the center of a 3x3 that must contain unique digits.\n\nPosted to r/sudoku here:\nhttps://www.reddit.com/r/sudoku/s/sp3ycEj0bv",
+    "custom_constraints": false,
+    "blocked": false
+  }
+}

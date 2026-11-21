@@ -1,10 +1,7 @@
-import { calcudoku } from './Calcudoku'
-import { futoshiki } from './Futoshiki'
-import { hidato } from './Hidato'
-import { kakuro } from './Kakuro'
-import { readCatalogNumberResults, type NumberGameConfig } from './NumberPuzzle'
-import { rullo } from './Rullo'
-import type { NumberGame, NumberPuzzleEntry } from '../number-puzzles/catalog'
+import type { NumberGameConfig } from './NumberPuzzle'
+import { numberGameNames, type NumberGame, type NumberPuzzleEntry } from '../number-puzzles/catalog'
+import { numberPositionKey } from '../number-puzzles/generated-storage'
+import { numberPuzzleImportKey } from '../number-puzzles/imported-storage'
 import { openGeneratedNumberResults } from '../number-puzzles/difficulty-history'
 import type { GeneratedNumberWindowResult, NumberHistoryEntry, NumberResultStatus } from '../number-puzzles/generated-results'
 import { matchesSolvedNumberFilters, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
@@ -16,25 +13,71 @@ export type NumberPuzzleQuery = { filterKey: string; filters?: SolvedPuzzleFilte
 export type NumberPuzzleActivity = {
   query: NumberPuzzleQuery
   entries: NumberPuzzleHistoryRow[]
+  saved: NumberPuzzleHistoryRow[]
   hasAny: boolean
   hasMore: boolean
   pending?: true
 }
 
-function catalogActivity<Entry extends NumberPuzzleEntry>(config: NumberGameConfig<Entry>, status: NumberResultStatus) {
+async function catalogActivity<Entry extends NumberPuzzleEntry>(
+  config: NumberGameConfig<Entry>, status: NumberResultStatus, imported: readonly Entry[] = [],
+) {
+  const { readCatalogNumberResults } = await import('./NumberPuzzle')
   const { game, name } = config
-  return readCatalogNumberResults(config, status).entries.map(entry => ({ ...entry, game, name }))
+  const results = readCatalogNumberResults(imported.length ? { ...config, entries: [...config.entries, ...imported] } : config, status)
+  return {
+    entries: results.entries.map(entry => ({ ...entry, game, name })),
+    saved: status === 'started'
+      ? imported.filter(entry => !results.status.has(entry.id)).reverse()
+        .map(({ id, difficulty, number }) => ({ id, difficulty, number, imported: true as const, game, name }))
+      : [],
+  }
 }
 
-export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (result: NumberPuzzleActivity) => void) {
-  const catalog = [
-    ...catalogActivity(kakuro, status),
-    ...catalogActivity(calcudoku, status),
-    ...catalogActivity(futoshiki, status),
-    ...catalogActivity(hidato, status),
-    ...catalogActivity(rullo, status),
-  ]
-  const sources = [kakuro, calcudoku]
+const readCatalogActivity = {
+  async kakuro(status) {
+    const { kakuro } = await import('./Kakuro')
+    return catalogActivity(kakuro, status)
+  },
+  async calcudoku(status) {
+    const [{ calcudoku }, { readCalcudokuImports }] = await Promise.all([
+      import('./Calcudoku'), import('../calcudoku/imported-storage'),
+    ])
+    return catalogActivity(calcudoku, status, readCalcudokuImports())
+  },
+  async futoshiki(status) {
+    const [{ futoshiki }, { readFutoshikiImports }] = await Promise.all([
+      import('./Futoshiki'), import('../futoshiki/imported-storage'),
+    ])
+    return catalogActivity(futoshiki, status, readFutoshikiImports())
+  },
+  async hidato(status) {
+    const { hidato } = await import('./Hidato')
+    return catalogActivity(hidato, status)
+  },
+  async rullo(status) {
+    const { rullo } = await import('./Rullo')
+    return catalogActivity(rullo, status)
+  },
+} satisfies Record<NumberGame, (status: NumberResultStatus) => ReturnType<typeof catalogActivity>>
+
+function gamesWithCatalogSaves(): NumberGame[] {
+  try {
+    const keys = Object.keys(localStorage)
+    return (Object.keys(readCatalogActivity) as NumberGame[]).filter(game => {
+      const prefix = numberPositionKey(game, '')
+      return keys.some(key => key.startsWith(prefix) || key === numberPuzzleImportKey(game))
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function openNumberPuzzleHistory(status: NumberResultStatus, publish: (result: NumberPuzzleActivity) => void) {
+  const games = await Promise.all(gamesWithCatalogSaves().map(game => readCatalogActivity[game](status)))
+  const catalog = games.flatMap(game => game.entries)
+  const saved = games.flatMap(game => game.saved)
+  const sources = ['kakuro', 'calcudoku'] as const
   const generated = new Map<NumberGame, GeneratedNumberWindowResult>()
   let revision = 0
   let current: NumberPuzzleQuery | undefined
@@ -50,8 +93,8 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
       if (newFilters) {
         const { filters } = query
         visibleCatalog = catalog.filter(row => !filters || matchesSolvedNumberFilters(row, filters))
-        if (visibleCatalog.length) {
-          publish({ query, entries: visibleCatalog, hasAny: true, hasMore: false, pending: true })
+        if (visibleCatalog.length || saved.length) {
+          publish({ query, entries: visibleCatalog, saved, hasAny: catalog.length > 0, hasMore: false, pending: true })
         }
       }
       // A row after the first N from its own game cannot rank in the first N overall.
@@ -60,18 +103,19 @@ export function openNumberPuzzleHistory(status: NumberResultStatus, publish: (re
         for (const subscription of subscriptions) subscription.query(window)
         return
       }
-      subscriptions = sources.map(({ game }) => openGeneratedNumberResults({ game, status, window }, result => {
+      subscriptions = sources.map(game => openGeneratedNumberResults({ game, status, window }, result => {
         if (!current || !('revision' in result) || result.revision !== revision) return
         generated.set(game, result)
         if (generated.size !== sources.length) return
         publish({
           query: current,
+          saved,
           entries: [
             ...visibleCatalog,
-            ...sources.flatMap(({ game, name }) => generated.get(game)!.entries.map(entry => ({ ...entry, game, name }))),
+            ...sources.flatMap(game => generated.get(game)!.entries.map(entry => ({ ...entry, game, name: numberGameNames[game] }))),
           ],
-          hasAny: catalog.length > 0 || sources.some(({ game }) => generated.get(game)!.hasAny),
-          hasMore: sources.some(({ game }) => generated.get(game)!.hasMore),
+          hasAny: catalog.length > 0 || sources.some(game => generated.get(game)!.hasAny),
+          hasMore: sources.some(game => generated.get(game)!.hasMore),
         })
       }))
     },

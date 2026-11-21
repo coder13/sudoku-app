@@ -1,10 +1,15 @@
 import { hidatoCatalog, type HidatoEntry } from '../hidato/catalog'
-import { checkHidato, findHidatoHints, hidatoTechniques, solveHidato } from '../hidato/engine'
+import { checkHidato, findHidatoHints, findHidatoSolutionHints, hidatoTechniques, solveHidato } from '../hidato/engine'
 import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
 
 export const hidato = {
   game: 'hidato',
   name: 'Hidato',
+  difficultyDescriptions: {
+    easy: '3 × 3 grid. Connect 1 to 8.',
+    medium: '4 × 4 grid. Connect 1 to 14.',
+    hard: '5 × 5 grid. Connect 1 to 23.',
+  },
   rules: 'Fill the board with consecutive numbers. Every pair of consecutive numbers must touch along an edge or at a corner.',
   techniques: hidatoTechniques,
   entries: hidatoCatalog,
@@ -25,6 +30,7 @@ export const hidato = {
         return result.status === 'unique' ? result.solution : null
       },
       hints: (values, limit) => findHidatoHints(puzzle, values, limit),
+      solutionHints: values => findHidatoSolutionHints(puzzle, values),
     }
   },
 } satisfies NumberGameConfig<HidatoEntry>

@@ -1,6 +1,6 @@
 import { type ComponentProps, type ReactNode, type Ref, useLayoutEffect, useRef } from 'react'
-import { ListChecks, X } from 'lucide-react'
-import { IconButton } from './Button'
+import { ListChecks, Pause, Play, X } from 'lucide-react'
+import { Button, IconButton } from './Button'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { animatePanelLayout, MotionSurface, motionDuration } from './Presence'
 
@@ -141,4 +141,39 @@ export function PlayActionsButton({ mobile, open, ...props }: Omit<ComponentProp
     aria-haspopup={mobile ? 'dialog' : undefined}>
     <ListChecks size={20} aria-hidden="true" />
   </IconButton>
+}
+
+/** Put a pause control beside the grid. Pass the active pause shortcut labels. */
+export function PlayPauseButton({ paused, shortcuts, onToggle }: {
+  paused: boolean; shortcuts: readonly string[]; onToggle: () => void
+}) {
+  const label = paused ? 'Resume puzzle' : 'Pause puzzle'
+  return <IconButton variant="quiet" className="puzzle-pause-trigger" aria-label={label}
+    title={`${label} (${shortcuts.join(' / ')})`} aria-pressed={paused} aria-keyshortcuts={shortcuts.join(' ')} onClick={onToggle}>
+    <span className="pause-toggle-icons" aria-hidden="true">
+      <Pause className="pause-toggle-pause" size={18} />
+      <Play className="pause-toggle-play" size={18} />
+    </span>
+  </IconButton>
+}
+
+/** Keep the board sized and mounted under its paused view. */
+export function PlayPauseLayers({ paused, showElapsedTime, frameClassName, onResume, children }: {
+  paused: boolean; showElapsedTime: boolean; frameClassName: string; onResume: () => void; children: ReactNode
+}) {
+  return <div className="puzzle-play-layers" data-paused={paused || undefined}>
+    <div className="puzzle-play-layer puzzle-live-layer" aria-hidden={paused || undefined} inert={paused}>
+      {children}
+    </div>
+    <div className="puzzle-play-layer puzzle-pause-layer" aria-hidden={!paused || undefined} inert={!paused}>
+      <div className={frameClassName}>
+        <div className="puzzle-paused" role="status" aria-label="Puzzle paused">
+          <span className="puzzle-paused-icon" aria-hidden="true"><Pause size={25} /></span>
+          <h2>Puzzle paused</h2>
+          {showElapsedTime && <p>Your elapsed time is stopped.</p>}
+          <Button variant="primary" onClick={onResume}><Play size={17} aria-hidden="true" /> Resume puzzle</Button>
+        </div>
+      </div>
+    </div>
+  </div>
 }

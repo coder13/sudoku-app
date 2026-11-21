@@ -16,9 +16,11 @@ import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 let Button: (props: Record<string, unknown>) => ReactNode
 let server: ViteDevServer
 let PlayLayout: (props: Record<string, unknown>) => ReactNode
+let PlayHint: (props: Record<string, unknown>) => ReactNode
 let Worktable: (props: Record<string, unknown>) => ReactNode
 let AdvancedPuzzleBrowser: typeof import('../src/components/AdvancedPuzzleBrowser.tsx').AdvancedPuzzleBrowser
-let SolutionDialog: (props: Record<string, unknown>) => ReactNode
+let SolutionReveal: (props: Record<string, unknown>) => ReactNode
+let MobileInputTabs: (props: Record<string, unknown>) => ReactNode
 let SolutionPath: (props: Record<string, unknown>) => ReactNode
 let solutionEndSummary: typeof import('../src/components/SolutionPath.tsx').solutionEndSummary
 let HintCard: (props: Record<string, unknown>) => ReactNode
@@ -33,10 +35,11 @@ before(async () => {
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] } })
   ;({ Button } = await server.ssrLoadModule('/src/components/Button.tsx'))
-  ;({ PlayLayout } = await server.ssrLoadModule('/src/components/PlayLayout.tsx'))
+  ;({ PlayLayout, PlayHint } = await server.ssrLoadModule('/src/components/PlayLayout.tsx'))
+  ;({ MobileInputTabs } = await server.ssrLoadModule('/src/components/MobileInputTabs.tsx'))
   ;({ Worktable } = await server.ssrLoadModule('/src/components/Worktable.tsx'))
   ;({ AdvancedPuzzleBrowser } = await server.ssrLoadModule('/src/components/AdvancedPuzzleBrowser.tsx'))
-  ;({ SolutionDialog, SolutionPath, solutionEndSummary } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
+  ;({ SolutionPath, SolutionReveal, solutionEndSummary } = await server.ssrLoadModule('/src/components/SolutionPath.tsx'))
   ;({ HintCard } = await server.ssrLoadModule('/src/components/HintCard.tsx'))
   ;({ ChainsPanel } = await server.ssrLoadModule('/src/components/ChainsPanel.tsx'))
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
@@ -95,10 +98,8 @@ test('rendered hints and desktop/mobile solution lists share the selected cell n
     const props = { state: { status: 'ready', trace: { steps: [parity.deduction], rating: { status: { solved: 'easy' } } } },
       index: 0, cellReferenceStyle, techniqueDifficulties: { parity: 'easy' },
       onSelect() {}, onRetry() {}, onClose() {} }
-    for (const Component of [SolutionPath, SolutionDialog]) {
-      const html = renderToStaticMarkup(createElement(Component, {
-        ...props, grid: null, explanation: { title: hint.title, text: diagram.description },
-      }))
+    for (const embedded of [false, true]) {
+      const html = renderToStaticMarkup(createElement(SolutionPath, { ...props, embedded }))
       assert.ok(html.includes(`Remove 8 from ${expected}.`))
       if (cellReferenceStyle !== 'concise') assert.doesNotMatch(html, /\br9c9\b/i)
     }
@@ -170,18 +171,29 @@ function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
   if (Array.isArray(node)) return node.flatMap(elements)
   if (!isValidElement<Record<string, unknown>>(node)) return []
   if (node.type === Button) return elements(Button(node.props))
+  if (node.type === SolutionReveal) return elements(SolutionReveal(node.props))
   return [node, ...Object.values(node.props).flatMap(elements)]
 }
 
 test('mobile solutions render a read-only Jigsaw preview, explanation, and navigable walkthrough', () => {
   const regions = { type: 'jigsaw', regions: Array.from({ length: 9 }, (_, row) => Array.from({ length: 9 }, (_, col) => row * 9 + col)) }
-  const html = renderToStaticMarkup(createElement(SolutionDialog, {
-    grid: createElement(Board, { variantPuzzle: { givens: STARTER, regions }, givens: STARTER, values: STARTER, label: 'Solution preview' }),
-    explanation: { title: 'Hidden Single', text: 'R1C3 is the only cell in region 1 that can contain 4.' },
+  const solution = createElement(SolutionPath, {
     state: { status: 'ready', trace: { steps: [{ technique: 'hidden-single', actions: [{ place: { cell: 2, digit: 4 } }], evidence: {} }], rating: { status: { solved: 'medium' } } } },
-    index: 0, onSelect() {}, onRetry() {}, onClose() {}, onReveal() {},
+    embedded: true, index: 0, onSelect() {}, onRetry() {}, onClose() {},
+  })
+  const html = renderToStaticMarkup(createElement(PlayLayout, {
+    desktop: false,
+    puzzle: createElement(Board, { variantPuzzle: { givens: STARTER, regions }, givens: STARTER, values: STARTER, label: 'Solution preview' }),
+    hint: createElement(PlayHint, { mobile: true, children: createElement(HintCard, {
+      hint: { title: 'Hidden Single', text: 'R1C3 is the only cell in region 1 that can contain 4.' }, onClose() {},
+    }) }),
+    input: createElement(MobileInputTabs, {
+      active: 'solution', open: ['solution'], panels: { digits: null, solution }, onSelect() {}, onClose() {},
+    }),
+    mobile: { puzzleId: 'jigsaw-solution', rearranging: false, blocked: false, withHint: true, inputTitle: 'Input', onRearrangingChange() {} },
   }))
-  assert.match(html, /mobile-solution-dialog/)
+  assert.match(html, /class="mobile-panel-layout/)
+  assert.match(html, /role="tab" aria-selected="true"[^>]*>Solution<\/button>/)
   assert.match(html, /jigsaw-board/)
   assert.match(html, /aria-label="Solution preview"/)
   assert.match(html, /aria-readonly="true"/)
@@ -189,7 +201,7 @@ test('mobile solutions render a read-only Jigsaw preview, explanation, and navig
   assert.match(html, /aria-label="Solving steps"/)
   assert.match(html, /aria-label="Next step"/)
   assert.match(html, /Final grid/)
-  assert.match(html, /aria-label="Close dialog"/)
+  assert.match(html, /aria-label="Close solution panel"/)
 })
 
 test('solution previews and walkthroughs distinguish a stalled path from a completed grid', () => {
@@ -208,14 +220,25 @@ test('solution previews and walkthroughs distinguish a stalled path from a compl
     assert.ok(path.includes(`<strong>${title}</strong>`))
     assert.ok(path.includes(`role="status">${title}</span>`))
 
-    const desktop = renderToStaticMarkup(createElement(HintCard, { hint: summary, onClose() {} }))
-    const mobile = renderToStaticMarkup(createElement(SolutionDialog, { ...props, grid: null, explanation: summary }))
-    for (const html of [desktop, mobile]) {
+    for (const mobile of [false, true]) {
+      const html = renderToStaticMarkup(createElement(PlayHint, {
+        mobile, children: createElement(HintCard, { hint: summary, onClose() {} }),
+      }))
       assert.ok(html.includes(title))
       assert.ok(html.includes(text))
       assert.ok(!html.includes(status === 'stalled' ? 'Final grid' : 'Last position'))
     }
   }
+})
+
+test('an exact solution is available without logical steps', () => {
+  const path = renderToStaticMarkup(createElement(SolutionPath, {
+    state: { status: 'ready', trace: { steps: [], rating: { status: 'stalled' }, exact: true } },
+    embedded: true, index: 0, onSelect() {}, onRetry() {}, onClose() {},
+  }))
+  assert.match(path, /<strong>Exact solution<\/strong>/)
+  assert.match(path, /Visible clues did not yield a complete logical path\./)
+  assert.match(path, /aria-current="step"/)
 })
 
 function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'standard' | 'advanced', solved = false) {
@@ -275,7 +298,8 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
         if (mode === 'advanced') {
           const dock = tree.find(({ props }) => props.solutionPath && props.techniques)!
           assert.ok(dock, 'Solution and technique finder must reach the dock')
-          assert.ok(elements(dock.props.solutionPath).some(({ type, props }) => type === 'button' && !props.disabled))
+          const solution = renderToStaticMarkup(dock.props.solutionPath as ReactElement)
+          assert.match(solution, /<button\b(?![^>]*\bdisabled\b)[^>]*>.*Reveal solution<\/button>/)
           assert.ok(elements(dock.props.techniques).some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
         }
       }

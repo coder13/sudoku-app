@@ -108,12 +108,32 @@ function coachTypedDeclaration(lines) {
 const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s go)[.!]?$/i
 
 // These descriptions cover construction, the author's solve, or where to ask
-// for hints. Bind the full note to its publication so added rules stay visible.
+// for hints. When a note repeats encoded rules, also bind the reviewed export.
 const reviewedCoachNotes = new Map([
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
+  // The author identifies the two encoded line families by width.
+  ['7hzU', ['8c6d7c65ce35ea28fec297a68be7363fc37c08b5749febfd17a6d406c9333aaf',
+    '4e8ce36443972d7cfb5a1288bfd3b8307cc3cc6e235ee589cba7927d7fce5674']],
+  // Non-con bento describes the already encoded square regions.
+  ['FWUv', ['64d94be814557c8b9e2445e0e6e9118ce7888ae6f0f41a0a2a2ca7d7f4294748',
+    '644e296695e5e5993472985da14111a57d7f8760bcc579ea1743103d8d6cf35a']],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
+  ['GLaG', 'bd5b8a2bfdffb354b5051f5a4b445ca217379f1a346e9c885643f4b37ddbb1fa'],
+  ['9GTz', 'af231855226a445d6f43ac86ea74c266533b4168a8b3de35c8ea4a44e43668e3'],
+  ['FLAb', ['90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936',
+    '6d6a3b498a48ea8bd5cd78a41495fca7c9fb0bbd8f5573a25e07b0115504d0c2']],
+  ['Ghje', ['41fa332ec16f84c8482d29ec078adaf096edca337f32cd8143578403425524d5',
+    'fa89d8bd12b691cbdee873107f97ffdb6deb31b40d53f66c3d2522abfe70e518']],
+])
+
+// The export already encodes every rule in these descriptions. Both hashes
+// must match before a custom rule flag can be cleared.
+const reviewedCoachRuleDescriptions = new Map([
+  // FUN-ky Bento II explains which drawn squares are typed extra regions.
+  ['JDv2', ['f9ab780aef148150727d073d5cfeb733e2211ad162a2a50e9cb9ac1115af2fc6',
+    '349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a']],
 ])
 
 // Coach publishes the puzzle code and its author instructions separately.
@@ -145,9 +165,12 @@ async function coachPublication(puzzle, id, code) {
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
-  const reviewedNote = reviewedCoachNotes.get(id)
-  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
-    (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
+  const reviewedNote = (puzzle.custom_constraints ? reviewedCoachRuleDescriptions : reviewedCoachNotes).get(id)
+  const [descriptionDigest, exportDigest] = Array.isArray(reviewedNote) ? reviewedNote : [reviewedNote]
+  const reviewed = descriptionDigest && await digest(lines.join('\n')) === descriptionDigest &&
+    (exportDigest === undefined || await digest(code) === exportDigest)
+  const hasAuthorInstructions = !reviewed &&
+    (puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)))
   return {
     hasAuthorInstructions,
     ...(authoredRule && { authoredRule }),

@@ -3,6 +3,7 @@ import { HidatoPlay } from '../components/Hidato'
 import { hidatoCatalog } from '../hidato/catalog'
 
 export const Route = createFileRoute('/puzzles/hidato_/$puzzle')({
+  codeSplitGroupings: [['loader', 'component']],
   staticData: { standalonePuzzlePage: true },
   head: () => ({ meta: [{ title: 'Play Hidato' }] }),
   loader: ({ params }) => {

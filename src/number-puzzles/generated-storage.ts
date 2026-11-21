@@ -1,7 +1,8 @@
+import { matchesSolvedNumberFilters } from '../sudoku/puzzle-activity.ts'
 import { numberPuzzleDifficulties } from './catalog.ts'
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
 import {
-  changeGeneratedSolveTotal, createGeneratedHistoryReader, generatedDifficultyTotals,
+  changeGeneratedSolveTotal, createGeneratedHistoryReader, generatedDifficultyTotals, orderNumberHistory,
   type GeneratedHistoryRow, type GeneratedNumberResults, type GeneratedNumberWindowResult,
   type NumberHistoryPage, type NumberHistoryWindow, type NumberResultStatus, type StoredSolveTotals,
 } from './generated-results.ts'
@@ -27,6 +28,7 @@ const recentIndex = 'time'
 const recentDifficultyIndex = 'difficultyTime'
 const sessionsStore = 'sessions'
 const migrationBatchSize = 256
+const dayMs = 86_400_000
 type IndexCheckpoint = { game: GeneratedNumberGame; number: 0; through: number; ready: boolean }
 type ResultTotals = Omit<IndexCheckpoint, 'number'> & { number: -1; totals: StoredSolveTotals }
 const historyReaders = {
@@ -176,6 +178,11 @@ function gameRange(game: GeneratedNumberGame, after = 0) {
   return IDBKeyRange.bound([game, after + 1], [game, Infinity])
 }
 
+async function lastGeneratedNumber(store: IDBObjectStore, game: GeneratedNumberGame) {
+  const last = await readRequest(store.openKeyCursor(gameRange(game), 'prev'))
+  return last ? (last.primaryKey as [GeneratedNumberGame, number])[1] : 0
+}
+
 function statusRange(game: GeneratedNumberGame, status: NumberResultStatus, after = 0) {
   return IDBKeyRange.bound([game, status, after + 1], [game, status, Infinity])
 }
@@ -235,12 +242,10 @@ async function migrateLegacy(game: GeneratedNumberGame) {
 
   const copied = new Map<string, string>()
   await runTransaction('readwrite', async (store, history, sessions) => {
-    const existing: GeneratedRecord[] = await readRequest(store.getAll(gameRange(game)))
-    const known = new Map(existing.map(record => [record.id, record]))
-    let number = existing.at(-1)?.number ?? 0
-    let writes = 0
+    const tokens = store.index(tokenIndex)
+    let number = await lastGeneratedNumber(store, game)
     for (const id of legacy.ids) {
-      const saved = known.get(id)
+      const saved = await readRequest<GeneratedRecord | undefined>(tokens.get([game, id]))
       const pendingKey = pendingPositionKey(game, id)
       const pending = legacy.pending.get(id)
       const current = pending && localValue(pendingKey) === pending.raw ? pending : undefined
@@ -258,8 +263,6 @@ async function migrateLegacy(game: GeneratedNumberGame) {
       store.put(record)
       if (!saved) saveSession(sessions, record)
       await updateHistoryRow(history, record, saved)
-      // Let the browser handle input between batches while this transaction stays open.
-      if (++writes % migrationBatchSize === 0) await readRequest(store.get([game, 0]))
     }
   })
 
@@ -287,6 +290,14 @@ export function prepareGeneratedHistory(game: GeneratedNumberGame) {
 // The window prepares legacy and pending saves before either worker reads the database.
 export function readGeneratedRecords(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
   return runTransaction('readonly', store => readRequest(store.getAll(gameRange(game))))
+}
+
+export function hasGeneratedNumberHistory(game: GeneratedNumberGame): Promise<boolean> {
+  return runTransaction('readonly', async (store, history) => {
+    const range = gameRange(game)
+    const keys = await Promise.all([readRequest(store.getKey(range)), readRequest(history.getKey(range))])
+    return keys.some(key => key !== undefined)
+  })
 }
 
 function readCheckpoint(store: IDBObjectStore, game: GeneratedNumberGame) {
@@ -338,7 +349,6 @@ function localDayBoundary(day: string, followingDay = false) {
   if (followingDay) calendar.setUTCDate(calendar.getUTCDate() + 1)
   const time = new Date(calendar.toISOString().slice(0, -1)).getTime()
   // Near a clock change, use the exact local-day filter instead of assuming a continuous interval.
-  const dayMs = 86_400_000
   if (new Date(time - dayMs).getTimezoneOffset() !== new Date(time + dayMs).getTimezoneOffset()) return
   return time
 }
@@ -364,15 +374,19 @@ export function readGeneratedRecentHistory(
 
     const earliest = from ? localDayBoundary(from) : 0
     const latest = to ? localDayBoundary(to, true) : Infinity
-    if (earliest === undefined || latest === undefined) return
-    const first = Math.max(from || to ? 1 : 0, earliest)
-    if (latest <= first) return response
+    // The local date can repeat near midnight after some clock changes. Use
+    // a wider range and check exact dates when the offset is not stable.
+    const first = Math.max(from || to ? 1 : 0, earliest ?? Date.parse(from + 'T00:00:00Z') - dayMs)
+    const end = latest ?? Date.parse(to + 'T00:00:00Z') + 2 * dayMs
+    if (end <= first) return response
 
     const prefix = selectedDifficulty ? [game, status, selectedDifficulty] : [game, status]
     const chronological = recent.index(selectedDifficulty ? recentDifficultyIndex : recentIndex)
     // Time is negated so one forward read keeps newest dates and earliest session numbers first.
-    const range = IDBKeyRange.bound([...prefix, -(latest - 1), 0], [...prefix, -first, Infinity])
-    const keys = await readRequest<IDBValidKey[]>(chronological.getAllKeys(range, limit + 1))
+    const range = IDBKeyRange.bound([...prefix, -(end - 1), 0], [...prefix, -first, Infinity])
+    const keys = earliest === undefined || latest === undefined
+      ? await readRecentKeysByLocalDate(chronological, range, prefix, limit + 1, filters!)
+      : await readRequest<IDBValidKey[]>(chronological.getAllKeys(range, limit + 1))
     if (keys.length > limit) {
       keys.pop()
       result.hasMore = true
@@ -380,6 +394,68 @@ export function readGeneratedRecentHistory(
     const rows = await Promise.all(keys.map(key => readRequest<GeneratedHistoryRow>(history.get(key))))
     result.entries = rows.map(({ game: _game, status: _status, ...entry }) => entry)
     return response
+  })
+}
+
+async function readRecentKeysByLocalDate(
+  index: IDBIndex, range: IDBKeyRange, prefix: readonly string[], count: number, filters: NonNullable<NumberHistoryWindow['filters']>,
+) {
+  const keys: IDBValidKey[] = []
+  let page = range
+  while (keys.length < count) {
+    const rows = await readRequest<RecentHistoryRow[]>(index.getAll(page, migrationBatchSize))
+    for (const { game, difficulty, number, time } of rows) {
+      if (matchesSolvedNumberFilters({ game, difficulty, lastPlayed: -time }, filters)) keys.push([game, number])
+      if (keys.length === count) return keys
+    }
+    if (rows.length < migrationBatchSize) break
+    const { time, number } = rows[rows.length - 1]
+    page = IDBKeyRange.bound([...prefix, time, number], range.upper, true)
+  }
+  return keys
+}
+
+// Read the exact newest rows before the recent index is ready. Keep only the
+// requested window and one extra row, even if the worker is unavailable.
+export function scanGeneratedRecentHistory(
+  game: GeneratedNumberGame, status: NumberResultStatus, { revision, limit, filters }: NumberHistoryWindow,
+  cancelled: () => boolean,
+) {
+  return runTransaction('readonly', async (store, history) => {
+    const result: GeneratedNumberWindowResult = { entries: [], totals: new Map(), revision, hasAny: false }
+    const indexed = (await readCheckpoint(history, game))?.ready
+    const index = history.index(resultStatusIndex)
+    const excluded = filters?.variant || (filters?.game && filters.game !== game) || (filters?.from && filters.to && filters.to < filters.from) ||
+      (filters?.difficulty && !numberPuzzleDifficulties.some(value => value === filters.difficulty))
+    if (excluded && indexed) {
+      result.hasAny = await readRequest(index.getKey(statusRange(game, status))) !== undefined
+      return result
+    }
+
+    let after = 0
+    while (!cancelled()) {
+      const batch = indexed
+        ? await readRequest<GeneratedHistoryRow[]>(index.getAll(statusRange(game, status, after), migrationBatchSize))
+        : await readRequest<GeneratedRecord[]>(store.getAll(gameRange(game, after), migrationBatchSize))
+      for (const record of batch) {
+        const row = 'status' in record ? record : historyReaders[game](record)
+        if (row?.status !== status) continue
+        result.hasAny = true
+        if (excluded) return result
+        if (filters && !matchesSolvedNumberFilters(row, filters)) continue
+        const { game: _game, status: _status, ...entry } = row
+        result.entries.push(entry)
+      }
+      orderNumberHistory(result.entries)
+      result.entries.length = Math.min(limit + 1, result.entries.length)
+      if (batch.length < migrationBatchSize) break
+      after = batch[batch.length - 1].number
+    }
+    if (result.entries.length > limit) {
+      result.entries.pop()
+      result.hasMore = true
+    }
+    return result
   })
 }
 
@@ -448,11 +524,15 @@ export async function generatedNumberHistory(game: GeneratedNumberGame): Promise
     await prepareGeneratedHistory(game)
     return await readGeneratedRecords(game)
   } catch {
-    const { ids, positions, pending } = await readLegacy(game)
-    return Array.from(ids, (id, index) => ({
-      game, id, number: index + 1, progress: pending.get(id)?.progress ?? positions.get(id)?.progress,
-    }))
+    return readLegacyGeneratedHistory(game)
   }
+}
+
+export async function readLegacyGeneratedHistory(game: GeneratedNumberGame): Promise<GeneratedRecord[]> {
+  const { ids, positions, pending } = await readLegacy(game)
+  return Array.from(ids, (id, index) => ({
+    game, id, number: index + 1, progress: pending.get(id)?.progress ?? positions.get(id)?.progress,
+  }))
 }
 
 // The worker reads immutable identities. The main thread prepares legacy saves before it starts the worker.
@@ -478,11 +558,7 @@ async function writeGeneratedRecord(game: GeneratedNumberGame, id: string, progr
     const superseded = staged !== undefined && staged !== pending
     const next = superseded ? undefined : progress ?? parseSavedNumberProgress(pending) ?? undefined
     if (existing && !next) return { record: existing, consumed: null }
-    let number = existing?.number
-    if (number === undefined) {
-      const last = await readRequest(store.openKeyCursor(gameRange(game), 'prev'))
-      number = last ? (last.primaryKey as [GeneratedNumberGame, number])[1] + 1 : 1
-    }
+    const number = existing?.number ?? (await lastGeneratedNumber(store, game)) + 1
     const record: GeneratedRecord = { game, id, number, progress: next && numberProgressWithClock(next, existing?.progress) }
     store.put(record)
     if (!existing) saveSession(sessions, record)

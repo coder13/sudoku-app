@@ -1,10 +1,12 @@
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
 
-export type NumberPosition = { values: number[]; notes: number[] }
-export type NumberMove = readonly [cell: number, value: number, notes: number]
+export type NumberPosition = { values: number[]; notes: number[]; cornerNotes?: number[]; annotationsHidden?: boolean }
+export type NumberCellMove = readonly [cell: number, value: number, notes: number, cornerNotes?: number]
+// A boolean move records whether the imported player annotations are hidden.
+export type NumberMove = NumberCellMove | boolean
 export type NumberClock = { elapsed: number; finished?: true } | 'untimed'
 export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[]; clock?: NumberClock; lastPlayed?: number }
-export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown; clock?: unknown; lastPlayed?: unknown }
+export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; cornerNotes?: unknown; annotationsHidden?: unknown; past?: unknown; future?: unknown; clock?: unknown; lastPlayed?: unknown }
 export const NUMBER_HISTORY_SIZE = 64
 
 export function readNumberClock(value: unknown): NumberClock | undefined {
@@ -34,7 +36,7 @@ export function advanceNumberClock(clock: NumberClock | undefined, change: numbe
 }
 
 export function hasNumberMoves({ position, past, future }: NumberProgress) {
-  return Boolean(past.length || future.length || position.values.some(Boolean) || position.notes.some(Boolean))
+  return Boolean(past.length || future.length || position.values.some(Boolean) || position.notes.some(Boolean) || position.cornerNotes?.some(Boolean) || position.annotationsHidden === false)
 }
 
 export function emptyNumberPosition(cells: number): NumberPosition {
@@ -69,11 +71,13 @@ function readNumberHistory(value: unknown, editable: readonly boolean[], maxValu
   const recent = value.slice(-NUMBER_HISTORY_SIZE)
   for (let index = 0; index < recent.length; index++) {
     const move = recent[index]
-    if (!Array.isArray(move) || move.length !== 3) return []
-    const [cell, digit, notes] = move
+    if (typeof move === 'boolean') continue
+    if (!Array.isArray(move) || move.length !== 3 && move.length !== 4) return []
+    const [cell, digit, notes, corner] = move
     if (!validNumberValue(cell, editable.length - 1) || !editable[cell] ||
-      !validNumberValue(digit, maxValue) || !validNumberValue(notes, maxNotes)) return []
-    recent[index] = [cell, digit, notes]
+      !validNumberValue(digit, maxValue) || !validNumberValue(notes, maxNotes) ||
+      move.length === 4 && !validNumberValue(corner, maxNotes)) return []
+    recent[index] = corner ? [cell, digit, notes, corner] : [cell, digit, notes]
   }
   return recent
 }
@@ -88,7 +92,10 @@ export function numberValuesWithMoves(saved: SavedNumberProgress, editable: read
     const notes = saved.notes[index]
     return write && validNumberValue(notes, maxNotes) && notes > 0
   })
-  if (hasNotes || readNumberHistory(saved.past, editable, maxValue, maxNotes).length ||
+  const corner = Array.isArray(saved.cornerNotes) ? saved.cornerNotes : undefined
+  const hasCornerNotes = corner?.length === editable.length && editable.some((write, index) =>
+    write && validNumberValue(corner[index], maxNotes) && corner[index] > 0)
+  if (hasNotes || hasCornerNotes || saved.annotationsHidden === false || readNumberHistory(saved.past, editable, maxValue, maxNotes).length ||
     readNumberHistory(saved.future, editable, maxValue, maxNotes).length) return values
   return null
 }
@@ -97,13 +104,18 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
   const values = readNumberValues(saved, editable, maxValue)
   if (!values) return null
   const maxNotes = 2 ** maxValue - 1
-  const { notes, past, future } = saved
+  const { notes, cornerNotes, past, future } = saved
+  const readNotes = (marks: unknown[]) =>
+    editable.map((write, index) => write && validNumberValue(marks[index], maxNotes) ? marks[index] : 0)
+  const corner = Array.isArray(cornerNotes) && cornerNotes.length === editable.length ? readNotes(cornerNotes) : undefined
   const clock = readNumberClock(saved.clock)
   const lastPlayed = readNumberLastPlayed(saved.lastPlayed)
   return {
     position: {
       values,
-      notes: editable.map((write, index) => write && validNumberValue(notes[index], maxNotes) ? notes[index] : 0),
+      notes: readNotes(notes),
+      ...(corner?.some(Boolean) && { cornerNotes: corner }),
+      ...(typeof saved.annotationsHidden === 'boolean' && { annotationsHidden: saved.annotationsHidden }),
     },
     past: readNumberHistory(past, editable, maxValue, maxNotes),
     future: readNumberHistory(future, editable, maxValue, maxNotes),
@@ -151,4 +163,16 @@ export function rememberNumberDifficulty(game: string, difficulty: NumberPuzzleD
   try {
     localStorage.setItem(`${game}.difficulty.v1`, difficulty)
   } catch { /* The picker works without storage. */ }
+}
+
+export function readNumberPause(key: string) {
+  try { return localStorage.getItem(key + '.paused') === '1' }
+  catch { return false }
+}
+
+export function saveNumberPause(key: string, paused: boolean) {
+  try {
+    if (paused) localStorage.setItem(key + '.paused', '1')
+    else localStorage.removeItem(key + '.paused')
+  } catch { /* The pause control still works for this page. */ }
 }

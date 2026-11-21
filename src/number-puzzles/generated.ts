@@ -3,6 +3,9 @@ import type { CalcudokuRecipe } from '../calcudoku/generator.ts'
 import { createKakuro } from '../kakuro/engine.ts'
 import type { KakuroRecipe } from '../kakuro/generator.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
+import { generatedNumberToken } from './generated-token.ts'
+
+export { generatedNumberToken } from './generated-token.ts'
 
 export const RECENT_GENERATED_PUZZLE_LIMIT = 150
 
@@ -10,12 +13,6 @@ export type GeneratedNumberGame = 'kakuro' | 'calcudoku'
 type GeneratedKakuro = { game: 'kakuro'; difficulty: NumberPuzzleDifficulty; recipe: KakuroRecipe }
 type GeneratedCalcudoku = { game: 'calcudoku'; difficulty: NumberPuzzleDifficulty; recipe: CalcudokuRecipe }
 export type GeneratedNumberPuzzle = GeneratedKakuro | GeneratedCalcudoku
-
-const tokenPattern = /^(?:v1\.[A-Za-z0-9_-]{1,1800}|v2\.[A-Za-z0-9_-]{1,1800}\.[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/
-
-export function generatedNumberToken(value: unknown): string | undefined {
-  return typeof value === 'string' && tokenPattern.test(value) ? value : undefined
-}
 
 export function generatedNumberPayload(value: unknown): string | undefined {
   const token = generatedNumberToken(value)
@@ -38,6 +35,9 @@ export function decodeGeneratedNumberPuzzle(token: string, game: GeneratedNumber
   return encoded ? decodeGeneratedNumberPayload(encoded, game) : null
 }
 
+export function decodeGeneratedNumberPayload(encoded: string, game: 'kakuro'): GeneratedKakuro | null
+export function decodeGeneratedNumberPayload(encoded: string, game: 'calcudoku'): GeneratedCalcudoku | null
+export function decodeGeneratedNumberPayload(encoded: string, game: GeneratedNumberGame): GeneratedNumberPuzzle | null
 export function decodeGeneratedNumberPayload(encoded: string, game: GeneratedNumberGame): GeneratedNumberPuzzle | null {
   try {
     const payload: unknown = JSON.parse(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')))

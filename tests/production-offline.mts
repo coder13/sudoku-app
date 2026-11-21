@@ -42,6 +42,32 @@ test('the offline shell includes the same engine binary as the validated source 
   assert.deepEqual(await readFile(new URL('.' + packaged[0], client)), await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url)))
 })
 
+test('startup pages defer standalone engines to game routes', async () => {
+  const engineMessages = {
+    kakuro: 'Kakuro needs a rectangular board',
+    calcudoku: 'Invalid Calcudoku size.',
+    futoshiki: 'An inequality must join two adjacent cells.',
+    hidato: 'Use a rectangular Hidato board',
+    rullo: 'Invalid Rullo grid',
+  }
+  const scripts = new Map<string, Promise<string>>()
+  async function preloadedScripts(page: string) {
+    const html = await readFile(new URL(page, client), 'utf8')
+    return Promise.all([...html.matchAll(/rel="modulepreload" href="([^"]+\.js)"/g)].map(([, path]) => {
+      if (!scripts.has(path)) scripts.set(path, readFile(new URL('.' + path, client), 'utf8'))
+      return scripts.get(path)!
+    }))
+  }
+  for (const [game, message] of Object.entries(engineMessages)) {
+    const play = await preloadedScripts(`puzzles/${game}/easy-1/index.html`)
+    assert.ok(play.some(script => script.includes(message)), `The ${game} Play page preloads its engine`)
+    for (const page of ['index.html', 'puzzles/new/index.html', 'puzzles/games/index.html', 'import/index.html']) {
+      const startup = await preloadedScripts(page)
+      assert.ok(!startup.some(script => script.includes(message)), `${page} defers the ${game} engine`)
+    }
+  }
+})
+
 test('each Kakuro puzzle has a precached board for direct and offline opens', async () => {
   for (const { id, puzzle } of kakuroCatalog) {
     const path = `/puzzles/kakuro/${id}/index.html`
@@ -70,6 +96,11 @@ test('generated Kakuro and Calcudoku links have precached shells and workers', a
   }
   assert.ok(assets.some(path => /generation\.worker-[^/]+\.js$/.test(path)))
   assert.ok(assets.some(path => /history\.worker-[^/]+\.js$/.test(path)))
+})
+
+test('imported number puzzle links have precached Play shells', () => {
+  assert.ok(cached.has('/puzzles/futoshiki/imported/index.html'))
+  assert.ok(cached.has('/puzzles/calcudoku/imported/index.html'))
 })
 
 test('each Futoshiki puzzle precaches every inequality sign', async () => {
