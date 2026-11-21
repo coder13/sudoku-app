@@ -112,6 +112,7 @@ export function readGame(id: string, data: string | null): Game | undefined {
       sources.includes(value.source) && isGridText(value.givens, grid) &&
       (value.variant === undefined || validVariantSave(value.variant, value.givens)) &&
       (value.whispersGuide === undefined || value.whispersGuide === true && value.variant?.id === 'whispers') &&
+      (value.givenCellColors === undefined || !draft && !value.grid && !value.variant && validImportedCellColors(value.givenCellColors)) &&
       validPosition(value.position, grid, draft, cageDraft) &&
       Array.isArray(value.past) && value.past.every(position => validPosition(position, grid, draft, cageDraft)) &&
       Array.isArray(value.future) && value.future.every(position => validPosition(position, grid, draft, cageDraft)) &&

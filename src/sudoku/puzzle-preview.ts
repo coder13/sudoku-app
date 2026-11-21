@@ -19,9 +19,10 @@ export type PuzzlePreview = {
   hasProgress?: true
 }
 
-export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules'>) {
+export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules' | 'givenCellColors'>) {
   const identity = puzzleIdentity(imported)
-  return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity)
+  return games.find(game => game.source !== 'draft' && puzzleIdentity(game) === identity &&
+    sameImportedCellColors(game.givenCellColors, imported.givenCellColors))
 }
 
 export function findImportAttempt(games: readonly Game[], { game, hasProgress }: PuzzlePreview): Game | undefined {
@@ -38,6 +39,7 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
     sameCandidateColors(candidateColors, saved.position.candidateColors) &&
     sameCandidateColors(importedCandidateColors, saved.position.importedCandidateColors) &&
     sameImportedDrawings(importedDrawings, saved.position.importedDrawings) &&
+    sameImportedCellColors(game.givenCellColors, saved.givenCellColors) &&
     puzzleIdentity(saved) === identity)
 }
 
@@ -59,7 +61,8 @@ function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor, authoredSolution, progress, whispersGuide } = imported
+  const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
+    authoredSolution, progress, whispersGuide, givenCellColors } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' && !variant.fog ? 'Imported mixed-rule puzzle'
@@ -68,7 +71,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
         : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
         : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
   let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId,
-    ...(whispersGuide && { whispersGuide }) }
+    ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }) }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
     game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })

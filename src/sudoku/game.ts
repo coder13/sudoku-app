@@ -56,6 +56,7 @@ export type Game = {
   collection?: CollectionReference
   sharedPuzzleId?: string
   whispersGuide?: true
+  givenCellColors?: ImportedCellColors
   difficulty?: Difficulty | null
   score?: number | null
   fogRatingVersion?: number
@@ -133,6 +134,7 @@ export function restartGame(game: Game): Game {
     collection: game.collection,
     sharedPuzzleId: game.sharedPuzzleId,
     ...(game.whispersGuide && { whispersGuide: true }),
+    ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
     score: game.score,
     ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
     variant: game.variant,

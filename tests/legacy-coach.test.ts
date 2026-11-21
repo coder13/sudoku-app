@@ -43,6 +43,7 @@ test('legacy rule records produce the same typed puzzle as modern exports in the
   const expected = await detectPuzzle(modern)
   assert.equal(expected.variant?.id, 'mixed')
   for (const version of [4, 5, 6]) assert.deepEqual(await detectPuzzle(`SCv${version}_yy${raw}_`), expected)
+  assert.deepEqual(await detectPuzzle(`SCv3_yyyyyyy0Ac80d0_0Ac80d0_0Ac80d0___y${raw}`), expected)
 })
 
 test('default playing fields, short macros and both repeat syntaxes retain the puzzle definition', async () => {
@@ -67,6 +68,7 @@ test('legacy input rejects oversized or malformed expansions, unsupported rules 
     'SCv4_0a999999b_yR30_', 'SCv4_0a0b_yR30_', 'SCv4_a81b_yR30_', 'SCv4_0(81_yR30_',
     'SCv4_yyR30I0_', 'SCv4_yyR11I0I81_', 'SCv4_yyR14I0I1P1P2_', 'SCv4_yyR40I0I1_', 'SCv4_yyR99_',
     'SCv4_yyR30R_', 'SCv4_yyR30_META_{}', 'SCv6_32_0000',
+    'SCv3_yyR30_', 'SCv3_yy90a80b_', 'SCv3_y90a80b_',
   ]) await assert.rejects(detectPuzzle(code), /unsupported format|not supported yet/, code)
 
   await assert.rejects(detectPuzzle('SCv4_yyR12I0I1I2_'), /Consecutive Line/)
