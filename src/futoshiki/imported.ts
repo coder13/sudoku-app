@@ -1,3 +1,4 @@
+import { encodeLatinDiagonals, readLatinDiagonals } from '../latin/diagonals.ts'
 import { encodeAdjacentClues, readAdjacentClues } from '../latin/adjacent-clues.ts'
 import { encodeNumberImportAnnotations, hasPlayerNumberAnnotations, readNumberImportAnnotations, type NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
 import { encodeNumberImportPosition, readNumberImportPosition, withImportedNumberPosition } from '../number-puzzles/imported-position.ts'
@@ -16,16 +17,16 @@ export { importedFutoshikiToken, isFutoshikiSize, type FutoshikiSize } from './i
 
 export function createImportedFutoshiki(
   size: FutoshikiSize, givens: string, inequalities: readonly Inequality[],
-  { position, annotations, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
+  { position, annotations, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals }: LatinClues & { position?: NumberPosition; annotations?: NumberImportAnnotations } = {},
 ): FutoshikiEntry {
-  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing })
+  const puzzle = createFutoshiki(size, Array.from(givens, Number), inequalities, { adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing, diagonals })
   // Keep the one-character indices in existing links. Larger boards need two.
   const wide = size > 6
   const encoded = inequalities
     .map(({ less, greater }) => [less, greater].map(cell => cell.toString(36).padStart(wide ? 2 : 1, '0')).join(''))
     .sort().join('')
   const progress = withImportedNumberPosition(position, puzzle.givens, hasPlayerNumberAnnotations(annotations))
-  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinCellGroups('r', extraRegions)}${encodeLatinCellGroups('u', unnumberedCages)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${antiKing ? '.j1' : ''}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
+  return { id: `f${wide ? 2 : 1}.${givens}.${encoded}${encodeAdjacentClues(adjacentClues)}${encodeWhispers(whispers)}${encodeLatinPathClues(pathClues)}${encodeLatinCellGroups('r', extraRegions)}${encodeLatinCellGroups('u', unnumberedCages)}${globalEntropy ? '.e1' : ''}${encodeLatinQuadruples(quadruples)}${encodeLatinParity(size, parity)}${antiKnight ? '.k1' : ''}${antiKing ? '.j1' : ''}${encodeLatinDiagonals(diagonals)}${encodeNumberImportPosition(progress.initialPosition)}${encodeNumberImportAnnotations(annotations)}`,
     puzzle, number: 0, difficulty: difficultyBySize[size], imported: true, annotations, ...progress }
 }
 
@@ -40,7 +41,7 @@ export function verifiedImportedFutoshiki(entry: FutoshikiEntry) {
 export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined {
   const data = matchImportedFutoshiki(token)
   if (!data) return
-  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, unnumbered, entropy, quadruples: quadClues, parity: parityMarks, antiKnight, antiKing, progress, marks } = data
+  const { size, givens, edges, indexLength, adjacent, whispers, lines, regions, unnumbered, entropy, quadruples: quadClues, parity: parityMarks, antiKnight, antiKing, diagonalMask, progress, marks } = data
   const inequalities: Inequality[] = []
   for (let index = 0; index < edges.length; index += 2 * indexLength) {
     inequalities.push({
@@ -62,6 +63,7 @@ export function readImportedFutoshiki(token: string): FutoshikiEntry | undefined
       parity: parityMarks ? readLatinParity(size, parityMarks) : undefined,
       antiKnight: antiKnight ? true : undefined,
       antiKing: antiKing ? true : undefined,
+      diagonals: readLatinDiagonals(diagonalMask),
     })
     if (entry.id === token) return entry
   } catch { /* Invalid import link. */ }

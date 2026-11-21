@@ -481,7 +481,7 @@ function needsStandaloneSevenGrid(layers: readonly unknown[]) {
 function isCoachBoxlessLayer(layer: unknown) {
   return isCoachBoxlessOnlyLayer(layer) || record(layer) && (layer.type === 'difference' || layer.type === 'ratio' ||
     layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban' || layer.type === 'region' ||
-    layer.type === 'odd' || layer.type === 'even')
+    layer.type === 'odd' || layer.type === 'even' || layer.type === 'diagonalNegative' || layer.type === 'diagonalPositive')
 }
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
@@ -835,6 +835,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   let globalEntropy: true | undefined
   let antiKnight: true | undefined
   let antiKing: true | undefined
+  const diagonals = new Set<'main' | 'anti'>()
   for (const layer of layers) {
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
@@ -851,6 +852,13 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     }
     if (layer.type === 'quadruple') quadruples.push(...readCoachQuadruples(layer, size))
     const type = layer.type
+    if (type === 'diagonalNegative' || type === 'diagonalPositive') {
+      if (hasData(layer.settings) || !Array.isArray(layer.segments) || layer.segments.length) {
+        throw new Error('This Sudoku Coach diagonal rule uses unsupported cells or settings.')
+      }
+      diagonals.add(type === 'diagonalNegative' ? 'main' : 'anti')
+      continue
+    }
     if (type === 'antiKnight' || type === 'antiKing') {
       if (hasData(layer.settings) || !Array.isArray(layer.segments) || layer.segments.length) {
         const name = type === 'antiKing' ? 'Anti-King' : 'Anti-Knight'
@@ -905,6 +913,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     ...(extraRegions.length && { extraRegions }), ...(unnumberedCages.length && { unnumberedCages }), globalEntropy, ...(quadruples.length && { quadruples }),
     ...(parity.length && { parity: parity.sort((a, b) => a.cell - b.cell) }),
     ...(antiKnight && { antiKnight }), ...(antiKing && { antiKing }),
+    ...(diagonals.size && { diagonals: (['main', 'anti'] as const).filter(diagonal => diagonals.has(diagonal)) }),
   }
 }
 

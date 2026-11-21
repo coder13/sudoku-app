@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fn, waitFor } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
 import calcudokuCoach from '../../tests/fixtures/calcudoku-coach.json'
+import kingX from '../../tests/fixtures/coach-boxless-king-x.json'
 import futoshikiCoach from '../../tests/fixtures/futoshiki-coach.json'
 import diamonds from '../../tests/fixtures/sized-sudokupad-row-column-sum.json'
 import antiSum from '../../tests/fixtures/sized-sudokupad-anti-sum.json'
@@ -138,6 +139,24 @@ export const CalcudokuPreview: Story = {
     await expect(board.querySelector('[data-cell="0"]')).toHaveAccessibleName(/6 times cage at R1C1, green/)
     await expect(board.querySelector('[data-cell="34"]')).toHaveAccessibleName(/given 4/)
     await expect(canvas.getByText('The 6 cage at R2C3 uses multiplication.')).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
+  },
+}
+
+
+export const BoxlessKingXPreview: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: args => <PreviewRouter shell><ImportPuzzle {...args} fullPage /></PreviewRouter>,
+  play: async ({ canvas, userEvent }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Puzzle text or link' })
+    await userEvent.click(input)
+    await userEvent.paste(kingX.code)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
+    const board = await canvas.findByRole('group', { name: 'Futoshiki puzzle preview' })
+    await expect(board.querySelectorAll('.variant-diagonal')).toHaveLength(2)
+    await expect(board.querySelector('[data-cell="40"]')).toHaveAccessibleName(/top-left to bottom-right diagonal.*top-right to bottom-left diagonal/)
+    await expect(board.querySelector('[data-cell="77"]')).toHaveAccessibleName(/odd circle/)
+    await expect(canvas.getByText('Cells that touch at a corner must have different digits.')).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Start playing' })).toBeVisible()
   },
 }

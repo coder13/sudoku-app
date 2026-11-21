@@ -20,7 +20,7 @@ const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) +
 const pairKey = (a: number, b: number, size = 9) => Math.min(a, b) * size ** 2 + Math.max(a, b)
 const points = (cells: readonly number[], size = 9) => cells.map(cell => center(cell, size).join(',')).join(' ')
 
-function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
+export function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
   return <line className="variant-diagonal" x1={diagonal === 'main' ? 0 : size} y1="0"
     x2={diagonal === 'main' ? size : 0} y2={size} />
 }

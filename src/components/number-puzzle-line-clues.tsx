@@ -1,4 +1,5 @@
 import type { Inequality } from '../futoshiki/inequality-rules'
+import { latinDiagonalNames, latinDiagonalTechnique } from '../latin/diagonals'
 import { cellLabel } from '../latin/engine'
 import { lockoutMinimumGap } from '../latin/endpoint-lines'
 import { extraRegionNote, extraRegionTechnique, unnumberedCageNote, unnumberedCageTechnique } from '../latin/extra-regions'
@@ -8,6 +9,7 @@ import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clu
 import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { regionsInsideArtwork } from '../number-puzzles/authored-region-borders'
+import { gridDiagonalCells } from '../sudoku/grid'
 import { antiKingNote, antiKingTechnique } from '../sudoku/anti-king'
 import { antiKnightNote, antiKnightTechnique } from '../sudoku/anti-knight'
 import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
@@ -18,15 +20,15 @@ import { ParityClue } from './ParityClue'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { QuadrupleClue } from './QuadrupleClue'
 import { RenbanClue } from './RenbanClue'
-import { Cage, ExtraRegion } from './VariantClues'
+import { Cage, DiagonalClue, ExtraRegion } from './VariantClues'
 import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
   size: number, inequalities: readonly Inequality[],
-  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], unnumberedCages = [], globalEntropy, quadruples = [], parity = [], antiKnight, antiKing }: LatinClues,
+  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], unnumberedCages = [], globalEntropy, quadruples = [], parity = [], antiKnight, antiKing, diagonals = [] }: LatinClues,
   artwork?: readonly AuthoredCornerPath[],
 ) {
-  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || unnumberedCages.length > 0 || quadruples.length > 0 || parity.length > 0
+  const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || unnumberedCages.length > 0 || quadruples.length > 0 || parity.length > 0 || diagonals.length > 0
   if (!hasDrawing && !globalEntropy && !antiKnight && !antiKing) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
@@ -36,6 +38,9 @@ export function numberPuzzleClues(
     const current = labels.get(cell) ?? new Set()
     current.add(text)
     labels.set(cell, current)
+  }
+  for (const diagonal of diagonals) {
+    for (const cell of gridDiagonalCells(size, diagonal)) addLabel(cell, latinDiagonalNames[diagonal])
   }
   const odd: number[] = [], even: number[] = []
   for (const { cell, parity: kind } of parity) {
@@ -136,6 +141,7 @@ export function numberPuzzleClues(
   const regionCells = extraRegions.flat()
   const regionsOverlap = new Set(regionCells).size !== regionCells.length
   const drawing = hasDrawing ? <svg className="number-puzzle-line-clues" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+    {diagonals.map(diagonal => <DiagonalClue key={diagonal} diagonal={diagonal} size={size} />)}
     {odd.length > 0 && <ParityClue parity="odd" cells={odd} size={size} />}
     {even.length > 0 && <ParityClue parity="even" cells={even} size={size} />}
     {extraRegions.map((cells, index) => !artworkKeys.has(regionKeys[index]) && <ExtraRegion key={`region-${index}`} cells={cells} size={size} outlineOnly={regionsOverlap} />)}
@@ -161,6 +167,7 @@ export function numberPuzzleClues(
   return {
     drawing, labels,
     notes: [
+      ...diagonals.map(diagonal => `Place each digit from 1 to ${size} once on the ${latinDiagonalNames[diagonal]}.`),
       ...(antiKing ? [antiKingNote] : []),
       ...(antiKnight ? [antiKnightNote] : []),
       ...(odd.length ? ['A circle marks an odd digit.'] : []),
@@ -173,6 +180,7 @@ export function numberPuzzleClues(
       ...Array.from(types, type => pathClueNotes[type]),
     ],
     techniques: [
+      ...(diagonals.length ? [latinDiagonalTechnique] : []),
       ...(antiKing ? [antiKingTechnique] : []),
       ...(antiKnight ? [antiKnightTechnique] : []),
       ...(parity.length ? [latinParityTechnique] : []),

@@ -10,6 +10,7 @@ import { latinParityTechnique, type LatinParity } from './parity.ts'
 import { renbanRule, renbanRuleNote, renbanTechnique } from './renban.ts'
 import type { WhisperLine } from './whispers.ts'
 import { maxPathCells, maxPathClueTokenLength } from '../number-puzzles/import-token-limits.ts'
+import { latinDiagonalTechnique, type LatinDiagonal } from './diagonals.ts'
 import { antiKingTechnique } from '../sudoku/anti-king.ts'
 import { antiKnightTechnique } from '../sudoku/anti-knight.ts'
 import { quadrupleTechnique, type Quadruple } from '../sudoku/quadruple.ts'
@@ -36,6 +37,7 @@ export type LatinClues = {
   parity?: readonly LatinParity[]
   antiKnight?: true
   antiKing?: true
+  diagonals?: readonly LatinDiagonal[]
 }
 
 export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, 'pill-arrow': pillArrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique, entropic: entropicTechnique } as const
@@ -46,6 +48,7 @@ export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'global-entropy') return globalEntropyTechnique
   if (kind === 'quadruple') return quadrupleTechnique
   if (kind === 'parity') return latinParityTechnique
+  if (kind === 'diagonal') return latinDiagonalTechnique
   if (kind === 'anti-king') return antiKingTechnique
   if (kind === 'anti-knight') return antiKnightTechnique
   if (kind && Object.hasOwn(pathClueNames, kind)) return pathClueNames[kind as LatinPathClueType]

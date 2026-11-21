@@ -6,7 +6,7 @@ type RuleEvidence = {
 }
 
 export type LatinRule = RuleEvidence & {
-  kind?: 'line' | 'extra-region' | 'unnumbered-cage' | 'global-entropy' | 'quadruple' | 'parity' | 'anti-knight' | 'anti-king' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'entropic' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
+  kind?: 'line' | 'extra-region' | 'unnumbered-cage' | 'global-entropy' | 'quadruple' | 'parity' | 'anti-knight' | 'anti-king' | 'diagonal' | 'adjacent-clue' | 'whispers' | 'palindrome' | 'consecutive' | 'thermometer' | 'arrow' | 'pill-arrow' | 'renban' | 'lockout' | 'between' | 'entropic' | 'contradiction' | 'line-total' | 'cage-line' | 'x-wing' | 'naked-pair' | 'naked-triple' | 'inequality' | 'inequality-line' | 'inequality-bound' | 'inequality-chain-line' | 'line-digit-bound' | 'inequality-line-matching'
   // Derived rules are used for solving and hints. The board check uses the basic rules.
   afterBasic?: true
   support: (domains: readonly number[], explain?: (evidence: RuleEvidence) => void) => readonly number[] | null
@@ -200,7 +200,7 @@ function collectLatinHints(
 function isForcingClue({ kind }: LatinReason) {
   return kind === 'whispers' || kind === 'palindrome' || kind === 'consecutive' ||
     kind === 'thermometer' || kind === 'arrow' || kind === 'pill-arrow' || kind === 'renban' || kind === 'lockout' || kind === 'between' ||
-    kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple' || kind === 'parity'
+    kind === 'anti-king' || kind === 'diagonal' || kind === 'extra-region' || kind === 'global-entropy' || kind === 'quadruple' || kind === 'parity'
 }
 
 export const latinContradictionTechnique = 'Contradiction'
@@ -211,8 +211,10 @@ type TrialChange = {
 
 function tryCandidatePlacements(puzzle: LatinPuzzle, domains: readonly number[], dependencies: readonly (Set<LatinReason> | undefined)[]) {
   // Limit the extra work when none of the direct rules gives a placement.
-  let trials = 16
-  const maxCandidates = puzzle.rules.some(rule => rule.kind === 'palindrome' || rule.kind === 'consecutive') ? 3 : 2
+  // A diagonal can link distant cells. Include three-candidate branches for these puzzles.
+  const hasDiagonal = puzzle.rules.some(rule => rule.kind === 'diagonal')
+  let trials = hasDiagonal ? 48 : 16
+  const maxCandidates = puzzle.rules.some(rule => rule.kind === 'palindrome' || rule.kind === 'consecutive') || hasDiagonal ? 3 : 2
   for (let count = 2; count <= maxCandidates; count++) for (const [cell, mask] of domains.entries()) {
     if (counts[mask] !== count) continue
     let remaining = mask
@@ -251,15 +253,20 @@ function tryCandidatePlacements(puzzle: LatinPuzzle, domains: readonly number[],
 function trialConflict(puzzle: LatinPuzzle, domains: readonly number[], cell: number, tested: number) {
   const trial = domains.slice()
   trial[cell] = tested
+  // Build a proof only when the assumption actually causes a conflict.
+  if (!propagate(puzzle, trial)) return
+
   const changes: Array<TrialChange | undefined> = []
   let order = 0
-  const conflict = propagate(puzzle, trial, (changed, rule, _depth, supported) => {
+  const traced = domains.slice()
+  traced[cell] = tested
+  const conflict = propagate(puzzle, traced, (changed, rule, _depth, supported) => {
     const causes = new Set([...(rule.sourceCells ?? rule.cells), changed].flatMap(peer => changes[peer] ?? []))
     changes[changed] = { cell: changed, rule, mask: supported, order: order++, causes: [...causes] }
   })
   if (!conflict) return
 
-  const result = describeTrialConflict(puzzle.size, conflict, trial)
+  const result = describeTrialConflict(puzzle.size, conflict, traced)
   const proof = new Set(result.cells.flatMap(peer => changes[peer] ?? []))
   for (const change of proof) for (const prior of change.causes) proof.add(prior)
   if (!isForcingClue(conflict) && ![...proof].some(change => isForcingClue(change.rule))) return
