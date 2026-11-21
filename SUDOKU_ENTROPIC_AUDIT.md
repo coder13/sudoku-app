@@ -79,6 +79,7 @@ Scoring version 12 adds two selectable deductions to the Entropic app profile. *
 | --- | --- | --- |
 | Hyk5 | 28 steps, 2,871 points, partial | 144 steps, 3,345 points, Hard |
 | Hafj | 18 steps, 444 points, partial | 169 steps, 4,081 points, Hard |
+| 220V | 32 steps, 1,045 points, partial | 82 steps, 2,895 points, partial |
 | HCHW | 202 steps, 4,665 points, Medium | 202 steps, 4,665 points, Medium |
 
 The new proof types record source rule indices, phase order, candidate masks, and the houses or pair clues used to rule out each order. Independent digit enumeration checks each new proof on the published walkthroughs. The same evidence is available in selected and paged hints, Technique Finder, replay, Learn, and three practice exercises per technique. The unscoped app paths and the default native paths keep their earlier logical results. API profiles can request the new deductions on Modular lines.
@@ -91,4 +92,4 @@ Five warmed paired app Wasm samples gave these median CPU times. The shared high
 | Hafj | 0.89 → 0.93 ms | 98.67 → 5.67 ms | 3.74 → 1.66 ms |
 | HCHW | 0.18 → 0.19 ms | 4.67 → 4.60 ms | 0.17 → 0.17 ms |
 
-Hyk5 reached 6.75 MiB of Wasm linear memory before and 2.31 MiB after. The measured application Wasm grew by about 91 KiB. The generation checks retain thirty Medium Entropic and thirty Medium Modular recipes and their recorded scores. Hyk5 and Hafj retain both published exact completions. [Existing performance tracker](https://github.com/coder13/sudoku-app/issues/88)
+Hyk5 reached 6.75 MiB of Wasm linear memory before and 2.31 MiB after. The measured application Wasm grew by about 91 KiB. The generation checks retain thirty Medium Entropic and thirty Medium Modular recipes and their recorded scores. Hyk5 and Hafj each retain their unique published solution. [Existing performance tracker](https://github.com/coder13/sudoku-app/issues/88)
