@@ -8,6 +8,7 @@ import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clu
 import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { regionsInsideArtwork } from '../number-puzzles/authored-region-borders'
+import { antiKingNote, antiKingTechnique } from '../sudoku/anti-king'
 import { antiKnightNote, antiKnightTechnique } from '../sudoku/anti-knight'
 import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
 import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
@@ -22,11 +23,11 @@ import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
   size: number, inequalities: readonly Inequality[],
-  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], unnumberedCages = [], globalEntropy, quadruples = [], parity = [], antiKnight }: LatinClues,
+  { adjacentClues, whispers = [], pathClues = [], extraRegions = [], unnumberedCages = [], globalEntropy, quadruples = [], parity = [], antiKnight, antiKing }: LatinClues,
   artwork?: readonly AuthoredCornerPath[],
 ) {
   const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || unnumberedCages.length > 0 || quadruples.length > 0 || parity.length > 0
-  if (!hasDrawing && !globalEntropy && !antiKnight) return
+  if (!hasDrawing && !globalEntropy && !antiKnight && !antiKing) return
   const key = (a: number, b: number) => Math.min(a, b) * size ** 2 + Math.max(a, b)
   const markedEdges = new Set(inequalities.map(({ less, greater }) => key(less, greater)))
   for (const { cells: [a, b] } of adjacentClues?.marks ?? []) markedEdges.add(key(a, b))
@@ -160,6 +161,7 @@ export function numberPuzzleClues(
   return {
     drawing, labels,
     notes: [
+      ...(antiKing ? [antiKingNote] : []),
       ...(antiKnight ? [antiKnightNote] : []),
       ...(odd.length ? ['A circle marks an odd digit.'] : []),
       ...(even.length ? ['A square marks an even digit.'] : []),
@@ -171,6 +173,7 @@ export function numberPuzzleClues(
       ...Array.from(types, type => pathClueNotes[type]),
     ],
     techniques: [
+      ...(antiKing ? [antiKingTechnique] : []),
       ...(antiKnight ? [antiKnightTechnique] : []),
       ...(parity.length ? [latinParityTechnique] : []),
       ...(quadruples.length ? [quadrupleTechnique] : []),

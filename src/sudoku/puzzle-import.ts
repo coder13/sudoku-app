@@ -467,7 +467,7 @@ function coachUnnumberedCages(layer: Record<string, unknown>) {
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'entropicLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'antiKnight' || layer.type === 'antiKing' || layer.type === 'entropicLine' || layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'cage' && Array.isArray(layer.segments) && layer.segments.length > 0 && layer.segments.every(isUnnumberedCoachCage)) ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
@@ -834,6 +834,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
   const parity: LatinParity[] = []
   let globalEntropy: true | undefined
   let antiKnight: true | undefined
+  let antiKing: true | undefined
   for (const layer of layers) {
     if (!record(layer)) continue
     if (layer.type === 'whisper') whispers.push(...readCoachWhispers(layer, size))
@@ -850,11 +851,13 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     }
     if (layer.type === 'quadruple') quadruples.push(...readCoachQuadruples(layer, size))
     const type = layer.type
-    if (type === 'antiKnight') {
+    if (type === 'antiKnight' || type === 'antiKing') {
       if (hasData(layer.settings) || !Array.isArray(layer.segments) || layer.segments.length) {
-        throw new Error('This Sudoku Coach Anti-Knight rule uses unsupported cells or settings.')
+        const name = type === 'antiKing' ? 'Anti-King' : 'Anti-Knight'
+        throw new Error(`This Sudoku Coach ${name} rule uses unsupported cells or settings.`)
       }
-      antiKnight = true
+      if (type === 'antiKing') antiKing = true
+      else antiKnight = true
       continue
     }
     if (type === 'odd' || type === 'even') {
@@ -901,7 +904,7 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
     adjacentClues: readCoachAdjacentClues(layers, size), whispers, pathClues,
     ...(extraRegions.length && { extraRegions }), ...(unnumberedCages.length && { unnumberedCages }), globalEntropy, ...(quadruples.length && { quadruples }),
     ...(parity.length && { parity: parity.sort((a, b) => a.cell - b.cell) }),
-    ...(antiKnight && { antiKnight }),
+    ...(antiKnight && { antiKnight }), ...(antiKing && { antiKing }),
   }
 }
 

@@ -1107,3 +1107,43 @@ export const OverlappingUnnumberedCage: Story = {
     await waitFor(() => expect(rules.getByText('Digits cannot repeat in a dashed cage without a total.')).toBeVisible())
   },
 }
+
+const kingWithInequality = createImportedFutoshiki(
+  5, '0030004002002000000005023', [{ less: 0, greater: 1 }], { antiKing: true },
+)
+
+export const AntiKingWithInequality: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={kingWithInequality} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'How to play' }))
+    const rulesDialog = await canvas.findByRole('dialog', { name: 'Futoshiki rules' })
+    await waitFor(() => expect(within(rulesDialog).getByText('Cells that touch at a corner must have different digits.')).toBeVisible())
+    await userEvent.click(within(rulesDialog).getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(rulesDialog).not.toBeInTheDocument())
+
+    const target = within(grid).getByRole('button', { name: /^R1C1, empty/ })
+    await userEvent.click(target)
+    await userEvent.keyboard('4')
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Check puzzle' }))
+    const checkDialog = await canvas.findByRole('dialog', { name: 'Puzzle check' })
+    await waitFor(() => expect(grid.querySelector('[data-cell="0"]')).toHaveAttribute('data-conflict', 'true'))
+    await expect(grid.querySelector('[data-cell="6"]')).toHaveAttribute('data-conflict', 'true')
+    await userEvent.click(within(checkDialog).getByRole('button', { name: 'Close dialog' }))
+    await waitFor(() => expect(checkDialog).not.toBeInTheDocument())
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase cell' }))
+
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Anti-King' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await waitFor(() => expect(hint.getByRole('heading', { name: 'Anti-King' })).toBeVisible())
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await waitFor(() => expect(hint.getAllByText(/touch at a corner/)[0]).toBeVisible())
+  },
+}

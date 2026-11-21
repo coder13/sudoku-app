@@ -1,3 +1,4 @@
+import { antiKingTechnique, isKingCornerMove } from './anti-king.ts'
 import { antiKnightNote, antiKnightTechnique, isKnightMove } from './anti-knight.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
 import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
@@ -39,7 +40,7 @@ export const VARIANTS = {
     rule: antiKnightNote,
   },
   'anti-king': {
-    name: 'Anti-King',
+    name: antiKingTechnique,
     rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
   },
   'non-consecutive': {
@@ -274,9 +275,7 @@ export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: nu
       return line.includes(a) && line.includes(b)
     }
     if (rule.type === 'anti-knight') return isKnightMove(a, b, 9)
-    if (rule.type === 'anti-king') {
-      return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
-    }
+    if (rule.type === 'anti-king') return isKingCornerMove(a, b, 9)
     if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
     if (rule.type === 'extra-house') return rule.cells.includes(a) && rule.cells.includes(b)
     if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&

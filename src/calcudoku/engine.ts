@@ -1,4 +1,4 @@
-import { latinAntiKnightRules } from '../latin/anti-knight.ts'
+import { latinAntiKingRules, latinAntiKnightRules } from '../latin/chess-rules.ts'
 import { adjacentClueRules } from '../latin/adjacent-clues.ts'
 import { inequalityRules, type Inequality } from '../futoshiki/inequality-rules.ts'
 import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle, type LatinRule } from '../latin/engine.ts'
@@ -163,7 +163,7 @@ function lineTotalRules(puzzle: LatinPuzzle, sums: readonly (readonly [Cage, num
 export function createCalcudoku(
   size: number, cages: readonly Cage[], fixed?: readonly number[],
   {
-    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight,
+    allowUncaged = false, inequalities = [], adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing,
   }: LatinClues & { allowUncaged?: boolean; inequalities?: readonly Inequality[] } = {},
 ): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
@@ -190,7 +190,7 @@ export function createCalcudoku(
     locks.push(...cageLineRules(size, rule, tuples))
     return rule
   })
-  const rules = [...latinParityRules(size, parity), ...(antiKnight ? latinAntiKnightRules(size) : []), ...cageRules]
+  const rules = [...latinParityRules(size, parity), ...(antiKnight ? latinAntiKnightRules(size) : []), ...(antiKing ? latinAntiKingRules(size) : []), ...cageRules]
   const comparisons = inequalities.length ? inequalityRules(size, inequalities) : undefined
   if (comparisons) rules.push(...comparisons.basic)
   if (adjacentClues) rules.push(...adjacentClueRules(size, adjacentClues))
@@ -212,12 +212,12 @@ export function createCalcudoku(
         cells: givens.map((_, cell) => cell),
         support: () => null,
       }
-      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight }
+      return { ...puzzle, rules: [...puzzle.rules, conflict], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing }
     }
   }
   const derived = [...(lines?.advanced ?? []), ...lineTotalRules(puzzle, sums), ...lineSubsetRules(size), ...locks]
   if (comparisons) derived.push(...comparisons.sharedBounds, ...comparisons.lineRules)
   if (size >= 4) derived.push(xWingRule(size))
   if (comparisons) derived.push(...comparisons.lineMatching)
-  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight }
+  return { ...puzzle, rules: [...puzzle.rules, ...derived], cages, inequalities, adjacentClues, whispers, pathClues, extraRegions, unnumberedCages, globalEntropy, quadruples, parity, antiKnight, antiKing }
 }
