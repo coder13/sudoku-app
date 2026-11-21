@@ -287,10 +287,9 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
         const puzzleBounds = puzzle.getBoundingClientRect()
         const inputBounds = input.getBoundingClientRect()
         const pageBounds = page?.getBoundingClientRect()
-        const board = puzzle.querySelector('.puzzle-stage .board-frame') ?? puzzle
-        const boardRight = board.getBoundingClientRect().right
-        const dividerGap = inputBounds.left - boardRight
-        const midpoint = boardRight + dividerGap / 2
+        // The hint uses the puzzle card's width even while the grid shrinks.
+        const dividerGap = inputBounds.left - puzzleBounds.right
+        const midpoint = puzzleBounds.right + dividerGap / 2
         const offset = (midpoint - inputStack.getBoundingClientRect().left) / scale
         // Measure all bounds first, then update the handles without restyling the grid.
         divider.style.setProperty('--play-divider-gap', `${Math.max(0, dividerGap) / scale}px`)
@@ -342,17 +341,17 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       const available = parseFloat(parentStyle.width) - (parentStyle.boxSizing === 'border-box' ? horizontalSpace(parentStyle) : 0)
       const actual = parseFloat(elementStyle.width) + (elementStyle.boxSizing === 'content-box' ? horizontalSpace(elementStyle) : 0)
       if (!(available > 0 && actual > 0)) return []
-      return [{ element, inset: Math.max(0, available - actual), restore: rememberInlineStyles(element, ['max-inline-size']) }]
+      const hint = parent.parentElement?.querySelector<HTMLElement>(':scope > .standard-hint-slot .hint-dock')
+      return [{ element, hint, inset: Math.max(0, available - actual),
+        restore: rememberInlineStyles(element, ['max-inline-size']),
+        restoreHint: hint && rememberInlineStyles(hint, ['max-inline-size']),
+      }]
     })
-    const hintPreviews = [...workspace.querySelectorAll<HTMLElement>('.standard-hint-slot .hint-dock')].map(element => ({
-      element, restore: rememberInlineStyles(element, ['max-inline-size']),
-    }))
     const clearBoards = previewDesktopBoards(workspace)
-    // Puzzle cards keep their measured gutters. Hints keep the existing width
-    // clamp, applied locally so the saved board-width cap cannot override it.
-    for (const { element, inset } of widthPreviews) element.style.maxInlineSize = `calc(100% - ${inset}px)`
-    for (const { element } of hintPreviews) {
-      element.style.maxInlineSize = 'max(240px, calc(100% - 2 * var(--puzzle-badge-gutter-inline)))'
+    // Both surfaces follow the live column with the same gutters.
+    for (const { element, hint, inset } of widthPreviews) {
+      element.style.maxInlineSize = `calc(100% - ${inset}px)`
+      if (hint) hint.style.maxInlineSize = `calc(100% - 2 * var(--puzzle-badge-gutter-inline) - ${inset}px)`
     }
     workspace.setAttribute('data-layout-resizing', '')
     const update = (input: number) => {
@@ -364,8 +363,10 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       update,
       clear() {
         clearBoards()
-        for (const preview of widthPreviews) preview.restore()
-        for (const preview of hintPreviews) preview.restore()
+        for (const { restore, restoreHint } of widthPreviews) {
+          restore()
+          restoreHint?.()
+        }
         restoreWorkspace()
         restoreInput()
         workspace.removeAttribute('data-layout-resizing')

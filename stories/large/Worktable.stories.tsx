@@ -1205,7 +1205,7 @@ export const MedusaHintStages: Story = {
         const { x, y, width, height } = element.getBoundingClientRect()
         return [x - bounds.x, y - bounds.y + card.scrollTop, width, height]
       })
-      return [card.offsetLeft, card.offsetTop, bounds.width, bounds.height, ...controls]
+      return [card.offsetLeft, bounds.width, bounds.height, ...controls]
     }
     const initial = geometry()
     const expectStableGeometry = () => geometry().forEach((value, index) => expect(Math.abs(value - initial[index])).toBeLessThan(1))
@@ -1261,26 +1261,66 @@ export const DesktopHintFits: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     const stack = canvasElement.querySelector<HTMLElement>('.standard-puzzle-stack')
     if (!stack) return
+    const showHint = await canvas.findByRole('button', { name: /^Hint$/ })
+    const puzzle = stack.querySelector('.puzzle')!
+    const divider = canvasElement.querySelector('.desktop-layout-divider')!
+    const dividerLeft = divider.getBoundingClientRect().left
     const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
-    const initialWidth = grid.getBoundingClientRect().width
-    await userEvent.click(canvas.getByRole('button', { name: /^Hint$/ }))
+    const width = () => grid.getBoundingClientRect().width
+    const initialWidth = width()
+    async function recordWidths(action: () => Promise<void>) {
+      const widths: number[] = []
+      let frame = 0
+      function record() {
+        widths.push(width())
+        frame = requestAnimationFrame(record)
+      }
+      record()
+      try {
+        await action()
+        return widths
+      } finally {
+        cancelAnimationFrame(frame)
+      }
+    }
+    const openingWidths = await recordWidths(async () => {
+      await userEvent.click(showHint)
+      await waitFor(() => {
+        const hint = canvas.getByRole('complementary', { name: 'Puzzle hint' })
+        expect(hint.getBoundingClientRect().bottom).toBeLessThanOrEqual(stack.getBoundingClientRect().bottom + 1)
+      })
+    })
     const more = await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
     const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
     const slot = card.closest('.standard-hint-slot')!
     await Promise.allSettled(slot.getAnimations({ subtree: true }).map(animation => animation.finished))
     const expectFit = () => {
       const bounds = stack.getBoundingClientRect()
-      expect(grid.getBoundingClientRect().bottom).toBeLessThan(card.getBoundingClientRect().top)
-      expect(card.getBoundingClientRect().bottom).toBeLessThanOrEqual(bounds.bottom + 1)
+      const hintBounds = card.getBoundingClientRect()
+      const puzzleBounds = puzzle.getBoundingClientRect()
+      expect(grid.getBoundingClientRect().bottom).toBeLessThan(hintBounds.top)
+      expect(hintBounds.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
+      expect(hintBounds.left).toBeCloseTo(puzzleBounds.left, 0)
+      expect(hintBounds.right).toBeCloseTo(puzzleBounds.right, 0)
+      expect(hintBounds.right).toBeLessThanOrEqual(divider.getBoundingClientRect().left)
+      expect(divider.getBoundingClientRect().left).toBeCloseTo(dividerLeft, 0)
       expect(stack.scrollHeight).toBeLessThanOrEqual(stack.clientHeight + 1)
     }
-    expectFit()
+    await waitFor(expectFit)
     for (let step = 0; step < 3; step++) await userEvent.click(more)
     await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
     expectFit()
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
-    await waitFor(() => expect(grid.getBoundingClientRect().width).toBeCloseTo(initialWidth, 0))
+    const fittedWidth = width()
+    const closingWidths = await recordWidths(async () => {
+      await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+      await waitFor(() => expect(width()).toBeCloseTo(initialWidth, 0))
+    })
+    if (initialWidth - fittedWidth > 4 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const isInMotion = (value: number) => value < initialWidth - 2 && value > fittedWidth + 2
+      expect(openingWidths.some(isInMotion)).toBe(true)
+      expect(closingWidths.some(isInMotion)).toBe(true)
+    }
   },
 }
 

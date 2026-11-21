@@ -30,41 +30,64 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   advanced?: ReactNode
 }) {
   const puzzleStack = useRef<HTMLDivElement>(null)
-  const hintOpen = Boolean(hint)
   const standardDesktop = desktop && !advanced
   useLayoutEffect(() => {
-    if (!standardDesktop || !hintOpen) return
+    if (!standardDesktop) return
     const stack = puzzleStack.current
     const column = stack?.querySelector<HTMLElement>(':scope > .puzzle-column')
-    const dock = stack?.querySelector<HTMLElement>('.standard-hint-slot .hint-dock')
-    if (!stack || !column || !dock) return
+    const slot = stack?.querySelector<HTMLElement>(':scope > .standard-hint-slot')
+    const content = slot?.querySelector<HTMLElement>(':scope > div')
+    if (!stack || !column || !slot || !content) return
+
+    let hintRevealHeight = 0
+    const measureHint = () => {
+      const height = content.offsetHeight
+      // The loading card can grow into a taller hint. Keep the initial reveal continuous.
+      hintRevealHeight = Math.min(hintRevealHeight || height, height)
+      slot.style.setProperty('--desktop-hint-height', `${height}px`)
+    }
 
     const fitBoard = () => {
       if (stack.closest('[data-layout-resizing]')) return
-      const frame = column.querySelector<HTMLElement>('.puzzle-stage .board-frame:not(.completion-frame, [inert] .board-frame)')
-      if (!frame) return
+      const hintHeight = slot.getBoundingClientRect().height
+      if (!hintHeight) {
+        stack.style.removeProperty('--desktop-hint-board-width')
+        return
+      }
+      const stage = column.querySelector<HTMLElement>('.puzzle-stage')
+      const frame = stage?.querySelector('.board-frame:not(.completion-frame, [inert] .board-frame)')
+      if (!stage || !frame) return
       const scale = Number(getComputedStyle(stack).getPropertyValue('--desktop-layout-scale')) || 1
       const style = getComputedStyle(frame)
       const dimension = (name: string) => Number(style.getPropertyValue(name))
       const rows = (dimension('--board-rows') || 9) + dimension('--outside-top') + dimension('--outside-bottom')
       const columns = (dimension('--board-columns') || 9) + dimension('--outside-left') + dimension('--outside-right')
-      const hintHeight = dock.getBoundingClientRect().height + parseFloat(getComputedStyle(dock).marginBlockStart) * scale
-      const spareHeight = stack.getBoundingClientRect().height - column.getBoundingClientRect().height - hintHeight
-      // Convert spare height to width using the ratio of the grid and outside clues.
+      const aspect = columns / rows
+      const room = stack.getBoundingClientRect().height - column.getBoundingClientRect().height
       const frameWidth = frame.getBoundingClientRect().width
-      const width = Math.max(0, Math.floor((frameWidth + spareHeight * columns / rows) / scale))
+      // If the full-size puzzle already overflows a short window, ease out that overflow along with the hint height.
+      const remainingWidth = stage.getBoundingClientRect().width - frameWidth
+      const overflow = Math.max(0, remainingWidth / aspect - room)
+      const progress = Math.min(1, hintHeight / (hintRevealHeight * scale))
+      const spareHeight = room - hintHeight + overflow * (1 - progress)
+      const width = Math.max(0, Math.floor((frameWidth + spareHeight * aspect) / scale))
       const limit = `${width}px`
       if (stack.style.getPropertyValue('--desktop-hint-board-width') !== limit) {
         stack.style.setProperty('--desktop-hint-board-width', limit)
       }
     }
 
+    measureHint()
     fitBoard()
-    const observer = new ResizeObserver(fitBoard)
-    for (const element of [stack, column, dock]) observer.observe(element, { box: 'border-box' })
-    // Keep the width limit until the hint's exit animation removes its card.
-    return () => observer.disconnect()
-  }, [standardDesktop, hintOpen])
+    const contentObserver = new ResizeObserver(measureHint)
+    contentObserver.observe(content)
+    const layoutObserver = new ResizeObserver(fitBoard)
+    for (const element of [stack, slot]) layoutObserver.observe(element, { box: 'border-box' })
+    return () => {
+      contentObserver.disconnect()
+      layoutObserver.disconnect()
+    }
+  }, [standardDesktop])
 
   if (advanced) return advanced
   if (!desktop) {
