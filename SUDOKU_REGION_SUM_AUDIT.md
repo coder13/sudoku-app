@@ -199,15 +199,17 @@ The benchmarks pair the same local app toolchain builds of `5eb98e07` and the sh
 
 | Puzzle | Unique solution before → after | Rating before → after | Ten hints before → after |
 | --- | ---: | ---: | ---: |
-| Symmetease | 0.236 / 0.247 → 0.235 / 0.243 | 0.326 / 0.747 → 0.380 / 0.893 | 37.721 / 40.959 → 0.941 / 1.026 |
-| 91BB | 1.078 / 1.525 → 1.397 / 1.599 | 1.458 / 2.192 → 1.508 / 2.030 | 0.567 / 0.636 → 0.524 / 0.583 |
-| 8AGt | 1.025 / 1.146 → 1.007 / 1.117 | 7.545 / 9.418 → 7.588 / 9.425 | 0.373 / 0.436 → 0.365 / 0.466 |
-| 8oer | 0.733 / 0.996 → 0.758 / 1.067 | 1.216 / 1.691 → 1.318 / 1.946 | 0.508 / 0.668 → 0.473 / 0.564 |
-| FaxQ | 138.731 / 148.367 → 132.415 / 139.555 | 74.095 / 77.062 → 8.750 / 12.002 | 17.160 / 17.724 → 32.348 / 35.211 |
-| 7rs9 | 1.186 / 1.288 → 1.141 / 1.213 | 4.163 / 6.142 → 5.904 / 6.212 | 1.170 / 1.274 → 1.210 / 1.300 |
-| HCHW | 0.384 / 0.445 → 0.301 / 0.432 | 9.597 / 12.021 → 8.098 / 11.613 | 0.478 / 0.664 → 0.428 / 0.582 |
+| Symmetease | 0.236 / 0.434 → 0.226 / 0.396 | 0.590 / 0.753 → 0.611 / 0.961 | 35.107 / 35.968 → 0.705 / 1.083 |
+| 91BB | 1.426 / 1.532 → 1.457 / 1.535 | 1.224 / 2.242 → 1.122 / 2.222 | 0.358 / 0.718 → 0.322 / 0.652 |
+| 8AGt | 1.206 / 1.624 → 1.496 / 1.650 | 7.672 / 9.957 → 9.021 / 9.769 | 0.292 / 0.375 → 0.286 / 0.405 |
+| 8oer | 0.987 / 1.087 → 1.035 / 1.152 | 1.044 / 1.819 → 1.027 / 1.947 | 0.503 / 0.677 → 0.517 / 0.594 |
+| FaxQ | 139.605 / 151.483 → 139.686 / 147.785 | 72.799 / 77.172 → 11.313 / 12.470 | 17.463 / 20.071 → 17.402 / 19.600 |
+| 7rs9 | 0.758 / 1.341 → 0.753 / 1.107 | 6.245 / 6.358 → 4.141 / 6.214 | 0.655 / 0.733 → 0.602 / 0.619 |
+| HCHW | 0.503 / 0.743 → 0.487 / 0.593 | 8.712 / 9.885 → 8.726 / 12.058 | 0.271 / 0.323 → 0.255 / 0.271 |
 
-Candidate and exact-solution responses match on all seven controls. Disabling the new detector reproduces the baseline hint and rating responses after normalizing the rating version. FaxQ's opening hint request takes longer under its new Master scope. Symmetease fills the ten-choice list earlier, with three additional region proofs. All twenty deterministic Medium New Puzzle outputs match apart from versioned rating metadata and the enabled order. Each generated puzzle has a unique completion and still depends on its Region Sum rules.
+Candidate and exact-solution responses match on all seven controls. Disabling the new detector reproduces the baseline hint and rating responses after normalizing the rating version. Symmetease fills the ten-choice list earlier, with three additional region proofs. All twenty deterministic Medium New Puzzle outputs match apart from versioned rating metadata and the enabled order. Each generated puzzle has a unique completion and still depends on its Region Sum rules.
+
+With the shared-region technique enabled, FaxQ’s Master hint request initially repeated the uniqueness check when progress probes found too few choices. Ranking now reuses the checked position within the same request. An isolated paired comparison before and after that reuse reduced median CPU from 25.638 ms to 13.017 ms. All 488 complete hint responses match across 61 puzzles. The comparison includes several limits and difficulty scopes, the ordinary ranked path, and a position after applying a hint on each puzzle. FaxQ retains all five choices and their order.
 
 ```sh
 node --experimental-strip-types scripts/bench-region-sum-distinct.mjs released.wasm src/sudoku/generated/engine.wasm region-sum-house

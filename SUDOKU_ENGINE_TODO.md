@@ -92,7 +92,8 @@ All seven formerly missing engine families now have app UI. Twenty-five 9×9 var
 - [x] Inspect light/dark 290/540px Skyscrapers and all-outside-family renders, retain exact legacy input/SSR output, measure complete caller/generation/retained-capacity/package costs and verify unchanged Wasm/metadata. Actual Hard New Puzzle measures 24.050/30.359 ms median/p95. [Audit](SUDOKU_SKYSCRAPERS_AUDIT.md)
 - [x] Use distinct digits inside each Region Sum part for explicit hints, Finder, logical walkthroughs and scoring. Replay 91BB, 8AGt, 8oer and 220V against their complete published grids. Verify three opening FaxQ choices and 22 logical steps while retaining its partial status. Check grouped repeat visits, cached ratings, and three practice positions with independent candidate enumeration. [Audit](SUDOKU_REGION_SUM_AUDIT.md)
 - [x] Complete FaxQ’s guided walkthrough by checking Region Sum parts from different lines in the same region. Verify all 108 steps against the published solution, including both new region proofs, and cover grouped Jigsaw visits, Finder and practice. [Audit](SUDOKU_REGION_SUM_AUDIT.md)
-- [ ] Measure exact-search pruning for Region Sum parts with grouping and Jigsaw constraints. Keep FaxQ’s bounded verification status and audit its slower Master-scoped opening hint request. [#192](https://github.com/coder13/sudoku-app/issues/192)
+- [x] Reuse the checked position during ranked hint fallback. Confirm 488 hint responses are unchanged and measure the Master-scoped FaxQ request. [Audit](SUDOKU_REGION_SUM_AUDIT.md)
+- [ ] Measure exact-search pruning for Region Sum parts with grouping and Jigsaw constraints. Keep FaxQ’s bounded verification status. [#192](https://github.com/coder13/sudoku-app/issues/192)
 
 
 ### Older playable variants: New Puzzle generation

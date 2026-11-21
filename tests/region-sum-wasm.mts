@@ -46,7 +46,8 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
     const hints = await puzzleHints(game)
     assert.ok(hints.choices.length > 1)
     if (source === coach[3]) {
-      assert.ok(hints.choices.some(hint => hint.technique === houseTechnique))
+      assert.deepEqual(hints.choices.map(hint => hint.technique),
+        ['region-sum', distinctTechnique, distinctTechnique, houseTechnique, houseTechnique])
       const position = variantPosition(game.variant!)
       const previousOrder = (await getVariantPlayOrder(position.puzzle)).filter(technique => technique !== houseTechnique)
       const previous = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: previousOrder })

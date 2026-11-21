@@ -1285,8 +1285,17 @@ impl CompiledVariant {
         limit: usize,
     ) -> Result<Vec<VariantDeduction>, VariantPositionError> {
         let position = self.proof_position(entries, eliminations)?;
+        Ok(self.rank_position_hints(&position, enabled, limit))
+    }
+
+    fn rank_position_hints<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
+        enabled: &[VariantTechnique],
+        limit: usize,
+    ) -> Vec<VariantDeduction> {
         if limit == 0 {
-            return Ok(Vec::new());
+            return Vec::new();
         }
         let mut techniques = enabled.to_vec();
         let tier = |technique: &VariantTechnique| (technique.difficulty(), technique.cost());
@@ -1295,19 +1304,19 @@ impl CompiledVariant {
         for group in techniques.chunk_by(|a, b| tier(a) == tier(b)) {
             let mut hints: Vec<_> = group
                 .iter()
-                .flat_map(|&technique| self.explain(&position, technique))
+                .flat_map(|&technique| self.explain(position, technique))
                 .collect();
             hints.sort_by_cached_key(VariantDeduction::rank);
             for hint in hints {
                 if moves.iter().all(|other| other.actions != hint.actions) {
                     moves.push(hint);
                     if moves.len() == limit {
-                        return Ok(moves);
+                        return moves;
                     }
                 }
             }
         }
-        Ok(moves)
+        moves
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
@@ -1389,7 +1398,8 @@ impl CompiledVariant {
         let mut choices: Vec<VariantDeduction> =
             probes.into_iter().map(|(h, _)| h).take(limit).collect();
         if choices.len() < limit {
-            for hint in self.ranked_hints(entries, eliminations, enabled, limit)? {
+            // The fallback examines the same position and can reuse its checks.
+            for hint in self.rank_position_hints(&position, enabled, limit) {
                 if choices.iter().all(|other| other.actions != hint.actions) {
                     choices.push(hint);
                     if choices.len() == limit {
