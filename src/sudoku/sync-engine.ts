@@ -50,7 +50,8 @@ function fingerprint(game: Game) {
 function progressFingerprint(game: Game) {
   // A receiving device can rate a puzzle or classify the same moves itself.
   // Preserve actual moves, independent of their technique labels and grouping.
-  const { elapsed, savedForLater, pendingSave, difficulty, score, fogRatingVersion, ratingAttempt, actionHistory, ...progress } = game
+  const { elapsed, savedForLater, pendingSave, difficulty, score, fogRatingVersion, variantRatingVersion,
+    uniquenessProof, ratingAttempt, actionHistory, ...progress } = game
   const actions = actionHistory?.flatMap(({ kind, changes }) => changes.map(change => ({ kind, change })))
   const hasRatingEvidence = ratingAttempt && (ratingAttempt.outcome || ratingAttempt.lastHintAt !== undefined ||
     ratingAttempt.viewed.length || ratingAttempt.applied.length || ratingAttempt.requested?.length ||

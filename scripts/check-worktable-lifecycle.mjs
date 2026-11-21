@@ -20,10 +20,12 @@ const output = option('--output')
 const selectedCase = option('--case')
 const game = { ...makeGame('worktable-lifecycle', 'Lifecycle fixture', STARTER, 'imported', 1),
   started: true, difficulty: 'easy', score: 100 }
+const mixedImport = JSON.parse(await readFile(resolve(root, 'tests/fixtures/global-entropy-quadruple-preview.json'), 'utf8'))
 const gameKey = 'sudoku-app:v1:game:' + game.id
 const sourceFiles = [
   'src/components/Worktable.tsx', 'src/components/usePuzzleGeneration.ts', 'src/sudoku/engine.ts',
   'src/sudoku/puzzle-revision.ts', 'src/sudoku/storage.ts', 'scripts/check-worktable-lifecycle.mjs',
+  'src/components/ImportPuzzle.tsx', 'src/sudoku/puzzle-preview.ts', 'tests/fixtures/global-entropy-quadruple-preview.json',
   'package-lock.json', 'tools/react-board-performance/package-lock.json',
 ]
 const sourceHashes = Object.fromEntries(await Promise.all(sourceFiles.map(async file =>
@@ -41,12 +43,13 @@ const report = {
   ],
 }
 
-function instrument({ fixture, key, workspaceMode = 'standard' }) {
+function instrument({ fixture, key, workspaceMode = 'standard', shortcuts }) {
   localStorage.setItem(key, JSON.stringify(fixture))
   localStorage.setItem('sudoku-app:v1:initialized', '1')
   localStorage.setItem('sudoku-app:v1:active', fixture.id)
   localStorage.setItem('sudoku-app:v1:puzzle-timing', JSON.stringify({ showTimer: true, showPause: true, pauseOnOpen: false, trackTime: true }))
   localStorage.setItem('sudoku-app:v1:workspace-mode', workspaceMode)
+  if (shortcuts) localStorage.setItem('sudoku-app:v1:keyboard-shortcuts', JSON.stringify(shortcuts))
   localStorage.setItem('sudoku-app:v1:error-mode', 'none')
   localStorage.setItem('sudoku-app:v1:play-preferences', JSON.stringify({ pinnedActions: ['candidates', 'singles', 'hint', 'check'] }))
   localStorage.setItem('sudoku-app:v1:advanced-modes', JSON.stringify({
@@ -164,7 +167,8 @@ async function withPage(name, pathname, check, options = {}) {
     if (pathname.startsWith('/?')) {
       await enabled(page, 'Generate candidates')
       await enabled(page, 'Solve all singles')
-    } else await page.getByRole('button', { name: /^Start .*puzzle$/ }).waitFor()
+    } else if (pathname === '/import') await page.getByRole('textbox', { name: 'Puzzle text or link' }).waitFor()
+    else await page.getByRole('button', { name: /^Start .*puzzle$/ }).waitFor()
     await frames(page)
     const details = await check(page)
     assert.deepEqual(errors, [], 'the app must not throw browser errors')
@@ -213,6 +217,29 @@ const checks = [
     assert.deepEqual(await boardSnapshot(page), before)
     return { assertions: 3 }
   }],
+  ['space-pauses-with-button-focus', '/?puzzle=' + game.id, async page => {
+    const options = page.getByRole('button', { name: 'Open puzzle options' })
+    const paused = page.locator('.puzzle-play-layers[data-paused]')
+    await options.focus()
+    await page.keyboard.down('Space')
+    await page.keyboard.down('Space')
+    await page.keyboard.up('Space')
+    await paused.waitFor()
+    assert.equal(await options.getAttribute('aria-expanded'), 'false', 'Space must not click the focused button')
+
+    await page.getByRole('button', { name: 'Resume puzzle', exact: true }).last().focus()
+    await page.keyboard.press('Space')
+    await paused.waitFor({ state: 'detached' })
+
+    await options.press('Enter')
+    assert.equal(await options.getAttribute('aria-expanded'), 'true', 'Enter can still open Puzzle options')
+    await page.keyboard.press('Space')
+    await paused.waitFor()
+    assert.equal(await options.getAttribute('aria-expanded'), 'false', 'pausing closes Puzzle options')
+    await page.keyboard.press('t')
+    await paused.waitFor({ state: 'detached' })
+    return { assertions: 7 }
+  }, { fixture: { ...game, started: false }, shortcuts: { pauseOrSwitchView: 't' } }],
   ['notes-during-singles', '/?puzzle=' + game.id, async page => {
     const before = await boardSnapshot(page)
     const reply = await arm(page, 'solve-singles')
@@ -309,6 +336,37 @@ const checks = [
     assert.equal(await page.getByRole('button', { name: 'Close hint', exact: true }).count(), 0)
     assert.deepEqual(await boardSnapshot(page), before)
     return { assertions: 4 }
+  }],
+  ['edit-import-during-verification', '/import', async page => {
+    const input = page.getByRole('textbox', { name: 'Puzzle text or link' })
+    const submit = page.getByRole('button', { name: 'Preview puzzle' })
+    const board = page.getByRole('grid', { name: 'Puzzle preview' })
+    const play = page.getByRole('button', { name: 'Start playing' })
+    const reply = await page.evaluate(() => window.workerProbe.arm({ type: 'variant', operation: 'solve-unique' }))
+    await input.fill(mixedImport.code)
+    await submit.click()
+    const check = await held(page, reply)
+    assert.ok(await board.isVisible())
+    assert.equal(await board.locator('..').locator('.variant-quadruple').count(), 18)
+    assert.ok(await page.getByText('Checking solutions…', { exact: true }).isVisible())
+    assert.ok(await play.isDisabled())
+    assert.ok(await page.getByRole('button', { name: 'Save and import another' }).isDisabled())
+
+    await page.getByRole('button', { name: 'Edit input' }).click()
+    await terminated(page, check.workerId)
+    await release(page, reply)
+    assert.ok(await input.isVisible())
+    assert.equal(await board.count(), 0)
+
+    await submit.click()
+    await page.getByText('Unique solution', { exact: true }).waitFor()
+    assert.ok(await play.isEnabled())
+    await play.click()
+    await page.waitForURL(url => url.pathname !== '/import')
+    await page.getByRole('button', { name: 'Open puzzle options' }).click()
+    await page.getByRole('button', { name: 'Puzzle details', exact: true }).click()
+    await page.getByRole('dialog', { name: 'Puzzle details' }).getByText('Unique solution', { exact: true }).waitFor()
+    return { assertions: 10 }
   }],
   ['leave-generation', '/puzzles/new/difficulty?variant=mini', async page => {
     const savedIds = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('sudoku-app:v1:game:')).sort())

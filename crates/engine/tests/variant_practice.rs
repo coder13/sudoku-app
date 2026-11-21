@@ -3,8 +3,8 @@
 use std::collections::{BTreeSet, HashSet};
 
 use sudoku_app_engine::{
-    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, VariantEvidence, VariantExclusionPremise,
-    VariantTechnique, canonical_variant, variant_practice_examples,
+    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, PuzzleRule, VariantEvidence,
+    VariantExclusionPremise, VariantTechnique, canonical_variant, variant_practice_examples,
 };
 
 #[test]
@@ -128,6 +128,56 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::EntropyAreas(proof) => {
+                    let (entropy, circles) = proof.rules.split_first().unwrap();
+                    assert!(matches!(
+                        position.puzzle.rules[*entropy],
+                        PuzzleRule::GlobalEntropy {}
+                    ));
+                    assert!(!circles.is_empty());
+                    for &rule in circles {
+                        let PuzzleRule::Quadruple { top_left, .. } = &position.puzzle.rules[rule] else {
+                            panic!("the proof must cite a printed circle");
+                        };
+                        assert!(proof.windows.iter().any(|window| window[0] == *top_left));
+                    }
+                    overlaps.insert(technique);
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RayHouses(proof) => {
+                    assert!(!proof.houses.is_empty());
+                    assert!(proof.rules.iter().all(|&index| index < position.puzzle.rules.len()));
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanGroupCounts(proof) => {
+                    assert!(proof.initial.iter().chain(&proof.subsequent).all(|projection| {
+                        matches!(&position.puzzle.rules[projection.rule], sudoku_app_engine::PuzzleRule::Renban { cells, .. }
+                            if *cells == projection.cells)
+                    }));
+                    scopes.insert(proof.conflict.cells.to_vec());
+                }
+                VariantEvidence::RenbanHouseSupport(proof) => {
+                    let sudoku_app_engine::PuzzleRule::Renban { cells, .. } =
+                        &position.puzzle.rules[proof.rule]
+                    else {
+                        panic!("proof should identify the source Renban");
+                    };
+                    assert_eq!(cells, &proof.cells[..proof.line_length]);
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanSum(proof) => {
+                    let [renban, ray] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(renban, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(ray, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    scopes.insert(proof.cells);
+                }
+                VariantEvidence::RenbanSumHouse(proof) => {
+                    let [contained, sum, other] = proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(contained, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    assert!(matches!(sum, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    assert!(matches!(other, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::LockedDigit { clue, .. } => {
                     assert!(
                         clue.rules
@@ -175,4 +225,5 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
     assert!(overlaps.contains(&VariantTechnique::Thermometer));
     assert!(overlaps.contains(&VariantTechnique::Arrow));
     assert!(overlaps.contains(&VariantTechnique::Renban));
+    assert!(overlaps.contains(&VariantTechnique::EntropyQuadruple));
 }

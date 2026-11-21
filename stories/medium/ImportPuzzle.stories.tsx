@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fn } from 'storybook/test'
+import { expect, fn, waitFor } from 'storybook/test'
 import { ImportPuzzle } from '../../src/components/ImportPuzzle'
 import calcudokuCoach from '../../tests/fixtures/calcudoku-coach.json'
 import futoshikiCoach from '../../tests/fixtures/futoshiki-coach.json'
@@ -42,7 +42,7 @@ export const Preview: Story = {
     await userEvent.type(await canvas.findByRole('textbox', { name: 'Puzzle text or link' }), starter.givens)
     await userEvent.click(await canvas.findByRole('button', { name: 'Preview puzzle' }))
     await expect(await canvas.findByRole('grid', { name: 'Puzzle preview' }, { timeout: 5000 })).toBeVisible()
-    await expect(canvas.getByText('Difficulty', { exact: true })).toBeVisible()
+    await expect(await canvas.findByText('Difficulty', { exact: true }, { timeout: 5000 })).toBeVisible()
     await expect(canvas.getByText('Score', { exact: true })).toBeVisible()
   },
 }
@@ -57,7 +57,9 @@ export const CoachProgressPreview: Story = {
     const grid = await canvas.findByRole('grid', { name: 'Puzzle preview' })
     await expect(grid.querySelector('[data-cell="2"]')).toHaveAccessibleName(/Row 1, column 3, digit 4/)
     await expect(grid.querySelector('[data-cell="3"]')).toHaveAccessibleName(/corner candidates 8.*center candidates 2 6/)
-    await expect(canvas.getByRole('button', { name: 'Open puzzle' })).toBeVisible()
+    await waitFor(async () => {
+      await expect(canvas.getByRole('button', { name: 'Open puzzle' })).toBeEnabled()
+    }, { timeout: 5000 })
   },
 }
 

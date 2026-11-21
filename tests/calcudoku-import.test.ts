@@ -20,7 +20,9 @@ test('the original Sudoku Coach export keeps the givens, cage labels and colors'
   ))
   assert.deepEqual(calcudoku.colors, fixture.cellColors.map((index: string) => index === '' ? '' : fixture.palette[Number(index)]))
 
-  const preview = await preparePlayableImport('https://sudoku.coach/en/play/' + fixture.code)
+  const preview = await preparePlayableImport('https://sudoku.coach/en/play/' + fixture.code, [], {
+    onDecoded: () => assert.fail('Unsigned cages require their own preview.'),
+  })
   assert.ok('calcudokuSource' in preview)
   assert.deepEqual(preview.calcudokuSource.cages.filter(cage => !cage.operator), [
     { label: '6', cells: [8, 14, 15], operator: undefined },

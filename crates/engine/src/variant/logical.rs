@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 9;
+pub const VARIANT_SCORING_VERSION: u32 = 11;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -27,15 +27,26 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod entropy_quadruple;
 mod sum_pairs;
 mod group_sum_implications;
+mod ray_houses;
+mod renban_group_counts;
+mod renban_house_support;
+mod renban_locks;
+mod renban_sum;
 
 macro_rules! catalog {
-    ($($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+) => {
+    (
+        $($(#[$doc:meta])* $name:ident: $id:literal, $cost:expr, $tier:ident;)+
+        @explicit
+        $($(#[$extra_doc:meta])* $extra:ident: $extra_id:literal, $extra_cost:expr, $extra_tier:ident;)+
+    ) => {
         /// Techniques with rule-based explanations on a structured 9 × 9 grid.
         #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
         pub enum VariantTechnique {
             $($(#[$doc])* $name),+,
+            $($(#[$extra_doc])* $extra),+,
             /// A classic detector, subject to its house and uniqueness assumptions.
             Classic(Technique),
         }
@@ -44,24 +55,27 @@ macro_rules! catalog {
             /// Techniques in default solve order.
             pub const DEFAULT_ORDER: &'static [Self] = &[$(Self::$name),+];
 
+            /// Additional native techniques available in explicit profiles.
+            pub const EXPLICIT_TECHNIQUES: &'static [Self] = &[$(Self::$extra),+];
+
             /// Stable identifier for a proof or solver profile.
             pub const fn id(self) -> &'static str {
-                match self { $(Self::$name => $id),+, Self::Classic(technique) => technique.id() }
+                match self { $(Self::$name => $id,)+ $(Self::$extra => $extra_id,)+ Self::Classic(technique) => technique.id() }
             }
 
             /// Look up a supported technique by its case-sensitive ID.
             pub fn from_id(id: &str) -> Option<Self> {
-                match id { $($id => Some(Self::$name),)+ _ => Technique::from_id(id).map(Self::Classic) }
+                match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id).map(Self::Classic) }
             }
 
             /// Point cost per move made with this technique.
             pub const fn cost(self) -> u16 {
-                match self { $(Self::$name => $cost),+, Self::Classic(technique) => technique.cost() }
+                match self { $(Self::$name => $cost,)+ $(Self::$extra => $extra_cost,)+ Self::Classic(technique) => technique.cost() }
             }
 
             /// The minimum difficulty of a path that uses the technique.
             pub const fn difficulty(self) -> Difficulty {
-                match self { $(Self::$name => Difficulty::$tier),+, Self::Classic(technique) => technique.difficulty() }
+                match self { $(Self::$name => Difficulty::$tier,)+ $(Self::$extra => Difficulty::$extra_tier,)+ Self::Classic(technique) => technique.difficulty() }
             }
         }
     };
@@ -132,12 +146,30 @@ catalog! {
     LittleKiller: "little-killer", 50, Medium;
     /// Use house and cage sums to constrain the cells inside or outside a house.
     CageHouseSum: "cage-house-sum", 67, Medium;
+    /// Fit the printed digits and entropy groups in a circle’s area and its neighbor.
+    EntropyQuadruple: "entropy-quadruple", 58, Hard;
     /// Apply the count of visible heights in a row or column.
     Skyscrapers: "skyscrapers", 70, Hard;
     /// Apply a sum between 1 and 9 in a row or column.
     Sandwich: "sandwich", 76, Hard;
     /// Apply a sum of the first X digits of a row or column.
     XSum: "x-sum", 80, Hard;
+
+    @explicit
+    /// Use the sum of a Little Killer ray with distinct digits in shared houses.
+    LittleKillerHouseSupport: "little-killer-house-support", 64, Medium;
+    /// Use a Little Killer sum, a Renban on the ray, and the ray's shared houses.
+    RenbanSumRayHouses: "renban-sum-ray-houses", 79, Hard;
+    /// Lock a digit required by a Renban into a house.
+    RenbanLockedDigit: "renban-locked-digit", 40, Medium;
+    /// Rule out a candidate that would force five low or high digits into a house.
+    RenbanGroupCounts: "renban-group-counts", 89, Hard;
+    /// Fit a Renban and the remaining digits of its containing house.
+    RenbanHouseSupport: "renban-house-support", 62, Medium;
+    /// Find which Renban sets can fit the sum of a Little Killer ray containing the line.
+    RenbanSum: "renban-sum", 66, Medium;
+    /// Fit a Renban and diagonal sum against another Renban in a shared house.
+    RenbanSumHouse: "renban-sum-house", 88, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -152,6 +184,7 @@ impl VariantTechnique {
     pub fn all() -> impl Iterator<Item = Self> {
         Self::DEFAULT_ORDER
             .iter()
+            .chain(Self::EXPLICIT_TECHNIQUES)
             .copied()
             .chain(
                 Technique::ALL
@@ -312,6 +345,18 @@ pub enum VariantEvidence {
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
+    /// A Quadruple and one or two 2 × 2 entropy areas in shared houses.
+    EntropyAreas(Box<VariantEntropyAreaProof>),
+    /// Candidate support from a diagonal sum and the houses shared by its cells.
+    RayHouses(Box<VariantRayHouseProof>),
+    /// An assumed candidate crowds five cells into four digits.
+    RenbanGroupCounts(Box<VariantRenbanGroupProof>),
+    /// Candidate support from a Renban fully contained in one house.
+    RenbanHouseSupport(Box<VariantRenbanHouseProof>),
+    /// Candidate support from a Little Killer ray and a Renban it contains.
+    RenbanSum(Box<VariantRenbanSumProof>),
+    /// Candidate support from a Little Killer ray, two Renbans, and a house.
+    RenbanSumHouse(Box<VariantRenbanSumHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -453,6 +498,170 @@ pub struct VariantLineHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Number of valid assignments in the complete enumeration.
     pub assignments: u32,
+}
+
+/// Replayable candidate support in a printed Quadruple and its entropy areas.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantEntropyAreaProof {
+    /// The entropy rule followed by the contributing circle rule indices.
+    pub rules: Vec<usize>,
+    /// One 2 × 2 area or two areas sharing an edge.
+    pub windows: Vec<[usize; 4]>,
+    /// Cells in the combined area, sorted by grid order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before applying the rules, including placed digits.
+    pub domains: Vec<u16>,
+    /// Digits that occur in at least one assignment satisfying all listed premises.
+    pub supported: Vec<u16>,
+    /// Houses forbidding equal digits in the cells of the area.
+    pub houses: Vec<VariantHouseKind>,
+}
+
+/// A diagonal sum and the houses that restrict repetition along it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRayHouseProof {
+    /// Indices of the diagonal sum and, when used, the contained Renban.
+    pub rules: Vec<usize>,
+    /// Ray cells in printed order.
+    pub cells: Vec<usize>,
+    /// Starting candidate masks, including singleton masks for placements.
+    pub domains: Vec<u16>,
+    /// Houses that add distinctness constraints to the proof.
+    pub houses: Vec<VariantHouseKind>,
+    /// Digits supported by a complete assignment of the indicated cells.
+    pub supported: Vec<u16>,
+}
+
+/// Five cells of one house restricted to one four-digit group.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupConflict {
+    /// House where the five digits have to be distinct.
+    pub house: VariantHouseKind,
+    /// Five cells confined to the group, in grid order.
+    pub cells: [usize; 5],
+    /// Mask for digits 1–4 or 6–9.
+    pub digits: u16,
+}
+
+/// Supported candidates in one Renban under an assumption.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupProjection {
+    /// Source rule index.
+    pub rule: usize,
+    /// Renban cells in source order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before checking the line.
+    pub domains: Vec<u16>,
+    /// Supported masks after checking the line.
+    pub supported: Vec<u16>,
+}
+
+/// A Renban on which ruling out sets forces a digit.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupPlacement {
+    /// Scope and locally supported candidates after rejecting the listed intervals.
+    pub line: VariantRenbanGroupProjection,
+    /// Each rejected interval's smallest digit and the house conflict it creates.
+    pub rejected: Vec<(u8, VariantRenbanGroupConflict)>,
+    /// Digit forced by the remaining intervals.
+    pub candidate: Candidate,
+}
+
+/// A contradiction from one assumption, with at most one intermediate placement.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanGroupProof {
+    /// Candidate whose placement is impossible.
+    pub assumption: Candidate,
+    /// Line deductions before the optional placement.
+    pub initial: Vec<VariantRenbanGroupProjection>,
+    /// An intermediate placement made necessary by the initial assumption.
+    pub placement: Option<VariantRenbanGroupPlacement>,
+    /// Line deductions after propagating the optional placement.
+    pub subsequent: Vec<VariantRenbanGroupProjection>,
+    /// The house that cannot fit all five cells.
+    pub conflict: VariantRenbanGroupConflict,
+}
+
+/// Replayable support for a Renban and all other cells of its containing house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRenbanHouseProof {
+    /// Index of the Renban in the ordered puzzle rules.
+    pub rule: usize,
+    /// The house containing the entire line.
+    pub house: VariantHouseKind,
+    /// Renban cells in printed order followed by the other cells of the house.
+    pub cells: Vec<usize>,
+    /// Number of cells on the Renban.
+    pub line_length: usize,
+    /// Input digit masks, including singleton masks for placements.
+    pub domains: [u16; 9],
+    /// Digits with a complete assignment satisfying both the Renban and house.
+    pub supported: [u16; 9],
+    /// Mask of the first digit of each consecutive set that fits the entire house.
+    pub starts: u16,
+    /// Outside cell that forms a two-digit contradiction with the first removal.
+    pub paired_cell: Option<usize>,
+}
+
+/// Replayable support for a Renban set inside a Little Killer ray.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanSumProof {
+    /// Rule indices for the Renban and then the Little Killer clue.
+    pub rules: [usize; 2],
+    /// Ray cells in their printed order.
+    pub cells: Vec<usize>,
+    /// Current candidate masks, including singleton masks for placed digits.
+    pub domains: Vec<u16>,
+    /// Digits present in a complete assignment satisfying both clues.
+    pub supported: Vec<u16>,
+    /// Digit mask for the smallest digits of supported Renban intervals.
+    pub starts: u16,
+}
+
+/// Replayable support for two Renbans connected through a Little Killer ray and a house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantRenbanSumHouseProof {
+    /// Indices for the contained Renban, the Little Killer ray, and the other Renban.
+    pub rules: [usize; 3],
+    /// The ray in printed order, followed by the other Renban cells off the ray.
+    pub cells: Vec<usize>,
+    /// Candidate masks in the same order as the proof cells, including placed digits.
+    pub domains: Vec<u16>,
+    /// House that contains the second Renban and one other cell of the ray.
+    pub house: VariantHouseKind,
+    /// Shared cell of the ray and second Renban.
+    pub shared: usize,
+    /// The other ray cell in the house.
+    pub restricted: usize,
+    /// Surviving digit masks in the ray's printed order.
+    pub supported: Vec<u16>,
+    /// A short worked contradiction for the first action when one is available.
+    pub witness: Option<VariantRenbanSumHouseWitness>,
+}
+
+/// A short contradiction for a candidate removed by a Renban, sum, and house proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRenbanSumHouseWitness {
+    /// The assumed candidate.
+    pub candidate: Candidate,
+    /// Digit forced in the shared cell by the sum and its contained Renban.
+    pub shared_digit: u8,
+    /// Smallest digit of the contained Renban if only one interval fits.
+    pub contained_start: Option<u8>,
+    /// Smallest digit of the only interval on the other Renban.
+    pub other_start: u8,
+    /// Digits left for the restricted cell before applying the shared house.
+    pub restricted_digits: u16,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -708,6 +917,17 @@ impl VariantDeduction {
             VariantEvidence::SumPair(proof) => proof.cells.len(),
             VariantEvidence::GroupSumImplication { links, .. } => links.len() + 1,
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
+            VariantEvidence::EntropyAreas(proof) => proof.cells.len(),
+            VariantEvidence::RayHouses(proof) => proof.cells.len(),
+            VariantEvidence::RenbanGroupCounts(proof) => {
+                proof.conflict.cells.len() + usize::from(proof.placement.is_some())
+            }
+            VariantEvidence::RenbanHouseSupport(proof) => match proof.paired_cell {
+                Some(_) => proof.line_length + 2,
+                None => proof.cells.len(),
+            },
+            VariantEvidence::RenbanSum(proof) => proof.cells.len(),
+            VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1052,6 +1272,8 @@ impl CompiledVariant {
                 .visit(classic, &mut ControlFlow::Break)
                 .break_value()
                 .map(overlay_proof)
+        } else if technique == VariantTechnique::EntropyQuadruple {
+            self.entropy_quadruple_proofs(position, 1).pop()
         } else {
             self.local_proofs(position, technique)
                 .into_iter()
@@ -1162,6 +1384,7 @@ impl CompiledVariant {
                     }
                 }
             }
+            EntropyQuadruple => return self.entropy_quadruple_proofs(position, usize::MAX),
             CageCombinations => {
                 for cage in &self.cages {
                     let domains: Vec<_> = cage
@@ -1227,6 +1450,14 @@ impl CompiledVariant {
                 }
             }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
+            RenbanLockedDigit => self.renban_locks(position, &mut proofs),
+            RenbanGroupCounts => self.renban_group_counts(position, &mut proofs),
+            RenbanHouseSupport => self.renban_house_support(position, &mut proofs),
+            LittleKillerHouseSupport | RenbanSumRayHouses => {
+                self.ray_house_proofs(position, technique, &mut proofs);
+            }
+            RenbanSum => self.renban_sum_proofs(position, technique, &mut proofs),
+            RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));

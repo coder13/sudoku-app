@@ -1,17 +1,17 @@
 import type { CalcudokuEntry } from '../calcudoku/catalog.ts'
 import type { CalcudokuImport } from '../calcudoku/imported.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
-import { runEngine, type Analysis } from './engine.ts'
+import { createEngineSession, runEngine, type Analysis, type EngineRunner } from './engine.ts'
 import { sameCandidateColors, sameImportedCellColors } from './imported-colors.ts'
 import { sameImportedDrawings } from './imported-drawings.ts'
 import { sameAuthoredArtwork } from './authored-artwork.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
-import { createGameId, makeGame, markSolveUntimed, puzzleIdentity, type Game } from './game.ts'
+import { createGameId, hasUniquenessProof, makeGame, markSolveUntimed, puzzleIdentity, uniquenessKey, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { findSharedAttempt } from './puzzle-sharing.ts'
-import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
+import { applyPuzzleGrade, needsPuzzleGrade, puzzleGradeIsStale, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
 import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
@@ -24,6 +24,7 @@ export type PuzzlePreview = {
   game: Game
   format: ImportedPuzzle['format'] | 'Photo or screenshot'
   grade?: PuzzleGrade | null
+  ratingPending?: true
   hasProgress?: true
 }
 
@@ -53,9 +54,15 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
     puzzleIdentity(saved) === identity)
 }
 
+export type ImportPreviewOptions = {
+  deferRating?: boolean
+  onDecoded?: (puzzle: ImportedPuzzle) => void
+  signal?: AbortSignal
+}
+
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
-export async function prepareImportedPuzzle(input: string, games: readonly Game[] = []): Promise<PuzzlePreview> {
-  return preparePuzzlePreview(await detectPuzzle(input), games)
+export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], options?: ImportPreviewOptions) {
+  return prepareDecodedSudoku(await detectPuzzle(input), games, options)
 }
 
 export type PlayableImport = PuzzlePreview
@@ -64,35 +71,69 @@ export type PlayableImport = PuzzlePreview
   | { calcudokuSource: CalcudokuImport; format: PuzzlePreview['format'] }
 
 /** Prepare either a Sudoku board or a standalone puzzle for the import screen. */
-export async function preparePlayableImport(input: string, games: readonly Game[] = []): Promise<PlayableImport> {
+export async function preparePlayableImport(
+  input: string, games: readonly Game[] = [], options?: ImportPreviewOptions,
+): Promise<PlayableImport> {
   const imported = await detectPuzzle(input)
+  const signal = options?.signal
+  signal?.throwIfAborted()
   if (imported.futoshiki) {
     const { verifiedImportedFutoshiki } = await import('../futoshiki/imported.ts')
+    signal?.throwIfAborted()
     return { futoshiki: verifiedImportedFutoshiki(imported.futoshiki), format: imported.format }
   }
   if (imported.calcudoku) {
     if (imported.calcudoku.cages.some(cage => !cage.operator)) return { calcudokuSource: imported.calcudoku, format: imported.format }
     const { prepareImportedCalcudoku } = await import('../calcudoku/imported.ts')
+    signal?.throwIfAborted()
     return { calcudoku: prepareImportedCalcudoku(imported.calcudoku), format: imported.format }
   }
-  return preparePuzzlePreview(imported, games)
+  return prepareDecodedSudoku(imported, games, options)
+}
+
+function prepareDecodedSudoku(
+  imported: ImportedPuzzle, games: readonly Game[], { deferRating = false, onDecoded, signal }: ImportPreviewOptions = {},
+) {
+  signal?.throwIfAborted()
+  if (imported.futoshiki) throw new Error('Open this puzzle in Futoshiki.')
+  if (imported.calcudoku) throw new Error('Open this puzzle in Calcudoku.')
+  // The 9 × 9 board can show its complete layout before it receives a proof.
+  if (!imported.grid) onDecoded?.(imported)
+  return verifyPreview(imported, games, signal, deferRating)
 }
 
 export async function prepareSharedPuzzle(id: string, games: readonly Game[], signal: AbortSignal): Promise<PuzzlePreview> {
   const existing = findSharedAttempt(games, id)
   if (existing) return { game: existing, format: 'Puzzle link' }
   const imported = await importSharedPuzzle(id, signal)
-  signal.throwIfAborted()
-  return preparePuzzlePreview(imported, games)
+  return verifyPreview(imported, games, signal)
 }
 
-function importValidationError(status: Exclude<Analysis, 'unique'>): Error {
-  return new Error(status === 'conflict' ? 'This puzzle has conflicting givens or rules.' : validation[status].text)
+async function verifyPreview(imported: ImportedPuzzle, games: readonly Game[], signal?: AbortSignal, deferRating = false) {
+  signal?.throwIfAborted()
+  const engine = signal && createEngineSession()
+  const cancel = () => engine?.close()
+  signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    const preview = await preparePuzzlePreview(imported, games, deferRating, engine?.run)
+    signal?.throwIfAborted()
+    return preview
+  } finally {
+    signal?.removeEventListener('abort', cancel)
+    engine?.close()
+  }
 }
 
-async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[]): Promise<PuzzlePreview> {
-  if (imported.futoshiki) throw new Error('Open this puzzle in Futoshiki.')
-  if (imported.calcudoku) throw new Error('Open this puzzle in Calcudoku.')
+export class PuzzleVerificationError extends Error {
+  readonly status: Exclude<Analysis, 'unique'>
+
+  constructor(status: Exclude<Analysis, 'unique'>) {
+    super(status === 'conflict' ? 'This puzzle has conflicting givens or rules.' : validation[status].text)
+    this.status = status
+  }
+}
+
+async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[], deferRating: boolean, run: EngineRunner = runEngine): Promise<PuzzlePreview> {
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
     authoredSolution, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
   const existing = findImportedPuzzle(games, imported)
@@ -116,19 +157,19 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   }
   if (variant && !grid) {
     const position = { puzzle: variant.puzzle }
-    if (existing) {
-      const solution = existing.variant?.solution ?? await runEngine({ type: 'variant', operation: 'solve', position })
-      game.variant = { ...variant, solution }
+    if (existing?.variant && hasUniquenessProof(existing)) {
+      game.variant = { ...variant, solution: existing.variant.solution }
     } else {
-      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position, maxNodes: IMPORT_VARIANT_SEARCH_NODES })
-      if (result.status !== 'unique') throw importValidationError(result.status)
+      const result = await run({ type: 'variant', operation: 'solve-unique', position, maxNodes: IMPORT_VARIANT_SEARCH_NODES })
+      if (result.status !== 'unique') throw new PuzzleVerificationError(result.status)
       game.variant = { ...variant, solution: result.solution }
     }
-  } else if (!existing) {
-    const status = grid ? await analyzeMini(givens) : await runEngine({ type: 'analyze', values: givens })
-    if (status !== 'unique') throw importValidationError(status)
+  } else if (!existing || !grid && !hasUniquenessProof(existing)) {
+    const status = grid ? await analyzeMini(givens) : await run({ type: 'analyze', values: givens })
+    if (status !== 'unique') throw new PuzzleVerificationError(status)
   }
   if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null }
+  game.uniquenessProof = uniquenessKey(game)
   if (progress) {
     game = markSolveUntimed({
       ...game, position: { ...game.position, ...progress },
@@ -139,9 +180,13 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   game.difficulty = existing?.difficulty
   game.score = existing?.score
   if (existing?.fogRatingVersion !== undefined) game.fogRatingVersion = existing.fogRatingVersion
+  if (existing?.variantRatingVersion !== undefined) game.variantRatingVersion = existing.variantRatingVersion
   if (needsPuzzleGrade(game)) {
+    const savedGrade = puzzleGradeIsStale(game) ? undefined : existing?.ratingAttempt?.grade
+    if (savedGrade) return { ...preview, game: applyPuzzleGrade(game, savedGrade), grade: savedGrade }
+    if (deferRating) return { ...preview, game, ratingPending: true }
     try {
-      const grade = existing?.ratingAttempt?.grade ?? await ratePuzzle(givens, game.variant)
+      const grade = await ratePuzzle(givens, game.variant, run)
       return { ...preview, game: applyPuzzleGrade(game, grade), grade }
     } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }

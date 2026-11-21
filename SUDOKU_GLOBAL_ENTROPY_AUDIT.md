@@ -64,7 +64,30 @@ The independent counter uses direct numeric assignments, Classic houses and the 
 
 The native kernel is compared with direct numeric enumeration on all 4,096 group-domain patterns, 2,048 sparse digit-domain samples and all 6,561 complete assignments. App placed-digit restrictions cover all 256 partial group patterns. Four full source completions are independently counted. Actual Wasm checks validate every action in both logical profiles against those completions and replay each Global Entropy proof numerically. Exact candidates and completions also work with an empty human technique order.
 
-[Issue 172](https://github.com/coder13/sudoku-app/issues/172) tracks the two incomplete Quadruple combinations. Establish independent human deductions at their actual bottlenecks before adding a detector or claiming a full walkthrough.
+### Quadruples and Global Entropy walkthroughs
+
+The table above records the original logical paths. At both stalled positions, a reference enumerator found candidates that could satisfy the printed digits or the entropy groups separately but could not satisfy both. Some removals need the 2 × 2 area beside the circle. Those two areas share an edge and must agree on both shared digits. The engine checks only the named areas, circles, and shared rows, columns, and boxes or regions.
+
+Scoring version 10 adds the Hard, 58-point technique `entropy-quadruple`. The four-cell case has one printed circle area. The six-cell case adds one edge-sharing area and any circles it contains. The tests enumerate complete digit assignments independently and compare every removal with the published completion. With the technique disabled, the previous paths remain available. The full app profile replays complete solutions for both publications. The native default order makes more progress and still reports a partial walkthrough.
+
+| Source | Native default, points and steps | App default, points and steps |
+| --- | --- | --- |
+| A2s7 | 3,305 points, 86 steps, stalled | 7,339 points, 161 steps, Extreme |
+| CJhv | 4,319 points, 99 steps, stalled | 5,456 points, 175 steps, Expert |
+
+The Learn article and three checked exercises cover one area, two overlapping areas, and a repeated printed digit. The same evidence appears in Hint pages, Technique Finder, and replay. Old mixed-rule saves refresh their displayed grade once. Existing player rating attempts keep their original grade.
+
+Paired app Wasm benchmarks used five warmed samples per operation on Darwin arm64. These are median CPU milliseconds. With the technique disabled, the current build and previous build return the same steps, score, and resulting position for all three inputs.
+
+| Puzzle | Previous rating | Current rating | Current ranked hints | Technique Finder |
+| --- | ---: | ---: | ---: | ---: |
+| A2s7 | 77.53 | 126.35 | 0.54 | 7.92 |
+| CJhv | 85.60 | 15.03 | 0.27 | 45.96 |
+| Zero-given import from #412 | 0.90 | 428.16 | 72.04 | 69.67 |
+
+The #412 sample now offers ten ranked opening hints and 49 logical steps. Its earlier profile found no logical moves. The walkthrough still reports a stall. Exact verification keeps the same printed completions, and Preview shows the puzzle while rating runs.
+
+[Reasoning issue #172](https://github.com/coder13/sudoku-app/issues/172)
 
 Local checks cover multiple hints, collection bounds, Finder counts, three checked exercises, an invalid answer, a fresh drill, actual storage reload, undo/redo, mixed sharing, and generation with exact givens, first technique, score targets and independent rule dependence. Desktop/mobile component rendering checks accessible rules, all companion circles and houses, the real lesson, hint cards and solution steps. Live viewport interaction review remains open.
 

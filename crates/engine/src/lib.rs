@@ -79,12 +79,16 @@ pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHi
 pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{
-    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage,
-    MarkedPairs, Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
-    VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEvidence, VariantExclusionPremise,
-    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantLineHouseProof,
+    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
+    Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
+    VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
+    VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,
+    VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantLineHouseProof,
     VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
-    VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
+    VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
+    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
+    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
+    VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]

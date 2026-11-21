@@ -16,7 +16,9 @@ for (const [name, { code, givens, edges }] of Object.entries(fixtures)) {
     assert.ok(futoshiki)
     assert.equal(futoshiki.puzzle.givens.join(''), givens)
     assert.deepEqual(futoshiki.puzzle.inequalities, edges.map(([less, greater]) => ({ less, greater })))
-    const preview = await preparePlayableImport(`https://sudoku.coach/en/play/${code}`)
+    const preview = await preparePlayableImport(`https://sudoku.coach/en/play/${code}`, [], {
+      onDecoded: () => assert.fail('Standalone puzzles use their own preview.'),
+    })
     assert.ok('futoshiki' in preview)
     assert.equal(preview.futoshiki.id, futoshiki.id)
     const reopened = readImportedFutoshiki(futoshiki.id)

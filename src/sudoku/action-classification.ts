@@ -112,7 +112,7 @@ export async function variantActionProofs(position: ActionPosition, variant: Var
   return run({
     type: 'variant', operation: 'hints',
     position: { ...board, eliminations: position.eliminations },
-    techniqueOrder: await getVariantPlayOrder(), limit: 64,
+    techniqueOrder: await getVariantPlayOrder(board.puzzle), limit: 64,
   }, { background: true })
 }
 

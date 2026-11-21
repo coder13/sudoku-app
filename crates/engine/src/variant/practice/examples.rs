@@ -60,6 +60,18 @@ pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
     }
 }
 
+// The three positions retain the source geometry from Coach puzzle BSms.
+fn renban_group_seed(givens: &'static str, cell: usize, digit: u8) -> ExampleSeed {
+    let lines: [&[usize]; 9] = [
+        &[42, 52, 62, 70], &[15, 23, 33, 43], &[16, 6, 14, 22],
+        &[11, 21, 31, 39], &[30, 38, 48, 58], &[67, 57, 47, 55],
+        &[79, 69, 59, 51], &[54, 46, 36], &[74, 66, 76],
+    ];
+    seed(givens, cell, digit, lines.map(|cells| PuzzleRule::Renban {
+        cells: cells.to_vec(), segments: None,
+    }))
+}
+
 fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     KillerCage {
         cells: cells.to_vec(),
@@ -678,6 +690,23 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             seed("020000004059002000400006002200590008580004961000000200040003000705040000000015000", 4, 3, [PuzzleRule::GlobalEntropy {}]),
             seed("304010000000020000050030400020046000000000000000350070005060040000070000000080506", 57, 1, [PuzzleRule::GlobalEntropy {}]),
         ],
+        EntropyQuadruple => [
+            seed(
+                "364519720091020060258607401000740100000091004410358672185960240642000903007482016",
+                25, 3,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 16, digits: vec![5, 6] }],
+            ),
+            seed(
+                "186005040000067800030801025600270483000103276273006051067538190392710500850090704",
+                11, 5,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 11, digits: vec![4, 8] }],
+            ),
+            seed(
+                "060007200908320004700500608007200000600070002029008500300000006251639007890714000",
+                48, 4,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 38, digits: vec![9, 9] }],
+            ),
+        ],
         Entropic => [
             seed(
                 "000678002000005040198000507009000020426850001700900800060507200280000030040006070",
@@ -784,6 +813,236 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                     direction: ClueDirection::SouthEast,
                     sum: 23,
                 }],
+            ),
+        ],
+        LittleKillerHouseSupport => [
+            seed(
+                "910003506804100370700469000503006801100500700200001003009050124000000030000602007",
+                76,
+                8,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![36, 46, 56, 66, 76],
+                        direction: ClueDirection::SouthEast,
+                        sum: 30,
+                    },
+                ],
+            ),
+            seed(
+                "040000301072000940900630200730000400085000600000920073100000890500406100824010760",
+                14,
+                8,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![44, 34, 24, 14, 4],
+                        direction: ClueDirection::NorthWest,
+                        sum: 23,
+                    },
+                ],
+            ),
+            seed(
+                "601020000938000000002943100000680043083450700000097508060039001070000090009065070",
+                68,
+                2,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![76, 68, 60, 52, 44],
+                        direction: ClueDirection::NorthEast,
+                        sum: 28,
+                    },
+                ],
+            ),
+        ],
+        RenbanSumRayHouses => [
+            seed(
+                "290000106560100820800276090029600000000090000030450000050004710746801930000700600",
+                44,
+                4,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![44, 34, 24, 14, 4],
+                        direction: ClueDirection::NorthWest,
+                        sum: 28,
+                    },
+                    PuzzleRule::Renban { cells: vec![14, 4], segments: None },
+                ],
+            ),
+            seed(
+                "000000268500020903030090400200009075380004102795802300050001000010900024809500000",
+                4,
+                4,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![4, 12, 20, 28, 36],
+                        direction: ClueDirection::SouthWest,
+                        sum: 16,
+                    },
+                    PuzzleRule::Renban { cells: vec![28, 36], segments: None },
+                ],
+            ),
+            seed(
+                "530600200070030000002005060010308400800000070603050802050400700020103540360009128",
+                4,
+                1,
+                [
+                    PuzzleRule::LittleKiller {
+                        cells: vec![4, 14, 24, 34, 44],
+                        direction: ClueDirection::SouthEast,
+                        sum: 26,
+                    },
+                    PuzzleRule::Renban { cells: vec![14, 24], segments: None },
+                ],
+            ),
+        ],
+        RenbanLockedDigit => [
+            seed(
+                "080009030000007051539614000008421000274003510000000000010000004300040279040370085",
+                45,
+                6,
+                [PuzzleRule::Renban { cells: vec![48, 49, 50, 51], segments: None }],
+            ),
+            seed(
+                "000201809809050002020048000508002093040000000010067000000029406000600731056374020",
+                2,
+                3,
+                [PuzzleRule::Renban { cells: vec![27, 36, 37, 38, 47], segments: None }],
+            ),
+            seed(
+                "008205000000836001320410080450000600000001040196000832563000020001040703004600090",
+                30,
+                7,
+                [PuzzleRule::Renban { cells: vec![32, 40, 48], segments: None }],
+            ),
+        ],
+        RenbanGroupCounts => [
+            renban_group_seed(
+                "570060003001000000000000050305000040000053000200000905023080590050030010108000000",
+                2,
+                2,
+            ),
+            renban_group_seed(
+                "500000003000000060400300058005920000090050000000000005703080500050000012100090000",
+                5,
+                6,
+            ),
+            renban_group_seed(
+                "009801003030000700000079150005908040600053000084007005723106500950004800108090006",
+                18,
+                8,
+            ),
+        ],
+        RenbanHouseSupport => [
+            seed(
+                "000800106001070040000401870098000657140760390005080020060298704410000500027510060",
+                18,
+                3,
+                [PuzzleRule::Renban { cells: vec![20, 21, 22], segments: None }],
+            ),
+            seed(
+                "408100700000050008039000502003005001000000007800307604070509806000600329940032075",
+                9,
+                1,
+                [PuzzleRule::Renban { cells: vec![18, 27, 36, 45], segments: None }],
+            ),
+            seed(
+                "008205000000836001320410080450000600000001040196000832563000020001040703004600090",
+                31,
+                9,
+                [PuzzleRule::Renban { cells: vec![40, 49, 58, 67, 76], segments: None }],
+            ),
+        ],
+        RenbanSum => [
+            seed(
+                "490081700000427068000900421300200094056009080800060010070000205001304806000000030",
+                76,
+                5,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![36, 46, 56],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![36, 46, 56, 66, 76],
+                        direction: ClueDirection::SouthEast,
+                        sum: 19,
+                    },
+                ],
+            ),
+            seed(
+                "710900004004573802058000069207000000109820300030000900070081003500036000080090601",
+                61,
+                2,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![77, 69],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![77, 69, 61, 53],
+                        direction: ClueDirection::NorthEast,
+                        sum: 21,
+                    },
+                ],
+            ),
+            seed(
+                "601080000070004500080000100090310870000070950820400600050001369712090080006008210",
+                44,
+                1,
+                [
+                    PuzzleRule::Renban {
+                        cells: vec![68, 76],
+                        segments: None,
+                    },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![44, 52, 60, 68, 76],
+                        direction: ClueDirection::SouthWest,
+                        sum: 17,
+                    },
+                ],
+            ),
+        ],
+        RenbanSumHouse => [
+            seed(
+                "063907010097052608100300000004000070000001004200740061080570000051020309009000527",
+                76,
+                3,
+                [
+                    PuzzleRule::Renban { cells: vec![66, 56, 46], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![76, 66, 56, 46, 36],
+                        direction: ClueDirection::NorthWest,
+                        sum: 19,
+                    },
+                    PuzzleRule::Renban { cells: vec![76, 67, 77], segments: None },
+                ],
+            ),
+            seed(
+                "002600080001007009000080500024700805080042736007809200006008003040060001293400070",
+                25,
+                4,
+                [
+                    PuzzleRule::Renban { cells: vec![25, 35], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![5, 15, 25, 35],
+                        direction: ClueDirection::SouthEast,
+                        sum: 18,
+                    },
+                    PuzzleRule::Renban { cells: vec![15, 16, 24], segments: None },
+                ],
+            ),
+            seed(
+                "609800010810900070734251900950000000063020800207300000400103005086700401000000080",
+                44,
+                4,
+                [
+                    PuzzleRule::Renban { cells: vec![60, 52, 44], segments: None },
+                    PuzzleRule::LittleKiller {
+                        cells: vec![76, 68, 60, 52, 44],
+                        direction: ClueDirection::NorthEast,
+                        sum: 24,
+                    },
+                    PuzzleRule::Renban { cells: vec![52, 43], segments: None },
+                ],
             ),
         ],
         RegionSum => [
