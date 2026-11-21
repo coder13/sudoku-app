@@ -13,7 +13,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
+  formatTime, hasCandidate, hasCandidates, hintEliminations, isSolved, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, undo, valuesOf,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -24,7 +24,7 @@ import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
+import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { aicEndpoints, hintLocation, lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
 import { addRatingHints, addSinglesAssistance, hintKey } from '../sudoku/player-rating'
@@ -292,6 +292,8 @@ export function Worktable({
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  const [confirmCandidatesOpen, setConfirmCandidatesOpen] = useState(false)
+  const candidateConfirmationOpener = useRef<HTMLElement | null>(null)
   const [cancelDraftOpen, setCancelDraftOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
@@ -549,7 +551,7 @@ export function Worktable({
     : `Continue ${colorStart.digit} from ${colorStartLocation}: ${remainingColors} more ${colorSubject}${remainingColors === 1 ? '' : 's'}.`
   const canActivateTemporaryPencil = !pencil && !highlightMode && !colorMode && !eraseMode &&
     !disabled && !draft && !solved && !sketch.drawing && brush === null && !modalOpen && !mobileHintPreview &&
-    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !variantRulesOpen
+    !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen && !variantRulesOpen
   const temporaryPencil = pencilModifier && canActivateTemporaryPencil
   const pencilActive = (pencil || temporaryPencil) && !colorMode && !eraseMode
   const mode: Mode = draft ? 'value' : colorMode ? 'color' : pencilActive ? candidateMode : 'value'
@@ -561,11 +563,11 @@ export function Worktable({
   const canDragCandidates = !disabled && !draft && pencilActive && !highlightMode && !colorMode && !eraseMode &&
     !paintingCandidates && !multi && !sketch.drawing && !hintAnnotations && selectedDigit !== null && selectedDigit > 0
   const canPreviewCandidates = canDragCandidates && selected.length === 0 && brush === null && !solved &&
-    !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen &&
+    !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen &&
     !variantRulesOpen
   const canHighlightCellCandidates = !disabled && !draft && !solved && !colorMode && !eraseMode && !sketch.drawing && brush === null &&
     !paintingCandidates && !modalOpen && !hintAnnotations && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult &&
-    !resetOpen && !variantRulesOpen
+    !resetOpen && !confirmCandidatesOpen && !variantRulesOpen
   const cellHold = useTouchHold(mobile && canHighlightCellCandidates)
   const cancelCellHold = cellHold.cancel
   useLayoutEffect(() => cancelCellHold, [cancelCellHold, hintPosition])
@@ -602,7 +604,7 @@ export function Worktable({
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   const showElapsedTime = timing.showTimer && !game.timeUntracked && (timing.trackTime || completed)
   usePuzzleTimer(game.id, !rearranging && timing.trackTime && !game.timeUntracked && !draft && game.started && !game.paused && !completed && !modalOpen && !puzzleMenuOpen && !actionsOpen && !previewing && dialogResult === null &&
-    !resetOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen, (seconds, puzzleId) => {
+    !resetOpen && !confirmCandidatesOpen && !cancelDraftOpen && !variantRulesOpen && !chainColorsOpen, (seconds, puzzleId) => {
     roomStore.advanceElapsed(puzzleId, seconds)
   }, puzzleId => roomStore.flushElapsed(puzzleId))
 
@@ -761,6 +763,7 @@ export function Worktable({
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     setResetOpen(false)
+    setConfirmCandidatesOpen(false)
     setVariantRulesOpen(false)
     setDialogRule(null)
     setPinnedRule(null)
@@ -1628,7 +1631,7 @@ export function Worktable({
       const applyEditsShortcut = !event.isComposing && shortcutMatches(event, shortcuts, 'applyEdits')
       const checkboxShortcut = target instanceof HTMLInputElement && target.type === 'checkbox' &&
         (drawLinksShortcut || applyEditsShortcut || ((strongLinksVisible || solvingDigitShortcuts && !sketch.drawing) && digitShortcut !== null))
-      if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || cancelDraftOpen || event.altKey ||
+      if (event.defaultPrevented || rearranging || modalOpen || puzzleMenuOpen || actionsOpen || chainColorsOpen || dialogResult !== null || resetOpen || confirmCandidatesOpen || cancelDraftOpen || event.altKey ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))) return
       if (inspectSubset && event.key === ' ' && boardRef.current?.contains(target as Node)) return
       if (!draft && !placeholder && !previewing && !variantRulesOpen && (mobile || completed || game.started || game.paused) &&
@@ -1684,7 +1687,18 @@ export function Worktable({
         if (canActivateTemporaryPencil) setPencilModifier(true)
         return
       }
-      const highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      const cycleDigit = key === '`' && !shortcut && !event.shiftKey && !event.isComposing &&
+        solvingDigitShortcuts && !variantRulesOpen &&
+        !(target instanceof HTMLElement && target.closest('dialog[open]'))
+      let highlightedDigit = shiftDigit ?? functionKeyDigit(event.key)
+      if (cycleDigit) {
+        event.preventDefault()
+        if (event.repeat) return
+        const current = strongLinksVisible ? onlyCandidate(strongLinkMask)
+          : sketch.drawing ? chainHighlightDigit : selectedDigit ?? onlyCandidate(highlightedDigitMask) ?? coloringDigit
+        highlightedDigit = nextIncompleteDigit(values, current, gridSize)
+        if (highlightedDigit === null) return
+      }
       if (sketch.drawing || browsingStrongLinks) {
         if (cancelTool && browsingStrongLinks) {
           event.preventDefault()
@@ -1852,8 +1866,16 @@ export function Worktable({
     }
   }
 
-  async function generateCandidates() {
+  async function generateCandidates(confirmed = false) {
     if (busy || puzzleTask.current || solved || disabled) return
+    if (!confirmed && hasCandidates(game.position)) {
+      candidateConfirmationOpener.current = puzzleMenuOpen ? puzzleMenuButtonRef.current
+        : actionsOpen ? actionsMenuButtonRef.current : null
+      setPuzzleMenuOpen(false)
+      setActionsOpen(false)
+      setConfirmCandidatesOpen(true)
+      return
+    }
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
     const task = beginPuzzleTask(false, false)
@@ -2801,7 +2823,7 @@ export function Worktable({
           }),
           hintSwipe: mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined,
           blocked: Boolean(placeholder) || modalOpen || puzzleMenuOpen || actionsOpen || variantRulesOpen || chainColorsOpen ||
-            dialogResult !== null || resetOpen || cancelDraftOpen,
+            dialogResult !== null || resetOpen || confirmCandidatesOpen || cancelDraftOpen,
           onRearrangingChange: active => {
             setMobileRearranging(active)
             if (!active) return
@@ -2858,6 +2880,17 @@ export function Worktable({
         </div>
       </Modal>}
       {dialogResult && <PuzzleCheckResult result={dialogResult} onClose={() => setDialogResult(null)} />}
+      <Modal title="Generate candidates?" open={confirmCandidatesOpen} onClose={() => setConfirmCandidatesOpen(false)}
+        returnFocus={() => candidateConfirmationOpener.current}>
+        <p>Generating candidates will replace the candidates already in the grid. You can undo this change.</p>
+        <div className="dialog-actions">
+          <Button onClick={() => setConfirmCandidatesOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={() => {
+            setConfirmCandidatesOpen(false)
+            void generateCandidates(true)
+          }}>Generate candidates</Button>
+        </div>
+      </Modal>
       <Modal title="Reset puzzle" open={resetOpen} onClose={() => setResetOpen(false)} className="reset-puzzle-dialog">
         <p>{completed || game.timeUntracked ? 'Remove all placed digits, candidates, and colors from this puzzle?'
           : 'Remove all placed digits, candidates, colors, and elapsed time from this puzzle?'}</p>

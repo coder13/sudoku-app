@@ -210,6 +210,7 @@ const BoardCell = memo(function BoardCell({
       const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
       const style = {
         gridArea: group === 0 ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
+        opacity: annotation?.opacity,
         '--annotation-color': annotation?.color,
       } as CSSProperties
       const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
@@ -236,6 +237,7 @@ const BoardCell = memo(function BoardCell({
     const colorClass = color && annotation?.mark !== 'emphasized' && annotation?.mark !== 'strike' ? `candidate-color color-${color}` : ''
     const style = {
       gridArea: slotted ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
+      opacity: annotation?.opacity,
       '--annotation-color': annotation?.color,
     } as CSSProperties
     const highlightClass = highlighted ? 'candidate-match' : undefined

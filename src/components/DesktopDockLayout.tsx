@@ -1,13 +1,17 @@
 import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Scaling } from 'lucide-react'
 import {
   DockviewReact,
-  type DockviewApi, type DockviewReadyEvent, type IDockviewPanelHeaderProps, type IDockviewPanelProps,
+  type DockviewApi, type DockviewReadyEvent, type IDockviewHeaderActionsProps, type IDockviewPanelHeaderProps, type IDockviewPanelProps,
 } from 'dockview-react'
 import 'dockview-react/dist/styles/dockview.css'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab } from '../sudoku/play-session'
 import { animatePanelLayout, motionDuration } from './Presence'
+
+import { IconButton } from './Button'
+import { Modal } from './Modal'
+import { ResizeStepControls } from './ResizeStepControls'
 
 const DESKTOP_LAYOUT_KEY = 'sudoku-app:v1:desktop-panel-layout'
 const DESKTOP_LAYOUT_VERSION_KEY = 'sudoku-app:v1:desktop-panel-layout-version'
@@ -180,6 +184,53 @@ function FixedPanelTab(props: IDockviewPanelHeaderProps) {
     <span>{props.api.title ?? props.api.id}</span>
     <GripVertical size={13} aria-hidden="true" />
   </span>
+}
+
+type ResizeAxis = 'width' | 'height'
+type DockGridNode = ReturnType<DockviewApi['toJSON']>['grid']['root']
+
+function findResizeAxes(node: DockGridNode, groupId: string, axis: ResizeAxis): ResizeAxis[] | undefined {
+  if (!Array.isArray(node.data)) return node.data.id === groupId ? [] : undefined
+  for (const child of node.data) {
+    const axes = findResizeAxes(child, groupId, axis === 'width' ? 'height' : 'width')
+    if (axes) return node.data.length > 1 && !axes.includes(axis) ? [...axes, axis] : axes
+  }
+}
+
+function DockResizeOptions({ api, group, containerApi, activePanel }: IDockviewHeaderActionsProps) {
+  const trigger = useRef<HTMLButtonElement>(null)
+  const [axes, setAxes] = useState<ResizeAxis[] | null>(null)
+  const [size, setSize] = useState({ width: api.width, height: api.height })
+  const title = `Resize ${activePanel?.api.title ?? 'workspace'} panel`
+
+  if (containerApi.groups.length < 2) return null
+
+  function openOptions() {
+    const { root, orientation } = containerApi.toJSON().grid
+    const available = findResizeAxes(root, api.id, orientation === 'HORIZONTAL' ? 'width' : 'height') ?? []
+    setSize({ width: api.width, height: api.height })
+    setAxes(available)
+  }
+
+  return <>
+    <IconButton ref={trigger} variant="quiet" className="dock-resize-options" aria-label={title} title={title}
+      aria-haspopup="dialog" onPointerDown={event => event.stopPropagation()} onClick={openOptions}>
+      <Scaling size={15} aria-hidden="true" />
+    </IconButton>
+    <Modal title={title} className="resize-options-dialog" open={axes !== null} onClose={() => setAxes(null)}
+      returnFocus={() => trigger.current}>
+      {axes?.includes('width') && <ResizeStepControls axis="width" atMin={size.width <= group.minimumWidth}
+        atMax={size.width >= group.maximumWidth} onStep={delta => {
+          api.setSize({ width: api.width + delta })
+          setSize({ width: api.width, height: api.height })
+        }} />}
+      {axes?.includes('height') && <ResizeStepControls axis="height" atMin={size.height <= group.minimumHeight}
+        atMax={size.height >= group.maximumHeight} onStep={delta => {
+          api.setSize({ height: api.height + delta })
+          setSize({ width: api.width, height: api.height })
+        }} />}
+    </Modal>
+  </>
 }
 
 const components = {
@@ -492,7 +543,7 @@ export function DesktopDockLayout({
         onPointerDownCapture={event => { if (event.button === 0) selectDockTab(event.target) }}
         onKeyDownCapture={event => { if (event.key === 'Enter' || event.key === ' ') selectDockTab(event.target) }}>
         <DockviewReact className="desktop-dockview" theme={sudokuDockTheme} components={components}
-          defaultTabComponent={FixedPanelTab} disableFloatingGroups hideBorders disableTabsOverflowList scrollbars="native"
+          defaultTabComponent={FixedPanelTab} rightHeaderActionsComponent={DockResizeOptions} disableFloatingGroups hideBorders disableTabsOverflowList scrollbars="native"
           proportionalLayout dndStrategy="pointer" getTabContextMenuItems={() => []}
           onReady={ready} />
       </section>

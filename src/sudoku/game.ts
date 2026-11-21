@@ -266,6 +266,12 @@ export function hasCandidate(mask: number, digit: number): boolean {
   return digit >= 1 && digit <= 9 && (mask & (1 << (digit - 1))) !== 0
 }
 
+export function placedDigitCounts(values: string) {
+  const counts = Array<number>(10).fill(0)
+  for (const value of values) counts[Number(value)]++
+  return counts
+}
+
 export function candidateCount(mask: number): number {
   let count = 0
   for (let remaining = mask & 0x1ff; remaining; remaining &= remaining - 1) count++
@@ -293,7 +299,7 @@ export function progressOf(game: Game) {
   return { total, filled }
 }
 
-function hasCandidates({ center, corner }: Position): boolean {
+export function hasCandidates({ center, corner }: Position): boolean {
   return center.some(Boolean) || corner.some(Boolean)
 }
 
