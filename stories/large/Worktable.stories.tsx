@@ -2,6 +2,7 @@ import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'rea
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
 import mixedPuzzles from '../../tests/fixtures/mixed-puzzles.json'
+import palindrome14 from '../../tests/fixtures/inequality-palindrome14.json'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
 import { Worktable, type WorktableActions } from '../../src/components/Worktable'
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
@@ -290,6 +291,37 @@ export const RestoredMobileSolution: Story = {
     playSession.set(args.game.id, 'solutionView', { identity: puzzleIdentity(args.game), step: 3, hintOpen: true })
   },
 }
+const palindromeSolutionGame: Game = {
+  ...makeGame('story-palindrome-14', 'Palindrome 14', palindrome14.puzzle.givens, 'imported'),
+  variant: { id: 'mixed', puzzle: palindrome14.puzzle as VariantPuzzle, solution: palindrome14.solution },
+  score: null, difficulty: null, variantRatingVersion: 18,
+}
+
+export const StalledVariantSolution: Story = {
+  args: { game: palindromeSolutionGame, games: [palindromeSolutionGame] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['solution'], active: 'solution', height: 308 })
+    playSession.set(args.game.id, 'solutionView', { identity: puzzleIdentity(args.game), step: 0, hintOpen: false })
+  },
+  play: async ({ canvas, userEvent }) => {
+    const rows = within(await canvas.findByRole('list', { name: 'Solving steps' }))
+    const partial = rows.getByRole('button', { name: /^Last position/ })
+    const exact = rows.getByRole('button', { name: /^Exact solution/ })
+    const digits = () => [...canvas.getByRole('grid', { name: 'Solution preview' }).querySelectorAll('.cell-value')]
+      .map(cell => cell.textContent).join('')
+    await userEvent.click(partial)
+    expect(digits().length).toBeLessThan(81)
+    await userEvent.keyboard('{End}')
+    await expect(exact).toHaveAttribute('aria-current', 'step')
+    expect(digits()).toBe(palindrome14.solution)
+    await userEvent.keyboard('{ArrowUp}')
+    await expect(partial).toHaveAttribute('aria-current', 'step')
+    expect(digits().length).toBeLessThan(81)
+    expect(roomStore.getSnapshot().games.find(game => game.id === palindromeSolutionGame.id)?.position.entries).toBe(EMPTY)
+  },
+}
+
 const branchRoot = candidateId({ cell: 50, digit: 4 })
 const branchTip = candidateId({ cell: 50, digit: 1 })
 const branchedLinks: ChainEdge[] = [

@@ -117,7 +117,25 @@ export async function puzzleSolution(game: Game, run = runEngine) {
   if (game.algebraic) return algebraicSolutionTrace(game.algebraic, game.givens, run)
   if (game.grid) return miniSolutionTrace(game.givens, run)
   if (game.variant?.fog) return solveFogPath(game.variant, run, true)
-  return game.variant ? variantSolutionPath(await run({
-    type: 'variant', operation: 'trace', position: variantPosition(game.variant), techniqueOrder: await getVariantPlayOrder(game.variant.puzzle),
-  })) : run({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
+  const { variant } = game
+  if (!variant) return run({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
+  const position = variantPosition(variant)
+  const path = variantSolutionPath(await run({
+    type: 'variant', operation: 'trace', position, techniqueOrder: await getVariantPlayOrder(variant.puzzle),
+  }))
+  if (path.rating.status !== 'stalled' || game.source === 'draft') return path
+
+  // The stored grid supplies every digit. One node checks that it still
+  // satisfies this definition, including for saves older than uniqueness keys.
+  const { givens } = position.puzzle
+  const entries = [...variant.solution].map((digit, cell) => givens[cell] === '0' ? digit : '0').join('')
+  try {
+    const solution = await run({ type: 'variant', operation: 'solve', position: { ...position, entries }, maxNodes: 1 })
+    if (solution === variant.solution) {
+      path.exactPosition = { givens, entries, eliminations: Array<number>(givens.length).fill(0) }
+    }
+  } catch (error) {
+    if (!(error instanceof EngineError)) throw error
+  }
+  return path
 }

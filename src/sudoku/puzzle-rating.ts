@@ -3,11 +3,12 @@ import { solveFogPath } from './fog-solution.ts'
 import { isSolved, type Game } from './game.ts'
 import { addAnalysisAssistance, ratingAttemptFor, type RatingAttempt } from './player-rating.ts'
 import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
-import { hasBetweenAndPairClues, hasPrintedKropki } from './variants.ts'
+import { hasBetweenAndPairClues, hasMatchingAndPairClues, hasPrintedKropki } from './variants.ts'
 
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
+const MATCHING_LINKED_CLUE_RATING_VERSION = 18
 const LINKED_CLUE_RATING_VERSION = 17
 const KROPKI_HOUSE_RATING_VERSION = 16
 const THERMOMETER_RATING_VERSION = 15
@@ -21,6 +22,7 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
+  if (hasMatchingAndPairClues(rules)) return MATCHING_LINKED_CLUE_RATING_VERSION
   if (hasBetweenAndPairClues(rules)) return LINKED_CLUE_RATING_VERSION
   if (hasPrintedKropki(rules)) return KROPKI_HOUSE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'thermometer')) return THERMOMETER_RATING_VERSION

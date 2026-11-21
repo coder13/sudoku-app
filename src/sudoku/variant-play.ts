@@ -7,7 +7,7 @@ import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
 import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
-import { hasBetweenAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
+import { hasBetweenAndPairClues, hasMatchingAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
@@ -52,7 +52,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
   const rays = rules.filter(rule => rule.type === 'little-killer')
   const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
-  const hasLinkedClues = hasBetweenAndPairClues(rules, layouts)
+  const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules)
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
   const hasEntropicLine = rules.some(rule => rule.type === 'entropic')

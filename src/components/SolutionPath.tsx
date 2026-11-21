@@ -33,6 +33,12 @@ export function solutionStatus(trace: SolutionTrace) {
   return 'rating' in trace ? trace.rating.status : trace.status
 }
 
+export const verifiedSolutionSummary: PuzzleHint = { title: 'Exact solution', text: 'The verified solution is shown.' }
+
+export function solutionEndIndex(trace: SolutionTrace) {
+  return trace.steps.length + Number('exactPosition' in trace && Boolean(trace.exactPosition))
+}
+
 export function solutionEndSummary(status: PuzzleRating['status'] | 'solved', exact?: true): PuzzleHint {
   if (exact) return { title: 'Exact solution', text: 'Visible clues did not yield a complete logical path.' }
   return status === 'stalled'
@@ -64,19 +70,21 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const close = useRef<HTMLButtonElement>(null)
   const trace = state.status === 'ready' ? state.trace : undefined
   const count = trace?.steps.length ?? 0
+  const endIndex = trace ? solutionEndIndex(trace) : 0
   const status = trace && solutionStatus(trace)
   const exact = trace && 'exact' in trace && trace.exact
   const last = status && solutionEndSummary(status, exact || undefined)
   const moveAvailability = trace && 'moveAvailability' in trace ? trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
+  const finalRows = last ? endIndex > count ? [last, verifiedSolutionSummary] : [last] : []
 
   useEffect(() => {
     if (!embedded) close.current?.focus({ preventScroll: true })
   }, [embedded])
 
   useLayoutEffect(() => {
-    if (count > 0 || exact) onReveal?.()
-  }, [count, exact, onReveal])
+    if (endIndex > 0 || exact) onReveal?.()
+  }, [endIndex, exact, onReveal])
 
   useEffect(() => {
     const viewport = list.current
@@ -86,13 +94,13 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
     const to = row.getBoundingClientRect()
     if (to.top < from.top) viewport.scrollTop += to.top - from.top
     else if (to.bottom > from.bottom) viewport.scrollTop += to.bottom - from.bottom
-  }, [index, count])
+  }, [index, endIndex])
 
   function navigate(event: KeyboardEvent<HTMLOListElement>) {
     const next = event.key === 'ArrowUp' ? Math.max(0, index - 1)
-      : event.key === 'ArrowDown' ? Math.min(count, index + 1)
+      : event.key === 'ArrowDown' ? Math.min(endIndex, index + 1)
       : event.key === 'Home' ? 0
-      : event.key === 'End' ? count : undefined
+      : event.key === 'End' ? endIndex : undefined
     if (next === undefined) return
     event.preventDefault()
     onSelect(next)
@@ -136,22 +144,25 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
               </button>
             </li>
           })}
-          <li>
-            <button type="button" className="solution-path-step solution-path-last" aria-current={index === count ? 'step' : undefined}
-              tabIndex={index === count ? 0 : -1} onClick={() => onSelect(count)}>
-              <span>
-                <strong>{last.title}</strong>
-                {status === 'stalled' && <small>{last.text}</small>}
-                {lastBottleneck && <small className="solution-step-bottleneck">{lastBottleneck}</small>}
-              </span>
-            </button>
-          </li>
+          {finalRows.map(({ title, text }, offset) => {
+            const row = count + offset
+            return <li key={title}>
+              <button type="button" className="solution-path-step solution-path-last" aria-current={index === row ? 'step' : undefined}
+                tabIndex={index === row ? 0 : -1} onClick={() => onSelect(row)}>
+                <span>
+                  <strong>{title}</strong>
+                  {status === 'stalled' && <small>{text}</small>}
+                  {offset === 0 && lastBottleneck && <small className="solution-step-bottleneck">{lastBottleneck}</small>}
+                </span>
+              </button>
+            </li>
+          })}
         </ol>
         <footer className="solution-path-footer">
           <div className="solution-path-navigation">
             <IconButton type="button" aria-label="Previous step" disabled={index === 0} onClick={() => onSelect(index - 1)}><ArrowLeft size={16} /></IconButton>
-            <span role="status">{index < count ? `Step ${index + 1} of ${count}` : last.title}</span>
-            <IconButton type="button" aria-label="Next step" disabled={index >= count} onClick={() => onSelect(index + 1)}><ArrowRight size={16} /></IconButton>
+            <span role="status">{index < count ? `Step ${index + 1} of ${count}` : finalRows[index - count]?.title}</span>
+            <IconButton type="button" aria-label="Next step" disabled={index >= endIndex} onClick={() => onSelect(index + 1)}><ArrowRight size={16} /></IconButton>
           </div>
         </footer>
       </>}

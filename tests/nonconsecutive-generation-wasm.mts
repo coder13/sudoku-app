@@ -79,7 +79,7 @@ for (const difficulty of ['easy', 'medium'] as const) {
       assert.equal(variantIdForPuzzle(result.puzzle), 'non-consecutive')
       assert.deepEqual(result.puzzle.rules, [{ type: 'non-consecutive' }])
       assert.deepEqual(result.rating.status, { solved: difficulty })
-      assert.equal(result.rating.scoringVersion, 17)
+      assert.equal(result.rating.scoringVersion, 18)
       assert.ok(result.rating.counts['non-consecutive'])
       assert.ok(result.givens >= (difficulty === 'medium' ? 14 : 0) && result.givens <= (difficulty === 'medium' ? 20 : 30))
       const independent = countCellRuleSolutions(result.puzzle)
