@@ -400,7 +400,7 @@ const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
-  fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) ||
+  (fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) && new Set(value.regions.flat()).size === 81) ||
   (fields(value, { type: oneOf('partial'), regions: list(uniqueCells(9, 9), 0, 9) }) &&
     new Set(value.regions.flat()).size === 9 * value.regions.length && value.regions.every(part => connectedRegion(part, 9)))
 const segments = list(list(cell, 1), 1)
@@ -479,7 +479,7 @@ async function sharePuzzle(request, db, path) {
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection,
-      givenCellColors: value => data.grid === undefined && data.variant === undefined && cellColors(value),
+      givenCellColors: value => data.grid === undefined && data.variant?.fog === undefined && cellColors(value),
       authoredArtwork: value => data.grid === undefined && data.variant && data.variant.fog === undefined && authoredArtwork(value),
       whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {

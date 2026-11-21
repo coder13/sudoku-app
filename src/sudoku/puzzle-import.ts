@@ -395,14 +395,21 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
-// Coach leaves the published Quad-Arrows rule out of its copied grid code.
-// Match the whole original export before restoring the rule to a pasted copy.
-async function isReviewedQuadArrowsExport(code: string) {
-  if (!globalThis.crypto?.subtle) return false
+async function coachExportHash(code: string) {
+  if (!globalThis.crypto?.subtle) return
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
-  return hash === '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
 }
+
+// Coach leaves this rule out of a pasted Quad-Arrows export.
+const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
+
+// The Rainbow colors repeat the region map. Revival's yellow pattern adds no
+// rule. Match the reviewed exports in full because other colors can encode clues.
+const reviewedCoachColorExports = new Map([
+  ['1be837174e67a43133a677d6f504da74724c35ece725b203f822d299954a91c1', 'Entro Quad Rainbow Jigsaw'],
+  ['2ec5b5abab8e4c9e045a35d0d3a4244213e47e37462c9b598798ee53ba07f28d', 'Revival'],
+])
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
@@ -443,8 +450,12 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
     : reviewedArtwork ? constraints.filter(layer => layer !== reviewedArtwork.layer) : constraints
-  const rawQuadArrows = !publication && encodedRules.some(layer => record(layer) && layer.type === 'quadruple') &&
-    await isReviewedQuadArrowsExport(code)
+  const cellColours = readCoachColourCells(data.colours, data.givenColours)
+  const hasQuadruples = encodedRules.some(layer => record(layer) && layer.type === 'quadruple')
+  const exportHash = (!publication && hasQuadruples || !fog && cellColours?.some(Boolean)) ? await coachExportHash(code) : undefined
+  const rawQuadArrows = !publication && exportHash === quadArrowsExport
+  const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
+    ? reviewedCoachColorExports.get(exportHash) : undefined
   const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
   let rules = readCoachRules(encodedRules, { regions, authoredRule })
   if (reviewedArtwork?.partialRegions) {
@@ -456,7 +467,6 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (authoredRule === 'quad-arrows' && !rules.some(rule => rule.type === 'quadruple-sum')) {
     throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
   }
-  const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const palette = Array.isArray(data.colours) ? data.colours : []
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
     cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
@@ -475,7 +485,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (!whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
-      if (!fog && !rules.length && (!regions || regions.type === 'boxes') &&
+      if (reviewedColorTitle || !fog && !rules.length && (!regions || regions.type === 'boxes') &&
         !publication?.hasAuthorInstructions && (fromCollection || LEGACY_COACH_CODE.test(code))) {
         givenCellColors = readCoachColorNames(remaining, palette)
         if (!givenCellColors) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
@@ -511,7 +521,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? reviewedArtwork?.title ?? (rawQuadArrows ? 'Quad-Arrows' : undefined)
+  const title = publication?.title ?? reviewedArtwork?.title ?? reviewedColorTitle ?? (rawQuadArrows ? 'Quad-Arrows' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }

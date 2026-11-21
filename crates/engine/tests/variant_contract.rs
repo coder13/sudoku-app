@@ -227,6 +227,19 @@ fn jigsaw_and_killer_rules_combine_on_the_same_position() {
 }
 
 #[test]
+fn separated_jigsaw_pieces_share_their_author_defined_house() {
+    let mut regions = irregular_regions();
+    regions[0][0] = 40;
+    *regions[4].iter_mut().find(|cell| **cell == 40).unwrap() = 0;
+    let solution = parse_givens(CLASSIC_SOLUTION).unwrap();
+    let mut givens = solution;
+    givens[40] = 0;
+    let compiled = VariantPuzzle::jigsaw(givens, regions).compile().unwrap();
+    assert!(compiled.peers(40).unwrap().any(|cell| cell == 10));
+    assert_eq!(compiled.solve(&EMPTY, &NO_REMOVALS, 100), Ok(solution));
+}
+
+#[test]
 fn invalid_definitions_report_rule_errors_before_search() {
     let mut puzzle = VariantPuzzle::classic(EMPTY);
     puzzle.version = 2;
@@ -241,10 +254,12 @@ fn invalid_definitions_report_rule_errors_before_search() {
         VariantPuzzle::jigsaw(EMPTY, regions).compile(),
         Err(VariantDefinitionError::OverlappingRegion(1))
     ));
-    let mut regions = irregular_regions();
-    regions[0][0] = 80;
+    let mut partial = VariantPuzzle::classic(EMPTY);
+    let mut region = irregular_regions().remove(0);
+    region[0] = 80;
+    partial.regions = RegionLayout::Partial { regions: vec![region] };
     assert!(matches!(
-        VariantPuzzle::jigsaw(EMPTY, regions).compile(),
+        partial.compile(),
         Err(VariantDefinitionError::DisconnectedRegion(0))
     ));
     let mut puzzle = VariantPuzzle::classic(EMPTY);

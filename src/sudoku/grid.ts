@@ -94,11 +94,7 @@ export function isJigsawGrid(value: unknown): value is JigsawGrid {
       if (!Number.isInteger(cell) || cell < 0 || cell >= size ** 2 || seen.has(cell)) return false
       seen.add(cell)
     }
-    const connected = new Set([part[0]])
-    for (const cell of connected) {
-      for (const next of part) if (gridCellsShareEdge(cell, next, size)) connected.add(next)
-    }
-    if (connected.size !== part.length) return false
+    if (!connectedGridCells(part, size)) return false
   }
   return true
 }
@@ -115,7 +111,14 @@ export function jigsawMembership(grid: JigsawGrid) {
 }
 
 export function jigsawRegionColors(membership: readonly number[], size: number) {
+  const cellsByRegion = regionsFromMembership(membership, size)
   const regions = [...new Set(membership)].filter(region => region !== undefined)
+  const colors: number[] = []
+  if (regions.some(region => !connectedGridCells(cellsByRegion[region], size))) {
+    // A detached piece must have a color unique to its region.
+    regions.forEach((region, index) => { colors[region] = index + 1 })
+    return colors
+  }
   const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
   membership.forEach((region, cell) => {
     const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]
@@ -127,7 +130,6 @@ export function jigsawRegionColors(membership: readonly number[], size: number) 
   })
 
   // Connected regions form a planar graph, so four colors suffice.
-  const colors: number[] = []
   function assign(index: number): boolean {
     if (index === regions.length) return true
     const region = regions[index]
@@ -189,6 +191,15 @@ export function gridDiagonalCells(size: number, diagonal: 'main' | 'anti') {
 
 export function gridCellsShareEdge(first: number, second: number, size: number) {
   return Math.abs(Math.floor(first / size) - Math.floor(second / size)) + Math.abs(first % size - second % size) === 1
+}
+
+export function connectedGridCells(cells: readonly number[], size: number) {
+  if (cells.length < 2) return cells.length === 1
+  const reached = new Set([cells[0]])
+  for (const cell of reached) {
+    for (const neighbor of cells) if (gridCellsShareEdge(cell, neighbor, size)) reached.add(neighbor)
+  }
+  return reached.size === cells.length
 }
 
 export function rowColumnSumTotal([first, second]: readonly [number, number], size: number) {

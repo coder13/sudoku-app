@@ -1395,6 +1395,11 @@ svg { flex-shrink: 0; }
 [data-region-color="2"] { --region-cell-bg: var(--jigsaw-region-2); }
 [data-region-color="3"] { --region-cell-bg: var(--jigsaw-region-3); }
 [data-region-color="4"] { --region-cell-bg: var(--jigsaw-region-4); }
+[data-region-color="5"] { --region-cell-bg: light-dark(#f3e8dc, #4b372f); }
+[data-region-color="6"] { --region-cell-bg: light-dark(#d6edf2, #263e43); }
+[data-region-color="7"] { --region-cell-bg: light-dark(#e0ecd0, #35412b); }
+[data-region-color="8"] { --region-cell-bg: light-dark(#f4dddb, #4b3030); }
+[data-region-color="9"] { --region-cell-bg: light-dark(#dbe6f6, #2d3a50); }
 :root[data-theme="ocean"][data-color-mode="light"] [data-region-color="1"] { --region-cell-bg: var(--extra-house-bg); }
 .cell[data-region-color] { --variant-cell-bg: var(--region-cell-bg); }
 .cell[data-house-fill] { --variant-cell-bg: var(--extra-house-bg); }

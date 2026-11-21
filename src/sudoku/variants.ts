@@ -7,7 +7,7 @@ import { lineSkipsCells } from './line-geometry.ts'
 import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
-import { gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
+import { connectedGridCells, gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
 import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
@@ -454,16 +454,7 @@ function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
   if (!Array.isArray(regions) || regions.length > 9 || !partial && regions.length !== 9 ||
     !regions.every((region) => validCells(region, 9) && region.length === 9) ||
     new Set(regions.flat()).size !== 9 * regions.length) return false
-  return regions.every((region: number[]) => {
-    const reached = new Set([region[0]])
-    for (const cell of reached) {
-      for (const neighbor of region) {
-        const distance = Math.abs(cell % 9 - neighbor % 9) + Math.abs(Math.floor(cell / 9) - Math.floor(neighbor / 9))
-        if (distance === 1) reached.add(neighbor)
-      }
-    }
-    return reached.size === 9
-  })
+  return !partial || regions.every(region => connectedGridCells(region, 9))
 }
 
 function isPlayableRule(rule: VariantRule): boolean {
@@ -637,9 +628,14 @@ function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
     if (puzzle.regions.regions.length) descriptions.push('Each marked region also contains the digits 1–9 once each.')
     return { id: 'partial-regions', title: 'Latin Square', descriptions }
   }
-  return puzzle.regions?.type === 'jigsaw'
-    ? { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions: [VARIANTS.jigsaw.rule] }
-    : { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
+  if (puzzle.regions?.type === 'jigsaw') {
+    const descriptions: string[] = [VARIANTS.jigsaw.rule]
+    if (puzzle.regions.regions.some(region => !connectedGridCells(region, 9))) {
+      descriptions.push('Pieces with the same region color belong to one region.')
+    }
+    return { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions }
+  }
+  return { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
 }
 
 function describedVariantRules(puzzle: VariantPuzzle) {

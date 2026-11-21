@@ -107,7 +107,7 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||
     (whispersGuide !== undefined && (whispersGuide !== true || variant?.id !== 'whispers' || !whispersLinkCounts(variant.puzzle))) ||
-    (givenCellColors !== undefined && (grid !== undefined || variant !== undefined || !validImportedCellColors(givenCellColors))) ||
+    (givenCellColors !== undefined && (grid !== undefined || variant?.fog !== undefined || !validImportedCellColors(givenCellColors))) ||
     (authoredArtwork !== undefined && (grid !== undefined || !variant || variant.fog !== undefined || !validAuthoredArtwork(authoredArtwork))) ||
     (collection !== undefined && !isCollectionReference(collection))) {
     throw new Error('This link uses an unsupported puzzle definition.')

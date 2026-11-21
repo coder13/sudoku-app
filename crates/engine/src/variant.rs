@@ -91,7 +91,7 @@ pub enum RegionLayout {
     /// Standard 3 × 3 boxes in row-major order.
     #[default]
     Boxes,
-    /// Nine orthogonally connected regions that partition the grid.
+    /// Nine regions that partition the grid. An authored region may have separated pieces.
     Jigsaw {
         /// Regions in caller-supplied order, each with nine cell indices.
         regions: Vec<Vec<usize>>,
@@ -845,7 +845,7 @@ pub enum VariantDefinitionError {
     InvalidRegionCount,
     /// A house has the wrong size, repeats a cell, or references a cell outside the grid.
     InvalidHouse(VariantHouseKind),
-    /// An irregular region contains disconnected cells.
+    /// One of the marked regions in a partial layout contains disconnected cells.
     DisconnectedRegion(usize),
     /// Two irregular regions share a cell.
     OverlappingRegion(usize),
@@ -981,7 +981,7 @@ impl CompiledVariant {
                     if covered & mask != 0 {
                         return Err(VariantDefinitionError::OverlappingRegion(i));
                     }
-                    if !connected(mask) {
+                    if matches!(regions_layout, RegionLayout::Partial { .. }) && !connected(mask) {
                         return Err(VariantDefinitionError::DisconnectedRegion(i));
                     }
                     covered |= mask;

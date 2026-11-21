@@ -7,10 +7,10 @@ import worker from '../cloudflare/pages/_worker.js'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
-import { applyDeduction, enter, isSolved, undo, redo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, conflictsOf, enter, isSolved, peer, undo, redo, valuesOf } from '../src/sudoku/game.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseCells, variantHouseMasks, variantRuleSections } from '../src/sudoku/variants.ts'
+import { variantHouseCells, variantHouseMasks, variantRuleSections, regionMembership } from '../src/sudoku/variants.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { entropyTrialDomains } from './helpers/global-entropy-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -18,6 +18,9 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { downloadSharedPuzzle, publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
+import { jigsawRegionColors } from '../src/sudoku/grid.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 useWasmWorker()
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/quadruple-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string; coach: string }
@@ -510,4 +513,98 @@ test('published Bento Quadruples solve with only the marked regions and keep mat
   }
   changedDescription = true
   for (const source of sources) await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+})
+
+test('reviewed Quadruple publications preserve colors, author-defined regions and working hints through sharing', async ({ mock }) => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-colors.json', import.meta.url), 'utf8')) as {
+    url: string; title: string; coach: string; solution: string; regionLabels: string | null
+    colorCodes: string; palette: string[]; quadruples: number
+  }[]
+  const { sqlite, fetcher } = syncDatabase()
+  let extraAuthorRule = false
+  let differentCode: string | undefined
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => {
+    if (url.startsWith('/api/v1/shares')) return fetcher(url, init)
+    if (!url.startsWith('https://sudoku.coach/en/s/')) return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {})
+    const source = sources.find(source => source.url === url)
+    assert.ok(source)
+    const specificSudoku = { sudoku_id: url.split('/').at(-1), sudoku: differentCode ?? source.coach, name: source.title, blocked: false,
+      description: extraAuthorRule ? 'The yellow cells must contain odd digits.' : '', custom_constraints: false }
+    return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+  })
+  try {
+    for (const source of sources) {
+      const expectedColors = Object.fromEntries(source.colorCodes.split('.').flatMap((color, cell) =>
+        color ? [[cell, [source.palette[Number(color)]]]] : []))
+      const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+      assert.ok(game.variant)
+      const { puzzle, solution } = game.variant
+      assert.equal(game.title, source.title)
+      assert.equal(solution, source.solution)
+      assert.equal(puzzle.rules?.filter(rule => rule.type === 'quadruple').length, source.quadruples)
+      assert.deepEqual(game.givenCellColors, expectedColors)
+      assertVariantCompletion(puzzle, source.solution)
+      if (source.regionLabels) {
+        assert.equal(puzzle.regions?.type, 'jigsaw')
+        const labels = source.regionLabels
+        assert.deepEqual(puzzle.regions.regions, [...new Set(labels)].map(label =>
+          Array.from(labels).flatMap((marked, cell) => marked === label ? [cell] : [])))
+        const membership = regionMembership(puzzle.regions.regions)
+        const colors = jigsawRegionColors(membership, 9)
+        assert.equal(new Set(colors).size, 9)
+        assert.equal(membership[20], membership[27])
+        assert.equal(colors[membership[20]], colors[membership[27]])
+        assert.ok(peer(20, 27, puzzle))
+        const repeated = Array.from({ length: 81 }, (_, cell) => cell === 20 || cell === 27 ? '1' : '0').join('')
+        const conflicts = conflictsOf(repeated, puzzle)
+        assert.ok(conflicts.has(20) && conflicts.has(27))
+        assert.match(variantRuleSections(puzzle)[0].descriptions.join(' '), /same region color/)
+        assert.equal(conflictsOf(repeated, { ...puzzle, regions: { type: 'boxes' } }).size, 0)
+        const invalidRegions = puzzle.regions.regions.map(region => [...region])
+        invalidRegions[1][0] = invalidRegions[0][0]
+        const payload = puzzleDefinitionForSharing(game)
+        const invalid = { ...payload, variant: { ...payload.variant, puzzle: { ...puzzle, regions: { type: 'jigsaw', regions: invalidRegions } } } }
+        const rejected = await fetcher('/api/v1/shares', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invalid),
+        })
+        assert.equal(rejected.status, 400)
+      } else assert.equal(puzzle.regions, undefined)
+
+      const pasted = await detectPuzzle(source.coach)
+      assert.equal(pasted.title, source.title)
+      assert.deepEqual(pasted.variant?.puzzle, puzzle)
+      assert.deepEqual(pasted.givenCellColors, expectedColors)
+      const firstOpen = [...game.givens].indexOf('0')
+      const progressed = enter(game, [firstOpen], 'value', Number(solution[firstOpen]))
+      const restored = readGame(game.id, JSON.stringify(progressed))
+      assert.deepEqual(restored?.givenCellColors, expectedColors)
+      assert.deepEqual(restored?.variant, game.variant)
+      assert.equal(restored?.position.entries[firstOpen], solution[firstOpen])
+      const shared = await downloadSharedPuzzle(await publishSharedPuzzle(progressed))
+      assert.equal(shared.givens, game.givens)
+      assert.deepEqual(shared.variant?.puzzle, puzzle)
+      assert.deepEqual(shared.givenCellColors, expectedColors)
+
+      const path = await puzzleSolution(game)
+      assert.equal(path.board, source.solution)
+      assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+      for (const step of path.steps) for (const action of step.actions) {
+        if ('place' in action) assert.equal(action.place.digit, Number(solution[action.place.cell]))
+        else assert.notEqual(action.eliminate.digit, Number(solution[action.eliminate.cell]))
+      }
+      const opening = await puzzleHints(game, 'all', 'quadruple')
+      assert.ok(opening.choices.length > 1)
+      assert.ok(opening.choices.every(choice => 'variant' in choice.evidence && !!choice.evidence.variant.description))
+      const actions = new Set(opening.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant, game.position))
+      try { assert.equal(await scan.count('quadruple'), actions.size) } finally { scan.close() }
+    }
+    extraAuthorRule = true
+    for (const source of sources) await assert.rejects(detectPuzzle(source.url), /author instructions/)
+    extraAuthorRule = false
+    differentCode = coachCode({ gridSize: 9, givenDigits: '0'.repeat(81),
+      colours: ['yellow'], givenColours: ['0', ...Array(80).fill('')].join(','),
+      givenConstraints: [{ type: 'quadruple', segments: [{ cells: [0], parameters: { digits: '2' } }] }] })
+    await assert.rejects(detectPuzzle(sources[1].url), /unsupported authored markings/)
+  } finally { sqlite.close() }
 })
