@@ -27,6 +27,19 @@ test('the worker extracts published codes only from fixed provider URLs', async 
   assert.equal(fetcher.mock.callCount(), 2)
 })
 
+test('published SudokuPad paths keep the author namespace and decode a percent-encoded export once', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async () => new Response('fpuzN4A%2FB%2BC%3D'))
+  const result = await request('sudokupad/author-name/first-puzzle')
+  assert.deepEqual(await result.json(), { code: 'fpuzN4A/B+C=' })
+  assert.equal(fetcher.mock.calls[0].arguments[0], 'https://sudokupad.app/api/puzzle/author-name/first-puzzle')
+  for (const path of ['a/b/c', 'a//b', 'a%2Fb', 'a/%2Fb']) {
+    assert.equal((await request('sudokupad/' + path)).status, 404)
+  }
+  assert.equal(fetcher.mock.callCount(), 1)
+  fetcher.mock.mockImplementation(async () => new Response('fpuzN4A%ZZ'))
+  assert.equal((await request('sudokupad/author-name/first-puzzle')).status, 422)
+})
+
 test('the Pages worker does not follow a redirect from a published provider', async ({ mock }) => {
   const fetcher = mock.method(globalThis, 'fetch', async () =>
     new Response(null, { status: 302, headers: { Location: 'https://another.example/puzzle' } }))

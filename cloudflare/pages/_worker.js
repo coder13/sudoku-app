@@ -58,11 +58,12 @@ const publicPuzzleSources = {
     },
   },
   sudokupad: {
-    pattern: /^[A-Za-z0-9_-]{1,64}$/,
+    pattern: /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})?$/,
     url: id => `https://sudokupad.app/api/puzzle/${id}`,
     maxBytes: 20_024,
     code(text) {
-      const value = text.trim()
+      let value
+      try { value = decodeURIComponent(text.trim()) } catch { return }
       return /^(?:scl|ctc|fpuzzles|fpuz|scf)[A-Za-z0-9+/=_-]+$/i.test(value) ? value : undefined
     },
   },
@@ -255,13 +256,15 @@ async function loadPublicPuzzle(request, path) {
   const id = parts.pop()
   const isCollection = provider === 'sudoku-coach' && parts[0] === 'collections' &&
     parts.length >= 2 && parts.length <= 5 && parts.slice(1).every(segment => coachCollectionSegment.test(segment))
-  if (!source || !source.pattern.test(id ?? '') || parts.length && !isCollection) {
+  const sudokuPad = provider === 'sudokupad'
+  const publishedId = sudokuPad ? [...parts, id].join('/') : id ?? ''
+  if (!source || !source.pattern.test(publishedId) || parts.length && !isCollection && !sudokuPad) {
     throw new HttpError(404, 'Unknown puzzle link.')
   }
   if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed.')
   const signal = AbortSignal.timeout(5_000)
   if (isCollection) return loadCoachCollectionPuzzle(parts.slice(1), id, signal)
-  const content = await readPuzzleSource(source.url(id), source.maxBytes, signal)
+  const content = await readPuzzleSource(source.url(publishedId), source.maxBytes, signal)
   const puzzle = provider === 'sudoku-coach' ? readCoachPage(content) : undefined
   // Only the matching publication field identifies a plain grid. Other digits
   // in the page may be a solution, description, or unrelated export.

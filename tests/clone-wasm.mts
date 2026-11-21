@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runEngine, type VariantDeduction, type VariantPuzzle } from '../src/sudoku/engine.ts'
-import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf } from '../src/sudoku/game.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { applyDeduction, enter, isSolved, makeGame, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
+import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { generatePlayableVariant, getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
@@ -13,12 +15,13 @@ import { cloneLayout } from '../src/sudoku/clone.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { cloneFPuzzles } from './helpers/clone-export.ts'
 useWasmWorker()
 
-const sources = ['murphy', 'newman', 'mixed'].map(name => JSON.parse(readFileSync(new URL('./fixtures/clone-' + name + '.json', import.meta.url), 'utf8')) as { title: string; puzzle: VariantPuzzle; solution: string })
+const sources = ['murphy', 'newman', 'mixed'].map(name => JSON.parse(readFileSync(new URL('./fixtures/clone-' + name + '.json', import.meta.url), 'utf8')) as { title: string; puzzle: VariantPuzzle; solution: string; originalOnlineUrl?: string; originalOnlineCode?: string })
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
 function checkCloneProof(deduction: VariantDeduction, puzzle: VariantPuzzle) {
@@ -80,6 +83,50 @@ for (const [index, source] of sources.entries()) {
     assert.equal(await runEngine({ type: 'variant', operation: 'solve', position: { puzzle: source.puzzle }, maxNodes: 20_000 }), source.solution)
   })
 }
+
+test('the original SudokuPad publications verify, offer Clone hints, and share their authored colors', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const online = sources.filter(source => source.originalOnlineUrl)
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    const source = online.find(source => path === source.originalOnlineUrl!.replace('sudokupad.app/', 'sudokupad.app/api/puzzle/'))
+    return source ? Promise.resolve(new Response(source.originalOnlineCode)) : fetcher(path, init)
+  })
+  try {
+    for (const [index, source] of online.entries()) {
+      const { game, format } = await prepareImportedPuzzle(source.originalOnlineUrl!)
+      assert.equal(format, 'SudokuPad')
+      assert.deepEqual(game.variant?.puzzle, source.puzzle)
+      assert.equal(game.variant?.solution, source.solution)
+      assert.ok(game.givenCellColors)
+      assert.equal(Object.keys(game.givenCellColors).length, index === 0 ? 24 : 28)
+
+      const ranked = await puzzleHints(game)
+      assert.equal(ranked.choices.length, 10)
+      const selected = await puzzleHints(game, 'all', 'clone')
+      const moves = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      assert.ok(moves.size)
+      const finder = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant!, game.position))
+      try { assert.equal(await finder.count('clone'), moves.size) } finally { finder.close() }
+
+      const changed = applyDeduction(game, ranked.choices[0].actions, ranked.candidates!)
+      assert.notEqual(changed, game)
+      assert.deepEqual(undo(changed).position, game.position)
+      assert.deepEqual(restartGame(changed).givenCellColors, game.givenCellColors)
+      const restored = readGame(changed.id, JSON.stringify(changed))!
+      assert.deepEqual(restored.variant, game.variant)
+      assert.deepEqual(restored.givenCellColors, game.givenCellColors)
+      const id = await publishSharedPuzzle(restored)
+      const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+      assert.deepEqual(shared.game.variant, game.variant)
+      assert.deepEqual(shared.game.givenCellColors, game.givenCellColors)
+
+      const path = await puzzleSolution(game)
+      assert.deepEqual(path.rating.status, { solved: 'easy' })
+      assert.equal(path.steps.length, index === 0 ? 71 : 89)
+      assert.equal(path.board, source.solution)
+    }
+  } finally { sqlite.close() }
+})
 
 test('disabled human techniques and explicit removals still enforce all Clone and companion rules', async () => {
   for (const source of sources) {

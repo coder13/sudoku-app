@@ -57,6 +57,49 @@ test('typed f-puzzles Clone fields preserve explicit positional matches in raw, 
   assert.deepEqual((await detectPuzzle(JSON.stringify(payload))).variant!.puzzle.rules, [{ type: 'clone', groups: [[16,80], [0,40]] }])
 })
 
+function onlineDefinition(source: typeof sources[number]) {
+  const bytes = decodeURIComponent(source.originalOnlineCode).slice(4)
+  return JSON.parse(lzString.decompressFromBase64(bytes)!)
+}
+
+test('both original colored exports retain their complete corresponding shapes, palette, and givens', async () => {
+  for (const [index, source] of sources.entries()) {
+    const definition = onlineDefinition(source)
+    const fullColors = Object.fromEntries(definition.grid.flat().flatMap((cell: { c?: string }, index: number) =>
+      cell.c ? [[index, [cell.c.toLowerCase()]]] : []))
+    assert.equal(Object.keys(fullColors).length, index === 0 ? 24 : 28)
+    for (const input of [
+      JSON.stringify(definition), source.originalOnlineCode,
+      'https://f-puzzles.com/?load=' + encodeURIComponent(decodeURIComponent(source.originalOnlineCode).slice(4)),
+      'https://sudokupad.app/' + source.originalOnlineCode,
+    ]) {
+      const imported = await detectPuzzle(input)
+      assert.equal(imported.title, definition.title)
+      assert.deepEqual(imported.variant, { id: 'clone', puzzle: source.puzzle })
+      assert.deepEqual(imported.givenCellColors, fullColors)
+    }
+  }
+})
+
+test('colored Clone clues reject mismatched copies, outlines, palettes, and additional rules', async () => {
+  const candidate = onlineDefinition(sources[1])
+  const parse = (data: unknown) => detectPuzzle(JSON.stringify(data))
+  await assert.rejects(parse({ ...candidate, ruleset: candidate.ruleset + '\nAll shaded digits are odd.' }), /custom rules text/)
+  const extraOutline = { ...candidate, killercage: [...candidate.killercage, { cells: ['R1C1'] }] }
+  await assert.rejects(parse(extraOutline), /Killer cage without a valid sum/)
+  candidate.grid[0][0].cArray = ['#00ff00']
+  await assert.rejects(parse(candidate), /conflicting cell colors/)
+  delete candidate.grid[0][0].cArray
+  delete candidate.grid[0][0].c
+  await assert.rejects(parse(candidate), /without a matching copy/)
+
+  const murphy = onlineDefinition(sources[0])
+  const realCage = { cells: ['R1C1', 'R2C1'], value: String(Number(sources[0].solution[0]) + Number(sources[0].solution[9])) }
+  assert.deepEqual((await parse({ ...murphy, killercage: [realCage] })).variant?.puzzle.rules, [
+    ...sources[0].puzzle.rules!, { type: 'killer-cages', cages: [{ cells: [0, 9], sum: 7 }] },
+  ])
+})
+
 test('f-puzzles Clone import rejects missing copies, invalid references and unreadable custom rules', async () => {
   const base = cloneFPuzzles(sources[0].puzzle)
   for (const clone of [false, {}, [{ cells: ['R1C1'] }], [{ cells: [], cloneCells: [] }],
@@ -65,7 +108,6 @@ test('f-puzzles Clone import rejects missing copies, invalid references and unre
     await assert.rejects(detectPuzzle(JSON.stringify({ ...base, clone })), /invalid Clone|invalid cell reference/)
   }
   await assert.rejects(detectPuzzle(JSON.stringify({ ...base, ruleset: 'Clone digits must also be odd.' })), /custom rules text/)
-  for (const source of sources) await assert.rejects(detectPuzzle('https://sudokupad.app/' + source.originalOnlineCode), /custom rules text/)
 })
 
 test('transitive Clone restrictions agree with direct complete equality assignments for all partial four-cell states', () => {
