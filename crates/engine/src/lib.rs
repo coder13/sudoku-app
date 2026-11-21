@@ -82,7 +82,7 @@ pub use variant::{
     ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage,
     MarkedPairs, Parity, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
     VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEvidence, VariantExclusionPremise,
-    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantLineHouseProof,
+    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantEntropyAreaProof, VariantLineHouseProof,
     VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
     VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace, VariantVisibility, VariantVisibilityError,
     canonical_variant,

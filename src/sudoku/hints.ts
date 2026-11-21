@@ -99,6 +99,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'wxyz-wing': 'WXYZ-Wing',
   'x-chain': 'X-chain',
   'xv': 'XV pairs',
+  'entropy-quadruple': 'Quadruples and Global Entropy',
   'adjacent-total': 'Two-cell sums',
   'x-wing': 'X-wing',
   'xy-chain': 'XY-chain',

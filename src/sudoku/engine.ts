@@ -599,6 +599,7 @@ export type VariantDeduction = {
     | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
     | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
+    | { type: 'entropy-areas'; rules: number[]; windows: [number, number, number, number][]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[] }
     | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }

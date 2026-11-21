@@ -557,6 +557,26 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         .map(digit => ({ cell: cells[i], digit })))
       break
     }
+    case 'entropy-areas': {
+      cells = evidence.cells
+      const ruleDescriptions = evidence.rules.flatMap(index => {
+        const rule = puzzle.rules?.[index]
+        if (rule?.type !== 'quadruple') return []
+        const window = evidence.windows.find(window => window[0] === rule.topLeft)
+        if (!window) return []
+        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.`]
+      })
+      const areas = evidence.windows.map(window => `${nameCell(window[0])} to ${nameCell(window[3])}`)
+      const groups = areas.length === 1 ? 'This area needs' : `Both areas (${areas.join(' and ')}) need`
+      description = [...ruleDescriptions, `${groups} a low digit (1–3), a medium digit (4–6), and a high digit (7–9).`].join(' ')
+      const restrictions = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      const removals = new Intl.ListFormat('en', { type: 'conjunction' }).format(focus.map(({ cell, digit }) => `${digit} in ${nameCell(cell)}`))
+      const shared = evidence.windows.length === 2 ? ' Both areas must use the same digits in their shared cells.' : ''
+      reason = `Fit the printed digits and the three groups without repeating a digit in ${restrictions}.${shared} Every assignment that fits rules out ${removals}.`
+      candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
+        .map(digit => ({ cell: cells[i], digit })))
+      break
+    }
     case 'constraint': {
       cells = evidence.cells
       const clue = constraintClue(evidence, puzzle, nameCell, focus)

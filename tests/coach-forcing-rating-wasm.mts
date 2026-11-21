@@ -27,10 +27,13 @@ test('deferred import ratings preserve uniqueness, complete proofs, and versione
       const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: game.variant.puzzle }, techniqueOrder })
       assert.deepEqual(trace.rating.status, source.status)
       assert.equal(trace.rating.points, source.points)
-      assert.equal(trace.rating.scoringVersion, 9)
-      // The original release's full serialized trace includes the proof tree,
-      // rule list, deduction order, and both positions.
-      assert.equal(createHash('sha256').update(JSON.stringify({ value: trace })).digest('hex'), source.traceDigest)
+      assert.equal(trace.rating.scoringVersion, 10)
+      // Compare the entire recorded proof with the previous profile metadata.
+      assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
+      assert.ok(techniqueOrder.includes('entropy-quadruple'))
+      const value = { ...trace, rating: { ...trace.rating, scoringVersion: 9,
+        techniqueOrder: techniqueOrder.filter(id => id !== 'entropy-quadruple') } }
+      assert.equal(createHash('sha256').update(JSON.stringify({ value })).digest('hex'), source.traceDigest)
       if (source.status === 'stalled') assert.equal(trace.steps.length, 16)
     })
   }

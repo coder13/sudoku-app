@@ -27,7 +27,7 @@ test('exact house propagation does not silently enable human techniques', async 
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
   assert.equal(trace.rating.status, 'stalled')
   assert.equal(trace.rating.points, 98)
-  assert.equal(trace.rating.scoringVersion, 9)
+  assert.equal(trace.rating.scoringVersion, 10)
   assert.equal(trace.steps.length, 9)
   const disabled = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: [] })
   assert.equal(disabled.rating.status, 'stalled')

@@ -678,6 +678,23 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             seed("020000004059002000400006002200590008580004961000000200040003000705040000000015000", 4, 3, [PuzzleRule::GlobalEntropy {}]),
             seed("304010000000020000050030400020046000000000000000350070005060040000070000000080506", 57, 1, [PuzzleRule::GlobalEntropy {}]),
         ],
+        EntropyQuadruple => [
+            seed(
+                "364519720091020060258607401000740100000091004410358672185960240642000903007482016",
+                25, 3,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 16, digits: vec![5, 6] }],
+            ),
+            seed(
+                "186005040000067800030801025600270483000103276273006051067538190392710500850090704",
+                11, 5,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 11, digits: vec![4, 8] }],
+            ),
+            seed(
+                "060007200908320004700500608007200000600070002029008500300000006251639007890714000",
+                48, 4,
+                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 38, digits: vec![9, 9] }],
+            ),
+        ],
         Entropic => [
             seed(
                 "000678002000005040198000507009000020426850001700900800060507200280000030040006070",

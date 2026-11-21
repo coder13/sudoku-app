@@ -7,10 +7,25 @@ import { getVariantPlayOrder, variantPosition } from './variant-play.ts'
 export type PuzzleGrade = RatingAttempt['grade']
 
 const FOG_RATING_VERSION = 1
+const ENTROPY_QUADRUPLE_RATING_VERSION = 10
 
-export function needsPuzzleGrade(game: Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion'>) {
-  return !game.grid && (game.difficulty === undefined || game.score === undefined ||
-    Boolean(game.variant?.fog && game.fogRatingVersion !== FOG_RATING_VERSION))
+type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
+
+function variantRatingVersion(variant: Game['variant']) {
+  const rules = variant?.puzzle.rules
+  if (rules?.some(rule => rule.type === 'global-entropy') && rules.some(rule => rule.type === 'quadruple')) {
+    return ENTROPY_QUADRUPLE_RATING_VERSION
+  }
+}
+
+export function puzzleGradeIsStale(game: GradedPuzzle) {
+  const version = variantRatingVersion(game.variant)
+  return Boolean(game.variant?.fog && game.fogRatingVersion !== FOG_RATING_VERSION) ||
+    version !== undefined && game.variantRatingVersion !== version
+}
+
+export function needsPuzzleGrade(game: GradedPuzzle) {
+  return !game.grid && (game.difficulty === undefined || game.score === undefined || puzzleGradeIsStale(game))
 }
 
 export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine): Promise<PuzzleGrade | null> {
@@ -30,11 +45,13 @@ export function applyPuzzleGrade(game: Game, grade: PuzzleGrade | null): Game {
     ratingAttempt = ratingAttemptFor(grade, game.generatedWithAuto ? undefined : 'fixed')
     if (game.analysisUsed) ratingAttempt = addAnalysisAssistance(ratingAttempt)
   }
-  const refreshFogRating = game.variant?.fog && game.fogRatingVersion !== FOG_RATING_VERSION
+  const stale = puzzleGradeIsStale(game)
+  const version = variantRatingVersion(game.variant)
   return {
     ...game, ratingAttempt,
-    ...(refreshFogRating && { fogRatingVersion: FOG_RATING_VERSION }),
-    difficulty: refreshFogRating || game.difficulty === undefined ? grade?.difficulty ?? null : game.difficulty,
-    score: refreshFogRating || game.score === undefined ? grade?.points ?? null : game.score,
+    ...(game.variant?.fog && { fogRatingVersion: FOG_RATING_VERSION }),
+    ...(version !== undefined && { variantRatingVersion: version }),
+    difficulty: stale || game.difficulty === undefined ? grade?.difficulty ?? null : game.difficulty,
+    score: stale || game.score === undefined ? grade?.points ?? null : game.score,
   }
 }

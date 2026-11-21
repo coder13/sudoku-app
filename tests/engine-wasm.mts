@@ -2485,7 +2485,7 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 9)
+  assert.equal(catalog.scoringVersion, 10)
   const expectedIds = new Set([...catalog.defaultOrder, ...classic.techniques.map(technique => technique.id)])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)

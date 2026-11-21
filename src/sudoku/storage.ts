@@ -144,6 +144,8 @@ export function readGame(id: string, data: string | null): Game | undefined {
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.uniquenessProof !== undefined && !hasUniquenessProof(value)) delete value.uniquenessProof
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
+      if (value.variantRatingVersion !== undefined && (!value.variant || !Number.isSafeInteger(value.variantRatingVersion) ||
+        value.variantRatingVersion < 1)) delete value.variantRatingVersion
       if (value.candidatesInitialized !== true) delete value.candidatesInitialized
       if (value.collection !== undefined && !isCollectionReference(value.collection)) delete value.collection
       if (value.sharedPuzzleId !== undefined && !isSharedPuzzleId(value.sharedPuzzleId)) delete value.sharedPuzzleId
