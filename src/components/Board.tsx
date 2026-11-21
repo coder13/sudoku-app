@@ -488,11 +488,13 @@ export function Board({
     const regionAtCell = regionsAt?.[index]
     const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
     const cageRules = drawingRules ?? sizedRules
+    const cageInset = cageTotal !== undefined && cageRules ? cageLabelInset(index, cageRules, gridSize) : undefined
     return {
       index, row, column, boxColumns, cloneLabel: clones.at[index]?.label, cageTotal, regionAtCell,
       regionColor: regionAtCell === undefined ? undefined : regionColors?.[regionAtCell], houseFill: houseFills.has(index),
       whispersLinks: linkCounts?.[index] || undefined,
-      cageStyle: cageTotal !== undefined && cageRules ? { insetInlineStart: `${cageLabelInset(index, cageRules, gridSize) * 100}%` } : undefined,
+      cageStyle: cageInset !== undefined && (drawingRules || cageInset !== .1)
+        ? { insetInlineStart: `${cageInset * 100}%` } : undefined,
       boxEdge: rectangularBoxes && column % boxColumns === 0,
       regionRight: Boolean(regionsAt && column < gridSize && regionAtCell !== regionsAt[index + 1]),
       regionBottom: Boolean(regionsAt && row < gridSize && regionAtCell !== regionsAt[index + gridSize]),
