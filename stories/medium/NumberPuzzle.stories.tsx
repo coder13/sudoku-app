@@ -746,6 +746,26 @@ export const OverlappingExtraRegions: Story = {
   },
 }
 
+const authoredRegionPuzzle = createImportedFutoshiki(4, '0034341200434321', [], {
+  extraRegions: [[0, 1, 4, 5], [0, 7]],
+  annotations: { authoredPaths: [{ type: 'corner-path', points: [[2, 0], [2, 2], [0, 2]],
+    opacity: 1, thickness: .05, color: '#000000' }] },
+})
+
+export const AuthoredExtraRegion: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={authoredRegionPuzzle} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const cell = within(grid).getByRole('button', { name: /^R1C1, empty, Extra region 1, Extra region 2$/ })
+    await expect(grid.querySelectorAll('.board-authored-artwork polyline')).toHaveLength(1)
+    await expect(grid.querySelectorAll('.variant-extra-region path')).toHaveLength(1)
+    await userEvent.click(cell)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R1C2, empty, Extra region 1$/ })).toHaveFocus()
+  },
+}
+
 const globalEntropyPuzzle = createImportedFutoshiki(9,
   '623597184748216953915483267369145728804072516402058671186724395571639842257861439',
   [], { globalEntropy: true })

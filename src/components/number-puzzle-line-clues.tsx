@@ -6,6 +6,8 @@ import { globalEntropyNote, globalEntropyTechnique } from '../latin/global-entro
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
 import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
+import { regionsInsideArtwork } from '../number-puzzles/authored-region-borders'
+import type { AuthoredCornerPath } from '../sudoku/authored-artwork'
 import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
 import { ArrowClue, PillArrowClue } from './ArrowClue'
 import { EndpointLineClues } from './EndpointLineClues'
@@ -17,6 +19,7 @@ import { WhispersLineClue, WhispersLineLabel } from './WhispersClue'
 
 export function numberPuzzleClues(
   size: number, inequalities: readonly Inequality[], { adjacentClues, whispers = [], pathClues = [], extraRegions = [], globalEntropy, quadruples = [] }: LatinClues,
+  artwork?: readonly AuthoredCornerPath[],
 ) {
   const hasDrawing = whispers.length > 0 || pathClues.length > 0 || extraRegions.length > 0 || quadruples.length > 0
   if (!hasDrawing && !globalEntropy) return
@@ -99,10 +102,17 @@ export function numberPuzzleClues(
       }
     }
   }
+  const artworkRegions = artwork && extraRegions.length ? regionsInsideArtwork(size, artwork) : []
+  const artworkKeys = new Set(artworkRegions.map(cells => cells.join(',')))
+  const regionKeys = extraRegions.map(cells => [...cells].sort((a, b) => a - b).join(','))
+  const squareArtworkRegions = size === 9 ? artworkRegions.filter(cells => cells.length === 9 &&
+    cells[0] % size <= size - 3 && cells.every((cell, index) => cell === cells[0] + Math.floor(index / 3) * size + index % 3)) : []
+  const squareRegionRule = squareArtworkRegions.length > 0 && squareArtworkRegions.length === extraRegions.length &&
+    squareArtworkRegions.every(cells => regionKeys.includes(cells.join(',')))
   const regionCells = extraRegions.flat()
   const regionsOverlap = new Set(regionCells).size !== regionCells.length
   const drawing = hasDrawing ? <svg className="number-puzzle-line-clues" viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-    {extraRegions.map((cells, index) => <ExtraRegion key={`region-${index}`} cells={cells} size={size} outlineOnly={regionsOverlap} />)}
+    {extraRegions.map((cells, index) => !artworkKeys.has(regionKeys[index]) && <ExtraRegion key={`region-${index}`} cells={cells} size={size} outlineOnly={regionsOverlap} />)}
     {pathClues.filter(line => line.type === 'thermometer').map((line, index) => <PuzzlePathClue key={`thermometer-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'renban').map((line, index) => <RenbanClue key={`renban-${index}`} {...line} number={index + 1} size={size} />)}
     {pathClues.filter(line => line.type === 'palindrome').map((line, index) => <PuzzlePathClue key={`palindrome-${index}`} line={line} size={size} />)}
@@ -123,7 +133,7 @@ export function numberPuzzleClues(
     notes: [
       ...(quadruples.length ? [quadrupleNote] : []),
       ...(globalEntropy ? [globalEntropyNote] : []),
-      ...(extraRegions.length ? [extraRegionNote] : []),
+      ...(extraRegions.length ? [squareRegionRule ? 'Digits cannot repeat in each outlined 3 × 3 square.' : extraRegionNote] : []),
       ...(whispers.length ? [whispersRuleNote] : []),
       ...Array.from(types, type => pathClueNotes[type]),
     ],

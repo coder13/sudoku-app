@@ -122,6 +122,14 @@ const reviewedCoachNotes = new Map([
     'fa89d8bd12b691cbdee873107f97ffdb6deb31b40d53f66c3d2522abfe70e518']],
 ])
 
+// The export already encodes every rule in these descriptions. Both hashes
+// must match before a custom rule flag can be cleared.
+const reviewedCoachRuleDescriptions = new Map([
+  // FUN-ky Bento II explains which drawn squares are typed extra regions.
+  ['JDv2', ['f9ab780aef148150727d073d5cfeb733e2211ad162a2a50e9cb9ac1115af2fc6',
+    '349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a']],
+])
+
 // Coach publishes the puzzle code and its author instructions separately.
 function readCoachPage(html) {
   const scripts = [...html.matchAll(/<script>\s*let mainInitData\s*=\s*({[\s\S]*?})\s*;?\s*<\/script>/gi)]
@@ -151,10 +159,12 @@ async function coachPublication(puzzle, id, code) {
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
-  const reviewedNote = reviewedCoachNotes.get(id)
+  const reviewedNote = (puzzle.custom_constraints ? reviewedCoachRuleDescriptions : reviewedCoachNotes).get(id)
   const [descriptionDigest, exportDigest] = Array.isArray(reviewedNote) ? reviewedNote : [reviewedNote]
-  const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
-    (!descriptionDigest || await digest(lines.join('\n')) !== descriptionDigest || exportDigest !== undefined && await digest(code) !== exportDigest)
+  const reviewed = descriptionDigest && await digest(lines.join('\n')) === descriptionDigest &&
+    (exportDigest === undefined || await digest(code) === exportDigest)
+  const hasAuthorInstructions = !reviewed &&
+    (puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)))
   return {
     hasAuthorInstructions,
     ...(authoredRule && { authoredRule }),

@@ -47,11 +47,11 @@ export const calcudoku = {
   techniques: ['Row and column', 'Cage arithmetic', 'Line totals', ...subsetTechniques, lockedCandidates, xWingTechnique],
   entries: calcudokuCatalog,
   generatedEntry: generatedCalcudokuEntry,
-  board: ({ puzzle, cageLabels, cellColors, ruleNotes }) => {
+  board: ({ puzzle, cageLabels, cellColors, ruleNotes, annotations }) => {
     const { size, cages, givens, inequalities, adjacentClues } = puzzle
     const hasInequalities = inequalities.length > 0
     const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
-    const lines = numberPuzzleClues(size, inequalities, puzzle)
+    const lines = numberPuzzleClues(size, inequalities, puzzle, annotations?.authoredPaths)
     const describeHint = (hint: LatinHint) => numberHint(hint, hasInequalities)
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
     const quadrupleCorners = new Set(puzzle.quadruples?.map(clue => clue.topLeft + size + 1))

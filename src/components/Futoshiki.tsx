@@ -39,10 +39,10 @@ export const futoshiki = {
     inequalityTechniqueNames['line-digit-bound'], xWingTechnique, inequalityTechniqueNames['inequality-line-matching'],
   ],
   entries: futoshikiCatalog,
-  board: ({ puzzle }) => {
+  board: ({ puzzle, annotations }) => {
     const { size, givens, inequalities, adjacentClues } = puzzle
     const clues = numberPuzzleEdgeClues(size, inequalities, adjacentClues)
-    const lines = numberPuzzleClues(size, inequalities, puzzle)
+    const lines = numberPuzzleClues(size, inequalities, puzzle, annotations?.authoredPaths)
     return {
       width: size,
       height: size,
