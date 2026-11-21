@@ -287,6 +287,26 @@ The pre-forcing and post-forcing scans both reach the same expensive five-digit 
 node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=3 --warmups=1 --cases=HCHW-linked,HCHW-edited-tail,HCHW-current-stall,classic-quintuple-pattern-overlay,variant-quintuple-pattern-overlay
 ```
 
+### Four-cell sum hints in Play
+
+The line pair and sum can use four separate cells. For each candidate in either line cell, the detector checks the same-group candidates at its partner and both orders of the sum allowed by the domains. Every repeating digit must be justified by a recorded house. The four-cell proof carries both authored rule indices, the candidate masks, the house list and the total. Positive V and X clues use the same path.
+
+At the [archived HCHW position](tests/fixtures/overlay-hchw-linked.json), Play offers both verified hints. The first rules out 4 and 6 from R1C2 using column 2. The second rules them out from R2C2 using column 2 and box 4. Technique Finder counts the removals. The regression checks the displayed explanations against independent enumeration, plays both hints with undo and redo, and verifies the resulting Dynamic Forcing Net move. A separate Entropic and V control checks the same proof, a restored candidate that makes an assignment possible, and a V with no shared house.
+
+The live HCHW app path grows from 35 steps and 2,286 points to 38 steps and 3,140 points. It reaches the same candidate state as the manual experiment and still stalls without placing a digit. The native path grows from 31 steps and 706 points to 33 and 760. L25 entropic (Hafj) moves from 13 steps and 309 points to 17 steps and 417 points in both orders. The four new steps use the original V/X clues and leave its walkthrough partial. Exact solutions and starting candidates match the prior build across ten published sources.
+
+Variant walkthroughs now retain exact overlay support for digit groups whose allowed cells are unchanged from one step to the next. Groups containing an edited digit are recomputed. Each position's full geometric witnesses are rebuilt on demand, including when an exact group is already cached. That preserves the availability of witnesses to forcing techniques and other detectors. The saved HCHW tail tests reuse across the digit 8 removal while the expensive group for 4, 5, 6, 7 and 9 stays the same.
+
+Three warmed, alternating WebAssembly samples put HCHW's standard app walkthrough at a median of 2.21 seconds of CPU before the new hints, 4.58 seconds with the hints alone, and 4.70 seconds with the cache. The default edited replay stays near 3.1 seconds across the three builds. Median CPU times for the 220V, Hafj and Hyk5 app ratings vary by less than 1% in paired cache-only measurements. The new archived-position Modular request returns two hints in 0.11 ms at the warmed median.
+
+In a custom profile that checks Quintuple Pattern Overlay before Dynamic Forcing Net, the overlay itself removes 8 from R3C2 at the edited position. The resulting candidate state matches the default edited replay. The cache preserves that full custom replay and cuts its median Wasm CPU time from 16.42 to 12.16 seconds. The comparison matches 640 other complete replies between the two artifacts with the new hints. The final app Wasm is 4,061,770 bytes raw and 1,082,802 bytes gzipped, a decrease of 15,125 raw bytes and an increase of 12,301 gzip bytes from the preceding local commit.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before-cache.wasm after-cache.wasm --samples=3 --warmups=1 --cases=HCHW-edited-tail,HCHW-overlay-first
+```
+
+The next verified deduction uses R3C2, R4C2 and R4C1 on the same Modular Line. If R3C2 were 5 or 8, its group would force R4C2 and R4C1 to be 1 and 3 in either order. Both share box 4 with R5C2, which has only 1 and 3 left. Independent enumeration excludes both candidates before the forcing step and excludes the remaining 5 at the 38-step stall. Applying the 5 removal manually gives an additional valid move without opening another step under the current profile.
+
 ## Reproduce
 
 ```sh

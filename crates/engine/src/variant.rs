@@ -23,7 +23,7 @@ pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
 };
-use lines::{GroupSumHouse, LineConstraint, ModularSum, compile_line_sums};
+use lines::{DisjointGroupSum, GroupSumHouse, LineConstraint, ModularSum, compile_line_sums};
 pub(crate) use search::record_support;
 pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
@@ -547,6 +547,7 @@ impl VariantPuzzle {
             lines: Vec::new(),
             modular_sums: Vec::new(),
             group_sum_houses: Vec::new(),
+            disjoint_group_sums: Vec::new(),
             quadruples: Vec::new(),
             global_entropy: None,
             pair_clues: Vec::new(),
@@ -791,6 +792,7 @@ pub struct CompiledVariant {
     lines: Vec<LineConstraint>,
     modular_sums: Vec<ModularSum>,
     group_sum_houses: Vec<GroupSumHouse>,
+    disjoint_group_sums: Vec<DisjointGroupSum>,
     quadruples: Vec<Quadruple>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,

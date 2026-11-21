@@ -257,6 +257,19 @@ pub enum VariantEvidence {
         /// Positive sum on the edge between the last two cells.
         total: u8,
     },
+    /// A same-group pair and a separate two-cell sum are linked by shared houses.
+    GroupLineDisjointSum {
+        /// Indices of the line and positive sum rules, in that order.
+        rules: [usize; 2],
+        /// The line cells, followed by the two sum endpoints.
+        cells: [usize; 4],
+        /// Input candidate masks in cell order, including placed digits.
+        domains: [u16; 4],
+        /// Houses connecting these cells.
+        houses: Vec<VariantHouseKind>,
+        /// Positive sum on the last two cells.
+        total: u8,
+    },
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
@@ -513,7 +526,14 @@ impl VariantPosition {
                 }
             }
             end.record_actions(&step.actions);
+            let overlay = position.overlay.take();
             position = compiled.house_position(position.board, &end.eliminations);
+            if let Some(mut overlay) = overlay
+                && overlay.get_mut().has_cached_support()
+            {
+                overlay.get_mut().update_position(&position.board, &position.masks);
+                position.overlay = OnceCell::from(overlay);
+            }
             receive(step);
         }
         Ok((end, rating))
@@ -529,6 +549,7 @@ impl VariantDeduction {
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
             VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
             VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineDisjointSum { cells, .. } => cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -1095,6 +1116,28 @@ impl CompiledVariant {
                                 total: clue.total,
                             },
                         });
+                    }
+                }
+                for clue in self.disjoint_group_sums.iter().filter(|clue| clue.technique == technique.id()) {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let removals = clue.removals(domains);
+                    for (&cell, mask) in clue.cells.iter().zip(removals) {
+                        let removed = position.masks[cell] & mask;
+                        if removed != 0 {
+                            proofs.push(VariantDeduction {
+                                technique,
+                                actions: digits(removed)
+                                    .map(|digit| HintAction::Eliminate(Candidate { cell, digit }))
+                                    .collect(),
+                                evidence: VariantEvidence::GroupLineDisjointSum {
+                                    rules: clue.rules,
+                                    cells: clue.cells,
+                                    domains,
+                                    houses: clue.houses.clone(),
+                                    total: clue.total,
+                                },
+                            });
+                        }
                     }
                 }
                 if technique == Modular {

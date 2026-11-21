@@ -40,8 +40,14 @@ impl OverlaySearch<'static> {
     pub(crate) fn classic(board: &Board, masks: &[u16; CELLS]) -> Self {
         Self::new(board, candidate_positions(masks))
     }
+}
 
-    pub(crate) fn update_classic(&mut self, board: &Board, masks: &[u16; CELLS]) {
+impl<'a> OverlaySearch<'a> {
+    #[cfg(any(
+        feature = "variants",
+        all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))
+    ))]
+    pub(crate) fn update_position(&mut self, board: &Board, masks: &[u16; CELLS]) {
         self.positions = candidate_positions(masks);
         let mut changed = 0;
         for digit in 0..9 {
@@ -54,14 +60,13 @@ impl OverlaySearch<'static> {
         }
         // A group's support only depends on the layouts for its own digits.
         self.supports.retain(|group, _| group & changed == 0);
+        // Full geometric witnesses are local to the position's proof searches.
         #[cfg(feature = "variants")]
-        if changed != 0 && let Some(witnessed) = &mut self.witnessed {
+        if let Some(witnessed) = &mut self.witnessed {
             witnessed.take();
         }
     }
-}
 
-impl<'a> OverlaySearch<'a> {
     pub(super) fn new(board: &Board, positions: [u128; 9]) -> Self {
         Self {
             geometry: None,
@@ -91,6 +96,11 @@ impl<'a> OverlaySearch<'a> {
             search.geometry = Some(Geometry { houses, peers });
         }
         search
+    }
+
+    #[cfg(feature = "variants")]
+    pub(crate) fn has_cached_support(&self) -> bool {
+        !self.supports.is_empty()
     }
 
     /// A complete witness for each allowed candidate certifies support under
@@ -191,6 +201,12 @@ impl<'a> OverlaySearch<'a> {
 
     fn support(&mut self, group: u16) -> [u128; 9] {
         if let Some(&support) = self.supports.get(&group) {
+            // Reusing an exact subgroup must still give other detectors the
+            // current position's witnesses when a fresh scan would do so.
+            #[cfg(feature = "variants")]
+            if !group.is_power_of_two() || self.geometry.is_some() {
+                self.completion_support(COMPLETION_PROBE_NODES);
+            }
             return support;
         }
         let mut support = [0; 9];
@@ -308,13 +324,13 @@ mod tests {
         assert!(search.has_full_completion_support(4096));
         assert!(search.known_full_completion_support());
         masks[0] &= !1;
-        search.update_classic(&board, &masks);
+        search.update_position(&board, &masks);
         assert!(!search.known_full_completion_support());
         assert!(search.known_completion_support().is_none());
         assert!(search.has_full_completion_support(4096));
         board[0] = 2;
         masks = candidates(&board).unwrap();
-        search.update_classic(&board, &masks);
+        search.update_position(&board, &masks);
         assert!(!search.known_full_completion_support());
         assert!(search.known_completion_support().is_none());
         assert!(search.has_full_completion_support(4096));
@@ -335,9 +351,15 @@ mod tests {
         search.support(0b011);
         assert!(search.witnessed.as_ref().unwrap().get().is_some());
         masks[0] &= !1;
-        search.update_classic(&board, &masks);
+        search.update_position(&board, &masks);
         assert_eq!(search.supports.get(&0b110), Some(&unaffected));
+        assert!(!search.supports.contains_key(&0b011));
         assert!(search.witnessed.as_ref().unwrap().get().is_none());
+
+        let mut fresh = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
+        assert_eq!(search.support(0b110), fresh.support(0b110));
+        assert_eq!(search.known_completion_support(), fresh.known_completion_support());
+        assert!(search.known_completion_support().is_some());
         let actual = search.support(0b011);
         assert_eq!(actual[0] & cell_bit(0), 0);
         assert_eq!(actual, OverlaySearch::classic(&board, &masks).support(0b011));
@@ -384,7 +406,7 @@ mod tests {
 
         assert_ne!(masks[2] & 1, 0);
         masks[2] &= !1;
-        search.update_classic(&board, &masks);
+        search.update_position(&board, &masks);
 
         assert_eq!(search.supports.get(&0b110), Some(&unaffected));
         assert!(!search.supports.contains_key(&0b011));

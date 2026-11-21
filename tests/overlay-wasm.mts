@@ -58,13 +58,14 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [] }), [])
 })
 
-test('Quintuple Pattern Overlay has no deductions at the HCHW stall after shared-house sum deductions', async () => {
+test('Quintuple Pattern Overlay has no deductions at the HCHW stall after the disjoint-sum and forcing deductions', async () => {
   const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
   const trace = await runEngine({
     type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: await getVariantPlayOrder(),
   })
   assert.equal(trace.rating.status, 'stalled')
-  assert.equal(trace.steps.length, 35)
+  assert.equal(trace.steps.length, 38)
+  assert.deepEqual(trace.end.eliminations, load('overlay-hchw-linked').after)
   const technique = 'quintuple-pattern-overlay'
   const position = trace.end
   assert.deepEqual(await runEngine({
@@ -106,12 +107,15 @@ test('mixed layout domains give no Quintuple deductions after the verified linke
   }
 
   const position = { puzzle: source.puzzle, entries: saved.entries, eliminations }
-  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: ['dynamic-forcing-net'] })
+  const technique = 'quintuple-pattern-overlay'
+  const trace = await runEngine({
+    type: 'variant', operation: 'trace', position, techniqueOrder: [technique, 'dynamic-forcing-net'],
+  })
+  assert.deepEqual(trace.steps.map(step => step.technique), [technique])
   assert.deepEqual(trace.steps.map(step => step.actions), [[{ eliminate: { cell: 19, digit: 8 } }]])
   assert.notEqual(source.solution[19], '8')
   assert.deepEqual(trace.end.eliminations, saved.after)
 
-  const technique = 'quintuple-pattern-overlay'
   const scan = watchTechniqueScan(trace.end.entries, trace.end.eliminations, trace.end)
   try {
     assert.equal(await scan.count(technique), 0)

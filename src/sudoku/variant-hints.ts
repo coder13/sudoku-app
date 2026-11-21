@@ -294,6 +294,44 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = 'No assignment that puts a crossed-out digit in its marked cell reaches the required sum.'
       break
     }
+    case 'group-line-disjoint-sum': {
+      cells = evidence.cells
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const groupName = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const { cells: [first, second, left, right], domains, houses, total } = evidence
+      const { cell: target, digit } = focus[0]
+      const targetIndex = target === first ? 0 : 1
+      const partnerIndex = 1 - targetIndex
+      const partner = evidence.cells[partnerIndex]
+      const sites = houses.map(house => variantHouseCells(house, puzzle))
+      const sharedHouse = (a: number, b: number) => sites.findIndex(group => group.includes(a) && group.includes(b))
+      const hasDigit = (i: number, value: number) => Boolean(domains[i] & (1 << (value - 1)))
+      const group = lineGroupMask(kind, digit)
+      const choices = DIGITS.filter(value => hasDigit(partnerIndex, value) &&
+        (group & (1 << (value - 1))) && (value !== digit || sharedHouse(first, second) < 0))
+      const failures: string[] = []
+      for (const value of choices) for (const a of DIGITS) {
+        const b = total - a
+        if (a === b || !hasDigit(2, a) || b < 1 || b > 9 || !hasDigit(3, b)) continue
+        const lineDigits = targetIndex === 0 ? [digit, value] : [value, digit]
+        const conflict = [[0, a, left], [0, b, right], [1, a, left], [1, b, right]]
+          .find(([i, sumDigit, sumCell]) => lineDigits[i] === sumDigit && sharedHouse(evidence.cells[i], sumCell) >= 0)
+        if (!conflict) continue
+        const [i, repeated, sumCell] = conflict
+        const name = houseLabel(houses[sharedHouse(evidence.cells[i], sumCell)])
+        const assumption = choices.length === 1 ? '' : `${nameCell(partner)} is ${value} and `
+        failures.push(`If ${assumption}${nameCell(left)} is ${a} and ${nameCell(right)} is ${b}, ${repeated} repeats in ${name}.`)
+      }
+      description = `${nameCell(first)} and ${nameCell(second)} must use the same ${groupName} on this ${line} Line. ${nameCell(left)} and ${nameCell(right)} add to ${total}.`
+      const lead = `If ${nameCell(target)} were ${digit}, ${nameCell(partner)} could only be ${alternatives.format(choices.map(String))}.`
+      const detail = failures.length <= 4 ? failures.join(' ') : 'Every order of the sum would repeat a digit in a shared house.'
+      reason = `${lead} ${detail}`
+      if (focus.length > 1) reason += ' The same check rules out the other crossed-out candidates.'
+      candidates = domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+        .map(value => ({ cell: cells[i], digit: value })))
+      break
+    }
     case 'group-line-sum-house': {
       cells = evidence.cells
       const kind = technique === 'entropic' ? 'entropic' : 'modular'

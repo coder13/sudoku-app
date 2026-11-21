@@ -2,6 +2,20 @@ import assert from 'node:assert/strict'
 import type { VariantDeduction, VariantPuzzle } from '../../src/sudoku/engine.ts'
 import { variantHouseCells } from '../../src/sudoku/variants.ts'
 
+function assertGroupAndSum(puzzle: VariantPuzzle, type: 'entropic' | 'modular', rules: readonly number[],
+  [first, second, left, right]: readonly number[], total: number) {
+  const [line, sum] = rules.map(index => puzzle.rules![index])
+  assert.ok(line.type === 'modular' || line.type === 'entropic')
+  assert.equal(line.type, type)
+  assert.ok(line.cells.includes(first) && line.cells.includes(second))
+  assert.equal(Math.abs(line.cells.indexOf(first) - line.cells.indexOf(second)) % 3, 0)
+  const samePair = ([a, b]: readonly number[]) => a === left && b === right || b === left && a === right
+  const printedTotal = sum.type === 'adjacent-total' && samePair(sum.cells) ? sum.sum
+    : sum.type === 'xv' && sum.five?.pairs?.some(samePair) ? 5
+    : sum.type === 'xv' && sum.ten?.pairs?.some(samePair) ? 10 : undefined
+  assert.equal(total, printedTotal)
+}
+
 /** Independently enumerate groups under each original sliding-window rule. */
 export function assertGroupLineProof(
   puzzle: VariantPuzzle,
@@ -9,21 +23,38 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-disjoint-sum') {
+    const { cells, domains, rules, houses, total } = proof.evidence
+    assert.equal(new Set(cells).size, 4)
+    assertGroupAndSum(puzzle, type, rules, cells, total)
+    const sites = houses.map(house => variantHouseCells(house, puzzle))
+    const sees = (i: number, j: number) => sites.some(house => house.includes(cells[i]) && house.includes(cells[j]))
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const possible = [new Set<number>(), new Set<number>()]
+    const supported = [new Set<number>(), new Set<number>()]
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) for (let d = 1; d <= 9; d++) {
+      if (group(a) !== group(b) || c === d || c + d !== total || a === b && sees(0, 1)) continue
+      if (![a, b, c, d].every((digit, i) => domains[i] & (1 << (digit - 1)))) continue
+      possible[0].add(a)
+      possible[1].add(b)
+      if (a === c && sees(0, 2) || a === d && sees(0, 3) || b === c && sees(1, 2) || b === d && sees(1, 3)) continue
+      supported[0].add(a)
+      supported[1].add(b)
+    }
+    assert.ok(supported[0].size)
+    assert.ok(proof.actions.length)
+    const target = 'eliminate' in proof.actions[0] ? proof.actions[0].eliminate.cell : -1
+    const index = cells.indexOf(target)
+    assert.ok(index === 0 || index === 1)
+    assert.deepEqual(proof.actions, [...possible[index]].filter(digit => !supported[index].has(digit))
+      .sort((a, b) => a - b).map(digit => ({ eliminate: { cell: target, digit } })))
+    return
+  }
   if (proof.evidence.type === 'group-line-sum-house') {
     const { cells, domains, rules, house, total } = proof.evidence
     const [target, endpoint, partner] = cells
-    const [line, sum] = rules.map(index => puzzle.rules![index])
-    assert.ok(line.type === 'modular' || line.type === 'entropic')
-    assert.equal(line.type, type)
     assert.equal(new Set(cells).size, 3)
-    const offset = line.cells.indexOf(target) - line.cells.indexOf(endpoint)
-    assert.ok(line.cells.includes(target) && line.cells.includes(endpoint))
-    assert.equal(Math.abs(offset) % 3, 0)
-    const samePair = ([a, b]: readonly number[]) => a === endpoint && b === partner || b === endpoint && a === partner
-    const printedTotal = sum.type === 'adjacent-total' && samePair(sum.cells) ? sum.sum
-      : sum.type === 'xv' && sum.five?.pairs?.some(samePair) ? 5
-      : sum.type === 'xv' && sum.ten?.pairs?.some(samePair) ? 10 : undefined
-    assert.equal(total, printedTotal)
+    assertGroupAndSum(puzzle, type, rules, [target, endpoint, endpoint, partner], total)
     const sites = variantHouseCells(house, puzzle)
     assert.ok(sites.includes(target) && sites.includes(partner))
 

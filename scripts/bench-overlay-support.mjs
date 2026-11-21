@@ -54,7 +54,7 @@ if (selected.includes('HCHW-current-stall')) {
   cases.push({ name: 'HCHW-current-stall', request: { type: 'variant', operation: 'hints', position: trace.end,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
 }
-if (selected.some(name => name === 'HCHW-linked' || name === 'HCHW-edited-tail')) {
+if (selected.some(name => ['HCHW-linked', 'HCHW-edited-tail', 'HCHW-overlay-first'].includes(name))) {
   const linked = await load('overlay-hchw-linked')
   assert.equal(linked.url, source.url)
   const position = { puzzle: source.puzzle, entries: linked.entries, eliminations: linked.after }
@@ -62,8 +62,11 @@ if (selected.some(name => name === 'HCHW-linked' || name === 'HCHW-edited-tail')
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
   const removed = (1 << (4 - 1)) | (1 << (6 - 1))
   const edits = linked.before.map((mask, cell) => [1, 10].includes(cell) ? mask | removed : mask)
+  const edited = { ...position, eliminations: edits }
   cases.push({ name: 'HCHW-edited-tail', request: { type: 'variant', operation: 'trace',
-    position: { ...position, eliminations: edits }, techniqueOrder: order }, expectedSteps: 1 })
+    position: edited, techniqueOrder: order }, expectedSteps: 1 })
+  cases.push({ name: 'HCHW-overlay-first', request: { type: 'variant', operation: 'trace',
+    position: edited, techniqueOrder: ['quintuple-pattern-overlay', 'dynamic-forcing-net'] }, expectedSteps: 1 })
 }
 const methods = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
 for (const technique of methods) {

@@ -28,6 +28,7 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
     }
     let mut modular = Vec::new();
     let mut with_houses = Vec::new();
+    let mut disjoint = Vec::new();
     for line in group_lines {
         for &(rule, pair, sum) in &sums {
             if let Some(joined) = ModularSum::for_pair(line, rule, pair, sum) {
@@ -36,10 +37,12 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
             for [a, b] in [pair, [pair[1], pair[0]]] {
                 GroupSumHouse::compile(puzzle, line, rule, a, b, sum, &mut with_houses);
             }
+            DisjointGroupSum::compile(puzzle, line, rule, pair, sum, &mut disjoint);
         }
     }
     puzzle.modular_sums = modular;
     puzzle.group_sum_houses = with_houses;
+    puzzle.disjoint_group_sums = disjoint;
 }
 
 #[derive(Clone, Debug)]
@@ -158,6 +161,116 @@ impl GroupSumHouse {
         } else {
             0
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(in crate::variant) struct DisjointGroupSum {
+    /// The two line cells, then the two sum endpoints.
+    pub cells: [usize; 4],
+    pub rules: [usize; 2],
+    pub houses: Vec<VariantHouseKind>,
+    pub total: u8,
+    pub technique: &'static str,
+    partition: DigitGroups,
+    sees: [u8; 2],
+}
+
+impl DisjointGroupSum {
+    fn compile(
+        puzzle: &CompiledVariant,
+        line: &LineConstraint,
+        rule: usize,
+        [c, d]: [usize; 2],
+        total: u8,
+        out: &mut Vec<Self>,
+    ) {
+        let LineKind::ThreeGroups(groups) = &line.kind else {
+            return;
+        };
+        let sum_cells = (1u128 << c) | (1u128 << d);
+        for (i, &a) in line.cells.iter().enumerate() {
+            if sum_cells & (1u128 << a) != 0 {
+                continue;
+            }
+            for (j, &b) in line.cells.iter().enumerate().skip(i + 1) {
+                if sum_cells & (1u128 << b) != 0
+                    || (puzzle.peers[a] | puzzle.peers[b]) & sum_cells == 0
+                {
+                    continue;
+                }
+                let Some(partition) = groups.repeating_group(i, j) else {
+                    continue;
+                };
+                let cells = [a, b, c, d];
+                let mut houses = Vec::new();
+                let mut sees = [0; 2];
+                for i in 0..2 {
+                    for j in i + 1..4 {
+                        if let Some(house) = puzzle.shared_enforced_house(cells[i], &[cells[j]]) {
+                            sees[i] |= 1 << j;
+                            if !houses.contains(&house) {
+                                houses.push(house);
+                            }
+                        }
+                    }
+                }
+                if (sees[0] | sees[1]) & 0b1100 != 0 {
+                    out.push(Self {
+                        cells,
+                        rules: [line.rule_index, rule],
+                        houses,
+                        total,
+                        technique: line.rule_id,
+                        partition,
+                        sees,
+                    });
+                }
+            }
+        }
+    }
+
+    pub fn removals(&self, [first, second, left, right]: [u16; 4]) -> [u16; 2] {
+        let sum_left = digits(left).fold(0, |mask, a| {
+            let b = self.total.saturating_sub(a);
+            if a != b && (1..=9).contains(&b) && right & digit_bit(b) != 0 {
+                mask | digit_bit(a)
+            } else {
+                mask
+            }
+        });
+        if sum_left == 0 {
+            return [0; 2];
+        }
+
+        let mut possible = [0; 2];
+        let mut supported = [0; 2];
+        for group in self.partition.masks() {
+            for a in digits(first & group) {
+                for b in digits(second & group) {
+                    if a == b && self.sees[0] & 0b0010 != 0 {
+                        continue;
+                    }
+                    let bits = [digit_bit(a), digit_bit(b)];
+                    possible[0] |= bits[0];
+                    possible[1] |= bits[1];
+                    if digits(sum_left).any(|c| {
+                        let d = self.total - c;
+                        (a != c || self.sees[0] & 0b0100 == 0)
+                            && (a != d || self.sees[0] & 0b1000 == 0)
+                            && (b != c || self.sees[1] & 0b0100 == 0)
+                            && (b != d || self.sees[1] & 0b1000 == 0)
+                    }) {
+                        supported[0] |= bits[0];
+                        supported[1] |= bits[1];
+                    }
+                }
+            }
+        }
+        if supported[0] == 0 {
+            return [0; 2];
+        }
+        std::array::from_fn(|i| possible[i] & !supported[i])
     }
 }
 
