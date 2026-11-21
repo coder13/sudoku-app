@@ -588,8 +588,10 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
         if (difficultyScreen) return <CustomModeDifficulty key={mode.id} mode={mode} />
       }
       if (customScreen) return <CustomPuzzleGeneration variant={customGrid} boxRows={boxRows} difficulty={requestedDifficulty} mode={mode} modes={modes} onSave={saveMode} />
+      if (!difficultyScreen && !newPuzzleSearch?.variant && !openRemembered) {
+        return <CoreSudokuChooser modes={modes} difficulty={requestedDifficulty} />
+      }
       if (!preferencesReady || openRemembered) return <p className="main-menu-empty" role="status">Loading…</p>
-      if (!difficultyScreen && !newPuzzleSearch?.variant) return <CoreSudokuChooser modes={modes} difficulty={requestedDifficulty} />
       if (difficultyScreen) {
         return <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} boxRows={boxRows}
           difficulty={difficulty} save={savePuzzlePreference} />
