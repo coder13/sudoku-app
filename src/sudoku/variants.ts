@@ -318,7 +318,7 @@ export function sumLabel(sum: number) {
 }
 
 type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'consecutive-run' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
-type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' }>
+type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' | 'minimum' | 'maximum' }>
 const noCellExclusions: readonly CellExclusionRule[] = []
 const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
 
@@ -326,12 +326,12 @@ const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof i
 function indexExclusions(rules: readonly VariantRule[]) {
   const byCell = Array<CellExclusionRule[] | undefined>(81)
   const edgeRules: EdgeExclusionRule[] = []
-  const kropki: Extract<VariantRule, { type: 'kropki' }>[] = []
+  const kropki: Extract<VariantRule, { type: 'kropki' | 'labeled-dots' }>[] = []
   let clones: ReturnType<typeof cloneLayout>['at'] | undefined
   for (const rule of rules) {
     switch (rule.type) {
-      case 'kropki': kropki.push(rule); continue
-      case 'xv': case 'non-consecutive': edgeRules.push(rule); continue
+      case 'kropki': case 'labeled-dots': kropki.push(rule); continue
+      case 'xv': case 'non-consecutive': case 'minimum': case 'maximum': edgeRules.push(rule); continue
       case 'clone': clones ??= cloneLayout(rules).at; continue
       case 'entropic': case 'modular': case 'renban': case 'consecutive-run': case 'adjacent-total': case 'palindrome': case 'whispers':
       case 'inequality': {
@@ -391,7 +391,14 @@ export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: 
       x ||= hasMarkedPair(rule.ten?.pairs, from, to)
       negativeV ||= rule.five?.negative === true
       negativeX ||= rule.ten?.negative === true
-    } else if (!hasMarkedPair(rule.except, from, to)) {
+    } else if (rule.type === 'minimum' || rule.type === 'maximum') {
+      const fromMarked = rule.cells.includes(from)
+      const toMarked = rule.cells.includes(to)
+      if (fromMarked && toMarked && !rule.ignoreMarkedNeighbors) return 511
+      if (fromMarked === toMarked) continue
+      const fromIsSmaller = fromMarked === (rule.type === 'minimum')
+      excluded |= fromIsSmaller ? (1 << digit) - 1 : 511 & ~((1 << (digit - 1)) - 1)
+    } else if (rule.type === 'non-consecutive' && !hasMarkedPair(rule.except, from, to)) {
       excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
     }
   }
@@ -407,7 +414,9 @@ export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<V
   const exceptions = rule.except ?? []
   if (!exceptions.length) return PUZZLE_VARIANTS['non-consecutive'].rule
   const marked = exceptions.every(([a, b]) => puzzle.rules?.some(other =>
-    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b)))
+    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b) ||
+    other.type === 'labeled-dots' && other.relation === 'difference' &&
+      other.marks.some(({ cells: [left, right] }) => left === a && right === b || left === b && right === a)))
   const reference = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
   const detail = marked ? 'The white-dot pairs are exempt from this rule.' :
     `These pairs are exempt: ${exceptions.map(([a, b]) => `${reference(a)} and ${reference(b)}`).join('; ')}.`
@@ -447,6 +456,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.count) && rule.count >= 1 && rule.count <= 9 && validOutsideRay(rule.cells, rule.direction)
     case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
       Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
+    case 'minimum': case 'maximum': return validCells(rule.cells, 1) &&
+      (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean')
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
     case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
@@ -483,6 +494,14 @@ function isPlayableRule(rule: VariantRule): boolean {
     case 'arrow': return validCells([rule.circle, ...(Array.isArray(rule.cells) ? rule.cells : [])], 2)
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
+    case 'labeled-dots': {
+      if (rule.relation !== 'ratio' && rule.relation !== 'difference' ||
+        rule.negative !== undefined && typeof rule.negative !== 'boolean') return false
+      const ratio = rule.relation === 'ratio'
+      return Array.isArray(rule.marks) && rule.marks.length <= 144 && (rule.marks.length > 0 || rule.negative === true) &&
+        rule.marks.every(mark => validCells(mark?.cells, 2) && mark.cells.length === 2 &&
+          cellsShareEdge(mark.cells[0], mark.cells[1]) && Number.isInteger(mark.value) && mark.value >= (ratio ? 2 : 1) && mark.value <= (ratio ? 9 : 8))
+    }
     case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
       marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
@@ -542,6 +561,9 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
   inequality: PUZZLE_VARIANTS.inequality.name,
+  minimum: 'Minimum',
+  maximum: 'Maximum',
+  'labeled-dots': 'Numbered dots',
   'extra-house': 'Extra regions',
   'distinct-cells': 'Shaded groups',
   'consecutive-run': 'Consecutive Lines',
@@ -646,6 +668,12 @@ function describedVariantRules(puzzle: VariantPuzzle) {
       case 'inequality':
         descriptions.push(PUZZLE_VARIANTS.inequality.rule)
         break
+      case 'minimum': case 'maximum': {
+        const [label, comparison] = rule.type === 'minimum' ? ['Minimum', 'lower'] : ['Maximum', 'higher']
+        descriptions.push(`A ${label} digit is ${comparison} than every digit in a cell that shares an edge with it.`)
+        if (rule.ignoreMarkedNeighbors) descriptions.push(`Two adjacent cells marked by the same ${label} clue layer skip their shared comparison.`)
+        break
+      }
       case 'adjacent-total':
         descriptions.push(PUZZLE_VARIANTS['adjacent-total'].rule)
         break
@@ -686,6 +714,14 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       case 'extra-house':
         descriptions.push(disjoint.has(index) ? DISJOINT_GROUPS_RULE : 'Each shaded extra region must also contain the digits 1–9 once each.')
+        break
+      case 'labeled-dots':
+        descriptions.push(rule.relation === 'ratio'
+          ? 'Across a numbered black dot, multiply the smaller digit by the number on the dot to get the larger digit. An unnumbered black dot means double.'
+          : 'A numbered white dot gives the difference between its two digits. An unnumbered white dot means the digits are consecutive.')
+        if (rule.negative) descriptions.push(rule.relation === 'ratio'
+          ? 'If an edge has no black dot, neither digit can be twice the other.'
+          : 'If an edge has no white dot, its digits cannot be consecutive.')
         break
       case 'kropki': {
         const marked = [

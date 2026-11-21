@@ -64,14 +64,14 @@ pub enum SizedConstraint {
     },
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
 pub enum SizedDotRelation {
     Difference,
     Ratio,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(deny_unknown_fields))]
 pub struct SizedLabeledDot {
     pub cells: [usize; 2],

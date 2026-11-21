@@ -394,12 +394,22 @@ test('Coach white and black dot layers keep independent negative flags and share
   const rules = variantRuleDescriptions(imported.variant.puzzle)
   assert.ok(rules.includes('Digits in cells sharing an edge without a Kropki dot cannot be consecutive.'))
   assert.ok(!rules.includes('For cells sharing an edge without a Kropki dot, neither digit can be twice the other.'))
+  const numbered = await detectPuzzle(coach({ givenConstraints: [
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }] },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: { negativeConstraint: true } },
+    { type: 'ratio', segments: [{ cells: [18, 19], parameters: { ratio: 2 } }] },
+  ] }))
+  assert.deepEqual(numbered.variant?.puzzle.rules, [
+    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [7, 8], value: 2 }] },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [7, 8], value: 3 }], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [18, 19], value: 2 }] },
+  ])
   for (const constraint of [
-    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 2 } }], settings: {} },
-    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 3 } }], settings: {} },
+    { type: 'difference', segments: [{ cells: [7, 8], parameters: { difference: 9 } }], settings: {} },
+    { type: 'ratio', segments: [{ cells: [7, 8], parameters: { ratio: 1 } }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 7], parameters: {} }], settings: {} },
     { type: 'ratio', segments: [{ cells: [7, 8], parameters: {} }], settings: { negativeConstraint: 'true' } },
-  ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /not supported|invalid|unsupported/)
+  ]) await assert.rejects(detectPuzzle(coach({ givenConstraints: [constraint] })), /invalid|unsupported|must be a whole number/)
 })
 
 test('every Classic share format round-trips sparse and dense grids without player progress', async () => {

@@ -553,6 +553,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
 } = {}): VariantRule[] {
   if (!Array.isArray(constraints)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
   const rules: VariantRule[] = []
+  const numbered = new Set(constraints.flatMap(constraint => {
+    if (!record(constraint) || constraint.type !== 'ratio' && constraint.type !== 'difference') return []
+    const { type } = constraint
+    const defaultValue = type === 'ratio' ? 2 : 1
+    return readCoachPairMarkers(constraint, type).markers.some(mark => mark.amount !== defaultValue) ? [type] : []
+  }))
   const drawnLines: Record<string, unknown>[] = []
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
@@ -571,7 +577,19 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       continue
     }
     if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'betweenLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
-    if (constraint.type === 'odd' || constraint.type === 'even') {
+    if (constraint.type === 'minimum' || constraint.type === 'maximum') {
+      const { type, segments } = constraint
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+        throw new Error(`This Sudoku Coach puzzle has an invalid ${type} layer.`)
+      }
+      const cells = segments.map(segment => {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters)) {
+          throw new Error(`This Sudoku Coach puzzle has an invalid ${type} cell.`)
+        }
+        return segment.cells[0]
+      })
+      if (cells.length) rules.push({ type, cells, ignoreMarkedNeighbors: true })
+    } else if (constraint.type === 'odd' || constraint.type === 'even') {
       if (unsupportedClueStyling(constraint.settings)) throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
       if (!constraint.segments.length) throw new Error('This Sudoku Coach puzzle has no Odd/Even cells.')
       const cells: number[] = []
@@ -682,14 +700,23 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
     } else if (constraint.type === 'difference' || constraint.type === 'ratio') {
       const kind = constraint.type
       const { markers, negative } = readCoachPairMarkers(constraint, kind)
-      const expected = kind === 'difference' ? 1 : 2
-      if (markers.some(({ amount }) => amount !== expected)) {
-        throw new Error(`This Sudoku Coach ${kind} marker is not supported yet.`)
+      if (numbered.has(kind)) {
+        const size = grid?.size ?? 9
+        const min = kind === 'ratio' ? 2 : 1
+        const max = kind === 'ratio' ? size : size - 1
+        const marks = markers.map(({ cells, amount }) => {
+          if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < min || amount > max) {
+            throw new Error(`A ${kind} marker must be a whole number between ${min} and ${max}.`)
+          }
+          return { cells, value: amount }
+        })
+        if (marks.length || negative) rules.push({ type: 'labeled-dots', relation: kind, marks, ...(negative && { negative }) })
+      } else {
+        const marks = { pairs: markers.map(({ cells }) => cells), negative }
+        rules.push(kind === 'difference'
+          ? { type: 'kropki', consecutive: marks }
+          : { type: 'kropki', ratioTwo: marks })
       }
-      const marks = { pairs: markers.map(({ cells }) => cells), negative }
-      rules.push(kind === 'difference'
-        ? { type: 'kropki', consecutive: marks }
-        : { type: 'kropki', ratioTwo: marks })
     } else if (constraint.type === 'region') {
       const settings = constraint.settings
       if (unsupportedClueStyling(settings)) {
@@ -827,13 +854,13 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       throw new Error('This Sudoku Coach puzzle has multiple X-Sums for the same side of a row or column.')
     }
   }
-  // Coach exempts difference markers from its global relation, independently of rule order.
-  // The positive dot remains a separate rule and still requires a difference of one.
-  const exceptions = [...new Map(rules.flatMap(rule => rule.type === 'kropki'
-    ? (rule.consecutive?.pairs ?? []).filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
-      const pair = [Math.min(a, b), Math.max(a, b)] as const
-      return [pair.join(','), pair] as const
-    }) : [])).values()]
+  // Coach exempts white-dot edges from its global Non-Consecutive rule.
+  const whiteDots = rules.flatMap(rule => rule.type === 'kropki' ? rule.consecutive?.pairs ?? []
+    : rule.type === 'labeled-dots' && rule.relation === 'difference' ? rule.marks.map(mark => mark.cells) : [])
+  const exceptions = [...new Map(whiteDots.filter(([a, b]) => cellsShareEdge(a, b)).map(([a, b]) => {
+    const pair = [Math.min(a, b), Math.max(a, b)] as const
+    return [pair.join(','), pair] as const
+  })).values()]
   if (exceptions.length) for (const [index, rule] of rules.entries()) {
     if (rule.type === 'non-consecutive') rules[index] = { ...rule, except: exceptions }
   }

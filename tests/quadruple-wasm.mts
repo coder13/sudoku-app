@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
 import { applyDeduction, enter, isSolved, undo, redo, valuesOf } from '../src/sudoku/game.ts'
@@ -309,3 +310,42 @@ test('Not Actually Impossible Quads verifies within the default budget and has a
     else assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
   }
 })
+
+const mixedPublications = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8')) as {
+  title: string; url: string; coach: string; solution: string; hints: [Parameters<typeof puzzleHints>[2], string][]
+}[]
+
+for (const source of mixedPublications) {
+  test(`published Quadruples with other rules: ${source.title}`, async () => {
+    const { game } = await prepareImportedPuzzle(source.coach, [], { deferRating: true })
+    assert.ok(game.variant)
+    const { puzzle, solution } = game.variant
+    assert.equal(solution, source.solution)
+    assertVariantCompletion(puzzle, source.solution)
+    assert.ok(puzzle.rules?.some(rule => rule.type === 'quadruple'))
+    assert.deepEqual(readGame(game.id, JSON.stringify(game))?.variant?.puzzle, puzzle)
+    assert.ok((await puzzleHints(game)).choices.length)
+
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, source.solution)
+    assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+    for (const step of path.steps) for (const action of step.actions) {
+      if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
+      else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
+    }
+    for (const [technique, text] of source.hints) {
+      assert.ok(technique)
+      const explains = (hint: typeof path.steps[number]) => hint.technique === technique &&
+        'variant' in hint.evidence && [hint.evidence.variant.description, hint.evidence.variant.reason].some(line => line.includes(text))
+      const index = path.steps.findIndex(explains)
+      assert.ok(index >= 0, `Missing ${technique} proof for ${text}`)
+      const { entries, eliminations } = path.positions![index]
+      const checkpoint = { ...game, position: { ...game.position, entries, eliminations } }
+      const { choices } = await puzzleHints(checkpoint, 'all', technique)
+      assert.ok(choices.some(explains))
+      const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      const scan = watchTechniqueScan(valuesOf(checkpoint), eliminations, variantPosition(game.variant, checkpoint.position))
+      try { assert.equal(await scan.count(technique), actions.size) } finally { scan.close() }
+    }
+  })
+}

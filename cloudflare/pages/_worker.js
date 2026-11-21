@@ -111,6 +111,7 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
   ['AjZy', '9c921e472d17b801c9c6523a4fb1226fc636ed263b83a861e4f14929fcf1c445'],
+  ['CdP3', '3a867f407b30e98ac7b76e4c33bfa7d372cb785ee4d0cf815468b5c63932f436'],
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
@@ -287,6 +288,13 @@ function jigsawGrid(value) {
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
 const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
+function numberedDotRule(rule, size) {
+  const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
+  const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
+  return fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
+    marks: list(mark, 0, 2 * size * (size - 1)) }, { negative: boolean }) && (rule.marks.length > 0 || rule.negative === true)
+}
+
 function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
@@ -314,9 +322,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
-    (fields(rule, { type: oneOf('labeled-dots'), relation: oneOf('difference', 'ratio'),
-      marks: list(mark => fields(mark, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) }), 0, 2 * size * (size - 1)) },
-      { negative: boolean }) && (rule.marks.length > 0 || rule.negative)) ||
+    numberedDotRule(rule, size) ||
     fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
     (fields(rule, { type: oneOf('row-column-sum'), pairs: list(pair, 0, 2 * size * (size - 1)) }, { requireUnmarked: boolean }) &&
       (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
@@ -384,6 +390,8 @@ const ruleFields = {
   entropic: [{ cells: list(cell, 1) }],
   'global-entropy': [{}],
   inequality: [{ less: cell, greater: cell }],
+  minimum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
+  maximum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   'little-killer': [{ direction: diagonalDirection, cells: list(cell, 1, 9), sum: integer(1, 81) }],
   modular: [{ cells: list(cell, 1) }],
   palindrome: [{ cells }, { segments }],
@@ -409,6 +417,7 @@ const ruleFields = {
   thermometer: [{ cells: list(cell, 2, 81) }],
 }
 const rule = value => {
+  if (value?.type === 'labeled-dots') return numberedDotRule(value, 9)
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
   return fields(value, { type: oneOf(value.type), ...required }, optional)

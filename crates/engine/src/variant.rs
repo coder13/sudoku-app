@@ -1,6 +1,6 @@
 //! Typed rules for a single 9 × 9 grid.
 
-use crate::{Board, CELLS, DIGITS};
+use crate::{Board, CELLS, DIGITS, SizedDotRelation, SizedLabeledDot};
 
 #[cfg(any(feature = "generation", test))]
 mod generation;
@@ -270,6 +270,22 @@ rules! {
         /// Cell with the larger digit.
         greater: usize,
     }
+    /// Compare each marked cell with its edge neighbors using strict less-than.
+    Minimum => "minimum" {
+        /// Cells marked by this Minimum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
+    /// Compare each marked cell with its edge neighbors using strict greater-than.
+    Maximum => "maximum" {
+        /// Cells marked by this Maximum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
     /// Constrain adjacent digits using Kropki dots.
     Kropki => "kropki" {
         /// White dots for consecutive digits.
@@ -278,6 +294,16 @@ rules! {
         /// Black dots for a ratio of two.
         #[cfg_attr(feature = "wasm-api", serde(default))]
         ratio_two: MarkedPairs,
+    }
+    /// Constrain adjacent digits using numbered difference or ratio dots.
+    LabeledDots => "labeled-dots" {
+        /// Relationship indicated by this color of dot.
+        relation: SizedDotRelation,
+        /// Positive dots and their printed values.
+        marks: Vec<SizedLabeledDot>,
+        /// Forbid the default relation on edges without a dot of this color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        negative: bool,
     }
     /// Constrain adjacent digits using V and X markers.
     Xv => "xv" {

@@ -199,6 +199,31 @@ test('Coach author notes never bypass custom constraints or extra instructions',
   await assert.rejects(detectPuzzle(source.url), /Fog of War layer has invalid or unsupported reveal settings/)
 })
 
+test('published Quadruples with Min/Max or numbered dots preserve the full definition by short link', async ({ mock }) => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8')) as {
+    url: string; title: string; coach: string; description?: string
+  }[]
+  let changedNote = false
+  mock.method(globalThis, 'fetch', async (url: string, options?: RequestInit) => {
+    if (!url.startsWith('https://sudoku.coach/en/s/')) return worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {})
+    const source = sources.find(source => source.url === url)
+    assert.ok(source)
+    const specificSudoku = { sudoku_id: url.split('/').at(-1), sudoku: source.coach, name: source.title,
+      description: changedNote ? source.description + '\nDigits count twice in purple cells.' : source.description ?? '',
+      blocked: false, custom_constraints: false }
+    return new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+  })
+  for (const source of sources) {
+    const raw = await detectPuzzle(source.coach)
+    const linked = await detectPuzzle(source.url)
+    assert.ok(raw.variant)
+    assert.equal(linked.title, source.title)
+    assert.deepEqual(linked.variant, raw.variant)
+  }
+  changedNote = true
+  await assert.rejects(detectPuzzle(sources.find(source => source.description)!.url), /author/i)
+})
+
 test('the published X-Sums declaration must describe the complete rules', async ({ mock }) => {
   const { metadata } = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8'))
   const codes = [

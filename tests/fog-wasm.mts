@@ -206,6 +206,22 @@ test('projected layers hide givens, cut paths at hidden cells, and delay negativ
   assert.deepEqual(later.rules, puzzle.rules)
 })
 
+test('fog keeps visible extrema comparisons and hides incomplete numbered-dot negative evidence', () => {
+  const puzzle: VariantPuzzle = { version: 1, givens: EMPTY, rules: [
+    { type: 'minimum', cells: [0, 1], ignoreMarkedNeighbors: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [78, 79], value: 2 }] },
+  ] }
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 3, 4])).rules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }] },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 3, 4, 9])).rules, [
+    { type: 'inequality', less: 0, greater: 9 },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [3, 4], value: 3 }] },
+  ])
+  assert.deepEqual(projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 9, 10, 78, 79])).rules, puzzle.rules)
+})
+
 test('clipped Quadruples keep the exposed digit slots and their multiplicity', () => {
   const topLeft = 2
   const corners = [2, 3, 11, 12]

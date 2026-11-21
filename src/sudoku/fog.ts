@@ -94,6 +94,15 @@ function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' }
   })
 }
 
+function extremaNeighbors(cell: number) {
+  return [cell >= 9 ? cell - 9 : -1, cell < 72 ? cell + 9 : -1,
+    cell % 9 > 0 ? cell - 1 : -1, cell % 9 < 8 ? cell + 1 : -1].filter(other => other >= 0)
+}
+
+function extremaVisible(cells: readonly number[], visible: ReadonlySet<number>) {
+  return cells.every(cell => visible.has(cell) && extremaNeighbors(cell).every(other => visible.has(other)))
+}
+
 /** The puzzle facts the player can use. Exact verification uses the original definition. */
 export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<number>): VariantPuzzle {
   if (visible.size === 81) return puzzle
@@ -123,6 +132,12 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const ratioTwo = visibleMarks(rule.ratioTwo, visible, completeKropki)
         return consecutive || ratioTwo ? [{ type: 'kropki', ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }) }] : []
       }
+      case 'labeled-dots': {
+        const marks = rule.marks.filter(mark => allVisible(mark.cells))
+        const negative = rule.negative && rules.every(other => other.type !== 'labeled-dots' ||
+          other.relation !== rule.relation || other.marks.every(mark => allVisible(mark.cells)))
+        return marks.length || negative ? [{ type: rule.type, relation: rule.relation, marks, ...(negative && { negative }) }] : []
+      }
       case 'xv': {
         const five = visibleMarks(rule.five, visible, completeXv)
         const ten = visibleMarks(rule.ten, visible, completeXv)
@@ -149,6 +164,17 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       }
       case 'inequality':
         return allVisible([rule.less, rule.greater]) ? [rule] : []
+      case 'minimum': case 'maximum': {
+        if (extremaVisible(rule.cells, visible)) return [rule]
+        const skipped = rule.ignoreMarkedNeighbors ? new Set(rule.cells) : undefined
+        const minimum = rule.type === 'minimum'
+        // A comparison needs both cells visible, including any mark that exempts their shared edge.
+        return rule.cells.flatMap(cell => visible.has(cell)
+          ? extremaNeighbors(cell).filter(other => visible.has(other) && !skipped?.has(other)).map(other => ({
+              type: 'inequality', less: minimum ? cell : other, greater: minimum ? other : cell,
+            }))
+          : [])
+      }
       case 'arrow':
         return visible.has(rule.circle) && allVisible(rule.cells) ? [rule] : []
       case 'non-consecutive':
@@ -206,6 +232,15 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
         break
       case 'arrow':
         addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')
+        break
+      case 'minimum': case 'maximum':
+        if (!extremaVisible(rule.cells, visible)) {
+          const name = rule.type === 'minimum' ? 'Minimum mark' : 'Maximum mark'
+          for (const cell of rule.cells) if (visible.has(cell)) labels[cell].push(name)
+        }
+        break
+      case 'labeled-dots':
+        for (const mark of rule.marks) addFragment(mark.cells, rule.relation === 'ratio' ? 'part of a black dot' : 'part of a white dot')
         break
       case 'kropki':
         for (const pair of rule.consecutive?.pairs ?? []) addFragment(pair, 'part of a white dot')

@@ -167,9 +167,29 @@ test('malformed paths and unknown parameters reject without partial imports', as
 
 test('incomplete source exports stay explicit rather than losing unsupported companion rules', async () => {
   const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
-  assert.equal(deferred.length, 5)
+  assert.equal(deferred.length, 3)
   for (const source of deferred) await assert.rejects(prepareImportedPuzzle(source.code), /unsupported|not supported|version|rectangular boxes|region|difference|cosmetic|9 × 9/i, source.url)
-  assert.match(deferred.find((source: { url: string }) => source.url.endsWith('9ZMr')).deferred, /difference.*three.*85/i)
+})
+
+test('published Modular imports retain their numbered white dots and ordered runs', async () => {
+  const examples = load('coach').examples
+  for (const [id, modular, runs, marks, total] of [
+    ['9ZMr', 9, 0, 36, false], ['GYTv', 6, 8, 7, true],
+  ] as const) {
+    const source = examples.find((source: { url: string }) => source.url.endsWith(id))
+    const { variant } = await detectPuzzle(source.code)
+    assert.ok(variant)
+    const rules = variant.puzzle.rules!
+    assert.equal(rules.filter(rule => rule.type === 'modular').length, modular)
+    assert.equal(rules.filter(rule => rule.type === 'consecutive-run').length, runs)
+    const white = rules.filter(rule => rule.type === 'labeled-dots')
+    assert.equal(white.length, 1)
+    assert.equal(white[0].relation, 'difference')
+    assert.equal(white[0].marks.length, marks)
+    assert.ok(white[0].marks.every(mark => mark.value === 3))
+    assert.equal(rules.some(rule => rule.type === 'adjacent-total' && rule.sum === 11), total)
+    assertVariantCompletion(variant.puzzle, source.solution)
+  }
 })
 
 

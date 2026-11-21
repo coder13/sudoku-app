@@ -102,6 +102,15 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         assert.equal(Math.max(...values) - Math.min(...values), values.length - 1)
         break
       }
+      case 'minimum': case 'maximum': {
+        const marked = new Set(rule.cells)
+        for (const cell of rule.cells) for (let other = 0; other < 81; other++) {
+          const distance = Math.abs(Math.floor(cell / 9) - Math.floor(other / 9)) + Math.abs(cell % 9 - other % 9)
+          if (distance !== 1 || rule.ignoreMarkedNeighbors && marked.has(other)) continue
+          assert.ok(rule.type === 'minimum' ? digits[cell] < digits[other] : digits[cell] > digits[other])
+        }
+        break
+      }
       case 'inequality': assert.ok(digits[rule.less] < digits[rule.greater]); break
       case 'between': {
         const first = digits[rule.cells[0]], last = digits[rule.cells[rule.cells.length - 1]]
@@ -138,6 +147,22 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         break
       }
       case 'adjacent-total': assert.equal(digits[rule.cells[0]] + digits[rule.cells[1]], rule.sum); break
+      case 'labeled-dots': {
+        const matches = (a: number, b: number, value: number) => {
+          const x = digits[a], y = digits[b]
+          return rule.relation === 'ratio' ? Math.max(x, y) === value * Math.min(x, y) : Math.abs(x - y) === value
+        }
+        for (const { cells: [a, b], value } of rule.marks) assert.ok(matches(a, b, value))
+        if (rule.negative) for (let a = 0; a < 81; a++) {
+          const edges = [...(a % 9 < 8 ? [a + 1] : []), ...(a < 72 ? [a + 9] : [])]
+          for (const b of edges) {
+            const marked = puzzle.rules?.some(other => other.type === 'labeled-dots' && other.relation === rule.relation &&
+              other.marks.some(({ cells }) => cells.includes(a) && cells.includes(b)))
+            if (!marked) assert.equal(matches(a, b, rule.relation === 'ratio' ? 2 : 1), false)
+          }
+        }
+        break
+      }
       case 'xv':
       case 'kropki':
         for (const [kind, marks] of (rule.type === 'xv' ? [rule.five, rule.ten] : [rule.consecutive, rule.ratioTwo]).entries()) {

@@ -64,15 +64,38 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'non-consecutive':
       return { description: `${pair} share an edge. Their digits cannot differ by one.`,
         reason: 'A crossed-out digit has no possible partner across that edge.' }
+    case 'minimum': case 'maximum': {
+      const marked = rule.type === 'minimum' ? a : b
+      const other = rule.type === 'minimum' ? b : a
+      const minimum = rule.type === 'minimum'
+      return {
+        description: `The ${minimum ? 'Minimum' : 'Maximum'} clue in ${at(marked)} requires a ${minimum ? 'smaller' : 'larger'} digit than in ${at(other)}.`,
+        reason: `Remove candidates in either cell that have no partner with ${at(a)} smaller than ${at(b)}.`,
+      }
+    }
     case 'inequality': {
       const smaller = DIGITS.filter(d => domains[cells.indexOf(rule.less)] & (1 << (d - 1)))
       const larger = DIGITS.filter(d => domains[cells.indexOf(rule.greater)] & (1 << (d - 1)))
       return { description: `${at(rule.less)} must be smaller than ${at(rule.greater)}.`,
-        reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner on the correct side of the sign.` }
+        reason: `The smallest possible digit in ${at(rule.less)} is ${smaller[0]}. The largest in ${at(rule.greater)} is ${larger.at(-1)}. Each candidate needs a partner that fits the comparison.` }
     }
     case 'clone':
       return { description: `Clone ${cloneLayout(puzzle.rules).at[a]!.label} links ${new Intl.ListFormat('en', { type: 'conjunction' }).format(cells.map(at))}. These cells must contain the same digit.`,
         reason: 'A digit missing from one cell cannot go in any of its copies.' }
+    case 'labeled-dots': {
+      const mark = rule.marks.find(mark => mark.cells.includes(a) && mark.cells.includes(b))
+      const relation = rule.relation === 'ratio' ? 'black' : 'white'
+      if (!mark) return {
+        description: `There is no ${relation} dot between ${pair}.`,
+        reason: rule.relation === 'ratio' ? 'Neither digit can be twice the other.' : 'The two digits cannot be consecutive.',
+      }
+      return {
+        description: rule.relation === 'ratio'
+          ? `The black dot between ${pair} means the larger digit is ${mark.value} times the smaller one.`
+          : `The white dot between ${pair} means the digits differ by ${mark.value}.`,
+        reason: 'Remove a candidate if no digit in the other cell fits the dot rule with it.',
+      }
+    }
     case 'kropki': {
       const dots = rules.filter(r => r?.type === 'kropki')
       const white = dots.some(r => hasMarkedPair(r.consecutive?.pairs, a, b))

@@ -34,6 +34,27 @@ function ThermometerClue({ cells, size = 9 }: { cells: readonly number[]; size?:
   </g>
 }
 
+function ExtremumMarks({ rules }: { rules: readonly VariantRule[] }) {
+  const marks = new Map<number, Set<'minimum' | 'maximum'>>()
+  for (const rule of rules) if (rule.type === 'minimum' || rule.type === 'maximum') {
+    for (const cell of rule.cells) {
+      const kinds = marks.get(cell) ?? new Set<'minimum' | 'maximum'>()
+      kinds.add(rule.type)
+      marks.set(cell, kinds)
+    }
+  }
+  return [...marks].flatMap(([cell, kinds]) => [...kinds].map(type => {
+    const cx = x(cell) + (type === 'minimum' && kinds.size > 1 ? .57 : .8)
+    const cy = y(cell) + .18
+    const offset = type === 'minimum' ? .068 : -.068
+    const points = `${cx - .09},${cy - offset} ${cx},${cy + offset} ${cx + .09},${cy - offset}`
+    return <g key={`${cell}-${type}`} className="variant-extremum" data-extremum={type} data-extremum-cell={cell}>
+      <polyline className="variant-inequality-halo" points={points} />
+      <polyline className="variant-inequality-sign" points={points} />
+    </g>
+  }))
+}
+
 const renbanColors = ['#cf419c', '#8353be', '#d26878', '#aa48bf']
 const regionSumColors = ['#258fbd', '#5875bd', '#3b8ac4', '#5975d0']
 const regionSumEndGap = .28
@@ -59,6 +80,13 @@ function RenbanClue({ cells, segments, number, size = 9 }: {
 function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
   const dots = new Map<number, number>()
   for (const rule of rules) {
+    if (rule.type === 'labeled-dots') {
+      const mask = rule.relation === 'ratio' ? 2 : 1
+      for (const { cells: [a, b] } of rule.marks) {
+        const key = pairKey(a, b, size)
+        dots.set(key, (dots.get(key) ?? 0) | mask)
+      }
+    }
     if (rule.type !== 'kropki') continue
     for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
       for (const [a, b] of marks?.pairs ?? []) {
@@ -123,7 +151,6 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
       const values = dotValues.get(edge) ?? []
       values[kind] = value
       dotValues.set(edge, values)
-      dots.set(edge, (dots.get(edge) ?? 0) | 1 << kind)
     }
   }
   return <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="variant-clues" data-sized-rule-clues>
@@ -569,7 +596,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
@@ -686,6 +713,14 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
           return <ThermometerClue key={index} cells={rule.cells} />
         case 'arrow':
           return <ArrowClue key={index} {...rule} marker={marker} />
+        case 'labeled-dots': {
+          const kind = rule.relation === 'ratio' ? 1 : 0
+          return <g key={index}>{rule.marks.map(({ cells: [a, b], value }) => {
+            const edge = pairKey(a, b)
+            const paired = dots.get(edge) === 3
+            return renderKropkiDot(a, b, kind, paired, paired && sums.has(edge), 9, value === kind + 1 ? undefined : value)
+          })}</g>
+        }
         case 'kropki':
           return <g key={index}>{[rule.consecutive, rule.ratioTwo].flatMap((marks, kind) =>
             (marks?.pairs ?? []).map(([a, b]) => {
@@ -698,6 +733,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         default: return null
       }
     })}
+    <ExtremumMarks rules={rules} />
     {clones.sets.map(set => <g key={set.label} className="variant-clone-label" data-clone={set.label}>
       {set.cells.map(cell => <g key={cell}>
         <text className="variant-clone-label-halo" x={x(cell) + .08} y={y(cell) + .94}>{set.label}</text>
@@ -715,6 +751,19 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
     `Clone ${set.label}, same digit as ${set.cells.filter(other => other !== cell).map(reference).join('; ')}`)
   for (const [index, rule] of rules.entries()) {
     switch (rule.type) {
+      case 'minimum': case 'maximum': {
+        const minimum = rule.type === 'minimum'
+        const label = minimum ? 'Minimum mark, smaller than its compared edge neighbors' : 'Maximum mark, larger than its compared edge neighbors'
+        for (const cell of rule.cells) labels[cell].push(label)
+        break
+      }
+      case 'labeled-dots':
+        for (const { cells: [a, b], value } of rule.marks) {
+          const clue = rule.relation === 'ratio' ? `black dot, ratio ${value} to 1` : `white dot, difference ${value}`
+          labels[a].push(`${clue} with ${reference(b)}`)
+          labels[b].push(`${clue} with ${reference(a)}`)
+        }
+        break
       case 'inequality':
         labels[rule.less].push(`inequality, smaller than ${reference(rule.greater)}`)
         labels[rule.greater].push(`inequality, larger than ${reference(rule.less)}`)

@@ -51,6 +51,8 @@ export type VariantRule =
   | { type: 'anti-knight' | 'anti-king' }
   | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
   | { type: 'inequality'; less: number; greater: number }
+  | { type: 'minimum' | 'maximum'; cells: readonly number[]; ignoreMarkedNeighbors?: boolean }
+  | SizedLabeledDotsRule
   | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
   | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
   | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
