@@ -8,7 +8,7 @@ Search by component name or browse the sections below.
 
 | Source | When to use it |
 | --- | --- |
-| [Button](../../../../src/components/Button.tsx) | `Button` for a labeled action or explicit form submission. `IconButton` for an icon-only action with an accessible name. `ChoiceButton` for a selectable path with explanatory text. |
+| [Button](../../../../src/components/Button.tsx) | `Button` for a labeled action or explicit form submission. Disabled primary buttons and pressed buttons use the same theme fill and text colors. A pressed button has a selection border. `IconButton` for an icon-only action with an accessible name. `ChoiceButton` for a selectable path with explanatory text. |
 | [ResizeStepControls](../../../../src/components/ResizeStepControls.tsx) | Use `ResizeStepControls` in a resize dialog for one dimension. Connect each step to the existing sizing logic and disable it at the applicable limit. |
 | [SelectControl](../../../../src/components/SelectControl.tsx) | `SelectControl` for a native select with the app’s chevron, form behavior, and keyboard navigation. Use the shared settings field styles for settings dropdowns, including compact controls beside their label. |
 | [Modal](../../../../src/components/Modal.tsx) | `Modal` for a blocking task that needs focus management, Escape dismissal, and a return to its opener. Supply `returnFocus` when an action replaces the dialog with an active panel. |
