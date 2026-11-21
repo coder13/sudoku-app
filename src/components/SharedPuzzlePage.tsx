@@ -51,6 +51,7 @@ export function SharedPuzzlePage({ id, games, linked, syncReady }: {
           : puzzle.grid?.size === 4 ? 'Mini Sudoku · 4 × 4'
             : puzzle.grid ? sizedGridName(puzzle.grid) : variantName(puzzle.variant)}</strong></p>
         <Board grid={puzzle.grid} whispersGuide={puzzle.whispersGuide} label="Puzzle preview" givens={puzzle.givens} values={puzzle.givens}
+          givenCellColors={puzzle.givenCellColors}
           variantPuzzle={puzzle.variant?.puzzle} fog={fog} algebraicCages={puzzle.algebraic?.rules} sizedRules={puzzle.sized?.rules} showGuides={false} />
         {puzzle.algebraic && <>
           {puzzle.algebraic.source?.author && <p>By {puzzle.algebraic.source.author}</p>}

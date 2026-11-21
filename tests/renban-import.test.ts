@@ -38,7 +38,7 @@ test('three unmodified modern Coach sources import while unsupported complete ex
         assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
         continue
       }
-      const expected = source.url.endsWith('5NW') ? /unsupported authored markings/ : /format|version/i
+      const expected = source.url.endsWith('5NW') ? /legacy rule is not supported yet \(Consecutive Line\)/ : /format|version/i
       await assert.rejects(detectPuzzle(source.code), expected)
       continue
     }

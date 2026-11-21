@@ -5,6 +5,8 @@ const allZeroMasks = '0-'.repeat(80) + '0'
 const emptyMasks = '0T'.repeat(80) + '0'
 const zeroGrid = '0a81b_'
 const zeroMasks = '0Ac80d0_'
+const legacyPalette = ['', 'grey', 'lime', 'blue', 'purple', 'red', 'green', 'yellow', 'orange']
+export type LegacyCoachVersion = '3' | '4' | '5' | '6'
 
 const shortcuts: Record<string, string> = {
   X: '00', Y: '000', Z: '0000', y: zeroGrid, x: '0Tc80d0_',
@@ -94,17 +96,21 @@ function legacyConstraint(record: string) {
   throw invalidLegacy()
 }
 
-export function decodeLegacyCoach(body: string, version: '4' | '5' | '6', maxLength: number): Record<string, unknown> {
-  const [givens, colors, clues, ...state] = expandLegacy(body, maxLength).split('_')
-  if (!/^[0-9]{81}$/.test(givens) || !/^[0-9]{81}$/.test(colors ?? '') || clues === undefined) throw invalidLegacy()
-  if (colors !== zeroDigits) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+export function decodeLegacyCoach(body: string, version: LegacyCoachVersion, maxLength: number): Record<string, unknown> {
+  const [givens, colors, ...fields] = expandLegacy(body, maxLength).split('_')
+  if (!/^[0-9]{81}$/.test(givens) || !/^[0-8]{81}$/.test(colors ?? '') || !fields.length) throw invalidLegacy()
+  // SCv3 stored its rule record after the playing fields. Later versions moved it before them.
+  const v3 = version === '3'
+  const clues = fields[v3 ? 11 : 0] ?? ''
+  const state = v3 ? fields : fields.slice(1)
   const mask = (field: string) => field === allZeroMasks || field === emptyMasks
   const [previewDigits, constructionParameters, solutionDigits, userColors, userShades,
     center, corner, marked, candidateColors, drawing, highlights, extra, masks, ...annotations] = state
   if (state.length !== 1 || state[0] !== '') {
-    const fullLength = version === '4' ? 12 : version === '5' ? 13 : 16
+    const early = v3 || version === '4'
+    const fullLength = early ? 12 : version === '5' ? 13 : 16
     if (state.length < fullLength || state.slice(fullLength).some(Boolean)) throw invalidLegacy()
-    const inactiveTail = version === '4' ? extra === '' : extra === zeroDigits &&
+    const inactiveTail = early ? v3 || extra === '' : extra === zeroDigits &&
       (version === '5' ? masks === '' : mask(masks) && !annotations.some(Boolean))
     if (![previewDigits, solutionDigits].every(field => /^[0-9]{81}$/.test(field)) ||
         [constructionParameters, userColors, userShades, highlights].some(field => field !== zeroDigits) ||
@@ -114,5 +120,9 @@ export function decodeLegacyCoach(body: string, version: '4' | '5' | '6', maxLen
   }
   if (clues && !clues.startsWith('R')) throw invalidLegacy()
   const givenConstraints = clues ? clues.slice(1).split('R').map(legacyConstraint) : []
-  return { gridSize: 9, givenDigits: givens, givenConstraints }
+  const artwork = colors === zeroDigits ? undefined : {
+    colours: legacyPalette.slice(1),
+    givenColours: [...colors].map(shade => shade === '0' ? '' : String(Number(shade) - 1)).join(','),
+  }
+  return { gridSize: 9, givenDigits: givens, givenConstraints, ...artwork }
 }

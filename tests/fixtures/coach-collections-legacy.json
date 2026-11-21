@@ -1,0 +1,102 @@
+[
+  {
+    "id": "675G",
+    "collection": "halloween-2024",
+    "title": "Pumpkin 2024",
+    "code": "SCv7_32_f2eaqjmb1q1i047sisunmm6k19sbavugcf9g6a8r89h39ga7q8rfrtte48dev7et631j4c3so02murvu9l8em34ufndkuoc0v877qc4t4f421475qk2nlgc3r77t8ndtuchrm00pnb18git4l8k9anjork4so4abiiu5f6qf98m7gaigu60mdf9oim82aer19dkd4hp0ccgde1ms77aj3h58ojdeeipcufad3dnbqddpofod2j7f3vq41agbcraccuuja8od8se7ovtps1eda",
+    "givens": "000096000000050000006348900060000010200407006800000007703020108040903060008174200",
+    "solution": "381796452479251683526348971967832514235417896814569327793625148142983765658174239",
+    "colorCount": 30,
+    "sampleColors": {
+      "4": [
+        "orange"
+      ],
+      "39": [
+        "red"
+      ],
+      "56": [
+        "grey"
+      ]
+    }
+  },
+  {
+    "id": "6767",
+    "collection": "halloween-2024",
+    "title": "Halloween Candy 1",
+    "code": "SCv7_32_f2eaqjhr1r13035thfjgoji33f9bbn4024ol9l5a5i2ldqk7072dqseq8qkm1papubntivju84tn0sv64t0ui56sfbfsvgo8sl2vkh0t53o7o9to59kfigeth5dpt106kd8n0g1sgq44a5jscqect9d11f4k7gt08mrv0cj8gko3ctu5masuticl7h2emo2jl3h0f80mk25c0be7jmmpa5kbjjvajkisr95detgqub13pkngvn0vu405p3tqlrgqdrl8jhh40vngup7abd20",
+    "givens": "310000400800000620000239158001600200003070900006008700137596000048000001005000079",
+    "solution": "312865497859741623674239158791653284583472916426918735137596842948327561265184379",
+    "colorCount": 33,
+    "sampleColors": {
+      "6": [
+        "green"
+      ],
+      "31": [
+        "lime"
+      ]
+    }
+  },
+  {
+    "id": "4CE",
+    "collection": "animal-sudokus",
+    "title": "Butterfly",
+    "code": "SCv3_050a5b604020601058X513X22Y7Y403X9X2Y82359X92X5X86107624X3064Y210_040a5b4044408044443448443444348434404448444Y44844X555585a5b35585535055Y550_yyyyy0Ac80d0_0Ac80d0_0Ac80d0___y",
+    "givens": "050000060402060105800513002200070004030090020008235900920050086107624003064000210",
+    "solution": "351742869472968135896513742219876354735491628648235971923157486187624593564389217",
+    "colorCount": 61,
+    "sampleColors": {
+      "1": [
+        "purple"
+      ],
+      "13": [
+        "orange"
+      ],
+      "19": [
+        "blue"
+      ],
+      "54": [
+        "red"
+      ]
+    }
+  },
+  {
+    "id": "3W7",
+    "collection": "animal-sudokus",
+    "title": "Swallows",
+    "code": "SCv4_X5260849049Y756768Y2313X50a5b9Z23Y513X4904769X123892106X45130a6b_X4440333043Y333433Y1114X60a5b4Z33Y222X3302222X633666602X36660a6b__yyyyy0Ac80d0_0Ac80d0_0Ac80d0___y",
+    "givens": "005260849049000756768000231300500000900002300051300490476900123892106004513000000",
+    "solution": "135267849249813756768459231324591687987642315651378492476985123892136574513724968",
+    "colorCount": 43,
+    "sampleColors": {
+      "2": [
+        "purple"
+      ],
+      "6": [
+        "blue"
+      ],
+      "24": [
+        "grey"
+      ],
+      "30": [
+        "green"
+      ],
+      "46": [
+        "lime"
+      ]
+    }
+  },
+  {
+    "id": "3BBD",
+    "collection": "numbers",
+    "title": "Number 0",
+    "code": "SCv6_X16283Z9Y61X3Y508X6Y104X7X6X3X4X8X9X802Y6X92Y7Z6974Y_X6a5bZ6Y66X6Y606X6Y606X6X6X6X6X6X6X606Y6X66Y6Z6666Y__",
+    "givens": "001628300009000610030005080060001040070060030040080090080200060092000700006974000",
+    "solution": "451628379829347615637195482968531247275469138143782596784253961392816754516974823",
+    "colorCount": 30,
+    "sampleColors": {
+      "2": [
+        "green"
+      ]
+    }
+  }
+]
