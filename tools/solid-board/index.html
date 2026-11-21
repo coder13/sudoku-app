@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" data-theme="violet" data-color-mode="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f2f2f2" />
+    <title>Sudoku board comparison</title>
+  </head>
+  <body>
+    <main class="lab">
+      <header class="lab-header">
+        <div><p class="lab-kicker">SUDOKU · PROTOTYPE</p><h1>Board comparison</h1></div>
+        <span class="lab-status">Production app unchanged</span>
+      </header>
+      <p class="lab-intro">One puzzle, the same styles, three ways to update the board. Try each version, then compare measured update times.</p>
+      <section class="implementation-picker" aria-label="Board implementation">
+        <button type="button" class="implementation" data-implementation="current-react" aria-pressed="true"><strong>Current React</strong><span>The existing app board</span></button>
+        <button type="button" class="implementation" data-implementation="memo-react" aria-pressed="false"><strong>Memoized React</strong><span>Skip unchanged cells</span></button>
+        <button type="button" class="implementation" data-implementation="solid" aria-pressed="false"><strong>Solid 2.0</strong><span>Update reactive cell state</span></button>
+      </section>
+      <div class="lab-layout">
+        <section class="play-column" aria-label="Try the board">
+          <div class="lab-toolbar">
+            <label class="fixture-label">Board <select id="fixture"><option value="puzzle">Classic puzzle</option><option value="dense">Dense notes stress board</option></select></label>
+            <button type="button" class="button quiet" id="reset">Reset</button>
+          </div>
+          <div id="zoom-viewport" class="lab-viewport"><div id="zoom-content"><div id="board-root"></div></div></div>
+          <div class="lab-input">
+            <div class="lab-modes" role="group" aria-label="Input mode">
+              <button type="button" class="button secondary" data-mode="pen" aria-pressed="false">Pen</button>
+              <button type="button" class="button secondary" data-mode="pencil" aria-pressed="true">Pencil</button>
+              <button type="button" class="button secondary" data-mode="highlight" aria-pressed="false">Highlight</button>
+              <button type="button" class="button secondary" data-mode="color" aria-pressed="false">Color</button>
+            </div>
+            <div class="lab-digits" aria-label="Digit input"></div>
+            <div class="lab-input-footer"><span id="selection-label">R1C3 selected</span><button type="button" class="button quiet" id="clear">Clear</button></div>
+          </div>
+          <details class="lab-gesture-controls"><summary>Zoom and size</summary>
+            <label>Zoom <input id="zoom" type="range" min="1" max="3" step="0.05" value="1" /><output id="zoom-value">100%</output></label>
+            <label>Board width <input id="board-width" type="range" min="280" max="560" step="1" value="500" /><output id="width-value">500 px</output></label>
+            <p>Pinch with two fingers to zoom. Drag to pan after zooming. These controls use the same direct DOM updates in all three versions.</p>
+          </details>
+          <p class="lab-help">Click or drag to select. Use the arrow keys to move. Type a digit in the selected mode. Shift-click adds a cell. In Color mode, click a candidate to color it. Alt+digit colors a candidate in the active cell.</p>
+        </section>
+        <aside class="lab-side">
+          <section class="lab-card">
+            <p class="lab-kicker">CONTROLLED COMPARISON</p><h2>Measure this browser</h2>
+            <p>The comparison runs one board at a time. It checks that their visible output matches before it accepts the results.</p>
+            <button type="button" class="button primary" id="run">Run comparison</button>
+            <p class="lab-small">About 2 minutes. Keep this tab visible.</p>
+            <div class="lab-progress" role="status" aria-live="polite" id="progress">Ready. No measurements yet.</div>
+            <dl class="lab-facts"><div><dt>Frameworks</dt><dd>React 19.3.1 · Solid 2.0.3</dd></div><div><dt>Scope</dt><dd>Classic grid, notes, highlights, colors</dd></div><div><dt>Motion preference</dt><dd id="motion-status"></dd></div></dl>
+          </section>
+          <section class="lab-card lab-notes"><h2>What this tells us</h2>
+            <p><strong>DOM update time</strong> includes the event handler, scheduled framework work, and the resulting DOM changes.</p>
+            <p><strong>Next frame time</strong> ends at a browser frame callback. It is a rendering opportunity, not a measurement of pixels reaching the screen.</p>
+            <p>The two new boards cover a focused classic subset. Variants, the solver, navigation, and the full workspace remain outside this experiment.</p>
+          </section>
+        </aside>
+      </div>
+      <section id="results" class="lab-results" hidden aria-labelledby="results-title"><div class="results-heading"><h2 id="results-title">Results from this browser</h2><button type="button" class="button secondary" id="download">Download results</button></div><div id="results-table"></div></section>
+      <button type="button" id="benchmark-action" hidden aria-hidden="true" tabindex="-1">Apply comparison action</button>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
