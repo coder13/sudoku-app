@@ -341,7 +341,19 @@ At the 37-step stall, the 13 sum between R1C3 and R1C4 and the 7 sum between R1C
 
 R1C5 can be 1, 2 or 3. If it were 2, R1C8 could only be 8, repeating R1C3. If R1C5 is 1 or 3, R1C8 must be 4 or 6 respectively, and R1C4 uses the other digit in that pair. Row 1 therefore reserves 4 and 6 for R1C4 and R1C8.
 
-Independent enumeration of the seven relevant cells removes 8 from R1C3, 5 from R1C4, 2 from R1C5, 7, 8 and 9 from R1C8, and 4 and 6 from R1C6, R1C7 and R1C9. Applying all 12 removals manually opens 47 additional app steps, including eight placements that match the published solution. The trace reaches another stall after those steps. Play and Technique Finder still need a detector and an explanation for this step.
+The engine enumerates the possible first digits and derives the two sum partners. It checks that all four cells can use different digits in their shared house. Proofs report additional removals and reserved digits that require the line's group relation. Play can explain the rejected choice for R1C5 and why 4 and 6 occupy two of the four cells in every valid assignment.
+
+The archived hint removes 8 from R1C3, 5 from R1C4, 2 from R1C5, and 7, 8, and 9 from R1C8. The same restriction also removes 4 and 6 from R1C1, R1C6, R1C7, and R1C9, for 14 removals in total. Technique Finder counts all 14. The test checks the printed rules and enumerates the four-cell assignments independently, then verifies the displayed explanation, applying the hint, undo, redo, and the eight correct placements that follow. An Entropic control uses linked positive V and X clues from one rule and drops the proof when only a negative marking remains for the X.
+
+From givens, both configured profiles first use the hint at step 29. It removes 16 candidates there, since R1C2 still lists both 4 and 6. The app walkthrough grows from 37 steps and 1,867 points to 81 steps and 6,821 points, with eight correct placements before a new stall. The engine's standard order still stalls after 34 steps and 787 points. It uses the new hint but makes no placements. Eight other published controls keep full app traces and scores. All nine keep their exact solutions and initial candidate masks.
+
+Across five alternating warm Wasm samples, app walkthrough CPU time falls from 1,393 to 627 ms on HCHW. The full ranked hint request at the old stall falls from 1,238 to 614 ms while gaining the new choice. The published Newman control runs at medians of 2.39 and 2.34 ms with identical traces. App Wasm changes from 4,088,642 to 4,061,391 raw bytes and from 1,081,541 to 1,084,332 gzip bytes. The unpublished variant scoring version remains 9.
+
+### Linked sums across houses
+
+At the 81-step stall, R2C6 can be 7 or 9. The 13 sum through R3C6 makes R3C6 6 or 4 respectively. The 7 sum through that same cell makes R3C5 1 or 3. R3C8 shares a Modular group with R2C6. When R2C6 is 7, row 3 rules out 1 in R3C8 because R3C5 already uses 1. When R2C6 is 9, the Modular group rules out 1 directly. The same reasoning rules out 3. The core cells use both box 2 and row 3, which calls for a proof that can combine their separate house restrictions.
+
+Independent enumeration finds four further removals from other pairs of sums and lines in the same position. Applying all six removals manually opens six more app steps and reaches another stall without a placement.
 
 ## Reproduce
 

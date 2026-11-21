@@ -23,6 +23,46 @@ export function assertGroupLineProof(
   type: 'entropic' | 'modular'
 ) {
   assert.equal(proof.technique, type)
+  if (proof.evidence.type === 'group-line-sum-chain') {
+    const { cells, rules, totals, house, domains, supported, locked } = proof.evidence
+    const [start, middle, end, partner] = cells
+    const sites = variantHouseCells(house, puzzle)
+    assert.equal(new Set(cells).size, 4)
+    assert.ok(cells.every(cell => sites.includes(cell)))
+    assertGroupAndSum(puzzle, type, [rules[0], rules[1]], [start, partner, start, middle], totals[0])
+    assertGroupAndSum(puzzle, type, [rules[0], rules[2]], [start, partner, middle, end], totals[1])
+    const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
+    const before = [0, 0, 0, 0]
+    const after = [0, 0, 0, 0]
+    let usedBefore = 511, usedAfter = 511
+    for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) for (let d = 1; d <= 9; d++) {
+      const values = [a, b, c, d]
+      if (new Set(values).size !== 4 || a + b !== totals[0] || b + c !== totals[1]) continue
+      const bits = values.map(digit => 1 << (digit - 1))
+      if (bits.some((bit, index) => !(domains[index] & bit))) continue
+      const used = bits.reduce((mask, bit) => mask | bit, 0)
+      bits.forEach((bit, index) => { before[index] |= bit })
+      usedBefore &= used
+      if (group(a) === group(d)) {
+        bits.forEach((bit, index) => { after[index] |= bit })
+        usedAfter &= used
+      }
+    }
+    assert.ok(after.every(Boolean))
+    assert.deepEqual(after, supported)
+    assert.equal(locked, usedAfter & ~usedBefore)
+    const core = cells.flatMap((cell, index) => Array.from({ length: 9 }, (_, digit) => digit + 1)
+      .filter(digit => (before[index] & ~after[index]) & (1 << (digit - 1)))
+      .map(digit => ({ eliminate: { cell, digit } })))
+      .sort((a, b) => a.eliminate.cell - b.eliminate.cell || a.eliminate.digit - b.eliminate.digit)
+    assert.deepEqual(proof.actions.filter(action => 'eliminate' in action && cells.includes(action.eliminate.cell)), core)
+    for (const action of proof.actions) {
+      assert.ok('eliminate' in action)
+      if (cells.includes(action.eliminate.cell)) continue
+      assert.ok(sites.includes(action.eliminate.cell) && locked & (1 << (action.eliminate.digit - 1)))
+    }
+    return
+  }
   if (proof.evidence.type === 'group-line-house-triplet') {
     const { cells, domains, rule, house } = proof.evidence
     const path = puzzle.rules![rule]

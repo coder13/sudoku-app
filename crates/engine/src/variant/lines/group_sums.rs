@@ -3,7 +3,10 @@
 use super::{
     CompiledVariant, LineConstraint, LineKind, PuzzleRule, VariantHouseKind, groups::DigitGroups,
 };
-use crate::hints::{digit_bit, digits};
+use crate::{
+    CELLS, DIGITS,
+    hints::{digit_bit, digits},
+};
 
 pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules: &[PuzzleRule]) {
     let mut group_lines = puzzle
@@ -26,9 +29,15 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
             _ => {}
         }
     }
+    let mut incident: [Vec<_>; CELLS] = std::array::from_fn(|_| Vec::new());
+    for &(rule, [a, b], total) in &sums {
+        incident[a].push((rule, b, total));
+        incident[b].push((rule, a, total));
+    }
     let mut modular = Vec::new();
     let mut with_houses = Vec::new();
     let mut disjoint = Vec::new();
+    let mut chains = Vec::new();
     for line in group_lines {
         for &(rule, pair, sum) in &sums {
             if let Some(joined) = ModularSum::for_pair(line, rule, pair, sum) {
@@ -36,6 +45,18 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
             }
             for [a, b] in [pair, [pair[1], pair[0]]] {
                 GroupSumHouse::compile(puzzle, line, rule, a, b, sum, &mut with_houses);
+                for &(next_rule, c, next_total) in &incident[b] {
+                    if c != a {
+                        GroupSumChain::compile(
+                            puzzle,
+                            line,
+                            [rule, next_rule],
+                            [a, b, c],
+                            [sum, next_total],
+                            &mut chains,
+                        );
+                    }
+                }
             }
             DisjointGroupSum::compile(puzzle, line, rule, pair, sum, &mut disjoint);
         }
@@ -43,6 +64,7 @@ pub(in crate::variant) fn compile_line_sums(puzzle: &mut CompiledVariant, rules:
     puzzle.modular_sums = modular;
     puzzle.group_sum_houses = with_houses;
     puzzle.disjoint_group_sums = disjoint;
+    puzzle.group_sum_chains = chains;
 }
 
 #[derive(Clone, Debug)]
@@ -272,6 +294,127 @@ impl DisjointGroupSum {
         }
         std::array::from_fn(|i| possible[i] & !supported[i])
     }
+}
+
+#[derive(Clone, Debug)]
+pub(in crate::variant) struct GroupSumChain {
+    pub rules: [usize; 3],
+    /// Line endpoint, common sum cell, far sum endpoint, and same-group line cell.
+    pub cells: [usize; 4],
+    pub house: usize,
+    pub totals: [u8; 2],
+    pub technique: &'static str,
+    partition: DigitGroups,
+}
+
+pub(in crate::variant) struct GroupSumChainSupport {
+    pub supported: [u16; 4],
+    pub removed: [u16; 4],
+    pub locked: u16,
+}
+
+impl GroupSumChain {
+    fn compile(
+        puzzle: &CompiledVariant,
+        line: &LineConstraint,
+        rules: [usize; 2],
+        [start, middle, end]: [usize; 3],
+        totals: [u8; 2],
+        out: &mut Vec<Self>,
+    ) {
+        let LineKind::ThreeGroups(groups) = &line.kind else {
+            return;
+        };
+        let Some(index) = line.cells.iter().position(|&cell| cell == start) else {
+            return;
+        };
+        let sums = (1u128 << start) | (1u128 << middle) | (1u128 << end);
+        for (other, &partner) in line.cells.iter().enumerate() {
+            let bit = 1u128 << partner;
+            if sums & bit != 0 {
+                continue;
+            }
+            let Some(partition) = groups.repeating_group(index, other) else {
+                continue;
+            };
+            let cells = sums | bit;
+            for &house in &puzzle.memberships[start] {
+                let sites = puzzle.house_masks[house];
+                if sites & cells == cells && puzzle.search_houses.binary_search(&house).is_ok() {
+                    out.push(Self {
+                        rules: [line.rule_index, rules[0], rules[1]],
+                        cells: [start, middle, end, partner],
+                        house,
+                        totals,
+                        technique: line.rule_id,
+                        partition,
+                    });
+                }
+            }
+        }
+    }
+
+    pub fn support(&self, domains: [u16; 4]) -> Option<GroupSumChainSupport> {
+        let [left, right] = self.totals;
+        let mut supported = [0; 4];
+        // Report only the additional support lost when the line is enforced.
+        let mut ungrouped = [0; 4];
+        let mut occupied = DIGITS;
+        let mut ungrouped_occupied = DIGITS;
+        for group in self.partition.masks() {
+            for a in digits(domains[0] & group) {
+                let b = left.saturating_sub(a);
+                let c = right.saturating_sub(b);
+                if !(1..=9).contains(&b) || !(1..=9).contains(&c) || a == b || b == c || a == c {
+                    continue;
+                }
+                let sum_digits = [a, b, c].map(digit_bit);
+                if sum_digits
+                    .iter()
+                    .zip(domains)
+                    .any(|(&bit, domain)| bit & domain == 0)
+                {
+                    continue;
+                }
+                let used = sum_digits.into_iter().fold(0, |mask, bit| mask | bit);
+                let all_partners = domains[3] & !used;
+                if all_partners == 0 {
+                    continue;
+                }
+                for (mask, digit) in ungrouped.iter_mut().zip(sum_digits) {
+                    *mask |= digit;
+                }
+                ungrouped[3] |= all_partners;
+                ungrouped_occupied &= used | singleton(all_partners);
+
+                let partners = all_partners & group;
+                if partners == 0 {
+                    continue;
+                }
+                for (mask, digit) in supported.iter_mut().zip(sum_digits) {
+                    *mask |= digit;
+                }
+                supported[3] |= partners;
+                occupied &= used | singleton(partners);
+            }
+        }
+        if supported[0] == 0 {
+            return None;
+        }
+        let removed = std::array::from_fn(|i| ungrouped[i] & !supported[i]);
+        let locked = occupied & !ungrouped_occupied;
+        (removed != [0; 4] || locked != 0).then_some(GroupSumChainSupport {
+            supported,
+            removed,
+            locked,
+        })
+    }
+}
+
+// Every partner is free to choose any member of its mask once the sum digits
+// are fixed. Only a single candidate can then guarantee another occupied digit.
+fn singleton(mask: u16) -> u16 {
+    if mask.is_power_of_two() { mask } else { 0 }
 }
 
 #[cfg(test)]

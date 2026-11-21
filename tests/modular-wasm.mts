@@ -26,7 +26,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 787, 34, 1867, 37, false, false, 'medium'],
+  ['HCHW', 787, 34, 6821, 81, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -86,6 +86,13 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
+      if (id === 'HCHW') {
+        const chain = trace.steps.findIndex(proof => proof.evidence.type === 'group-line-sum-chain')
+        assert.equal(chain, 28)
+        assert.equal(trace.steps[chain].actions.length, 16)
+        assert.equal(trace.steps.flatMap(step => step.actions).filter(action => 'place' in action).length,
+          techniqueOrder === orders[0][0] ? 0 : 8)
+      }
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -296,7 +303,10 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.match(reason, /use 1 and 3.*r5c2 with no candidate in box 4/i)
   assertModularProof(game.variant!.puzzle, deduction)
   const ranked = (await puzzleHints(stalled)).choices
-  assert.deepEqual(ranked.map(choice => [choice.technique, choice.actions]), [
+  const [chain, ...otherChoices] = ranked
+  assert.ok(chain && 'variant' in chain.evidence)
+  assert.equal(chain.evidence.variant.source?.deduction.evidence.type, 'group-line-sum-chain')
+  assert.deepEqual(otherChoices.map(choice => [choice.technique, choice.actions]), [
     ['modular', hint.actions],
     ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
   ])
@@ -316,6 +326,78 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.deepEqual(trace.steps[0].actions, hint.actions)
   assert.ok(!trace.steps.some(step => step.technique === 'dynamic-forcing-net' &&
     step.actions.some(action => 'eliminate' in action && action.eliminate.cell === 19 && action.eliminate.digit === 8)))
+})
+
+test('HCHW offers the linked row sums and their reserved digits in Play and Finder', async () => {
+  const { url, entries, after }: { url: string; entries: string; after: number[] } =
+    JSON.parse(readFileSync(new URL('./fixtures/overlay-hchw-linked.json', import.meta.url), 'utf8'))
+  const { code, solution } = load('coach').examples.find((source: { url: string }) => source.url === url)
+  const { game } = await prepareImportedPuzzle(code)
+  const eliminations = after.map((mask, cell) => cell === 19 ? mask | (1 << 4) : mask)
+  const stalled = { ...game, position: { ...game.position, entries, eliminations } }
+  const { choices, candidates } = await puzzleHints(stalled)
+  const hint = choices[0]
+  assert.ok(candidates && hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  const { description, reason, source: { deduction } } = hint.evidence.variant
+  assert.equal(hint.technique, 'modular')
+  assert.deepEqual(deduction.evidence, {
+    type: 'group-line-sum-chain', rules: [19, 10, 9], cells: [4, 3, 2, 7],
+    house: { row: 0 }, totals: [7, 13], domains: [7, 56, 448, 488],
+    supported: [5, 40, 320, 40], locked: 40,
+  })
+  assert.match(description, /R1C3 6 more than R1C5/i)
+  assert.match(reason, /R1C5 were 2.*put 5 in R1C4 and 8 in R1C3/i)
+  assert.match(reason, /always use 4 and 6.*other cells in row 1/i)
+
+  const position = variantPosition(game.variant!, stalled.position)
+  assertModularProof(position.puzzle, deduction)
+  const expected = [[0, 4, 6], [2, 8], [3, 5], [4, 2], [5, 4, 6], [6, 4, 6], [7, 7, 8, 9], [8, 4, 6]]
+    .flatMap(([cell, ...digits]) => digits.map(digit => ({ eliminate: { cell, digit } })))
+  assert.deepEqual(hint.actions, expected)
+  assert.ok(expected.every(({ eliminate: { cell, digit } }) => Number(solution[cell]) !== digit))
+
+  const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
+  try { assert.equal(await scan.count('modular'), expected.length) } finally { scan.close() }
+  const played = applyDeduction(stalled, hint.actions, candidates)
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+  const trace = await runEngine({
+    type: 'variant', operation: 'trace', position: variantPosition(game.variant!, played.position),
+    techniqueOrder: await getVariantPlayOrder(),
+  })
+  const placements = trace.steps.flatMap(step => step.actions)
+    .flatMap(action => 'place' in action ? [action.place] : [])
+  assert.equal(placements.length, 8)
+  assert.ok(placements.every(({ cell, digit }) => Number(solution[cell]) === digit))
+  assert.equal(trace.rating.status, 'stalled')
+})
+
+test('Entropic sum chains use positive V and X marks even when both come from one rule', async () => {
+  const puzzle: VariantPuzzle = {
+    version: 1, givens: '0'.repeat(81), rules: [
+      { type: 'entropic', cells: [0, 9, 10, 3] },
+      { type: 'xv', five: { pairs: [[1, 0]] }, ten: { pairs: [[2, 1]] } },
+    ],
+  }
+  const eliminations = Array(81).fill(0)
+  for (const [cell, ...digits] of [[0, 1, 2, 3, 4], [1, 1, 2, 3, 4], [2, 6, 7, 8, 9], [3, 2, 3, 5]]) {
+    eliminations[cell] = 511 ^ digits.reduce((mask, digit) => mask | (1 << (digit - 1)), 0)
+  }
+  const hints = async (definition: VariantPuzzle) => (await runEngine({
+    type: 'variant', operation: 'hints', position: { puzzle: definition, eliminations },
+    techniqueOrder: ['entropic'], limit: 0xffff_ffff,
+  })).filter(proof => proof.evidence.type === 'group-line-sum-chain')
+  const [proof] = await hints(puzzle)
+  assert.ok(proof?.evidence.type === 'group-line-sum-chain')
+  assert.deepEqual(proof.evidence.rules, [0, 1, 1])
+  assert.deepEqual(proof.evidence.totals, [5, 10])
+  assert.deepEqual(proof.evidence.supported, [9, 9, 288, 22])
+  assert.equal(proof.evidence.locked, 9)
+  assertGroupLineProof(puzzle, proof, 'entropic')
+  const withoutX: VariantPuzzle = { ...puzzle, rules: [
+    puzzle.rules![0], { type: 'xv', five: { pairs: [[1, 0]] }, ten: { pairs: [], negative: true } },
+  ] }
+  assert.deepEqual(await hints(withoutX), [])
 })
 
 test('Entropic groups can cut off a box cell with two candidates', async () => {

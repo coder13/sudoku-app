@@ -98,6 +98,10 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
                     scopes.insert(cells.to_vec());
                 }
+                VariantEvidence::GroupLineSumChain(proof) => {
+                    assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    scopes.insert(proof.cells.to_vec());
+                }
                 VariantEvidence::LineHouses(proof) => {
                     if position.puzzle.rules.len() > 1 {
                         overlaps.insert(technique);

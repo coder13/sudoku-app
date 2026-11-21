@@ -281,6 +281,8 @@ pub enum VariantEvidence {
         /// Positive sum on the last two cells.
         total: u8,
     },
+    /// A repeating line group and two linked sums restrict digits in one house.
+    GroupLineSumChain(Box<VariantGroupSumChainProof>),
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
@@ -328,6 +330,26 @@ pub enum VariantEvidence {
         #[cfg_attr(feature = "wasm-api", serde(rename = "swapCells"))]
         swap_cells: Vec<usize>,
     },
+}
+
+/// Replayable support for two linked sums and a same-group line pair in a house.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupSumChainProof {
+    /// The group line followed by the two positive sum rules.
+    pub rules: [usize; 3],
+    /// The three cells along the sum chain followed by the other line cell.
+    pub cells: [usize; 4],
+    /// The house containing all four cells.
+    pub house: VariantHouseKind,
+    /// The sum on each of the first two edges.
+    pub totals: [u8; 2],
+    /// Candidate masks for the four cells, including placed digits.
+    pub domains: [u16; 4],
+    /// Candidates occurring in at least one assignment satisfying the premises.
+    pub supported: [u16; 4],
+    /// Digits newly guaranteed to occur among the four cells.
+    pub locked: u16,
 }
 
 /// Replayable support for a binary line and its shared houses.
@@ -562,6 +584,7 @@ impl VariantDeduction {
             VariantEvidence::GroupLineHouseTriplet { cells, .. } => cells.len(),
             VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
             VariantEvidence::GroupLineDisjointSum { cells, .. } => cells.len(),
+            VariantEvidence::GroupLineSumChain(proof) => proof.cells.len(),
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
@@ -1176,6 +1199,43 @@ impl CompiledVariant {
                                 },
                             });
                         }
+                    }
+                }
+                for clue in self
+                    .group_sum_chains
+                    .iter()
+                    .filter(|clue| clue.technique == technique.id())
+                {
+                    let domains = clue.cells.map(|cell| position.domain(cell));
+                    let Some(support) = clue.support(domains) else {
+                        continue;
+                    };
+                    let house = &self.houses[clue.house];
+                    let allowed = house.cells.iter().map(|cell| {
+                        let removed = clue
+                            .cells
+                            .iter()
+                            .position(|site| site == cell)
+                            .map_or(support.locked, |index| support.removed[index]);
+                        DIGITS & !removed
+                    });
+                    let actions = position.removals(&house.cells, allowed);
+                    if !actions.is_empty() {
+                        proofs.push(VariantDeduction {
+                            technique,
+                            actions,
+                            evidence: VariantEvidence::GroupLineSumChain(Box::new(
+                                VariantGroupSumChainProof {
+                                    rules: clue.rules,
+                                    house: house.kind,
+                                    cells: clue.cells,
+                                    domains,
+                                    totals: clue.totals,
+                                    supported: support.supported,
+                                    locked: support.locked,
+                                },
+                            )),
+                        });
                     }
                 }
                 if technique == Modular {

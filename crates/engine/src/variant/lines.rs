@@ -1,7 +1,7 @@
 mod group_sums;
 mod groups;
 
-pub(super) use group_sums::{DisjointGroupSum, GroupSumHouse, ModularSum, compile_line_sums};
+pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, ModularSum, compile_line_sums};
 
 use std::{collections::HashMap, ops::Range};
 

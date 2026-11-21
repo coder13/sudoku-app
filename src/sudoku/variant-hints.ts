@@ -353,6 +353,35 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         .map(value => ({ cell: cells[i], digit: value })))
       break
     }
+    case 'group-line-sum-chain': {
+      const { cells: [start, middle, end, partner], domains, supported, locked, totals: [left, right] } = evidence
+      const kind = technique === 'entropic' ? 'entropic' : 'modular'
+      const line = kind === 'entropic' ? 'Entropic' : 'Modular'
+      const group = kind === 'entropic' ? 'digit group' : 'remainder group'
+      const house = houseLabel(evidence.house)
+      const [lower, higher] = right > left ? [start, end] : [end, start]
+      description = `${nameCell(start)} and ${nameCell(middle)} add to ${left}. ${nameCell(middle)} and ${nameCell(end)} add to ${right}. That makes ${nameCell(higher)} ${Math.abs(right - left)} more than ${nameCell(lower)}.`
+      reason = `${nameCell(start)} and ${nameCell(partner)} must use the same ${group} on this ${line} Line. All four cells must use different digits in ${house}.`
+      const example = focus.find(({ cell }) => cell === start)
+      if (example) {
+        const second = left - example.digit
+        reason += ` If ${nameCell(start)} were ${example.digit}, the sums would put ${second} in ${nameCell(middle)} and ${right - second} in ${nameCell(end)}. That leaves no candidate from the same ${group} in ${nameCell(partner)}.`
+      }
+      const names = (mask: number) => alternatives.format(DIGITS.filter(digit => mask & (1 << (digit - 1))).map(String))
+      reason += ` ${nameCell(start)} can only be ${names(supported[0])}, and ${nameCell(partner)} can only be ${names(supported[3])}.`
+      if (focus.some(({ cell }) => !evidence.cells.includes(cell))) {
+        const digits = DIGITS.filter(digit => locked & (1 << (digit - 1)))
+        const text = new Intl.ListFormat('en', { type: 'conjunction' }).format(digits.map(String))
+        reason += ` These four cells always use ${text}. Remove ${digits.length === 1 ? 'it' : 'those digits'} from the other cells in ${house}.`
+      }
+      cells = [...new Set([...evidence.cells, ...focus.map(({ cell }) => cell)])]
+      candidates = [
+        ...domains.flatMap((mask, i) => DIGITS.filter(value => mask & (1 << (value - 1)))
+          .map(digit => ({ cell: evidence.cells[i], digit }))),
+        ...focus.filter(({ cell }) => !evidence.cells.includes(cell)),
+      ]
+      break
+    }
     case 'group-line-sum-house': {
       cells = evidence.cells
       const kind = technique === 'entropic' ? 'entropic' : 'modular'

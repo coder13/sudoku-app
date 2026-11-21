@@ -58,17 +58,12 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [] }), [])
 })
 
-test('Quintuple Pattern Overlay has no deductions at the HCHW stall after the line-and-box deduction', async () => {
-  const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
-  const trace = await runEngine({
-    type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: await getVariantPlayOrder(),
-  })
-  assert.equal(trace.rating.status, 'stalled')
-  assert.equal(trace.steps.length, 37)
-  const after: number[] = load('overlay-hchw-linked').after
-  assert.deepEqual(trace.end.eliminations, after.map((mask, cell) => cell === 19 ? mask | (1 << 4) : mask))
+test('Quintuple Pattern Overlay has no deductions at the archived HCHW line-and-box stall', async () => {
+  const saved: { url: string; entries: string; after: number[] } = load('overlay-hchw-linked')
+  const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url === saved.url)
+  const position = { puzzle, entries: saved.entries,
+    eliminations: saved.after.map((mask, cell) => cell === 19 ? mask | (1 << 4) : mask) }
   const technique = 'quintuple-pattern-overlay'
-  const position = trace.end
   assert.deepEqual(await runEngine({
     type: 'variant', operation: 'hints', position, techniqueOrder: [technique], limit: 0xffff_ffff,
   }), [])
