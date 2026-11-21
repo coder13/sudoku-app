@@ -1,5 +1,5 @@
-import { projectPhotoCrop, rectangularCrop, refinePhotoCrop, type PhotoCrop } from './photo-crop'
-import { centeredPhotoCrop, findPhotoGrids, luminance, MIN_GRID_SIZE } from './photo-grid'
+import { projectPhotoCrop, rectangularCrop, refinePhotoCrop, type PhotoCrop } from './photo-crop.ts'
+import { centeredPhotoCrop, findPhotoGrids, luminance, MIN_GRID_SIZE } from './photo-grid.ts'
 
 export const PHOTO_TYPES = 'image/png,image/jpeg,.png,.jpg,.jpeg'
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024
@@ -299,12 +299,16 @@ export function photoCell(pixels: Uint8ClampedArray, cell: number) {
   const chroma = new Uint8Array(contrast.length)
   for (let point = 0; point < contrast.length; point++) {
     const start = offset(point % INNER_SIZE, Math.floor(point / INNER_SIZE))
-    const dr = pixels[start] - red
-    const dg = pixels[start + 1] - green
-    const db = pixels[start + 2] - blue
+    const r = pixels[start]
+    const g = pixels[start + 1]
+    const b = pixels[start + 2]
+    const dr = r - red
+    const dg = g - green
+    const db = b - blue
     contrast[point] = Math.max(Math.abs(dr), Math.abs(dg), Math.abs(db))
     tone[point] = (dr * 54 + dg * 183 + db * 19) >> 8
-    chroma[point] = Math.max(dr, dg, db) - Math.min(dr, dg, db)
+    // Use the ink's color so a colored cell does not make neutral ink look colored.
+    chroma[point] = Math.max(r, g, b) - Math.min(r, g, b)
   }
   const strong = cellGlyphs(contrast.map(value => Number(value >= 36)))
   const primary = centeredGlyph(strong)
