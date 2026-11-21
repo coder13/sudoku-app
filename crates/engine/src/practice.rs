@@ -1309,6 +1309,8 @@ mod tests {
         candidates, technique_deductions_at,
     };
 
+    mod chain_contract;
+
     #[test]
     fn every_technique_can_find_its_practice_deduction() {
         for technique in Technique::ALL {
