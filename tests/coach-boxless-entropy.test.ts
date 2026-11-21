@@ -86,9 +86,8 @@ test('the Bento entropy layer distinguishes two boxless completions with the sam
 })
 
 test('the Bento rule set with supported layers explains its published answer from an empty grid', async () => {
-  const deferred = new Set(['pillArrow', 'cosmeticLine'])
   const exported = coachCode({
-    ...source, givenConstraints: source.givenConstraints.filter((layer: { type: string }) => !deferred.has(layer.type)),
+    ...source, givenConstraints: source.givenConstraints.filter((layer: { type: string }) => layer.type !== 'cosmeticLine'),
   })
   const imported = await preparePlayableImport(exported)
   assert.ok('futoshiki' in imported)
@@ -96,7 +95,8 @@ test('the Bento rule set with supported layers explains its published answer fro
   assert.equal(puzzle.globalEntropy, true)
   assert.equal(puzzle.extraRegions?.length, 3)
   assert.equal(puzzle.adjacentClues?.marks.length, 24)
-  assert.deepEqual(puzzle.pathClues?.map(line => line.type), ['arrow'])
+  assert.deepEqual(puzzle.pathClues?.map(line => line.type), ['arrow', 'pill-arrow'])
+  assert.deepEqual(puzzle.pathClues?.[1].cells, [6, 7, 17, 26, 25, 24])
   assert.equal(puzzle.whispers?.length, 1)
   assert.deepEqual(puzzle.quadruples, [
     { topLeft: 4, digits: [1] }, { topLeft: 3, digits: [2] }, { topLeft: 13, digits: [3] }, { topLeft: 12, digits: [4] },

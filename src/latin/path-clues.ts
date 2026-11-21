@@ -4,12 +4,13 @@ import { bit, cellLabel, type LatinHint, type LatinRule } from './engine.ts'
 import { extraRegionTechnique } from './extra-regions.ts'
 import { globalEntropyTechnique } from './global-entropy.ts'
 import { betweenRuleNote, betweenTechnique, endpointLineRule, lockoutRuleNote, lockoutTechnique } from './endpoint-lines.ts'
+import { pillArrowNote, pillArrowRule, pillArrowTechnique } from './pill-arrow.ts'
 import { renbanRule, renbanRuleNote, renbanTechnique } from './renban.ts'
 import type { WhisperLine } from './whispers.ts'
 import { maxPathCells, maxPathClueTokenLength } from '../number-puzzles/import-token-limits.ts'
 import { quadrupleTechnique, type Quadruple } from '../sudoku/quadruple.ts'
 
-const pathClueKinds = { palindrome: 'p', consecutive: 'c', thermometer: 't', arrow: 'a', renban: 'r', lockout: 'k', between: 'b' } as const
+const pathClueKinds = { palindrome: 'p', consecutive: 'c', thermometer: 't', arrow: 'a', 'pill-arrow': 'i', renban: 'r', lockout: 'k', between: 'b' } as const
 
 type LatinPathClueType = keyof typeof pathClueKinds
 const pathClueTypes = new Map<string, LatinPathClueType>(Object.entries(pathClueKinds).map(([type, code]) => [code, type as LatinPathClueType]))
@@ -29,7 +30,7 @@ export type LatinClues = {
   quadruples?: readonly Quadruple[]
 }
 
-export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
+export const pathClueNames = { palindrome: 'Palindrome Line', consecutive: 'Consecutive Line', thermometer: 'Thermometer', arrow: arrowTechnique, 'pill-arrow': pillArrowTechnique, renban: renbanTechnique, lockout: lockoutTechnique, between: betweenTechnique } as const
 
 export function latinClueTechnique(kind: LatinRule['kind']) {
   if (kind === 'extra-region') return extraRegionTechnique
@@ -52,6 +53,7 @@ export const pathClueNotes = {
   consecutive: 'Digits on a dashed green Consecutive Line go up by one at each step or down by one at each step.',
   thermometer: 'Digits strictly increase from the bulb to the tip of each Thermometer.',
   arrow: arrowRuleNote,
+  'pill-arrow': pillArrowNote,
   renban: renbanRuleNote,
   lockout: lockoutRuleNote,
   between: betweenRuleNote,
@@ -61,6 +63,7 @@ export function latinPathRules(size: number, clues: readonly LatinPathClue[] = [
   let count = 0
   return clues.flatMap(({ type, cells, segments }) => {
     const endpointLine = type === 'between' || type === 'lockout'
+    const directed = type === 'thermometer' || type === 'arrow' || type === 'pill-arrow' || endpointLine
     const drawing = segments ?? [cells]
     count += cells.length + (segments?.reduce((total, path) => total + path.length, 0) ?? 0)
     const members = new Set(cells)
@@ -68,11 +71,13 @@ export function latinPathRules(size: number, clues: readonly LatinPathClue[] = [
       members.size !== cells.length || cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
       !drawing.length || drawing.some(path => !path.length || path.some((cell, index) => !members.has(cell) || cell === path[index - 1])) ||
       (type === 'arrow' && (cells.length < 2 || cells.length > size + 1)) ||
+      (type === 'pill-arrow' && cells.length < 4) ||
       (endpointLine && cells.length < (type === 'between' ? 3 : 2)) ||
-      segments && (type === 'thermometer' || type === 'arrow' || endpointLine || new Set(segments.flat()).size !== cells.length)) {
+      segments && (directed || new Set(segments.flat()).size !== cells.length)) {
       throw new Error('This puzzle has invalid line clues.')
     }
     if (type === 'arrow') return [arrowRule(size, cells)]
+    if (type === 'pill-arrow') return [pillArrowRule(size, cells)]
     if (endpointLine) return [endpointLineRule(size, cells, type)]
     if (type === 'thermometer') return [thermometerRule(size, cells)]
     if (type === 'renban') return cells.length > 1 ? [renbanRule(size, cells)] : []

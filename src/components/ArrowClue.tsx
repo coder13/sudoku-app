@@ -24,3 +24,30 @@ export function ArrowClue({ circle, cells, marker, size = 9 }: { circle: number;
     <circle className="variant-arrow-circle" cx={cx} cy={cy} r=".33" />
   </>
 }
+
+/** Draw a two-cell Pill Arrow. Pass cells in drawing order, with the pill cells first. */
+export function PillArrowClue({ cells, size }: { cells: readonly number[]; size: number }) {
+  const marker = useId()
+  const mask = useId()
+  const [first, second, ...shaft] = cells.map(cell => center(cell, size))
+  const [x, y] = first
+  const dx = second[0] - x, dy = second[1] - y
+  const r = .33
+  const pill = {
+    x: x - r, y: y - r, rx: r,
+    width: Math.hypot(dx, dy) + 2 * r, height: 2 * r,
+    transform: `rotate(${Math.atan2(dy, dx) * 180 / Math.PI} ${x} ${y})`,
+  }
+  return <g className="variant-pill-arrow">
+    <ArrowMarker id={marker} />
+    <defs>
+      <mask id={mask} maskUnits="userSpaceOnUse" x="0" y="0" width={size} height={size}>
+        <rect width={size} height={size} fill="white" />
+        <rect {...pill} fill="black" />
+      </mask>
+    </defs>
+    <polyline className="variant-arrow-line" points={[second, ...shaft].map(point => point.join(',')).join(' ')}
+      markerEnd={`url(#${marker})`} mask={`url(#${mask})`} />
+    <rect className="variant-arrow-circle" {...pill} />
+  </g>
+}

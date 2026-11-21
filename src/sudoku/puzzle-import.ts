@@ -455,7 +455,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -714,8 +714,9 @@ function readCoachWhispers(layer: Record<string, unknown>, size: number): (Whisp
 
 function readCoachDirectedPaths(constraint: Record<string, unknown>): number[][] {
   const { settings, segments, type } = constraint
+  const arrow = type === 'arrow' || type === 'pillArrow'
   const supportsStyle = (key: string) => LINE_STYLING.has(key) ||
-    (type === 'thermometer' ? key === 'bulbSize' : BULB_STYLING.has(key) || type === 'arrow' && key === 'arrowHeadLength')
+    (type === 'thermometer' ? key === 'bulbSize' : BULB_STYLING.has(key) || arrow && key === 'arrowHeadLength')
   if (hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !supportsStyle(key)))) {
     throw new Error(`This Sudoku Coach ${type} uses unsupported settings.`)
   }
@@ -801,9 +802,9 @@ function readCoachLatinClues(layers: readonly unknown[], size: number): LatinClu
       }
       continue
     }
-    if (type === 'thermometer' || type === 'arrow' || type === 'lockoutLine') {
+    if (type === 'thermometer' || type === 'arrow' || type === 'pillArrow' || type === 'lockoutLine') {
       // Each segment is its own constraint, even when paths share an endpoint.
-      const pathType = type === 'lockoutLine' ? 'lockout' : type
+      const pathType = type === 'lockoutLine' ? 'lockout' : type === 'pillArrow' ? 'pill-arrow' : type
       if (!Array.isArray(layer.segments) || layer.segments.length || hasData(layer.settings)) {
         for (const cells of readCoachDirectedPaths(layer)) pathClues.push({ type: pathType, cells })
       }

@@ -4,9 +4,10 @@ import { lockoutMinimumGap } from '../latin/endpoint-lines'
 import { extraRegionNote, extraRegionTechnique } from '../latin/extra-regions'
 import { globalEntropyNote, globalEntropyTechnique } from '../latin/global-entropy'
 import { pathClueNames, pathClueNotes, type LatinClues } from '../latin/path-clues'
+import { pillDigitCells } from '../latin/pill-arrow'
 import { whispersRuleNote, whispersTechnique } from '../latin/whispers'
 import { quadrupleCells, quadrupleNote, quadrupleTechnique } from '../sudoku/quadruple'
-import { ArrowClue } from './ArrowClue'
+import { ArrowClue, PillArrowClue } from './ArrowClue'
 import { EndpointLineClues } from './EndpointLineClues'
 import { PuzzlePathClue } from './PuzzlePathClue'
 import { QuadrupleClue } from './QuadrupleClue'
@@ -60,6 +61,13 @@ export function numberPuzzleClues(
       const [bulb, ...path] = cells
       addLabel(bulb, `Arrow bulb, sum of ${path.map(cell => cellLabel(cell, size)).join(', ')}`)
       for (const cell of path) addLabel(cell, `Arrow with its bulb at ${cellLabel(bulb, size)}`)
+    } else if (type === 'pill-arrow') {
+      const [tens, ones] = pillDigitCells(cells)
+      const first = cellLabel(tens, size), last = cellLabel(ones, size)
+      const shaft = cells.slice(2)
+      addLabel(tens, `Pill Arrow tens digit, ones digit at ${last}, total of ${shaft.map(cell => cellLabel(cell, size)).join(', ')}`)
+      addLabel(ones, `Pill Arrow ones digit, tens digit at ${first}`)
+      for (const cell of shaft) addLabel(cell, `Pill Arrow path, pill at ${first} and ${last}`)
     } else if (type === 'thermometer') {
       addLabel(cells[0], 'Thermometer bulb')
       if (cells.length > 1) addLabel(cells.at(-1)!, 'Thermometer tip')
@@ -102,6 +110,8 @@ export function numberPuzzleClues(
     {pathClues.filter(line => line.type === 'consecutive').map((line, index) => <PuzzlePathClue key={`consecutive-${index}`} line={line} size={size} />)}
     {pathClues.filter(line => line.type === 'arrow').map(({ cells: [circle, ...cells] }, index) =>
       <ArrowClue key={`arrow-${index}`} circle={circle} cells={cells} size={size} />)}
+    {pathClues.filter(line => line.type === 'pill-arrow').map(({ cells }, index) =>
+      <PillArrowClue key={`pill-arrow-${index}`} cells={cells} size={size} />)}
     {(['between', 'lockout'] as const).map(kind =>
       <EndpointLineClues key={kind} kind={kind} paths={pathClues.filter(line => line.type === kind).map(line => line.cells)} size={size} />)}
     {quadruples.map((clue, index) => <QuadrupleClue key={`quadruple-${index}`} {...clue} size={size} />)}

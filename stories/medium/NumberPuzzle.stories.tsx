@@ -835,6 +835,36 @@ export const QuadrupleWithCage: Story = {
   },
 }
 
+const reversedPill = createImportedFutoshiki(4, '0034004334124321', [], {
+  pathClues: [{ type: 'pill-arrow', cells: [11, 10, 5, 2, 3, 6] }],
+})
+
+export const ReversedPillArrow: Story = {
+  render: () => <PreviewRouter shell><FutoshikiPlay entry={reversedPill} /></PreviewRouter>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = await canvas.findByRole('group', { name: 'Futoshiki board' })
+    const tens = within(grid).getByRole('button', { name: /^R3C3, .*Pill Arrow tens digit, ones digit at R3C4/ })
+    const pill = grid.querySelector('.variant-pill-arrow')!
+    await expect(pill.querySelector('.variant-arrow-circle')).toHaveAttribute('transform', 'rotate(180 3.5 2.5)')
+    await expect(pill.querySelector('.variant-arrow-line')).toHaveAttribute('points', '2.5,2.5 1.5,1.5 2.5,0.5 3.5,0.5 2.5,1.5')
+    await userEvent.click(tens)
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(within(grid).getByRole('button', { name: /^R3C4, .*Pill Arrow ones digit/ })).toHaveFocus()
+
+    const actions = canvas.getByRole('button', { name: 'Actions' })
+    await userEvent.click(actions)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Techniques' }))
+    const techniques = within(await canvas.findByRole('tabpanel', { name: 'Techniques' }))
+    await userEvent.click(await techniques.findByRole('button', { name: 'Pill Arrow' }))
+    const hint = within(await canvas.findByRole('complementary', { name: 'Puzzle hint' }))
+    await expect(hint.getByRole('heading', { name: 'Pill Arrow' })).toBeVisible()
+    for (let stage = 0; stage < 3; stage++) await userEvent.click(hint.getByRole('button', { name: 'More detail' }))
+    await expect(hint.getByText(/two-digit number read from R3C3 to R3C4/)).toBeVisible()
+    await expect(grid.querySelector('[data-cell="10"]')).toHaveAttribute('data-context', 'true')
+  },
+}
+
 const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less: 0, greater: 1 }], {
   position: {
     values: [1, ...Array<number>(15).fill(0)],
