@@ -145,7 +145,7 @@ fn house(puzzle: &VariantPuzzle, kind: VariantHouseKind) -> Vec<usize> {
             RegionLayout::Boxes => (0..9)
                 .map(|i| 27 * (index / 3) + 3 * (index % 3) + 9 * (i / 3) + i % 3)
                 .collect(),
-            RegionLayout::Jigsaw { regions } => regions[index].clone(),
+            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => regions[index].clone(),
         },
         VariantHouseKind::Diagonal(diagonal) => (0..9)
             .map(|i| match diagonal {
