@@ -110,6 +110,13 @@
   pointer-events: none;
 }
 
+.number-puzzle-grid > .board-authored-artwork {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+}
+
 .number-puzzle-grid[data-line-clues] .number-puzzle-cell:focus-visible { z-index: auto; }
 
 .number-puzzle-grid[data-line-clues] :is(.number-puzzle-digit, .number-puzzle-notes,

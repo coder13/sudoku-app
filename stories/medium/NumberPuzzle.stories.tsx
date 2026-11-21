@@ -873,6 +873,8 @@ const importedFutoshiki = createImportedFutoshiki(4, '0034234134124123', [{ less
   },
   annotations: {
     givenColors: { 0: ['green'] },
+    authoredPaths: [{ type: 'corner-path', points: [[0, 2], [2, 2], [2, 4]], thickness: .08,
+      color: '#000000', opacity: 1 }],
     cellColors: { 0: ['blue', 'orange'] },
     candidateColors: { 1: { 2: 'blueHeavy' } },
     drawings: [{ shape: 'circle', at: [1.5, 1.5], color: 'blue' }],
@@ -901,6 +903,9 @@ export const ImportedCandidatePositions: Story = {
     await userEvent.click(positions.getByRole('button', { name: 'Corner' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Enter 4' }))
     await expect(cell).toHaveAccessibleName(/^R1C2, center notes 2, 3, corner notes 2, R1C1 is less than R1C2, Candidate 2 deep blue$/)
+    const artwork = canvas.getByRole('group', { name: 'Futoshiki board' }).querySelector('.board-authored-artwork')!
+    await expect(artwork).toHaveAttribute('viewBox', '0 0 4 4')
+    await expect(artwork.querySelector('polyline')).toHaveAttribute('points', '0,2 2,2 2,4')
     const drawing = canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })
     const colored = canvas.getByRole('button', { name: /^R1C1, 1, .*blue, orange$/ })
     await expect(drawing).toHaveAttribute('viewBox', '0 0 4 4')
@@ -909,6 +914,7 @@ export const ImportedCandidatePositions: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Clear imported annotations' }))
     await expect(canvas.getByRole('button', { name: /^R1C1, 1, .*green$/ })).toBeVisible()
     await expect(drawing).not.toBeInTheDocument()
+    await expect(artwork).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
     await expect(colored).toBeVisible()
     await expect(canvas.getByRole('img', { name: 'Imported Quick Draw annotations' })).toBeVisible()

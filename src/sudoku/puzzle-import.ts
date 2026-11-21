@@ -1,6 +1,7 @@
 import type { AdjacentClue, AdjacentClues } from '../latin/adjacent-clues.ts'
 import type { LatinClues, LatinPathClue } from '../latin/path-clues.ts'
 import type { WhisperLine } from '../latin/whispers.ts'
+import { readCoachAuthoredPaths } from '../number-puzzles/coach-authored-paths.ts'
 import type { NumberImportAnnotations } from '../number-puzzles/imported-annotations.ts'
 import type { NumberPosition } from '../number-puzzles/progress.ts'
 import type { CalcudokuImport } from '../calcudoku/imported.ts'
@@ -321,16 +322,17 @@ function readCoachNumberPosition(data: Record<string, unknown>, givens: string, 
   if (values.some(Boolean) || notes.some(Boolean) || cornerNotes.some(Boolean)) return { values, notes, cornerNotes }
 }
 
-function readCoachNumberAnnotations(data: Record<string, unknown>, size: number, published: boolean): NumberImportAnnotations | undefined {
+function readCoachNumberAnnotations(data: Record<string, unknown>, size: number, published: boolean, layers: readonly unknown[]): NumberImportAnnotations | undefined {
   const codes = readCoachColourCells(data.colours, data.givenColours, size ** 2)
   const givenColors = codes?.length ? readCoachColorNames(codes, data.colours as unknown[]) : undefined
   if (!codes || codes.length && !givenColors) throw new Error('This Sudoku Coach puzzle has unsupported cell colors.')
   const cellColors = readCoachPlayerColors(data, size)
   const candidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, size)
   const quickDraw = readCoachQuickDraw(data, size)
-  if (givenColors || cellColors || candidateColors || quickDraw) {
+  const authoredPaths = readCoachAuthoredPaths(layers, size)
+  if (givenColors || cellColors || candidateColors || quickDraw || authoredPaths) {
     return { ...(givenColors && { givenColors }), ...(cellColors && { cellColors }), ...(candidateColors && { candidateColors }),
-      ...(quickDraw && (published ? { givenDrawings: quickDraw } : { drawings: quickDraw })) }
+      ...(authoredPaths && { authoredPaths }), ...(quickDraw && (published ? { givenDrawings: quickDraw } : { drawings: quickDraw })) }
   }
 }
 
@@ -455,7 +457,7 @@ function checkStandaloneCoachPublication(publication?: CoachPublication | null) 
 }
 
 function isCoachBoxlessOnlyLayer(layer: unknown) {
-  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
+  return record(layer) && (layer.type === 'globalEntropy' || layer.type === 'quadruple' || layer.type === 'pillArrow' || layer.type === 'cosmeticLine' || layer.type === 'greaterLess' || layer.type === 'twoCellSum' || layer.type === 'whisper' ||
     (layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine') && (!Array.isArray(layer.segments) || layer.segments.length > 0))
 }
 
@@ -465,7 +467,7 @@ function needsStandaloneSevenGrid(layers: readonly unknown[]) {
       record(segment) && Array.isArray(segment.cells) && segment.cells.length !== 7))
 }
 
-function isCoachBoxlessRuleLayer(layer: unknown) {
+function isCoachBoxlessLayer(layer: unknown) {
   return isCoachBoxlessOnlyLayer(layer) || record(layer) && (layer.type === 'difference' || layer.type === 'ratio' ||
     layer.type === 'palindromeLine' || layer.type === 'consecutiveLine' || layer.type === 'lockoutLine' || layer.type === 'betweenLine' || layer.type === 'thermometer' || layer.type === 'arrow' || layer.type === 'renban' || layer.type === 'region')
 }
@@ -483,13 +485,13 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     layers.some(layer => record(layer) && (layer.type === 'cosmeticCage' || layer.type === 'cage' &&
       (size !== 7 || needsStandaloneSevenGrid(layers))))) {
     checkStandaloneCoachPublication(publication)
-    const annotations = readCoachNumberAnnotations(data, size, Boolean(publication))
+    const annotations = readCoachNumberAnnotations(data, size, Boolean(publication), layers)
     const { givenColors, ...otherAnnotations } = annotations ?? {}
     // Keep the same portable definition for the existing single-color cages.
     const colors = givenColors && Object.values(givenColors).every(shades => shades?.length === 1)
       ? Array.from({ length: size ** 2 }, (_, cell) => givenColors[cell]?.[0] ?? '') : []
     const { readCoachCalcudoku } = await import('../calcudoku/imported.ts')
-    const cages = layers.filter(layer => !isCoachBoxlessRuleLayer(layer))
+    const cages = layers.filter(layer => !isCoachBoxlessLayer(layer))
     const calcudoku = readCoachCalcudoku({ ...data, givenConstraints: cages }, colors,
       readCoachInequalities(layers), readCoachLatinClues(layers, size))
     const position = readCoachNumberPosition(data, calcudoku.givens, calcudoku.size)
@@ -593,7 +595,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
 async function readCoachFutoshiki(data: Record<string, unknown>, published: boolean): Promise<ImportedPuzzle | undefined> {
   if (!Array.isArray(data.regions) || data.regions.length !== 0) return
   const constraints = data.givenConstraints ?? []
-  if (!Array.isArray(constraints) || constraints.some(layer => !isCoachBoxlessRuleLayer(layer))) return
+  if (!Array.isArray(constraints) || constraints.some(layer => !isCoachBoxlessLayer(layer))) return
   const size = data.gridSize
   // Keep the existing Sudoku route for 7 × 7 boxless grids with its supported rules.
   if (size === 7 && !needsStandaloneSevenGrid(constraints)) return
@@ -608,7 +610,7 @@ async function readCoachFutoshiki(data: Record<string, unknown>, published: bool
   }
 
   const position = readCoachNumberPosition(data, givens, size)
-  const annotations = readCoachNumberAnnotations(data, size, published)
+  const annotations = readCoachNumberAnnotations(data, size, published, constraints)
   const clues = readCoachLatinClues(constraints, size)
   return { givens, format: 'Sudoku Coach', futoshiki: createImportedFutoshiki(size, givens, inequalities, { position, annotations, ...clues }) }
 }

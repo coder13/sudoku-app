@@ -17,7 +17,7 @@ import {
   parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberClock, saveNumberProgress,
   type NumberCellMove, type NumberClock, type NumberMove, type NumberPosition, type NumberProgress,
 } from '../number-puzzles/progress'
-import { BoardQuickDraw } from './BoardAnnotations'
+import { BoardArtwork, BoardQuickDraw } from './BoardAnnotations'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
 import { PuzzlesSectionNav } from './PuzzlesSectionNav'
@@ -331,7 +331,7 @@ export function NumberPuzzlePreview({ board, game, label, position, annotations,
 }) {
   const digits = useMemo(() => position ? Array.from({ length: board.maxValue }, (_, i) => i + 1) : [], [board.maxValue, position])
   return <>
-    <div className="number-puzzle-grid number-puzzle-preview" data-game={game} data-line-clues={Boolean(board.lineClues) || undefined} role="group" aria-label={label}
+    <div className="number-puzzle-grid number-puzzle-preview" data-game={game} data-line-clues={Boolean(board.lineClues || annotations?.authoredPaths) || undefined} role="group" aria-label={label}
       style={{ '--number-puzzle-columns': board.width + Number(Boolean(board.mirrorEdgeClues)) } as CSSProperties}>
       <NumberPuzzleCells board={board} digits={digits} values={position?.values}
         noteMasks={position?.notes} cornerMasks={position?.cornerNotes} separateNotes={Boolean(position)}
@@ -445,6 +445,7 @@ function NumberPuzzleCells({ board, selection, values, digits = [], noteMasks, c
     {mirrorEdgeClues ? board.cells.flatMap((cell, index) => index % width === 0
       ? [renderBlock(index + width - 1, 'left'), renderCell(cell, index)] : [renderCell(cell, index)])
       : board.cells.map(renderCell)}
+    {annotations?.authoredPaths && <BoardArtwork artwork={annotations.authoredPaths} region={drawingRegion} />}
     {board.lineClues}
     {annotations?.givenDrawings && <BoardQuickDraw drawings={annotations.givenDrawings} region={drawingRegion} />}
     {showPlayerAnnotations && annotations?.drawings && <BoardQuickDraw drawings={annotations.drawings}
@@ -833,7 +834,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   function renderGrid(preview?: { values: readonly number[]; hint: Hint | null }) {
     const shownHint = preview ? preview.hint : depth >= 2 ? hint : undefined
     return <div className="number-puzzle-grid" data-game={game} data-toggle-cells={Boolean(cellChoices) || undefined}
-      data-line-clues={Boolean(board.lineClues) || undefined} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
+      data-line-clues={Boolean(board.lineClues || entry.annotations?.authoredPaths) || undefined} role="group" aria-label={`${name} ${preview ? 'solution' : 'board'}`}
       style={{ '--number-puzzle-columns': width + Number(Boolean(mirrorEdgeClues)) } as CSSProperties}
       onKeyDown={preview ? undefined : onGridKey}>
       <NumberPuzzleCells board={board} selection={selection} values={preview?.values ?? position.values}

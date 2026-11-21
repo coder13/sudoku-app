@@ -85,13 +85,13 @@ test('the Bento entropy layer distinguishes two boxless completions with the sam
   assert.equal(readImportedFutoshiki(restored.id.replace('.e1', '.e0')), undefined)
 })
 
-test('the Bento rule set with supported layers explains its published answer from an empty grid', async () => {
-  const exported = coachCode({
-    ...source, givenConstraints: source.givenConstraints.filter((layer: { type: string }) => layer.type !== 'cosmeticLine'),
-  })
-  const imported = await preparePlayableImport(exported)
+test('the complete Bento export explains its published answer from an empty grid', async () => {
+  const imported = await preparePlayableImport(bento.code)
   assert.ok('futoshiki' in imported)
-  const puzzle = readImportedFutoshiki(imported.futoshiki.id)!.puzzle
+  const restored = readImportedFutoshiki(imported.futoshiki.id)!
+  assert.equal(restored.annotations?.authoredPaths?.length, 3)
+  assert.equal(restored.initialPosition, undefined)
+  const puzzle = restored.puzzle
   assert.equal(puzzle.globalEntropy, true)
   assert.equal(puzzle.extraRegions?.length, 3)
   assert.equal(puzzle.adjacentClues?.marks.length, 24)
