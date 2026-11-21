@@ -1,8 +1,7 @@
 //! Check Classic detector eligibility before graph construction and search.
 
 use super::{
-    ALTERNATIVE_WITNESS_NODES, Analysis, CELLS, CompiledVariant, ProofPosition, Technique,
-    UNIQUENESS_PROBE_NODES,
+    Analysis, CELLS, CompiledVariant, OverlaySearch, ProofPosition, Technique, UNIQUENESS_PROBE_NODES,
 };
 
 impl CompiledVariant {
@@ -35,7 +34,7 @@ impl CompiledVariant {
         }
         if probe {
             self.overlay_search(position)
-                .has_full_completion_support(ALTERNATIVE_WITNESS_NODES)
+                .has_full_completion_support(OverlaySearch::COMPLETION_PROBE_NODES)
         } else {
             position
                 .overlay

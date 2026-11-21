@@ -137,6 +137,17 @@ The reveal-aware rating uses the same path as the walkthrough. Each Wasm trace e
 
 Against `8d38f89`, seven warm pairs preserved every applied deduction, replay position and final solution for all three sources. For 7HQD the previous walkthrough returned 961 proof steps across 23 requests and discarded speculative steps after each reveal. The bounded walkthrough returns its 113 applied proofs across the same 23 requests. Rating returns the same grade with zero proof steps. E3xE and DD1N run out of deductions during their opening trace and preserve their logical subtotals. The updated Wasm is 19.6 KiB smaller uncompressed and 10.0 KiB larger with gzip. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
 
+The geometric witness search now shares a 16,384-node budget between overlay and classic proof pruning, with up to 256 nodes for one candidate probe. Only completed geometric witnesses contribute support. The same exact fallback still checks candidates left unresolved by the probe.
+
+| Fixture and operation | Baseline median ms | Updated median ms |
+| --- | ---: | ---: |
+| E3xE opening trace | 1,168.09 | 728.69 |
+| E3xE stalled four-digit Pattern Overlay | 241.18 | 90.82 |
+| E3xE stalled five-digit Pattern Overlay | 544.36 | 219.55 |
+| HCHW positive five-digit Pattern Overlay | 140.81 | 70.30 |
+
+Nine alternating warm pairs per operation matched whole responses against `e2f56bb`, including the 18-step E3xE trace and the positive HCHW proof. Five warm pairs each also matched the full traces for HCHW, Hu9m, 220V, Newman Modular and Ksy3. Their median changes ranged from a 37.87 ms improvement for 220V to a 1.27 ms increase for Hu9m. The Wasm grows by three bytes with gzip. A separate four-family index trial moved the E3xE opening trace from 579 to 580 ms. [Fog integration](https://github.com/coder13/sudoku-app/issues/91)
+
 ## Play feedback performance
 
 Play indexes pair exclusions once per immutable rule list. Directed clues stay attached to their source cells, and global Kropki, XV, and Non-Consecutive layers still check their edge exemptions together. Digit entry shares each removal mask between center and corner candidates.
