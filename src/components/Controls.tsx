@@ -49,6 +49,7 @@ type Props = {
   actionsMenu?: ReactNode
   actionsButtonRef?: Ref<HTMLButtonElement>
   actionsOpen?: boolean
+  reserveSolvingSlots?: boolean
   compact?: boolean
   chainDrawing?: boolean
   canUndo: boolean
@@ -184,14 +185,14 @@ export function Controls(props: Props) {
             <IconButton className="history-button" onClick={props.redo} disabled={historyDisabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></IconButton>
             {props.onCheck && <IconButton className="puzzle-check-button" onClick={props.onCheck} disabled={editsDisabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></IconButton>}
-            {props.onActions && (
+            {props.onActions ? (
               <div className="controls-actions-wrap">
                 <PlayActionsButton ref={props.actionsButtonRef} mobile={Boolean(props.compact)} open={Boolean(props.actionsOpen)}
                   title={`Actions (${shortcutLabel(shortcuts.actions)})`} disabled={props.disabled}
                   aria-keyshortcuts={shortcutLabel(shortcuts.actions)} onClick={props.onActions} />
                 {props.actionsMenu}
               </div>
-            )}
+            ) : props.reserveSolvingSlots && <span className="controls-actions-space" aria-hidden="true" />}
           </div>
 
           <div className="keypad-stack">
@@ -250,7 +251,7 @@ export function Controls(props: Props) {
               </IconButton>
             )}
             {!props.draft && (
-              <div className="highlight-controls" data-match-control={Boolean(changeDigitHighlightMatch) || undefined}>
+              <div className="highlight-controls" data-match-control={Boolean(changeDigitHighlightMatch || props.reserveSolvingSlots) || undefined}>
                 <IconButton className="highlight-mode-button"
                   title={`Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
                   aria-label="Highlight mode"
