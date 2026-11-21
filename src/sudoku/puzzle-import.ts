@@ -6,6 +6,7 @@ import { gridRegionIndex, isGridText, isMiniGrid, isJigsawGrid, isJigsawSize, is
 import { EMPTY, type Position } from './game.ts'
 import { isImportedColor, type CandidateColors, type ImportedCellColors } from './imported-colors.ts'
 import { readCoachQuickDraw } from './imported-drawings.ts'
+import { isFogDefinition, type FogDefinition } from './fog.ts'
 import { downloadSharedPuzzle, isSharedPuzzleId } from './puzzle-sharing.ts'
 import { coachConnectedLines } from './coach-lines.ts'
 import { readCoachColouredLines } from './coach-coloured-lines.ts'
@@ -61,6 +62,7 @@ export type ImportedPuzzle = {
   collection?: CollectionReference
   progress?: Pick<Position, 'entries' | 'center' | 'corner' | 'importedCellColors' | 'importedCandidateColors' | 'importedDrawings'>
   whispersGuide?: true
+  fog?: FogDefinition
 }
 
 export async function importSharedPuzzle(id: string, signal?: AbortSignal): Promise<ImportedPuzzle> {
@@ -345,6 +347,24 @@ function coachMirroredRenbansMatch(cellColours: readonly string[], rules: readon
   return [...groups.values()].every(cells => mirrorPairs.has(cellSetKey(cells)))
 }
 
+function readCoachFog(layers: readonly Record<string, unknown>[]): FogDefinition | undefined {
+  if (!layers.length) return
+  const visible = new Set<number>()
+  const emptyObject = (value: unknown) => value === undefined || record(value) && !Object.keys(value).length
+  for (const layer of layers) {
+    const { segments, settings } = layer
+    const segment = Array.isArray(segments) && segments.length === 1 ? segments[0] : undefined
+    const fog = { initialCells: record(segment) ? segment.cells : undefined }
+    if (!emptyObject(settings) || Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+      !record(segment) || !emptyObject(segment.parameters) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+      !isFogDefinition(fog)) {
+      throw new Error('This Sudoku Coach Fog of War layer has invalid or unsupported reveal settings.')
+    }
+    for (const cell of fog.initialCells) visible.add(cell)
+  }
+  return { initialCells: [...visible].sort((a, b) => a - b) }
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null): Promise<ImportedPuzzle> {
   const data = await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -360,13 +380,17 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   }
   const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
-  const constraints = data.givenConstraints ?? []
+  const encodedLayers = data.givenConstraints ?? []
+  if (!Array.isArray(encodedLayers)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
+  const isFogLayer = (layer: unknown): layer is Record<string, unknown> => record(layer) && layer.type === 'fog'
+  const fog = readCoachFog(encodedLayers.filter(isFogLayer))
+  const constraints = fog ? encodedLayers.filter(layer => !isFogLayer(layer)) : encodedLayers
   const regions = readRegions(data.regions)
-  const guideLayers = Array.isArray(constraints) && constraints.every(layer => record(layer) &&
+  const guideLayers = constraints.every(layer => record(layer) &&
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
-  const encodedRules = guideLayers.length ? (constraints as Record<string, unknown>[]).filter(layer => layer.type === 'whisper') : constraints
+  const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper') : constraints
   const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const palette = Array.isArray(data.colours) ? data.colours : []
@@ -410,7 +434,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null): P
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions)
   const progress = readCoachProgress(data, givens)
   return { ...imported, ...(publication?.title && { title: publication.title }), ...(progress && { progress }),
-    ...(whispersGuide && { whispersGuide: true }) }
+    ...(whispersGuide && { whispersGuide: true }), ...(fog && { fog }) }
 }
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {

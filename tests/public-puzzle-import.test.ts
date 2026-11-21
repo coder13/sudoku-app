@@ -111,7 +111,7 @@ test('Coach author notes never bypass custom constraints or extra instructions',
 
   // A safe greeting still leaves the puzzle's encoded rule checks in charge.
   specificSudoku = { ...publication, description: 'Enjoy!', sudoku: coachCode({ givenConstraints: [{ type: 'fog', segments: [] }] }) }
-  await assert.rejects(detectPuzzle(source.url), /rule is not supported yet \(fog\)/)
+  await assert.rejects(detectPuzzle(source.url), /Fog of War layer has invalid or unsupported reveal settings/)
 })
 
 test('the published X-Sums declaration must describe the complete rules', async ({ mock }) => {

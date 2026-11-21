@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { inflateSync } from 'node:zlib'
 import { runEngine, type VariantRule, type VariantVisibility } from '../src/sudoku/engine.ts'
+import { projectFogPuzzle, revealedFogCells } from '../src/sudoku/fog.ts'
+import { EMPTY, enter, makeGame, redo, undo } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
@@ -12,11 +15,12 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
+const { examples } = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')) as {
+  examples: { url: string; code: string; solution: string }[]
+}
+const source = examples.find(example => example.url.endsWith('/Fnxt'))!
+
 test('the published Fog source verifies exactly and visible markers never expose their hidden layer companions', async () => {
-  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')) as {
-    examples: { url: string; code: string; solution: string }[]
-  }
-  const source = examples.find(example => example.url.endsWith('/Fnxt'))!
   const alphabet = '0123456789abcdefghijklmnopqrstuv'
   const bits = [...source.code.slice('SCv7_32_'.length)].map(char => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('')
   const json = inflateSync(Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))).toString('utf8')
@@ -27,7 +31,11 @@ test('the published Fog source verifies exactly and visible markers never expose
   assert.equal(fog.length, 1)
   assert.deepEqual(fog[0].segments, [{ cells: [63], parameters: {} }])
   assert.deepEqual(fog[0].settings, {})
-  const { variant } = await detectPuzzle(coachCode({ ...fields, givenConstraints: givenConstraints.filter(layer => layer.type !== 'fog') }))
+  const imported = await detectPuzzle(source.code)
+  const drawingRemoved = await detectPuzzle(coachCode({ ...fields, givenConstraints: givenConstraints.filter(layer => layer.type !== 'fog') }))
+  const { variant } = imported
+  assert.deepEqual(imported.fog, { initialCells: [63] })
+  assert.deepEqual(variant, drawingRemoved.variant)
   assert.ok(variant)
   assert.equal(variant.puzzle.rules?.length, 17)
   assertVariantCompletion(variant.puzzle, source.solution)
@@ -91,4 +99,98 @@ test('the published Fog source verifies exactly and visible markers never expose
     beforeScan.close()
     afterScan.close()
   }
+})
+
+test('a Coach code retains the initial Fog layer and every companion rule while Play support is pending', async ({ mock }) => {
+  mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudoku-coach/Fnxt')
+    return Response.json({ code: source.code, coach: { hasAuthorInstructions: false, title: 'Skipping through the fog' } })
+  })
+  const imported = await detectPuzzle(source.url)
+  assert.deepEqual(imported.fog, { initialCells: [63] })
+  assert.equal(imported.title, 'Skipping through the fog')
+  assert.equal(imported.variant?.puzzle.rules?.length, 17)
+  await assert.rejects(prepareImportedPuzzle(source.url), /Fog of War puzzles are not playable here yet/)
+  await assert.rejects(prepareImportedPuzzle(source.code), /Fog of War puzzles are not playable here yet/)
+})
+
+test('the authored reveal and current entries determine each projection, including after undo and redo', async () => {
+  const { fog, variant } = await detectPuzzle(source.code)
+  assert.ok(fog && variant)
+  const { puzzle } = variant
+  const game = makeGame('fog', 'Published Fog puzzle', EMPTY, 'imported')
+  const project = (position: typeof game) => {
+    const cells = revealedFogCells(fog, position.position.entries, source.solution)
+    const shown = projectFogPuzzle(puzzle, cells)
+    assertVariantCompletion(shown, source.solution)
+    return { cells: [...cells].sort((a, b) => a - b), puzzle: shown, entries: position.position.entries }
+  }
+  const opening = project(game)
+  assert.deepEqual(opening.cells, [63])
+  assert.deepEqual(opening.puzzle.rules, [{ type: 'parity', cells: [63], parity: 'odd' }])
+  assert.deepEqual(project(enter(game, [63], 'value', 3)).cells, opening.cells)
+  const placed = enter(game, [63], 'value', 1)
+  const revealed = project(placed)
+  assert.deepEqual(revealed.cells, [54, 55, 63, 64, 72, 73])
+  assert.deepEqual(revealed.puzzle.rules, [
+    { type: 'parity', cells: [63], parity: 'odd' },
+    { type: 'whispers', cells: [63, 64], minDifference: 5 },
+    { type: 'kropki', ratioTwo: { pairs: [[72, 63]] } },
+    { type: 'xv', ten: { pairs: [[63, 64]] } },
+    { type: 'entropic', cells: [54, 55] },
+  ])
+  assert.deepEqual(project(undo(placed)), opening)
+  assert.deepEqual(project(redo(undo(placed))), revealed)
+
+  const candidates = await runEngine({ type: 'variant', operation: 'candidates',
+    position: { puzzle: revealed.puzzle, entries: revealed.entries } })
+  assert.equal(candidates[64], 1 << 8)
+  assert.equal(candidates[72], 1 << 1)
+  assert.equal(candidates[25], 0x1ff)
+
+  const opened = enter(enter(placed, [64], 'value', 9), [72], 'value', 2)
+  const next = project(opened)
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: next.puzzle, entries: next.entries } })
+  assert.ok(trace.steps.length > 0)
+  assert.ok(trace.steps.every(step => step.actions.every(action => !('place' in action))))
+  const complete = revealedFogCells(fog, source.solution, source.solution)
+  assert.equal(complete.size, 81)
+  assert.equal(projectFogPuzzle(puzzle, complete), puzzle)
+})
+
+test('projected layers hide givens, cut paths at hidden cells, and delay negative marks', async () => {
+  const importFog = (...layers: unknown[]) => detectPuzzle(coachCode({ givenConstraints: layers }))
+  const mask = (cells: number[]) => ({ type: 'fog', segments: [{ cells, parameters: {} }] })
+  for (const layer of [
+    mask([]), mask([0, 0]), mask([81]), mask([-1]), mask([2.5]),
+    { ...mask([0]), settings: { radius: 2 } },
+    { ...mask([0]), segments: [{ cells: [0] }, { cells: [1] }] },
+    { ...mask([0]), segments: [{ cells: [0], parameters: { custom: true } }] },
+  ]) {
+    await assert.rejects(importFog(layer), /invalid or unsupported reveal settings/)
+  }
+  assert.deepEqual((await importFog(mask([80, 0]), mask([10, 80]))).fog, { initialCells: [0, 10, 80] })
+  await assert.rejects(importFog(mask([0]), { type: 'terrain', segments: [{ cells: [0] }] }), /not supported yet \(terrain\)/)
+
+  const puzzle = { version: 1, givens: '1' + '0'.repeat(79) + '2', rules: [
+    { type: 'parity', cells: [0, 80], parity: 'odd' },
+    { type: 'whispers', cells: [0, 1, 2, 3, 4], minDifference: 5 },
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 6 }, { cells: [79, 80], sum: 5 }] },
+    { type: 'kropki', ratioTwo: { pairs: [[0, 1], [79, 80]], negative: true } },
+    { type: 'xv', ten: { pairs: [[0, 1]], negative: true } },
+    { type: 'adjacent-total', cells: [78, 79], sum: 5 },
+  ] } as const
+  const early = projectFogPuzzle(puzzle, new Set([0, 1, 3, 4]))
+  assert.equal(early.givens, '1' + '0'.repeat(80))
+  assert.deepEqual(early.rules, [
+    { type: 'parity', cells: [0], parity: 'odd' },
+    { type: 'whispers', cells: [0, 1], minDifference: 5 },
+    { type: 'whispers', cells: [3, 4], minDifference: 5 },
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 6 }] },
+    { type: 'kropki', ratioTwo: { pairs: [[0, 1]] } },
+    { type: 'xv', ten: { pairs: [[0, 1]] } },
+  ])
+  const later = projectFogPuzzle(puzzle, new Set([0, 1, 2, 3, 4, 78, 79, 80]))
+  assert.equal(later.givens, puzzle.givens)
+  assert.deepEqual(later.rules, puzzle.rules)
 })
