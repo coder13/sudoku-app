@@ -664,6 +664,22 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         'Check the candidates in the house for the group orders that fit. None of the full assignments uses the crossed-out digits.'].filter(Boolean).join(' ')
       break
     }
+    case 'region-sum-house': {
+      const region = houseLabel(evidence.house)
+      const inRegion = evidence.lines.flatMap(line => line.parts[line.inRegion].cells)
+      cells = [...new Set([...inRegion, ...evidence.remainder, ...focus.map(({ cell }) => cell)])]
+      description = evidence.remainder.length
+        ? `The marked Region Sum parts and the other cells in ${region} must share the digits 1 to 9 without repeats.`
+        : `The marked Region Sum parts fill ${region}. Their totals must add up to 45, using every digit once.`
+      const narrowed = evidence.lines.filter(line => line.remainingTotals.length < line.commonTotals.length)
+      const totals = narrowed.map(line => {
+        const cell = nameCell(line.parts[line.inRegion].cells[0])
+        return `The part starting at ${cell} can now total only ${alternatives.format(line.remainingTotals.map(String))}.`
+      })
+      reason = [`Match each part’s total to the other parts of its line, then check which digit sets fit together in ${region}.`,
+        ...totals, 'The crossed-out candidates cannot fit any of the remaining assignments.'].join(' ')
+      break
+    }
     case 'region-sum-distinct': {
       cells = evidence.parts.flatMap(part => part.cells)
       const shared = alternatives.format(evidence.commonTotals.map(String))

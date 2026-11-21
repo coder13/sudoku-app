@@ -612,6 +612,10 @@ export type VariantDeduction = {
       cases: { groups: number[]; conflict: { cells: number[]; digits: number } | null }[] }
     | { type: 'region-sum-distinct'; rule: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
       commonTotals: number[] }
+    | { type: 'region-sum-house'; house: VariantHouse;
+      lines: { rule: number; inRegion: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
+        commonTotals: number[]; remainingTotals: number[] }[];
+      remainder: number[]; remainderDomains: number[] }
     | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
       remaining: number[][];
       rejected: { groups: number[]; checks: VariantGroupOrderCheck[]; conflict: VariantGroupOrderCheck;

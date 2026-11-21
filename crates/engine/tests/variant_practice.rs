@@ -123,6 +123,14 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
+                VariantEvidence::RegionSumHouse(proof) => {
+                    assert!(proof.lines.iter().all(|line| matches!(
+                        position.puzzle.rules[line.rule], PuzzleRule::RegionSum { .. }
+                    )));
+                    let cells = proof.lines.iter().flat_map(|line| &line.parts)
+                        .flat_map(|part| part.cells.iter().copied()).chain(proof.remainder).collect();
+                    scopes.insert(cells);
+                }
                 VariantEvidence::RegionSumDistinct(proof) => {
                     assert!(matches!(
                         position.puzzle.rules[proof.rule],

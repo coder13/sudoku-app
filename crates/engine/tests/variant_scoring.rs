@@ -39,6 +39,16 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
             cells.dedup();
             return base + 2 * cells.len() as u16 + 2 * alternatives as u16;
         }
+        VariantEvidence::RegionSumHouse(proof) => {
+            // Check the digits in the shared region and compare the totals
+            // imposed by each line's remaining parts.
+            let lines: u16 = proof.lines.iter().map(|line| {
+                let span: u16 = line.parts.iter().map(|part| part.cells.len() as u16).sum();
+                let choices: u16 = line.parts.iter().map(|part| binary_choices(&part.domains)).sum();
+                4 + 3 * line.parts.len() as u16 + 2 * span + 2 * choices
+            }).sum();
+            return 32 + lines + 2 * proof.remainder.len() as u16 + 2 * binary_choices(&proof.remainder_domains);
+        }
         VariantEvidence::RegionSumDistinct(proof) => {
             let span: u16 = proof.parts.iter().map(|part| part.cells.len() as u16).sum();
             let choices: u16 = proof.parts.iter().map(|part| binary_choices(&part.domains)).sum();

@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 13;
+pub const VARIANT_SCORING_VERSION: u32 = 14;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -33,7 +33,7 @@ mod entropy_quadruple;
 mod sum_pairs;
 mod group_sum_implications;
 mod ray_houses;
-mod region_sum_distinct;
+mod region_sums;
 mod renban_group_counts;
 mod renban_house_support;
 mod renban_locks;
@@ -179,6 +179,8 @@ catalog! {
     GroupOrderContradiction: "group-order-contradiction", 89, Hard;
     /// Intersect Region Sum totals after requiring distinct digits inside each part.
     RegionSumDistinct: "region-sum-distinct", 67, Medium;
+    /// Combine disjoint Region Sum parts using the digits in their shared region.
+    RegionSumHouse: "region-sum-house", 133, Hard;
 }
 
 #[cfg(feature = "wasm-api")]
@@ -372,6 +374,8 @@ pub enum VariantEvidence {
     GroupOrder(Box<VariantGroupOrderProof>),
     /// A Region Sum line whose parts must each use distinct digits.
     RegionSumDistinct(Box<VariantRegionSumProof>),
+    /// Several Region Sum line parts must use disjoint digits in one region.
+    RegionSumHouse(Box<VariantRegionSumHouseProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -827,6 +831,36 @@ pub struct VariantRegionSumPart {
     pub totals: Vec<u8>,
 }
 
+/// Matching Region Sum lines using the digits in one common region.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumHouseProof {
+    /// Region shared by the line parts.
+    pub house: VariantHouseKind,
+    /// Lines contributing disjoint parts to the region.
+    pub lines: Vec<VariantRegionSumHouseLine>,
+    /// Other cells in the same region.
+    pub remainder: Vec<usize>,
+    /// Input masks of the other cells.
+    pub remainder_domains: Vec<u16>,
+}
+
+/// One line involved in a shared-region proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+pub struct VariantRegionSumHouseLine {
+    /// Source rule index.
+    pub rule: usize,
+    /// Index of the part in the shared region.
+    pub in_region: usize,
+    /// All parts in compiled order, including those outside the region.
+    pub parts: Vec<VariantRegionSumPart>,
+    /// Totals shared by the parts before checking the region.
+    pub common_totals: Vec<u8>,
+    /// Totals still possible after checking the region.
+    pub remaining_totals: Vec<u8>,
+}
+
 /// A rule-based proof and the actions it justifies.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
@@ -1102,6 +1136,8 @@ impl VariantDeduction {
             VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
             VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
+            VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
+                .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1249,8 +1285,17 @@ impl CompiledVariant {
         limit: usize,
     ) -> Result<Vec<VariantDeduction>, VariantPositionError> {
         let position = self.proof_position(entries, eliminations)?;
+        Ok(self.rank_position_hints(&position, enabled, limit))
+    }
+
+    fn rank_position_hints<'a>(
+        &'a self,
+        position: &ProofPosition<'a>,
+        enabled: &[VariantTechnique],
+        limit: usize,
+    ) -> Vec<VariantDeduction> {
         if limit == 0 {
-            return Ok(Vec::new());
+            return Vec::new();
         }
         let mut techniques = enabled.to_vec();
         let tier = |technique: &VariantTechnique| (technique.difficulty(), technique.cost());
@@ -1259,19 +1304,19 @@ impl CompiledVariant {
         for group in techniques.chunk_by(|a, b| tier(a) == tier(b)) {
             let mut hints: Vec<_> = group
                 .iter()
-                .flat_map(|&technique| self.explain(&position, technique))
+                .flat_map(|&technique| self.explain(position, technique))
                 .collect();
             hints.sort_by_cached_key(VariantDeduction::rank);
             for hint in hints {
                 if moves.iter().all(|other| other.actions != hint.actions) {
                     moves.push(hint);
                     if moves.len() == limit {
-                        return Ok(moves);
+                        return moves;
                     }
                 }
             }
         }
-        Ok(moves)
+        moves
     }
 
     /// Prefer the easiest enabled move that unlocks singles, within the puzzle's tier.
@@ -1353,7 +1398,8 @@ impl CompiledVariant {
         let mut choices: Vec<VariantDeduction> =
             probes.into_iter().map(|(h, _)| h).take(limit).collect();
         if choices.len() < limit {
-            for hint in self.ranked_hints(entries, eliminations, enabled, limit)? {
+            // The fallback examines the same position and can reuse its checks.
+            for hint in self.rank_position_hints(&position, enabled, limit) {
                 if choices.iter().all(|other| other.actions != hint.actions) {
                     choices.push(hint);
                     if choices.len() == limit {
@@ -1636,6 +1682,7 @@ impl CompiledVariant {
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
+            RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             Arrow | Between | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
                 let triplet_inputs = matches!(technique, Entropic | Modular).then(|| {
                     let domains: [u16; CELLS] = std::array::from_fn(|cell| position.domain(cell));
