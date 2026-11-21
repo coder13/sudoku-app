@@ -1,6 +1,6 @@
 import type { VariantPuzzle } from './engine.ts'
 import { regionIndex } from './region-sum.ts'
-import { quadrupleCells } from './variants.ts'
+import { isQuadrupleRule, quadrupleCells } from './variants.ts'
 
 const ALL_DIGITS = 511
 const digitMask = (digit: number) => 1 << (digit - 1)
@@ -26,8 +26,20 @@ function thermometerSupport(cells: readonly number[], values: string) {
   return masks
 }
 
+const quadrupleSums = (() => {
+  const assignments: number[][] = []
+  for (let a = 1; a <= 7; a++) for (let b = 1; b <= 8 - a; b++) for (let c = 1; c <= 9 - a - b; c++) {
+    for (let cell = 0; cell < 4; cell++) {
+      const digits = [a, b, c]
+      digits.splice(cell, 0, a + b + c)
+      assignments.push(digits)
+    }
+  }
+  return assignments
+})()
+
 /** Check the printed multiplicities and the primary houses shared by the four cells. */
-function quadrupleSupport(cells: readonly number[], required: readonly number[], values: string, regions: VariantPuzzle['regions']) {
+function quadrupleSupport(cells: readonly number[], required: readonly number[], values: string, regions: VariantPuzzle['regions'], isSum: boolean) {
   const placed = cells.map(cell => Number(values[cell]))
   const region = cells.map(cell => regionIndex(cell, regions))
   const peers = cells.map((cell, i) => cells.flatMap((other, j) => i !== j && (
@@ -36,6 +48,22 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
   const support = [0, 0, 0, 0]
 
   if (placed.some((digit, i) => digit && peers[i].some(other => placed[other] === digit))) return
+
+  if (isSum) {
+    for (const digits of quadrupleSums) {
+      if (placed.some((digit, i) => digit && digit !== digits[i]) ||
+        digits.some((digit, i) => peers[i].some(other => digits[other] === digit))) continue
+      const remaining = [...digits]
+      if (!required.every(digit => {
+        const index = remaining.indexOf(digit)
+        if (index < 0) return false
+        remaining.splice(index, 1)
+        return true
+      })) continue
+      for (const [i, digit] of digits.entries()) support[i] |= digitMask(digit)
+    }
+    return support[0] ? support : undefined
+  }
 
   function assign(index: number, used: number) {
     if (index === required.length) {
@@ -63,7 +91,7 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
 
 /** Local restrictions from placed digits. Other rules still contribute their own checks. */
 export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const rules = puzzle?.rules?.filter(rule => rule.type === 'parity' || rule.type === 'thermometer' || rule.type === 'quadruple')
+  const rules = puzzle?.rules?.filter(rule => rule.type === 'parity' || rule.type === 'thermometer' || isQuadrupleRule(rule))
   if (!rules?.length) return
   const allowed = Array<number>(81).fill(ALL_DIGITS)
   const conflicts = new Set<number>()
@@ -78,7 +106,7 @@ export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values
     }
     const cells = rule.type === 'thermometer' ? rule.cells : quadrupleCells(rule.topLeft)
     const support = rule.type === 'thermometer'
-      ? thermometerSupport(cells, values) : quadrupleSupport(cells, rule.digits, values, puzzle?.regions)
+      ? thermometerSupport(cells, values) : quadrupleSupport(cells, rule.digits, values, puzzle?.regions, rule.type === 'quadruple-sum')
     for (const [i, cell] of cells.entries()) {
       if (!support && values[cell] !== '0') conflicts.add(cell)
       else if (support && values[cell] === '0') allowed[cell] &= support[i]

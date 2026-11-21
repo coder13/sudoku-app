@@ -199,6 +199,34 @@ test('Coach author notes never bypass custom constraints or extra instructions',
   await assert.rejects(detectPuzzle(source.url), /Fog of War layer has invalid or unsupported reveal settings/)
 })
 
+test('reviewed Quadruple publications import by short link with their complete rules', async ({ mock }) => {
+  const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'))
+  const { examples } = load('global-entropy-coach')
+  const cases = [
+    [load('quadruple-coach-impossible'), "They'll tell you this puzzle ain't got no start. You just gotta poke around.\nIf you're like me you'll get ~5 digits then think it's over. But if you look very carefully you'll see there are two more digits to place right away."],
+    [load('quadruple-coach-quadcage'), 'inspired by one of Raumplaner’s quad puzzles. :) enjoy!'],
+    [examples.find(({ url }: { url: string }) => url.endsWith('/A2s7')), 'The only way I could find to solve without brute force was to use the hint I give in the comments. Let me know if you find another way!'],
+    [examples.find(({ url }: { url: string }) => url.endsWith('/CJhv')), 'There is maybe one sneaky ish trick that might make this a 7/10. Let me know if you need a hint :)'],
+  ] as const
+  let specificSudoku: object
+  mock.method(globalThis, 'fetch', async (url: string, options?: RequestInit) => url.startsWith('https://sudoku.coach/en/s/')
+    ? new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+    : worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {}))
+
+  for (const [source, description] of cases) {
+    const sudoku = source.code ?? source.coach
+    const data = { sudoku_id: source.url.split('/').at(-1), sudoku, name: source.title,
+      description, blocked: false, custom_constraints: false }
+    specificSudoku = data
+    const linked = await detectPuzzle(source.url)
+    assert.equal(linked.title, source.title)
+    assert.ok(linked.variant)
+    assert.deepEqual(linked.variant, (await detectPuzzle(sudoku)).variant)
+    specificSudoku = { ...data, description: description + '\nDigits in colored cells count twice.' }
+    await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+  }
+})
+
 test('published Quadruples with Min/Max or numbered dots preserve the full definition by short link', async ({ mock }) => {
   const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8')) as {
     url: string; title: string; coach: string; description?: string

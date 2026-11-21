@@ -84,6 +84,8 @@ function declaresCoachXSums(lines) {
 
 function coachAuthoredRule(lines) {
   if (lines.length === 1 && /^All (?:possible )?black dots are given[.!]?$/i.test(lines[0])) return 'all-black-dots'
+  if (lines.length === 1 &&
+    /^Quad[ -]?arrows: One of the four digits around a circle must be the sum of the other three digits around that circle\.?$/i.test(lines[0])) return 'quad-arrows'
   if (declaresCoachXSums(lines)) return 'x-sum'
 }
 
@@ -110,6 +112,10 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  ['7VAC', '356ebef8107975d494da2efccf6e89eb133d4d90a03d9b7f6a6cbe8236c7c644'],
+  ['9Rji', '0bb9dda666e5938694d17d6c76d10ce39e3823700e1ed161bcbe349afb17c5df'],
+  ['A2s7', '2f1a693b6d99e6598fce81ee680c8930a6027beff58e3bcba49a588f7862abdd'],
+  ['CJhv', '83d660ac6ed3263c26843aaad8fe7cba146fdd832a46a58a60d55b10e79ae7d4'],
   ['AjZy', '9c921e472d17b801c9c6523a4fb1226fc636ed263b83a861e4f14929fcf1c445'],
   ['CdP3', '3a867f407b30e98ac7b76e4c33bfa7d372cb785ee4d0cf815468b5c63932f436'],
   ['ETLV', '8e0e085963d15a3ee3609fe7694e7c6ba3f643e6c066bde33cd5ec4369ae1aef'],
@@ -383,6 +389,7 @@ const regions = value => fields(value, { type: oneOf('boxes') }) ||
   fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) })
 const segments = list(list(cell, 1), 1)
 const diagonalDirection = oneOf('north-east', 'south-east', 'south-west', 'north-west')
+const quadruple = [{ topLeft: value => cell(value) && value < 72 && value % 9 < 8, digits: list(integer(1, 9), 1, 4) }]
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
@@ -411,7 +418,8 @@ const ruleFields = {
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],
   parity: [{ cells, parity: oneOf('odd', 'even') }],
-  quadruple: [{ topLeft: cell, digits: list(integer(1, 9), 1, 4) }],
+  quadruple,
+  'quadruple-sum': quadruple,
   sandwich: [{ direction, cells: house, sum: integer(0, 35) }],
   skyscrapers: [{ direction, cells: house, count: integer(1, 9) }],
   thermometer: [{ cells: list(cell, 2, 81) }],

@@ -1,7 +1,7 @@
 import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import { memo, useId, useMemo, type CSSProperties } from 'react'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
-import { disjointGroupRuleIndices, extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
+import { disjointGroupRuleIndices, extraRegionName, isQuadrupleRule, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
@@ -316,7 +316,7 @@ function pairCenter(a: number, b: number, offset = 0, size = 9) {
 
 /** Reserve the circle at the caption cell's top-left intersection. */
 export function cageLabelInset(cell: number, rules: readonly VariantRule[]) {
-  return rules.some(rule => rule.type === 'quadruple' && rule.topLeft + 10 === cell) ? .34 : .1
+  return rules.some(rule => isQuadrupleRule(rule) && rule.topLeft + 10 === cell) ? .34 : .1
 }
 
 function Cage({ cells, captionWidth, captionInset, size = 9 }: {
@@ -596,7 +596,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
   const layer = (rule: VariantRule) => rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : rule.type === 'quadruple' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
+    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'between-endpoints' | undefined, layer: layer(rule) },
     ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
@@ -623,7 +623,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   const markedEdges = new Set([...dots.keys(), ...sums.keys()])
   for (const rule of rules) {
     if (rule.type === 'inequality') markedEdges.add(pairKey(rule.less, rule.greater))
-    if (rule.type === 'quadruple') {
+    if (isQuadrupleRule(rule)) {
       const corner = rule.topLeft
       markedEdges.add(pairKey(corner, corner + 10))
       markedEdges.add(pairKey(corner + 1, corner + 9))
@@ -664,12 +664,13 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
-        case 'quadruple': {
+        case 'quadruple': case 'quadruple-sum': {
           const cx = x(rule.topLeft) + 1
           const cy = y(rule.topLeft) + 1
           const count = rule.digits.length
-          return <g key={index} className="variant-quadruple">
+          return <g key={index} className="variant-quadruple" data-quadruple-sum={rule.type === 'quadruple-sum' || undefined}>
             <circle cx={cx} cy={cy} r=".265" />
+            {rule.type === 'quadruple-sum' && <text className="quadruple-sum-mark" x={cx + .23} y={cy - .19}>+</text>}
             {rule.digits.map((digit, i) => <text key={i}
               x={cx + (count === 1 || count === 3 && i === 2 ? 0 : i % 2 ? .105 : -.105)}
               y={cy + (count <= 2 ? 0 : Math.floor(i / 2) ? .105 : -.105)}>{digit}</text>)}
@@ -793,9 +794,10 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
           ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
           : 'even square, digit must be 2, 4, 6, or 8')
         break
-      case 'quadruple':
+      case 'quadruple': case 'quadruple-sum':
         for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
-          `Quadruple ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells`)
+          `${rule.type === 'quadruple-sum' ? 'Quad-Arrows' : 'Quadruple'} ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells` +
+          (rule.type === 'quadruple-sum' ? '; largest digit equals the sum of the other three' : ''))
         break
       case 'diagonal': {
         const main = rule.diagonal === 'main'

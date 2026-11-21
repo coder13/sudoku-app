@@ -140,10 +140,14 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
       case 'parity':
         for (const cell of rule.cells) assert.equal(digits[cell] % 2, rule.parity === 'odd' ? 1 : 0)
         break
-      case 'quadruple': {
+      case 'quadruple': case 'quadruple-sum': {
         const cells = [rule.topLeft, rule.topLeft + 1, rule.topLeft + 9, rule.topLeft + 10]
         for (let digit = 1; digit <= 9; digit++) assert.ok(
           cells.filter(cell => digits[cell] === digit).length >= rule.digits.filter(printed => printed === digit).length)
+        if (rule.type === 'quadruple-sum') {
+          const values = cells.map(cell => digits[cell]).sort((a, b) => a - b)
+          assert.equal(values[0] + values[1] + values[2], values[3])
+        }
         break
       }
       case 'adjacent-total': assert.equal(digits[rule.cells[0]] + digits[rule.cells[1]], rule.sum); break

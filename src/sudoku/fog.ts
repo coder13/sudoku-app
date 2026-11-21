@@ -80,7 +80,7 @@ function visibleShadedGroups(cells: readonly number[], visible: ReadonlySet<numb
 }
 
 /** The printed digits that lie entirely outside the fog. */
-function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' }>, visible: ReadonlySet<number>) {
+function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }>, visible: ReadonlySet<number>) {
   const cells = quadrupleCells(rule.topLeft)
   const count = rule.digits.length
   if (cells.every(cell => visible.has(cell))) return rule.digits
@@ -157,7 +157,7 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       }
       case 'diagonal':
         return allVisible(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? 10 * i : 8 * (i + 1))) ? [rule] : []
-      case 'quadruple': {
+      case 'quadruple': case 'quadruple-sum': {
         const digits = visibleQuadrupleDigits(rule, visible)
         // Each exposed digit must still occur somewhere in the four cells.
         return digits.length ? [{ ...rule, digits }] : []
@@ -218,9 +218,9 @@ export function fogFragmentLabels(rules: readonly VariantRule[], visible: Readon
             ? `cage total ${sum}, outline continues under fog` : 'cage outline continues under fog')
         }
         break
-      case 'quadruple':
+      case 'quadruple': case 'quadruple-sum':
         if (!visibleQuadrupleDigits(rule, visible).length) {
-          addFragment(quadrupleCells(rule.topLeft), 'part of a Quadruple clue')
+          addFragment(quadrupleCells(rule.topLeft), rule.type === 'quadruple-sum' ? 'part of a Quad-Arrows clue' : 'part of a Quadruple clue')
         }
         break
       case 'between': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':

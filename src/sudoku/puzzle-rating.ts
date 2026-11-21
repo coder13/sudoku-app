@@ -1,3 +1,4 @@
+import { isQuadrupleRule } from './variants.ts'
 import { runEngine } from './engine.ts'
 import { solveFogPath } from './fog-solution.ts'
 import { isSolved, type Game } from './game.ts'
@@ -15,7 +16,7 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
-  if (rules?.some(rule => rule.type === 'quadruple')) return QUADRUPLE_RATING_VERSION
+  if (rules?.some(isQuadrupleRule)) return QUADRUPLE_RATING_VERSION
   if (rules?.some(rule => rule.type === 'little-killer' || rule.type === 'renban' && rule.cells.length >= 2)) {
     return RENBAN_AND_LITTLE_KILLER_RATING_VERSION
   }
@@ -23,7 +24,7 @@ function variantRatingVersion(variant: Game['variant']) {
 
 function fogRatingVersion(variant: Game['variant']) {
   if (!variant?.fog) return
-  return variant.puzzle.rules?.some(rule => rule.type === 'quadruple') ? FOG_QUADRUPLE_RATING_VERSION : FOG_RATING_VERSION
+  return variant.puzzle.rules?.some(isQuadrupleRule) ? FOG_QUADRUPLE_RATING_VERSION : FOG_RATING_VERSION
 }
 
 export function puzzleGradeIsStale(game: GradedPuzzle) {

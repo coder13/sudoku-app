@@ -131,6 +131,12 @@ export const VARIANTS = {
 
 export const PUZZLE_VARIANTS = VARIANTS
 
+export function isQuadrupleRule(rule: VariantRule | undefined): rule is Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }> {
+  return rule?.type === 'quadruple' || rule?.type === 'quadruple-sum'
+}
+
+export const QUADRUPLE_SUM_RULE = 'The largest digit around a Quad-Arrows circle equals the sum of the other three.'
+
 export function quadrupleCells(topLeft: number): readonly number[] {
   return [topLeft, topLeft + 1, topLeft + 9, topLeft + 10]
 }
@@ -460,7 +466,7 @@ function isPlayableRule(rule: VariantRule): boolean {
       (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean')
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
-    case 'quadruple': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
+    case 'quadruple': case 'quadruple-sum': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
     case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
@@ -577,6 +583,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   palindrome: PUZZLE_VARIANTS.palindrome.name,
   between: PUZZLE_VARIANTS.between.name,
   quadruple: PUZZLE_VARIANTS.quadruple.name,
+  'quadruple-sum': 'Quad-Arrows',
   parity: PUZZLE_VARIANTS.parity.name,
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
   'non-consecutive': PUZZLE_VARIANTS['non-consecutive'].name,
@@ -706,8 +713,9 @@ function describedVariantRules(puzzle: VariantPuzzle) {
             return `${at(cell)} with ${at(rule.cells[rule.cells.length - 1 - i])}`
           }))}.`)
         break
-      case 'quadruple':
+      case 'quadruple': case 'quadruple-sum':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
+        if (rule.type === 'quadruple-sum') descriptions.push(QUADRUPLE_SUM_RULE)
         break
       case 'diagonal':
         descriptions.push(`The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal must also contain the digits 1–9 once each.`)

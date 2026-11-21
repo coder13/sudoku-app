@@ -240,6 +240,13 @@ rules! {
         /// One to four required digit occurrences, in any order.
         digits: Vec<u8>,
     }
+    /// Constrain a Quadruple's largest digit to the sum of the other three.
+    QuadrupleSum => "quadruple-sum" {
+        /// Top-left cell index of the four-cell area.
+        top_left: usize,
+        /// One to four required digit occurrences, in any order.
+        digits: Vec<u8>,
+    }
     /// Restrict cells to odd or even digits.
     Parity => "parity" {
         /// Affected cell indices.
@@ -661,9 +668,10 @@ impl VariantPuzzle {
                 PuzzleRule::GlobalEntropy {} => {
                     compiled.global_entropy.get_or_insert(index);
                 }
-                PuzzleRule::Quadruple { top_left, digits } => {
-                    let clue =
-                        Quadruple::compile(&compiled, index, *top_left, digits, enforce_regions)?;
+                PuzzleRule::Quadruple { top_left, digits }
+                | PuzzleRule::QuadrupleSum { top_left, digits } => {
+                    let is_sum = matches!(rule, PuzzleRule::QuadrupleSum { .. });
+                    let clue = Quadruple::compile(&compiled, index, *top_left, digits, is_sum, enforce_regions)?;
                     compiled.quadruples.push(clue);
                 }
                 PuzzleRule::Arrow { .. }

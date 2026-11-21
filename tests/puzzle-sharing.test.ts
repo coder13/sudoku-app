@@ -189,6 +189,21 @@ test('shared 9 × 9 puzzles retain published Minimum, Maximum and numbered-dot r
   } finally { sqlite.close() }
 })
 
+test('public share links preserve the Quad-Arrows arithmetic', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const source = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-sum.json', import.meta.url), 'utf8'))
+    const { variant, givens } = await detectPuzzle(source.coach)
+    assert.ok(variant?.puzzle.rules?.every(rule => rule.type === 'quadruple-sum'))
+    const game = { ...makeGame(createGameId(), source.title, givens, 'imported'), variant: { ...variant, solution: source.solution } }
+    const definition = puzzleDefinitionForSharing(game)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    const shared = await api(`shares/${id}`)
+    assert.deepEqual(shared, JSON.parse(JSON.stringify(definition)))
+  } finally { sqlite.close() }
+})
+
 test('the sharing API rejects save state and malformed or oversized definitions', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

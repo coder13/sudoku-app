@@ -1,7 +1,7 @@
 //! Candidate support for overlapping entropy areas and their Quadruple clues.
 
 use super::*;
-use crate::variant::quadruple::{Quadruple, cells as window_cells};
+use crate::variant::quadruple::{Quadruple, cells as window_cells, satisfies_sum};
 
 const MAX_AREA_CELLS: usize = 7;
 
@@ -120,6 +120,7 @@ impl CompiledVariant {
                 }
                 Area {
                     slots,
+                    is_sum: circles[window[0]].iter().any(|clue| clue.is_sum),
                     required: required
                         .into_iter()
                         .enumerate()
@@ -196,6 +197,7 @@ impl CompiledVariant {
 
 struct Area {
     slots: [usize; 4],
+    is_sum: bool,
     required: Vec<(u8, u8)>,
 }
 
@@ -213,6 +215,11 @@ impl Area {
             }
         }
         if 3 - groups.count_ones() > empty || [7, 56, 448].into_iter().any(|mask| union & mask == 0)
+        {
+            return false;
+        }
+        if self.is_sum && empty == 0
+            && !satisfies_sum(self.slots.map(|i| domains[i].trailing_zeros() as u8 + 1))
         {
             return false;
         }

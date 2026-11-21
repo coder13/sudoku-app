@@ -3,12 +3,14 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import worker from '../cloudflare/pages/_worker.js'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
 import { applyDeduction, enter, isSolved, undo, redo, valuesOf } from '../src/sudoku/game.ts'
 import { variantHintChoice, variantSolutionPath } from '../src/sudoku/variant-hints.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseCells, variantHouseMasks } from '../src/sudoku/variants.ts'
+import { variantHouseCells, variantHouseMasks, variantRuleSections } from '../src/sudoku/variants.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { entropyTrialDomains } from './helpers/global-entropy-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -349,3 +351,58 @@ for (const source of mixedPublications) {
     }
   })
 }
+
+test('Quad-Arrows keeps the published sum in hints, Technique Finder and the full walkthrough', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-sum.json', import.meta.url), 'utf8'))
+  const publication = { sudoku_id: '7Vva', sudoku: source.coach, name: source.title,
+    description: source.description, blocked: false, custom_constraints: true }
+  let specificSudoku = publication
+  mock.method(globalThis, 'fetch', async (url: string, init?: RequestInit) => url === source.url
+    ? new Response('<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>')
+    : worker.fetch(new Request(new URL(url, 'https://sudoku.example'), init), {}, {}))
+
+  const { game } = await prepareImportedPuzzle(source.url, [], { deferRating: true })
+  assert.ok(game.variant)
+  const { puzzle, solution } = game.variant
+  assert.equal(game.title, source.title)
+  assert.equal(solution, source.solution)
+  assertVariantCompletion(puzzle, source.solution)
+  assert.equal(puzzle.rules?.length, 13)
+  assert.ok(puzzle.rules?.every(rule => rule.type === 'quadruple-sum'))
+  assert.deepEqual((await detectPuzzle(source.coach)).variant?.puzzle, puzzle)
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.variant?.puzzle, puzzle)
+  assert.match(variantRuleSections(puzzle).find(section => section.id === 'quadruple-sum')!.descriptions.join(' '),
+    /largest digit.*sum of the other three/)
+
+  const ordinary: VariantPuzzle = {
+    ...puzzle,
+    rules: puzzle.rules?.map(rule => rule.type === 'quadruple-sum' ? { ...rule, type: 'quadruple' } : rule),
+  }
+  const alternate = '637581924925743618418692537276819453359274861184365279762938145591427386843156792'
+  assertVariantCompletion(ordinary, alternate)
+  assert.throws(() => assertVariantCompletion(puzzle, alternate))
+  const replies = await Promise.all([puzzle, ordinary].map(value => runEngine({
+    type: 'variant', operation: 'hints', position: variantPosition({ ...game.variant!, puzzle: value }), technique: 'quadruple', limit: 800,
+  })))
+  const ordinaryActions = new Set(replies[1].flatMap(step => step.actions.map(action => JSON.stringify(action))))
+  const ranked = (await puzzleHints(game)).choices
+  assert.ok(ranked.some(choice => choice.technique === 'quadruple' && 'variant' in choice.evidence &&
+    /largest digit equals the sum/.test(choice.evidence.variant.description) &&
+    choice.actions.some(action => !ordinaryActions.has(JSON.stringify(action)))))
+
+  const { choices } = await puzzleHints(game, 'all', 'quadruple')
+  const actions = new Set(choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+  const scan = watchTechniqueScan(valuesOf(game), undefined, variantPosition(game.variant))
+  try { assert.equal(await scan.count('quadruple'), actions.size) } finally { scan.close() }
+  assert.ok(actions.size > ordinaryActions.size)
+
+  const path = await puzzleSolution(game)
+  assert.equal(path.board, source.solution)
+  assert.ok(typeof path.rating.status === 'object' && 'solved' in path.rating.status)
+  for (const step of path.steps) for (const action of step.actions) {
+    if ('place' in action) assert.equal(action.place.digit, Number(source.solution[action.place.cell]))
+    else assert.notEqual(action.eliminate.digit, Number(source.solution[action.eliminate.cell]))
+  }
+  specificSudoku = { ...publication, description: publication.description + '\nDigits in purple cells count twice.' }
+  await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+})

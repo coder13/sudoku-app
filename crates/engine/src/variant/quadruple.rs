@@ -15,6 +15,7 @@ pub(super) struct Quadruple {
     pub(super) rule_index: usize,
     pub(super) cells: [usize; 4],
     digits: Vec<u8>,
+    pub(super) is_sum: bool,
     peers: [u8; 4],
     placements: Vec<[u16; 4]>,
 }
@@ -25,6 +26,7 @@ impl Quadruple {
         rule_index: usize,
         top_left: usize,
         digits: &[u8],
+        is_sum: bool,
         enforce_regions: bool,
     ) -> Result<Self, VariantDefinitionError> {
         let invalid = VariantDefinitionError::InvalidRule(rule_index);
@@ -42,13 +44,18 @@ impl Quadruple {
         let mut digits = digits.to_vec();
         digits.sort_unstable();
         let mut placements = Vec::new();
-        place_required(&digits, [0; 4], &peers, &mut placements);
+        if is_sum {
+            sum_placements(&digits, &peers, &mut placements);
+        } else {
+            place_required(&digits, [0; 4], &peers, &mut placements);
+        }
         placements.sort_unstable();
         placements.dedup();
         Ok(Self {
             rule_index,
             cells,
             digits,
+            is_sum,
             peers,
             placements,
         })
@@ -99,6 +106,33 @@ impl Quadruple {
             }
         }
         found
+    }
+}
+
+pub(super) fn satisfies_sum(digits: [u8; 4]) -> bool {
+    2 * digits.into_iter().max().unwrap() == digits.into_iter().sum::<u8>()
+}
+
+fn sum_placements(required: &[u8], peers: &[u8; 4], placements: &mut Vec<[u16; 4]>) {
+    // Three positive addends must have a single-digit sum.
+    for a in 1..=7 {
+        for b in 1..=8 - a {
+            for c in 1..=9 - a - b {
+                for sum_cell in 0..4 {
+                    let mut assignment = [a, b, c, a + b + c];
+                    assignment[sum_cell..].rotate_right(1);
+                    if (0..4).any(|i| (0..i).any(|j| peers[i] & (1 << j) != 0 && assignment[i] == assignment[j])) {
+                        continue;
+                    }
+                    let mut unclaimed = assignment;
+                    if required.iter().all(|digit| {
+                        unclaimed.iter_mut().find(|other| **other == *digit).map(|other| *other = 0).is_some()
+                    }) {
+                        placements.push(assignment.map(digit_bit));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -255,13 +289,15 @@ mod tests {
     fn support_matches_direct_assignment_counts_and_house_rules() {
         let puzzle = VariantPuzzle::classic([0; 81]).compile().unwrap();
         let mut random = Random::from_seed(9124);
-        for (top_left, required) in [
-            (0, &[1][..]),
-            (19, &[2, 4, 7, 9]),
-            (21, &[2, 2, 6]),
-            (0, &[2, 2]),
+        for (top_left, required, is_sum) in [
+            (0, &[1][..], false),
+            (19, &[2, 4, 7, 9], false),
+            (21, &[2, 2, 6], false),
+            (0, &[2, 2], false),
+            (0, &[1, 2], true),
+            (21, &[2, 2], true),
         ] {
-            let clue = Quadruple::compile(&puzzle, 0, top_left, required, true).unwrap();
+            let clue = Quadruple::compile(&puzzle, 0, top_left, required, is_sum, true).unwrap();
             let mut counts = [0; 10];
             for &digit in required {
                 counts[usize::from(digit)] += 1;
@@ -295,7 +331,9 @@ mod tests {
                                                 .any(|peer| peer == clue.cells[second])
                                     })
                                 });
-                                if repeats_in_house {
+                                if repeats_in_house || is_sum && !(0..4).any(|target| {
+                                    placed[target] == (0..4).filter(|&i| i != target).map(|i| placed[i]).sum::<u8>()
+                                }) {
                                     continue;
                                 }
                                 let mut present = [0; 10];

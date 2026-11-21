@@ -46,6 +46,7 @@ export type VariantRule =
   | { type: 'consecutive-run'; cells: readonly number[]; color?: string }
   | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
+  | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
   | { type: 'anti-knight' | 'anti-king' }

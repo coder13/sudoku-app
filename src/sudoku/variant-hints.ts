@@ -47,6 +47,11 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
         reason: locks.length ? `${locks.join(' ')} Remove candidates from other groups in those cells.`
           : 'Each group needs a separate cell. A crossed-out candidate leaves no way to fit all three groups in these four cells.' }
     }
+    case 'quadruple-sum':
+      return {
+        description: `The Quad-Arrows circle requires ${rule.digits.join(', ')}. The largest digit equals the sum of the other three.`,
+        reason: 'Remove candidates that cannot fit the sum and every printed digit.',
+      }
     case 'quadruple':
       return { description: `The circle requires ${rule.digits.join(', ')} among its four surrounding cells.`,
         reason: 'Each printed digit needs a separate cell. No arrangement that uses a crossed-out candidate can fit all the printed digits.' }
@@ -286,12 +291,14 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         candidates = [...focus, ...evidence.cells.map(cell => ({ cell, digit }))]
         break
       }
-      const printed = evidence.clue.rules.flatMap(index => {
-        const rule = puzzle.rules?.[index]
-        return rule?.type === 'quadruple' ? rule.digits : []
-      })
-      description = `The Quadruple circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
-      reason = `The other cells in ${target} cannot contain ${evidence.digit}.`
+      const rules = evidence.clue.rules.map(index => puzzle.rules?.[index])
+      const printed = rules.flatMap(rule =>
+        rule?.type === 'quadruple' || rule?.type === 'quadruple-sum' ? rule.digits : [])
+      const sum = rules.some(rule => rule?.type === 'quadruple-sum')
+      description = `The ${sum ? 'Quad-Arrows' : 'Quadruple'} circle (${printed.join(', ')}) requires ${evidence.digit} somewhere in ${target}.`
+      reason = sum
+        ? `Every placement that fits the printed digits and the sum puts ${evidence.digit} in ${target}. Remove it from the other cells in ${target}.`
+        : `The other cells in ${target} cannot contain ${evidence.digit}.`
       break
     }
     case 'rule-forcing': {
@@ -630,10 +637,11 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       cells = evidence.cells
       const ruleDescriptions = evidence.rules.flatMap(index => {
         const rule = puzzle.rules?.[index]
-        if (rule?.type !== 'quadruple') return []
+        if (rule?.type !== 'quadruple' && rule?.type !== 'quadruple-sum') return []
         const window = evidence.windows.find(window => window[0] === rule.topLeft)
         if (!window) return []
-        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.`]
+        const sum = rule.type === 'quadruple-sum' ? ' Its largest digit equals the sum of the other three.' : ''
+        return [`The circle in the area from ${nameCell(window[0])} to ${nameCell(window[3])} requires ${rule.digits.join(', ')}.${sum}`]
       })
       const areas = evidence.windows.map(window => `${nameCell(window[0])} to ${nameCell(window[3])}`)
       const groups = areas.length === 1 ? 'This area needs' : `Both areas (${areas.join(' and ')}) need`

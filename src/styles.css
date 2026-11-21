@@ -4268,12 +4268,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .board-body .cell[data-rule-highlighted] { background-color: color-mix(in srgb, var(--rule-accent) 28%, var(--board-bg)); }
 .board-body[data-highlighted-rule="killer-cages"] .variant-cage-edge { stroke: var(--rule-accent); stroke-width: .04; opacity: 1; }
 .board-body[data-highlighted-rule="killer-cages"] .cell > .variant-cage-total { color: var(--rule-accent); font-weight: 800; }
-.board-body[data-highlighted-rule="quadruple"] .variant-quadruple circle {
+.board-body[data-highlighted-rule="quadruple"] .variant-quadruple:not([data-quadruple-sum]) circle,
+.board-body[data-highlighted-rule="quadruple-sum"] .variant-quadruple[data-quadruple-sum] circle {
   fill: color-mix(in srgb, var(--rule-accent) 20%, var(--board-bg));
   stroke: var(--rule-accent);
   stroke-width: .05;
 }
-.board-body[data-highlighted-rule="quadruple"] .variant-quadruple text { font-weight: 800; }
+.board-body[data-highlighted-rule="quadruple"] .variant-quadruple:not([data-quadruple-sum]) text,
+.board-body[data-highlighted-rule="quadruple-sum"] .variant-quadruple[data-quadruple-sum] text { font-weight: 800; }
 .board-body[data-highlighted-rule="parity"] .variant-parity { fill: var(--rule-accent); fill-opacity: .2; stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="kropki"] .variant-dot { stroke: var(--rule-accent); stroke-width: .055; }
 .board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head) { stroke: var(--rule-accent); opacity: 1; }
@@ -4344,6 +4346,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 .variant-quadruple circle { fill: var(--board-bg); stroke: var(--board-ink); stroke-width: .025; }
 .variant-quadruple text { fill: var(--board-ink); font-size: .19px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.variant-quadruple .quadruple-sum-mark { stroke: var(--board-bg); stroke-width: .06; paint-order: stroke; }
 
 
 .variant-renban polyline {

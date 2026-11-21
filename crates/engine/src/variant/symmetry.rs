@@ -209,7 +209,7 @@ impl SquareTransform {
                 }
                 cages.sort_unstable();
             }
-            Quadruple { top_left, digits } => {
+            Quadruple { top_left, digits } | QuadrupleSum { top_left, digits } => {
                 let mut cells = super::quadruple::cells(*top_left).expect("validated Quadruple");
                 self.unordered(&mut cells);
                 *top_left = cells[0];

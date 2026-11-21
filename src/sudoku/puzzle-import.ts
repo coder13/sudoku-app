@@ -211,7 +211,7 @@ type CoachTypedDeclaration = { globalEntropy: true; adjacentTotals: readonly [7,
 type CoachPublication = {
   hasAuthorInstructions: boolean
   title?: string
-  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban'
+  authoredRule?: 'x-sum' | 'all-black-dots' | 'line-colours' | 'mirrored-renban' | 'quad-arrows'
   declaredRules?: CoachTypedDeclaration
   whispersGuide?: true
 }
@@ -395,6 +395,15 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
+// Coach leaves the published Quad-Arrows rule out of its copied grid code.
+// Match the whole original export before restoring the rule to a pasted copy.
+async function isReviewedQuadArrowsExport(code: string) {
+  if (!globalThis.crypto?.subtle) return false
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
+  const hash = Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+  return hash === '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
+}
+
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportedPuzzle> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
@@ -427,7 +436,13 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ? constraints.filter(layer => layer.type !== 'whisper') : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
     : reviewedArtwork ? constraints.filter(layer => layer !== reviewedArtwork.layer) : constraints
-  const rules = readCoachRules(encodedRules, { regions, authoredRule: publication?.authoredRule })
+  const rawQuadArrows = !publication && encodedRules.some(layer => record(layer) && layer.type === 'quadruple') &&
+    await isReviewedQuadArrowsExport(code)
+  const authoredRule = rawQuadArrows ? 'quad-arrows' : publication?.authoredRule
+  const rules = readCoachRules(encodedRules, { regions, authoredRule })
+  if (authoredRule === 'quad-arrows' && !rules.some(rule => rule.type === 'quadruple-sum')) {
+    throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
+  }
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const palette = Array.isArray(data.colours) ? data.colours : []
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
@@ -483,7 +498,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const imported = makeImportedPuzzle('Sudoku Coach', givens, rules, regions, fog)
   const progress = readCoachProgress(data, givens)
-  const title = publication?.title ?? reviewedArtwork?.title
+  const title = publication?.title ?? reviewedArtwork?.title ?? (rawQuadArrows ? 'Quad-Arrows' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(reviewedArtwork && { authoredArtwork: reviewedArtwork.artwork }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
@@ -647,7 +662,8 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
           typeof segment.parameters.digits !== 'string' || !/^[1-9]{1,4}$/.test(segment.parameters.digits)) {
           throw new Error('This Sudoku Coach puzzle has an invalid Quadruple clue.')
         }
-        rules.push({ type: 'quadruple', topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
+        rules.push({ type: authoredRule === 'quad-arrows' ? 'quadruple-sum' : 'quadruple',
+          topLeft: segment.cells[0], digits: [...segment.parameters.digits].map(Number) })
       }
     } else if (constraint.type === 'cage') {
       const { settings } = constraint
@@ -1177,7 +1193,7 @@ async function publishedPuzzle(source: 'sudoku-coach' | 'sudokupad', path: strin
   const publication: CoachPublication | null = record(coach) && typeof coach.hasAuthorInstructions === 'boolean'
     ? { hasAuthorInstructions: coach.hasAuthorInstructions,
       ...((coach.authoredRule === 'x-sum' || coach.authoredRule === 'all-black-dots' ||
-        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban') && { authoredRule: coach.authoredRule }),
+        coach.authoredRule === 'line-colours' || coach.authoredRule === 'mirrored-renban' || coach.authoredRule === 'quad-arrows') && { authoredRule: coach.authoredRule }),
       ...(isCoachTypedDeclaration(coach.declaredRules) && { declaredRules: coach.declaredRules }),
       ...(coach.whispersGuide === true && { whispersGuide: true }),
       title: typeof coach.title === 'string' ? coach.title.trim().slice(0, 72) : undefined }
