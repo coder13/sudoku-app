@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { restartGame } from '../src/sudoku/game.ts'
-import { puzzleHints } from '../src/sudoku/puzzle-help.ts'
+import { enter, restartGame, valuesOf } from '../src/sudoku/game.ts'
+import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { variantPosition } from '../src/sudoku/variant-play.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { countLineSolutions } from './helpers/line-oracle.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -16,7 +19,7 @@ useWasmWorker()
 
 type Source = { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
 const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-artwork-traffic.json', import.meta.url), 'utf8')) as Source[]
-const [windoku, khachkar, traffic] = sources
+const [windoku, khachkar, traffic, spider] = sources
 const base = 'https://sudoku.coach/en/s/'
 
 test('both reviewed originals preserve all rules and artwork through import, play, storage and sharing', async ({ mock }) => {
@@ -106,6 +109,134 @@ test('the complete published Traffic export verifies within the import budget', 
     assert.deepEqual(game.variant.puzzle.rules?.map(({ type }) => type),
       ['anti-king', 'non-consecutive', ...Array(10).fill('inequality')])
     assertVariantCompletion(game.variant.puzzle, traffic.solution)
+  } finally {
+    sqlite.close()
+  }
+})
+
+test('Sudoku Spider retains the complete Thermometer puzzle and authored fills through every import path', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { sudoku_id: id, sudoku, solution } = spider
+  const shortLink = base + id
+  const collectionLink = 'https://sudoku.coach/en/collections/halloween-2024/s/' + id
+  const coachApi = 'https://sudoku.coach/beapi'
+  const givens = '920080014400000006000060000000000000000000000000000000000000000000000000100000003'
+  const thermometerPaths = [
+    [57, 56, 55, 64, 73], [66, 75], [68, 77], [59, 60, 61, 70, 79],
+    [48, 47, 46, 45, 54], [50, 51, 52, 53, 62], [32, 33, 34], [30, 29, 28],
+  ]
+  const shades = [
+    '...grg...', '..ggmgg..', '..ggrgg..', '..ggggg..', '....g....',
+    '...ggg...', '...ggg...', '....g....', '.........',
+  ].join('')
+  const palettes = { g: ['grey'], r: ['red'], m: ['grey', 'red'] }
+  const givenCellColors = Object.fromEntries([...shades].flatMap((color, i) => color === '.' ? [] : [[i, palettes[color]]]))
+  const rules = thermometerPaths.map(cells => ({ type: 'thermometer', cells }))
+  const expected = { version: 1, givens, rules }
+  let description = spider.description
+  let sourceCode = sudoku
+  const publication = () => ({ ...spider, sudoku: sourceCode, description })
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => {
+    if (path === shortLink) return Promise.resolve(new Response('<script>let mainInitData = ' +
+      JSON.stringify({ specificSudoku: publication() }) + '</script>'))
+    if (path === coachApi + '/get-sudoku/' + id) return Promise.resolve(Response.json(publication()))
+    if (path === coachApi + '/get-collection-hierarchy') return Promise.resolve(Response.json({
+      hierarchy: { id: 'collections', groups: [{ items: [
+        { id: 'halloween-2024', groups: [{ items: [id] }] },
+      ] }] },
+    }))
+    return fetcher(path, init)
+  })
+
+  try {
+    const direct = await detectPuzzle(sudoku)
+    assert.deepEqual(direct.variant?.puzzle, expected)
+    assert.deepEqual(direct.givenCellColors, givenCellColors)
+    assert.equal(direct.title, spider.name)
+    for (const input of [base.replace('/s/', '/solver/') + encodeURIComponent(sudoku), shortLink, collectionLink]) {
+      assert.deepEqual(await detectPuzzle(input), direct)
+    }
+    const preview = await prepareImportedPuzzle(shortLink)
+    const { game } = preview
+    assert.ok(game.variant)
+    assert.equal(game.variant.solution, solution)
+    assertVariantCompletion(game.variant.puzzle, solution)
+    assert.deepEqual(countLineSolutions(game.variant.puzzle).solutions, [solution])
+    assert.deepEqual(game.givenCellColors, givenCellColors)
+    assert.equal(preview.hasProgress, undefined)
+    assert.equal(game.position.importedCellColors, undefined)
+    const { choices } = await puzzleHints(game)
+    assert.ok(choices.length > 1)
+    const selected = await puzzleHints(game, 'all', 'thermometer')
+    assert.ok(selected.choices.length > 1)
+    const scan = watchTechniqueScan(valuesOf(game), game.position.eliminations, variantPosition(game.variant))
+    try {
+      const actions = new Set(selected.choices.flatMap(choice => choice.actions.map(action => JSON.stringify(action))))
+      assert.equal(await scan.count('thermometer'), actions.size)
+    } finally { scan.close() }
+    const walkthrough = await puzzleSolution(game)
+    assert.equal(walkthrough.rating.status, 'stalled')
+    assert.ok(walkthrough.steps.length > 0)
+    for (const [cell, digit] of [...walkthrough.board].entries()) {
+      if (digit !== '0') assert.equal(digit, solution[cell])
+    }
+    for (const step of walkthrough.steps) for (const action of step.actions) {
+      const { cell, digit } = 'place' in action ? action.place : action.eliminate
+      assert.equal(Number(solution[cell]) === digit, 'place' in action)
+    }
+    const moved = enter(game, [2], 'value', Number(solution[2]))
+    const saved = readGame(game.id, JSON.stringify(moved))
+    assert.deepEqual(saved?.givenCellColors, givenCellColors)
+    assert.deepEqual(saved?.variant, game.variant)
+    assert.deepEqual(saved?.position, moved.position)
+    assert.deepEqual(restartGame(moved).givenCellColors, givenCellColors)
+    assert.equal(findImportAttempt([{ ...game, givenCellColors: undefined }], preview), undefined)
+    assert.equal(findImportAttempt([moved], preview), moved)
+    const share = await publishSharedPuzzle(moved)
+    const shared = await prepareSharedPuzzle(share, [], new AbortController().signal)
+    assert.deepEqual(shared.game.variant, game.variant)
+    assert.deepEqual(shared.game.givenCellColors, givenCellColors)
+    const invalid = await fetcher('/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...puzzleDefinitionForSharing(game), givenCellColors: { 0: ['unknown'] } }),
+    })
+    assert.equal(invalid.status, 400)
+
+    const reorderedPalette = { g: '1', r: '0', m: '10', '.': '' }
+    const currentState = {
+      givenDigits: givens,
+      colours: ['red', 'grey', 'green'],
+      givenColours: [...shades].map(shade => reorderedPalette[shade]).join(','),
+      givenConstraints: [{
+        id: 10, type: 'thermometer', settings: {},
+        segments: thermometerPaths.map(cells => ({ cells, parameters: {} })),
+      }],
+      userDigits: '00' + solution[2] + '0'.repeat(78),
+      userCellCandidates: Array.from({ length: 81 }, (_, cell) => cell === 3 ? 1 << Number(solution[cell]) : 0).join('-'),
+      userColours: Array.from({ length: 81 }, (_, cell) => cell === 12 ? '2' : '').join(','),
+    }
+    const progressed = await prepareImportedPuzzle(coachCode(currentState), [moved])
+    assert.equal(progressed.hasProgress, true)
+    assert.deepEqual(progressed.game.variant, game.variant)
+    assert.deepEqual(progressed.game.givenCellColors, givenCellColors)
+    assert.equal(progressed.game.position.entries[2], solution[2])
+    assert.equal(progressed.game.position.center[3], 1 << (Number(solution[3]) - 1))
+    assert.deepEqual(progressed.game.position.importedCellColors, { 12: ['green'] })
+    assert.deepEqual(readGame(progressed.game.id, JSON.stringify(progressed.game))?.position, progressed.game.position)
+    await assert.rejects(detectPuzzle(coachCode({
+      ...currentState, constructorConstructionParameters: { colorRule: 'odd' },
+    })), /unsupported authored markings/)
+
+    description = 'Every red cell must be odd.'
+    await assert.rejects(detectPuzzle(shortLink), /author instructions/)
+    await assert.rejects(detectPuzzle(collectionLink), /author instructions/)
+    description = ''
+    sourceCode = coachCode({
+      givenDigits: givens, colours: ['grey', 'red'], givenColours: ['1', ...Array(80).fill('')].join(','),
+      givenConstraints: [{ type: 'thermometer', segments: thermometerPaths.map(cells => ({ cells, parameters: {} })) }],
+    })
+    await assert.rejects(detectPuzzle(sourceCode), /unsupported authored markings/)
+    await assert.rejects(detectPuzzle(shortLink), /unsupported authored markings/)
   } finally {
     sqlite.close()
   }
