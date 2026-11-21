@@ -56,7 +56,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
   { id: 'generateCandidates', label: 'Generate candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },
-  { id: 'pauseOrSwitchView', label: 'Pause or switch view', description: 'Pause or resume play. After solving, switch between the grid and results.', category: 'Puzzle actions' },
+  { id: 'pauseOrSwitchView', label: 'Pause or switch view', description: 'Pause or resume play. After solving, switch between the grid and results. Space always works during play.', category: 'Puzzle actions' },
   { id: 'nextPuzzle', label: 'Next puzzle', description: 'Start the next puzzle after solving.', category: 'Puzzle actions' },
   { id: 'shortcutHelp', label: 'Keyboard shortcuts', description: 'Open this keyboard shortcut page.', category: 'Puzzle actions' },
 ]

@@ -41,12 +41,13 @@ const report = {
   ],
 }
 
-function instrument({ fixture, key, workspaceMode = 'standard' }) {
+function instrument({ fixture, key, workspaceMode = 'standard', shortcuts }) {
   localStorage.setItem(key, JSON.stringify(fixture))
   localStorage.setItem('sudoku-app:v1:initialized', '1')
   localStorage.setItem('sudoku-app:v1:active', fixture.id)
   localStorage.setItem('sudoku-app:v1:puzzle-timing', JSON.stringify({ showTimer: true, showPause: true, pauseOnOpen: false, trackTime: true }))
   localStorage.setItem('sudoku-app:v1:workspace-mode', workspaceMode)
+  if (shortcuts) localStorage.setItem('sudoku-app:v1:keyboard-shortcuts', JSON.stringify(shortcuts))
   localStorage.setItem('sudoku-app:v1:error-mode', 'none')
   localStorage.setItem('sudoku-app:v1:play-preferences', JSON.stringify({ pinnedActions: ['candidates', 'singles', 'hint', 'check'] }))
   localStorage.setItem('sudoku-app:v1:advanced-modes', JSON.stringify({
@@ -213,6 +214,29 @@ const checks = [
     assert.deepEqual(await boardSnapshot(page), before)
     return { assertions: 3 }
   }],
+  ['space-pauses-with-button-focus', '/?puzzle=' + game.id, async page => {
+    const options = page.getByRole('button', { name: 'Open puzzle options' })
+    const paused = page.locator('.puzzle-play-layers[data-paused]')
+    await options.focus()
+    await page.keyboard.down('Space')
+    await page.keyboard.down('Space')
+    await page.keyboard.up('Space')
+    await paused.waitFor()
+    assert.equal(await options.getAttribute('aria-expanded'), 'false', 'Space must not click the focused button')
+
+    await page.getByRole('button', { name: 'Resume puzzle', exact: true }).last().focus()
+    await page.keyboard.press('Space')
+    await paused.waitFor({ state: 'detached' })
+
+    await options.press('Enter')
+    assert.equal(await options.getAttribute('aria-expanded'), 'true', 'Enter can still open Puzzle options')
+    await page.keyboard.press('Space')
+    await paused.waitFor()
+    assert.equal(await options.getAttribute('aria-expanded'), 'false', 'pausing closes Puzzle options')
+    await page.keyboard.press('t')
+    await paused.waitFor({ state: 'detached' })
+    return { assertions: 7 }
+  }, { fixture: { ...game, started: false }, shortcuts: { pauseOrSwitchView: 't' } }],
   ['notes-during-singles', '/?puzzle=' + game.id, async page => {
     const before = await boardSnapshot(page)
     const reply = await arm(page, 'solve-singles')
