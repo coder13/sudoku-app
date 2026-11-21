@@ -358,18 +358,57 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const kind = technique === 'entropic' ? 'entropic' : 'modular'
       const line = kind === 'entropic' ? 'Entropic' : 'Modular'
       const group = kind === 'entropic' ? 'digit group' : 'remainder group'
-      const house = houseLabel(evidence.house)
+      const house = evidence.house && houseLabel(evidence.house)
       const [lower, higher] = right > left ? [start, end] : [end, start]
-      description = `${nameCell(start)} and ${nameCell(middle)} add to ${left}. ${nameCell(middle)} and ${nameCell(end)} add to ${right}. That makes ${nameCell(higher)} ${Math.abs(right - left)} more than ${nameCell(lower)}.`
-      reason = `${nameCell(start)} and ${nameCell(partner)} must use the same ${group} on this ${line} Line. All four cells must use different digits in ${house}.`
-      const example = focus.find(({ cell }) => cell === start)
-      if (example) {
-        const second = left - example.digit
-        reason += ` If ${nameCell(start)} were ${example.digit}, the sums would put ${second} in ${nameCell(middle)} and ${right - second} in ${nameCell(end)}. That leaves no candidate from the same ${group} in ${nameCell(partner)}.`
+      description = `${nameCell(start)} and ${nameCell(middle)} add to ${left}. ${nameCell(middle)} and ${nameCell(end)} add to ${right}.`
+      description += left === right
+        ? ` That forces ${nameCell(start)} and ${nameCell(end)} to use the same digit.`
+        : ` That makes ${nameCell(higher)} ${Math.abs(right - left)} more than ${nameCell(lower)}.`
+      reason = `${nameCell(start)} and ${nameCell(partner)} must use the same ${group} on this ${line} Line.`
+      if (house) {
+        reason += ` All four cells must use different digits in ${house}.`
+        const example = focus.find(({ cell }) => cell === start)
+        if (example) {
+          const second = left - example.digit
+          reason += ` If ${nameCell(start)} were ${example.digit}, the sums would put ${second} in ${nameCell(middle)} and ${right - second} in ${nameCell(end)}. That leaves no candidate from the same ${group} in ${nameCell(partner)}.`
+        }
+      } else {
+        const houses = (evidence.houses ?? []).map(house => ({ house, sites: variantHouseCells(house, puzzle) }))
+        const shared = (a: number, b: number) =>
+          houses.find(({ sites }) => sites.includes(a) && sites.includes(b))?.house
+        const named = new Intl.ListFormat('en', { type: 'conjunction' }).format(houses.map(({ house }) => houseLabel(house)))
+        reason += ` Check the two sums together and exclude repeated digits in ${named}.`
+        const triples = DIGITS.flatMap(first => {
+          const second = left - first
+          const third = right - second
+          const digits = [first, second, third]
+          if (first === second || second === third || first === third && shared(start, end) ||
+            !digits.every((digit, i) => DIGITS.includes(digit) && domains[i] & (1 << (digit - 1)))) return []
+          return [digits]
+        })
+        const repeats = evidence.cells.slice(0, 3).map(cell => shared(cell, partner))
+        for (const { cell, digit } of focus) {
+          if (cell !== partner) continue
+          const groupMask = lineGroupMask(kind, digit)
+          const matching = triples.filter(([first]) => groupMask & (1 << (first - 1)))
+          if (matching.length === 0) {
+            reason += ` If ${nameCell(partner)} were ${digit}, no starting digit in the same ${group} could satisfy both sums.`
+            continue
+          }
+          const startingDigits = alternatives.format(matching.map(([first]) => String(first)))
+          reason += ` If ${nameCell(partner)} were ${digit}, ${nameCell(start)} would have to be ${startingDigits}.`
+          for (const triple of matching) {
+            const [first, second, third] = triple
+            const repeat = repeats.find((house, i) => house && triple[i] === digit)
+            if (!repeat) continue
+            const prefix = matching.length === 1 ? 'The' : `With ${first} in ${nameCell(start)}, the`
+            reason += ` ${prefix} sums would put ${second} in ${nameCell(middle)} and ${third} in ${nameCell(end)}. That repeats ${digit} in ${houseLabel(repeat)}.`
+          }
+        }
       }
       const names = (mask: number) => alternatives.format(DIGITS.filter(digit => mask & (1 << (digit - 1))).map(String))
       reason += ` ${nameCell(start)} can only be ${names(supported[0])}, and ${nameCell(partner)} can only be ${names(supported[3])}.`
-      if (focus.some(({ cell }) => !evidence.cells.includes(cell))) {
+      if (house && focus.some(({ cell }) => !evidence.cells.includes(cell))) {
         const digits = DIGITS.filter(digit => locked & (1 << (digit - 1)))
         const text = new Intl.ListFormat('en', { type: 'conjunction' }).format(digits.map(String))
         reason += ` These four cells always use ${text}. Remove ${digits.length === 1 ? 'it' : 'those digits'} from the other cells in ${house}.`

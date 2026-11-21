@@ -9,6 +9,7 @@ import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzl
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
+import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { assertGroupLineProof } from './helpers/group-line-truth.ts'
@@ -26,7 +27,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 787, 34, 6821, 81, false, false, 'medium'],
+  ['HCHW', 841, 36, 6875, 83, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -87,9 +88,9 @@ for (const [
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
       if (id === 'HCHW') {
-        const chain = trace.steps.findIndex(proof => proof.evidence.type === 'group-line-sum-chain')
-        assert.equal(chain, 28)
-        assert.equal(trace.steps[chain].actions.length, 16)
+        const chains = trace.steps.flatMap((proof, index) => proof.evidence.type === 'group-line-sum-chain'
+          ? [[index, proof.evidence.rules, proof.actions.length]] : [])
+        assert.deepEqual(chains, [[28, [15, 5, 4], 3], [29, [18, 8, 7], 3], [30, [19, 10, 9], 16]])
         assert.equal(trace.steps.flatMap(step => step.actions).filter(action => 'place' in action).length,
           techniqueOrder === orders[0][0] ? 0 : 8)
       }
@@ -308,6 +309,7 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.equal(chain.evidence.variant.source?.deduction.evidence.type, 'group-line-sum-chain')
   assert.deepEqual(otherChoices.map(choice => [choice.technique, choice.actions]), [
     ['modular', hint.actions],
+    ['modular', [1, 2, 3].map(digit => ({ eliminate: { cell: 25, digit } }))],
     ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
   ])
   const position = variantPosition(game.variant!, stalled.position)
@@ -357,7 +359,7 @@ test('HCHW offers the linked row sums and their reserved digits in Play and Find
   assert.ok(expected.every(({ eliminate: { cell, digit } }) => Number(solution[cell]) !== digit))
 
   const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
-  try { assert.equal(await scan.count('modular'), expected.length) } finally { scan.close() }
+  try { assert.equal(await scan.count('modular'), expected.length + 3) } finally { scan.close() }
   const played = applyDeduction(stalled, hint.actions, candidates)
   assert.deepEqual(undo(played).position, stalled.position)
   assert.deepEqual(redo(undo(played)).position, played.position)
@@ -370,6 +372,66 @@ test('HCHW offers the linked row sums and their reserved digits in Play and Find
   assert.equal(placements.length, 8)
   assert.ok(placements.every(({ cell, digit }) => Number(solution[cell]) === digit))
   assert.equal(trace.rating.status, 'stalled')
+})
+
+test('HCHW Play and Finder combine two sums across box 2 and row 3', async () => {
+  const { url, entries, eliminations }: { url: string; entries: string; eliminations: number[] } = load('hchw-cross-house')
+  const { code, solution } = load('coach').examples.find((source: { url: string }) => source.url === url)
+  const { game } = await prepareImportedPuzzle(code)
+  const stalled = { ...game, position: { ...game.position, entries, eliminations } }
+  const { choices, candidates } = await puzzleHints(stalled)
+  assert.equal(choices.length, 1)
+  const [hint] = choices
+  assert.ok(candidates && hint && 'variant' in hint.evidence && hint.evidence.variant.source)
+  const { description, reason, source: { deduction } } = hint.evidence.variant
+  assert.equal(hint.technique, 'modular')
+  assert.deepEqual(deduction.evidence, {
+    type: 'group-line-sum-chain', rules: [18, 8, 7], cells: [14, 23, 22, 25],
+    houses: [{ row: 2 }, { region: 1 }], totals: [13, 7], domains: [320, 40, 5, 365],
+    supported: [320, 40, 5, 360], locked: 0,
+  })
+  assert.match(description, /R2C6 and R3C6 add to 13.*R3C6 and R3C5 add to 7/i)
+  assert.match(reason, /R3C8 were 1.*R2C6 would have to be 7.*repeats 1 in row 3/i)
+  assert.match(reason, /R3C8 were 3.*R2C6 would have to be 9.*repeats 3 in row 3/i)
+
+  const position = variantPosition(game.variant!, stalled.position)
+  const actions = [1, 3].map(digit => ({ eliminate: { cell: 25, digit } }))
+  assert.deepEqual(hint.actions, actions)
+  assertModularProof(position.puzzle, deduction)
+  assert.ok(actions.every(({ eliminate: { cell, digit } }) => Number(solution[cell]) !== digit))
+  const scan = watchTechniqueScan(valuesOf(stalled), eliminations, position)
+  try { assert.equal(await scan.count('modular'), actions.length) } finally { scan.close() }
+  const played = applyDeduction(stalled, hint.actions, candidates)
+  assert.equal(played.position.eliminations![25], eliminations[25] | 5)
+  assert.deepEqual(undo(played).position, stalled.position)
+  assert.deepEqual(redo(undo(played)).position, played.position)
+})
+
+test('a sum chain permits equal endpoints when they share no house', async () => {
+  const puzzle: VariantPuzzle = {
+    version: 1, givens: '0'.repeat(81), rules: [
+      { type: 'modular', cells: [2, 11, 21, 13] },
+      { type: 'adjacent-total', cells: [2, 3], sum: 5 },
+      { type: 'adjacent-total', cells: [3, 12], sum: 5 },
+    ],
+  }
+  const eliminations = Array(81).fill(0)
+  for (const [cell, allowed] of [[2, 11], [3, 13], [12, 11], [13, 91]]) eliminations[cell] = 511 ^ allowed
+  const proofs = await runEngine({
+    type: 'variant', operation: 'hints', position: { puzzle, eliminations },
+    techniqueOrder: ['modular'], limit: 0xffff_ffff,
+  })
+  const proof = proofs.find(proof => proof.evidence.type === 'group-line-sum-chain')
+  assert.ok(proof?.evidence.type === 'group-line-sum-chain')
+  assert.deepEqual(proof.evidence.houses, [{ region: 1 }, { row: 1 }])
+  assert.deepEqual(proof.evidence.supported, [11, 13, 11, 80])
+  assert.deepEqual(proof.actions, [1, 2, 4].map(digit => ({ eliminate: { cell: 13, digit } })))
+  assertModularProof(puzzle, proof)
+  const { evidence } = variantHintChoice(proof, puzzle)
+  assert.ok('variant' in evidence)
+  assert.match(evidence.variant.description, /forces R1C3 and R2C4 to use the same digit/i)
+  assert.match(evidence.variant.reason, /R2C5 were 1.*R1C3 would have to be 1 or 4/i)
+  assert.match(evidence.variant.reason, /With 1 in R1C3.*1 in R2C4.*repeats 1 in box 2.*With 4 in R1C3.*1 in R1C4.*repeats 1 in box 2/i)
 })
 
 test('Entropic sum chains use positive V and X marks even when both come from one rule', async () => {

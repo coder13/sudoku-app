@@ -582,7 +582,7 @@ export type VariantDeduction = {
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'group-line-house-triplet'; rule: number; house: VariantHouse; cells: [number, number, number, number]; domains: [number, number, number, number] }
     | { type: 'group-line-disjoint-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; houses: VariantHouse[]; total: number }
-    | { type: 'group-line-sum-chain'; rules: [number, number, number]; house: VariantHouse; cells: [number, number, number, number]; domains: [number, number, number, number]; totals: [number, number]; supported: [number, number, number, number]; locked: number }
+    | { type: 'group-line-sum-chain'; rules: [number, number, number]; house?: VariantHouse; houses?: VariantHouse[]; cells: [number, number, number, number]; domains: [number, number, number, number]; totals: [number, number]; supported: [number, number, number, number]; locked: number }
     | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
     | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }

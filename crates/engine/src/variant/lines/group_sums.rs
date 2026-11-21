@@ -301,10 +301,13 @@ pub(in crate::variant) struct GroupSumChain {
     pub rules: [usize; 3],
     /// Line endpoint, common sum cell, far sum endpoint, and same-group line cell.
     pub cells: [usize; 4],
-    pub house: usize,
+    pub house: Option<usize>,
+    pub houses: Vec<VariantHouseKind>,
     pub totals: [u8; 2],
     pub technique: &'static str,
     partition: DigitGroups,
+    ends_share_house: bool,
+    partner_peers: [bool; 3],
 }
 
 pub(in crate::variant) struct GroupSumChainSupport {
@@ -337,20 +340,52 @@ impl GroupSumChain {
             let Some(partition) = groups.repeating_group(index, other) else {
                 continue;
             };
-            let cells = sums | bit;
+            let cells = [start, middle, end, partner];
+            let rules = [line.rule_index, rules[0], rules[1]];
+            let scope = sums | bit;
+            let common = out.len();
             for &house in &puzzle.memberships[start] {
                 let sites = puzzle.house_masks[house];
-                if sites & cells == cells && puzzle.search_houses.binary_search(&house).is_ok() {
+                if sites & scope == scope && puzzle.search_houses.binary_search(&house).is_ok() {
                     out.push(Self {
-                        rules: [line.rule_index, rules[0], rules[1]],
-                        cells: [start, middle, end, partner],
-                        house,
+                        rules,
+                        cells,
+                        house: Some(house),
+                        houses: Vec::new(),
                         totals,
                         technique: line.rule_id,
                         partition,
+                        ends_share_house: true,
+                        partner_peers: [true; 3],
                     });
                 }
             }
+            if out.len() != common || puzzle.peers[partner] & sums == 0 {
+                continue;
+            }
+            let partner_houses =
+                [start, middle, end].map(|cell| puzzle.shared_enforced_house(partner, &[cell]));
+            if partner_houses.iter().all(Option::is_none) {
+                continue;
+            }
+            let ends_house = puzzle.shared_enforced_house(start, &[end]);
+            let mut houses = Vec::new();
+            for house in partner_houses.into_iter().chain([ends_house]).flatten() {
+                if !houses.contains(&house) {
+                    houses.push(house);
+                }
+            }
+            out.push(Self {
+                rules,
+                cells,
+                house: None,
+                houses,
+                totals,
+                technique: line.rule_id,
+                partition,
+                ends_share_house: ends_house.is_some(),
+                partner_peers: partner_houses.map(|house| house.is_some()),
+            });
         }
     }
 
@@ -365,7 +400,12 @@ impl GroupSumChain {
             for a in digits(domains[0] & group) {
                 let b = left.saturating_sub(a);
                 let c = right.saturating_sub(b);
-                if !(1..=9).contains(&b) || !(1..=9).contains(&c) || a == b || b == c || a == c {
+                if !(1..=9).contains(&b)
+                    || !(1..=9).contains(&c)
+                    || a == b
+                    || b == c
+                    || self.ends_share_house && a == c
+                {
                     continue;
                 }
                 let sum_digits = [a, b, c].map(digit_bit);
@@ -376,8 +416,15 @@ impl GroupSumChain {
                 {
                     continue;
                 }
-                let used = sum_digits.into_iter().fold(0, |mask, bit| mask | bit);
-                let all_partners = domains[3] & !used;
+                let blocked =
+                    sum_digits
+                        .into_iter()
+                        .zip(self.partner_peers)
+                        .fold(
+                            0,
+                            |mask, (bit, peers)| if peers { mask | bit } else { mask },
+                        );
+                let all_partners = domains[3] & !blocked;
                 if all_partners == 0 {
                     continue;
                 }
@@ -385,7 +432,8 @@ impl GroupSumChain {
                     *mask |= digit;
                 }
                 ungrouped[3] |= all_partners;
-                ungrouped_occupied &= used | singleton(all_partners);
+                // For a common house, blocked is the union of all three sum digits.
+                ungrouped_occupied &= blocked | singleton(all_partners);
 
                 let partners = all_partners & group;
                 if partners == 0 {
@@ -395,14 +443,18 @@ impl GroupSumChain {
                     *mask |= digit;
                 }
                 supported[3] |= partners;
-                occupied &= used | singleton(partners);
+                occupied &= blocked | singleton(partners);
             }
         }
         if supported[0] == 0 {
             return None;
         }
         let removed = std::array::from_fn(|i| ungrouped[i] & !supported[i]);
-        let locked = occupied & !ungrouped_occupied;
+        let locked = if self.house.is_some() {
+            occupied & !ungrouped_occupied
+        } else {
+            0
+        };
         (removed != [0; 4] || locked != 0).then_some(GroupSumChainSupport {
             supported,
             removed,

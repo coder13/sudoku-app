@@ -24,11 +24,14 @@ export function assertGroupLineProof(
 ) {
   assert.equal(proof.technique, type)
   if (proof.evidence.type === 'group-line-sum-chain') {
-    const { cells, rules, totals, house, domains, supported, locked } = proof.evidence
+    const { cells, rules, totals, house, houses, domains, supported, locked } = proof.evidence
     const [start, middle, end, partner] = cells
-    const sites = variantHouseCells(house, puzzle)
+    const sites = house ? variantHouseCells(house, puzzle) : []
+    const allSites = house ? [sites] : (houses ?? []).map(house => variantHouseCells(house, puzzle))
     assert.equal(new Set(cells).size, 4)
-    assert.ok(cells.every(cell => sites.includes(cell)))
+    assert.ok(allSites.length)
+    if (house) assert.ok(cells.every(cell => sites.includes(cell)))
+    const paired = (i: number, j: number) => allSites.some(sites => sites.includes(cells[i]) && sites.includes(cells[j]))
     assertGroupAndSum(puzzle, type, [rules[0], rules[1]], [start, partner, start, middle], totals[0])
     assertGroupAndSum(puzzle, type, [rules[0], rules[2]], [start, partner, middle, end], totals[1])
     const group = (digit: number) => type === 'entropic' ? Math.floor((digit - 1) / 3) : digit % 3
@@ -37,7 +40,8 @@ export function assertGroupLineProof(
     let usedBefore = 511, usedAfter = 511
     for (let a = 1; a <= 9; a++) for (let b = 1; b <= 9; b++) for (let c = 1; c <= 9; c++) for (let d = 1; d <= 9; d++) {
       const values = [a, b, c, d]
-      if (new Set(values).size !== 4 || a + b !== totals[0] || b + c !== totals[1]) continue
+      if (a === b || b === c || a + b !== totals[0] || b + c !== totals[1]) continue
+      if (values.some((digit, i) => values.slice(0, i).some((other, j) => digit === other && paired(i, j)))) continue
       const bits = values.map(digit => 1 << (digit - 1))
       if (bits.some((bit, index) => !(domains[index] & bit))) continue
       const used = bits.reduce((mask, bit) => mask | bit, 0)
@@ -50,7 +54,7 @@ export function assertGroupLineProof(
     }
     assert.ok(after.every(Boolean))
     assert.deepEqual(after, supported)
-    assert.equal(locked, usedAfter & ~usedBefore)
+    assert.equal(locked, house ? usedAfter & ~usedBefore : 0)
     const core = cells.flatMap((cell, index) => Array.from({ length: 9 }, (_, digit) => digit + 1)
       .filter(digit => (before[index] & ~after[index]) & (1 << (digit - 1)))
       .map(digit => ({ eliminate: { cell, digit } })))

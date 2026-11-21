@@ -281,7 +281,7 @@ pub enum VariantEvidence {
         /// Positive sum on the last two cells.
         total: u8,
     },
-    /// A repeating line group and two linked sums restrict digits in one house.
+    /// A repeating line group and two linked sums restrict digits across shared houses.
     GroupLineSumChain(Box<VariantGroupSumChainProof>),
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
@@ -332,7 +332,7 @@ pub enum VariantEvidence {
     },
 }
 
-/// Replayable support for two linked sums and a same-group line pair in a house.
+/// Replayable support for two linked sums and a same-group line pair.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 pub struct VariantGroupSumChainProof {
@@ -340,8 +340,12 @@ pub struct VariantGroupSumChainProof {
     pub rules: [usize; 3],
     /// The three cells along the sum chain followed by the other line cell.
     pub cells: [usize; 4],
-    /// The house containing all four cells.
-    pub house: VariantHouseKind,
+    /// The house containing all four cells, when they share one.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Option::is_none"))]
+    pub house: Option<VariantHouseKind>,
+    /// Houses supplying separate equal-digit exclusions when there is no common house.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub houses: Vec<VariantHouseKind>,
     /// The sum on each of the first two edges.
     pub totals: [u8; 2],
     /// Candidate masks for the four cells, including placed digits.
@@ -1210,16 +1214,20 @@ impl CompiledVariant {
                     let Some(support) = clue.support(domains) else {
                         continue;
                     };
-                    let house = &self.houses[clue.house];
-                    let allowed = house.cells.iter().map(|cell| {
-                        let removed = clue
-                            .cells
-                            .iter()
-                            .position(|site| site == cell)
-                            .map_or(support.locked, |index| support.removed[index]);
-                        DIGITS & !removed
-                    });
-                    let actions = position.removals(&house.cells, allowed);
+                    let house = clue.house.map(|index| &self.houses[index]);
+                    let actions = if let Some(house) = house {
+                        let allowed = house.cells.iter().map(|cell| {
+                            let removed = clue
+                                .cells
+                                .iter()
+                                .position(|site| site == cell)
+                                .map_or(support.locked, |index| support.removed[index]);
+                            DIGITS & !removed
+                        });
+                        position.removals(&house.cells, allowed)
+                    } else {
+                        position.removals(&clue.cells, support.removed.map(|mask| DIGITS & !mask))
+                    };
                     if !actions.is_empty() {
                         proofs.push(VariantDeduction {
                             technique,
@@ -1227,7 +1235,8 @@ impl CompiledVariant {
                             evidence: VariantEvidence::GroupLineSumChain(Box::new(
                                 VariantGroupSumChainProof {
                                     rules: clue.rules,
-                                    house: house.kind,
+                                    house: house.map(|house| house.kind),
+                                    houses: clue.houses.clone(),
                                     cells: clue.cells,
                                     domains,
                                     totals: clue.totals,

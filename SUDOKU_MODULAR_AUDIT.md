@@ -353,7 +353,19 @@ Across five alternating warm Wasm samples, app walkthrough CPU time falls from 1
 
 At the 81-step stall, R2C6 can be 7 or 9. The 13 sum through R3C6 makes R3C6 6 or 4 respectively. The 7 sum through that same cell makes R3C5 1 or 3. R3C8 shares a Modular group with R2C6. When R2C6 is 7, row 3 rules out 1 in R3C8 because R3C5 already uses 1. When R2C6 is 9, the Modular group rules out 1 directly. The same reasoning rules out 3. The core cells use both box 2 and row 3, which calls for a proof that can combine their separate house restrictions.
 
-Independent enumeration finds four further removals from other pairs of sums and lines in the same position. Applying all six removals manually opens six more app steps and reaches another stall without a placement.
+The engine checks the two sums and only the distinctness requirements supplied by the recorded houses. For equal totals, the sum endpoints must contain the same digit. A control confirms that the engine still finds a proof when those cells share no house. Play names the repeated digit and a house for each rejected starting choice. On the saved HCHW position, ranked Play offers the two removals in one hint, Finder counts both, and the regression verifies applying the hint, undo, and redo against the imported solution.
+
+From the givens, the native and app walkthroughs both use the new cross-house proofs at steps 29 and 30. The first excludes 7, 8, and 9 from R7C3 using column 3 and box 4. The second excludes 1, 2, and 3 from R3C8 using row 3 and box 2. The previous row 1 hint follows as step 31. The app trace grows from 81 steps and 6,821 points to 83 steps and 6,875 points. It still stalls after eight placements. Its final candidate state also excludes 1 and 3 at R3C8, R9C7, and R9C9 compared with the preceding replay. Native rises from 34 steps and 787 points to 36 steps and 841 points, without a placement.
+
+Five alternating warm Wasm pairs put the median full ranked request at the archived position at 184 ms before and 93 ms after. The app walkthrough from the givens grows from 528 to 600 ms median CPU. Eight other published controls keep their exact walkthroughs and ratings. All nine keep the same exact solutions and initial candidates. App Wasm changes from 4,061,391 to 4,056,700 raw bytes and from 1,084,332 to 1,084,133 gzip bytes.
+
+### Separate sum clues at the next stall
+
+R1C5 and R3C5 both hold 1 or 3. Their column makes them different. Each has a 7 sum with a partner, so R1C4 and R4C5 must use 4 and 6 in some order. R4C4 sees both via column 4 and row 4. Remove 4 and 6 from R4C4.
+
+R1C3 and R6C3 hold 7 and 9 in some order in column 3. If R2C2 were 7, box 1 forces R1C3 to be 9 and column 3 forces R6C3 to be 7. Its 13 sum makes R6C2 6. The Modular Line then restricts R3C2 to 6 or 9. Column 2 rules out 6 because of R6C2, and box 1 rules out 9 because of R1C3. The corresponding choice of 9 in R2C2 restricts R3C2 to 4 or 7, both blocked in the same houses.
+
+Applying the R4C4 removals manually opens three more verified steps. The R2C2 removals open one. Applying both sets opens four steps and reaches another stall without a placement.
 
 ## Reproduce
 
