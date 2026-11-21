@@ -1,7 +1,7 @@
 import { generatedNumberToken, type GeneratedNumberGame } from './generated.ts'
 import {
   changeGeneratedSolveTotal, createGeneratedHistoryReader, generatedDifficultyTotals,
-  type GeneratedHistoryRow, type GeneratedNumberResults, type NumberResultStatus, type StoredSolveTotals,
+  type GeneratedHistoryRow, type GeneratedNumberResults, type NumberHistoryPage, type NumberResultStatus, type StoredSolveTotals,
 } from './generated-results.ts'
 import {
   advanceNumberClock, numberProgressWithClock, parseSavedNumberProgress, readNumberClock, saveNumberClock,
@@ -272,20 +272,39 @@ type PickerHistory =
   | { rows: GeneratedHistoryRow[]; totals?: GeneratedNumberResults['totals']; indexPending: boolean }
   | { records: GeneratedRecord[]; indexPending: true }
 
-export function readGeneratedPickerHistory(game: GeneratedNumberGame, status: NumberResultStatus): Promise<PickerHistory> {
+export function readGeneratedPickerHistory(game: GeneratedNumberGame, status: NumberResultStatus, page?: NumberHistoryPage): Promise<PickerHistory> {
   return runTransaction('readonly', async (store, history, sessions) => {
     const [resultIndex, sessionIndex, summary] = await Promise.all([
       readCheckpoint(history, game), readCheckpoint(sessions, game), readResultTotals(history, game),
     ])
-    const range = gameRange(game)
-    if (summary?.ready) {
-      const rows = await readRequest<GeneratedHistoryRow[]>(history.index(resultStatusIndex).getAll(statusRange(game, status)))
-      return { rows, totals: generatedDifficultyTotals(summary.totals), indexPending: !sessionIndex?.ready }
+    if (summary?.ready || (resultIndex?.ready && page?.after)) {
+      const range = statusRange(game, status, page?.after)
+      const index = history.index(resultStatusIndex)
+      const rows = await readRequest<GeneratedHistoryRow[]>(page ? index.getAll(range, page.limit + 1) : index.getAll(range))
+      const totals = summary?.ready && !page?.after ? generatedDifficultyTotals(summary.totals) : undefined
+      return { rows, totals, indexPending: !summary?.ready || !sessionIndex?.ready }
     }
     if (resultIndex?.ready) {
-      return { rows: await readRequest(history.getAll(range)), indexPending: true }
+      return { rows: await readRequest(history.getAll(gameRange(game))), indexPending: true }
     }
-    return { records: await readRequest(store.getAll(range)), indexPending: true }
+    if (page?.after) {
+      // The first page can arrive before the legacy index finishes.
+      const rows: GeneratedHistoryRow[] = []
+      let after = page.after
+      while (rows.length <= page.limit) {
+        const records = await readRequest<GeneratedRecord[]>(store.getAll(gameRange(game, after), migrationBatchSize))
+        for (const record of records) {
+          const row = historyReaders[game](record)
+          if (row?.status !== status) continue
+          rows.push(row)
+          if (rows.length > page.limit) break
+        }
+        if (records.length < migrationBatchSize) break
+        after = records[records.length - 1].number
+      }
+      return { rows, indexPending: true }
+    }
+    return { records: await readRequest(store.getAll(gameRange(game))), indexPending: true }
   })
 }
 

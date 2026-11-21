@@ -107,9 +107,11 @@ export const MorePuzzlesInProgress: Story = {
     const more = resume.getByRole('button', { name: 'Show more puzzles' })
     more.focus()
     await userEvent.keyboard('{Enter}')
-    const links = resume.getAllByRole('link')
-    await expect(links.length).toBeGreaterThanOrEqual(kakuroCatalog.length)
-    await expect(links[24]).toHaveFocus()
+    await waitFor(async () => {
+      const links = resume.getAllByRole('link')
+      await expect(links.length).toBeGreaterThanOrEqual(kakuroCatalog.length)
+      await expect(links[24]).toHaveFocus()
+    })
   },
 }
 

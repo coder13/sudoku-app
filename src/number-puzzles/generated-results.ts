@@ -23,6 +23,7 @@ export function numberHistoryEntry(entry: NumberPuzzleEntry, saved: SavedNumberP
 export type GeneratedNumberResults = {
   entries: NumberHistoryEntry[]
   totals: DifficultyTotals<NumberPuzzleDifficulty>
+  hasMore?: true
 }
 
 type ProgressRules = {
@@ -81,7 +82,8 @@ function generatedProgressRules(game: GeneratedNumberGame, payload: string): Gen
   }
 }
 
-export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus }
+export type NumberHistoryPage = { after: number; limit: number }
+export type NumberHistoryRequest = { game: GeneratedNumberGame; status: NumberResultStatus; page?: NumberHistoryPage }
 export type GeneratedHistoryRow = NumberHistoryEntry & { game: GeneratedNumberGame; status: NumberResultStatus }
 
 export type StoredSolveTotals = Map<NumberPuzzleDifficulty, { solved: number; timed: number; seconds: bigint }>
@@ -125,19 +127,23 @@ export function createGeneratedHistoryReader(game: GeneratedNumberGame) {
 }
 
 export function addGeneratedHistoryRow(
-  result: GeneratedNumberResults, match: NumberResultStatus, { game: _game, status, ...entry }: GeneratedHistoryRow,
-  countSolves = true,
+  result: GeneratedNumberResults, { status: match, page }: Pick<NumberHistoryRequest, 'status' | 'page'>,
+  row: GeneratedHistoryRow, countSolves = true,
 ) {
-  if (countSolves && status === 'solved') recordDifficultySolve(result.totals, entry.difficulty, entry.elapsed)
-  if (status === match) result.entries.push(entry)
+  if (countSolves && !page?.after && row.status === 'solved') recordDifficultySolve(result.totals, row.difficulty, row.elapsed)
+  if (row.status !== match || (page && row.number <= page.after)) return
+  if (page && result.entries.length >= page.limit) {
+    result.hasMore = true
+    return
+  }
+  const { game: _game, status: _status, ...entry } = row
+  result.entries.push(entry)
 }
 
-export function createGeneratedNumberResultCollector(
-  result: GeneratedNumberResults, { game, status }: NumberHistoryRequest,
-) {
-  const read = createGeneratedHistoryReader(game)
+export function createGeneratedNumberResultCollector(result: GeneratedNumberResults, request: NumberHistoryRequest) {
+  const read = createGeneratedHistoryReader(request.game)
   return (record: GeneratedRecord) => {
     const row = read(record)
-    if (row) addGeneratedHistoryRow(result, status, row)
+    if (row) addGeneratedHistoryRow(result, request, row)
   }
 }

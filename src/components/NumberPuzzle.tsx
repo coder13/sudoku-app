@@ -118,6 +118,7 @@ function NumberGameHeading({ game, title, inPlay, children }: {
 
 type NumberDifficultyResults = {
   active: NumberPuzzleEntry[]
+  nextResume?: number
   statistics: ReadonlyMap<NumberPuzzleDifficulty, DifficultyStatistics>
 }
 
@@ -140,19 +141,50 @@ export function readCatalogNumberResults<Entry extends NumberPuzzleEntry>(config
 
 const resumeBatchSize = 24
 
-function NumberResumeList({ game, entries }: { game: NumberGame; entries: readonly NumberPuzzleEntry[] }) {
+function NumberResumeList({ game, entries, page }: {
+  game: NumberGame
+  entries: readonly NumberPuzzleEntry[]
+  page?: { game: GeneratedNumberGame; after: number }
+}) {
   const [visible, setVisible] = useState(resumeBatchSize)
+  const [additional, setAdditional] = useState<{ entries: NumberPuzzleEntry[]; after?: number }>()
+  const [loading, setLoading] = useState(false)
   const firstNewLink = useRef<HTMLAnchorElement>(null)
+  const cancelPage = useRef<() => void>(undefined)
+  const loaded = additional ? [...entries, ...additional.entries] : entries
+  const after = additional ? additional.after : page?.after
+  const focusIndex = visible > resumeBatchSize ? Math.min(visible - resumeBatchSize, loaded.length - 1) : -1
+
+  useEffect(() => () => cancelPage.current?.(), [])
 
   useEffect(() => {
     firstNewLink.current?.focus()
   }, [visible])
 
-  return <section className="number-puzzle-resume new-puzzle-step" aria-labelledby="number-puzzle-resume-title">
+  function showMore() {
+    if (loading) return
+    const limit = visible + resumeBatchSize
+    if (!page || after === undefined || loaded.length >= limit) {
+      setVisible(limit)
+      return
+    }
+    setLoading(true)
+    cancelPage.current?.()
+    cancelPage.current = requestGeneratedNumberResults({ game: page.game, status: 'started', page: { after, limit: resumeBatchSize } }, result => {
+      setAdditional({
+        entries: [...(additional?.entries ?? []), ...result.entries],
+        after: result.hasMore ? result.entries.at(-1)?.number : undefined,
+      })
+      setVisible(limit)
+      setLoading(false)
+    })
+  }
+
+  return <section className="number-puzzle-resume new-puzzle-step" aria-labelledby="number-puzzle-resume-title" aria-busy={loading}>
     <h2 id="number-puzzle-resume-title">In progress</h2>
     <ul className="game-list main-puzzle-list">
-      {entries.slice(0, visible).map((entry, index) => <li key={entry.id}>
-        <Link ref={visible > resumeBatchSize && index === visible - resumeBatchSize ? firstNewLink : undefined}
+      {loaded.slice(0, visible).map((entry, index) => <li key={entry.id}>
+        <Link ref={index === focusIndex ? firstNewLink : undefined}
           className="game-row" {...numberPuzzleDestination(game, entry)} state={{ fromNumberDifficulty: game }}>
           <span className="game-row-copy"><strong>{numberPuzzleDifficultyLabels[entry.difficulty]} {entry.number}</strong>
             {entry.generated && <small>Generated puzzle</small>}</span>
@@ -160,7 +192,8 @@ function NumberResumeList({ game, entries }: { game: NumberGame; entries: readon
         </Link>
       </li>)}
     </ul>
-    {visible < entries.length && <Button onClick={() => setVisible(visible + resumeBatchSize)}>Show more puzzles</Button>}
+    {(visible < loaded.length || after !== undefined) &&
+      <Button aria-disabled={loading || undefined} onClick={showMore}>Show more puzzles</Button>}
   </section>
 }
 
@@ -186,7 +219,9 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     }
 
     setResults(null)
-    return requestGeneratedNumberResults({ game, status: 'started' }, ({ entries: active, totals: generated }) => {
+    return requestGeneratedNumberResults({ game, status: 'started', page: { after: 0, limit: resumeBatchSize } }, ({
+      entries: active, totals: generated, hasMore,
+    }) => {
       for (const [level, result] of generated) {
         const catalog = totals.get(level)
         totals.set(level, {
@@ -195,7 +230,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
           seconds: result.seconds + (catalog?.seconds ?? 0),
         })
       }
-      setResults({ active, statistics: summarizeDifficultySolves(totals) })
+      setResults({ active, nextResume: hasMore ? active.at(-1)?.number : undefined, statistics: summarizeDifficultySolves(totals) })
     })
   }, [config, entries, game, generatedEntry])
 
@@ -205,6 +240,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
     ...(results?.active ?? []),
   ], [entries, catalogProgress, results])
   const statistics = results?.statistics ?? null
+  const resumePage = generatedEntry && results?.nextResume !== undefined ? { game, after: results.nextResume } : undefined
   const group = entries.filter(entry => entry.difficulty === difficulty)
   const next = group.find(entry => !catalogProgress?.has(entry.id))
     ?? group.find(entry => catalogProgress?.get(entry.id) === 'started') ?? group[0]
@@ -235,7 +271,7 @@ export function NumberGameDifficulty<Entry extends NumberPuzzleEntry>({ config }
             }}>Play a catalog puzzle</Link>}>
           <DifficultyOptions levels={levels} selected={difficulty} onChange={setDifficulty} disabled={busy || !ready} statistics={statistics} />
         </PuzzleDifficultyStep>
-        {active.length > 0 && <NumberResumeList game={game} entries={active} />}
+        {active.length > 0 && <NumberResumeList game={game} entries={active} page={resumePage} />}
       </div>
     </div>
   </main>

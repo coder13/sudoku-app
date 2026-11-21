@@ -11,7 +11,7 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
     if (cancelled) return
     worker?.terminate()
     worker = undefined
-    void prepareGeneratedHistory(game).then(() => readGeneratedPickerHistory(game, request.status))
+    void prepareGeneratedHistory(game).then(() => readGeneratedPickerHistory(game, request.status, request.page))
       .catch(async () => ({ records: await generatedNumberHistory(game) }))
       .then(history => {
         if (cancelled) return
@@ -31,7 +31,7 @@ export function requestGeneratedNumberResults(request: NumberHistoryRequest, pub
 
         const fromSave = createGeneratedNumberResultCollector(result, request)
         const collect = 'rows' in history
-          ? (index: number) => addGeneratedHistoryRow(result, request.status, history.rows[index], !totals)
+          ? (index: number) => addGeneratedHistoryRow(result, request, history.rows[index], !totals)
           : (index: number) => fromSave(history.records[index])
         let cursor = 0
         const channel = queue = new MessageChannel()

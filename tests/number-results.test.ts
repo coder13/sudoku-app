@@ -34,6 +34,26 @@ test('stored solve totals keep exact time when a saved result is replaced', () =
   assert.equal(totals.size, 0)
 })
 
+test('in-progress pages preserve order and let the first page count every solve', () => {
+  const base = { game: 'kakuro', difficulty: 'easy' } as const
+  const rows: GeneratedHistoryRow[] = (['solved', 'started', 'started', 'solved', 'started'] as const).map((status, index) => ({
+    ...base, status, number: index + 1, id: String(index + 1), elapsed: 42,
+  }))
+  const first: GeneratedNumberResults = { entries: [], totals: new Map() }
+  const second: GeneratedNumberResults = { entries: [], totals: new Map() }
+  const request = { status: 'started', page: { after: 0, limit: 2 } } as const
+  for (const row of rows) {
+    addGeneratedHistoryRow(first, request, row)
+    addGeneratedHistoryRow(second, { ...request, page: { after: 3, limit: 2 } }, row)
+  }
+  assert.deepEqual(first.entries.map(entry => entry.number), [2, 3])
+  assert.equal(first.hasMore, true)
+  assert.deepEqual(first.totals.get('easy'), { solved: 2, timed: 2, seconds: 84 })
+  assert.deepEqual(second.entries.map(entry => entry.number), [5])
+  assert.equal(second.hasMore, undefined)
+  assert.equal(second.totals.size, 0)
+})
+
 for (const { board, values } of [
   {
     board: { game: 'kakuro', difficulty: 'easy', recipe: kakuroRecipeFromPuzzle(kakuro) } satisfies GeneratedNumberPuzzle,
@@ -76,8 +96,8 @@ for (const { board, values } of [
       const row = summarize(record)
       if (!row) return
       assert.equal(row.game, board.game)
-      addGeneratedHistoryRow(indexedActive, 'started', structuredClone(row))
-      addGeneratedHistoryRow(indexedSolved, 'solved', structuredClone(row))
+      addGeneratedHistoryRow(indexedActive, { status: 'started' }, structuredClone(row))
+      addGeneratedHistoryRow(indexedSolved, { status: 'solved' }, structuredClone(row))
     })
     for (const collect of [collectActive, collectSolved]) {
       collect({ game: board.game, id: 'v1.invalid', number: 8, progress: progress[0] })

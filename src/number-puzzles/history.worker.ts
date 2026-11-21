@@ -4,11 +4,11 @@ import { indexGeneratedPickerHistory, readGeneratedPickerHistory } from './gener
 self.onmessage = async ({ data: request }: MessageEvent<NumberHistoryRequest>) => {
   let needsIndex = false
   try {
-    const history = await readGeneratedPickerHistory(request.game, request.status)
+    const history = await readGeneratedPickerHistory(request.game, request.status, request.page)
     const totals = 'totals' in history ? history.totals : undefined
     const result: GeneratedNumberResults = { entries: [], totals: totals ?? new Map() }
     if ('rows' in history) {
-      for (const row of history.rows) addGeneratedHistoryRow(result, request.status, row, !totals)
+      for (const row of history.rows) addGeneratedHistoryRow(result, request, row, !totals)
     } else {
       const collect = createGeneratedNumberResultCollector(result, request)
       for (const record of history.records) collect(record)
