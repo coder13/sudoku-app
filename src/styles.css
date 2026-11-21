@@ -955,11 +955,10 @@ svg { flex-shrink: 0; }
   --board-frame-limit: calc(var(--play-columns-width) - var(--play-input-width) - var(--puzzle-column-padding));
 }
 .desktop-play-resizable .workspace[data-layout-resizing] .standard-puzzle-stack .puzzle-flat {
-  /* Follow the live column while its inherited saved width stays fixed. The
-     two pixels match the border allowance in --puzzle-column-padding. */
+  /* Follow the live card while inherited saved widths stay fixed. Its preview
+     max width preserves the gutter measured at the start of the gesture. */
   --board-frame-width: 100%;
   --puzzle-grid-inset: var(--board-guide-width);
-  max-inline-size: calc(100% - 2px);
 }
 .desktop-play-resizable .workspace[data-layout-resizing] .standard-hint-slot .hint-dock {
   max-inline-size: max(240px, calc(100% - 2 * var(--puzzle-badge-gutter-inline)));

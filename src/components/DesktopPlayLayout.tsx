@@ -332,7 +332,20 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     if (!workspace || !inputStack) return null
     const restoreWorkspace = rememberInlineStyles(workspace, ['grid-template-columns'])
     const restoreInput = rememberInlineStyles(inputStack, ['--play-input-scale'])
+    const puzzles = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle-flat')].flatMap(puzzle => {
+      const parent = puzzle.parentElement
+      if (!parent) return []
+      const parentStyle = getComputedStyle(parent), puzzleStyle = getComputedStyle(puzzle)
+      const horizontalSpace = (style: CSSStyleDeclaration) =>
+        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth)
+      const available = parseFloat(parentStyle.width) - (parentStyle.boxSizing === 'border-box' ? horizontalSpace(parentStyle) : 0)
+      const actual = parseFloat(puzzleStyle.width) + (puzzleStyle.boxSizing === 'content-box' ? horizontalSpace(puzzleStyle) : 0)
+      if (!(available > 0 && actual > 0)) return []
+      return [{ puzzle, inset: Math.max(0, available - actual), restore: rememberInlineStyles(puzzle, ['max-inline-size']) }]
+    })
     const clearBoards = previewDesktopBoards(workspace)
+    for (const { puzzle, inset } of puzzles) puzzle.style.maxInlineSize = `calc(100% - ${inset}px)`
     workspace.setAttribute('data-layout-resizing', '')
     const update = (input: number) => {
       // Native track sizing does not change inherited variables on every cell.
@@ -343,6 +356,7 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       update,
       clear() {
         clearBoards()
+        for (const puzzle of puzzles) puzzle.restore()
         restoreWorkspace()
         restoreInput()
         workspace.removeAttribute('data-layout-resizing')

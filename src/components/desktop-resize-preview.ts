@@ -8,7 +8,9 @@ export function rememberInlineStyles(element: HTMLElement, names: string[]) {
       if (value) element.style.setProperty(name, value, priority)
       else element.style.removeProperty(name)
     }
-    if (!hadStyle && !element.style.length) element.removeAttribute('style')
+    // Flush lazy CSSOM serialization before removing an originally absent
+    // attribute, so a later attribute read cannot recreate an empty one.
+    if (!hadStyle && !element.style.length && element.hasAttribute('style')) element.removeAttribute('style')
   }
 }
 
