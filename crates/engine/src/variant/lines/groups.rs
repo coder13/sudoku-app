@@ -66,6 +66,33 @@ impl GroupLine {
         self.phases[a] != self.phases[b]
     }
 
+    pub(super) fn modular_sum_groups(&self, left: usize, right: usize, sum: u8) -> Option<Vec<u16>> {
+        if !self.consistent {
+            return None;
+        }
+        let DigitGroups::Modular = self.partition else {
+            return None;
+        };
+        let a = self.phases[left];
+        let b = self.phases[right];
+        // A sum S has only one way to use the same remainder twice: 2 * S (mod 3).
+        // The group masks are ordered by the remainder of digit minus one.
+        let group = self.partition.masks()[usize::from((2 * sum + 2) % 3)];
+        Some(
+            self.phases
+                .iter()
+                .map(|&phase| {
+                    let must_use_group = if a == b {
+                        phase == a
+                    } else {
+                        phase != a && phase != b
+                    };
+                    if must_use_group { group } else { DIGITS & !group }
+                })
+                .collect(),
+        )
+    }
+
     pub(super) fn support(&self, domains: &[u16], support: &mut [u16]) {
         if !self.consistent {
             return;

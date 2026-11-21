@@ -34,16 +34,24 @@ const saved = await load('overlay-dense')
 const source = (await load('modular-coach')).examples.find(source => source.url === saved.url)
 assert.ok(source?.puzzle)
 const cases = []
+const archivedOrder = order.filter(technique => technique !== 'modular')
 for (const stepIndex of [22, 23, 24, 25]) {
   const position = stepIndex === 25
-    ? (await seed.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: order })).end
-    : (await seed.request({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: order, stepIndex })).before
+    ? (await seed.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder })).end
+    : (await seed.request({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: archivedOrder, stepIndex })).before
   if (stepIndex === 22) {
     assert.equal(position.entries, saved.entries)
     assert.deepEqual(position.eliminations, saved.eliminations)
     assert.deepEqual(await seed.request({ type: 'variant', operation: 'candidates', position }), saved.domains)
   }
   cases.push({ name: `HCHW-${stepIndex}`, request: { type: 'variant', operation: 'hints', position,
+    techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
+}
+if (selected.includes('HCHW-current-stall')) {
+  const current = await engine(binaries[1])
+  const trace = await current.request({ type: 'variant', operation: 'trace', position: { puzzle: source.puzzle }, techniqueOrder: order })
+  assert.equal(trace.rating.status, 'stalled')
+  cases.push({ name: 'HCHW-current-stall', request: { type: 'variant', operation: 'hints', position: trace.end,
     techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }, expected: 0 })
 }
 const methods = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay', 'quadruple-pattern-overlay', 'quintuple-pattern-overlay']

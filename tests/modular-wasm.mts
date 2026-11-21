@@ -24,7 +24,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2176, 161, 2606, 161, true, true, 'easy'],
-  ['HCHW', 420, 21, 2000, 25, false, false, 'medium'],
+  ['HCHW', 517, 24, 2097, 28, false, false, 'medium'],
 ] as const
 for (const [
   id,
@@ -116,6 +116,38 @@ for (const [
     else {
       assert.equal(path.rating.status, 'stalled')
       assert.notEqual(path.board, source.solution)
+    }
+
+    if (id === 'HCHW') {
+      const techniqueOrder = await getVariantPlayOrder()
+      const previous = await runEngine({
+        type: 'variant', operation: 'trace', position,
+        techniqueOrder: techniqueOrder.filter(technique => technique !== 'modular'),
+      })
+      assert.equal(previous.steps.length, 25)
+      const { entries, eliminations } = previous.end
+      assert.equal(entries, '0'.repeat(81))
+      const stalled = { ...game, position: { ...game.position, entries, eliminations } }
+      const choices = await puzzleHints(stalled, 'all', 'modular')
+      const combined = choices.choices.find(hint => 'variant' in hint.evidence &&
+        hint.evidence.variant.source?.deduction.evidence.type === 'constraint' &&
+        hint.evidence.variant.source.deduction.evidence.rules.join(',') === '15,5')
+      assert.ok(combined && 'variant' in combined.evidence && combined.evidence.variant.source)
+      const { description, reason, source: { deduction } } = combined.evidence.variant
+      assert.match(description, /R6C2 and R5C2 add to 7/i)
+      assert.match(reason, /\{2, 5, 8\}.*remaining position/)
+      assertModularProof(puzzle, deduction)
+      assert.equal(combined.actions.length, 19)
+      assert.ok(choices.candidates)
+      const played = applyDeduction(stalled, combined.actions, choices.candidates)
+      assert.notEqual(played, stalled)
+      const scan = watchTechniqueScan(valuesOf(stalled), eliminations, previous.end)
+      const targets = new Set(choices.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
+      try { assert.equal(await scan.count('modular'), targets.size) } finally { scan.close() }
+      const continuation = await runEngine({
+        type: 'variant', operation: 'trace', position: variantPosition(game.variant!, played.position), techniqueOrder,
+      })
+      assert.ok(continuation.end.eliminations[47] & (1 << 7), 'the 13 sum also removes 8 in R6C3')
     }
   })
 }

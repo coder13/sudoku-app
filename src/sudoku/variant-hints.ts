@@ -147,6 +147,19 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
       return { description: `The ${rule.cells.length === 1 ? 'digit on the arrow equals' : 'digits on the arrow add to'} the digit in ${at(rule.circle)}.`,
         reason: 'With the current candidates, no matching sum uses a crossed-out digit in its marked cell.' }
     case 'entropic': case 'modular': {
+      const sumRule = rules[1]
+      const sum = sumRule?.type === 'adjacent-total' ? sumRule.sum : sumRule?.type === 'xv'
+        ? (hasMarkedPair(sumRule.five?.pairs, a, b) ? 5 : hasMarkedPair(sumRule.ten?.pairs, a, b) ? 10 : undefined)
+        : undefined
+      if (rule.type === 'modular' && sum !== undefined) {
+        const group = `{${DIGITS.filter(digit => digit % 3 === (2 * sum) % 3).join(', ')}}`
+        const sameGroup = (rule.cells.indexOf(a) - rule.cells.indexOf(b)) % 3 === 0
+        const description = `${pair} add to ${sum}. On this Modular Line, they use ${sameGroup ? 'the same remainder group' : 'different remainder groups'}.`
+        const reason = sameGroup
+          ? `Only ${group} can supply two digits from the same group that add to ${sum}. This group repeats every three positions and is ruled out of the other positions.`
+          : `If either cell used a digit from ${group}, the sum would force both cells into that group.${rule.cells.length > 2 ? ' This group belongs to the remaining position in each set of three.' : ''}`
+        return { description, reason }
+      }
       const { masks, names } = lineGroups[rule.type]
       const group = (mask: number) => masks.map((bits, i) => mask & bits ? i : -1).filter(i => i >= 0)
       const known = cells.flatMap((cell, i) => group(domains[i]).length === 1 ? [`${at(cell)} is ${names[group(domains[i])[0]]}`] : [])

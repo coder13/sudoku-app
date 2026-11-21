@@ -23,7 +23,7 @@ pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
 };
-use lines::LineConstraint;
+use lines::{LineConstraint, ModularSum};
 pub(crate) use search::record_support;
 pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
 pub(crate) use lines::{renban_support, wide_renban_support};
@@ -545,6 +545,7 @@ impl VariantPuzzle {
             allowed_digits: [DIGITS; CELLS],
             pairs: Vec::new(),
             lines: Vec::new(),
+            modular_sums: Vec::new(),
             quadruples: Vec::new(),
             global_entropy: None,
             pair_clues: Vec::new(),
@@ -630,6 +631,7 @@ impl VariantPuzzle {
             }
         }
         pairs.finish(&mut compiled);
+        compiled.modular_sums = ModularSum::compile(&compiled.lines, &self.rules);
         // Region geometry can remain available for sum lines after a generation
         // dependency check removes its distinctness rule. Propagate only houses
         // whose cells are actually pairwise excluded by the compiled topology.
@@ -786,6 +788,7 @@ pub struct CompiledVariant {
     allowed_digits: [u16; CELLS],
     pairs: Vec<PairConstraint>,
     lines: Vec<LineConstraint>,
+    modular_sums: Vec<ModularSum>,
     quadruples: Vec<Quadruple>,
     global_entropy: Option<usize>,
     pair_clues: Vec<PairClue>,

@@ -225,7 +225,27 @@ In the 25-step HCHW stall, R5C2 and R6C2 add to 7 and occupy consecutive positio
 | R7C3 | 1, 2, 3, 4, 5, 6 | 2, 5 |
 | R7C4 | 1, 2, 3, 4, 5, 6, 7, 8, 9 | 2, 5, 8 |
 
-Enumerating the five stalled domains under just those two sums and three remainder relations yields twelve assignments, including the published solution's values. Applying the eight removals to the app stall produces two further Modular deductions verified against that solution. The current walkthrough then stalls again with all cells unfilled. Detection and proof rendering for the combined deduction remain open. [Coverage issue](https://github.com/coder13/sudoku-app/issues/175)
+Enumerating the five stalled domains under just those two sums and three remainder relations yields twelve assignments, including the published solution's values. Applying the eight removals to the app stall produces two further Modular deductions verified against that solution. The current walkthrough then stalls again with all cells unfilled. The engine now detects this combination for any positive adjacent total, including V and X clues, whose endpoints both lie on a Modular Line. It also assigns the third position in each window to the excluded group, so the verified proof removes 19 candidates at the archived app stall. The following adjacent-total deduction removes 8 from R6C3. The hint names both cells, the sum and the repeating remainder group.
+
+HCHW's native path grows from 21 to 24 steps and its app path from 25 to 28 steps. The new partial scores are 517 and 2,097. Both paths still stall with all cells unfilled. Exact solves, candidate masks, and full trace records for Newman, Hu9m and 220V match the previous engine. The proof uses the existing 27-point Modular technique and scoring version 8. [Coverage issue](https://github.com/coder13/sudoku-app/issues/175)
+
+### Quintuple Pattern Overlay at the later stall
+
+The later HCHW position exposed slow searches for five compatible digit layouts. The fallback indexes the layouts by cell. After choosing a layout, it filters the remaining families and searches the one with the fewest compatible layouts first. This search remains exhaustive. The index applies to five families with at most 8,192 layouts each. Larger families use the linear search. The original witness probes run first, so quick matches avoid the index.
+
+These are warmed WebAssembly CPU times in milliseconds, shown as median and maximum of five samples in rotating order. All three engines return the same empty Quintuple replies at both positions. The two engines with the new Modular deduction return identical complete trace and rating records for HCHW.
+
+| Request | Previous engine | Modular deduction only | Modular deduction and indexed search |
+| --- | ---: | ---: | ---: |
+| Archived HCHW Quintuple scan | 26.52 / 27.77 | 29.44 / 31.34 | 26.94 / 29.52 |
+| Later HCHW Quintuple scan | 2,357.63 / 2,382.68 | 2,381.01 / 2,417.21 | 448.94 / 453.88 |
+| HCHW app-order rating | 990.27 / 1,039.21 | 3,606.17 / 3,658.64 | 1,668.98 / 1,672.20 |
+
+The combined changes add 4,581 raw bytes and 5,736 gzip bytes to the app engine. A fresh Wasm instance reaches 3 MiB of linear-memory capacity on the later scan, up from 2.25 MiB without the index. To compare the two Quintuple positions, pass the older and newer Wasm artifacts to the existing benchmark. It reconstructs the archived position with Modular deductions disabled and the later position with the current app order.
+
+```sh
+node --experimental-strip-types scripts/bench-overlay-support.mjs before.wasm after.wasm --samples=5 --warmups=1 --cases=HCHW-22,HCHW-current-stall
+```
 
 ## Reproduce
 

@@ -14,7 +14,9 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
   const source = load('modular-coach').examples.find((s: { url: string }) => s.url === saved.url) as { puzzle: VariantPuzzle; solution: string }
   assert.ok(source)
   const position: VariantPosition = { puzzle: source.puzzle, entries: saved.entries, eliminations: saved.eliminations }
-  const order = await getVariantPlayOrder()
+  // Replay the archived profile. Modular + sum reasoning now changes the
+  // default path before these positions, whose overlay proofs stay valid.
+  const order = (await getVariantPlayOrder()).filter(technique => technique !== 'modular')
   const replay = await runEngine({ type: 'variant', operation: 'replay-step', position: { puzzle: source.puzzle }, techniqueOrder: order, stepIndex: saved.replayStep })
   assert.ok(replay)
   const expectedPuzzle = {
@@ -54,4 +56,20 @@ test('dense partial-source overlay scans retain exact proofs, empty Finder count
     assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position: edited.before, techniqueOrder: ['quintuple-pattern-overlay'], limit: 0xffff_ffff }), [])
   }
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [] }), [])
+})
+
+test('Quintuple Pattern Overlay has no deductions at the new HCHW stall', async () => {
+  const { puzzle } = load('modular-coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const trace = await runEngine({
+    type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: await getVariantPlayOrder(),
+  })
+  assert.equal(trace.rating.status, 'stalled')
+  assert.equal(trace.steps.length, 28)
+  const technique = 'quintuple-pattern-overlay'
+  const position = trace.end
+  assert.deepEqual(await runEngine({
+    type: 'variant', operation: 'hints', position, techniqueOrder: [technique], limit: 0xffff_ffff,
+  }), [])
+  const scan = watchTechniqueScan(position.entries, position.eliminations, position)
+  try { assert.equal(await scan.count(technique), 0) } finally { scan.close() }
 })

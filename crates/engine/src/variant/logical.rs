@@ -112,7 +112,7 @@ catalog! {
     Whispers: "whispers", 27, Medium;
     /// Apply the repeating low, medium and high groups along an Entropic line.
     Entropic: "entropic", 27, Medium;
-    /// Apply the repeating remainder groups along a Modular line.
+    /// Apply the repeating remainder groups along a Modular line, including when a two-cell sum fixes or excludes a group.
     Modular: "modular", 27, Medium;
     /// Remove digits that cannot be assigned to the cells of a Killer cage.
     CageCombinations: "cage-combinations", 34, Easy;
@@ -1027,6 +1027,20 @@ impl CompiledVariant {
                         supported[..len].iter().copied(),
                     ) {
                         proofs.push(proof);
+                    }
+                }
+                if technique == Modular {
+                    for clue in &self.modular_sums {
+                        let supported = clue
+                            .cells
+                            .iter()
+                            .zip(&clue.allowed)
+                            .map(|(&cell, &mask)| position.domain(cell) & mask);
+                        if let Some(proof) =
+                            position.explain_constraint(technique, &clue.rules, &clue.cells, supported)
+                        {
+                            proofs.push(proof);
+                        }
                     }
                 }
             }

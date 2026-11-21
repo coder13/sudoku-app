@@ -1,7 +1,10 @@
 //! Complete joint template support with a bounded alternate witness order.
 
+use std::cell::OnceCell;
+
 use super::{cell_bit, cells};
 
+mod indexed;
 mod interchangeable;
 
 #[derive(Clone, Copy)]
@@ -27,6 +30,7 @@ fn support_with_probes(
     checks: u32,
 ) -> [u128; 9] {
     let mut witness = [0; 9];
+    let indexed = OnceCell::new();
     for (index, family) in families.iter().enumerate() {
         let followers: Vec<_> = families[..index]
             .iter()
@@ -56,10 +60,11 @@ fn support_with_probes(
                 });
             let found = if let Some(found) = probed {
                 found
+            } else if let Some(complete) = interchangeable::support(families, support) {
+                return complete;
+            } else if let Some(packing) = indexed.get_or_init(|| indexed::Packing::new(families)) {
+                packing.find(index, cell, &mut witness)
             } else {
-                if let Some(complete) = interchangeable::support(families, support) {
-                    return complete;
-                }
                 let layout = family.layouts.iter().copied().find(|&layout| {
                     layout & target != 0
                         && layout & !family.allowed == 0
@@ -297,6 +302,46 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn dense_fallback_finds_a_late_layout_and_rejects_an_occupied_target() {
+        let mut many = vec![cell_bit(0); 65];
+        many.push(cell_bit(80));
+        let fixed = [0, 5, 63, 64].map(|cell| [cell_bit(cell)]);
+        let mut families = [
+            Family {
+                digit: 0,
+                allowed: cell_bit(0) | cell_bit(80),
+                layouts: &many,
+            },
+            Family {
+                digit: 1,
+                allowed: fixed[0][0],
+                layouts: &fixed[0],
+            },
+            Family {
+                digit: 2,
+                allowed: fixed[1][0],
+                layouts: &fixed[1],
+            },
+            Family {
+                digit: 3,
+                allowed: fixed[2][0],
+                layouts: &fixed[2],
+            },
+            Family {
+                digit: 4,
+                allowed: fixed[3][0],
+                layouts: &fixed[3],
+            },
+        ];
+        let expected = direct(&families);
+        assert_eq!(expected[0], cell_bit(80));
+        assert_eq!(support_with_probes(&families, [0; 9], 0, 0), expected);
+
+        families[0].allowed = cell_bit(0);
+        assert_eq!(support_with_probes(&families, [0; 9], 0, 0), [0; 9]);
     }
 
     #[test]

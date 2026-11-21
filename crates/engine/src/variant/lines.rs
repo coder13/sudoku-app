@@ -1,4 +1,7 @@
 mod groups;
+mod modular_sum;
+
+pub(super) use modular_sum::ModularSum;
 
 use std::{collections::HashMap, ops::Range};
 
