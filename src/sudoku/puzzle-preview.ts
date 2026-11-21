@@ -8,7 +8,7 @@ import { verifySizedRulePuzzle } from './sized-rule-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
 import { findSharedAttempt } from './puzzle-sharing.ts'
-import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
+import { applyPuzzleGrade, needsPuzzleGrade, puzzleGradeIsStale, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
 import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
@@ -140,8 +140,9 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   game.difficulty = existing?.difficulty
   game.score = existing?.score
   if (existing?.fogRatingVersion !== undefined) game.fogRatingVersion = existing.fogRatingVersion
+  if (existing?.variantRatingVersion !== undefined) game.variantRatingVersion = existing.variantRatingVersion
   if (needsPuzzleGrade(game)) {
-    const savedGrade = existing?.ratingAttempt?.grade
+    const savedGrade = puzzleGradeIsStale(game) ? undefined : existing?.ratingAttempt?.grade
     if (savedGrade) return { ...preview, game: applyPuzzleGrade(game, savedGrade), grade: savedGrade }
     if (deferRating) return { ...preview, game, ratingPending: true }
     try {

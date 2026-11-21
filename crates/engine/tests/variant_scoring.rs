@@ -6,6 +6,17 @@ use sudoku_app_engine::{
     variant_practice_examples,
 };
 
+fn binary_choices(domains: &[u16]) -> u16 {
+    domains
+        .iter()
+        .map(|domain| {
+            let digits = domain.count_ones();
+            assert_ne!(digits, 0);
+            (u32::BITS - (digits - 1).leading_zeros()) as u16
+        })
+        .sum()
+}
+
 fn estimate(deduction: &VariantDeduction) -> u16 {
     use VariantTechnique::*;
     let (cells, domains, cages) = match &deduction.evidence {
@@ -30,14 +41,13 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
         }
         VariantEvidence::LineHouses(proof) => {
             let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
-            let choices: u16 = domains
-                .iter()
-                .map(|domain| {
-                    let n = domain.count_ones();
-                    (u32::BITS - (n - 1).leading_zeros()) as u16
-                })
-                .sum();
-            return 24 + 2 * cells.len() as u16 + 2 * choices + 3 * houses.len() as u16;
+            return 24 + 2 * cells.len() as u16 + 2 * binary_choices(domains) + 3 * houses.len() as u16;
+        }
+        VariantEvidence::EntropyAreas(proof) => {
+            // Inspect both rule types. An overlapping area adds a second group
+            // check and has to agree with the choices in the shared cells.
+            let overlap = (proof.windows.len() - 1) as u16;
+            return 26 + 2 * proof.cells.len() as u16 + 2 * binary_choices(&proof.domains) + 10 * overlap;
         }
         VariantEvidence::Intersection { .. } => return Technique::Pointing.cost(),
         VariantEvidence::Constraint { cells, domains, .. } => (cells, domains, 0),
@@ -52,14 +62,7 @@ fn estimate(deduction: &VariantDeduction) -> u16 {
     // Count cells inspected and binary choices needed to narrow each domain.
     // The number of actions proved by a step is independent of search effort.
     let span = 2 * cells.len() as u16;
-    let choices: u16 = domains
-        .iter()
-        .map(|domain| {
-            let digits = domain.count_ones();
-            assert_ne!(digits, 0);
-            (u32::BITS - (digits - 1).leading_zeros()) as u16
-        })
-        .sum();
+    let choices = binary_choices(domains);
     match deduction.technique {
         Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome => 8 + span + choices,
@@ -96,6 +99,9 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
             (VariantTechnique::Arrow | VariantTechnique::CageCombinations, _) | (_, 0..=26) => {
                 Difficulty::Easy
             }
+            // The price reflects confirming the local candidates. Finding an
+            // overlap that couples both types of rule belongs in Hard.
+            (VariantTechnique::EntropyQuadruple, _) => Difficulty::Hard,
             (_, 27..=68) => Difficulty::Medium,
             _ => Difficulty::Hard,
         };

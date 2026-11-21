@@ -19,7 +19,7 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 9;
+pub const VARIANT_SCORING_VERSION: u32 = 10;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -27,6 +27,7 @@ const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 mod exclusions;
 mod pruning;
 mod line_houses;
+mod entropy_quadruple;
 mod sum_pairs;
 mod group_sum_implications;
 
@@ -132,6 +133,8 @@ catalog! {
     LittleKiller: "little-killer", 50, Medium;
     /// Use house and cage sums to constrain the cells inside or outside a house.
     CageHouseSum: "cage-house-sum", 67, Medium;
+    /// Fit the printed digits and entropy groups in a circle’s area and its neighbor.
+    EntropyQuadruple: "entropy-quadruple", 58, Hard;
     /// Apply the count of visible heights in a row or column.
     Skyscrapers: "skyscrapers", 70, Hard;
     /// Apply a sum between 1 and 9 in a row or column.
@@ -312,6 +315,8 @@ pub enum VariantEvidence {
     /// Complete line assignments respecting explicit shared houses.
     /// Box the rare payload so other deductions retain their compact layout.
     LineHouses(Box<VariantLineHouseProof>),
+    /// A Quadruple and one or two 2 × 2 entropy areas in shared houses.
+    EntropyAreas(Box<VariantEntropyAreaProof>),
     /// The candidate locations in one house lock a digit into a second house.
     Intersection {
         /// House placing the digit in the shared cells.
@@ -453,6 +458,24 @@ pub struct VariantLineHouseProof {
     pub houses: Vec<VariantHouseKind>,
     /// Number of valid assignments in the complete enumeration.
     pub assignments: u32,
+}
+
+/// Replayable candidate support in a printed Quadruple and its entropy areas.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantEntropyAreaProof {
+    /// The entropy rule followed by the contributing circle rule indices.
+    pub rules: Vec<usize>,
+    /// One 2 × 2 area or two areas sharing an edge.
+    pub windows: Vec<[usize; 4]>,
+    /// Cells in the combined area, sorted by grid order.
+    pub cells: Vec<usize>,
+    /// Candidate masks before applying the rules, including placed digits.
+    pub domains: Vec<u16>,
+    /// Digits that occur in at least one assignment satisfying all listed premises.
+    pub supported: Vec<u16>,
+    /// Houses forbidding equal digits in the cells of the area.
+    pub houses: Vec<VariantHouseKind>,
 }
 
 /// A rule-based proof and the actions it justifies.
@@ -708,6 +731,7 @@ impl VariantDeduction {
             VariantEvidence::SumPair(proof) => proof.cells.len(),
             VariantEvidence::GroupSumImplication { links, .. } => links.len() + 1,
             VariantEvidence::LineHouses(proof) => proof.cells.len(),
+            VariantEvidence::EntropyAreas(proof) => proof.cells.len(),
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
@@ -1052,6 +1076,8 @@ impl CompiledVariant {
                 .visit(classic, &mut ControlFlow::Break)
                 .break_value()
                 .map(overlay_proof)
+        } else if technique == VariantTechnique::EntropyQuadruple {
+            self.entropy_quadruple_proofs(position, 1).pop()
         } else {
             self.local_proofs(position, technique)
                 .into_iter()
@@ -1162,6 +1188,7 @@ impl CompiledVariant {
                     }
                 }
             }
+            EntropyQuadruple => return self.entropy_quadruple_proofs(position, usize::MAX),
             CageCombinations => {
                 for cage in &self.cages {
                     let domains: Vec<_> = cage

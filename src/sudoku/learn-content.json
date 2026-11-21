@@ -7786,6 +7786,57 @@
           "difficulty": "easy"
         },
         {
+          "id": "entropy-quadruple",
+          "title": "Quadruples and Global Entropy",
+          "summary": "A Quadruple circle fixes which digits must fit in a 2 × 2 area. When the puzzle uses Global Entropy, fit those digits and leave room for a low, medium, and high digit.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Fit the printed digits and all three groups"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with a circle that prints two digits from one group. Those digits use two of the four cells, so the other cells must supply one digit from each missing group. A digit printed twice needs two cells.",
+                "If the circle area still has several possible arrangements, check the 2 × 2 area on the other side of an edge. The two shared cells must use the same digits in both areas. Keep an arrangement only if both areas have all three groups and the digits respect their shared rows, columns, and boxes or regions."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "entropy-quadruple",
+              "copy": {
+                "description": "R2C8 is 6 and the circle also needs 5. Only R2C9 can supply 5. R3C9 is 1, so R3C8 must supply the high digit. Remove 3 from R3C8."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "entropy-quadruple",
+                  "title": "Fit the circle and its neighbors"
+                }
+              ],
+              "guide": {
+                "start": "Read the digits in the circle and find the groups they already supply.",
+                "check": "Try a candidate. Fit the remaining printed digits and leave room for every missing group. If two areas share an edge, check the same digits in their shared cells.",
+                "reason": "Remove a candidate when every arrangement that uses it breaks a circle, an entropy area, or a shared house."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Entropy Quads by cyboogie",
+              "href": "https://sudoku.coach/en/s/A2s7"
+            },
+            {
+              "label": "Entropy Quads 3 by cyboogie",
+              "href": "https://sudoku.coach/en/s/CJhv"
+            }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "modular",
           "title": "Modular lines",
           "summary": "A Modular line repeats three groups: {1, 4, 7}, {2, 5, 8} and {3, 6, 9}. Every three successive positions use one digit from each group. Positions three steps apart share a group, but can contain different digits.",

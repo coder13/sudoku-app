@@ -3,8 +3,8 @@
 use std::collections::{BTreeSet, HashSet};
 
 use sudoku_app_engine::{
-    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, VariantEvidence, VariantExclusionPremise,
-    VariantTechnique, canonical_variant, variant_practice_examples,
+    Analysis, DEFAULT_VARIANT_SEARCH_NODES, HintAction, PuzzleRule, VariantEvidence,
+    VariantExclusionPremise, VariantTechnique, canonical_variant, variant_practice_examples,
 };
 
 #[test]
@@ -128,6 +128,22 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(proof.cells);
                 }
+                VariantEvidence::EntropyAreas(proof) => {
+                    let (entropy, circles) = proof.rules.split_first().unwrap();
+                    assert!(matches!(
+                        position.puzzle.rules[*entropy],
+                        PuzzleRule::GlobalEntropy {}
+                    ));
+                    assert!(!circles.is_empty());
+                    for &rule in circles {
+                        let PuzzleRule::Quadruple { top_left, .. } = &position.puzzle.rules[rule] else {
+                            panic!("the proof must cite a printed circle");
+                        };
+                        assert!(proof.windows.iter().any(|window| window[0] == *top_left));
+                    }
+                    overlaps.insert(technique);
+                    scopes.insert(proof.cells);
+                }
                 VariantEvidence::LockedDigit { clue, .. } => {
                     assert!(
                         clue.rules
@@ -175,4 +191,5 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
     assert!(overlaps.contains(&VariantTechnique::Thermometer));
     assert!(overlaps.contains(&VariantTechnique::Arrow));
     assert!(overlaps.contains(&VariantTechnique::Renban));
+    assert!(overlaps.contains(&VariantTechnique::EntropyQuadruple));
 }

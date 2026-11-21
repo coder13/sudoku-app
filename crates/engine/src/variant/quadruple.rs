@@ -60,6 +60,10 @@ impl Quadruple {
             .fold(0, |mask, &digit| mask | digit_bit(digit))
     }
 
+    pub(super) fn occurrences(&self, digit: u8) -> u8 {
+        self.digits.iter().filter(|&&printed| printed == digit).count() as u8
+    }
+
     pub(super) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
         let mut supported = [0; 4];
         self.scan::<true, false>(domains, &mut supported);

@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
-import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyDeduction, enter, isSolved, redo, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
+import { applyPuzzleGrade, needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
+import { assertEntropyQuadrupleProof } from './helpers/entropy-quadruple-truth.ts'
 import { assertGlobalEntropyProof } from './helpers/global-entropy-truth.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -24,8 +27,8 @@ const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.s
 
 for (const [id, nativePoints, nativeSteps, appPoints, appSteps, nativeDifficulty, appDifficulty] of [
   ['newman', 856, 79, 1176, 79, 'easy', 'easy'],
-  ['A2s7', 1347, 31, 1747, 47, null, null],
-  ['CJhv', 1961, 47, 2336, 63, null, null],
+  ['A2s7', 3305, 86, 7339, 161, null, 'extreme'],
+  ['CJhv', 4319, 99, 5456, 175, null, 'expert'],
   ['AdoP', 688, 31, 1612, 93, null, 'medium'],
 ] as const) {
   test(`complete Global Entropy source ${id} preserves its unique completion and honest logical path`, async () => {
@@ -62,6 +65,7 @@ for (const [id, nativePoints, nativeSteps, appPoints, appSteps, nativeDifficulty
           assert.equal(Number(source.solution[candidate.cell]) === candidate.digit, 'place' in action)
         }
         if (proof.technique === 'global-entropy') assertGlobalEntropyProof(source.puzzle, proof)
+        if (proof.technique === 'entropy-quadruple') assertEntropyQuadrupleProof(source.puzzle, proof)
         const next = applyDeduction(played, proof.actions, variantHouseMasks(source.puzzle, valuesOf(played)))
         assert.notEqual(next, played, `${id}: ${proof.technique} must apply to the preceding position`)
         played = next
@@ -221,4 +225,105 @@ test('preferring Global Entropy first does not claim an exclusive opening when a
   assert.equal(competing.length, 1)
   await assert.rejects(runEngine({ ...request, technique: { id: 'global-entropy', mode: 'exclusive-opening' } }),
     error => error instanceof Error && 'code' in error && error.code === 'search-limit')
+})
+
+test('mixed entropy and Quadruple proofs work through exercises, Hint pages, and Technique Finder', async () => {
+  const technique = 'entropy-quadruple'
+  const catalog = await runEngine({ type: 'techniques', variant: true })
+  const entry = catalog.techniques.find(entry => entry.id === technique)!
+  assert.equal(entry.cost, 58)
+  assert.equal(entry.difficulty, 'hard')
+  assert.equal(entry.requiresUniqueSolution, false)
+  const examples = await runEngine({ type: 'practice-examples', variant: true, technique })
+  assert.equal(examples.length, 3)
+  const windows = []
+  for (const exercise of examples) {
+    const { deduction, position, suggestion } = exercise
+    const counted = countLineSolutions(position.puzzle)
+    assert.equal(counted.count, 1)
+    assertVariantCompletion(position.puzzle, counted.solution!)
+    assertEntropyQuadrupleProof(position.puzzle, deduction, true)
+    assert.equal(deduction.evidence.type, 'entropy-areas')
+    windows.push(deduction.evidence.windows.length)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'check-practice-move', position, technique, action: suggestion }), deduction)
+    assert.ok('eliminate' in suggestion)
+    const { cell, digit } = suggestion.eliminate
+    assert.notEqual(Number(counted.solution![cell]), digit)
+    const eliminations = Array<number>(81).fill(0)
+    eliminations[cell] = 1 << (digit - 1)
+    const remaining = await runEngine({ type: 'variant', operation: 'hints', position: { ...position, eliminations },
+      techniqueOrder: [technique], limit: 0xffff_ffff })
+    assert.ok(remaining.every(step => step.actions.every(action => JSON.stringify(action) !== JSON.stringify(suggestion))))
+    for (const rule of ['global-entropy', 'quadruple']) {
+      const puzzle = { ...position.puzzle, rules: position.puzzle.rules!.filter(item => item.type !== rule) }
+      assert.deepEqual(await runEngine({ type: 'variant', operation: 'hints', position: { puzzle }, techniqueOrder: [technique] }), [])
+    }
+  }
+  assert.deepEqual(windows, [1, 2, 2])
+  const fresh = await runEngine({ type: 'generate-practice-example', variant: true, technique, seed: 172,
+    exclude: examples[0].position.puzzle.givens })
+  assertEntropyQuadrupleProof(fresh.position.puzzle, fresh.deduction)
+  assert.notEqual(fresh.position.puzzle.givens, examples[0].position.puzzle.givens)
+
+  const source = sources.find((item: { url: string }) => item.url.endsWith('A2s7'))
+  const { game } = await prepareImportedPuzzle(source.code)
+  const position = variantPosition(game.variant!)
+  const proofs = await runEngine({ type: 'variant', operation: 'hints', position, techniqueOrder: [technique], limit: 0xffff_ffff })
+  assert.ok(proofs.length > 1)
+  proofs.forEach(proof => assertEntropyQuadrupleProof(source.puzzle, proof))
+  const order = await getVariantPlayOrder()
+  const disabled = order.filter(id => id !== technique)
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: disabled })
+  assert.equal(trace.rating.status, 'stalled')
+  assert.equal(trace.rating.points, 1747)
+  assert.equal(trace.steps.length, 47)
+  const first = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: [technique, ...disabled] })
+  assert.equal(first.steps[0].technique, technique)
+  const full = await puzzleHints(game, 'all', technique)
+  const initial = await puzzleHints(game, 'all', technique, 172)
+  try {
+    const choices = [...initial.choices]
+    while (choices.length < initial.available) choices.push(...(await puzzleHintPage(game.variant, 172, choices.length)).choices)
+    assert.deepEqual(choices, full.choices)
+    assert.equal(choices.length, proofs.length)
+    assert.ok('variant' in choices[0].evidence)
+    assert.match(choices[0].evidence.variant?.description ?? '', /circle .*low digit .* medium digit .*high digit/)
+  } finally {
+    await runEngine({ type: 'release-hints', collection: 172 })
+  }
+  const scan = watchTechniqueScan(valuesOf(game), undefined, position)
+  try {
+    assert.equal(await scan.count(technique), new Set(proofs.flatMap(proof => proof.actions.map(action => JSON.stringify(action)))).size)
+  } finally {
+    scan.close()
+  }
+})
+
+test('old mixed-rule imports receive the new grade once and keep player rating history', async () => {
+  const source = sources.find((item: { url: string }) => item.url.endsWith('CJhv'))
+  const preview = await prepareImportedPuzzle(source.code)
+  assert.equal(preview.game.difficulty, 'expert')
+  assert.equal(preview.game.score, 5456)
+  const legacy = { ...preview.game, difficulty: null, score: null, variantRatingVersion: undefined, ratingAttempt: undefined }
+  assert.equal(needsPuzzleGrade(legacy), true)
+  const refreshed = await prepareImportedPuzzle(source.code, [legacy], { deferRating: true })
+  assert.equal(refreshed.ratingPending, true)
+  assert.ok(preview.grade)
+  const regraded = applyPuzzleGrade(legacy, preview.grade)
+  assert.equal(regraded.difficulty, 'expert')
+  assert.equal(regraded.score, 5456)
+  assert.equal(needsPuzzleGrade(regraded), false)
+  assert.equal(needsPuzzleGrade(restartGame(regraded)), false)
+  const reloaded = readGame(regraded.id, JSON.stringify(regraded))
+  assert.ok(reloaded)
+  assert.equal(needsPuzzleGrade(reloaded), false)
+  const retained = await prepareImportedPuzzle(source.code, [reloaded], { deferRating: true })
+  assert.equal(retained.ratingPending, undefined)
+  assert.equal(retained.game.score, 5456)
+  const historicalAttempt = { ...regraded.ratingAttempt!, grade: {
+    ...preview.grade, difficulty: 'extreme' as const, points: 6000, scoringVersion: 9,
+  } }
+  const migrated = applyPuzzleGrade({ ...legacy, ratingAttempt: historicalAttempt }, preview.grade)
+  assert.deepEqual(migrated.ratingAttempt, historicalAttempt)
+  assert.equal(migrated.score, 5456)
 })

@@ -63,6 +63,7 @@ export type Game = {
   difficulty?: Difficulty | null
   score?: number | null
   fogRatingVersion?: number
+  variantRatingVersion?: number
   variant?: VariantGame
   grid?: SizedGrid
   algebraic?: AlgebraicGame
@@ -142,6 +143,7 @@ export function restartGame(game: Game): Game {
     ...(game.uniquenessProof && { uniquenessProof: game.uniquenessProof }),
     score: game.score,
     ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
+    ...(game.variantRatingVersion !== undefined && { variantRatingVersion: game.variantRatingVersion }),
     variant: game.variant,
     algebraic: game.algebraic,
     sized: game.sized,

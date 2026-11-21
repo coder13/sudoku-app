@@ -29,7 +29,7 @@ pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
     VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEvidence, VariantExclusionPremise,
-    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantLineHouseProof,
+    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource, VariantEntropyAreaProof, VariantLineHouseProof,
     VariantLogicalError, VariantRating, VariantReplay, VariantSumPairProof, VariantTechnique, VariantTrace,
 };
 use pairs::{PairClue, PairCompiler, ParityClue, PositiveSum, positive_sums};
