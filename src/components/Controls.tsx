@@ -55,6 +55,7 @@ type Props = {
   canUndo: boolean
   canRedo: boolean
   historyDisabled?: boolean
+  hideUndo?: boolean
   disabled: boolean
   draft: boolean
   inputSize: number
@@ -181,7 +182,7 @@ export function Controls(props: Props) {
 
       <div className="controls-content">
           <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
-            <IconButton className="history-button" onClick={props.undo} disabled={historyDisabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></IconButton>
+            {!props.hideUndo && <IconButton className="history-button" onClick={props.undo} disabled={historyDisabled || !props.canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></IconButton>}
             <IconButton className="history-button" onClick={props.redo} disabled={historyDisabled || !props.canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></IconButton>
             {props.onCheck && <IconButton className="puzzle-check-button" onClick={props.onCheck} disabled={editsDisabled}
               aria-label="Check puzzle" title="Check puzzle"><Check size={20} /></IconButton>}
