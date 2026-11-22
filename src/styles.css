@@ -3931,11 +3931,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     overscroll-behavior: contain;
   }
   .mobile-completion-actions:has(.completion-undo) {
-    grid-template-columns: 48px minmax(0, 1fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-8);
   }
-  .mobile-completion-actions .completion-undo { width: 48px; min-height: 48px; }
+  .mobile-completion-actions .completion-undo { width: 48px; min-height: 48px; justify-self: start; }
   .mobile-completion-actions .completion-footer { gap: var(--space-8); }
   .mobile-completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
   .mobile-completion-actions .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }
