@@ -56,7 +56,7 @@ Vite serves the UI locally and forwards sync requests to the deployed Pages Work
 
 ## Preview a pull request
 
-The [Cloudflare Pages workflow](../.github/workflows/cloudflare-pages.yml) builds the static app and its sync Worker together on pull requests from branches in this repository. Open the run summary for the `pr-<number>.klyn-sudoku.pages.dev` link. Use that same address to pair two fresh browser profiles and confirm that a move appears on the second device without refreshing the page. The preview URL stays the same across pushes so each browser retains its device credentials.
+The [Cloudflare Pages workflow](../.github/workflows/cloudflare-pages.yml) builds and checks code on pull requests. It does not deploy during that automatic run. To deploy a preview, run the workflow manually and enter the pull request number. Open the run summary for the `pr-<number>.klyn-sudoku.pages.dev` link. The preview URL stays the same across pushes so each browser retains its device credentials. See the [preview deployment guide](deployment-previews.md) for both hosting options.
 
 Previews share the `sudoku-sync-preview` D1 database through the `DB` binding in `env.preview`. The preview and production Pages deployments bind to the existing `klyn-sudoku-sync-events` Worker. It scopes notifications by library ID. Apply pending preview migrations before testing a branch that needs them.
 
