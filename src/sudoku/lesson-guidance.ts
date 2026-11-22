@@ -166,10 +166,14 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     }
   }
   if ('multi-coloring' in evidence) {
-    const { bridge, other_bridge: otherBridge } = evidence['multi-coloring']
+    const { bridge, links, other_bridge: otherBridge } = evidence['multi-coloring']
+    const seed = [links[0].from, links[0].to]
     const candidates = [bridge.from, bridge.to]
     return {
-      start: { text: `Find two separate groups of strong links for ${bridge.from.digit}.` },
+      start: {
+        cells: seed.map(({ cell }) => cell), candidates: seed,
+        text: `Start with the two places for ${bridge.from.digit} in ${names(seed.map(({ cell }) => cell))}. Follow their strong links to color the first group.`,
+      },
       check: {
         candidates,
         cells: candidates.map(({ cell }) => cell),
