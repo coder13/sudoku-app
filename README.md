@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 6953)
-Total output lines: 218
-
 # Sudoku
 
 Play Classic, Killer, Diagonal, Jigsaw, Anti-Knight, Thermometer, Arrow, and Kropki Sudoku. Start several puzzles and switch between them at any time. The app saves each puzzle, its placed digits, candidates, and undo history in the browser.
@@ -78,7 +75,94 @@ Choose **Share puzzle → Create link** to make an unlisted link. The link conta
 
 Mini Sudoku can also be copied as 16 givens or a four-line grid. Classic puzzles can be copied as an 81-character string, a nine-line grid, a HoDoKu library line, or a link for Sudoku Exchange or sudoku.coach. Import detects puzzle codes, links, and single-puzzle text files and shows a grid preview before you save or play. It also accepts legacy hash links, Sudoku Coach `SCv7_32` codes and direct links, short Sudoku Exchange grids, f-puzzles exports, and SudokuPad links that contain an SCF or f-puzzles code.
 
-Native and shared puzzles can combine all 27 supported rule types with Jigsaw regions, including line, Clone and outside-clue families. Supported Coach and f-puzzles imports preserve their encoded rules; unsupported encoded rules reject explicitly. White and black dots keep separate negative-rule settings, and Coach Non-Consecutive puzzles preserve their white…2953 tokens truncated…iew) · [HoDoKu hints and practice](https://hodoku.dev/docs_play) · [SudokuWiki strategy families](https://www.sudokuwiki.org/Strategy_Families) · [Sudopedia technique index](https://sudopedia.sudocue.net/index.php?title=Solving_technique) · [Hodoku Revisited hints](https://hodokurevisited.com/manual/hints.html)
+Native and shared puzzles can combine all 27 supported rule types with Jigsaw regions, including line, Clone and outside-clue families. Supported Coach and f-puzzles imports preserve their encoded rules; unsupported encoded rules reject explicitly. White and black dots keep separate negative-rule settings, and Coach Non-Consecutive puzzles preserve their white-dot exceptions. New Puzzle offers only calibrated levels for each released family. See the [family inventory and generation status](SUDOKU_ENGINE_UI_PARITY.md) for current choices and remaining recipes.
+
+Preview and Play explain every active rule. Mixed puzzles retain their full definitions when saved or shared. After completing one, choose another puzzle from the puzzle chooser. The app reports rules it cannot play. A 9×9 Sudoku Coach Current State code restores placed digits, center and corner candidates, player cell and candidate colors, and Quick Draw annotations. A HoDoKu library line opens the starting puzzle.
+
+### Player rating and Auto difficulty
+
+Your player rating estimates your Sudoku skill. It starts at 855 and learns from the puzzles you play at Auto and fixed difficulties. Faster solves without hints can earn a small bonus based on your recent times at the same difficulty. Slow solves earn regular credit.
+
+Choose Auto in New puzzle to let the app adjust the difficulty as you play. Auto starts at Medium. With little history, a fast solve without hints can move you up quickly, and requests for hints at multiple positions can move you down. As the app learns from more puzzles, it adjusts one difficulty at a time. The grid and results show the actual difficulty of the puzzle you play.
+
+In Auto, use Solve all singles to finish an Easy puzzle without hints and move on to Medium with your rating intact. On harder puzzles, you can clear singles and get credit for solving the rest yourself.
+
+Open Puzzles, then Statistics to see your rating, next Auto difficulty, and progress with each solving technique. The app credits the simplest technique that explains each move it can match. Classic Auto can pick a puzzle that gives you another chance to use a technique you have needed hints for. Your progress stays in your browser.
+
+## Project layout
+
+TanStack Start prerenders the app to static pages and assets in `dist/client`. Netlify or any static file server can publish that directory. The deployed app does not need an API or application server.
+
+The same Rust engine in `crates/engine` runs in the browser as WebAssembly. A browser worker runs it off the UI thread. The engine generates puzzles, counts solutions up to two, and lists legal candidates. The build caches the page, assets, and engine so that play, generation, and import from puzzle codes work offline after the first load.
+
+See the [engine guide](crates/engine/README.md) for Rust, WebAssembly, and batch usage. Run `cargo doc --locked -p sudoku-app-engine --all-features --no-deps --open` to browse the API reference.
+
+The [engine roadmap](SUDOKU_ENGINE_ROADMAP.md) records integration priorities and the criteria for additions. The [build guide](crates/engine/BUILD_FEATURES.md) describes optional Cargo capabilities and smaller Wasm profiles.
+
+Client code calls `runEngine()` in `src/sudoku/engine.ts` for ratings, solve traces, hints, deduction searches, and targeted generation. Requests can supply a technique order by ID. If a request omits the order, the client uses the saved solver profile or the engine default.
+
+## Engine requirements
+
+A candidate is a possible digit for a cell. A deduction places a digit or removes one or more candidates. A technique is the rule that proves a deduction. These requirements apply to classic 9 × 9 Sudoku.
+
+### Configurable logical solver
+
+The user must be able to enable or disable each supported technique and change the order of enabled techniques. The solver must accept any combination, including an empty set. It must keep candidate removals as it applies each deduction.
+
+For each move, the solver must try enabled techniques in the chosen order. It must apply a deduction from the first technique that can change the board or its candidates. Then it must start again at the top of the order. If that technique finds several deductions, the solver must choose consistently for the same position and configuration.
+
+If the solver finishes, it must return the completed grid and the ordered list of deductions. Each deduction must include the technique, the evidence, and the placements or removals. If the solver runs out of allowed deductions, it must report that it stalled and return the partial list. The engine must report conflicts, no solution, multiple solutions, and search limits as separate outcomes. It can use exact search to check whether the puzzle has one solution. Every deduction in the logical solve must come from an enabled technique.
+
+The `logical-solve` request takes givens in `values`, optional placed digits in `entries`, and established candidate removals in `eliminations`. Pass `includePositions: true` to include the starting position and the position after each deduction, even in a stalled trace. The client helper `replayStep(trace, index)` returns the position before a zero-based step, the deduction with its evidence, and the position after it.
+
+On desktop, open **Puzzle actions → Show solution** to review a solve from the givens. Choose a step to see its grid and highlights. The solution uses the saved solver profile and can show a partial solve if that profile runs out of moves. Select **Return to puzzle** to resume play. The replay requests `includeStepDetails: true` for each position’s candidates and the next move’s proof pattern.
+
+### Puzzle scoring
+
+Each technique must have a point cost and a difficulty tier. A puzzle rating must start from the givens and use the chosen solver configuration. The score must add the cost of each deduction once, even when that deduction changes several candidates. Difficulty follows the hardest technique tier. Accumulated points never promote a puzzle. See [the ten difficulty levels](docs/difficulty-levels.md) for generation and learning rules.
+
+The ten levels run from Beginner to Impossible, with Medium selected for a new player. The scoring policy is version 11. Existing point costs remain diagnostic values and do not define difficulty bands.
+
+A complete rating must include the score, difficulty, hardest technique, and a count of deductions by technique. It must identify the solver configuration and version of the scoring rules so the rating can be reproduced. If the solve stalls or reaches a limit, any subtotal must be marked as partial.
+
+### Ranked hints
+
+The `hints` request returns up to `limit` distinct moves from the current grid. The default is ten, and a single available move is included. Hints rank by technique difficulty, then point cost. Smaller patterns, including shorter chains, break ties. Among equally sized proofs of one technique, fewer distinct houses come first. When several enabled techniques prove the same move, the engine keeps the first proof in that ranking.
+
+During play, **View hint** shows up to ten ranked moves. **Analyze all moves** lists every ranked move from the enabled hint techniques.
+
+The **Cell references** preference applies to hint actions, explanations, proof steps and solution lists for Classic and variants. Concise uses `r1c6`; Verbose uses `row 1, column 6`. Automatic uses concise references for techniques rated Tricky or higher and verbose references for easier techniques. The app formats the existing typed proof locally when this preference changes. Lesson diagrams keep their established notation when no preference is supplied.
+
+Both `hints` and `next-deduction` accept established candidate removals and `disabledTechniques`. The app stores these hint preferences separately from the solver profile. To hide singles, disable `full-house`, `naked-single`, and `hidden-single`. To hide Locked Candidates, disable `pointing` and `claiming`.
+
+The `deductions` request searches the selected techniques on the current grid and respects established candidate removals. Proofs with the same complete set of actions share one move. Each proof identifies the houses, cells, and candidates in its pattern. The move lists the cells and candidates named by its actions. An empty technique selection returns no moves.
+
+### Trainer design
+
+Hints open on the easiest enabled move. Each move starts at the technique, and the player controls the remaining reveals.
+
+1. **Technique.** Name the technique.
+2. **Digits.** Show the digits to look for.
+3. **Location.** Highlight the houses or cells that form the pattern.
+4. **Explanation.** Show why the pattern forces the move. Mark a placement with a ring and a removal with a strike. The player can then choose **Apply hint**.
+
+The `next-deduction` request returns the easiest move from the same ranking as `hints`, even when it is the only choice. It accepts the current grid and any established candidate removals. It returns `null` when no move is available. The `technique` field identifies the rule, `pattern` gives the locations and candidates to inspect, and `deduction` gives the evidence and all placements or removals. For targeted practice, use `deductions` to look up all proofs for the requested technique.
+
+Ask the engine about the current entries and previously applied candidate removals. If every empty cell has candidates, use those candidates for the proof and preview. If some cells have no candidates, use the engine's candidates and the applied removals. Dismissing the hint restores the player's candidate display. The same grid can render lesson diagrams from the evidence in a verified example.
+
+Store applied removals with each undo position and read older saves as having no removals. If a player clears or replaces an entry, clear the applied removals because a proof can depend on that entry. Adding a digit keeps prior removals. Candidate generation uses the remaining masks. Applying a hint changes the entries or removals and updates the notes in one undoable move.
+
+A request belongs to its puzzle and position, including candidate edits and applied removals. A change invalidates the proof and any pending response. If the engine finds a conflict or an impossible position, explain what the player can review. If it finds no supported move, say so. Give a separate retry state for a search limit or engine error.
+
+The lesson library uses ordered blocks in `src/sudoku/lessons.ts`. An article can place paragraphs, headings, lists, board diagrams, and practice puzzles in any order. A diagram can specify a region with a starting row, starting column, height, and width. The diagram keeps the original board coordinates.
+
+Practice starts from a verified version of the example with rows and columns swapped and digits renamed. The engine checks that version at build time and exports the moves proved by the requested technique. Each practice puzzle accepts any one of those moves. Later exercises can use new positions to test recognition.
+
+For practice on a specific puzzle, send `practice-position` with the same starting position and technique order as `logical-solve`, plus the target technique ID in `technique`. It returns the position just before the first use of that technique, including placed digits, all established candidate removals, and the remaining candidates. It returns `null` when the solve path has no such step, including when the technique is disabled.
+
+Send the practice position, target technique ID, and a proposed placement or removal in `action` to `check-practice-move`. The engine returns a proof from the target technique if any of its deductions supports the submitted action. It returns `null` for a move that has no proof from that technique.
+
+Sudoku Coach informed the lesson and practice flow. HoDoKu shows how a solver can reveal a move in stages. SudokuWiki and Sudopedia give alternate names and rule definitions. Hodoku Revisited shows how a walkthrough can keep the reason and the answer on the same board. [Sudoku Coach techniques](https://sudoku.coach/en/learn/technique-overview) · [HoDoKu hints and practice](https://hodoku.dev/docs_play) · [SudokuWiki strategy families](https://www.sudokuwiki.org/Strategy_Families) · [Sudopedia technique index](https://sudopedia.sudocue.net/index.php?title=Solving_technique) · [Hodoku Revisited hints](https://hodokurevisited.com/manual/hints.html)
 
 The play screen fills singles with one `solve-singles` request. Classic and variant requests accept optional `displayedCandidates` masks and respect saved candidate removals.
 
