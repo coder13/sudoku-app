@@ -348,7 +348,9 @@ fn accept(
     }
     if let Some(GenerationRating::Difficulty(level)) = options.rating {
         if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 { return None; }
-        let lower: Vec<_> = VariantTechnique::all().filter(|t| t.difficulty() < level).collect();
+        let lower: Vec<_> = VariantTechnique::all()
+            .filter(|t| !t.is_optional() && t.difficulty() < level)
+            .collect();
         if !lower.is_empty() {
             let (_, easier) = position.run_with_compiled(compiled, &lower, |_| {}).ok()?;
             if matches!(easier.status, SolveStatus::Solved(_)) { return None; }

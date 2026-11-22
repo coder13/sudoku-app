@@ -225,6 +225,12 @@ impl serde::Serialize for VariantTechnique {
 }
 
 impl VariantTechnique {
+    /// Optional Classic techniques are available to custom profiles but do not
+    /// participate in the default variant difficulty search.
+    pub(super) const fn is_optional(self) -> bool {
+        matches!(self, Self::Classic(Technique::MultiColoring))
+    }
+
     /// Every technique that can be requested in a variant profile.
     pub fn all() -> impl Iterator<Item = Self> {
         Self::DEFAULT_ORDER
@@ -1450,7 +1456,7 @@ impl CompiledVariant {
         };
         self.first_proof(&position, selected).is_some()
             && VariantTechnique::all()
-                .filter(|&technique| technique != selected)
+                .filter(|&technique| technique != selected && !technique.is_optional())
                 .all(|technique| self.first_proof(&position, technique).is_none())
     }
 
