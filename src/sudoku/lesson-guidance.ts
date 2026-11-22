@@ -165,6 +165,21 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
       follow: 'Which other digit appears in every petal? Look for an outside cell that sees each possible copy of that digit.',
     }
   }
+  if ('multi-coloring' in evidence) {
+    const { bridge, other_bridge: otherBridge } = evidence['multi-coloring']
+    const candidates = [bridge.from, bridge.to]
+    return {
+      start: { text: `Find two separate groups of strong links for ${bridge.from.digit}.` },
+      check: {
+        candidates,
+        cells: candidates.map(({ cell }) => cell),
+        text: `Check the weak link between ${candidateName(bridge.from)} and ${candidateName(bridge.to)}.`,
+      },
+      follow: otherBridge
+        ? 'Can one color in the first group rule out both colors in the second group?'
+        : 'Find an uncolored candidate that sees at least one candidate of the opposite color in each group.',
+    }
+  }
   if ('coloring' in evidence) {
     const { links, colors: [blue] } = evidence.coloring
     const local = links.find(link => 'cell' in link.source)

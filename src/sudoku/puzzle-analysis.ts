@@ -21,7 +21,7 @@ export const ANALYSIS_GROUPS = [
     'franken-fish', 'mutant-fish', 'kraken-fish-1', 'kraken-fish-2',
   ] },
   { title: 'Single-digit patterns', techniques: [
-    'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring',
+    'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring', 'multi-coloring',
   ] },
   { title: 'Uniqueness', techniques: [
     'bug-plus-one', 'unique-rectangle-1', 'unique-rectangle-2', 'unique-rectangle-3',

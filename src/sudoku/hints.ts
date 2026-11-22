@@ -82,6 +82,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'renban-sum-ray-houses': 'Renban sum and shared houses',
   'renban-sum-house': 'Renban and Little Killer with a shared house',
   '3d-medusa': '3D Medusa',
+  'multi-coloring': 'Multi-Coloring',
   'non-consecutive-locked-candidates-2': 'Non-Consecutive locked candidates (2 cells)',
   'non-consecutive-locked-candidates-3': 'Non-Consecutive locked candidates (3 cells)',
   'non-consecutive-bivalue': 'Non-Consecutive bivalue',

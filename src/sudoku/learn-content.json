@@ -2875,6 +2875,61 @@
           ]
         },
         {
+          "id": "multi-coloring",
+          "title": "Multi-Coloring",
+          "summary": "Multi-Coloring compares two separate groups of strong links for one digit. A conflict between the groups can rule out an outside candidate or a whole color.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find two groups for one digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Highlight one digit. Find two groups of strong links that do not share a candidate. Within each group, give the two ends of every strong link opposite colors."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "multi-coloring"
+            },
+            {
+              "type": "heading",
+              "id": "weak-links",
+              "title": "Compare the groups"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a weak link between the groups. If either end is false, the opposite color in that group is true. At least one of the two opposite colors must be true.",
+                "Remove the digit from an outside cell that sees a candidate of each opposite color.",
+                "If one color in the first group conflicts with both colors in the second group, every candidate of that first color is false."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "multi-coloring",
+                  "title": "Multi-Coloring"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on Multi Colors",
+              "href": "https://hodoku.sourceforge.net/en/tech_col.php#mc"
+            }
+          ],
+          "difficulty": "very-hard",
+          "prerequisites": [
+            "simple-coloring",
+            "chain-basics"
+          ]
+        },
+        {
           "id": "x-chain",
           "title": "X-Chain",
           "summary": "An X-Chain follows a single digit through alternating strong and weak links. With a strong link at each end, at least one end holds the digit. Any other cell that sees both ends loses that candidate.",

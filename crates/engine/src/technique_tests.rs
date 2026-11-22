@@ -530,6 +530,20 @@ fn transpose_hint(hint: &Hint) -> Hint {
                 reason,
             }
         }
+        HintEvidence::MultiColoring {
+            groups, links, bridge, other_bridge,
+        } => HintEvidence::MultiColoring {
+            groups: groups.clone().map(|colors| {
+                colors.map(|values| {
+                    let mut values: Vec<_> = values.into_iter().map(transpose_candidate).collect();
+                    values.sort_unstable();
+                    values
+                })
+            }),
+            links: links.iter().copied().map(transpose_link).collect(),
+            bridge: transpose_link(*bridge),
+            other_bridge: other_bridge.map(transpose_link),
+        },
         HintEvidence::UniqueRectangle {
             corners,
             digits,

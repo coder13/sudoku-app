@@ -934,6 +934,17 @@ pub enum HintEvidence {
         /// Consequence that proves the placements or removals.
         reason: ColoringReason,
     },
+    /// Two separately colored groups related by one or two weak links.
+    MultiColoring {
+        /// The two colors in each of the two strong-link groups.
+        groups: [[Vec<Candidate>; 2]; 2],
+        /// Strong links within the two groups.
+        links: Vec<CandidateLink>,
+        /// Weak link between the groups, oriented from the first group to the second.
+        bridge: CandidateLink,
+        /// A second bridge refutes the first group's starting color.
+        other_bridge: Option<CandidateLink>,
+    },
     /// A rectangle using a shared digit pair under the uniqueness assumption.
     UniqueRectangle {
         /// The four corners of the rectangle.
@@ -1190,6 +1201,9 @@ impl HintEvidence {
                 proof.scopes.iter().map(|scope| scope.allowed.len()).sum()
             }
             HintEvidence::Coloring { colors, .. } => colors.iter().map(Vec::len).sum(),
+            HintEvidence::MultiColoring { groups, .. } => {
+                groups.iter().flatten().map(Vec::len).sum()
+            }
             HintEvidence::UniqueRectangle { support, .. } => match support {
                 RectangleSupport::Subset { cells, .. } => 4 + cells.len(),
                 _ => 4,

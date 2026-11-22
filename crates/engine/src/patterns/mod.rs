@@ -29,6 +29,7 @@ pub(crate) use inference_cache::RectangleInferenceCache;
 mod inference_graph;
 mod kraken;
 mod links;
+mod multi_coloring;
 mod multi_sector;
 mod overlay;
 pub(crate) use overlay::OverlaySearch;
@@ -178,6 +179,7 @@ impl<'a> PatternSearch<'a> {
             Technique::Skyscraper | Technique::TwoStringKite | Technique::EmptyRectangle => {
                 single_digit::visit(self.positions_by_digit(), technique, visit)
             }
+            Technique::MultiColoring => multi_coloring::visit(&self.candidate_links(), visit),
             Technique::SimpleColoring | Technique::Medusa => {
                 coloring::visit(&self.candidate_links(), technique, visit)
             }
