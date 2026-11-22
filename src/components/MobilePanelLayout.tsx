@@ -1,6 +1,6 @@
 import { IconButton } from './Button'
 import { Component, Fragment, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { GripVertical, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, GripVertical, Hand, X } from 'lucide-react'
 import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
 import { MobileInputResizeHandle } from './MobileInputResizeHandle'
 import { animatePanelLayout, MotionSurface, motionDuration, usePresentContent } from './Presence'
@@ -8,6 +8,7 @@ import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
 } from '../sudoku/mobile-panels'
+import { MOBILE_PUZZLE_TOP_SPACES } from '../sudoku/preferences'
 
 type Panel = { title: string; content: ReactNode }
 type Props = {
@@ -21,6 +22,8 @@ type Props = {
   inputTabCount?: number
   savedInputHeight?: number
   onInputHeightChange?: (height: number | undefined) => void
+  puzzleTopSpace?: number
+  onPuzzleTopSpaceChange?: (space: number) => void
   hintSwipe?: HintSwipeActions
 }
 type Hold = { pointerId: number; x: number; y: number; timer: number }
@@ -41,6 +44,28 @@ type Drag = {
 }
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
+const REACH_PULL_DISTANCE = 120
+const ONE_HAND_DRAG_DISTANCE = 160
+const ONE_HAND_SIDE_KEY = 'sudoku-app:v1:one-hand-side'
+type OneHandSide = 'left' | 'right'
+type GridDirection = 'up' | 'right' | 'down' | 'left'
+
+function readOneHandSide(): OneHandSide {
+  try { return localStorage.getItem(ONE_HAND_SIDE_KEY) === 'left' ? 'left' : 'right' }
+  catch { return 'right' }
+}
+
+function snapPuzzleTopSpace(value: number) {
+  const maximum = MOBILE_PUZZLE_TOP_SPACES.at(-1) ?? 256
+  const bounded = Math.max(0, Math.min(maximum, value))
+  return MOBILE_PUZZLE_TOP_SPACES.reduce((closest, space) =>
+    Math.abs(space - bounded) < Math.abs(closest - bounded) ? space : closest, MOBILE_PUZZLE_TOP_SPACES[0] ?? 0)
+}
+
+function clampPuzzleTopSpace(value: number) {
+  const maximum = MOBILE_PUZZLE_TOP_SPACES.at(-1) ?? 256
+  return Math.max(0, Math.min(maximum, Math.round(value)))
+}
 
 type MotionProps = {
   root: RefObject<HTMLDivElement | null>
@@ -117,6 +142,8 @@ class MobilePanelMotion extends Component<MotionProps, Record<string, never>, La
 export function MobilePanelLayout(props: Props) {
   const [order, setOrder] = useState(readMobilePanelOrder)
   const [dragView, setDragView] = useState<DragView | null>(null)
+  const [oneHanded, setOneHanded] = useState(false)
+  const [oneHandSide, setOneHandSide] = useState<OneHandSide>(readOneHandSide)
   const [announcement, setAnnouncement] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -125,6 +152,8 @@ export function MobilePanelLayout(props: Props) {
   const previousFocus = useRef<HTMLElement | null>(null)
   const hold = useRef<Hold | null>(null)
   const drag = useRef<Drag | null>(null)
+  const oneHandDrag = useRef<{ pointerId: number; startY: number; startSpace: number } | null>(null)
+  const suppressOneHandClick = useRef(false)
   const scrollFrame = useRef<number | null>(null)
   const orderRef = useRef(order)
   const latest = useRef(props)
@@ -306,6 +335,129 @@ export function MobilePanelLayout(props: Props) {
     })
   }
 
+  function toggleOneHanded() {
+    if (suppressOneHandClick.current) {
+      suppressOneHandClick.current = false
+      return
+    }
+    const next = !oneHanded
+    setOneHanded(next)
+    setAnnouncement(next ? `One-handed controls moved to the ${oneHandSide} side.` : 'One-handed mode closed.')
+  }
+
+  function startOneHandDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!event.isPrimary || event.button !== 0 || props.blocked || props.rearranging) return
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    const page = root.current?.closest<HTMLElement>('.standard-workspace-page')
+    const inlineSpace = Number.parseFloat(page ? getComputedStyle(page).getPropertyValue('--puzzle-top-space') : '')
+    const currentSpace = Number.isFinite(inlineSpace) ? inlineSpace : props.puzzleTopSpace ?? 0
+    oneHandDrag.current = { pointerId: event.pointerId, startY: event.clientY, startSpace: currentSpace }
+    event.currentTarget.dataset.pulling = 'true'
+    event.currentTarget.style.setProperty('--one-hand-pull-progress', '0')
+  }
+
+  function applyPuzzleTopSpace(space: number) {
+    const page = root.current?.closest<HTMLElement>('.standard-workspace-page')
+    if (!page) return
+    if (space > 0) {
+      page.setAttribute('data-puzzle-top-space', '')
+      page.style.setProperty('--puzzle-top-space', `${space}px`)
+    } else {
+      page.removeAttribute('data-puzzle-top-space')
+      page.style.removeProperty('--puzzle-top-space')
+    }
+  }
+
+  function updateOneHandDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const current = oneHandDrag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    event.preventDefault()
+    const distance = Math.max(0, event.clientY - current.startY)
+    const progress = Math.min(1, distance / ONE_HAND_DRAG_DISTANCE)
+    const spaceDelta = Math.max(-REACH_PULL_DISTANCE, Math.min(REACH_PULL_DISTANCE, event.clientY - current.startY))
+    applyPuzzleTopSpace(clampPuzzleTopSpace(current.startSpace + spaceDelta))
+    event.currentTarget.style.setProperty('--one-hand-pull-progress', String(progress))
+    if (distance >= REACH_PULL_DISTANCE) event.currentTarget.dataset.pullStage = 'one-handed'
+    else if (Math.abs(event.clientY - current.startY) > MOVE_THRESHOLD) event.currentTarget.dataset.pullStage = 'space'
+    else {
+      delete event.currentTarget.dataset.pulling
+      delete event.currentTarget.dataset.pullStage
+    }
+    if (Math.abs(event.clientY - current.startY) > MOVE_THRESHOLD) event.currentTarget.dataset.pulling = 'true'
+  }
+
+  function finishOneHandDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const current = oneHandDrag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const distance = event.clientY - current.startY
+    oneHandDrag.current = null
+    delete event.currentTarget.dataset.pulling
+    delete event.currentTarget.dataset.pullStage
+    event.currentTarget.style.removeProperty('--one-hand-pull-progress')
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    const spaceDelta = Math.max(-REACH_PULL_DISTANCE, Math.min(REACH_PULL_DISTANCE, distance))
+    const nextSpace = snapPuzzleTopSpace(current.startSpace + spaceDelta)
+    applyPuzzleTopSpace(nextSpace)
+    if (nextSpace !== current.startSpace) latest.current.onPuzzleTopSpaceChange?.(nextSpace)
+    if (distance >= ONE_HAND_DRAG_DISTANCE) {
+      setOneHanded(true)
+      setAnnouncement(`One-handed controls moved to the ${oneHandSide} side.`)
+      suppressOneHandClick.current = true
+      requestAnimationFrame(() => { suppressOneHandClick.current = false })
+    } else if (Math.abs(distance) > MOVE_THRESHOLD) {
+      suppressOneHandClick.current = true
+      requestAnimationFrame(() => { suppressOneHandClick.current = false })
+    }
+  }
+
+  function cancelOneHandDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const current = oneHandDrag.current
+    if (current?.pointerId !== event.pointerId) return
+    oneHandDrag.current = null
+    delete event.currentTarget.dataset.pulling
+    delete event.currentTarget.dataset.pullStage
+    event.currentTarget.style.removeProperty('--one-hand-pull-progress')
+    applyPuzzleTopSpace(current.startSpace)
+  }
+
+  function switchOneHandSide() {
+    const next = oneHandSide === 'right' ? 'left' : 'right'
+    setOneHandSide(next)
+    setAnnouncement(`One-handed controls moved to the ${next} side.`)
+    try { localStorage.setItem(ONE_HAND_SIDE_KEY, next) } catch { /* The side stays active for this session. */ }
+  }
+
+  function moveGridSelection(direction: GridDirection) {
+    const grid = root.current?.querySelector<HTMLElement>('.sudoku-grid')
+    const cells = [...(grid?.querySelectorAll<HTMLElement>('[data-cell][tabindex]') ?? [])]
+      .filter((cell) => !cell.closest('[inert]'))
+    const active = cells.find((cell) => cell.tabIndex === 0) ?? cells.find((cell) => cell.getAttribute('aria-selected') === 'true')
+    if (!active) return
+    const origin = active.getBoundingClientRect()
+    const originX = origin.left + origin.width / 2
+    const originY = origin.top + origin.height / 2
+    const vector = {
+      up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0],
+    }[direction]
+    let nearest: HTMLElement | undefined
+    let nearestScore = Infinity
+    for (const cell of cells) {
+      if (cell === active) continue
+      const rect = cell.getBoundingClientRect()
+      const dx = rect.left + rect.width / 2 - originX
+      const dy = rect.top + rect.height / 2 - originY
+      const main = dx * vector[0] + dy * vector[1]
+      const cross = Math.abs(dx * vector[1] - dy * vector[0])
+      const score = main + cross * 3
+      if (main > 0 && score < nearestScore) {
+        nearest = cell
+        nearestScore = score
+      }
+    }
+    nearest?.click()
+  }
+
   useEffect(() => {
     function pointerDown(event: PointerEvent) {
       if (hold.current && event.pointerId !== hold.current.pointerId) cancelHold()
@@ -376,7 +528,8 @@ export function MobilePanelLayout(props: Props) {
 
   const layout = <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
     data-fit-hint={props.withHint && props.resizableInput && !props.rearranging || undefined}
-    data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
+    data-rearranging={props.rearranging || undefined} data-one-handed={oneHanded || undefined} data-one-hand-side={oneHandSide}
+    style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
     onClickCapture={(event) => {
@@ -412,6 +565,26 @@ export function MobilePanelLayout(props: Props) {
             '--mobile-panel-row': index,
             ...(moving ? { transform: `translate(${dragView.x}px, ${dragView.y}px)` } : {}),
           } as CSSProperties}>
+          {id === 'puzzle' && <div className="one-hand-entry" data-no-panel-hold>
+            <button type="button" className="one-hand-pull-handle" disabled={props.blocked || props.rearranging}
+              aria-label={oneHanded ? 'Exit one-handed mode' : 'Pull down to lower the puzzle. Pull farther to enter one-handed mode, or tap to enter.'}
+              aria-pressed={oneHanded} title={oneHanded ? 'One-handed mode is on' : 'Drag down to add space above the puzzle. Pull farther for one-handed controls.'}
+              onClick={toggleOneHanded} onPointerDown={startOneHandDrag} onPointerMove={updateOneHandDrag}
+              onPointerUp={finishOneHandDrag} onPointerCancel={cancelOneHandDrag}
+              onLostPointerCapture={cancelOneHandDrag}>
+              <span className="one-hand-grip" aria-hidden="true"><ArrowDown size={14} /></span>
+              <span>{oneHanded ? 'One-handed mode on' : 'Pull to lower puzzle · farther for one hand'}</span>
+              <span className="one-hand-pull-track" aria-hidden="true"><span /></span>
+            </button>
+          </div>}
+          {id === 'input' && oneHanded && <div className="one-hand-toolbar" data-no-panel-hold>
+            <span className="one-hand-label"><Hand size={16} aria-hidden="true" /> {oneHandSide === 'right' ? 'Right hand' : 'Left hand'}</span>
+            <button type="button" className="one-hand-switch" onClick={switchOneHandSide}
+              aria-label={`Move one-handed controls to the ${oneHandSide === 'right' ? 'left' : 'right'} side`}>
+              Switch side
+            </button>
+            <IconButton variant="quiet" aria-label="Exit one-handed mode" onClick={toggleOneHanded}><X size={18} aria-hidden="true" /></IconButton>
+          </div>}
           <div className="mobile-panel-content" inert={props.rearranging} aria-hidden={props.rearranging || undefined}>
             {resizeEdge && <MobileInputResizeHandle inputId={inputId} edge={resizeEdge}
               disabled={props.blocked || props.rearranging} withHint={props.withHint}
@@ -422,6 +595,12 @@ export function MobilePanelLayout(props: Props) {
               {panel.content}
             </MobileHintSwipe> : panel.content}
           </div>
+          {id === 'input' && oneHanded && root.current?.querySelector('.sudoku-grid') && <div className="one-hand-navigation" role="group" aria-label="Move selected cell">
+            <IconButton variant="quiet" aria-label="Move selected cell left" onClick={() => moveGridSelection('left')}><ArrowLeft size={19} aria-hidden="true" /></IconButton>
+            <IconButton variant="quiet" aria-label="Move selected cell up" onClick={() => moveGridSelection('up')}><ArrowUp size={19} aria-hidden="true" /></IconButton>
+            <IconButton variant="quiet" aria-label="Move selected cell down" onClick={() => moveGridSelection('down')}><ArrowDown size={19} aria-hidden="true" /></IconButton>
+            <IconButton variant="quiet" aria-label="Move selected cell right" onClick={() => moveGridSelection('right')}><ArrowRight size={19} aria-hidden="true" /></IconButton>
+          </div>}
           {props.rearranging && <div className="mobile-panel-editor" data-panel-editor>
             <button type="button" className="mobile-panel-drag" aria-label={`Move ${panel.title.toLowerCase()} card`}
               aria-describedby="mobile-panel-instructions" onPointerDown={(event) => startDrag(id, event)}

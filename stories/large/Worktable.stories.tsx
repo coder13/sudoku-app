@@ -245,6 +245,11 @@ export const PuzzlePanelToggles: Story = {
     await expect(options).toHaveFocus()
   },
 }
+
+export const OneHandedMode: Story = {
+  args: { game: inProgress, games: [inProgress] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
 export const DesktopInsightToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   play: async ({ canvas, canvasElement, userEvent }) => {
