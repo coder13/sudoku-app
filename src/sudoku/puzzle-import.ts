@@ -14,7 +14,7 @@ export { decodeCoachSix } from './puzzle-import/sudoku-coach.ts'
 export { MAX_IMPORT_LENGTH } from './puzzle-import/shared.ts'
 
 const importers = [sudokuCoach, sudokuExchange, sudokuPad, hoDoKu, fPuzzles] as const satisfies readonly PuzzleImporter[]
-export type ImportFormat = typeof importers[number]['format'] | NativeImport['format'] | 'Text grid'
+export type ImportFormat = typeof importers[number]['format'] | NativeImport['format'] | 'Text grid' | 'Manual entry'
 export type ImportedPuzzle = ImportResult & { format: ImportFormat }
 
 type LinkReader = {
