@@ -1,7 +1,7 @@
 import { fogView } from '../sudoku/fog'
 import { Button, IconButton, buttonClassName } from './Button'
 import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
-import { ArrowLeft, Bookmark, Camera, FileUp, ImageUp, Play } from 'lucide-react'
+import { ArrowLeft, Bookmark, Camera, Clipboard, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
 import { createEngineSession } from '../sudoku/engine'
@@ -9,12 +9,13 @@ import { hasUniquenessProof, uniquenessKey, valuesOf } from '../sudoku/game'
 import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
+import type { VariantRule, VariantPuzzle } from '../sudoku/engine'
 import { MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
 import { findImportAttempt, prepareImportedPuzzle, PuzzleVerificationError, type PhotoProgress, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
 import { originalSolutionStatus } from '../sudoku/puzzle-validation'
 import { roomStore } from '../sudoku/storage'
-import { variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { variantIdForPuzzle, variantName, variantRuleDescriptions, WINDOKU_REGIONS } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { Board } from './Board'
 import { Modal } from './Modal'
@@ -82,8 +83,11 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const [verificationError, setVerificationError] = useState<PuzzleVerificationError['status']>()
   const [photo, setPhoto] = useState<Blob>()
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [manualMode, setManualMode] = useState(false)
+  const [manualGivens, setManualGivens] = useState('0'.repeat(81))
+  const [manualRulesets, setManualRulesets] = useState<string[]>([])
   const showingPreview = Boolean(preview || decoded)
-  const title = showingPreview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : 'Import puzzle'
+  const title = showingPreview ? 'Preview puzzle' : photo ? 'Confirm image' : cameraOpen ? 'Photograph puzzle' : manualMode ? 'Create puzzle' : 'Import puzzle'
 
   useEffect(() => () => pending.current?.abort(), [])
   useEffect(() => {
@@ -106,7 +110,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     return () => { current = false; engine.close() }
   }, [preview])
 
-  async function check(source: string | File, fromPhoto?: PhotoImportOptions) {
+  async function check(source: string | File, fromPhoto?: PhotoImportOptions, manualEntry = false) {
     if (pending.current) return
     const work = new AbortController()
     pending.current = work
@@ -125,7 +129,8 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         photoProgress: fromPhoto?.progress,
       })
       if (!work.signal.aborted) {
-        setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot', startFresh: fromPhoto.startFresh } : result)
+        setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot', startFresh: fromPhoto.startFresh }
+          : manualEntry ? { ...result, format: 'Manual entry' } : result)
         setDecoded(undefined)
       }
     } catch (reason) {
@@ -137,6 +142,22 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       if (pending.current === work) pending.current = null
       if (!work.signal.aborted) setBusy(false)
     }
+  }
+
+  function checkManualPuzzle() {
+    const rules: VariantRule[] = []
+    if (manualRulesets.includes('diagonal')) rules.push(
+      { type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
+    if (manualRulesets.includes('anti-knight')) rules.push({ type: 'anti-knight' })
+    if (manualRulesets.includes('anti-king')) rules.push({ type: 'anti-king' })
+    if (manualRulesets.includes('non-consecutive')) rules.push({ type: 'non-consecutive' })
+    if (manualRulesets.includes('windoku')) rules.push(...WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })))
+    if (manualRulesets.includes('global-entropy')) rules.push({ type: 'global-entropy' })
+    const puzzle: VariantPuzzle = { version: 1, givens: manualGivens, ...(rules.length && { rules }) }
+    const input = rules.length
+      ? `#variant=${encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))}`
+      : manualGivens
+    void check(input, undefined, true)
   }
 
   function saveAndContinue(puzzle: PuzzlePreview) {
@@ -164,6 +185,26 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     if (!image) return
     event.preventDefault()
     usePhoto(image)
+  }
+
+  async function readClipboardImage() {
+    if (busy || showingPreview || photo || cameraOpen) return
+    setError('')
+    setStatus('')
+    try {
+      if (!navigator.clipboard?.read) throw new Error('Clipboard image access is not available here.')
+      const items = await navigator.clipboard.read()
+      for (const item of items) {
+        const type = item.types.find(value => value.startsWith('image/'))
+        if (type) {
+          usePhoto(await item.getType(type))
+          return
+        }
+      }
+      setError('No image found on the clipboard. Copy an image or paste it with Ctrl+V.')
+    } catch {
+      setError('Could not read an image from the clipboard. Paste it with Ctrl+V or choose an image file.')
+    }
   }
 
   function editPreview() {
@@ -255,8 +296,11 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         <Button type="submit" variant="primary" disabled={busy || !input.trim()}>{busy ? 'Checking puzzle…' : 'Preview puzzle'}</Button>
       </div>
       <section className="import-photo-source" aria-label="Import from an image">
-        <p>Paste a screenshot here, choose an image, or take a photo of a Classic Sudoku puzzle.</p>
+        <p>Paste a screenshot with Ctrl+V, choose an image, or take a photo of a Classic Sudoku puzzle.</p>
         <div className="import-photo-buttons">
+          <Button type="button" disabled={busy} onClick={() => void readClipboardImage()}>
+            <Clipboard size={17} aria-hidden="true" /> Paste image
+          </Button>
           <label className={buttonClassName('secondary', 'file-picker')}><ImageUp size={17} aria-hidden="true" /> Choose image
             <input type="file" accept={PHOTO_TYPES} disabled={busy} onChange={event => {
               const file = event.target.files?.[0]
@@ -278,15 +322,65 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
             }} />
         </div>
       </section>
+      <div className="import-manual-source">
+        <p>Or enter the givens yourself and choose the rules.</p>
+        <Button type="button" disabled={busy} onClick={() => setManualMode(true)}>Start with a blank grid</Button>
+      </div>
     </form>
   )
+
+  const manualEntry = <section className="manual-puzzle-entry" aria-label="Enter a puzzle">
+    <p>Enter the printed digits. Leave empty cells blank.</p>
+    <div className="photo-edit-grid" role="group" aria-label="Enter Sudoku givens">
+      {Array.from({ length: 81 }, (_, cell) => <input key={cell} id={`${id}-manual-${cell}`} value={manualGivens[cell] === '0' ? '' : manualGivens[cell]}
+        aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}`} inputMode="numeric" maxLength={1}
+        onKeyDown={event => {
+          const next = event.key === 'ArrowLeft' ? cell - 1 : event.key === 'ArrowRight' ? cell + 1
+            : event.key === 'ArrowUp' ? cell - 9 : event.key === 'ArrowDown' ? cell + 9 : -1
+          if (next >= 0 && next < 81) {
+            event.preventDefault()
+            document.getElementById(`${id}-manual-${next}`)?.focus()
+          }
+        }}
+        onChange={event => {
+          const digit = event.currentTarget.value.replace(/[^1-9]/g, '').slice(-1) || '0'
+          setManualGivens(current => `${current.slice(0, cell)}${digit}${current.slice(cell + 1)}`)
+          if (digit !== '0' && cell < 80) document.getElementById(`${id}-manual-${cell + 1}`)?.focus()
+        }} />)}
+    </div>
+    <fieldset className="manual-rulesets">
+      <legend>Rulesets</legend>
+      <p>Classic Sudoku rules always apply. Add any rules that also apply to this puzzle.</p>
+      {[
+        ['diagonal', 'X Sudoku', 'Both long diagonals contain each digit once.'],
+        ['windoku', 'Windoku', 'The four extra 3 × 3 regions contain each digit once.'],
+        ['anti-knight', 'Anti-Knight', 'Cells a knight’s move apart cannot match.'],
+        ['anti-king', 'Anti-King', 'Touching cells cannot match.'],
+        ['non-consecutive', 'Non-Consecutive', 'Cells that share an edge cannot be consecutive.'],
+        ['global-entropy', 'Global Entropy', 'Each 2 × 2 area contains low, middle, and high digits.'],
+      ].map(([key, name, description]) => <label key={key}>
+        <input type="checkbox" checked={manualRulesets.includes(key)} onChange={event => {
+          const checked = event.currentTarget.checked
+          setManualRulesets(current => checked ? [...current, key] : current.filter(value => value !== key))
+        }} />
+        <span><strong>{name}</strong><small>{description}</small></span>
+      </label>)}
+    </fieldset>
+    {error && <p className="form-error" role="alert">{error}</p>}
+    <div className="dialog-actions spread">
+      <Button type="button" onClick={() => { setManualMode(false); setError('') }}>Back to import</Button>
+      <Button type="button" variant="primary" disabled={busy || !/[1-9]/.test(manualGivens)} onClick={checkManualPuzzle}>
+        {busy ? 'Checking puzzle…' : 'Check puzzle'}
+      </Button>
+    </div>
+  </section>
 
   const content = <>
     {puzzlePreview}
     {photo && <PhotoPuzzleReview image={photo} visible={!showingPreview} onBack={backToInput}
       onCheck={(givens, options) => void check(givens, options)} onEdit={() => setError('')} checking={busy} checkError={error} />}
     {cameraOpen && <PuzzleCamera onCapture={usePhoto} onCancel={backToInput} />}
-    {!showingPreview && !photo && !cameraOpen && source}
+    {!showingPreview && !photo && !cameraOpen && (manualMode ? manualEntry : source)}
   </>
 
   if (fullPage) return (

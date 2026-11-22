@@ -2972,8 +2972,19 @@ svg { flex-shrink: 0; }
 .import-preview-actions .import-edit { margin-inline-end: auto; }
 
 .import-photo-source { border-top: 1px solid var(--border); margin-top: var(--space-12); padding-top: var(--space-12); }
+.import-manual-source { border-top: 1px solid var(--border); margin-top: var(--space-12); padding-top: var(--space-12); }
 .import-photo-buttons, .photo-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .import-photo-buttons { margin-top: var(--space-8); }
+.manual-puzzle-entry { display: grid; gap: var(--space-12); }
+.manual-puzzle-entry > .photo-edit-grid { width: min(100%, 430px); justify-self: center; }
+.manual-rulesets { display: grid; gap: var(--space-8); margin: 0; padding: var(--space-12); border: 1px solid var(--border); border-radius: 8px; }
+.manual-rulesets legend { padding-inline: var(--space-4); font-weight: 700; }
+.manual-rulesets > p { margin: 0; color: var(--muted); font-size: 0.875rem; }
+.manual-rulesets label { display: flex; align-items: flex-start; gap: var(--space-8); padding: var(--space-8); border-radius: 6px; }
+.manual-rulesets label:has(input:checked) { background: var(--surface-muted); }
+.manual-rulesets label > input { margin-top: 0.2em; }
+.manual-rulesets label > span { display: grid; gap: 2px; }
+.manual-rulesets small { color: var(--muted); line-height: 1.4; }
 .photo-import:not([hidden]) { display: grid; gap: var(--space-12); }
 .photo-import p { font-size: 0.875rem; line-height: 1.5; color: var(--muted); }
 .photo-import .form-error { color: var(--ink); border-inline-start: 3px solid #ba4458; padding-inline-start: var(--space-8); }
@@ -3920,11 +3931,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     overscroll-behavior: contain;
   }
   .mobile-completion-actions:has(.completion-undo) {
-    grid-template-columns: 48px minmax(0, 1fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-8);
   }
-  .mobile-completion-actions .completion-undo { width: 48px; min-height: 48px; }
+  .mobile-completion-actions .completion-undo { width: 48px; min-height: 48px; justify-self: start; }
   .mobile-completion-actions .completion-footer { gap: var(--space-8); }
   .mobile-completion-actions .button { min-height: 44px; padding-inline: var(--space-6); font-size: 0.8125rem; }
   .mobile-completion-actions .completion-actions .completion-resume { min-height: 56px; padding-inline: var(--space-10); }

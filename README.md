@@ -35,7 +35,7 @@ Each stall record contains the givens, entries, and 81 candidate-removal masks i
 
 ### Deploy a preview
 
-Open [Actions → Cloudflare Pages](https://github.com/coder13/sudoku-app/actions/workflows/cloudflare-pages.yml), choose **Run workflow** on `main`, and enter the number of an open pull request from this repository. The run summary links to the preview. Run the workflow again after pushing changes to refresh the preview URL.
+See the [preview deployment guide](docs/deployment-previews.md) for Cloudflare and Netlify instructions. The Cloudflare pull request run checks code but does not deploy. Start the workflow manually to publish a pull request preview.
 
 Pull requests run checks automatically. Pushes to `main` deploy to production. Leaving the pull request number blank in a manual run redeploys `main`.
 
