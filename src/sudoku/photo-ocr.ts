@@ -84,5 +84,9 @@ export async function readPuzzlePhoto(pixels: Uint8ClampedArray, signal: AbortSi
   } finally {
     await worker?.terminate()
   }
-  return { givens, review, candidates: candidates?.map((mask, cell) => cells[cell].canvas ? 0 : mask) }
+  const coloredDigits = givens.flatMap((digit, cell) => digit !== '0' && cells[cell].colored ? [cell] : [])
+  const neutralDigits = givens.filter(digit => digit !== '0').length - coloredDigits.length
+  // A board with notes and enough neutral clues can use ink color to suggest player entries.
+  const entryCells = new Set(candidates && neutralDigits >= 10 ? coloredDigits : [])
+  return { givens, review, entryCells, candidates: candidates?.map((mask, cell) => cells[cell].canvas ? 0 : mask) }
 }

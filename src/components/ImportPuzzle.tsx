@@ -10,7 +10,7 @@ import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { PHOTO_TYPES } from '../sudoku/photo-image'
 import { MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
-import { findImportAttempt, prepareImportedPuzzle, PuzzleVerificationError, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { findImportAttempt, prepareImportedPuzzle, PuzzleVerificationError, type PhotoProgress, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
 import { originalSolutionStatus } from '../sudoku/puzzle-validation'
 import { roomStore } from '../sudoku/storage'
@@ -18,7 +18,7 @@ import { variantName, variantRuleDescriptions } from '../sudoku/variants'
 import { MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { Board } from './Board'
 import { Modal } from './Modal'
-import { PhotoPuzzleReview } from './PhotoPuzzleReview'
+import { PhotoPuzzleReview, type PhotoImportOptions } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
@@ -26,7 +26,7 @@ function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-type PreviewProgress = { signal: AbortSignal; onDecoded: (puzzle: ImportedPuzzle) => void; photoCandidates?: number[] }
+type PreviewProgress = { signal: AbortSignal; onDecoded: (puzzle: ImportedPuzzle) => void; photoProgress?: PhotoProgress }
 
 function preparePreview(input: string, progress: PreviewProgress): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games, { ...progress, deferRating: true })
@@ -106,7 +106,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     return () => { current = false; engine.close() }
   }, [preview])
 
-  async function check(source: string | File, fromPhoto = false, photoCandidates?: number[]) {
+  async function check(source: string | File, fromPhoto?: PhotoImportOptions) {
     if (pending.current) return
     const work = new AbortController()
     pending.current = work
@@ -122,10 +122,10 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       const result = await onPreview(text, {
         signal: work.signal,
         onDecoded: puzzle => { if (!work.signal.aborted) setDecoded(puzzle) },
-        photoCandidates,
+        photoProgress: fromPhoto?.progress,
       })
       if (!work.signal.aborted) {
-        setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot' } : result)
+        setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot', startFresh: fromPhoto.startFresh } : result)
         setDecoded(undefined)
       }
     } catch (reason) {
@@ -222,7 +222,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       </ul>}
       <div className="dialog-actions import-preview-actions">
         <Button type="button" className="import-edit" onClick={editPreview}>
-          {photo ? 'Edit givens' : 'Edit input'}
+          {photo ? 'Edit scanned digits' : 'Edit input'}
         </Button>
         <Button type="button" disabled={!preview} onClick={() => { if (preview) saveAndContinue(preview) }}>
           <Bookmark size={17} aria-hidden="true" /> Save and import another
@@ -284,7 +284,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const content = <>
     {puzzlePreview}
     {photo && <PhotoPuzzleReview image={photo} visible={!showingPreview} onBack={backToInput}
-      onCheck={(givens, candidates) => void check(givens, true, candidates)} onEdit={() => setError('')} checking={busy} checkError={error} />}
+      onCheck={(givens, options) => void check(givens, options)} onEdit={() => setError('')} checking={busy} checkError={error} />}
     {cameraOpen && <PuzzleCamera onCapture={usePhoto} onCancel={backToInput} />}
     {!showingPreview && !photo && !cameraOpen && source}
   </>
@@ -293,7 +293,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     <main className={`puzzles-page puzzles-subscreen import-page${photo && !showingPreview ? ' import-image-view' : ''}`} aria-labelledby={`${id}-heading`} onPaste={pasteImage}>
       <header className="puzzles-page-heading">
         <IconButton type="button" className="puzzles-back"
-          aria-label={showingPreview && photo ? 'Back to detected givens' : showingPreview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
+          aria-label={showingPreview && photo ? 'Back to image review' : showingPreview || photo || cameraOpen ? 'Back to puzzle input' : 'Leave puzzle import'}
           onClick={showingPreview ? editPreview : photo || cameraOpen ? backToInput : close}><ArrowLeft size={21} /></IconButton>
         <h1 id={`${id}-heading`} ref={heading} tabIndex={-1}>{title}</h1>
       </header>

@@ -248,7 +248,8 @@ export function photoCandidateMasks(pixels: Uint8ClampedArray): number[] | undef
       const y = ((top + bottom) / 2 + NOTE_INSET + 0.5) / NOTE_SLOT
       const column = Math.floor(x)
       const row = Math.floor(y)
-      if (Math.abs(x - column - 0.5) > 0.24 || Math.abs(y - row - 0.5) > 0.24) continue
+      // Some grids inset the outer pencil slots closer to the cell center.
+      if (Math.abs(x - column - 0.5) > 0.28 || Math.abs(y - row - 0.5) > 0.28) continue
       slots.add(row * 3 + column)
     }
     if (slots.size > 1) {
@@ -381,7 +382,7 @@ export function photoCell(pixels: Uint8ClampedArray, cell: number, pencilMarks?:
   if (!glyph) return { review: !pencilMarks && strong.some(mark => mark.pixels.length >= 18) }
 
   const colored = glyph.pixels.filter(point => chroma[point] >= 35).length > glyph.pixels.length * 0.55
-  return { canvas: glyphImage(glyph), alternate: () => glyphImage(secondary ?? glyph, true),
+  return { canvas: glyphImage(glyph), colored, alternate: () => glyphImage(secondary ?? glyph, true),
     grayscale: () => grayscaleGlyph(secondary ?? glyph, softTone),
     review: colored || !primary || strong.some(mark => mark !== primary && centeredGlyph([mark]) !== undefined) }
 }

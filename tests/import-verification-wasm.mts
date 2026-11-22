@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { enter, hasUniquenessProof, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
-import { prepareImportedPuzzle, PuzzleVerificationError } from '../src/sudoku/puzzle-preview.ts'
+import { findImportAttempt, prepareImportedPuzzle, PuzzleVerificationError } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
@@ -109,22 +109,32 @@ test('only a matching saved proof can be reused, and Play edits preserve it', as
   assert.equal(editedSave.uniquenessProof, undefined)
 })
 
-test('photo pencil marks survive import as editable progress', async () => {
+test('scanned entries and candidates survive import as editable progress', async () => {
   const emptyCell = STARTER.indexOf('0')
+  const entryCell = STARTER.indexOf('0', emptyCell + 1)
   const givenCell = [...STARTER].findIndex(digit => digit !== '0')
-  const photoCandidates = Array<number>(81).fill(0)
-  photoCandidates[emptyCell] = 0b101
-  photoCandidates[givenCell] = 0b100
-  const { game, hasProgress } = await prepareImportedPuzzle(STARTER, [], { deferRating: true, photoCandidates })
+  const candidates = Array<number>(81).fill(0)
+  candidates[emptyCell] = 0b101
+  candidates[entryCell] = 0b101
+  candidates[givenCell] = 0b100
+  const entries = empty.slice(0, entryCell) + '3' + empty.slice(entryCell + 1)
+  const { game, hasProgress } = await prepareImportedPuzzle(STARTER, [], { deferRating: true, photoProgress: { entries, candidates } })
   assert.equal(hasProgress, true)
   assert.equal(game.givens, STARTER)
-  assert.equal(game.position.entries, empty)
+  assert.equal(game.position.entries, entries)
   assert.equal(game.position.corner[emptyCell], 0b101)
+  assert.equal(game.position.corner[entryCell], 0)
   assert.equal(game.position.corner[givenCell], 0)
   assert.equal(game.candidatesInitialized, true)
   const saved = readGame(game.id, JSON.stringify(game))
   assert.deepEqual(saved?.position.corner, game.position.corner)
+  assert.equal(saved?.position.entries, entries)
   assert.equal(enter(game, [emptyCell], 'corner', 3).position.corner[emptyCell], 1)
+
+  const fresh = await prepareImportedPuzzle(STARTER, [game], { deferRating: true })
+  assert.equal(fresh.game.position.entries, empty)
+  assert.ok(fresh.game.position.corner.every(mask => mask === 0))
+  assert.equal(findImportAttempt([game], { ...fresh, startFresh: true }), undefined)
 })
 
 test('failed uniqueness checks preserve the decoded grid and distinguish why play is unavailable', async ({ mock }) => {

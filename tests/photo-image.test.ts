@@ -32,6 +32,7 @@ test('flags colored digits for review without flagging neutral digits on highlig
       paint(pixels, left + 25, 40, 16, 6, ink)
       const result = photoCell(pixels, cell)
       assert.ok(result.canvas, `cell ${cell} has a glyph`)
+      assert.equal(result.colored, cell === 1, `ink color for cell ${cell}`)
       assert.equal(result.review, cell === 1, `review flag for cell ${cell}`)
     }
     paint(pixels, 192, 0, 64, 64, [255, 153, 0, 255])
@@ -45,7 +46,7 @@ test('flags colored digits for review without flagging neutral digits on highlig
 test('reads occupied pencil slots and preserves missing marks', () => {
   const pixels = new Uint8ClampedArray(boardSize ** 2 * 4).fill(255)
   const ink = [90, 90, 90, 255]
-  const slots = [10, 32, 53]
+  const slots = [16, 32, 48]
   const marks = [[1, 3, 7], [2, 5], [4, 8, 9], [5]]
   for (const [cell, digits] of marks.entries()) {
     for (const digit of digits) {

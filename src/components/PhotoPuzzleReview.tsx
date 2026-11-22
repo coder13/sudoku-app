@@ -3,15 +3,17 @@ import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } f
 import { candidateCount, conflictsOf } from '../sudoku/game'
 import type { PhotoCrop } from '../sudoku/photo-crop'
 import { cropPuzzlePhoto, openPuzzlePhoto } from '../sudoku/photo-image'
+import type { PhotoProgress } from '../sudoku/puzzle-preview'
 import { PhotoCropEditor } from './PhotoCropEditor'
 
 type Photo = Awaited<ReturnType<typeof openPuzzlePhoto>>
-type Review = { givens: string[]; candidates?: number[]; review: Set<number>; url: string; crop: PhotoCrop }
+type Review = { digits: string[]; entryCells: Set<number>; candidates?: number[]; review: Set<number>; url: string; crop: PhotoCrop }
+export type PhotoImportOptions = { startFresh?: true; progress?: PhotoProgress }
 
 export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, checkError, visible }: {
   image: Blob
   onBack: () => void
-  onCheck: (givens: string, candidates?: number[]) => void
+  onCheck: (givens: string, options: PhotoImportOptions) => void
   onEdit: () => void
   checking: boolean
   checkError: string
@@ -20,7 +22,6 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   const [photo, setPhoto] = useState<Photo>()
   const [crop, setCrop] = useState<PhotoCrop>()
   const [result, setResult] = useState<Review>()
-  const [keepCandidates, setKeepCandidates] = useState(true)
   const [adjusting, setAdjusting] = useState(false)
   const [error, setError] = useState('')
   const [reading, setReading] = useState(false)
@@ -47,14 +48,14 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       const { readPuzzlePhoto } = await import('../sudoku/photo-ocr')
       work.signal.throwIfAborted()
       const { canvas, pixels } = cropPuzzlePhoto(source.canvas, selection)
-      const { givens, candidates, review } = await readPuzzlePhoto(pixels, work.signal)
+      const { givens: digits, entryCells, candidates, review } = await readPuzzlePhoto(pixels, work.signal)
       if (!work.signal.aborted) {
-        if (automatic && givens.filter(digit => digit !== '0').length < 10) {
+        if (automatic && digits.filter(digit => digit !== '0').length < 10) {
           setError('Only a few digits came through. Check the crop and try again.')
           return
         }
         setActiveCell(review.values().next().value ?? 0)
-        setResult({ givens, candidates, review, url: canvas.toDataURL('image/jpeg', 0.93), crop: selection })
+        setResult({ digits, entryCells, candidates, review, url: canvas.toDataURL('image/jpeg', 0.93), crop: selection })
         setAdjusting(false)
       }
     } catch (reason) {
@@ -104,11 +105,11 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   function changeCell(index: number, digit: string) {
     setResult(current => {
       if (!current) return current
-      const givens = [...current.givens]
+      const digits = [...current.digits]
       const review = new Set(current.review)
-      givens[index] = digit
+      digits[index] = digit
       review.delete(index)
-      return { ...current, givens, review }
+      return { ...current, digits, review }
     })
     onEdit()
   }
@@ -124,23 +125,47 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
     event.currentTarget.parentElement?.querySelector<HTMLInputElement>(`[data-cell="${next}"]`)?.focus()
   }
 
-  const conflicts = reviewing && conflictsOf(reviewing.givens.join(''))
-  const candidates = reviewing?.candidates?.map((mask, cell) => reviewing.givens[cell] === '0' ? mask : 0)
+  function changeEntry(isEntry: boolean) {
+    setResult(current => {
+      if (!current) return current
+      const entryCells = new Set(current.entryCells)
+      if (isEntry) entryCells.add(activeCell)
+      else entryCells.delete(activeCell)
+      const review = new Set(current.review)
+      review.delete(activeCell)
+      return { ...current, entryCells, review }
+    })
+    onEdit()
+  }
+
+  const conflicts = reviewing && conflictsOf(reviewing.digits.join(''))
+  const candidates = reviewing?.candidates?.map((mask, cell) => reviewing.digits[cell] === '0' ? mask : 0)
   const pencilMarkCount = candidates?.reduce((sum, mask) => sum + candidateCount(mask), 0) ?? 0
+  const entries = reviewing?.digits.map((digit, cell) => reviewing.entryCells.has(cell) ? digit : '0').join('') ?? ''
+  const givens = reviewing?.digits.map((digit, cell) => reviewing.entryCells.has(cell) ? '0' : digit).join('') ?? ''
+  const entryCount = entries.replaceAll('0', '').length
+  const progressCounts = [
+    entryCount ? `${entryCount} player ${entryCount === 1 ? 'entry' : 'entries'}` : '',
+    pencilMarkCount ? `${pencilMarkCount} ${pencilMarkCount === 1 ? 'candidate' : 'candidates'}` : '',
+  ].filter(Boolean).join(' and ')
+  const canMarkEntry = reviewing && (reviewing.candidates !== undefined || reviewing.entryCells.size > 0)
+  const canPreview = !checking && /[1-9]/.test(givens)
   return <section className="photo-import" hidden={!visible}>
     {reviewing ? <>
-      <p className="sr-only" ref={instructions} tabIndex={-1}>Compare the grid with the image and correct any digits. Check highlighted cells
-        and clear any player-placed digits. If the image shows extra rules, use a puzzle code or link.</p>
+      <p className="sr-only" ref={instructions} tabIndex={-1}>Compare the grid with the image and check highlighted cells.
+        {canMarkEntry ? ' Mark player entries with the checkbox.' : ' Clear any player entries.'}
+        {' If the image shows extra rules, use a puzzle code or link.'}</p>
       <p className="sr-only" id={keyboardHelp}>Use the arrow keys to move between cells.</p>
       <div className="photo-stage">
         <div className="photo-review">
           <img src={reviewing.url} alt="Cropped puzzle image" width={576} height={576} />
-          <div className="photo-edit-grid" role="group" aria-label="Edit Classic Sudoku givens" aria-describedby={keyboardHelp}>
-            {reviewing.givens.map((digit, cell) => (
+          <div className="photo-edit-grid" role="group" aria-label="Edit scanned Sudoku digits" aria-describedby={keyboardHelp}>
+            {reviewing.digits.map((digit, cell) => (
               <input key={cell} type="text" inputMode="numeric" autoComplete="off"
-                aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${reviewing.review.has(cell) ? ', needs review' : ''}`}
+                aria-label={`Row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}${reviewing.entryCells.has(cell) && digit !== '0' ? ', player entry' : ''}${reviewing.review.has(cell) ? ', needs review' : ''}`}
                 aria-invalid={conflicts?.has(cell) || undefined}
-                data-review={reviewing.review.has(cell) || undefined} data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
+                data-review={reviewing.review.has(cell) || undefined} data-entry={reviewing.entryCells.has(cell) || undefined}
+                data-cell={cell} tabIndex={activeCell === cell ? 0 : -1}
                 disabled={checking} value={digit === '0' ? '' : digit}
                 onFocus={event => { setActiveCell(cell); event.currentTarget.select() }}
                 onKeyDown={event => moveCell(event, cell)}
@@ -150,17 +175,21 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
         </div>
       </div>
       {checkError && <p className="form-error" role="alert">{checkError}</p>}
+      {progressCounts && <p>Detected {progressCounts}. Keep your progress or start fresh.</p>}
       <div className="dialog-actions photo-actions">
-        {pencilMarkCount > 0 && <label className="photo-candidate-option">
-          <input type="checkbox" checked={keepCandidates} disabled={checking}
-            onChange={event => { setKeepCandidates(event.currentTarget.checked); onEdit() }} />
-          Keep {pencilMarkCount} pencil {pencilMarkCount === 1 ? 'mark' : 'marks'}
+        {canMarkEntry && <label className="photo-entry-option">
+          <input type="checkbox" checked={reviewing.entryCells.has(activeCell)}
+            disabled={checking || reviewing.digits[activeCell] === '0'}
+            onChange={event => changeEntry(event.currentTarget.checked)} />
+          Selected digit is a player entry
         </label>}
         <Button type="button" disabled={checking}
           onClick={() => { setAdjusting(true); onEdit() }}>Adjust crop</Button>
-        <Button type="button" variant="primary" disabled={checking || !reviewing.givens.some(digit => digit !== '0')}
-          onClick={() => onCheck(reviewing.givens.join(''), keepCandidates && pencilMarkCount ? candidates : undefined)}>
-          {checking ? 'Checking puzzle…' : 'Preview puzzle'}
+        {progressCounts && <Button type="button" disabled={!canPreview}
+          onClick={() => onCheck(givens, { startFresh: true })}>Start fresh</Button>}
+        <Button type="button" variant="primary" disabled={!canPreview}
+          onClick={() => onCheck(givens, progressCounts ? { progress: { entries, candidates } } : {})}>
+          {checking ? 'Checking puzzle…' : entryCount ? 'Import progress' : pencilMarkCount ? 'Import candidates' : 'Preview puzzle'}
         </Button>
       </div>
     </> : <>
