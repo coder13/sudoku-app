@@ -1,13 +1,14 @@
 use super::{
-    Candidate, ControlFlow, Deduction, HintEvidence, PEERS, Technique, cell_bit, cells, coloring,
+    Candidate, ControlFlow, Deduction, HintEvidence, PEERS, Technique, bit_indices, cell_bit,
+    coloring,
     links::{CandidateLinks, candidate, weak_source},
-    report,
+    report_eliminations,
 };
 use crate::hints::{CandidateLink, LinkStrength};
 
 struct Group {
-    colors: [u128; 2],
-    peers: [u128; 2],
+    colors: [Vec<Candidate>; 2],
+    excluded: [[u128; 9]; 2],
     links: Vec<CandidateLink>,
 }
 
@@ -15,66 +16,141 @@ pub(super) fn visit(
     graph: &CandidateLinks<'_>,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
-    let mut groups: [Vec<Group>; 9] = std::array::from_fn(|_| Vec::new());
+    let mut groups = Vec::new();
     coloring::visit_components(graph, false, |component| {
-        let mut colors = [0; 2];
-        let mut peers = [0; 2];
-        for &node in component.members {
-            let cell = candidate(node).cell;
-            let color = usize::from(component.colors[node]);
-            colors[color] |= cell_bit(cell);
-            peers[color] |= PEERS[cell];
-        }
+        let group = Group::new(graph, &component);
         // A color that already contradicts itself belongs to Simple Coloring.
-        if (0..2).all(|color| colors[color] & peers[color] == 0) {
-            groups[component.members[0] % 9].push(Group {
-                colors,
-                peers,
-                links: component.links.to_vec(),
-            });
+        if group.is_consistent() {
+            groups.push(group);
         }
         ControlFlow::Continue(())
     })?;
 
-    for (digit, groups) in groups.iter().enumerate() {
-        let positions = graph.positions[digit];
-        let digit = digit as u8 + 1;
-        for (index, first) in groups.iter().enumerate() {
-            for second in &groups[index + 1..] {
-                first.compare(second, digit, positions, visit)?;
+    // 3D Medusa components use bivalue cells as additional strong links.
+    // Keep this search separate from single-digit coloring, then compare its
+    // groups with both single-digit groups and other 3D groups.
+    coloring::visit_components(graph, true, |component| {
+        let mut digits = 0u16;
+        for &node in component.members {
+            digits |= 1 << candidate(node).digit;
+        }
+        if digits.count_ones() < 2 {
+            return ControlFlow::Continue(());
+        }
+        let group = Group::new(graph, &component);
+        if group.is_consistent() {
+            groups.push(group);
+        }
+        ControlFlow::Continue(())
+    })?;
+
+    for (index, first) in groups.iter().enumerate() {
+        for second in &groups[index + 1..] {
+            if first.overlaps(second) {
+                continue;
             }
+            first.compare(second, graph, visit)?;
         }
     }
     ControlFlow::Continue(())
 }
 
 impl Group {
+    fn new(graph: &CandidateLinks<'_>, component: &coloring::Component<'_>) -> Self {
+        let mut colors: [Vec<Candidate>; 2] = std::array::from_fn(|_| Vec::new());
+        let mut excluded = [[0; 9]; 2];
+        for &node in component.members {
+            let value = candidate(node);
+            let color = usize::from(component.colors[node]);
+            colors[color].push(value);
+            excluded[color][usize::from(value.digit - 1)] |= PEERS[value.cell];
+            let own_digit = 1 << (value.digit - 1);
+            for digit in bit_indices(graph.masks[value.cell] & !own_digit) {
+                excluded[color][digit] |= cell_bit(value.cell);
+            }
+        }
+        for color in &mut colors {
+            color.sort_unstable();
+        }
+        Self {
+            colors,
+            excluded,
+            links: component.links.to_vec(),
+        }
+    }
+
+    fn is_consistent(&self) -> bool {
+        self.colors.iter().all(|color| {
+            color.iter().enumerate().all(|(index, &first)| {
+                color[index + 1..]
+                    .iter()
+                    .all(|&second| weak_source(first, second).is_none())
+            })
+        })
+    }
+
+    fn overlaps(&self, other: &Self) -> bool {
+        self.colors.iter().flatten().any(|candidate| {
+            other
+                .colors
+                .iter()
+                .flatten()
+                .any(|other| candidate == other)
+        })
+    }
+
     fn compare(
         &self,
         other: &Self,
-        digit: u8,
-        positions: u128,
+        graph: &CandidateLinks<'_>,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
-        let ignored = self.colors[0] | self.colors[1] | other.colors[0] | other.colors[1];
-        let conflicts = [0, 1].map(|a| [0, 1].map(|b| self.peers[a] & other.colors[b]));
+        let conflicts = std::array::from_fn(|a| {
+            std::array::from_fn(|b| {
+                self.colors[a].iter().find_map(|&from| {
+                    other.colors[b].iter().find_map(|&to| {
+                        weak_source(from, to).map(|source| CandidateLink {
+                            from,
+                            to,
+                            strength: LinkStrength::Weak,
+                            source,
+                        })
+                    })
+                })
+            })
+        });
 
         // If one color conflicts with both alternatives in the other group,
         // every candidate of that color is false.
-        self.visit_wraps(other, digit, conflicts, visit)?;
-        let reverse = [0, 1].map(|b| [0, 1].map(|a| other.peers[b] & self.colors[a]));
-        other.visit_wraps(self, digit, reverse, visit)?;
+        self.visit_wraps(other, conflicts, visit)?;
+        let reverse = std::array::from_fn(|b| {
+            std::array::from_fn(|a| {
+                conflicts[a][b].map(|link| CandidateLink {
+                    from: link.to,
+                    to: link.from,
+                    strength: link.strength,
+                    source: link.source,
+                })
+            })
+        });
+        other.visit_wraps(self, reverse, visit)?;
+
+        let mut colored = [0u128; 9];
+        for candidate in self.colors.iter().chain(&other.colors).flatten() {
+            colored[usize::from(candidate.digit - 1)] |= cell_bit(candidate.cell);
+        }
 
         for (a, row) in conflicts.iter().enumerate() {
-            for (b, &conflict) in row.iter().enumerate() {
-                if conflict == 0 {
-                    continue;
-                }
-                // The linked colors cannot both be true. At least one of
-                // their opposite colors must therefore be true.
-                let targets = positions & self.peers[1 - a] & other.peers[1 - b] & !ignored;
-                report(visit, Technique::MultiColoring, targets, digit, || {
-                    self.evidence(other, digit, self.bridge(a, conflict, digit), None)
+            for (b, bridge) in row.iter().enumerate() {
+                let Some(bridge) = bridge else { continue };
+                let targets = std::array::from_fn(|digit| {
+                    graph.positions[digit]
+                        & self.excluded[1 - a][digit]
+                        & other.excluded[1 - b][digit]
+                        & !colored[digit]
+                });
+                report_eliminations(visit, Technique::MultiColoring, targets, || {
+                    self.evidence(other, *bridge, None)
                 })?;
             }
         }
@@ -84,62 +160,32 @@ impl Group {
     fn visit_wraps(
         &self,
         other: &Self,
-        digit: u8,
-        conflicts: [[u128; 2]; 2],
+        conflicts: [[Option<CandidateLink>; 2]; 2],
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
         for (color, [first, second]) in conflicts.into_iter().enumerate() {
-            if first == 0 || second == 0 {
+            let (Some(first), Some(second)) = (first, second) else {
                 continue;
+            };
+            let mut targets = [0u128; 9];
+            for candidate in &self.colors[color] {
+                targets[usize::from(candidate.digit - 1)] |= cell_bit(candidate.cell);
             }
-            report(
-                visit,
-                Technique::MultiColoring,
-                self.colors[color],
-                digit,
-                || {
-                    self.evidence(
-                        other,
-                        digit,
-                        self.bridge(color, first, digit),
-                        Some(self.bridge(color, second, digit)),
-                    )
-                },
-            )?;
+            report_eliminations(visit, Technique::MultiColoring, targets, || {
+                self.evidence(other, first, Some(second))
+            })?;
         }
         ControlFlow::Continue(())
-    }
-
-    fn bridge(&self, color: usize, targets: u128, digit: u8) -> CandidateLink {
-        let to = Candidate {
-            cell: targets.trailing_zeros() as usize,
-            digit,
-        };
-        let from = Candidate {
-            cell: (self.colors[color] & PEERS[to.cell]).trailing_zeros() as usize,
-            digit,
-        };
-        CandidateLink {
-            from,
-            to,
-            strength: LinkStrength::Weak,
-            source: weak_source(from, to).expect("bridge joins peers"),
-        }
     }
 
     fn evidence(
         &self,
         other: &Self,
-        digit: u8,
         bridge: CandidateLink,
         other_bridge: Option<CandidateLink>,
     ) -> HintEvidence {
         HintEvidence::MultiColoring {
-            groups: [self, other].map(|group| {
-                group
-                    .colors
-                    .map(|color| cells(color).map(|cell| Candidate { cell, digit }).collect())
-            }),
+            groups: [self, other].map(|group| group.colors.clone()),
             links: self.links.iter().chain(&other.links).copied().collect(),
             bridge,
             other_bridge,

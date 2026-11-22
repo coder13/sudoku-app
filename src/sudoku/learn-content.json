@@ -2877,17 +2877,17 @@
         {
           "id": "multi-coloring",
           "title": "Multi-Coloring",
-          "summary": "Multi-Coloring compares two separate groups of strong links for one digit. A conflict between the groups can rule out an outside candidate or a whole color.",
+          "summary": "Multi-Coloring compares two separate groups of strong links. A conflict between the groups can rule out an outside candidate or a whole color.",
           "blocks": [
             {
               "type": "heading",
               "id": "where-to-start",
-              "title": "Find two groups for one digit"
+              "title": "Find two groups of strong links"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Highlight one digit. Find two groups of strong links that do not share a candidate. Within each group, give the two ends of every strong link opposite colors."
+                "For single-digit Multi-Coloring, highlight one digit and follow its strong links. For the 3D Medusa form, also follow strong links through bivalue cells, even when the digits differ. Keep the two groups separate and give linked candidates opposite colors."
               ]
             },
             {

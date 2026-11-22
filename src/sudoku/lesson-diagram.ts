@@ -424,7 +424,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const bridges = otherBridge ? [bridge, otherBridge] : [bridge]
     const describeConflict = (from: Candidate, to: Candidate) => {
       const house = sharedHouse([from.cell, to.cell])
-      return `${capital(nameCandidate(from))} conflicts with ${nameCandidate(to)}${house ? ` in ${houseName(house)}` : ''}.`
+      const location = from.cell === to.cell ? ' in the same cell' : house ? ` in ${houseName(house)}` : ''
+      return `${capital(nameCandidate(from))} conflicts with ${nameCandidate(to)}${location}.`
     }
     const opposite = [left[1 - leftColor], right[1 - rightColor]]
     const blockers = opposite.flatMap(color => color.find(candidate => candidatesConflict(candidate, first)) ?? [])
@@ -448,7 +449,7 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       links: [...links, ...bridges].map(({ from, to, strength }) => ({
         from, to, color: patternColor, dashed: strength === 'weak',
       })),
-      description: 'The solid links form two groups for the same digit. In each group, one color marks the true candidates.',
+      description: 'The solid links form two groups. Links can connect the same digit or cross digits through bivalue cells. In each group, one color marks the true candidates.',
       ...explainSteps(reasonSteps),
     }
   }

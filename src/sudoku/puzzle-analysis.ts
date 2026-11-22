@@ -21,7 +21,7 @@ export const ANALYSIS_GROUPS = [
     'franken-fish', 'mutant-fish', 'kraken-fish-1', 'kraken-fish-2',
   ] },
   { title: 'Single-digit patterns', techniques: [
-    'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring', 'multi-coloring',
+    'skyscraper', 'two-string-kite', 'empty-rectangle', 'simple-coloring',
   ] },
   { title: 'Uniqueness', techniques: [
     'bug-plus-one', 'unique-rectangle-1', 'unique-rectangle-2', 'unique-rectangle-3',
@@ -29,7 +29,7 @@ export const ANALYSIS_GROUPS = [
     'hidden-rectangle', 'unique-loop',
   ] },
   { title: 'Chains and coloring', techniques: [
-    '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
+    '3d-medusa', 'multi-coloring', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
     'grouped-continuous-nice-loop', 'firework-aic', 'tridagon-aic',
     'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop',

@@ -169,10 +169,13 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
     const { bridge, links, other_bridge: otherBridge } = evidence['multi-coloring']
     const seed = [links[0].from, links[0].to]
     const candidates = [bridge.from, bridge.to]
+    const usesMultipleDigits = new Set(evidence['multi-coloring'].groups.flat(2).map(({ digit }) => digit)).size > 1
     return {
       start: {
         cells: seed.map(({ cell }) => cell), candidates: seed,
-        text: `Start with the two places for ${bridge.from.digit} in ${names(seed.map(({ cell }) => cell))}. Follow their strong links to color the first group.`,
+        text: usesMultipleDigits
+          ? `Start with the strong link between ${candidateName(seed[0])} and ${candidateName(seed[1])}. Give them opposite colors, then follow strong links to color the first group.`
+          : `Start with the two places for ${bridge.from.digit} in ${names(seed.map(({ cell }) => cell))}. Follow their strong links to color the first group.`,
       },
       check: {
         candidates,
