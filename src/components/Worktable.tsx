@@ -2326,6 +2326,7 @@ export function Worktable({
   const chainsPanel = grid ? <p className="analysis-empty">Open Techniques to explore deductions on this grid.</p>
     : <ChainsPanel sketch={sketch} onToggleDrawing={toggleChainDrawing} onApply={applyChainEdits} applyFailed={failedChainActions === sketch.allActions} onChooseColors={() => setChainColorsOpen(true)}
       shortcuts={shortcuts} unavailable={chainUnavailable} inspection={chainInspection} compact={mobile}
+      eliminations={{ shown: sketch.showEliminations, toggle: sketch.toggleEliminations }}
     strongLinks={{ shown: showStrongLinks, hasHighlights: strongLinkMask !== 0, count: strongLinks.count,
       toggle: () => {
         if (!showStrongLinks) {

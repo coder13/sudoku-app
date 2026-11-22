@@ -23,6 +23,7 @@ type Props = {
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'applyEdits'>
   compact?: boolean
   strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
+  eliminations?: { shown: boolean; toggle: () => void }
   unavailable?: string
   inspection?: ChainInspection
 }
@@ -83,20 +84,21 @@ export function ChainColorsDialog({ open, first, second, onSelect, onClose, onEd
   </Modal>
 }
 
-function ChainResults({ proofs, onPreview }: {
-  proofs: readonly ChainProof[]; onPreview: (proof: ChainProof | null) => void
+function ChainResults({ proofs, onPreview, showEliminations }: {
+  proofs: readonly ChainProof[]; onPreview: (proof: ChainProof | null) => void; showEliminations: boolean
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<ChainProof | null>(null)
   const [focused, setFocused] = useState<ChainProof | null>(null)
   const preview = hovered ?? focused
-  const visiblePreview = preview && proofs.includes(preview) ? preview : null
+  const visibleProofs = proofs.filter(({ actions }) => showEliminations || !actions.some(action => 'eliminate' in action))
+  const visiblePreview = preview && visibleProofs.includes(preview) ? preview : null
   useLayoutEffect(() => {
     onPreview(visiblePreview)
     return () => onPreview(null)
   }, [onPreview, visiblePreview])
   const groups = new Map<string, ChainProof[]>()
-  for (const proof of proofs) {
+  for (const proof of visibleProofs) {
     const group = groups.get(proof.title) ?? []
     group.push(proof)
     groups.set(proof.title, group)
@@ -227,7 +229,7 @@ function ChainActionsMenu({ actions }: {
   </>
 }
 
-export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, compact, strongLinks, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, compact, strongLinks, eliminations, unavailable, inspection }: Props) {
   const chainLabelId = useId()
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
@@ -298,6 +300,9 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
             title={`Apply deductions from all chains (${applyKey})`} aria-keyshortcuts={applyKey} onClick={onApply}>
             Apply edits
           </Button>
+          {eliminations && <Button variant="quiet" aria-pressed={eliminations.shown} onClick={eliminations.toggle}>
+            {eliminations.shown ? 'Hide eliminations' : 'Show eliminations'}
+          </Button>}
           {strongLinks && <Button aria-pressed={strongLinks.shown} onClick={strongLinks.toggle}>Show strong links</Button>}
         </div>
       </div>
@@ -306,12 +311,15 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         <p role="status">{strongLinkStatus}</p>
       </div>}
       <ul className="chain-list" aria-label="Drawn chains">
-        {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths }, index) => {
+        {sketch.sketches.map(({ id, color, secondColor, hidden, edges, types, paths, chains, medusas }, index) => {
           const name = `Chain ${index + 1}`
           const selected = id === active.id
+          const hasHiddenElimination = !eliminations?.shown && [...chains, ...medusas]
+            .some(proof => proof.actions.some(action => 'eliminate' in action))
+          const visibleTypes = hasHiddenElimination ? [] : types
           const visibilityLabel = `${hidden ? 'Show' : 'Hide'} ${name.toLowerCase()}`
           const deleteLabel = `Delete ${name.toLowerCase()}`
-          const typeId = types.length ? `${chainLabelId}-${id}-type` : undefined
+          const typeId = visibleTypes.length ? `${chainLabelId}-${id}-type` : undefined
           const notationId = paths.length ? `${chainLabelId}-${id}-notation` : undefined
           const description = [typeId, notationId].filter(Boolean).join(' ') || undefined
           const VisibilityIcon = hidden ? EyeOff : Eye
@@ -325,7 +333,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
                 <span className="chain-select-label">
                   <ChainSwatches first={color} second={secondColor} />
                   <span className="chain-name">{name}</span>
-                  {typeId && <span id={typeId} className="chain-type-label">{types.join(' · ')}</span>}
+                  {typeId && <span id={typeId} className="chain-type-label">{visibleTypes.join(' · ')}</span>}
                 </span>
                 {notationId
                   ? <span className="chain-notation" id={notationId}><code>{paths.map(({ nodes, strengths }) => compactPath(nodes, strengths)).join(', ')}</code></span>
@@ -343,7 +351,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
             {selected && <div className="chain-editor" role="group" aria-label={`Edit ${name.toLowerCase()}`}>
               {editorControls}
               {sketch.status && <p role="status">{sketch.status}</p>}
-              <ChainResults onPreview={sketch.setPreviewedProof} proofs={[
+              <ChainResults onPreview={sketch.setPreviewedProof} showEliminations={eliminations?.shown ?? false} proofs={[
                 ...sketch.chains.filter(proof => proof.actions.length),
                 ...sketch.medusas.filter(proof => proof.actions.length || proof.explanation),
               ]} />
