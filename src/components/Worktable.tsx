@@ -2867,6 +2867,7 @@ export function Worktable({
           values={values} input={sketch.drawing || browsingStrongLinks ? toggleChainHighlight : input} chainDrawing={sketch.drawing || browsingStrongLinks}
           undo={() => edit(undo)} redo={() => edit(redo)} canUndo={!!game.past.length} canRedo={!!game.future.length}
           historyDisabled={historyDisabled}
+          hideUndo={completed}
           onCheck={presentationDraft || previewing ? undefined : () => { void runCheck() }}
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
           reserveSolvingSlots={desktop && !advancedWorkspace && solved && !previewing}
@@ -2879,8 +2880,6 @@ export function Worktable({
           setPanelHeight={setPanelHeight} beginResize={beginResize} showMultiSelectButton={!advancedWorkspace} multi={multi} toggleMulti={toggleMulti} />
         {mobile && completed && <section ref={setCompletionActionsTarget} className="surface mobile-completion-actions"
           aria-label="Next puzzle options" hidden={!showMobileResults} data-no-panel-hold>
-          {savedGame.past.length > 0 && <IconButton className="completion-undo" aria-label="Undo" title="Undo"
-            disabled={historyDisabled} onClick={() => edit(undo)}><Undo2 size={22} aria-hidden="true" /></IconButton>}
         </section>}
       </div>
   )
