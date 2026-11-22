@@ -2,6 +2,38 @@ use super::{
     PracticeExample, Technique, elimination_masks, pattern_overlay, place, rectangle_chains, remove,
 };
 
+// HoDoKu's worked examples for both forms of Multi Colors.
+pub(super) const MULTI_COLORING: [PracticeExample; 3] = [
+    PracticeExample {
+        givens: "000006000007030040106080095700900850900040020400008000093050010000007000000060002",
+        entries: Some(
+            "349500078000009000020704300060003004000005700000070009600802407200090500070001900",
+        ),
+        eliminations: None,
+        expected_actions: &[remove(37, 1), remove(38, 1)],
+    },
+    PracticeExample {
+        givens: "017000028080040000000000070004090006960007001500002000000000000008910540005800310",
+        entries: Some(
+            "000000000200700005050008000800000000000000000001000000100000000000000000000000000",
+        ),
+        eliminations: Some(&elimination_masks(&[
+            (0, 6), (11, 3), (18, 6), (20, 3), (21, 3), (22, 3), (24, 4), (26, 9),
+            (28, 3), (53, 7), (53, 9), (55, 2), (55, 3), (55, 7), (56, 6), (56, 9),
+            (57, 4), (57, 6), (58, 6), (59, 6), (60, 2), (60, 7), (60, 9), (61, 9),
+            (63, 3), (64, 7), (72, 4), (73, 2), (73, 7),
+        ])),
+        expected_actions: &[remove(46, 3), remove(56, 3), remove(68, 3)],
+    },
+    // HoDoKu regression library, Multi Colors Type 2.
+    PracticeExample {
+        givens: "090041876780300154410800329009100060100060900674008510967485231040012095521000000",
+        entries: None,
+        eliminations: None,
+        expected_actions: &[remove(31, 2)],
+    },
+];
+
 // HoDoKu worked example gaic1als01.
 pub(super) const ALS_AIC: PracticeExample = PracticeExample {
     givens: "507000010000560087004270000000000060000000805000050042032090400100300000000002650",
@@ -1639,6 +1671,7 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                 ]
             }
         }
+        Technique::MultiColoring => [MULTI_COLORING[1], MULTI_COLORING[2]],
         Technique::SimpleColoring => {
             const {
                 [

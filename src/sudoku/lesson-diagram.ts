@@ -96,9 +96,10 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
   const { evidence, pattern } = hint
   if (!pattern) return
   const coloring = 'coloring' in evidence ? evidence.coloring : undefined
-  const focus = coloring ? [...new Set(coloring.colors.flatMap(group => group.map(({ cell }) => cell)))].sort((a, b) => a - b)
+  const colored = coloring?.colors.flat() ?? ('multi-coloring' in evidence ? evidence['multi-coloring'].groups.flat(2) : undefined)
+  const focus = colored ? [...new Set(colored.map(({ cell }) => cell))].sort((a, b) => a - b)
     : 'house' in evidence ? [] : pattern.cells
-  const houses = coloring ? [] : pattern.houses
+  const houses = colored ? [] : pattern.houses
   const cells = new Map<number, CellAnnotation>()
   for (const house of houses) {
     for (const cell of houseCells(house, grid)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
@@ -412,6 +413,44 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       ...pattern,
       description: `The chain starts and ends with a solid link, at ${firstName} and ${last}.${groupNote}`,
       ...explainInference(`If you rule out ${firstName}, the first link forces ${second}. Follow the rest of the chain to force ${last}. At least one end must be true. Remove any candidate that conflicts with both ends.`),
+    }
+  }
+  if ('multi-coloring' in evidence) {
+    const { groups: [left, right], links, bridge, other_bridge: otherBridge } = evidence['multi-coloring']
+    const includes = (color: Candidate[], candidate: Candidate) =>
+      color.some(({ cell, digit }) => cell === candidate.cell && digit === candidate.digit)
+    const leftColor = Number(!includes(left[0], bridge.from))
+    const rightColor = Number(!includes(right[0], bridge.to))
+    const bridges = otherBridge ? [bridge, otherBridge] : [bridge]
+    const describeConflict = (from: Candidate, to: Candidate) => {
+      const house = sharedHouse([from.cell, to.cell])
+      const location = from.cell === to.cell ? ' in the same cell' : house ? ` in ${houseName(house)}` : ''
+      return `${capital(nameCandidate(from))} conflicts with ${nameCandidate(to)}${location}.`
+    }
+    const opposite = [left[1 - leftColor], right[1 - rightColor]]
+    const blockers = opposite.flatMap(color => color.find(candidate => candidatesConflict(candidate, first)) ?? [])
+    const reasonSteps = otherBridge
+      ? [...bridges.map(({ from, to }) => describeConflict(from, to)),
+        'The marked color in the first group conflicts with both colors in the second group.',
+        'One color in the second group must be true. Remove the marked color in the first group.']
+      : [describeConflict(bridge.from, bridge.to),
+        'The blue colors cannot both be true. At least one amber color must be true.',
+        ...blockers.map((blocker) => describeConflict(blocker, first)),
+        `Remove ${nameCandidate(first)}.`]
+    return {
+      candidates: otherBridge ? left[leftColor] : [...left[leftColor], ...right[rightColor]],
+      mainLabel: otherBridge ? 'Color that causes the contradiction' : 'Conflicting colors',
+      accent: {
+        candidates: otherBridge ? right.flat() : opposite.flat(),
+        label: otherBridge ? 'Both alternatives in the second group' : 'Opposite colors',
+      },
+      cells: [...left.flat(), ...right.flat()].map(({ cell }) => cell),
+      contradictionCells: otherBridge ? [...new Set(bridges.flatMap(({ from, to }) => [from.cell, to.cell]))] : undefined,
+      links: [...links, ...bridges].map(({ from, to, strength }) => ({
+        from, to, color: patternColor, dashed: strength === 'weak',
+      })),
+      description: 'The solid links form two groups. Links can connect the same digit or cross digits through bivalue cells. In each group, one color marks the true candidates.',
+      ...explainSteps(reasonSteps),
     }
   }
   if ('coloring' in evidence) {

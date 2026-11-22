@@ -130,6 +130,7 @@ catalog! {
     FinnedJellyfish: "finned-jellyfish", 250, VeryHard, false, [];
     SashimiJellyfish: "sashimi-jellyfish", 260, VeryHard, false, [];
     SimpleColoring: "simple-coloring", 150, VeryHard, false, ["Simple Colors", "Simple Colouring"];
+    MultiColoring: "multi-coloring", 220, VeryHard, false, ["Multi Colors"];
     Medusa: "3d-medusa", 240, VeryHard, false, ["3D Medusa"];
     XChain: "x-chain", 260, VeryHard, false, [];
     XYChain: "xy-chain", 260, VeryHard, false, [];
@@ -203,7 +204,8 @@ impl Technique {
         }
     }
 
-    /// Canonical difficulty profiles include every supported technique in tier order.
+    /// Techniques used by the built-in difficulty profiles, in tier order.
+    /// Multi-Coloring is available in hints and custom solver profiles.
     pub const DIFFICULTY_ORDER: &'static [Self] = &[
         Self::FullHouse,
         Self::HiddenSingleBox,

@@ -2875,6 +2875,61 @@
           ]
         },
         {
+          "id": "multi-coloring",
+          "title": "Multi-Coloring",
+          "summary": "Multi-Coloring compares two separate groups of strong links. A conflict between the groups can rule out an outside candidate or a whole color.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find two groups of strong links"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "For single-digit Multi-Coloring, highlight one digit and follow its strong links. For the 3D Medusa form, also follow strong links through bivalue cells, even when the digits differ. Keep the two groups separate and give linked candidates opposite colors."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "multi-coloring"
+            },
+            {
+              "type": "heading",
+              "id": "weak-links",
+              "title": "Compare the groups"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Find a weak link between the groups. If either end is false, the opposite color in that group is true. At least one of the two opposite colors must be true.",
+                "Remove the digit from an outside cell that sees a candidate of each opposite color.",
+                "If one color in the first group conflicts with both colors in the second group, every candidate of that first color is false."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "multi-coloring",
+                  "title": "Multi-Coloring"
+                }
+              ]
+            }
+          ],
+          "references": [
+            {
+              "label": "HoDoKu on Multi Colors",
+              "href": "https://hodoku.sourceforge.net/en/tech_col.php#mc"
+            }
+          ],
+          "difficulty": "very-hard",
+          "prerequisites": [
+            "simple-coloring",
+            "chain-basics"
+          ]
+        },
+        {
           "id": "x-chain",
           "title": "X-Chain",
           "summary": "An X-Chain follows a single digit through alternating strong and weak links. With a strong link at each end, at least one end holds the digit. Any other cell that sees both ends loses that candidate.",
