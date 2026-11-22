@@ -109,6 +109,24 @@ test('only a matching saved proof can be reused, and Play edits preserve it', as
   assert.equal(editedSave.uniquenessProof, undefined)
 })
 
+test('photo pencil marks survive import as editable progress', async () => {
+  const emptyCell = STARTER.indexOf('0')
+  const givenCell = [...STARTER].findIndex(digit => digit !== '0')
+  const photoCandidates = Array<number>(81).fill(0)
+  photoCandidates[emptyCell] = 0b101
+  photoCandidates[givenCell] = 0b100
+  const { game, hasProgress } = await prepareImportedPuzzle(STARTER, [], { deferRating: true, photoCandidates })
+  assert.equal(hasProgress, true)
+  assert.equal(game.givens, STARTER)
+  assert.equal(game.position.entries, empty)
+  assert.equal(game.position.corner[emptyCell], 0b101)
+  assert.equal(game.position.corner[givenCell], 0)
+  assert.equal(game.candidatesInitialized, true)
+  const saved = readGame(game.id, JSON.stringify(game))
+  assert.deepEqual(saved?.position.corner, game.position.corner)
+  assert.equal(enter(game, [emptyCell], 'corner', 3).position.corner[emptyCell], 1)
+})
+
 test('failed uniqueness checks preserve the decoded grid and distinguish why play is unavailable', async ({ mock }) => {
   for (const [input, status] of [[empty, 'multiple'], [unsolvable, 'unsolvable'], ['11' + empty.slice(2), 'conflict']]) {
     let shown: string | undefined

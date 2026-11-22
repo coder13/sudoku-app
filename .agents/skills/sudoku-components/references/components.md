@@ -72,7 +72,7 @@ Search by component name or browse the sections below.
 | [ImportPuzzle](../../../../src/components/ImportPuzzle.tsx) | `ImportPuzzle` handles puzzle text, files, and photo entry through preview and confirmation. The 9 × 9 preview shows the decoded board while its uniqueness check runs. Save and Play become available after verification. Difficulty continues in a separate, cancelable engine session. Sudoku Coach Current State previews show placed digits and both candidate styles. Fog previews show a grade when the logical reveal sequence completes. |
 | [PuzzleCamera](../../../../src/components/PuzzleCamera.tsx) | `PuzzleCamera` captures a still image of a puzzle for import. |
 | [PhotoCropEditor](../../../../src/components/PhotoCropEditor.tsx) | `PhotoCropEditor` lets a player align the crop with a photographed grid before recognition. |
-| [PhotoPuzzleReview](../../../../src/components/PhotoPuzzleReview.tsx) | `PhotoPuzzleReview` lets a player correct recognized givens before opening a photographed puzzle. |
+| [PhotoPuzzleReview](../../../../src/components/PhotoPuzzleReview.tsx) | `PhotoPuzzleReview` lets a player correct recognized givens and choose whether to keep detected pencil marks. |
 | [Save before leaving](../../../../src/components/PuzzleDialogs.tsx) | `SaveUnstartedPuzzle` asks whether to save for later, leave without saving, or stay when leaving a newly generated puzzle before the first move. |
 
 ## Settings and linked devices

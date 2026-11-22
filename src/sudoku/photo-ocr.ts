@@ -2,7 +2,7 @@ import { createWorker, OEM, PSM, type Worker } from 'tesseract.js'
 import workerPath from 'tesseract.js/dist/worker.min.js?url'
 import corePath from 'tesseract.js-core/tesseract-core-lstm.wasm.js?url'
 import modelPath from '@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz?url'
-import { photoCell } from './photo-image'
+import { photoCandidateMasks, photoCell } from './photo-image'
 
 const SINGLE_DIGIT = /^[1-9]$/
 const LINE_RETRY = { rotateAuto: false, tessedit_pageseg_mode: PSM.SINGLE_LINE }
@@ -39,7 +39,8 @@ async function openWorker(signal: AbortSignal): Promise<Worker> {
 }
 
 export async function readPuzzlePhoto(pixels: Uint8ClampedArray, signal: AbortSignal) {
-  const cells = Array.from({ length: 81 }, (_, index) => photoCell(pixels, index))
+  const candidates = photoCandidateMasks(pixels)
+  const cells = Array.from({ length: 81 }, (_, index) => photoCell(pixels, index, candidates?.[index]))
   const review = new Set(cells.flatMap(({ review }, index) => review ? [index] : []))
   const givens = Array<string>(81).fill('0')
   if (!cells.some(cell => cell.canvas)) {
@@ -83,5 +84,5 @@ export async function readPuzzlePhoto(pixels: Uint8ClampedArray, signal: AbortSi
   } finally {
     await worker?.terminate()
   }
-  return { givens, review }
+  return { givens, review, candidates: candidates?.map((mask, cell) => cells[cell].canvas ? 0 : mask) }
 }

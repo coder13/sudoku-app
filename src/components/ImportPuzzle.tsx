@@ -26,7 +26,7 @@ function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
 
-type PreviewProgress = { signal: AbortSignal; onDecoded: (puzzle: ImportedPuzzle) => void }
+type PreviewProgress = { signal: AbortSignal; onDecoded: (puzzle: ImportedPuzzle) => void; photoCandidates?: number[] }
 
 function preparePreview(input: string, progress: PreviewProgress): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games, { ...progress, deferRating: true })
@@ -106,7 +106,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     return () => { current = false; engine.close() }
   }, [preview])
 
-  async function check(source: string | File, fromPhoto = false) {
+  async function check(source: string | File, fromPhoto = false, photoCandidates?: number[]) {
     if (pending.current) return
     const work = new AbortController()
     pending.current = work
@@ -122,6 +122,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
       const result = await onPreview(text, {
         signal: work.signal,
         onDecoded: puzzle => { if (!work.signal.aborted) setDecoded(puzzle) },
+        photoCandidates,
       })
       if (!work.signal.aborted) {
         setPreview(fromPhoto ? { ...result, format: 'Photo or screenshot' } : result)
@@ -283,7 +284,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const content = <>
     {puzzlePreview}
     {photo && <PhotoPuzzleReview image={photo} visible={!showingPreview} onBack={backToInput}
-      onCheck={givens => void check(givens, true)} onEdit={() => setError('')} checking={busy} checkError={error} />}
+      onCheck={(givens, candidates) => void check(givens, true, candidates)} onEdit={() => setError('')} checking={busy} checkError={error} />}
     {cameraOpen && <PuzzleCamera onCapture={usePhoto} onCancel={backToInput} />}
     {!showingPreview && !photo && !cameraOpen && source}
   </>

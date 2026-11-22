@@ -53,10 +53,16 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
 export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], {
-  deferRating = false, onDecoded, signal,
-}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal } = {}): Promise<PuzzlePreview> {
+  deferRating = false, onDecoded, signal, photoCandidates,
+}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoCandidates?: number[] } = {}): Promise<PuzzlePreview> {
   const imported = await detectPuzzle(input)
   signal?.throwIfAborted()
+  if (imported.format === 'Text grid' && !imported.grid && photoCandidates?.some(Boolean)) {
+    const corner = [...imported.givens].map((digit, cell) => digit === '0' ? photoCandidates[cell] ?? 0 : 0)
+    if (corner.some(Boolean)) {
+      imported.progress = { entries: '0'.repeat(corner.length), center: corner.map(() => 0), corner }
+    }
+  }
   // The 9 × 9 board can show its complete layout before it receives a proof.
   if (!imported.grid) onDecoded?.(imported)
   return verifyPreview(imported, games, signal, deferRating)

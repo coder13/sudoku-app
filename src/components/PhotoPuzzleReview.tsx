@@ -1,17 +1,17 @@
 import { Button } from './Button'
 import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react'
-import { conflictsOf } from '../sudoku/game'
+import { candidateCount, conflictsOf } from '../sudoku/game'
 import type { PhotoCrop } from '../sudoku/photo-crop'
 import { cropPuzzlePhoto, openPuzzlePhoto } from '../sudoku/photo-image'
 import { PhotoCropEditor } from './PhotoCropEditor'
 
 type Photo = Awaited<ReturnType<typeof openPuzzlePhoto>>
-type Review = { givens: string[]; review: Set<number>; url: string; crop: PhotoCrop }
+type Review = { givens: string[]; candidates?: number[]; review: Set<number>; url: string; crop: PhotoCrop }
 
 export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, checkError, visible }: {
   image: Blob
   onBack: () => void
-  onCheck: (givens: string) => void
+  onCheck: (givens: string, candidates?: number[]) => void
   onEdit: () => void
   checking: boolean
   checkError: string
@@ -20,6 +20,7 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   const [photo, setPhoto] = useState<Photo>()
   const [crop, setCrop] = useState<PhotoCrop>()
   const [result, setResult] = useState<Review>()
+  const [keepCandidates, setKeepCandidates] = useState(true)
   const [adjusting, setAdjusting] = useState(false)
   const [error, setError] = useState('')
   const [reading, setReading] = useState(false)
@@ -46,14 +47,14 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       const { readPuzzlePhoto } = await import('../sudoku/photo-ocr')
       work.signal.throwIfAborted()
       const { canvas, pixels } = cropPuzzlePhoto(source.canvas, selection)
-      const { givens, review } = await readPuzzlePhoto(pixels, work.signal)
+      const { givens, candidates, review } = await readPuzzlePhoto(pixels, work.signal)
       if (!work.signal.aborted) {
         if (automatic && givens.filter(digit => digit !== '0').length < 10) {
           setError('Only a few digits came through. Check the crop and try again.')
           return
         }
         setActiveCell(review.values().next().value ?? 0)
-        setResult({ givens, review, url: canvas.toDataURL('image/jpeg', 0.93), crop: selection })
+        setResult({ givens, candidates, review, url: canvas.toDataURL('image/jpeg', 0.93), crop: selection })
         setAdjusting(false)
       }
     } catch (reason) {
@@ -124,10 +125,12 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
   }
 
   const conflicts = reviewing && conflictsOf(reviewing.givens.join(''))
+  const candidates = reviewing?.candidates?.map((mask, cell) => reviewing.givens[cell] === '0' ? mask : 0)
+  const pencilMarkCount = candidates?.reduce((sum, mask) => sum + candidateCount(mask), 0) ?? 0
   return <section className="photo-import" hidden={!visible}>
     {reviewing ? <>
       <p className="sr-only" ref={instructions} tabIndex={-1}>Compare the grid with the image and correct any digits. Check highlighted cells
-        and clear any player-placed digits or candidates. If the image shows extra rules, use a puzzle code or link.</p>
+        and clear any player-placed digits. If the image shows extra rules, use a puzzle code or link.</p>
       <p className="sr-only" id={keyboardHelp}>Use the arrow keys to move between cells.</p>
       <div className="photo-stage">
         <div className="photo-review">
@@ -148,10 +151,17 @@ export function PhotoPuzzleReview({ image, onBack, onCheck, onEdit, checking, ch
       </div>
       {checkError && <p className="form-error" role="alert">{checkError}</p>}
       <div className="dialog-actions photo-actions">
+        {pencilMarkCount > 0 && <label className="photo-candidate-option">
+          <input type="checkbox" checked={keepCandidates} disabled={checking}
+            onChange={event => { setKeepCandidates(event.currentTarget.checked); onEdit() }} />
+          Keep {pencilMarkCount} pencil {pencilMarkCount === 1 ? 'mark' : 'marks'}
+        </label>}
         <Button type="button" disabled={checking}
           onClick={() => { setAdjusting(true); onEdit() }}>Adjust crop</Button>
         <Button type="button" variant="primary" disabled={checking || !reviewing.givens.some(digit => digit !== '0')}
-          onClick={() => onCheck(reviewing.givens.join(''))}>{checking ? 'Checking puzzle…' : 'Preview puzzle'}</Button>
+          onClick={() => onCheck(reviewing.givens.join(''), keepCandidates && pencilMarkCount ? candidates : undefined)}>
+          {checking ? 'Checking puzzle…' : 'Preview puzzle'}
+        </Button>
       </div>
     </> : <>
       {editingCrop && photo && <>
