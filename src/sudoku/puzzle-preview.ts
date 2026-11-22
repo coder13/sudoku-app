@@ -23,7 +23,10 @@ export type PuzzlePreview = {
   grade?: PuzzleGrade | null
   ratingPending?: true
   hasProgress?: true
+  startFresh?: true
 }
+
+export type PhotoProgress = { entries: string; candidates?: readonly number[] }
 
 export function findImportedPuzzle(games: readonly Game[], imported: Pick<ImportedPuzzle, 'givens' | 'variant' | 'algebraic' | 'grid' | 'sizedRules' | 'givenCellColors' | 'authoredArtwork'>) {
   const identity = puzzleIdentity(imported)
@@ -32,13 +35,13 @@ export function findImportedPuzzle(games: readonly Game[], imported: Pick<Import
     sameAuthoredArtwork(game.authoredArtwork, imported.authoredArtwork))
 }
 
-export function findImportAttempt(games: readonly Game[], { game, hasProgress }: PuzzlePreview): Game | undefined {
+export function findImportAttempt(games: readonly Game[], { game, hasProgress, startFresh }: PuzzlePreview): Game | undefined {
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
   const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
-  if (!hasProgress) return findImportedPuzzle(attempts, game)
+  if (!hasProgress && !startFresh) return findImportedPuzzle(attempts, game)
   const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings } = game.position
   const identity = puzzleIdentity(game)
-  return attempts.find(saved => saved.source !== 'draft' && saved.position.entries === entries &&
+  return attempts.find(saved => saved.source !== 'draft' && (!startFresh || !saved.started) && saved.position.entries === entries &&
     center.every((mask, cell) => mask === saved.position.center[cell]) &&
     corner.every((mask, cell) => mask === saved.position.corner[cell]) &&
     colors.every((color, cell) => color === saved.position.colors[cell]) &&
@@ -53,10 +56,18 @@ export function findImportAttempt(games: readonly Game[], { game, hasProgress }:
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
 export async function prepareImportedPuzzle(input: string, games: readonly Game[] = [], {
-  deferRating = false, onDecoded, signal,
-}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal } = {}): Promise<PuzzlePreview> {
+  deferRating = false, onDecoded, signal, photoProgress,
+}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {
   const imported = await detectPuzzle(input)
   signal?.throwIfAborted()
+  if (imported.format === 'Text grid' && !imported.grid && photoProgress) {
+    const entries = [...imported.givens].map((clue, cell) => clue === '0' ? photoProgress.entries[cell] ?? '0' : '0').join('')
+    const corner = [...imported.givens].map((clue, cell) =>
+      clue === '0' && entries[cell] === '0' ? photoProgress.candidates?.[cell] ?? 0 : 0)
+    if (/[1-9]/.test(entries) || corner.some(Boolean)) {
+      imported.progress = { entries, center: corner.map(() => 0), corner }
+    }
+  }
   // The 9 × 9 board can show its complete layout before it receives a proof.
   if (!imported.grid) onDecoded?.(imported)
   return verifyPreview(imported, games, signal, deferRating)

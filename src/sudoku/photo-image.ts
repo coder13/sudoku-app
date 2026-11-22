@@ -1,5 +1,5 @@
-import { projectPhotoCrop, rectangularCrop, refinePhotoCrop, type PhotoCrop } from './photo-crop'
-import { centeredPhotoCrop, findPhotoGrids, luminance, MIN_GRID_SIZE } from './photo-grid'
+import { projectPhotoCrop, rectangularCrop, refinePhotoCrop, type PhotoCrop } from './photo-crop.ts'
+import { centeredPhotoCrop, findPhotoGrids, luminance, MIN_GRID_SIZE } from './photo-grid.ts'
 
 export const PHOTO_TYPES = 'image/png,image/jpeg,.png,.jpg,.jpeg'
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024
@@ -186,26 +186,26 @@ type Glyph = { pixels: number[]; left: number; top: number; right: number; botto
 const MARGIN = 8
 const INNER_SIZE = CELL_SIZE - MARGIN * 2
 
-function cellGlyphs(mask: Uint8Array) {
+function cellGlyphs(mask: Uint8Array, size = INNER_SIZE) {
   const glyphs: Glyph[] = []
   for (let index = 0; index < mask.length; index++) {
     if (!mask[index]) continue
     const pixels = [index]
-    const x = index % INNER_SIZE
-    const y = Math.floor(index / INNER_SIZE)
+    const x = index % size
+    const y = Math.floor(index / size)
     const glyph = { pixels, left: x, top: y, right: x, bottom: y }
     mask[index] = 0
     for (let head = 0; head < pixels.length; head++) {
       const point = pixels[head]
-      const x = point % INNER_SIZE
-      const y = Math.floor(point / INNER_SIZE)
+      const x = point % size
+      const y = Math.floor(point / size)
       glyph.left = Math.min(glyph.left, x)
       glyph.right = Math.max(glyph.right, x)
       glyph.top = Math.min(glyph.top, y)
       glyph.bottom = Math.max(glyph.bottom, y)
-      for (let row = Math.max(0, y - 1); row <= Math.min(INNER_SIZE - 1, y + 1); row++) {
-        for (let column = Math.max(0, x - 1); column <= Math.min(INNER_SIZE - 1, x + 1); column++) {
-          const neighbor = row * INNER_SIZE + column
+      for (let row = Math.max(0, y - 1); row <= Math.min(size - 1, y + 1); row++) {
+        for (let column = Math.max(0, x - 1); column <= Math.min(size - 1, x + 1); column++) {
+          const neighbor = row * size + column
           if (!mask[neighbor]) continue
           mask[neighbor] = 0
           pixels.push(neighbor)
@@ -215,6 +215,52 @@ function cellGlyphs(mask: Uint8Array) {
     if (pixels.length >= 10) glyphs.push(glyph)
   }
   return glyphs.sort((a, b) => b.pixels.length - a.pixels.length)
+}
+
+const NOTE_INSET = 4
+const NOTE_AREA = CELL_SIZE - NOTE_INSET * 2
+const NOTE_SLOT = CELL_SIZE / 3
+const NOTE_MAX_HEIGHT = 16
+
+/** A fixed 3 × 3 pencil layout puts each digit in the same slot in every cell. */
+export function photoCandidateMasks(pixels: Uint8ClampedArray): number[] | undefined {
+  const occupiedSlots = new Set<number>()
+  let cellsWithMultipleMarks = 0
+  const masks = Array.from({ length: 81 }, (_, cell) => {
+    const left = cell % 9 * CELL_SIZE + NOTE_INSET
+    const top = Math.floor(cell / 9) * CELL_SIZE + NOTE_INSET
+    const at = (x: number, y: number) => luminance(pixels, ((top + y) * BOARD_SIZE + left + x) * 4)
+    const samples: number[] = []
+    for (let y = 2; y < NOTE_AREA; y += 8) {
+      for (let x = 2; x < NOTE_AREA; x += 8) samples.push(at(x, y))
+    }
+    const background = samples.sort((a, b) => a - b)[Math.floor(samples.length / 2)]
+    const mask = new Uint8Array(NOTE_AREA ** 2)
+    for (let index = 0; index < mask.length; index++) {
+      mask[index] = Number(Math.abs(at(index % NOTE_AREA, Math.floor(index / NOTE_AREA)) - background) >= 24)
+    }
+    const slots = new Set<number>()
+    for (const { left, top, right, bottom } of cellGlyphs(mask, NOTE_AREA)) {
+      const height = bottom - top + 1
+      const width = right - left + 1
+      if (height < 6 || height > NOTE_MAX_HEIGHT || width < 2 || width > 13) continue
+      const x = ((left + right) / 2 + NOTE_INSET + 0.5) / NOTE_SLOT
+      const y = ((top + bottom) / 2 + NOTE_INSET + 0.5) / NOTE_SLOT
+      const column = Math.floor(x)
+      const row = Math.floor(y)
+      // Some grids inset the outer pencil slots closer to the cell center.
+      if (Math.abs(x - column - 0.5) > 0.28 || Math.abs(y - row - 0.5) > 0.28) continue
+      slots.add(row * 3 + column)
+    }
+    if (slots.size > 1) {
+      cellsWithMultipleMarks++
+      for (const slot of slots) occupiedSlots.add(slot)
+    }
+    let notes = 0
+    for (const slot of slots) notes |= 1 << slot
+    return notes
+  })
+  return cellsWithMultipleMarks >= 3 && occupiedSlots.size >= 4 ? masks : undefined
 }
 
 function glyphImage(glyph: Glyph, thinner = false) {
@@ -282,7 +328,7 @@ function smoothCell(tone: Int16Array) {
 }
 
 /** Isolate the centered digit from border strokes and camera noise. */
-export function photoCell(pixels: Uint8ClampedArray, cell: number) {
+export function photoCell(pixels: Uint8ClampedArray, cell: number, pencilMarks?: number) {
   const left = cell % 9 * CELL_SIZE + MARGIN
   const top = Math.floor(cell / 9) * CELL_SIZE + MARGIN
   const offset = (x: number, y: number) => ((top + y) * BOARD_SIZE + left + x) * 4
@@ -299,15 +345,20 @@ export function photoCell(pixels: Uint8ClampedArray, cell: number) {
   const chroma = new Uint8Array(contrast.length)
   for (let point = 0; point < contrast.length; point++) {
     const start = offset(point % INNER_SIZE, Math.floor(point / INNER_SIZE))
-    const dr = pixels[start] - red
-    const dg = pixels[start + 1] - green
-    const db = pixels[start + 2] - blue
+    const r = pixels[start]
+    const g = pixels[start + 1]
+    const b = pixels[start + 2]
+    const dr = r - red
+    const dg = g - green
+    const db = b - blue
     contrast[point] = Math.max(Math.abs(dr), Math.abs(dg), Math.abs(db))
     tone[point] = (dr * 54 + dg * 183 + db * 19) >> 8
-    chroma[point] = Math.max(dr, dg, db) - Math.min(dr, dg, db)
+    // Use the ink's color so a colored cell does not make neutral ink look colored.
+    chroma[point] = Math.max(r, g, b) - Math.min(r, g, b)
   }
   const strong = cellGlyphs(contrast.map(value => Number(value >= 36)))
-  const primary = centeredGlyph(strong)
+  const minimumHeight = pencilMarks === undefined ? 0 : NOTE_MAX_HEIGHT + 2
+  const primary = centeredGlyph(strong, Math.max(13, minimumHeight))
   // Temper screen moiré and blur by pooling each pixel with its neighbors.
   const denoised = tone.map((value, index) => (value * 4 +
     (tone[index - INNER_SIZE] ?? value) + (tone[index + INNER_SIZE] ?? value) +
@@ -318,20 +369,20 @@ export function photoCell(pixels: Uint8ClampedArray, cell: number) {
     return centeredGlyph([...dark, ...light].sort((a, b) => b.pixels.length - a.pixels.length), minimumHeight)
   }
   let softTone = denoised
-  let secondary = fromTone(softTone, 17, 12)
+  let secondary = fromTone(softTone, 17, Math.max(12, minimumHeight))
   if (!primary && !secondary) {
     softTone = smoothCell(tone)
-    secondary = fromTone(softTone, 9, 10)
+    secondary = fromTone(softTone, 9, Math.max(10, minimumHeight))
     if (!secondary) {
       softTone = denoised
-      secondary = fromTone(softTone, 11, 11)
+      secondary = fromTone(softTone, 11, Math.max(11, minimumHeight))
     }
   }
   const glyph = primary ?? secondary
-  if (!glyph) return { review: strong.some(mark => mark.pixels.length >= 18) }
+  if (!glyph) return { review: !pencilMarks && strong.some(mark => mark.pixels.length >= 18) }
 
   const colored = glyph.pixels.filter(point => chroma[point] >= 35).length > glyph.pixels.length * 0.55
-  return { canvas: glyphImage(glyph), alternate: () => glyphImage(secondary ?? glyph, true),
+  return { canvas: glyphImage(glyph), colored, alternate: () => glyphImage(secondary ?? glyph, true),
     grayscale: () => grayscaleGlyph(secondary ?? glyph, softTone),
     review: colored || !primary || strong.some(mark => mark !== primary && centeredGlyph([mark]) !== undefined) }
 }
