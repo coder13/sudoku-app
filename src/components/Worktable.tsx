@@ -175,7 +175,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 }
 
 export function Worktable({
-  game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, pauseShortcutsEnabled = true, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
+  game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, pauseShortcutsEnabled = true, advancedModes, appearance, onMobilePuzzleTopSpaceChange, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
   beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
@@ -188,6 +188,7 @@ export function Worktable({
   pauseShortcutsEnabled?: boolean
   advancedModes: AdvancedModes
   appearance: AppearancePreferences
+  onMobilePuzzleTopSpaceChange?: (space: number) => void
   highlighting: HighlightPreferences
   errorMode: ErrorMode
   cellReferenceStyle: CellReferenceStyle
@@ -2977,6 +2978,7 @@ export function Worktable({
         mobile={{
           puzzleId: game.id, rearranging, withHint: mobileHintOpen || Boolean(solutionHintPanel) || rearranging,
           resizableInput: mobileToolsAvailable || openPuzzlePanels.length > 0, inputTabCount: openPuzzlePanels.length,
+          puzzleTopSpace: appearance.mobilePuzzleTopSpace, onPuzzleTopSpaceChange: onMobilePuzzleTopSpaceChange,
           savedInputHeight: toolPanels.height,
           onInputHeightChange: height => playSession.set(id, 'toolPanels', current => {
             if (height !== undefined) return { ...current, height }
