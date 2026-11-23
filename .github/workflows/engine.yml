@@ -34,7 +34,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fast-check:
+    name: Fast app checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
   native:
+    needs: fast-check
     name: Native contracts and feature matrix
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -57,6 +71,7 @@ jobs:
           cargo +stable doc --locked -p sudoku-app-engine --no-default-features --features variants --no-deps
 
   wasm:
+    needs: fast-check
     name: Wasm profiles and app contracts
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -74,7 +89,6 @@ jobs:
       - run: npm run build:wasm
         env:
           RUSTUP_TOOLCHAIN: stable
-      - run: npm run check
       - run: npm test
       - name: Verify Wasm, action history, and collections
         run: npm run test:wasm:contracts
