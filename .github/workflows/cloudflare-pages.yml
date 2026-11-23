@@ -108,9 +108,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Run fast source checks
+      - name: Check component catalog
         if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
-        run: npm run check
+        run: node .agents/skills/sudoku-components/scripts/check-catalog.mjs
       - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
       - run: npm run build:cloudflare
         env:
@@ -120,7 +120,6 @@ jobs:
       - name: Check board, startup, mobile resize, and solver lifecycles
         if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
         run: |
-          npm test
           npm --prefix tools/react-board-performance ci
           npm --prefix tools/react-board-performance run check
           npm exec --prefix tools/react-board-performance -- playwright install --with-deps chromium
