@@ -21,7 +21,7 @@ export function puzzleInputMode(state: InputState): PuzzleInputMode {
   return state.penciling ? 'pencil' : 'pen'
 }
 
-/** Toggle between Pen and Pencil; leave Highlight mode for Pen. */
-export function nextPenPencilMode(penciling: boolean, highlighting: boolean): boolean {
-  return highlighting ? false : !penciling
+/** Alternate Pen and Pencil without activating Highlight mode. */
+export function togglePencilMode(penciling: boolean): boolean {
+  return !penciling
 }
