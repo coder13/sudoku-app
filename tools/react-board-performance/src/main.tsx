@@ -93,7 +93,7 @@ function snapshot(includeFades = false): NormalNode[] {
       if (node.getAttribute('role') === 'gridcell' && node.querySelector('.candidate-button') && ['tabindex', 'type'].includes(attr.name)) continue
       if (attr.name === 'style' && node.classList.contains('candidate-button')) continue
       if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
-      let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board').sort().join(' ')
+      let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board' && name !== 'chain-candidate').sort().join(' ')
         : attr.name === 'style' && node.classList.contains('candidate-button')
           ? [node.getBoundingClientRect().x, node.getBoundingClientRect().y, node.getBoundingClientRect().width, node.getBoundingClientRect().height].map(value => value.toFixed(2)).join(',')
           : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
