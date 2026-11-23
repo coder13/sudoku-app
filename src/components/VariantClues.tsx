@@ -203,7 +203,6 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
-    {rules.map((rule, index) => rule.type === 'digit-restriction' && <DigitRestrictionClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
     {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
       ? <RenbanClue key={index} {...rule} number={number} size={size} />
