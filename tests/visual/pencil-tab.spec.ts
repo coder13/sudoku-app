@@ -82,3 +82,29 @@ test('a Pencil group clears matching marks and adds the full group on the next t
   await page.getByRole('button', { name: 'Undo', exact: true }).tap()
   await expect(marks).toHaveText(['2'])
 })
+
+test('selecting several digits keeps the current input mode', async ({ page }) => {
+  await page.goto('/iframe.html?id=large-play-worktable--starter&viewMode=story')
+  const grid = page.getByRole('grid', { name: 'Sudoku grid' })
+  const pad = page.getByRole('group', { name: 'Digit pad' })
+  const highlight = page.getByRole('button', { name: 'Highlight mode', exact: true })
+  const expectSelected = (digits: string[]) => expect(pad.locator('.key[aria-pressed="true"]')).toHaveText(digits)
+  await expect(grid).toHaveAccessibleDescription('Pen mode')
+
+  await page.keyboard.press('Shift+Digit2')
+  await page.keyboard.press('Shift+Digit4')
+  await expectSelected(['2', '4'])
+  await expect(grid).toHaveAccessibleDescription('Pen mode')
+
+  await page.getByRole('button', { name: 'Pencil mode', exact: true }).tap()
+  await page.keyboard.press('Shift+Digit6')
+  await expectSelected(['2', '4', '6'])
+  await expect(grid).toHaveAccessibleDescription('Pencil mode')
+
+  await highlight.tap()
+  await page.keyboard.press('Shift+Digit8')
+  await expectSelected(['2', '4', '6', '8'])
+  await expect(grid).toHaveAccessibleDescription('Highlight mode')
+  await highlight.tap()
+  await expect(grid).toHaveAccessibleDescription('Pencil mode')
+})

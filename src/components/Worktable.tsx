@@ -274,9 +274,6 @@ export function Worktable({
   const [highlightCandidatePairs, setHighlightCandidatePairs] = usePlayPreference('highlightCandidatePairs')
   const [savedHighlightMode, setSavedHighlightMode] = usePlayPreference('highlightMode')
   const [savedPencil, setPencil] = usePlayPreference('pencil')
-  // A multi-digit highlight takes precedence unless Pencil owns the group.
-  const automaticHighlightMode = candidateCount(highlightedDigitMask) > 1 && !digitHighlight.modeOverridden
-  const mainHighlightMode = savedHighlightMode || automaticHighlightMode
   const [pencilModifier, setPencilModifier] = useState(false)
   const [candidatePreviewCell, setCandidatePreviewCell] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = usePlayPreference('candidateKind')
@@ -476,10 +473,10 @@ export function Worktable({
   const canPaint = !cellColorsDisabled
   const mobileHintPreview = mobileHintOpen && !playerVisualsSelected
   const brush = canPaint && colorsVisible && !hintAnnotations && !mobileHintPreview ? colorBrush : null
-  const colorMode = brush === null && desktop && savedColorMode && !automaticHighlightMode
+  const colorMode = brush === null && desktop && savedColorMode
   const eraseMode = brush === null && savedEraseMode
-  const highlightMode = brush === null && mainHighlightMode
-  const pencil = savedPencil && !mainHighlightMode
+  const highlightMode = brush === null && savedHighlightMode
+  const pencil = savedPencil && !savedHighlightMode
   const cellBrush = colorTarget === 'cell' && canPaint && !hintAnnotations && !mobileHintPreview
     ? brush ?? (colorMode ? selectedColor : null) : null
   const boardPosition = useMemo(() => {
@@ -1371,11 +1368,10 @@ export function Worktable({
     setDigitHighlight((current) => current.mask ? { ...defaultDigitHighlight, match: current.match } : current)
   }
 
-  function showDigitHighlights(mask: SetStateAction<number>, match: DigitHighlightMatch, keepPencil = false) {
+  function showDigitHighlights(mask: SetStateAction<number>, match: DigitHighlightMatch) {
     setDigitHighlight((current) => ({
       mask: typeof mask === 'function' ? mask(current.mask) : mask,
       match,
-      modeOverridden: keepPencil,
     }))
     setSelectedDigit(null)
     setHighlightCandidatePairs(false)
@@ -1386,7 +1382,7 @@ export function Worktable({
   function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
     if (cellDrivenHighlight) setSelected([])
     const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
-    showDigitHighlights((current) => (current || previous) ^ (1 << (digit - 1)), match, pencilActive && !temporaryPencil)
+    showDigitHighlights((current) => (current || previous) ^ (1 << (digit - 1)), match)
   }
 
   function changeDigitHighlightMatch(match: DigitHighlightMatch) {
@@ -1428,7 +1424,6 @@ export function Worktable({
   }
 
   function highlightColorDigit(digit: number | null) {
-    if (automaticHighlightMode) setSavedHighlightMode(true)
     setSelected([])
     clearHighlightedDigits()
     setHighlightCandidatePairs(false)
@@ -1442,12 +1437,6 @@ export function Worktable({
     if (alternate === null) return
     if (colorMode) setSelectedColor(alternate)
     else setColorBrush(alternate)
-  }
-
-  function setHighlightMode(enabled: boolean) {
-    setDigitHighlight((current) => !current.modeOverridden && candidateCount(current.mask) > 1
-      ? { ...current, modeOverridden: true } : current)
-    setSavedHighlightMode(enabled)
   }
 
   function leaveChainInput() {
@@ -1465,7 +1454,7 @@ export function Worktable({
     setEraseMode(false)
     setColorMode(false)
     setPencilModifier(false)
-    setHighlightMode(enable)
+    setSavedHighlightMode(enable)
   }
 
   function switchPenPencil(pencil: boolean) {
@@ -1473,13 +1462,13 @@ export function Worktable({
     if (colorsVisible) setColorBrush(null)
     setEraseMode(false)
     setColorMode(false)
-    setHighlightMode(false)
+    setSavedHighlightMode(false)
     setPencilModifier(false)
     setPencil(pencil)
   }
 
   function cycleMainInputMode() {
-    const wasHighlighting = mainHighlightMode || (drawingReturn.current?.gameId === id && drawingReturn.current.highlight)
+    const wasHighlighting = savedHighlightMode || (drawingReturn.current?.gameId === id && drawingReturn.current.highlight)
     if (mobile && (colorsVisible || subsetsVisible)) selectToolPanel('digits')
     else if (subsetsVisible) closeToolPanel('subsets', true)
     if (!wasHighlighting && pencil) toggleHighlightMode()
@@ -1965,7 +1954,7 @@ export function Worktable({
         event.preventDefault()
         if (colorsVisible) setColorBrush(null)
         setColorMode(false)
-        setHighlightMode(false)
+        setSavedHighlightMode(false)
         setSelected([])
         setEraseMode((current) => !current)
       }
@@ -2237,7 +2226,7 @@ export function Worktable({
 
   function showSolutionPath(force = false) {
     if (game.paused || draft || busy) return
-    if (savedHighlightMode) setHighlightMode(false)
+    if (savedHighlightMode) setSavedHighlightMode(false)
     setPuzzleMenuOpen(false)
     if (desktop) selectToolPanel('solution')
     setHintRevealed(false)
@@ -2265,7 +2254,7 @@ export function Worktable({
 
   function selectSolutionStep(index: number) {
     if (game.paused) return
-    if (savedHighlightMode) setHighlightMode(false)
+    if (savedHighlightMode) setSavedHighlightMode(false)
     playSession.set(id, 'solutionView', { identity: solutionIdentity, step: index, hintOpen: true })
     setFocusHintRequest((request) => request + 1)
     if (isChainStep(trace?.steps[index])) setFocusChainsRequest((request) => request + 1)
@@ -2343,7 +2332,7 @@ export function Worktable({
     strongLinks={{ shown: showStrongLinks, hasHighlights: strongLinkMask !== 0, count: strongLinks.count,
       toggle: () => {
         if (!showStrongLinks) {
-          if (savedHighlightMode) setHighlightMode(false)
+          if (savedHighlightMode) setSavedHighlightMode(false)
           changeHintVisuals('player')
         }
         setShowStrongLinks((shown) => !shown)
@@ -2578,7 +2567,7 @@ export function Worktable({
             setColorMode(false)
             setPencilModifier(false)
             if (badgeMode === 'pen') setPencil(true)
-            setHighlightMode(badgeMode === 'pencil')
+            setSavedHighlightMode(badgeMode === 'pencil')
           }} />
   const showPlayerColors = !hintVisualsActive && (colorsPanelOpen || colorMode)
   const visibleChainAnnotations = chainsPanelOpen && !hintVisualsActive && (sketch.annotations.links?.length || sketch.annotations.candidates?.size)
@@ -2689,7 +2678,7 @@ export function Worktable({
       Icon: Link2,
       run: () => {
         if (!showStrongLinks) {
-          if (savedHighlightMode) setHighlightMode(false)
+          if (savedHighlightMode) setSavedHighlightMode(false)
           changeHintVisuals('player')
         }
         setStartDrawingOnOpen(false)
@@ -2866,13 +2855,13 @@ export function Worktable({
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={mobile ? () => {
             if (colorsVisible) setColorBrush(null)
-            setEraseMode(false); setHighlightMode(false); setColorMode((current) => !current)
+            setEraseMode(false); setSavedHighlightMode(false); setColorMode((current) => !current)
           } : undefined}
           colorsActive={brush !== null} onSwitchShade={switchColorShade}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {
             if (colorsVisible) setColorBrush(null)
-            setColorMode(false); setHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
+            setColorMode(false); setSavedHighlightMode(false); setSelected([]); setEraseMode((current) => !current)
           }}
           selectedDigit={browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : colorMode ? selectedColor : selectedDigit} hasCellSelection={hasInputSelection}
           highlightedDigitMask={strongLinksVisible ? strongLinkMask : sketch.drawing || eraseMode ? 0 : highlightedDigitMask}

@@ -59,7 +59,7 @@ test('saved tab state can resume on app relaunch without restoring a launch paus
   const persistent = new MemoryStorage()
   const session = createPlaySession(new MemoryStorage(), persistent)
   session.set('puzzle-a', 'toolPanels', { open: ['solution', 'chains'], active: 'solution', height: 308 })
-  session.set('puzzle-a', 'digitHighlight', { mask: 10, match: 'any', modeOverridden: true })
+  session.set('puzzle-a', 'digitHighlight', { mask: 10, match: 'any' })
   session.set('puzzle-a', 'showStrongLinks', true)
   session.set('puzzle-a', 'drawingIntent', false)
   session.set('puzzle-a', 'solutionView', { identity: 'givens-a', step: 7, hintOpen: true })
@@ -73,10 +73,20 @@ test('saved tab state can resume on app relaunch without restoring a launch paus
   assert.deepEqual(relaunched.getSnapshot(), {
     puzzleId: 'puzzle-a', launchPaused: false,
     toolPanels: { open: ['solution', 'chains'], active: 'solution', height: 308 },
-    digitHighlight: { mask: 10, match: 'any', modeOverridden: true },
+    digitHighlight: { mask: 10, match: 'any' },
     showStrongLinks: true, drawingIntent: false,
     solutionView: { identity: 'givens-a', step: 7, hintOpen: true },
   })
+})
+
+test('older digit groups restore their mask and match without a mode override', () => {
+  const persistent = new MemoryStorage()
+  persistent.setItem(puzzleTabsKey('puzzle-a'), JSON.stringify({
+    digitHighlight: { mask: 10, match: 'any', modeOverridden: true },
+  }))
+  const session = createPlaySession(new MemoryStorage(), persistent)
+  session.activate('puzzle-a')
+  assert.deepEqual(session.getSnapshot().digitHighlight, { mask: 10, match: 'any' })
 })
 
 test('a new puzzle inherits the last layout after leaving play, and existing puzzles keep their own tabs', () => {
