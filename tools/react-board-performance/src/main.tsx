@@ -90,6 +90,8 @@ function snapshot(includeFades = false): NormalNode[] {
     const attributes: Record<string, string> = {}
     for (const attr of [...node.attributes].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!includeFades && attr.name === 'data-board-fade') continue
+      if (node.getAttribute('role') === 'gridcell' && node.querySelector('.candidate-button') && ['tabindex', 'type'].includes(attr.name)) continue
+      if (attr.name === 'style' && node.classList.contains('candidate-button')) continue
       if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
       let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board').sort().join(' ')
         : attr.name === 'style' && node.classList.contains('candidate-button')
@@ -104,6 +106,10 @@ function snapshot(includeFades = false): NormalNode[] {
       if (attr.name === 'id' && ids.has(value)) value = ids.get(value)!
       else for (const [id, replacement] of ids) value = value.split(`url(#${id})`).join(`url(#${replacement})`)
       attributes[attr.name] = value
+    }
+    if (node.classList.contains('candidate-button')) {
+      const bounds = node.getBoundingClientRect()
+      attributes['data-layout-box'] = [bounds.x, bounds.y, bounds.width, bounds.height].map(value => value.toFixed(2)).join(',')
     }
     return { tag: node.tagName.toLowerCase(), attributes, children }
   }
