@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { chromium } from '../tools/react-board-performance/node_modules/playwright/index.mjs'
 import { makeGame, replaceCandidates } from '../src/sudoku/game.ts'
-import { candidateId, chainGroup } from '../src/sudoku/chains.ts'
+import { analyzeChainPaths, candidateId, chainGroup, makeChainGraph } from '../src/sudoku/chains.ts'
 import { savedPuzzles, waitForSavedPuzzle } from '../tests/helpers/browser-puzzle-saves.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
@@ -128,6 +128,17 @@ async function run(profile) {
     const drawn = await savedGame(page)
     equal(drawn.chainSketch.sketches[0].history.at(-1), expectedEdges, 'drawing includes the group-to-group link')
     equal(await page.locator('.board-chain-group').count(), 3, 'each group has one enclosure')
+    const visibleMasks = await page.locator('.candidate-button').evaluateAll(buttons => {
+      const masks = Array(81).fill(0)
+      for (const button of buttons) {
+        const match = button.getAttribute('aria-label')?.match(/^(\\d+) in row (\\d+), column (\\d+)/)
+        if (match) masks[(Number(match[2]) - 1) * 9 + Number(match[3]) - 1] |= 1 << (Number(match[1]) - 1)
+      }
+      return masks
+    })
+    const visibleProofs = analyzeChainPaths(makeChainGraph(visibleMasks), expectedEdges)
+      .map(proof => ({ nodes: proof.nodes, actions: proof.actions }))
+    console.log(`Visible grouped-chain proof: ${JSON.stringify({ visibleMasks, visibleProofs })}`)
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
     const showEliminations = page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true })
     if (await showEliminations.getAttribute('aria-checked') !== 'true') await click(showEliminations)
