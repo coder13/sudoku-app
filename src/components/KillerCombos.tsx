@@ -28,7 +28,7 @@ function combinations(size: number, sum: number, required: Set<number>) {
 }
 
 export function KillerCombos({ puzzle, values, active, visible }: Props) {
-  const cage = puzzle?.rules.flatMap((rule) => rule.type === 'killer-cages' ? rule.cages : [])
+  const cage = puzzle?.rules?.flatMap((rule) => rule.type === 'killer-cages' ? rule.cages : [])
     .find(({ cells }) => cells.includes(active))
   const combos = useMemo(() => {
     if (!cage) return []
