@@ -16,6 +16,7 @@ const ruleNames = {
   odd: 'Odd circles',
   even: 'Even squares',
   thermometer: 'Thermometer',
+  'slow-thermometer': 'Slow Thermometer',
   renban: 'Renban line',
   kropki: 'Kropki dots',
   'labeled-dots': 'Labeled dots',
@@ -32,8 +33,18 @@ const ruleNames = {
 }
 
 type RuleChoice = keyof typeof ruleNames
-const ruleChoice = (rule: SizedConstraintRule) => rule.type === 'diagonal' ? rule.diagonal
-  : rule.type === 'parity' ? rule.parity : rule.type
+const ruleChoice = (rule: SizedConstraintRule): RuleChoice => rule.type === 'diagonal' ? rule.diagonal
+  : rule.type === 'parity' ? rule.parity
+    : rule.type === 'xv' ? 'kropki'
+      : rule.type === 'whispers' || rule.type === 'sandwich' ? 'thermometer'
+        : rule.type as RuleChoice
+
+function ruleLabel(rule: SizedConstraintRule) {
+  if (rule.type === 'whispers') return `Whispers, minimum difference ${rule.minDifference}`
+  if (rule.type === 'xv') return 'X/V markers'
+  if (rule.type === 'sandwich') return `Sandwich, total ${rule.sum}`
+  return ruleNames[ruleChoice(rule)]
+}
 
 type DiamondRule = Extract<SizedConstraintRule, { type: 'row-column-sum' }>
 type KillerRule = Extract<SizedConstraintRule, { type: 'killer-cages' }>
@@ -57,7 +68,7 @@ function draftRule(kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' 
   if (kind === 'difference') return { type: kind, cells: [cells[0] ?? 0, cells[1] ?? cells[0] ?? 0], difference }
   if (kind === 'kropki') return { type: kind, ...marks }
   if (kind === 'main' || kind === 'anti') return { type: 'diagonal', diagonal: kind }
-  if (kind === 'thermometer' || kind === 'renban' || kind === 'extra-house') return { type: kind, cells }
+  if (kind === 'thermometer' || kind === 'slow-thermometer' || kind === 'renban' || kind === 'extra-house') return { type: kind, cells }
   return { type: 'parity', parity: kind, cells }
 }
 
@@ -87,6 +98,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
   const previous = rules[editing]
+  const readOnlyImported = previous && ['whispers', 'xv', 'sandwich'].includes(previous.type)
   const editingCage = cageIndex >= 0 || cells.length > 0 || cageTotal !== ''
   const nextCages = [...cages]
   if (kind === 'killer-cages' && editingCage) {
@@ -112,7 +124,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   }
   const previewRule = kind === 'killer-cages' && !isSizedRuleList([...otherRules, rule], layout) ? killerLayer(cages) : rule
   const preview = isSizedRuleList([...otherRules, previewRule], layout) ? [...otherRules, previewRule] : otherRules
-  const canSelectCells = 'cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum' || kind === 'quadruple'
+  const canSelectCells = !readOnlyImported && ('cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum' || kind === 'quadruple')
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
   const markedDiamond = selectedEdge && diamonds.pairs.some(matchesEdge)
@@ -179,7 +191,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       if (current.includes(cell)) return current.filter(item => item !== cell)
       if (kind === 'quadruple') return [cell]
       if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots' || kind === 'row-column-sum') && current.length === 2) return [cell]
-      if ((kind === 'thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
+      if ((kind === 'thermometer' || kind === 'slow-thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size) return current
       if (kind === 'arrow' && current.length === size + 1) return current
       if (kind === 'double-arrow' && current.length === 2 * size + 2) return current
       return [...current, cell]
@@ -257,7 +269,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         setError('Select two end circles with at least one cell along the line.')
         return
       }
-      setError(kind === 'thermometer' ? `Select 2 to ${size} cells for the thermometer.`
+      setError(kind === 'thermometer' || kind === 'slow-thermometer' ? `Select 2 to ${size} cells for the thermometer.`
         : kind === 'renban' ? `Select 1 to ${size} cells for the Renban line.`
           : kind === 'arrow' ? `Select a bulb and 1 to ${size} cells along the arrow.`
             : kind === 'region-sum' ? `Select a path that crosses at least one ${group} border.`
@@ -275,13 +287,14 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       <SelectControl id={`${id}-clue`} value={editing} onChange={event => selectRule(Number(event.currentTarget.value))}>
         <option value={-1}>New clue</option>
         {rules.map((rule, index) => <option key={index} value={index}>
-          {ruleNames[ruleChoice(rule)]}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
+          {ruleLabel(rule)}{rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
           {rule.type === 'quadruple' ? ` with ${rule.digits.join(', ')} below and to the right of ${cellName(rule.topLeft)}` : ''}
           {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}{rule.type === 'difference' ? ` ${rule.difference}` : ''}{rule.type === 'anti-sum' ? ` (${rule.sum})` : ''}{rule.type === 'row-column-sum' && rule.pairs.length ? ` · ${rule.pairs.length}` : ''}{'cells' in rule ? ` · ${rule.cells.map(cellName).join(', ')}` : ''}
         </option>)}
       </SelectControl>
       <label htmlFor={`${id}-rule`}>Rule</label>
-      <SelectControl id={`${id}-rule`} value={kind} onChange={event => {
+      {readOnlyImported ? <p>This imported clue can be viewed or removed here. It cannot be edited yet.</p>
+        : <SelectControl id={`${id}-rule`} value={kind} onChange={event => {
         setKind(event.currentTarget.value as RuleChoice)
         setCells([])
         setLinkedEnds(defaultLinkedEnds)
@@ -301,7 +314,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       }}>
         {Object.entries(ruleNames).filter(([value]) => value !== 'region-sum' || !('noRegions' in layout))
           .map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </SelectControl>
+      </SelectControl>}
       {kind === 'linked-double-arrow' && (() => {
         const options: SizedSumEnd[] = sizedXSumDirections.flatMap(direction =>
           Array.from({ length: size }, (_, index) => ({ direction, index })))
@@ -322,7 +335,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
         </>
       })()}
       {kind === 'double-arrow' && <p id={`${id}-instructions`}>Select the first end circle, the cells along the line in order, and the second end circle.</p>}
-      {'cells' in rule && kind !== 'double-arrow' && kind !== 'linked-double-arrow' && <p id={`${id}-instructions`}>{kind === 'thermometer'
+      {'cells' in rule && kind !== 'double-arrow' && kind !== 'linked-double-arrow' && <p id={`${id}-instructions`}>{kind === 'thermometer' || kind === 'slow-thermometer'
         ? 'Select the cells in order, from the bulb to the tip.'
         : kind === 'renban' || kind === 'region-sum' ? 'Select the cells in the order you want to draw the line.'
           : kind === 'difference' ? 'Select two cells that share an edge.'
@@ -466,11 +479,11 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       </>}
       {kind === 'arrow' && cells.length > 0 && <p aria-live="polite">Bulb {cellName(cells[0])}
         {cells.length > 1 && ` · Arrow through ${cells.slice(1).map(cellName).join(' → ')}`}</p>}
-      {kind === 'thermometer' && cells.length > 0 && <p aria-live="polite">Path from bulb to tip · {cells.map(cellName).join(' → ')}</p>}
+      {(kind === 'thermometer' || kind === 'slow-thermometer') && cells.length > 0 && <p aria-live="polite">Path from bulb to tip · {cells.map(cellName).join(' → ')}</p>}
       {error && <p role="alert" className="form-error">{error}</p>}
       <div className="dialog-actions spread">
         {editing >= 0 && <Button type="button" variant="danger" onClick={() => update(otherRules)}>Remove clue</Button>}
-        <Button type="submit" variant="primary">Save clue</Button>
+        <Button type="submit" variant="primary" disabled={Boolean(readOnlyImported)}>Save clue</Button>
       </div>
     </form>
   </Modal>

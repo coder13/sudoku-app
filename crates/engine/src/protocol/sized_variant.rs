@@ -30,6 +30,7 @@ enum Rule {
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum SizedRule {
+    SlowThermometer { cells: Vec<usize> },
     DoubleArrow { ends: [usize; 2], cells: Vec<usize> },
     LinkedDoubleArrow { ends: [crate::SizedSumEnd; 2], cells: Vec<usize> },
     Difference { cells: [usize; 2], difference: u8 },
@@ -97,6 +98,10 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
+            Rule::Sized(SizedRule::SlowThermometer { cells }) => Self::SlowThermometer { cells },
+            Rule::Variant(PuzzleRule::Whispers { cells, min_difference }) => Self::Whispers { cells, min_difference },
+            Rule::Variant(PuzzleRule::Xv { five, ten }) => Self::Xv { five, ten },
+            Rule::Variant(PuzzleRule::Sandwich { cells, direction, sum }) => Self::Sandwich { cells, direction, sum },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => Self::DoubleArrow { ends, cells },
             Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => Self::LinkedDoubleArrow { ends, cells },

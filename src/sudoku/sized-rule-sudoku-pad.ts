@@ -36,6 +36,101 @@ function readPath(value: unknown, size: number, maxPoints = size) {
   return path
 }
 
+function sudokuPadRuleClauses(text: string) {
+  const lines = text.trim().split(/\r?\n/)
+  if (!lines.some(line => /^-{3,}/.test(line))) {
+    return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i)
+      .map(part => part.replace(/\s+/g, ' '))
+  }
+  const clauses: string[] = []
+  let current = ''
+  for (const line of lines) {
+    const section = /^-{3,}\s*(.*)$/.exec(line)
+    if (section) {
+      if (current.trim()) clauses.push(current.trim().replace(/\s+/g, ' '))
+      current = section[1]
+    } else current += `${current ? ' ' : ''}${line.trim()}`
+  }
+  if (current.trim()) clauses.push(current.trim().replace(/\s+/g, ' '))
+  return clauses
+}
+
+function readXvAndSandwichOverlays(overlays: unknown, size: number, authoredXv: boolean, authoredSandwich: boolean) {
+  if (overlays !== undefined && (!Array.isArray(overlays) || overlays.length > 4 * size * (size - 1) + 4 * size)) {
+    throw new Error('This SudokuPad export has invalid outside or XV clues.')
+  }
+  const five: [number, number][] = [], ten: [number, number][] = [], sandwiches: SizedConstraintRule[] = []
+  const unused: unknown[] = []
+  const shapeKeys = ['stroke', 'center', 'width', 'height', 'rounded', 'text', 'color', 'backgroundColor', 'borderColor', 'thickness', 'fs']
+  for (const overlay of overlays ?? []) {
+    if (!record(overlay) || overlay.text !== 'X' && overlay.text !== 'x' && overlay.text !== 'V' && overlay.text !== 'v' && !Number.isInteger(overlay.text)) {
+      unused.push(overlay)
+      continue
+    }
+    if (!record(overlay) || Object.keys(overlay).some(key => !shapeKeys.includes(key)) ||
+      typeof overlay.width !== 'number' || overlay.width <= 0 || typeof overlay.height !== 'number' ||
+      overlay.width !== overlay.height || overlay.rounded !== true || !isPoint(overlay.center)) {
+      throw new Error('This SudokuPad export has an unsupported clue marking.')
+    }
+    if (overlay.text === 'X' || overlay.text === 'x' || overlay.text === 'V' || overlay.text === 'v') {
+      if (!authoredXv || overlay.width > .5 || overlay.stroke !== undefined && !/^#(?:000|000000|000000ff)$/i.test(String(overlay.stroke)) ||
+        overlay.backgroundColor !== undefined && !/^#(?:fff|ffffff|ffffffff)$/i.test(String(overlay.backgroundColor))) {
+        throw new Error('This SudokuPad export has an unsupported XV marker.')
+      }
+      const [row, column] = overlay.center
+      let cells: [number, number]
+      if (Number.isInteger(row - .5) && Number.isInteger(column)) {
+        cells = [boardCell([row, column - .5], size, .5), boardCell([row, column + .5], size, .5)]
+      } else if (Number.isInteger(row) && Number.isInteger(column - .5)) {
+        cells = [boardCell([row - .5, column], size, .5), boardCell([row + .5, column], size, .5)]
+      } else throw new Error('An XV marker must lie between two neighboring cells.')
+      const marks = (overlay.text.toUpperCase() === 'V' ? five : ten)
+      if (marks.some(([a, b]) => a === cells[0] && b === cells[1] || a === cells[1] && b === cells[0])) {
+        throw new Error('This SudokuPad export repeats an XV marker.')
+      }
+      marks.push(cells)
+      continue
+    }
+    if (Number.isInteger(overlay.text)) {
+      if (!authoredSandwich || overlay.width !== 1 || overlay.stroke !== undefined && overlay.stroke !== 'none') {
+        throw new Error('This SudokuPad export has an unsupported sandwich clue.')
+      }
+      const [row, column] = overlay.center
+      let direction: 'north' | 'east' | 'south' | 'west'
+      let cells: number[]
+      if (row === -.5 && Number.isInteger(column - .5)) {
+        direction = 'south'
+        const start = boardCell([.5, column], size, .5)
+        cells = Array.from({ length: size }, (_, index) => start + index * size)
+      } else if (row === size + .5 && Number.isInteger(column - .5)) {
+        direction = 'north'
+        const start = boardCell([size - .5, column], size, .5)
+        cells = Array.from({ length: size }, (_, index) => start - index * size)
+      } else if (column === -.5 && Number.isInteger(row - .5)) {
+        direction = 'east'
+        const start = boardCell([row, .5], size, .5)
+        cells = Array.from({ length: size }, (_, index) => start + index)
+      } else if (column === size + .5 && Number.isInteger(row - .5)) {
+        direction = 'west'
+        const start = boardCell([row, size - .5], size, .5)
+        cells = Array.from({ length: size }, (_, index) => start - index)
+      } else throw new Error('A sandwich clue must sit on the edge of a row or column.')
+      sandwiches.push({ type: 'sandwich', direction, cells, sum: Number(overlay.text) })
+      continue
+    }
+    throw new Error('This SudokuPad export has an unsupported clue marking.')
+  }
+  if (authoredXv && !five.length && !ten.length) throw new Error('The SudokuPad XV markers are missing.')
+  if (authoredSandwich && !sandwiches.length) throw new Error('The SudokuPad sandwich clue is missing.')
+  return {
+    rules: [
+      ...(five.length || ten.length ? [{ type: 'xv', ...(five.length && { five: { pairs: five } }), ...(ten.length && { ten: { pairs: ten } }) } as SizedConstraintRule] : []),
+      ...sandwiches,
+    ],
+    unused: unused.length ? unused : undefined,
+  }
+}
+
 function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
   if (!Array.isArray(overlays) || !overlays.length || overlays.length > 4 * size * (size - 1)) {
     throw new Error('This SudokuPad export has invalid Kropki dots.')
@@ -67,6 +162,13 @@ function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
 
 const isPoint = (value: unknown): value is [number, number] =>
   Array.isArray(value) && value.length === 2 && value.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
+
+function sudokuPadWhispersMinimum(color: string) {
+  const normalized = color.toLowerCase()
+  if (/^#ffa600(?:ff)?$/.test(normalized)) return 2
+  if (/^#67f067(?:ff)?$/.test(normalized)) return 3
+  return undefined
+}
 
 function readArrowCircles(overlays: unknown[]) {
   return overlays.flatMap((overlay, index) => {
@@ -150,13 +252,15 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
   // text identifies what they mean, and the bulb determines direction.
-  const rulesText = metadata.rules.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i).map(part => part.replace(/\s+/g, ' '))
+  const rulesText = sudokuPadRuleClauses(metadata.rules)
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
   const shortBase = /^(?:Normal|Standard) (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
+  const authoredSizedBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: In every row, column and (?:in )?(?:(\d+)[x×](\d+) )?every box the digits from 1 to (\d+) have to appear at ?least once\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
-  const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip|Thermometers: digits along a thermometer increase from bulb to tip)\.$/i
+  const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip|Thermometers: digits along a thermometer increase from bulb to tip|Thermometers: Digits on a thermometer strictly increase from the bulb to the tip)\.$/i
   const compactThermometer = /^THERMOMETER - Digits increase in value along a thermometer, starting from the bulb end\.(?: They don't have to be adjacent, for example 1-3-4 or 2-4 would be just fine\.)?$/i
+  const slowThermometer = /^Slow thermometers?: Digits on a slow thermo increase or stay the same but never decrease\.$/i
   const renban = /^Digits along a pink line form a set of non-repeating consecutive digits in any order\.$/i
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
@@ -172,16 +276,55 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const authoredDoubleArrows = clauses.some(clause => doubleArrow.test(clause))
   const authoredKropki = clauses.some(isKropki)
   const authoredThermometers = clauses.some(isThermometer)
-  const compactBulbs = clauses.some(clause => compactThermometer.test(clause))
+  const authoredSlowThermometers = clauses.some(clause => slowThermometer.test(clause))
+  const compactBulbs = clauses.some(clause => compactThermometer.test(clause)) || authoredThermometers || authoredSlowThermometers
   const authoredRenban = clauses.some(isRenban)
   const regionSum = /^Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums\.$/i
   const authoredRegionSum = clauses.some(clause => regionSum.test(clause))
+  const whisperStatement = (clause: string) => {
+    const german = /^(?:German whisper lines: )?Two cells connected by a German whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
+    const dutch = /^(?:Dutch whisper lines: )?Two cells connected by a Dutch whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
+    const match = german ?? dutch
+    return match ? { family: german ? 'German' : 'Dutch', minimum: Number(match[1]) } : undefined
+  }
+  const whisperStatements = clauses.flatMap(clause => {
+    const statement = whisperStatement(clause)
+    return statement ? [statement] : []
+  })
+  const whispersClauses = whisperStatements.map(({ minimum }) => minimum)
+  const whisperMinimums = new Map<string, Set<number>>()
+  for (const { family, minimum } of whisperStatements) {
+    const minimums = whisperMinimums.get(family) ?? new Set<number>()
+    minimums.add(minimum)
+    whisperMinimums.set(family, minimums)
+  }
+  const conflictingWhisperMinimums = [...whisperMinimums.values()].some(minimums => minimums.size > 1)
+  const whisperDifference = (clause: string) => whisperStatement(clause)?.minimum
+  const authoredWhispers = whispersClauses.length > 0
+  const xv = /^XV-Pairs: Cells joined by an X or V must sum to 10\(X\) or 5\(V\)\.$/i
+  const authoredXv = clauses.some(clause => xv.test(clause))
+  const sandwich = /^Sandwich sum: (?:Digits between 1 and (\d+) in the indicated row or column must sum to the indicated value|Clues on the edge of the grid show the sum of the digits sandwiched between the 1 and the (\d+) in that row or column)\.$/i
+  const authoredSandwich = clauses.some(clause => {
+    const match = sandwich.exec(clause)
+    return !!match && Number(match[1] ?? match[2]) === size
+  })
+  const isSandwich = (clause: string) => {
+    const match = sandwich.exec(clause)
+    return !!match && Number(match[1] ?? match[2]) === size
+  }
+  const authoredAnyThermometers = authoredThermometers || authoredSlowThermometers
   const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
     (Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns ||
       authoredDoubleArrows && Number(base[4]) === grid.boxColumns && Number(base[5]) === grid.boxRows)
-    : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size
-  if (!validBase || clauses.some(clause => !isThermometer(clause) && !isRenban(clause) && !isKropki(clause) &&
-    !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause))) {
+    : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size ||
+      Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
+      (!authoredSizedBase?.[3] || Number(authoredSizedBase[3]) === grid.boxRows && Number(authoredSizedBase[4]) === grid.boxColumns ||
+        Number(authoredSizedBase[3]) === grid.boxColumns && Number(authoredSizedBase[4]) === grid.boxRows)
+  if (!validBase || authoredThermometers && authoredSlowThermometers ||
+    conflictingWhisperMinimums || whispersClauses.some(difference => difference < 1 || difference >= size) ||
+    clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&
+      !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause) &&
+      !xv.test(clause) && !isSandwich(clause) && whisperDifference(clause) === undefined)) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
@@ -199,7 +342,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     throw new Error('This SudokuPad export has unsupported lines.')
   }
   if (underlays !== undefined && (!Array.isArray(underlays) || underlays.length > 128 ||
-    (!authoredThermometers && underlays.length > 0))) {
+    (!authoredAnyThermometers && underlays.length > 0))) {
     throw new Error('This SudokuPad export has unsupported underlays.')
   }
   const bulbs = (underlays ?? []).map(bulb => {
@@ -234,9 +377,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       throw new Error('This SudokuPad export has an unsupported line.')
     }
     const mayBeRegionSum = authoredRegionSum &&
-      ((!authoredThermometers && !authoredRenban && !authoredDoubleArrows) || /^#2ecbff(?:ff)?$/i.test(line.color))
+      ((!authoredAnyThermometers && !authoredRenban && !authoredDoubleArrows && !authoredWhispers) || /^#2ecbff(?:ff)?$/i.test(line.color))
     const mayBeRenban = authoredRenban &&
-      ((!authoredThermometers && !authoredRegionSum && !authoredDoubleArrows) || /^#f067f0(?:ff)?$/i.test(line.color))
+      ((!authoredAnyThermometers && !authoredRegionSum && !authoredDoubleArrows && !authoredWhispers) || /^#f067f0(?:ff)?$/i.test(line.color))
+    const whisperMin = sudokuPadWhispersMinimum(line.color)
+    const mayBeWhispers = authoredWhispers && whisperMin !== undefined && whispersClauses.includes(whisperMin)
     const path = readPath(line.wayPoints, size, mayBeRegionSum || authoredDoubleArrows ? size ** 2 + 1 : size)
     if (doubleCircles.size) {
       const color = line.color.toLowerCase()
@@ -263,15 +408,17 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     })
     if (matching.length === 1) {
       const [bulb] = bulbs.splice(matching[0], 1)
-      rules.push({ type: 'thermometer', cells: bulb.cell === path[0] ? path : path.reverse() })
+      rules.push({ type: authoredSlowThermometers ? 'slow-thermometer' : 'thermometer', cells: bulb.cell === path[0] ? path : path.reverse() })
     } else if (matching.length === 0 && mayBeRegionSum) {
       const unique = [...new Set(path)]
       const cells = closedRegionSumCells(unique, [path], cell => gridRegionIndex(grid, cell))
       rules.push({ type: 'region-sum', cells, ...(unique.length !== path.length || cells !== unique ? { segments: [path] } : {}) })
     } else if (matching.length === 0 && mayBeRenban) {
       rules.push({ type: 'renban', cells: path })
+    } else if (matching.length === 0 && mayBeWhispers) {
+      rules.push({ type: 'whispers', cells: path, minDifference: whisperMin! })
     } else {
-      throw new Error(authoredThermometers ? 'A thermometer bulb must identify exactly one end of its path.'
+      throw new Error(authoredAnyThermometers ? 'A thermometer bulb must identify exactly one end of its path.'
         : 'This SudokuPad puzzle has markings without supported rules.')
     }
   }
@@ -280,9 +427,17 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     const unused = remainingOverlays.filter((_, index) => !usedDoubleCircles.has(index))
     remainingOverlays = unused.length ? unused : undefined
   }
+  if (authoredXv || authoredSandwich) {
+    const parsed = readXvAndSandwichOverlays(remainingOverlays, size, authoredXv, authoredSandwich)
+    rules.push(...parsed.rules)
+    remainingOverlays = parsed.unused
+  }
   if (authoredKropki) rules.push(readKropkiDots(remainingOverlays, size))
   else if (remainingOverlays !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   if (bulbs.length || authoredThermometers !== rules.some(rule => rule.type === 'thermometer') ||
+    authoredSlowThermometers !== rules.some(rule => rule.type === 'slow-thermometer') ||
+    authoredWhispers !== rules.some(rule => rule.type === 'whispers') ||
+    authoredXv !== rules.some(rule => rule.type === 'xv') || authoredSandwich !== rules.some(rule => rule.type === 'sandwich') ||
     authoredRenban !== rules.some(rule => rule.type === 'renban') ||
     authoredDoubleArrows !== rules.some(rule => rule.type === 'double-arrow') ||
     authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') || !isSizedRuleList(rules, grid) ||

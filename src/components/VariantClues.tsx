@@ -37,11 +37,12 @@ function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?
     x2={diagonal === 'main' ? size : 0} y2={size} />
 }
 
-function ThermometerClue({ cells, size = 9, consecutive, color }: {
-  cells: readonly number[]; size?: number; consecutive?: boolean; color?: string
+function ThermometerClue({ cells, size = 9, consecutive, color, slow }: {
+  cells: readonly number[]; size?: number; consecutive?: boolean; color?: string; slow?: boolean
 }) {
   const [bulbX, bulbY] = center(cells[0], size)
   return <g className="variant-thermometer" data-consecutive-thermometer={consecutive || undefined}
+    data-slow-thermometer={slow || undefined}
     style={color ? { '--line-clue-color': color } as CSSProperties : undefined}>
     <polyline points={points(cells, size)} />
     <circle cx={bulbX} cy={bulbY} r=".32" />
@@ -183,6 +184,8 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     ? rule.pairs.map(pair => [pairKey(...pair, size), pair] as const) : []))
   const differences = new Set(diamondEdges.size
     ? rules.flatMap(rule => rule.type === 'difference' ? [pairKey(...rule.cells, size)] : []) : [])
+  const markedEdges = new Set([...dots.keys(), ...rules.flatMap(rule => rule.type === 'xv'
+    ? [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].map(pair => pairKey(...pair, size)) : [])])
   const dotValues = new Map<number, [number?, number?]>()
   for (const rule of rules) if (rule.type === 'labeled-dots') {
     const kind = rule.relation === 'ratio' ? 1 : 0
@@ -203,7 +206,19 @@ export function SizedRuleClues({ rules, size }: { rules: readonly SizedConstrain
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
-    {rules.map((rule, index) => rule.type === 'thermometer' && <ThermometerClue key={index} cells={rule.cells} size={size} />)}
+    {rules.map((rule, index) => (rule.type === 'thermometer' || rule.type === 'slow-thermometer') &&
+      <ThermometerClue key={index} cells={rule.cells} size={size} slow={rule.type === 'slow-thermometer'} />)}
+    {rules.map((rule, index) => rule.type === 'whispers' && <g key={index} className="variant-whispers"
+      data-min-difference={rule.minDifference}
+      style={{ '--line-clue-color': rule.minDifference === 2 ? '#ffa600' : rule.minDifference === 3 ? '#67f067' : '#72a54e' } as CSSProperties}>
+      <polyline points={points(rule.cells, size)} />
+    </g>)}
+    {rules.flatMap((rule, index) => rule.type === 'whispers' && rule.minDifference !== 5
+      ? [<WhispersLabel key={index} rule={rule} markedEdges={markedEdges} size={size} />] : [])}
+    {rules.flatMap(rule => rule.type === 'xv'
+      ? [...(rule.five?.pairs ?? []).map(pair => [pair, 5] as const), ...(rule.ten?.pairs ?? []).map(pair => [pair, 10] as const)] : [])
+      .map(([[a, b], sum]) => <SumClue key={pairKey(a, b, size)} a={a} b={b}
+        sums={[[sum, 'xv']]} dots={dots.get(pairKey(a, b, size)) ?? 0} size={size} />)}
     {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
       ? <RenbanClue key={index} {...rule} number={number} size={size} />
       : <RegionSumClue key={index} rule={rule} color={color} number={number} size={size} />)}
@@ -344,6 +359,17 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       }
     } else if (rule.type === 'thermometer') {
       rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
+    } else if (rule.type === 'slow-thermometer') {
+      rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'slow thermometer bulb' : index === rule.cells.length - 1 ? 'slow thermometer tip' : 'slow thermometer'))
+    } else if (rule.type === 'whispers') {
+      for (const cell of rule.cells) labels[cell].add(`Whispers line, neighboring digits differ by at least ${rule.minDifference}`)
+    } else if (rule.type === 'xv') {
+      for (const [pairs, total, marker] of [[rule.five?.pairs ?? [], 5, 'V'], [rule.ten?.pairs ?? [], 10, 'X']] as const) {
+        for (const [a, b] of pairs) {
+          labels[a].add(`${marker} marker totals ${total} with ${at(b)}`)
+          labels[b].add(`${marker} marker totals ${total} with ${at(a)}`)
+        }
+      }
     }
   }
   return labels.map(items => [...items].join(', '))
@@ -571,35 +597,38 @@ function ColoredLineLane({ cells, lane, count, color, endpoints, sharedEnds, das
     stroke={color} strokeWidth={Math.min(.075, .2 / count)} strokeDasharray={dashed ? '.1 .08' : undefined} />
 }
 
-function whispersLabelPoint(a: number, b: number, marked: boolean) {
-  const [ax, ay] = center(a), [bx, by] = center(b)
+function whispersLabelPoint(a: number, b: number, marked: boolean, size = 9) {
+  const [ax, ay] = center(a, size), [bx, by] = center(b, size)
   const cx = (ax + bx) / 2, cy = (ay + by) / 2
   if (!marked) return [cx, cy] as const
   const length = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / length, uy = (by - ay) / length
   // Move beside the marked edge, then along it to clear signs and sum text.
   const candidates = [1, -1].map(side => [cx - uy * .5 * side + ux * .3, cy + ux * .5 * side + uy * .3] as const)
-  return candidates.find(([x, y]) => x >= .25 && x <= 8.75 && y >= .15 && y <= 8.85)
-    ?? [Math.max(.25, Math.min(8.75, candidates[0][0])), Math.max(.15, Math.min(8.85, candidates[0][1]))] as const
+  return candidates.find(([x, y]) => x >= .25 && x <= size - .25 && y >= .15 && y <= size - .15)
+    ?? [Math.max(.25, Math.min(size - .25, candidates[0][0])), Math.max(.15, Math.min(size - .15, candidates[0][1]))] as const
 }
 
-function WhispersLabel({ rule, markedEdges }: { rule: Extract<VariantRule, { type: 'whispers' }>; markedEdges: ReadonlySet<number> }) {
+function WhispersLabel({ rule, markedEdges, size = 9 }: {
+  rule: Extract<VariantRule, { type: 'whispers' }> | Extract<SizedConstraintRule, { type: 'whispers' }>
+  markedEdges: ReadonlySet<number>; size?: number
+}) {
   const edges = rule.cells.slice(1).map((b, i) => [rule.cells[i], b] as const)
-  const [a, b] = edges.find(([a, b]) => !markedEdges.has(pairKey(a, b))) ?? edges[0]
-  const marked = markedEdges.has(pairKey(a, b)), [lx, ly] = whispersLabelPoint(a, b, marked)
+  const [a, b] = edges.find(([a, b]) => !markedEdges.has(pairKey(a, b, size))) ?? edges[0]
+  const marked = markedEdges.has(pairKey(a, b, size)), [lx, ly] = whispersLabelPoint(a, b, marked, size)
   return <g className="variant-whispers-label">
     {marked && <line className="variant-whispers-label-leader"
-      x1={(x(a) + x(b) + 1) / 2} y1={(y(a) + y(b) + 1) / 2} x2={lx} y2={ly} />}
+      x1={(x(a, size) + x(b, size) + 1) / 2} y1={(y(a, size) + y(b, size) + 1) / 2} x2={lx} y2={ly} />}
     <text className="variant-whispers-gap-halo" x={lx} y={ly}>≥{rule.minDifference}</text>
     <text className="variant-whispers-gap" x={lx} y={ly}>≥{rule.minDifference}</text>
   </g>
 }
 
-function SumClue({ a, b, sums, dots }: { a: number; b: number; sums: readonly [number, SumKind][]; dots: number }) {
+function SumClue({ a, b, sums, dots, size = 9 }: { a: number; b: number; sums: readonly [number, SumKind][]; dots: number; size?: number }) {
   return <g className={sums.every(([, kind]) => kind === 'xv') ? 'variant-xv' : 'variant-adjacent-total'} data-cell-a={a} data-cell-b={b}>
     {sums.map(([sum, kind], index) => {
       const offset = sums.length > 1 ? (index - (sums.length - 1) / 2) * (dots ? .86 : .36)
         : dots === 3 ? -.34 : dots ? -.27 : 0
-      const [cx, cy] = pairCenter(a, b, offset)
+      const [cx, cy] = pairCenter(a, b, offset, size)
       const label = sumLabel(sum)
       const prefix = kind === 'xv' ? 'variant-xv' : 'variant-total'
       const style = dots === 3 ? { fontSize: '.2px', strokeWidth: '.05px' }

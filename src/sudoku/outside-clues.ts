@@ -24,28 +24,28 @@ export function clueDelta(direction: Direction) {
 }
 
 /** A complete ray from its first edge cell to the opposite edge, in clue order. */
-export function validOutsideRay(cells: readonly number[], direction: string, diagonal = false) {
+export function validOutsideRay(cells: readonly number[], direction: string, diagonal = false, size = 9) {
   if (typeof direction !== 'string' || !Array.isArray(cells) || !cells.length || !Object.hasOwn(DELTAS, direction)) return false
   const [dr, dc] = DELTAS[direction as Direction]
   if (Boolean(dr && dc) !== diagonal) return false
   const first = cells[0]
-  if (!Number.isInteger(first) || first < 0 || first >= 81) return false
-  let row = Math.floor(first / 9),
-    column = first % 9
-  const inside = (r: number, c: number) => r >= 0 && r < 9 && c >= 0 && c < 9
+  if (!Number.isInteger(first) || first < 0 || first >= size ** 2) return false
+  let row = Math.floor(first / size),
+    column = first % size
+  const inside = (r: number, c: number) => r >= 0 && r < size && c >= 0 && c < size
   if (inside(row - dr, column - dc)) return false
   for (const cell of cells) {
-    if (!inside(row, column) || cell !== row * 9 + column) return false
+    if (!inside(row, column) || cell !== row * size + column) return false
     row += dr
     column += dc
   }
   return !inside(row, column)
 }
 
-const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${(cell % 9) + 1}`
-export function outsideClueLabel(rule: OutsideRule) {
+const cellName = (cell: number, size: number) => `R${Math.floor(cell / size) + 1}C${(cell % size) + 1}`
+export function outsideClueLabel(rule: OutsideRule, size = 9) {
   if (rule.type === 'little-killer')
-    return `Little Killer ${rule.sum}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0])} to ${cellName(rule.cells[rule.cells.length - 1])}: all indicated digits sum to ${rule.sum}. Digits may repeat if the other puzzle rules allow it.`
+    return `Little Killer ${rule.sum}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}: all indicated digits sum to ${rule.sum}. Digits may repeat if the other puzzle rules allow it.`
   const side =
     rule.direction === 'south'
       ? 'top'
@@ -54,12 +54,12 @@ export function outsideClueLabel(rule: OutsideRule) {
         : rule.direction === 'east'
           ? 'left'
           : 'right'
-  const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % 9) + 1) : 'row ' + (Math.floor(rule.cells[0] / 9) + 1)}`
+  const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % size) + 1) : 'row ' + (Math.floor(rule.cells[0] / size) + 1)}`
   if (rule.type === 'skyscrapers')
-    return `Skyscrapers ${rule.count}, ${location}: looking from ${cellName(rule.cells[0])}, count the first building and each new tallest building. Exactly ${rule.count} ${rule.count === 1 ? 'building is' : 'buildings are'} visible.`
+    return `Skyscrapers ${rule.count}, ${location}: looking from ${cellName(rule.cells[0], size)}, count the first building and each new tallest building. Exactly ${rule.count} ${rule.count === 1 ? 'building is' : 'buildings are'} visible.`
   return rule.type === 'x-sum'
-    ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0])}.`
-    : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and 9 sum to ${rule.sum}; 1 and 9 are excluded.`
+    ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0], size)}.`
+    : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and ${size} sum to ${rule.sum}; 1 and ${size} are excluded.`
 }
 
 /** Prefix otherwise ambiguous outside numbers when orthogonal rule families are combined. */
@@ -70,7 +70,7 @@ export function outsideClueLegend(rules?: readonly VariantRule[]) {
 }
 
 /** Lay out all edge and corner labels in cell coordinates. Repeated anchors move outward along their ray. */
-export function outsideClueLayout(rules?: readonly VariantRule[]) {
+export function outsideClueLayout(rules?: readonly VariantRule[], size = 9) {
   const clues: {
     rule: OutsideRule
     lane: number
@@ -88,13 +88,13 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
     if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers') continue
     const [dr, dc] = clueDelta(rule.direction),
       first = rule.cells[0]
-    const ox = (first % 9) + 0.5 - dc,
-      oy = Math.floor(first / 9) + 0.5 - dr
+    const ox = (first % size) + 0.5 - dc,
+      oy = Math.floor(first / size) + 0.5 - dr
     const key = `${ox},${oy}`,
       prior = anchors.get(key) ?? { lane: 0, extent: 0 }
     if (rule.type !== 'little-killer') {
-      const x = (first % 9) + 0.5 - dc * (0.85 + prior.extent),
-        y = Math.floor(first / 9) + 0.5 - dr * (0.85 + prior.extent)
+      const x = (first % size) + 0.5 - dc * (0.85 + prior.extent),
+        y = Math.floor(first / size) + 0.5 - dr * (0.85 + prior.extent)
       const label = (legend.length ? ORTHOGONAL_CLUES[rule.type].prefix : '') + (rule.type === 'skyscrapers' ? rule.count : rule.sum)
       clues.push({ rule, lane: prior.lane, x, y, dr, dc, label })
       const extent = prior.extent + (legend.length ? 0.9 : 0.7)
@@ -118,9 +118,9 @@ export function outsideClueLayout(rules?: readonly VariantRule[]) {
       })
       // Include the complete glyph and arrow in the gutters, including corner clues.
       depths.left = Math.max(depths.left, -label.x + 0.45)
-      depths.right = Math.max(depths.right, label.x + 0.45 - 9)
+      depths.right = Math.max(depths.right, label.x + 0.45 - size)
       depths.top = Math.max(depths.top, -label.y + 0.3)
-      depths.bottom = Math.max(depths.bottom, label.y + 0.3 - 9)
+      depths.bottom = Math.max(depths.bottom, label.y + 0.3 - size)
       anchors.set(key, { lane: prior.lane + 1, extent: prior.extent + 1.2 })
     }
   }

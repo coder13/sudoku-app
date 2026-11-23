@@ -15,6 +15,22 @@ export function isSizedRuleAuthor(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= 72
 }
 
+function validSizedSandwich(rule: Record<string, unknown>, size: number) {
+  if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) || Object.keys(rule).length !== 4 ||
+    !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
+    !Array.isArray(rule.cells) || rule.cells.length !== size ||
+    rule.cells.some(cell => !Number.isInteger(cell) || Number(cell) < 0 || Number(cell) >= size ** 2) ||
+    new Set(rule.cells).size !== size || !Number.isInteger(rule.sum) || Number(rule.sum) < 0 ||
+    Number(rule.sum) > size * (size + 1) / 2 - size - 1) return false
+  const cells = rule.cells as number[]
+  const first = cells[0]
+  const direction = rule.direction
+  return direction === 'north' ? Math.floor(first / size) === size - 1 && cells.every((cell, index) => cell === first - index * size)
+    : direction === 'south' ? Math.floor(first / size) === 0 && cells.every((cell, index) => cell === first + index * size)
+      : direction === 'east' ? first % size === 0 && cells.every((cell, index) => cell === first + index)
+        : first % size === size - 1 && cells.every((cell, index) => cell === first - index)
+}
+
 function validKropkiMarks(value: unknown, size: number): value is MarkedPairs {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
     Object.keys(value).some(key => key !== 'pairs' && key !== 'negative')) return false
@@ -53,6 +69,24 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).every(key => ['type', 'consecutive', 'ratioTwo'].includes(key)) &&
         [rule.consecutive, rule.ratioTwo].every(marks => marks === undefined || validKropkiMarks(marks, size))
     }
+    if (rule.type === 'xv') {
+      if (Object.keys(rule).some(key => !['type', 'five', 'ten'].includes(key)) ||
+        rule.five !== undefined && !validKropkiMarks(rule.five, size) ||
+        rule.ten !== undefined && !validKropkiMarks(rule.ten, size) ||
+        ![rule.five, rule.ten].some(marks => (marks as MarkedPairs | undefined)?.pairs?.length ||
+          (marks as MarkedPairs | undefined)?.negative)) return false
+      const marks = [rule.five, rule.ten].flatMap(value => (value as MarkedPairs | undefined)?.pairs ?? [])
+      return new Set(marks.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === marks.length
+    }
+    if (rule.type === 'whispers') {
+      const cells: unknown[] = Array.isArray(rule.cells) ? rule.cells : []
+      return Object.keys(rule).length === 3 && Number.isInteger(rule.minDifference) &&
+        Number(rule.minDifference) >= 1 && Number(rule.minDifference) < size && Array.isArray(rule.cells) &&
+        cells.length >= 2 && cells.length <= size ** 2 &&
+        cells.every(cell => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell < size ** 2) &&
+        cells.every((cell, index) => index === 0 || cell !== cells[index - 1])
+    }
+    if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size)
     if (rule.type === 'labeled-dots') {
       const ratio = rule.relation === 'ratio'
       return Object.keys(rule).every(key => ['type', 'relation', 'marks', 'negative'].includes(key)) &&
@@ -96,7 +130,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).length === 3 && cells.length > 0 && (rule.parity === 'even' || rule.parity === 'odd')
     }
     if (!cells.length || new Set(cells).size !== cells.length || (rule.type !== 'region-sum' && cells.length > size)) return false
-    if (rule.type === 'thermometer') return Object.keys(rule).length === 2 && cells.length >= 2
+    if (rule.type === 'thermometer' || rule.type === 'slow-thermometer') return Object.keys(rule).length === 2 && cells.length >= 2
     if (rule.type === 'region-sum') {
       if (Object.keys(rule).some(key => !['type', 'cells', 'segments', 'groupByRegion'].includes(key)) ||
         (rule.groupByRegion !== undefined && typeof rule.groupByRegion !== 'boolean') ||
@@ -173,6 +207,32 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       const [a, b] = rule.cells
       if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
+    else if (rule.type === 'slow-thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] < solution[rule.cells[index - 1]])) return
+    else if (rule.type === 'whispers' && rule.cells.some((cell, index) => index > 0 &&
+      Math.abs(Number(solution[cell]) - Number(solution[rule.cells[index - 1]])) < rule.minDifference)) return
+    else if (rule.type === 'xv' || rule.type === 'sandwich') {
+      if (rule.type === 'xv') {
+        const invalid = (pairs: MarkedPairs | undefined, total: number) => pairs?.pairs?.some(([a, b]) => Number(solution[a]) + Number(solution[b]) !== total)
+        if (invalid(rule.five, 5) || invalid(rule.ten, 10)) return
+        if (rule.five?.negative || rule.ten?.negative) {
+          const markedFive = new Set(rule.five?.pairs?.map(([a, b]) => Math.min(a, b) * grid.size ** 2 + Math.max(a, b)) ?? [])
+          const markedTen = new Set(rule.ten?.pairs?.map(([a, b]) => Math.min(a, b) * grid.size ** 2 + Math.max(a, b)) ?? [])
+          for (let cell = 0; cell < grid.size ** 2; cell++) {
+            const neighbors = [cell % grid.size < grid.size - 1 ? cell + 1 : -1, cell + grid.size < grid.size ** 2 ? cell + grid.size : -1]
+            for (const other of neighbors.filter(value => value >= 0)) {
+              const key = cell * grid.size ** 2 + other
+              const sum = Number(solution[cell]) + Number(solution[other])
+              if (rule.five?.negative && !markedFive.has(key) && sum === 5 || rule.ten?.negative && !markedTen.has(key) && sum === 10) return
+            }
+          }
+        }
+      } else {
+        const one = rule.cells.findIndex(cell => solution[cell] === '1')
+        const high = rule.cells.findIndex(cell => Number(solution[cell]) === grid.size)
+        if (one < 0 || high < 0 || rule.cells.slice(Math.min(one, high) + 1, Math.max(one, high))
+          .reduce((sum, cell) => sum + Number(solution[cell]), 0) !== rule.sum) return
+      }
+    }
   }
   if (sizedKillerState(rules, solution, grid.size)?.conflicts.size || sizedQuadrupleState(rules, solution, grid.size)?.conflicts.size) return
   if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
@@ -221,6 +281,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
         : 'An edge without a labeled white dot cannot separate consecutive digits.')
     }
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
+    else if (rule.type === 'slow-thermometer') clues.add('Digits increase or stay the same from the bulb to the tip of each slow thermometer.')
+    else if (rule.type === 'whispers') clues.add(`Neighboring digits on each Whispers line differ by at least ${rule.minDifference}.`)
+    else if (rule.type === 'sandwich') clues.add(`The digits between 1 and ${grid.size} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    else if (rule.type === 'xv') clues.add('Digits joined by V add to 5. Digits joined by X add to 10.')
     else {
       if (rule.consecutive?.pairs?.length) clues.add('Digits separated by a white dot are consecutive.')
       if (rule.ratioTwo?.pairs?.length) clues.add('Across a black dot, one digit is double the other.')

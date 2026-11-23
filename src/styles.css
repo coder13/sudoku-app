@@ -4461,6 +4461,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer { color: var(--line-clue-color, var(--board-ink)); opacity: .28; }
 .variant-thermometer[data-consecutive-thermometer] { opacity: .64; }
 .variant-thermometer polyline { fill: none; stroke: currentColor; stroke-width: .22; stroke-linecap: round; stroke-linejoin: round; }
+.variant-thermometer[data-slow-thermometer] polyline { stroke-dasharray: .14 .1; }
 .variant-thermometer circle { fill: currentColor; }
 .variant-thermometer-overlap { color: var(--board-ink); opacity: .5; }
 .variant-thermometer-overlap line { stroke-linecap: round; }
@@ -4717,7 +4718,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-whispers polyline {
   fill: none;
-  stroke: #72a54e;
+  stroke: var(--line-clue-color, #72a54e);
   stroke-width: .12;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -4732,7 +4733,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-whispers-gap { fill: var(--board-ink); stroke: none; }
 .variant-whispers-gap-halo { fill: none; stroke: var(--board-bg); stroke-width: .07; }
-.variant-whispers-label-leader { stroke: #72a54e; stroke-width: .025; stroke-dasharray: .05 .04; }
+.variant-whispers-label-leader { stroke: var(--line-clue-color, #72a54e); stroke-width: .025; stroke-dasharray: .05 .04; }
 @container (max-width: 340px) {
   .board-variant-clues :is(.variant-whispers-gap, .variant-whispers-gap-halo) { font-size: .28px; }
 }
