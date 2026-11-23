@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 12291)
-Total output lines: 722
-
 import { fogFragmentLabels, type FogView } from '../sudoku/fog'
 import { cloneElement, memo, useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react'
 import { sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
@@ -396,7 +393,28 @@ export function Board({
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, fullCandidateCellHighlight = false,
   highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGiven, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, selectedCandidates, dragSelect = false,
-  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImpor…291 tokens truncated…les = variantPuzzle?.rules
+  onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
+  modeBorder, modeBoundaryRef, modeBadge,
+}: Props) {
+  const groupDescriptionId = useId()
+  const groupDescriptions = useMemo(() => boardGroups(annotations?.links, annotations?.groups)
+    .map(([, { point, label }], index) => `${label ?? `Group ${index + 1}`}: ${boardGroupDescription(point)}.`),
+  [annotations?.links, annotations?.groups])
+  const selectedCandidateMasks = useMemo(() => {
+    const masks = new Map<number, number>()
+    for (const { cell, digit } of [...(selectedCandidates ?? []), ...(selectedCandidate ? [selectedCandidate] : [])]) {
+      masks.set(cell, (masks.get(cell) ?? 0) | (1 << (digit - 1)))
+    }
+    return masks
+  }, [selectedCandidate?.cell, selectedCandidate?.digit, selectedCandidates])
+  const grid = sizedGrid ?? CLASSIC_GRID
+  const gridSize = grid.size
+  const slotsAcross = Math.ceil(Math.sqrt(gridSize))
+  const boxRows = 'boxRows' in grid ? grid.boxRows : Math.ceil(gridSize / slotsAcross)
+  const boxColumns = 'boxColumns' in grid ? grid.boxColumns : slotsAcross
+  const variantPuzzle = fog?.puzzle ?? fullPuzzle
+  const givens = fog?.puzzle.givens ?? fullGivens
+  const variantRules = variantPuzzle?.rules
   const clipCells = fog && fog.cells.size < 81 ? fog.cells : undefined
   const drawingRules = useMemo(() => {
     if (!clipCells || !fullPuzzle?.rules) return variantRules
