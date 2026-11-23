@@ -3,18 +3,29 @@ type Point = readonly [x: number, y: number]
 export type AuthoredMark = { type: 'outline'; points: readonly Point[]; thickness: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
 
+export type AuthoredCornerPath = {
+  type: 'corner-path'
+  points: readonly Point[]
+  thickness: number
+  color: string
+  opacity: number
+  border?: { color: string; thickness: number }
+}
+
 function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
 
-function point(value: unknown, corner: boolean): value is Point {
+function point(value: unknown, corner: boolean, gridSize = 9): value is Point {
   return Array.isArray(value) && value.length === 2 && value.every(coordinate => typeof coordinate === 'number' &&
-    coordinate >= 0 && coordinate <= 9 && Number.isInteger(coordinate - (corner ? 0 : .5)))
+    coordinate >= 0 && coordinate <= gridSize && Number.isInteger(coordinate - (corner ? 0 : .5)))
 }
 
 function size(value: unknown): value is number {
   return typeof value === 'number' && value > 0 && value <= .5
 }
+
+const artworkColor = (value: unknown): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 
 export function validAuthoredArtwork(value: unknown): value is readonly AuthoredMark[] {
   return Array.isArray(value) && value.length > 0 && value.length <= 81 && value.every(mark => {
@@ -26,7 +37,27 @@ export function validAuthoredArtwork(value: unknown): value is readonly Authored
         points[0].every((coordinate, axis) => coordinate === points[points.length - 1][axis])
     }
     return mark.type === 'disc' && Object.keys(mark).length === 4 && size(mark.radius) &&
-      point(mark.center, false) && typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
+      point(mark.center, false) && artworkColor(mark.color)
+  })
+}
+
+function boundedNumber(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && value >= min && value <= max
+}
+
+export function validAuthoredCornerPaths(value: unknown, gridSize: number): value is readonly AuthoredCornerPath[] {
+  if (!Array.isArray(value) || !value.length || value.length > 81) return false
+  let total = 0
+  return value.every(mark => {
+    if (!record(mark) || mark.type !== 'corner-path' ||
+        Object.keys(mark).some(key => !['type', 'points', 'thickness', 'color', 'opacity', 'border'].includes(key))) return false
+    const { points, thickness, color, opacity, border } = mark
+    if (!Array.isArray(points) || points.length < 2 || !boundedNumber(thickness, 0, 1) ||
+        !artworkColor(color) || !boundedNumber(opacity, 0, 1)) return false
+    total += points.length
+    return total <= 640 && points.every(vertex => point(vertex, true, gridSize)) &&
+      (border === undefined || record(border) && Object.keys(border).length === 2 &&
+        artworkColor(border.color) && boundedNumber(border.thickness, 0, thickness))
   })
 }
 

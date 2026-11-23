@@ -4177,7 +4177,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-thermometer circle { fill: currentColor; }
 .variant-thermometer-overlap { color: var(--board-ink); opacity: .5; }
 .variant-thermometer-overlap line { stroke-linecap: round; }
-[data-sized-rule-clues]:has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
+:is([data-sized-rule-clues], .number-puzzle-line-clues):has(> .variant-renban) .variant-thermometer polyline { stroke-width: .38; }
 .variant-arrow-line, .variant-arrow-circle, .variant-arrow-head {
   fill: none;
   stroke: var(--board-ink);
@@ -4344,7 +4344,18 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .5;
 }
-.variant-between polyline, .variant-between line {
+.variant-palindrome circle { fill: var(--board-ink); opacity: .5; }
+.variant-consecutive polyline {
+  fill: none;
+  stroke: #45816a;
+  stroke-width: .12;
+  stroke-dasharray: .18 .16;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .8;
+}
+.variant-consecutive circle { fill: #45816a; }
+.variant-between :is(polyline, line), .variant-lockout :is(polyline, line) {
   fill: none;
   stroke: var(--board-ink);
   stroke-width: .075;
@@ -4352,7 +4363,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   stroke-linejoin: round;
   opacity: .4;
 }
-.variant-between .variant-between-jump { stroke-dasharray: .1 .08; }
+:is(.variant-between, .variant-lockout) .variant-between-jump { stroke-dasharray: .1 .08; }
 .variant-between-node { fill: var(--board-ink); opacity: .65; }
 .variant-region-sum polyline, .variant-region-sum line {
   fill: none;
@@ -4364,6 +4375,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-region-sum .variant-region-sum-jump { stroke-dasharray: .1 .08; }
 .variant-region-sum-node { fill: currentColor; opacity: .8; }
+.number-puzzle-lockout {
+  --lockout-ink: light-dark(#764eaa, #c2a2ee);
+}
+.number-puzzle-lockout .variant-lockout :is(polyline, line) { stroke: var(--lockout-ink); opacity: .8; }
+.number-puzzle-lockout .variant-between-node { fill: var(--lockout-ink); }
+.number-puzzle-lockout .variant-lockout-endpoints path { fill: var(--board-bg); stroke: var(--lockout-ink); stroke-width: .055; }
 .variant-between-endpoints circle {
   fill: var(--board-bg);
   stroke: var(--board-ink);
