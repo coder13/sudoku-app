@@ -1437,7 +1437,9 @@ svg { flex-shrink: 0; }
   --cell-fill: color-mix(in srgb, var(--peer-bg), var(--variant-cell-bg) var(--related-cell-variant-tint, 55%));
 }
 .cell.matching { --cell-fill: var(--matching-digit-bg, var(--matching-bg)); }
-.cell:is(.candidate-highlight-cell, .candidate-count-match) { --cell-fill: var(--matching-bg); }
+.cell:is(.candidate-highlight-cell, .candidate-count-match) {
+  --cell-fill: color-mix(in srgb, var(--matching-bg) 65%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
+}
 .cell.candidate-highlight-light {
   --cell-fill: color-mix(in srgb, var(--matching-bg) 45%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
 }
