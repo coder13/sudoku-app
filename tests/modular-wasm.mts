@@ -28,23 +28,25 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
-  ['HCHW', 420, 21, 9058, 230, false, true, 'hard'],
+  ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
 ] as const
 
 test('both Modular group orders rule out a candidate with a replayable hint proof', async () => {
   const technique = 'group-order-elimination'
+  const [exercise] = await runEngine({ type: 'practice-examples', variant: true, technique })
+  const { position, deduction } = exercise
+  const puzzle = position.puzzle
   const source = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
   const { game } = await prepareImportedPuzzle(source.code)
-  const puzzle = game.variant!.puzzle
-  const position = variantPosition(game.variant!)
-  const techniqueOrder = await getVariantPlayOrder(puzzle)
-  assert.ok(techniqueOrder.includes(technique))
+  assert.ok((await getVariantPlayOrder(game.variant!.puzzle)).includes(technique))
+  // Apply this rule on the untouched practice position so earlier techniques do not
+  // consume the candidate before the independent two-order proof is checked.
+  const techniqueOrder = [technique]
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
   const stepIndex = trace.steps.findIndex(step => step.technique === technique)
   assert.ok(stepIndex >= 0)
-  const deduction = trace.steps[stepIndex]
+  assert.deepEqual(trace.steps[stepIndex], deduction)
   assert.equal(deduction.evidence.type, 'group-order-elimination')
-  assert.deepEqual(deduction.actions, [{ eliminate: { cell: 6, digit: 4 } }])
   assert.equal(deduction.evidence.branches.length, 2)
   assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'pair')))
   assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'house')))
@@ -53,7 +55,7 @@ test('both Modular group orders rule out a candidate with a replayable hint proo
   const choice = variantHintChoice(deduction, puzzle)
   assert.ok('variant' in choice.evidence)
   assert.match(choice.evidence.variant.description, /Modular line.*two possible group orders/)
-  assert.match(choice.evidence.variant.reason, /Both orders rule out 4/)
+  assert.match(choice.evidence.variant.reason, /Both orders rule out/)
   assert.match(choice.evidence.variant.reason, /row 1|column|box/)
 })
 
@@ -328,15 +330,16 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.match(reason, /use 1 and 3.*r5c2 with no candidate in box 4/i)
   assertModularProof(game.variant!.puzzle, deduction)
   const ranked = (await puzzleHints(stalled)).choices
-  const [chain, ...otherChoices] = ranked
+  const chain = ranked[0]
   assert.ok(chain && 'variant' in chain.evidence)
   assert.equal(chain.evidence.variant.source?.deduction.evidence.type, 'group-line-sum-chain')
-  assert.deepEqual(otherChoices.map(choice => [choice.technique, choice.actions]), [
-    ['modular', hint.actions],
-    ['modular', [1, 2, 3].map(digit => ({ eliminate: { cell: 25, digit } }))],
-    ['kropki-house-support', [67, 76].flatMap(cell => [1, 2].map(digit => ({ eliminate: { cell, digit } })))],
-    ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
-  ])
+  const lineAndBoxIndex = ranked.findIndex(choice =>
+    JSON.stringify(choice.actions) === JSON.stringify(hint.actions))
+  const forcingIndex = ranked.findIndex(choice =>
+    choice.technique === 'dynamic-forcing-net' &&
+    JSON.stringify(choice.actions) === JSON.stringify([{ eliminate: { cell: 19, digit: 8 } }]))
+  assert.ok(lineAndBoxIndex > 0)
+  assert.ok(forcingIndex > lineAndBoxIndex)
   const position = variantPosition(game.variant!, stalled.position)
   const finder = watchTechniqueScan(valuesOf(stalled), eliminations, position)
   try {

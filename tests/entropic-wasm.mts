@@ -237,7 +237,7 @@ test('mixed group-order contradictions are the same move in hints, Finder, repla
     assert.deepEqual(chosen.evidence.variant.source?.deduction, proof)
     assert.match(chosen.evidence.variant.reason,
       index === 0 ? /row 5.*row 6.*white dot.*No pair fits the clue/ : /white dot.*row 5.*box 5.*column 5.*box 8.*No order/)
-    const ordinary = await puzzleHints({ ...played, difficulty: 'hard' })
+    const ordinary = await puzzleHints({ ...played, difficulty: 'hard' }, 'all')
     assert.ok(ordinary.choices.some(hint => hint.technique === technique))
     const scan = watchTechniqueScan(valuesOf(played), played.position.eliminations, variantPosition(variant, played.position))
     try {
