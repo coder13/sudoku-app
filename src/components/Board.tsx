@@ -376,7 +376,7 @@ const BoardCell = memo(function BoardCell({
     tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : buttonCell || fixedCellAction ? -1 : undefined}
     aria-selected={onCell || buttonCell || fixedCellAction ? selected : undefined}
     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
-    onClick={givenAction ? () => onGiven?.(value) : regularCellAction ? event => onCell?.(index, event) : highlightedLinkDigit != null ? event => {
+    onClick={givenAction ? () => onGiven?.(value) : onCell ? event => onCell(index, event) : highlightedLinkDigit != null ? event => {
       if (event.target instanceof Element && event.target.closest('.candidate-button')) return
       selectCandidate(highlightedLinkDigit, visibleGridCandidates.includes(highlightedLinkDigit))
     } : undefined}

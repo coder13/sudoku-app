@@ -194,6 +194,11 @@ async function run(profile) {
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'reload preserves exact membership')
     equal((await savedGame(page)).chainSketch.pending, nodes[5], 'reload preserves the pending group')
     for (const cell of [67, 68]) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'reload keeps all group members selected')
+    await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
+    const reloadedShowEliminations = page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true })
+    if (await reloadedShowEliminations.getAttribute('aria-checked') !== 'true') await click(reloadedShowEliminations)
+    equal(await reloadedShowEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations remain visible after reload')
+    await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
 
     phase = 'cancel group selection'
     await click(page.getByRole('button', { name: 'Create group', exact: true }))
