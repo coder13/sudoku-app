@@ -128,6 +128,8 @@ async function run(profile) {
     const drawn = await savedGame(page)
     equal(drawn.chainSketch.sketches[0].history.at(-1), expectedEdges, 'drawing includes the group-to-group link')
     equal(await page.locator('.board-chain-group').count(), 3, 'each group has one enclosure')
+    await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
+    await click(page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true }))
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
 
@@ -155,7 +157,7 @@ async function run(profile) {
     phase = 'apply grouped deductions'
     const beforeApply = await savedGame(page)
     await click(page.getByRole('button', { name: 'Apply edits', exact: true }))
-    await page.waitForFunction(key => Boolean(JSON.parse(localStorage.getItem(key)).position.eliminations?.[63] & 4), gameKey)
+    await waitForSavedPuzzle(page, game => game.id === fixture.id && Boolean(game.position.eliminations?.[63] & 4))
     const applied = await savedGame(page)
     equal(Boolean(applied.position.eliminations[63] & 4), true, 'the grouped AIC removes 3 from R8C1')
     equal(applied.chainSketch, undefined, 'applied chains are removed')
