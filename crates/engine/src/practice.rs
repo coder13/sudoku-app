@@ -2382,15 +2382,47 @@ mod tests {
             }
             assert!(covers_expected_link);
             for technique in [Technique::Aic, Technique::GroupedAic] {
-                assert!(
-                    technique_deductions_at(&position, technique)
-                        .unwrap()
-                        .iter()
-                        .all(|hint| hint
-                            .actions
-                            .iter()
-                            .all(|a| !example.expected_actions.contains(a)))
-                );
+                let overlaps: Vec<_> = technique_deductions_at(&position, technique)
+                    .unwrap()
+                    .into_iter()
+                    .filter(|hint| {
+                        hint.actions.iter().any(|a| example.expected_actions.contains(a))
+                    })
+                    .collect();
+                if technique != Technique::GroupedAic || example != wide {
+                    assert!(overlaps.is_empty());
+                    continue;
+                }
+                // The wide example also has two grouped Type 2 proofs. Their
+                // different-digit endpoints were previously excluded by the search.
+                assert!(!overlaps.is_empty());
+                assert_eq!(example.expected_actions, [remove(74, 1)]);
+                let solution = crate::solve(&position.values().unwrap()).unwrap();
+                assert_ne!(solution[74], 1);
+                for hint in overlaps {
+                    assert_eq!(hint.actions, example.expected_actions);
+                    let HintEvidence::Inference { links } = hint.evidence else {
+                        panic!("grouped Type 2 must record its links");
+                    };
+                    assert_eq!(links[0].from, InferenceNode::Candidate(Candidate {
+                        cell: 74,
+                        digit: 8,
+                    }));
+                    let last = links.last().unwrap();
+                    assert!(matches!(&last.to, InferenceNode::Group { digit: 1, cells }
+                        if cells == &[2, 11, 20] || cells == &[55, 64, 73]));
+                    assert_eq!(links[0].strength, LinkStrength::Strong);
+                    assert_eq!(last.strength, LinkStrength::Strong);
+                    for pair in links.windows(2) {
+                        assert_eq!(pair[0].to, pair[1].from);
+                        assert_ne!(pair[0].strength, pair[1].strength);
+                    }
+                    for link in &links {
+                        assert_link_is_valid(link, &masks);
+                    }
+                    assert!(links[0].from.candidates().chain(last.to.candidates())
+                        .all(|end| candidates_conflict(Candidate { cell: 74, digit: 1 }, end)));
+                }
             }
         }
     }

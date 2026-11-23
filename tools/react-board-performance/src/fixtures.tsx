@@ -91,6 +91,15 @@ export function scenarios(): Scenario[] {
       { ...regular, onCell: undefined }] },
   ]
   const chain: BoardProps = { ...notes, onCell: undefined, onCandidate: () => {}, selected: [], active: 2 }
+  const grouped: BoardProps = { ...chain, descriptionId: 'existing-board-description', candidates: Array(81).fill(511),
+    selectedCandidate: { cell: 2, digit: 1 }, selectedCandidates: [{ cell: 2, digit: 2 }, { cell: 11, digit: 2 }],
+    annotations: { ...annotations, groups: [{ point: { cells: [2, 11], digit: 2 }, color: '#228866', opacity: .6, label: 'Selected group' }] } }
+  result.push({ id: 'grouped-chain-endpoints-and-selection', states: [grouped,
+    { ...grouped, selectedCandidates: [{ cell: 3, digit: 2 }, { cell: 12, digit: 2 }],
+      annotations: { groups: [{ point: { candidates: [{ cell: 3, digit: 2 }, { cell: 12, digit: 5 }] }, color: '#5d72e4', label: 'Mixed group' }] } },
+    { ...grouped, selectedCandidates: [], annotations: { groups: [] } },
+    { ...grouped, selectedCandidates: undefined, annotations: undefined },
+  ] })
   result.push({ id: 'chain-cell-target-highlights', states: [chain,
     { ...chain, linkDrawing: true, highlightedDigit: 3 },
     { ...chain, linkDrawing: true, highlightedDigit: 4 },

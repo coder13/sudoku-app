@@ -56,7 +56,7 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
       assert.equal(previous.rating.status, 'stalled')
     }
     const solution = await puzzleSolution(game)
-    assert.equal(solution.rating.scoringVersion, 21)
+    assert.equal(solution.rating.scoringVersion, 22)
     assert.equal(solution.rating.score.points, points)
     assert.equal(solution.rating.score.counts[distinctTechnique] ?? 0, newProofs)
     assert.equal(solution.steps.length, steps)

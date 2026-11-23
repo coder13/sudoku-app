@@ -1,6 +1,33 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { boardLinkEndpoints, boardLinkRoutes } from '../src/sudoku/board-link-geometry.ts'
+import { boardGroupKey, boardGroupOutline, boardLinkEndpoints, boardLinkRoutes, boardPointCandidates } from '../src/sudoku/board-link-geometry.ts'
+
+test('group membership is stable across endpoint order and wire shapes', () => {
+  const point = { cells: [19, 18, 19], digit: 5 }
+  assert.equal(boardGroupKey(point), boardGroupKey({ candidates: [{ cell: 18, digit: 5 }, { cell: 19, digit: 5 }] }))
+  assert.deepEqual(boardPointCandidates(point), [{ cell: 18, digit: 5 }, { cell: 19, digit: 5 }])
+  assert.equal(boardGroupKey({ cell: 18, digit: 5 }), undefined)
+  assert.deepEqual(boardGroupOutline({ cells: [18, 18], digit: 5 }), [])
+  assert.deepEqual(boardGroupOutline({ candidates: [] }), [])
+})
+
+test('group outlines enclose every member and follow candidate caption insets', () => {
+  const members = [{ cell: 0, digit: 1 }, { cell: 9, digit: 7 }, { cell: 10, digit: 5 }]
+  const insets = new Map([[0, { top: .3, bottom: .28 }]])
+  const outline = boardGroupOutline({ candidates: members }, insets)
+  assert.ok(outline.length >= 4)
+  for (const candidate of members) {
+    const { start } = boardLinkEndpoints(candidate, { cell: 80 }, insets)!
+    for (let i = 0; i < outline.length; i++) {
+      const a = outline[i], b = outline[(i + 1) % outline.length]
+      assert.ok((b.x - a.x) * (start.y - a.y) - (b.y - a.y) * (start.x - a.x) > 0)
+    }
+  }
+  assert.notDeepEqual(outline, boardGroupOutline({ candidates: members }))
+  assert.deepEqual(boardGroupOutline({ cells: [18, 19], digit: 5 }), [
+    { x: 3.45, y: 23.45 }, { x: 16.55, y: 23.45 }, { x: 16.55, y: 26.55 }, { x: 3.45, y: 26.55 },
+  ])
+})
 
 test('a group link starts at the near member instead of crossing its digit', () => {
   assert.deepEqual(boardLinkEndpoints({ cells: [18, 19], digit: 5 }, { cell: 25, digit: 5 }), {

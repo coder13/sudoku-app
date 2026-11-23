@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Pale
 import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Deduction } from '../sudoku/engine'
 import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
-import { chainCandidate, type LinkStrength } from '../sudoku/chains'
+import { chainNodeCandidates, chainPoint, type ChainNode, type LinkStrength } from '../sudoku/chains'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
 import { cellName, deductionResults } from '../sudoku/lesson-diagram'
 import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
@@ -34,24 +34,28 @@ function pointName(point: BoardLink['from'], nameCell = cellName) {
   return `${point.digit} in ${nameCell(point.cell)}`
 }
 
-function compactPath(nodes: readonly number[], strengths: readonly LinkStrength[]) {
+function compactPath(nodes: readonly ChainNode[], strengths: readonly LinkStrength[]) {
   return nodes.map((id, i) => {
-    const { cell, digit } = chainCandidate(id)
-    const candidate = `${digit}${cellName(cell).toLowerCase()}`
+    const members = chainNodeCandidates(id)
+    const candidate = typeof id === 'number'
+      ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
+      : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`
     return i === 0 ? candidate : `${strengths[i - 1] === 'strong' ? '=' : '−'} ${candidate}`
   }).join(' ')
 }
 
 function ChainNotation({ id, paths }: {
   id: string
-  paths: readonly { nodes: readonly number[]; strengths: readonly LinkStrength[] }[]
+  paths: readonly { nodes: readonly ChainNode[]; strengths: readonly LinkStrength[] }[]
 }) {
   return <span className="chain-notation" id={id}><code>{paths.map(({ nodes, strengths }, pathIndex) => (
     <span className="chain-notation-path" key={`${pathIndex}-${nodes.join('-')}`}>
       {pathIndex > 0 && ', '}
       {nodes.map((node, index) => {
-        const { cell, digit } = chainCandidate(node)
-        const candidate = `${digit}${cellName(cell).toLowerCase()}`
+        const members = chainNodeCandidates(node)
+        const candidate = typeof node === 'number'
+          ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
+          : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`
         if (index === 0) return <span className="chain-notation-node" key={`${node}-${index}`}>{candidate}</span>
         return <Fragment key={`${node}-${index}`}>
           {' '}<span className="chain-notation-step">
@@ -256,6 +260,13 @@ function ChainActionsMenu({ actions, label = 'Chain actions' }: {
 
 export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, compact, strongLinks, eliminations, unavailable, inspection }: Props) {
   const chainLabelId = useId()
+  const groupButton = useRef<HTMLButtonElement>(null)
+  const groupWasOpen = useRef(false)
+  const grouping = sketch?.grouping ?? false
+  useLayoutEffect(() => {
+    if (groupWasOpen.current && !grouping) groupButton.current?.focus({ preventScroll: true })
+    groupWasOpen.current = grouping
+  }, [grouping])
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
     const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
@@ -288,6 +299,8 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         aria-keyshortcuts={sketch.drawing ? `${drawKey} Escape` : drawKey} onClick={onToggleDrawing}>
         {!sketch.drawing && <Link2 size={15} aria-hidden="true" />} {drawLabel}
       </Button>
+      <Button ref={groupButton} variant="quiet" aria-pressed={sketch.grouping} disabled={!sketch.drawing || active.hidden}
+        onClick={sketch.grouping ? sketch.cancelGroup : sketch.startGroup}>Create group</Button>
       <Button variant="quiet" disabled={!sketch.drawing || sketch.pending === null}
         title="Deselect the current endpoint and keep drawing" onClick={sketch.endPath}>End path</Button>
     </div>
@@ -379,6 +392,18 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
             </div>
             {selected && <div className="chain-editor" role="group" aria-label={`Edit ${name.toLowerCase()}`}>
               {editorControls}
+              {sketch.grouping && <div className="chain-group-editor" role="group" aria-label="Create candidate group">
+                <p>Select two or more candidates of the same digit in one row, column, box, or extra house.</p>
+                <p role="status">{sketch.groupSelection.length ? sketch.groupSelection.map(node => pointName(chainPoint(node))).join(' or ') : 'No candidates selected.'}</p>
+                <div className="chain-path-actions">
+                  <Button variant="primary" disabled={!sketch.canUseGroup} onClick={sketch.useGroup}>Use group</Button>
+                  <Button variant="quiet" onClick={sketch.cancelGroup}>Cancel group</Button>
+                </div>
+              </div>}
+              {!sketch.grouping && sketch.drawing && sketch.groups.length > 0 && <div className="chain-group-choices" role="group" aria-label="Candidate groups">
+                {sketch.groups.map(group => <Button key={group} variant="quiet" aria-pressed={sketch.pending === group}
+                  disabled={active.hidden} onClick={() => sketch.selectGroup(group)}>{pointName(chainPoint(group))}</Button>)}
+              </div>}
               {sketch.status && <p role="status">{sketch.status}</p>}
               <ChainResults onPreview={sketch.setPreviewedProof} showEliminations={eliminations?.shown ?? false} proofs={[
                 ...sketch.chains.filter(proof => proof.actions.length),
