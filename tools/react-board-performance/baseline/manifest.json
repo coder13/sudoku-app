@@ -3,8 +3,8 @@
   "files": {
     "Board.tsx": {
       "source": "src/components/Board.tsx",
-      "originalSha256": "8650c4686ded9a2acdc6926d972c31041cbfa0d0fb5996da88932894b88369c3",
-      "fixtureSha256": "6b9bf3b3c149ade535a45303d8e0071976ed40e838bacf7c61b2435ac9b912aa"
+      "originalSha256": "d1d84b7b2971d527046bdfa15ef2ead1cb91b34454c35dc4a980a8aacc7965e1",
+      "fixtureSha256": "6dc26a8665f6120d12af7df35caa87ff3ebec801b065521700d2382e949b9e90"
     },
     "BoardMarks.tsx": {
       "source": "src/components/BoardMarks.tsx",
