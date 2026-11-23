@@ -283,7 +283,7 @@ test('strong-link givens select a digit without selecting a cell or intercepting
   const cells = tree.filter(({ props }) => props.role === 'gridcell')
   assert.equal(cells[0].type, 'button')
   assert.equal(cells[0].props.tabIndex, 0)
-  assert.equal(cells[0].props['aria-selected'], undefined)
+  assert.equal(cells[0].props['aria-selected'], false)
   assert.equal(cells[1].type, 'div')
   assert.equal(cells[1].props.onClick, undefined)
   ;(cells[0].props.onClick as () => void)()
