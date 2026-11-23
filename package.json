@@ -13,7 +13,7 @@
     "test:engine-features": "node scripts/check-engine-features.mjs",
     "test:wasm-profiles": "node scripts/check-wasm-profiles.mjs",
     "build:collections": "node --experimental-strip-types scripts/build-collections.mjs",
-    "build": "npm run build:collections && npm run build:wasm && vite build && node scripts/build-offline.mjs",
+    "build": "npm run build:collections && npm run build:wasm && npm run check && vite build && node scripts/build-offline.mjs",
     "build:cloudflare": "npm run build && cp cloudflare/pages/_worker.js cloudflare/pages/_routes.json cloudflare/pages/_headers dist/client/",
     "check": "node .agents/skills/sudoku-components/scripts/check-catalog.mjs && npm run build:collections && tsc --noEmit",
     "test": "npm run build:collections && node --experimental-sqlite --experimental-strip-types --test tests/*.test.ts",
