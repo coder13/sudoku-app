@@ -8,6 +8,7 @@ import { createServer } from 'vite'
 import { chromium } from '../tools/react-board-performance/node_modules/playwright/index.mjs'
 import { makeGame, replaceCandidates } from '../src/sudoku/game.ts'
 import { candidateId, chainGroup } from '../src/sudoku/chains.ts'
+import { savedPuzzles, waitForSavedPuzzle } from '../tests/helpers/browser-puzzle-saves.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const option = flag => {
@@ -31,7 +32,7 @@ const expectedEdges = nodes.slice(1).map((node, index) => [nodes[index], node])
 const files = ['src/sudoku/chains.ts', 'src/sudoku/chain-sketch.ts', 'src/components/useChainSketch.ts',
   'src/components/ChainsPanel.tsx', 'src/components/Board.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/Worktable.tsx', 'src/sudoku/generated/engine.wasm', 'src/sudoku/generated/lesson-examples.json',
-  'scripts/check-grouped-chains.mjs']
+  'scripts/check-grouped-chains.mjs', 'tests/helpers/browser-puzzle-saves.mjs']
 const hashes = async () => Object.fromEntries(await Promise.all(files.map(async file =>
   [file, createHash('sha256').update(await readFile(resolve(root, file))).digest('hex')])))
 const report = { status: 'running', sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
@@ -44,8 +45,11 @@ let server, browser
 const failures = []
 
 function seed({ game, key }) {
-  // A reload must read the edited save, rather than seed the fixture again.
-  if (localStorage.getItem(key)) return
+  // IndexedDB migration removes the legacy localStorage game key. Keep a
+  // separate marker so reloads do not reseed over the edited IndexedDB save.
+  const marker = `sudoku-app:grouped-chain-check-seeded:${game.id}`
+  if (localStorage.getItem(marker)) return
+  localStorage.setItem(marker, '1')
   localStorage.setItem(key, JSON.stringify(game))
   localStorage.setItem('sudoku-app:v1:initialized', '1')
   localStorage.setItem('sudoku-app:v1:active', game.id)
@@ -59,12 +63,10 @@ function seed({ game, key }) {
     toolPanels: { open: ['chains'], active: 'chains' }, drawingIntent: true,
   }))
 }
-const savedGame = page => page.evaluate(key => JSON.parse(localStorage.getItem(key)), gameKey)
+const savedGame = async page => (await savedPuzzles(page)).find(game => game.id === fixture.id) ?? null
 async function waitForEdges(page, count) {
-  await page.waitForFunction(({ key, count }) => {
-    const saved = JSON.parse(localStorage.getItem(key))
-    return saved?.chainSketch?.sketches[0]?.history.at(-1)?.length === count
-  }, { key: gameKey, count })
+  await waitForSavedPuzzle(page, game => game.id === fixture.id &&
+    game.chainSketch?.sketches[0]?.history.at(-1)?.length === count)
 }
 async function screenshot(page, profile, name) {
   if (!screenshotDirectory) return
@@ -89,6 +91,8 @@ async function run(profile) {
   const equal = (actual, expected, message) => { assert.deepEqual(actual, expected, message); assertions++ }
   async function ready() {
     await page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).waitFor()
+    const resume = page.getByRole('button', { name: 'Resume puzzle', exact: true })
+    if (await resume.count()) await click(resume)
     await page.getByRole('button', { name: 'Create group', exact: true }).waitFor()
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create group' && !button.disabled))
   }
