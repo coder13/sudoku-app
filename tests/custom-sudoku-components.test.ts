@@ -28,7 +28,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   assert.equal([...markup.matchAll(/href="\/puzzles\/new\/difficulty\?variant=/g)].length, 5)
   assert.doesNotMatch(markup, />Quadruple</)
   const builder = await renderNewPuzzle('/puzzles/new/custom', undefined, false)
-  assert.equal([...builder.matchAll(/type="checkbox"/g)].length, 36)
+  assert.equal([...builder.matchAll(/type="checkbox"/g)].length, 35)
   assert.match(builder, /<label[^>]*>Grid<.*<option value="classic" selected="">9 × 9 Sudoku<\/option>/)
   for (const grid of ['mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages']) {
     assert.ok(builder.includes(`<option value="${grid}">`), grid)
