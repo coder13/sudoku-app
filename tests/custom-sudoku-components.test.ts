@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createServer, type ViteDevServer } from 'vite'
 import { customModeDifficulties, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
-import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 let server: ViteDevServer
@@ -42,7 +41,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   const xSudoku = await renderNewPuzzle('/puzzles/new/difficulty?variant=diagonal')
   assert.match(xSudoku, /Each of the two marked diagonals/)
   assert.deepEqual(customModeDifficulties(['jigsaw']), ['easy', 'medium', 'tricky'])
-  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), DIFFICULTY_LEVELS)
+  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), ['beginner', 'easy', 'medium', 'hard'])
 })
 
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {

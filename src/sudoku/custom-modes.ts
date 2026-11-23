@@ -4,6 +4,7 @@ import { notifySettingsEdit } from './settings-events.ts'
 
 export const coreSudokuModes = ['classic', 'diagonal', 'windoku', 'killer-cages', 'jigsaw'] as const
 const customDifficulties = ['easy', 'medium', 'hard'] as const
+const combinedDifficulties = ['beginner', ...customDifficulties] as const
 const jigsawDifficulties = ['easy', 'medium', 'tricky'] as const
 export type CustomDifficulty = CurrentDifficulty
 
@@ -12,7 +13,7 @@ export function isCustomDifficulty(value: unknown): value is CustomDifficulty {
 }
 
 export function customModeDifficulties(rules: readonly CustomRule[]): readonly CustomDifficulty[] {
-  if (rules.length > 1) return DIFFICULTY_LEVELS
+  if (rules.length > 1) return combinedDifficulties
   return rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
 }
 
