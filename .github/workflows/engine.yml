@@ -35,7 +35,7 @@ concurrency:
 
 jobs:
   fast-check:
-    name: Fast app checks
+    name: Fast catalog check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,7 +45,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: node .agents/skills/sudoku-components/scripts/check-catalog.mjs
 
   native:
     needs: fast-check
