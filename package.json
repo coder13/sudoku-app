@@ -15,7 +15,7 @@
     "build:collections": "node --experimental-strip-types scripts/build-collections.mjs",
     "build": "npm run build:collections && npm run build:wasm && npm run check && vite build && node scripts/build-offline.mjs",
     "build:cloudflare": "npm run build && cp cloudflare/pages/_worker.js cloudflare/pages/_routes.json cloudflare/pages/_headers dist/client/",
-    "check": "node .agents/skills/sudoku-components/scripts/check-catalog.mjs && npm run build:collections && tsc --noEmit",
+    "check": "npm run check:catalog && npm run build:collections && tsc --noEmit",
     "test": "npm run build:collections && node --experimental-sqlite --experimental-strip-types --test tests/*.test.ts",
     "test:visual": "playwright test",
     "test:wasm": "npm run build:wasm && npm run test:wasm:contracts",
@@ -23,7 +23,8 @@
     "test:collections": "npm run build:collections && node scripts/ensure-wasm.mjs && node --experimental-strip-types --test tests/collections-wasm.mts",
     "start": "vite preview --host 127.0.0.1 --port 8765",
     "storybook": "npm run build:collections && node scripts/ensure-wasm.mjs && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook dev -p 6006 --host 127.0.0.1",
-    "build-storybook": "npm run build:collections && npm run build:wasm && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook build"
+    "build-storybook": "npm run build:collections && npm run build:wasm && node --experimental-strip-types scripts/build-storybook-hints.mjs && storybook build",
+    "check:catalog": "node .agents/skills/sudoku-components/scripts/check-catalog.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.0",
