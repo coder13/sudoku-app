@@ -34,6 +34,16 @@ function pointName(point: BoardLink['from'], nameCell = cellName) {
   return `${point.digit} in ${nameCell(point.cell)}`
 }
 
+function compactPath(nodes: readonly ChainNode[], strengths: readonly LinkStrength[]) {
+  return nodes.map((id, i) => {
+    const members = chainNodeCandidates(id)
+    const candidate = typeof id === 'number'
+      ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
+      : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`
+    return i === 0 ? candidate : `${strengths[i - 1] === 'strong' ? '=' : '−'} ${candidate}`
+  }).join(' ')
+}
+
 function ChainNotation({ id, paths }: {
   id: string
   paths: readonly { nodes: readonly ChainNode[]; strengths: readonly LinkStrength[] }[]
