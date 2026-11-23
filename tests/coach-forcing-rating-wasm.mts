@@ -14,7 +14,7 @@ const fixtures = JSON.parse(readFileSync(new URL('./fixtures/coach-forcing-ratin
 }[]
 
 const techniquesAddedSinceRecording = new Set([
-  'entropy-quadruple', 'consecutive-run', 'distinct-cells', 'pill-arrow', 'lockout', 'inside-grid', 'lettered-quadruples',
+  'entropy-quadruple', 'consecutive-run', 'distinct-cells', 'digit-restriction', 'pill-arrow', 'lockout', 'inside-grid', 'lettered-quadruples',
 ])
 
 test('deferred import ratings preserve uniqueness, complete proofs, and versioned scores', async (context) => {

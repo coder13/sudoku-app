@@ -28,3 +28,33 @@ Report the merged pull request and note that the deployment started.
 # GitHub issue labels
 
 When creating, triaging or auditing repository issues, use the [GitHub issue labels skill](.agents/skills/github-issue-labels/SKILL.md). Keep new puzzle families separate from Sudoku variants and from puzzle generation. Preserve useful existing labels and the current agent's pickup comments.
+
+# Rust WebAssembly builds
+
+The Homebrew Rust install on this host may not include `rustup` or the
+`wasm32-unknown-unknown` standard library. Check the other managed Codex
+worktrees before treating the target as unavailable. One working Rustup home
+was installed by the Sudoku Arrow Codex worktree at
+`~/.codex/worktrees/agent-b-sudoku-arrow/toolchain`; `rustup show` there lists
+stable Rust and `wasm32-unknown-unknown`.
+
+Reuse that installation by setting its homes and adding its Cargo shims to the
+front of `PATH` before building:
+
+```sh
+TOOLCHAIN_ROOT="$HOME/.codex/worktrees/agent-b-sudoku-arrow/toolchain"
+export RUSTUP_HOME="$TOOLCHAIN_ROOT/rustup"
+export CARGO_HOME="$TOOLCHAIN_ROOT/cargo"
+export PATH="$CARGO_HOME/bin:$PATH"
+rustup show
+rustup target list --installed
+npm run build:wasm
+```
+
+If that worktree has been removed, search other
+`~/.codex/worktrees/*/toolchain` directories and prior Codex build sessions for
+an installed Rustup home. In a sandbox where the found Cargo home is read-only,
+copy its `cargo` directory into a writable temporary directory and set
+`CARGO_HOME` and `PATH` to that copy while keeping `RUSTUP_HOME` pointed at the
+installed toolchain. Verify the target with `rustup target list --installed`
+before running `npm run build:wasm`.
