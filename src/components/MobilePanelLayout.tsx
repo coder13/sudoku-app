@@ -469,6 +469,7 @@ export function MobilePanelLayout(props: Props) {
   const [announcement, setAnnouncement] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const fitBoardNow = useRef<(() => void) | null>(null)
   const inputId = useId()
   const puzzleGestureBase = useRef<{ puzzleId: string; height: number } | null>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -500,7 +501,7 @@ export function MobilePanelLayout(props: Props) {
       // triggers this once more after the gesture commits.
       if (layout.hasAttribute('data-input-resizing')) return
       // The footer must remain as wide as the input card even after the grid shrinks.
-      const inputWidth = input.getBoundingClientRect().width
+      const inputWidth = input.clientWidth
       if (inputWidth) {
         const value = `${Math.round(inputWidth)}px`
         if (layout.style.getPropertyValue('--mobile-input-panel-width') !== value) {
@@ -553,7 +554,7 @@ export function MobilePanelLayout(props: Props) {
           sum + (card ? pixels(getComputedStyle(card).marginBlockStart) + pixels(getComputedStyle(card).marginBlockEnd) : 0)
         ), 0)
         const inputSpace = fitContent && layout.classList.contains('with-hint')
-          ? pixels(getComputedStyle(input).minBlockSize) : blockSize(input)
+          ? pixels(getComputedStyle(input).minBlockSize) : input.offsetHeight
         const available = page.clientHeight - pixels(pageStyle.paddingBlockStart) - pixels(pageStyle.paddingBlockEnd)
           - pixels(workspaceStyle.paddingBlockStart) - pixels(workspaceStyle.paddingBlockEnd)
           - pixels(gapStyle.flexBasis) - margins - inputSpace
@@ -568,6 +569,7 @@ export function MobilePanelLayout(props: Props) {
       }
     }
 
+    fitBoardNow.current = fitBoard
     fitBoard()
     const observer = new ResizeObserver(fitBoard)
     for (const element of [page, puzzle, puzzle.querySelector('.puzzle-column'), puzzle.querySelector('.puzzle-zoom, .puzzle-stage .board-frame'), input, hintPanel]) {
@@ -575,6 +577,7 @@ export function MobilePanelLayout(props: Props) {
     }
     return () => {
       observer.disconnect()
+      fitBoardNow.current = null
       layout.style.removeProperty('--mobile-input-panel-width')
     }
   }, [order, props.inputTabCount, props.puzzleId, props.puzzleShrink, props.rearranging, props.withHint, props.fitContent])
@@ -810,7 +813,7 @@ export function MobilePanelLayout(props: Props) {
               disabled={props.blocked || props.rearranging} withHint={props.withHint}
               fitContent={Boolean(props.fitContent)}
               hasOpenTabs={Boolean(props.inputTabCount)} savedHeight={props.savedInputHeight}
-              onHeightChange={props.onInputHeightChange} />}
+              onHeightChange={props.onInputHeightChange} onResizeSettled={() => fitBoardNow.current?.()} />}
             {id === 'hint' ? <MobileHintSwipe exiting={exiting}
               actions={exiting || props.rearranging || props.blocked ? undefined : props.hintSwipe}>
               {panel.content}

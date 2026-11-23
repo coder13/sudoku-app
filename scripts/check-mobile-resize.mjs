@@ -195,7 +195,8 @@ async function checkBehavior(page, client) {
   const widthOf = state => state.outsideClues.length ? state.frame.width : state.grid.width
   const widths = [widthOf(small)]
   let lastPreview = small
-  for (const distance of [24, 48, 72]) {
+  // End on an anchor here to compare preview and committed board geometry.
+  for (const distance of [24, 48, 64]) {
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...expandStart, y: expandStart.y - direction * distance }] })
     await frames(page, 2)
     const current = await snapshot(page)
@@ -211,6 +212,8 @@ async function checkBehavior(page, client) {
   await finishDrag(page, client)
   const expanded = await snapshot(page)
   assertGeometry(expanded, 'after expansion commits')
+  assert.ok(Math.abs(parseFloat(small.savedHeight) - parseFloat(expanded.savedHeight) - 64) < 1,
+    'shrinking the input must save the relative 64 px anchor')
   assert.ok(Math.abs(widthOf(expanded) - widths.at(-1)) < 2,
     `release must keep the preview width (${widths.at(-1)}px preview, ${widthOf(expanded)}px released)`)
 
@@ -321,10 +324,14 @@ try {
       try {
         assertGeometry(await snapshot(page), `${variant} initial layout`)
         if (regressionOnly) {
+          const before = await snapshot(page)
           const start = await startDrag(page, client)
           await moveDrag(page, client, start, -72)
           await finishDrag(page, client)
-          assert.equal((await snapshot(page)).commits, 1, 'a completed drag must save exactly once')
+          const after = await snapshot(page)
+          assert.equal(after.commits, 1, 'a completed drag must save exactly once')
+          assert.ok(Math.abs(parseFloat(after.savedHeight) - before.input.height - 64) < 1,
+            'a 72 px drag must snap to the nearest 32 px anchor')
         } else {
           const result = await measure(page, client)
           report.measurements.push({ variant, round: round + 1, ...result })

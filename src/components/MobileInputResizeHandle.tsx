@@ -15,7 +15,7 @@ const DOUBLE_TAP_DISTANCE = 24
 
 type Split = { input: number; naturalInput: number; naturalPuzzle: number; min: number; max: number }
 type Tap = { time: number; x: number; y: number; pointerType: string }
-type BoardPreview = { element: HTMLElement; width: number; limit: number; minimum: number; maximum: number }
+type BoardPreview = { element: HTMLElement; grid: HTMLElement; width: number; limit: number; minimum: number; maximum: number }
 type Drag = {
   pointerId: number
   startX: number
@@ -40,10 +40,28 @@ function measureBoardPreview(layout: HTMLElement, withHint: boolean): BoardPrevi
   const limit = parseFloat(layout.style.getPropertyValue('--mobile-fit-board-height'))
   if (!element || !stage || !board?.offsetWidth || !Number.isFinite(limit)) return null
   return {
-    element, width: board.offsetWidth, limit,
+    element, grid: board, width: board.offsetWidth, limit,
     minimum: withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH,
     maximum: stage.clientWidth,
   }
+}
+
+function animateBoardSnap({ element, grid }: BoardPreview, before: DOMRect, duration: number) {
+  if (!duration) return
+  const after = grid.getBoundingClientRect()
+  if (!after.width || !after.height) return
+  const origin = element.getBoundingClientRect()
+  const scale = before.width / after.width
+  const x = before.left + before.width / 2 - (origin.left + origin.width / 2 +
+    (after.left + after.width / 2 - origin.left - origin.width / 2) * scale)
+  const y = before.bottom - (origin.bottom + (after.bottom - origin.bottom) * scale)
+  if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(1 - scale) < 0.005) return
+  const baseScale = parseFloat(element.style.getPropertyValue('--mobile-puzzle-gesture-scale')) || 1
+  const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+  return element.animate([
+    { transformOrigin: 'bottom center', transform: `translate(${x}px, ${y}px) scale(${scale * baseScale})` },
+    { transformOrigin: 'bottom center', transform: `scale(${baseScale})` },
+  ], { duration, easing })
 }
 
 function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
@@ -60,10 +78,11 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   // Retain the unsized grid height so shrinking the input can restore the original board.
   const naturalPuzzle = parseFloat(layout.style.getPropertyValue('--mobile-natural-puzzle-height')) || blockSize(puzzle)
   const minGridHeight = Math.min(grid.offsetHeight, withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH)
-  const inputPanel = input.closest<HTMLElement>('[data-mobile-panel="input"]')
-  const minPanel = withHint && inputPanel ? parseFloat(getComputedStyle(inputPanel).minBlockSize) || 0 : 0
+  // A resized card uses its chosen height as its CSS minimum. The natural
+  // hint floor is the lower bound for a new gesture in either direction.
+  const minPanel = withHint ? Math.min(110, window.innerHeight * .28) : 0
   const fitLimit = parseFloat(layout.style.getPropertyValue('--mobile-fit-board-height'))
-  const fittedInput = withHint && layout.hasAttribute('data-fit-content') ? minPanel : height
+  const fittedInput = withHint && !layout.hasAttribute('data-input-sized') ? minPanel : height
   // The board fit already includes unused vertical space. Measuring below the
   // input card would count the puzzle twice when the input card sits first.
   const max = Number.isFinite(fitLimit)
@@ -116,7 +135,7 @@ function inputOverflow(layout: HTMLElement) {
   return [panel, ...nested].reduce((pixels, element) => pixels + Math.max(0, element.scrollHeight - element.clientHeight), 0)
 }
 
-export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fitContent = false, hasOpenTabs = false, savedHeight, onHeightChange }: {
+export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fitContent = false, hasOpenTabs = false, savedHeight, onHeightChange, onResizeSettled }: {
   inputId: string
   edge: 'top' | 'bottom'
   disabled: boolean
@@ -125,10 +144,11 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
   hasOpenTabs?: boolean
   savedHeight?: number
   onHeightChange?: (height: number | undefined) => void
+  onResizeSettled?: () => void
 }) {
   const handle = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
-  const snapAnimation = useRef<Animation | null>(null)
+  const snapAnimations = useRef<Animation[]>([])
   const lastTap = useRef<Tap | null>(null)
   const preferredHeight = useRef(savedHeight)
   const optionsTimer = useRef<number | null>(null)
@@ -144,8 +164,8 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
   function getLayout() { return handle.current?.closest<HTMLElement>('.mobile-panel-layout') }
 
   function cancelSnapAnimation() {
-    snapAnimation.current?.cancel()
-    snapAnimation.current = null
+    snapAnimations.current.forEach(animation => animation.cancel())
+    snapAnimations.current = []
   }
 
   function describe(split: Split, height = split.input) {
@@ -353,20 +373,20 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       : current.split.input
     const inputPanel = layout.querySelector<HTMLElement>('[data-mobile-panel="input"]')
     const before = inputPanel?.getBoundingClientRect()
+    const boardBefore = current.board?.grid.getBoundingClientRect()
     stopResize()
     if (height !== current.split.input) {
       commitHeight(layout, current.split, height)
-      if (before && inputPanel) {
-        const animation = animatePanelLayout(inputPanel, before, motionDuration('snap'))
-        if (animation) {
-          snapAnimation.current = animation
-          animation.addEventListener('finish', () => {
-            if (snapAnimation.current === animation) snapAnimation.current = null
-          }, { once: true })
-        }
-      }
+    } else restoreHeight(layout, current.split)
+    // An exact snap may leave the input's layout height unchanged on release,
+    // so ResizeObserver would otherwise miss the handoff from preview to layout.
+    if (moved) onResizeSettled?.()
+    if (commit && height !== current.split.input) {
+      const duration = motionDuration('snap')
+      const inputSnap = before && inputPanel && animatePanelLayout(inputPanel, before, duration)
+      const boardSnap = boardBefore && current.board && animateBoardSnap(current.board, boardBefore, duration)
+      snapAnimations.current = [inputSnap, boardSnap].filter((animation): animation is Animation => Boolean(animation))
     }
-    else restoreHeight(layout, current.split)
 
     const previous = lastTap.current
     lastTap.current = null
