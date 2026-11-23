@@ -643,6 +643,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 modalOpen={panel !== null || menuOpen || resizeMode || settingsRoute || puzzleDeparture.departure !== null}
                 pauseShortcutsEnabled={playRoute}
                 advancedModes={advancedModes} appearance={appearance} highlighting={highlighting}
+                onMobilePuzzleTopSpaceChange={(space, shrink) => setAppearance(current => ({ ...current,
+                  mobilePuzzleTopSpace: space, mobilePuzzleShrink: shrink,
+                }))}
                 errorMode={errorMode} cellReferenceStyle={cellReferenceStyle} multi={multi} actionsRef={worktableActions}
                 inputSize={inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight} beginResize={beginResize}
                 toggleMulti={toggleMulti}

@@ -10,6 +10,7 @@ import {
 } from '../kakuro/generator.ts'
 import { solveLatin } from '../latin/engine.ts'
 import type { NumberPuzzleDifficulty } from './catalog.ts'
+import { createUuid } from '../uuid.ts'
 import {
   calcudokuFromRecipe, decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, kakuroFromRecipe,
   RECENT_GENERATED_PUZZLE_LIMIT, type GeneratedNumberGame,
@@ -142,5 +143,5 @@ export function generateNumberPuzzle(request: GenerationOptions & { previous: re
     ? { game, difficulty, recipe: calcudokuRecipeForPlay(request, request.previous) }
     : { game, difficulty, recipe: kakuroRecipeForPlay(request, request.previous) }
   // A new session needs its own save even when the board has the same clues.
-  return encodeGeneratedNumberPuzzle(puzzle, crypto.randomUUID())
+  return encodeGeneratedNumberPuzzle(puzzle, createUuid())
 }

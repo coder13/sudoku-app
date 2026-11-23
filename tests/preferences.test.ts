@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { APPEARANCE_KEY, MOBILE_PUZZLE_TOP_SPACES, PUZZLE_BORDER_WIDTHS, readPreferences } from '../src/sudoku/preferences.ts'
+import { APPEARANCE_KEY, PUZZLE_BORDER_WIDTHS, readPreferences } from '../src/sudoku/preferences.ts'
 import {
   clampGridTextScale,
   DEFAULT_GRID_TEXT_SCALE,
@@ -36,14 +36,16 @@ test('puzzle borders accept supported widths and keep the default for older or i
   }).appearance.puzzleBorderWidth
 
   for (const width of PUZZLE_BORDER_WIDTHS) assert.equal(read(width), width)
-  for (const width of [undefined, null, 0, 2.5, 7, '4']) assert.equal(read(width), null)
+  for (const width of [undefined, null, 0, 2.5, 7, '4']) assert.equal(read(width), 2)
 })
 
-test('space above the puzzle defaults to none and accepts supported saved values', () => {
-  const read = (space: unknown) => readPreferences({
-    getItem: key => key === APPEARANCE_KEY ? JSON.stringify({ mobilePuzzleTopSpace: space }) : null,
-  }).appearance.mobilePuzzleTopSpace
+test('mobile puzzle gestures restore saved offsets and shrink amounts', () => {
+  const read = (space: unknown, shrink?: unknown) => readPreferences({
+    getItem: key => key === APPEARANCE_KEY ? JSON.stringify({ mobilePuzzleTopSpace: space, mobilePuzzleShrink: shrink }) : null,
+  }).appearance
 
-  for (const space of MOBILE_PUZZLE_TOP_SPACES) assert.equal(read(space), space)
-  for (const space of [undefined, null, -16, 32.5, 272, '64']) assert.equal(read(space), 0)
+  for (const space of [0, 16, 32.5, 272]) assert.equal(read(space).mobilePuzzleTopSpace, space)
+  for (const space of [undefined, null, '64']) assert.equal(read(space).mobilePuzzleTopSpace, 0)
+  assert.equal(read(64, 32.5).mobilePuzzleShrink, 32.5)
+  assert.equal(read(64, -16).mobilePuzzleShrink, 0)
 })

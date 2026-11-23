@@ -18,8 +18,7 @@ export function usePageAppearance(appearance: AppearancePreferences, preferences
     if (!preferencesReady) return
     const root = document.documentElement
     root.style.setProperty('--app-text-scale', String(appearance.appTextZoom / 100))
-    if (appearance.puzzleBorderWidth === null) root.style.removeProperty('--puzzle-border-width')
-    else root.style.setProperty('--puzzle-border-width', appearance.puzzleBorderWidth + 'px')
+    root.style.setProperty('--puzzle-border-width', appearance.puzzleBorderWidth + 'px')
     root.toggleAttribute('data-flat-appearance', appearance.flatAppearance)
   }, [appearance.appTextZoom, appearance.flatAppearance, appearance.puzzleBorderWidth, preferencesReady])
   useEffect(() => {

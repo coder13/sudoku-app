@@ -36,6 +36,7 @@ type Props = {
   candidateLayout?: CandidateLayout
   candidates?: readonly number[]
   candidatePreview?: Candidate & { mode: 'candidate' | 'center' | 'corner' }
+  candidateGroupPreview?: { cell: number; mask: number; mode: 'candidate' | 'center' | 'corner' }
   annotations?: BoardAnnotations
   showAnnotatedCandidates?: boolean
   showPlayerColors?: boolean
@@ -48,6 +49,7 @@ type Props = {
   highlightedDigitMask?: number
   highlightedDigitMatch?: DigitHighlightMatch
   highlightCandidateCells?: boolean
+  fullCandidateCellHighlight?: boolean
   highlightCandidateCount?: number | null
   highlighting?: HighlightPreferences
   selected?: readonly number[]
@@ -121,6 +123,12 @@ type CellGeometry = {
   clues: string
 }
 
+type Preview = NonNullable<Props['candidatePreview'] | Props['candidateGroupPreview']>
+
+function previewDigitsMask(preview: Preview) {
+  return 'mask' in preview ? preview.mask : 1 << (preview.digit - 1)
+}
+
 type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   geometry: CellGeometry
   value: number
@@ -133,7 +141,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   displayedGridMask: number
   digitSlots: boolean
   annotatedSlots: boolean
-  preview?: Props['candidatePreview']
+  preview?: Preview
   candidateColors?: Record<number, number>
   importedCandidateColors?: Record<number, string>
   color?: number
@@ -182,12 +190,18 @@ const BoardCell = memo(function BoardCell({
   const centerCandidates = useMemo(() => marksOf(centerMask), [centerMask])
   const gridCandidates = useMemo(() => marksOf(displayedGridMask), [displayedGridMask])
   const previewSlotted = preview?.mode !== 'center' || annotatedSlots
-  const previewMask = preview?.mode === 'center' && annotatedSlots ? center
-    : preview?.mode === 'corner' && annotatedSlots ? corner : previewSlotted ? gridMask : centerMask
-  const previewAction = preview && (hasCandidate(previewMask, preview.digit) ? 'remove' : 'add')
-  const previewDigit = preview?.digit
-  const visibleGridMask = displayedGridMask | (previewAction === 'add' && previewSlotted ? 1 << (previewDigit! - 1) : 0)
-  const visibleCenterMask = centerMask | (previewAction === 'add' && !previewSlotted ? 1 << (previewDigit! - 1) : 0)
+  const chosenPreviewMarks = preview ? previewDigitsMask(preview) : 0
+  const existingPreviewMarks = preview && 'mask' in preview
+    ? preview.mode === 'center' ? center : preview.mode === 'corner' ? corner : center | corner
+    : preview?.mode === 'center' && annotatedSlots ? center
+      : preview?.mode === 'corner' && annotatedSlots ? corner : previewSlotted ? gridMask : centerMask
+  const removedPreviewMarks = existingPreviewMarks & chosenPreviewMarks
+  const addedPreviewMarks = removedPreviewMarks ? 0 : chosenPreviewMarks
+  const previewAction = removedPreviewMarks ? 'remove' : 'add'
+  const previewEditMask = removedPreviewMarks || addedPreviewMarks
+  const previewDigits = preview ? marksOf(previewEditMask) : []
+  const visibleGridMask = displayedGridMask | (previewSlotted ? addedPreviewMarks : 0)
+  const visibleCenterMask = centerMask | (!previewSlotted ? addedPreviewMarks : 0)
   const visibleGridCandidates = useMemo(() => marksOf(visibleGridMask), [visibleGridMask])
   const visibleCenterCandidates = useMemo(() => marksOf(visibleCenterMask), [visibleCenterMask])
   const cellStyle = useMemo(() => {
@@ -262,7 +276,7 @@ const BoardCell = memo(function BoardCell({
   }, [candidateAction, index, onCandidateFocus])
 
   const renderCandidate = useCallback((digit: number, slotted: boolean) => {
-    const previewEdit = digit === previewDigit && slotted === previewSlotted ? previewAction : undefined
+    const previewEdit = hasCandidate(previewEditMask, digit) && slotted === previewSlotted ? previewAction : undefined
     const highlighted = !previewEdit && hasCandidate(candidateHighlightMask, digit)
     if (readOnlyCandidates) {
       const cached = readOnlyCandidates[slotted ? 0 : 1].get(digit)!
@@ -305,7 +319,7 @@ const BoardCell = memo(function BoardCell({
     return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
       style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
-  }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewDigit, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
+  }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewEditMask, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
     candidateAction, index, row, col, selectedCandidateDigit, linkTargetMask, onPaintCandidate, onCandidate,
     tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus, selectCandidate])
 
@@ -328,7 +342,7 @@ const BoardCell = memo(function BoardCell({
   return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
     data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
-    aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
+    aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} ${previewDigits.length === 1 ? 'candidate' : 'candidates'} ${previewDigits.join(', ')}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
     data-rule-highlighted={ruleHighlighted || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
@@ -351,8 +365,9 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({
-  variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, authoredArtwork, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
-  highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
+  variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, authoredArtwork, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, candidateGroupPreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
+  highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, fullCandidateCellHighlight = false,
+  highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
   selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
@@ -520,8 +535,9 @@ export function Board({
         let displayedGridMarks = gridMarks
         for (const digit of linkedDigits?.keys() ?? []) displayedGridMarks |= 1 << (digit - 1)
         const candidateMask = fogged ? 0 : candidates?.[index] ?? (center | corner)
-        const preview = !fogged && !value && candidatePreview?.cell === index ? candidatePreview : undefined
-        const visibleCandidateMask = displayedGridMarks | centerMarks | (preview ? 1 << (preview.digit - 1) : 0)
+        const currentPreview = candidateGroupPreview ?? candidatePreview
+        const preview = !fogged && !value && currentPreview?.cell === index ? currentPreview : undefined
+        const visibleCandidateMask = displayedGridMarks | centerMarks | (preview ? previewDigitsMask(preview) : 0)
         let linkTargetMask = 0
         if (isLinkTarget && !value) for (const digit of marksOf(visibleCandidateMask)) {
           if (isLinkTarget({ cell: index, digit })) linkTargetMask |= 1 << (digit - 1)
@@ -558,7 +574,7 @@ export function Board({
           selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
           ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
-          cellHighlight={highlightsLinkTargetCell || (highlightsCell && !matchesWithExtras) ? 'candidate-highlight-cell'
+          cellHighlight={highlightsLinkTargetCell || (highlightsCell && (fullCandidateCellHighlight || !matchesWithExtras)) ? 'candidate-highlight-cell'
             : highlightsCell ? 'candidate-highlight-light' : ''}
           countHighlighted={highlightCandidateCells && candidateCountMatches} candidateHighlightMask={candidateHighlightMask}
           highlightLabel={highlightLabel} countLabel={countLabel} linkTargetMask={linkTargetMask} highlightsLinkTargetCell={highlightsLinkTargetCell}
@@ -574,7 +590,7 @@ export function Board({
     </div>
   )), [
     rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, givenCellColors, layout, annotationSlots,
-    position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview,
+    position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview, candidateGroupPreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
     highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,

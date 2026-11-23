@@ -45,3 +45,66 @@ test('mobile pencil tab meets the grid border before and after resizing the keyp
   await expect(page.locator('.mobile-panel-layout')).toHaveAttribute('data-input-sized', '')
   await expectTabToMeetGrid(tab)
 })
+
+test('a Pencil group clears matching marks and adds the full group on the next tap', async ({ page }) => {
+  await page.goto('/iframe.html?id=large-play-worktable--starter&viewMode=story')
+  const pencil = page.getByRole('button', { name: 'Pencil mode', exact: true })
+  const pad = page.getByRole('group', { name: 'Digit pad' })
+  const cell = page.locator('[role="gridcell"][data-cell="2"]')
+  const marks = cell.locator('.board-candidate')
+  await pencil.tap()
+  await pad.locator('.key').filter({ hasText: /^2$/ }).tap()
+  await cell.tap()
+  await expect(marks).toHaveText(['2'])
+  await page.keyboard.press('Shift+Digit4')
+  await expect(pencil).toHaveAttribute('aria-pressed', 'true')
+  const four = pad.locator('.key').filter({ hasText: /^4$/ })
+  await expect(four).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Shift+Digit4')
+  await expect(four).toHaveAttribute('aria-pressed', 'false')
+
+  const touch = await page.context().newCDPSession(page)
+  const keyBox = (await four.boundingBox())!
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: keyBox.x + keyBox.width / 2, y: keyBox.y + keyBox.height / 2 }],
+  })
+  await expect(four).toHaveAttribute('aria-pressed', 'true')
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await expect(pencil).toHaveAttribute('aria-pressed', 'true')
+
+  await cell.tap()
+  await expect(marks).toHaveCount(0)
+  await cell.tap()
+  await expect(marks).toHaveText(['2', '4'])
+  await page.getByRole('button', { name: 'Undo', exact: true }).tap()
+  await expect(marks).toHaveCount(0)
+  await page.getByRole('button', { name: 'Undo', exact: true }).tap()
+  await expect(marks).toHaveText(['2'])
+})
+
+test('selecting several digits keeps the current input mode', async ({ page }) => {
+  await page.goto('/iframe.html?id=large-play-worktable--starter&viewMode=story')
+  const grid = page.getByRole('grid', { name: 'Sudoku grid' })
+  const pad = page.getByRole('group', { name: 'Digit pad' })
+  const highlight = page.getByRole('button', { name: 'Highlight mode', exact: true })
+  const expectSelected = (digits: string[]) => expect(pad.locator('.key[aria-pressed="true"]')).toHaveText(digits)
+  await expect(grid).toHaveAccessibleDescription('Pen mode')
+
+  await page.keyboard.press('Shift+Digit2')
+  await page.keyboard.press('Shift+Digit4')
+  await expectSelected(['2', '4'])
+  await expect(grid).toHaveAccessibleDescription('Pen mode')
+
+  await page.getByRole('button', { name: 'Pencil mode', exact: true }).tap()
+  await page.keyboard.press('Shift+Digit6')
+  await expectSelected(['2', '4', '6'])
+  await expect(grid).toHaveAccessibleDescription('Pencil mode')
+
+  await highlight.tap()
+  await page.keyboard.press('Shift+Digit8')
+  await expectSelected(['2', '4', '6', '8'])
+  await expect(grid).toHaveAccessibleDescription('Highlight mode')
+  await highlight.tap()
+  await expect(grid).toHaveAccessibleDescription('Pencil mode')
+})

@@ -13,7 +13,7 @@ import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
 import {
   CANDIDATE_TEXT_SIZES, gridTextScalePercentage, INPUT_SIZE_STEP, MAX_GRID_TEXT_SCALE, MAX_INPUT_SIZE, MIN_GRID_TEXT_SCALE, MIN_INPUT_SIZE,
-  MOBILE_PUZZLE_TOP_SPACES, PUZZLE_BORDER_WIDTHS, stepGridTextScale,
+  PUZZLE_BORDER_WIDTHS, stepGridTextScale,
   type AdvancedModes, type AppearancePreferences, type HighlightPreferences, type ThemeId, type WorkspaceMode,
 } from '../sudoku/preferences'
 import { syncStepTitles, type SyncStep } from '../sudoku/sync-steps'
@@ -274,25 +274,17 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
         <strong>Puzzle border thickness</strong>
         <span className="puzzle-border-options">
           <span className="puzzle-border-preview"
-            style={{ '--puzzle-border-width': (appearance.puzzleBorderWidth ?? 2) + 'px' } as CSSProperties}>
+            style={{ '--puzzle-border-width': appearance.puzzleBorderWidth + 'px' } as CSSProperties}>
             <VariantPreview variant="classic" />
           </span>
-          <SelectControl aria-label="Puzzle border thickness" value={appearance.puzzleBorderWidth ?? ''}
+          <SelectControl aria-label="Puzzle border thickness" value={appearance.puzzleBorderWidth}
             onChange={event => {
               const width = Number(event.currentTarget.value)
-              setAppearance({ ...appearance, puzzleBorderWidth: PUZZLE_BORDER_WIDTHS.find(option => option === width) ?? null })
+              setAppearance({ ...appearance, puzzleBorderWidth: PUZZLE_BORDER_WIDTHS.find(option => option === width) ?? 2 })
             }}>
-            <option value="">Default</option>
             {PUZZLE_BORDER_WIDTHS.map(width => <option key={width} value={width}>{width} px</option>)}
           </SelectControl>
         </span>
-      </label>
-      <label className="settings-select settings-select-inline">
-        <span><strong>Space above puzzle</strong><small>Make room for picture-in-picture video in portrait play.</small></span>
-        <SelectControl aria-label="Space above puzzle" value={appearance.mobilePuzzleTopSpace}
-          onChange={event => setAppearance({ ...appearance, mobilePuzzleTopSpace: Number(event.currentTarget.value) })}>
-          {MOBILE_PUZZLE_TOP_SPACES.map(space => <option key={space} value={space}>{space === 0 ? 'None' : space + ' px'}</option>)}
-        </SelectControl>
       </label>
       <label className="settings-select settings-select-inline">
         <span><strong>Puzzle controls position</strong><small>Place the difficulty, timer, pause button, and puzzle menu above or below the grid.</small></span>

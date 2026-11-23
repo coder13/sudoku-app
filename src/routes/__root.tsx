@@ -20,9 +20,9 @@ const themeBootstrap = `(() => {
       const zoom = Math.min(${MAX_APP_TEXT_ZOOM}, Math.max(${MIN_APP_TEXT_ZOOM}, Math.round(saved.appTextZoom)))
       root.style.setProperty('--app-text-scale', zoom / 100)
     }
-    if (${JSON.stringify(PUZZLE_BORDER_WIDTHS)}.includes(saved.puzzleBorderWidth)) {
-      root.style.setProperty('--puzzle-border-width', saved.puzzleBorderWidth + 'px')
-    }
+    const borderWidth = ${JSON.stringify(PUZZLE_BORDER_WIDTHS)}.includes(saved.puzzleBorderWidth)
+      ? saved.puzzleBorderWidth : defaults.puzzleBorderWidth
+    root.style.setProperty('--puzzle-border-width', borderWidth + 'px')
     const preference = ['system', 'light', 'dark'].includes(saved.colorMode) ? saved.colorMode : defaults.colorMode
     const mode = preference === 'system'
       ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')

@@ -602,11 +602,11 @@ export const CellPainting: Story = {
       await expect(grid()).toHaveAccessibleDescription(`${mode} mode`)
     }
     await userEvent.keyboard('d0{Shift>}24{/Shift}')
-    await expect(grid()).toHaveAccessibleDescription('Highlight mode')
+    await expect(grid()).toHaveAccessibleDescription('Pen mode')
     await userEvent.click(rose)
     await userEvent.keyboard('3')
     await userEvent.click(rose)
-    await expect(grid()).toHaveAccessibleDescription('Highlight mode')
+    await expect(grid()).toHaveAccessibleDescription('Pen mode')
     await userEvent.keyboard('dq')
   },
 }
@@ -867,26 +867,33 @@ export const GridModeCue: Story = {
     await expect(grid).toHaveAccessibleDescription('Pencil mode')
   },
 }
-export const HighlightAfterChangingDigits: Story = {
+export const InputModeAfterChangingDigits: Story = {
   args: { game: inProgress, games: [inProgress] },
   play: async ({ canvas, userEvent }) => {
     const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
     await userEvent.keyboard('d0{Shift>}24{/Shift}')
-    await expect(grid).toHaveAccessibleDescription('Highlight mode')
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
 
     await userEvent.keyboard('d')
     await expect(grid).toHaveAccessibleDescription('Pen mode')
     await userEvent.click(canvas.getByRole('button', { name: 'Any selected candidates. Switch to all.' }))
     await expect(grid).toHaveAccessibleDescription('Pen mode')
     await userEvent.keyboard('{Shift>}6{/Shift}')
-    await expect(grid).toHaveAccessibleDescription('Highlight mode')
+    await expect(grid).toHaveAccessibleDescription('Pen mode')
 
     await userEvent.click(canvas.getByRole('button', { name: 'Pencil mode' }))
     await expect(grid).toHaveAccessibleDescription('Pencil mode')
     await userEvent.keyboard('{Shift>}')
     await userEvent.click(canvas.getByRole('button', { name: 'Select 8' }))
     await userEvent.keyboard('{/Shift}')
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
+
+    const highlight = canvas.getByRole('button', { name: 'Highlight mode' })
+    await userEvent.click(highlight)
+    await userEvent.keyboard('{Shift>}1{/Shift}')
     await expect(grid).toHaveAccessibleDescription('Highlight mode')
+    await userEvent.click(highlight)
+    await expect(grid).toHaveAccessibleDescription('Pencil mode')
   },
 }
 export const Paused: Story = {

@@ -7,8 +7,8 @@ export type PuzzleTool = typeof TOOL_PANEL_ORDER[number]
 export type ToolPanelTab = 'digits' | PuzzleTool
 type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }
 export const defaultToolPanels: ToolPanels = { open: [], active: 'digits' }
-type DigitHighlight = { mask: number; match: DigitHighlightMatch; modeOverridden: boolean }
-export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all', modeOverridden: false }
+type DigitHighlight = { mask: number; match: DigitHighlightMatch }
+export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
 type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
 
 type PuzzleTabs = {
@@ -52,7 +52,7 @@ function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs
     },
     drawingIntent: typeof value?.drawingIntent === 'boolean' ? value.drawingIntent : null,
     digitHighlight: highlight && Number.isInteger(highlight.mask) && highlight.mask >= 0 && highlight.mask <= 0x1ff
-      ? { mask: highlight.mask, match: highlight.match === 'any' ? 'any' : 'all', modeOverridden: highlight.modeOverridden === true }
+      ? { mask: highlight.mask, match: highlight.match === 'any' ? 'any' : 'all' }
       : defaultDigitHighlight,
     showStrongLinks: value?.showStrongLinks === true,
     solutionView: solution && typeof solution.identity === 'string' && Number.isSafeInteger(solution.step) && solution.step >= 0
