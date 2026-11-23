@@ -2614,7 +2614,7 @@ export function Worktable({
       candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
       showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
-      candidatePreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null
+      candidateGroupPreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null
         ? { cell: candidatePreviewCell, mask: pencilPreviewMask, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
       modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
