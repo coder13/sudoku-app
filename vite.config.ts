@@ -62,6 +62,7 @@ function prerenderPages() {
     '/',
     '/puzzles',
     '/import',
+    '/decode',
     '/sync',
     '/sync/devices',
     ...Object.keys(syncStepTitles).map(step => '/sync/' + step),
