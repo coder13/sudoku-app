@@ -62,6 +62,7 @@ type Props = {
   modeBoundaryRef?: Ref<HTMLDivElement>
   modeBadge?: ReactNode
   onCell?: (index: number, event: MouseEvent) => void
+  onGiven?: (digit: number) => void
   onGridKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   linkDrawing?: boolean
@@ -87,7 +88,7 @@ const MemoAlgebraicCages = memo(AlgebraicCages)
 const MemoOutsideClues = memo(OutsideClues)
 const MemoLinkedDoubleArrowClues = memo(LinkedDoubleArrowClues)
 
-type BoardEvents = Pick<Props, 'onCell' | 'onCellDoubleClick' | 'onCellPointerDown' | 'onCandidate' | 'onPaintCandidate' | 'onCandidateHover' | 'onLinkSelect'>
+type BoardEvents = Pick<Props, 'onCell' | 'onGiven' | 'onCellDoubleClick' | 'onCellPointerDown' | 'onCandidate' | 'onPaintCandidate' | 'onCandidateHover' | 'onLinkSelect'>
 
 function useBoardEvents(events: BoardEvents) {
   const committed = useRef(events)
@@ -96,6 +97,7 @@ function useBoardEvents(events: BoardEvents) {
   useLayoutEffect(() => { committed.current = events })
   return useMemo(() => ({
     onCell: (index: number, event: MouseEvent) => committed.current.onCell?.(index, event),
+    onGiven: (digit: number) => committed.current.onGiven?.(digit),
     onCellDoubleClick: (index: number, event: MouseEvent) => committed.current.onCellDoubleClick?.(index, event),
     onCellPointerDown: (index: number, event: PointerEvent) => committed.current.onCellPointerDown?.(index, event),
     onCandidate: (candidate: Candidate) => committed.current.onCandidate?.(candidate),
@@ -184,11 +186,13 @@ const BoardCell = memo(function BoardCell({
   preview, candidateColors, importedCandidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
   linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted, selectionEdges,
-  onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
+  onCell, onGiven, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
 }: CellProps) {
   const { index, row, column: col, boxColumns, cageTotal, regionAtCell } = geometry
   const candidateAction = onPaintCandidate ?? onCandidate
-  const Cell = onCell && !candidateAction ? 'button' : 'div'
+  const givenAction = fixed && Boolean(onGiven)
+  const regularCellAction = Boolean(onCell && !candidateAction)
+  const Cell = givenAction || regularCellAction ? 'button' : 'div'
   const centerCandidates = useMemo(() => marksOf(centerMask), [centerMask])
   const gridCandidates = useMemo(() => marksOf(displayedGridMask), [displayedGridMask])
   const previewSlotted = preview?.mode !== 'center' || annotatedSlots
@@ -361,9 +365,11 @@ const BoardCell = memo(function BoardCell({
     data-rule-highlighted={ruleHighlighted || undefined} data-selection-edge={selectionEdges || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
     data-cage-total={cageTotal !== undefined || undefined}
-    type={onCell && 'button'} tabIndex={onCell ? (active ? 0 : -1) : undefined} aria-selected={onCell ? selected : undefined}
+    type={Cell === 'button' ? 'button' : undefined}
+    tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : undefined}
+    aria-selected={regularCellAction ? selected : undefined}
     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
-    onClick={onCell ? event => onCell(index, event) : highlightedLinkDigit != null ? event => {
+    onClick={givenAction ? () => onGiven?.(value) : regularCellAction ? event => onCell?.(index, event) : highlightedLinkDigit != null ? event => {
       if (event.target instanceof Element && event.target.closest('.candidate-button')) return
       selectCandidate(highlightedLinkDigit, visibleGridCandidates.includes(highlightedLinkDigit))
     } : undefined}
@@ -382,7 +388,7 @@ export function Board({
   variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, authoredArtwork, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, candidateGroupPreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, fullCandidateCellHighlight = false,
   highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
+  selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGiven, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
@@ -504,7 +510,7 @@ export function Board({
     }
   }
 
-  const boardEvents = useBoardEvents({ onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onLinkSelect })
+  const boardEvents = useBoardEvents({ onCell, onGiven, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onLinkSelect })
   const selectedCells = useMemo(() => new Set(selected), [selected])
   const visibleSelectedCells = useMemo(() => selected.filter(cell =>
     rows.includes(Math.floor(cell / gridSize) + 1) && columns.includes(cell % gridSize + 1)), [selected, rows, columns, gridSize])
@@ -600,7 +606,8 @@ export function Board({
           selectedCandidateDigit={selectedCandidate?.cell === index ? selectedCandidate.digit : undefined}
           tabCandidateDigit={tabCandidate?.cell === index ? tabCandidate.digit : undefined}
           tabCandidateSlotted={tabCandidate?.cell === index ? tabCandidate.slotted : undefined} onCandidateFocus={setCandidateFocus}
-          onCell={onCell ? boardEvents.onCell : undefined} onCellDoubleClick={onCellDoubleClick ? boardEvents.onCellDoubleClick : undefined}
+          onCell={onCell ? boardEvents.onCell : undefined} onGiven={onGiven ? boardEvents.onGiven : undefined}
+          onCellDoubleClick={onCellDoubleClick ? boardEvents.onCellDoubleClick : undefined}
           onCellPointerDown={onCellPointerDown ? boardEvents.onCellPointerDown : undefined}
           onCandidate={onCandidate ? boardEvents.onCandidate : undefined} onPaintCandidate={onPaintCandidate ? boardEvents.onPaintCandidate : undefined}
           onCandidateHover={onCandidateHover ? boardEvents.onCandidateHover : undefined} />

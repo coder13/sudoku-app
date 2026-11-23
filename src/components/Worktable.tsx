@@ -2599,6 +2599,7 @@ export function Worktable({
       highlightCandidateCount={!strongLinksVisible && highlightCandidatePairs ? 2 : null}
       showGuides={appearance.showGuides} boardRef={boardRef} linkDrawing={sketch.drawing}
       onCandidate={strongLinksVisible ? selectStrongLinkCandidate : sketch.select}
+      onGiven={strongLinksVisible ? (digit) => setStrongLinkHighlights(1 << (digit - 1)) : undefined}
       onLinkSelect={strongLinksVisible ? startStrongLinkChain : undefined}
       onCandidateHover={sketch.drawing ? sketch.hover : undefined}
       isLinkTarget={sketch.isLinkTarget}

@@ -271,6 +271,30 @@ test('chain drawing exposes a keyboard tab stop and accepts keyboard candidate a
   assert.equal(typeof tree.find(({ props }) => props.role === 'grid')?.props.onKeyDown, 'function')
 })
 
+test('strong-link givens select a digit without selecting a cell or intercepting candidates', () => {
+  const given = '5' + '0'.repeat(80)
+  let highlightedDigit = 0
+  let chosenCandidate: unknown = null
+  const tree = boardTree({
+    givens: given, values: given, selected: [],
+    onCandidate: (candidate: unknown) => { chosenCandidate = candidate },
+    onGiven: (digit: number) => { highlightedDigit = digit },
+  })
+  const cells = tree.filter(({ props }) => props.role === 'gridcell')
+  assert.equal(cells[0].type, 'button')
+  assert.equal(cells[0].props.tabIndex, 0)
+  assert.equal(cells[0].props['aria-selected'], undefined)
+  assert.equal(cells[1].type, 'div')
+  assert.equal(cells[1].props.onClick, undefined)
+  ;(cells[0].props.onClick as () => void)()
+  assert.equal(highlightedDigit, 5)
+  assert.equal(chosenCandidate, null)
+
+  const candidate = tree.find(({ props }) => String(props.className).includes('candidate-button'))!
+  ;(candidate.props.onClick as () => void)()
+  assert.deepEqual(chosenCandidate, { cell: 1, digit: 1 })
+})
+
 test('candidate coloring retains its keyboard tab stop and activation', () => {
   const painted: unknown[] = []
   const tree = boardTree({ onPaintCandidate: (candidate: unknown) => painted.push(candidate) })
