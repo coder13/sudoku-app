@@ -372,7 +372,7 @@ const BoardCell = memo(function BoardCell({
     data-cage-total={cageTotal !== undefined || undefined}
     type={buttonCell || fixedCellAction ? 'button' : undefined}
     tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : buttonCell || fixedCellAction ? -1 : undefined}
-    aria-selected={buttonCell || fixedCellAction ? selected : undefined}
+    aria-selected={selected || buttonCell || fixedCellAction ? selected : undefined}
     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
     onClick={givenAction ? () => onGiven?.(value) : regularCellAction ? event => onCell?.(index, event) : highlightedLinkDigit != null ? event => {
       if (event.target instanceof Element && event.target.closest('.candidate-button')) return
