@@ -214,6 +214,7 @@ const BoardCell = memo(function BoardCell({
   const visibleGridMask = displayedGridMask | (previewSlotted ? addedPreviewMarks : 0)
   const visibleCenterMask = centerMask | (!previewSlotted ? addedPreviewMarks : 0)
   const visibleGridCandidates = useMemo(() => marksOf(visibleGridMask), [visibleGridMask])
+  const gridCandidatesInOrder = visibleGridCandidates.every((digit, index) => digit === index + 1)
   const visibleCenterCandidates = useMemo(() => marksOf(visibleCenterMask), [visibleCenterMask])
   const cellStyle = useMemo(() => {
     if (error) return
@@ -311,7 +312,7 @@ const BoardCell = memo(function BoardCell({
     const imported = importedCandidateColors?.[digit]
     const colorClass = candidateColorClass(color, imported, annotation?.mark)
     const style = {
-      gridArea: slotted && visibleGridCandidates.length < (grid?.size ?? 9)
+      gridArea: slotted && !gridCandidatesInOrder
         ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
       opacity: annotation?.opacity,
       '--annotation-color': annotation?.color,
