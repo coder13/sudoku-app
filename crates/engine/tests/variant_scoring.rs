@@ -135,7 +135,7 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
     let span = 2 * cells.len() as u16;
     let choices = binary_choices(domains);
     match deduction.technique {
-        Parity | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
+        Parity | DigitRestriction | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
         Clone | Palindrome | ConsecutiveRun | DistinctCells => 8 + span + choices,
         // Read the shared set and check each inside row and column.
         InsideGrid => 20 + 4 * (cells.len() as u16).isqrt(),

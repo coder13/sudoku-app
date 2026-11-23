@@ -90,11 +90,11 @@ function quadrupleSupport(cells: readonly number[], required: readonly number[],
   return support[0] ? support : undefined
 }
 
-type PlacedRule = Extract<VariantRule, { type: 'parity' | 'thermometer' | 'inside-grid' | 'consecutive-run' | 'quadruple' | 'quadruple-sum' | 'lettered-quadruples' }>
+type PlacedRule = Extract<VariantRule, { type: 'parity' | 'digit-restriction' | 'thermometer' | 'inside-grid' | 'consecutive-run' | 'quadruple' | 'quadruple-sum' | 'lettered-quadruples' }>
 
 /** Local restrictions from placed digits. Other rules still contribute their own checks. */
 export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
-  const rules = puzzle?.rules?.filter((rule): rule is PlacedRule => rule.type === 'parity' || rule.type === 'thermometer' || rule.type === 'inside-grid' || rule.type === 'lettered-quadruples' ||
+  const rules = puzzle?.rules?.filter((rule): rule is PlacedRule => rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'thermometer' || rule.type === 'inside-grid' || rule.type === 'lettered-quadruples' ||
     rule.type === 'consecutive-run' && rule.fromBulb || isQuadrupleRule(rule))
   if (!rules?.length) return
   const allowed = Array<number>(81).fill(ALL_DIGITS)
@@ -105,6 +105,14 @@ export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values
       for (const cell of rule.cells) {
         if (values[cell] === '0') allowed[cell] &= parity
         else if (!(parity & digitMask(Number(values[cell])))) conflicts.add(cell)
+      }
+      continue
+    }
+    if (rule.type === 'digit-restriction') {
+      const restriction = rule.digits.reduce((mask, digit) => mask | digitMask(digit), 0)
+      for (const cell of rule.cells) {
+        if (values[cell] === '0') allowed[cell] &= restriction
+        else if (!(restriction & digitMask(Number(values[cell])))) conflicts.add(cell)
       }
       continue
     }

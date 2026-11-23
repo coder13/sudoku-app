@@ -42,6 +42,7 @@ export function variantLessonClues(puzzle: VariantPuzzle) {
   return (puzzle.rules ?? []).flatMap((rule) => {
     switch (rule.type) {
       case 'parity': return [`${rule.parity === 'odd' ? 'Odd' : 'Even'} cells · ${cells(rule.cells)}`]
+      case 'digit-restriction': return [`${rule.shape} cells allow ${rule.digits.join(', ')} · ${cells(rule.cells)}`]
       case 'anti-knight': return ['Cells a knight’s move apart must differ.']
       case 'anti-king': return ['Cells touching at a corner must differ.']
       case 'non-consecutive': return [nonConsecutiveDescription(puzzle, rule)]

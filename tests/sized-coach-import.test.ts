@@ -171,6 +171,24 @@ test('Coach preserves repeated Quadruple digits and rejects malformed corners or
   await assert.rejects(detectPuzzle(code(8, '')), /invalid Quadruple clue/)
 })
 
+test('9 × 9 Coach digit restriction shapes import as the published digit sets', async () => {
+  const shapeLayer = {
+    type: 'cosmeticShape', settings: { gridSnapToCentres: true }, segments: [
+      { cells: [[0.5, 0.5]], parameters: { shape: 'circle' } },
+      { cells: [[1.5, 0.5]], parameters: { shape: 'cross' } },
+      { cells: [[2.5, 0.5]], parameters: { shape: 'square' } },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode({ gridSize: 9, givenDigits: '0'.repeat(81), givenConstraints: [shapeLayer] }))
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'digit-restriction', shape: 'circle', cells: [0], digits: [1, 2, 3] },
+    { type: 'digit-restriction', shape: 'cross', cells: [1], digits: [4, 5, 6, 7] },
+    { type: 'digit-restriction', shape: 'square', cells: [2], digits: [8, 9] },
+  ])
+  shapeLayer.segments[2].parameters.shape = 'triangle'
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 9, givenConstraints: [shapeLayer] })), /unsupported or invalid digit restrictions/)
+})
+
 test('a progressed tournament Quadruple preserves repeated labels through reload and the share Worker', async () => {
   const { grid, givens, sizedRules: rules } = await detectPuzzle(tournamentQuadrupleCode())
   assert.ok(grid && rules)

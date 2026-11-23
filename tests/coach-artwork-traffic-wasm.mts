@@ -89,7 +89,7 @@ test('both reviewed originals preserve all rules and artwork through import, pla
       type: 'cosmeticShape', settings: { shapeSize: 30, colour: '#2a2a2a' },
       segments: [{ cells: [[7.5,3.5]], parameters: { shape: 'circle' } }],
     }, { type: 'renban', segments: [{ cells: [0,1,2], parameters: {} }] }] })
-    await assert.rejects(detectPuzzle(changedDrawing), /unsupported settings for cosmeticShape/)
+    await assert.rejects(detectPuzzle(changedDrawing), /unsupported or invalid digit restrictions/)
   } finally {
     sqlite.close()
   }

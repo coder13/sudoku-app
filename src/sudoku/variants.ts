@@ -491,6 +491,10 @@ function isPlayableRule(rule: VariantRule): boolean {
       (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean')
     case 'inequality': return validCells([rule.less, rule.greater], 2)
     case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
+    case 'digit-restriction': return Object.keys(rule).every(key => ['type', 'cells', 'digits', 'shape'].includes(key)) &&
+      validCells(rule.cells, 1) && Array.isArray(rule.digits) && rule.digits.length > 0 &&
+      rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9) && new Set(rule.digits).size === rule.digits.length &&
+      ['circle', 'cross', 'square'].includes(rule.shape)
     case 'quadruple': case 'quadruple-sum': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
@@ -627,6 +631,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   quadruple: PUZZLE_VARIANTS.quadruple.name,
   'quadruple-sum': 'Quad-Arrows',
   parity: PUZZLE_VARIANTS.parity.name,
+  'digit-restriction': 'Digit Restrictions',
   'anti-king': PUZZLE_VARIANTS['anti-king'].name,
   'non-consecutive': PUZZLE_VARIANTS['non-consecutive'].name,
 }
@@ -768,6 +773,11 @@ function describedVariantRules(puzzle: VariantPuzzle) {
           ? 'Cells with a circle contain an odd digit: 1, 3, 5, 7, or 9.'
           : 'Cells with a square contain an even digit: 2, 4, 6, or 8.')
         break
+      case 'digit-restriction': {
+        const digits = new Intl.ListFormat('en', { type: 'conjunction' }).format(rule.digits.map(String))
+        descriptions.push(`${rule.shape[0].toUpperCase()}${rule.shape.slice(1)} cells allow only ${digits}.`)
+        break
+      }
       case 'whispers': {
         const at = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
         descriptions.push(`Whispers line from ${at(rule.cells[0])} to ${at(rule.cells.at(-1)!)}: neighboring digits along it must differ by at least ${rule.minDifference}. Cells farther apart on the line may repeat a digit if the other rules allow it.`)

@@ -85,6 +85,9 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'parity':
       return { description: `${at(a)} must be ${rule.parity}.`, reason: rule.parity === 'odd'
         ? 'Only 1, 3, 5, 7, and 9 fit an odd cell.' : 'Only 2, 4, 6, and 8 fit an even cell.' }
+    case 'digit-restriction':
+      return { description: `${at(a)} has a ${rule.shape} shape.`, reason:
+        `Only ${new Intl.ListFormat('en', { type: 'conjunction' }).format(rule.digits.map(String))} can go in this cell.` }
     case 'non-consecutive':
       return { description: `${pair} share an edge. Their digits cannot differ by one.`,
         reason: 'A crossed-out digit has no possible partner across that edge.' }
@@ -1145,6 +1148,16 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
               : `${location} has an even square, so it can contain only 2, 4, 6, or 8.`
             reason = `Remove ${focus.map(({ digit }) => digit).join(', ')} from ${location}; ${rule.parity === 'odd' ? 'even' : 'odd'} digits cannot satisfy this marker.`
           } else description = 'The odd or even marker restricts the highlighted cell.'
+          break
+        }
+        case 'digit-restriction': {
+          const rule = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'digit-restriction')
+          const location = nameCell(cells[0])
+          if (rule?.type === 'digit-restriction') {
+            const allowed = new Intl.ListFormat('en', { type: 'conjunction' }).format(rule.digits.map(String))
+            description = `${location} has a ${rule.shape} shape and allows only ${allowed}.`
+            reason = `Remove ${focus.map(({ digit }) => digit).join(', ')} from ${location}; those digits are outside the allowed set.`
+          }
           break
         }
         case 'anti-king': {

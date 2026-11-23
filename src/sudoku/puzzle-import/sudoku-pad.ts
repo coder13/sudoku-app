@@ -8,6 +8,8 @@ import { readClassicSudokuPad } from './sudoku-pad-classic.ts'
 import { record } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
+const publishedId = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})?$/
+
 export function fromSudokuPad(code: string): ImportResult {
   if (/^scf/i.test(code)) return digitRuns(code.slice(3), 'SudokuPad')
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
@@ -37,9 +39,10 @@ export const sudokuPad = {
     absoluteOnly: ['sudokupad.svencodes.com', 'app.crackingthecryptic.com'],
     async read(url) {
       const host = url.hostname.replace(/^www\./, '')
-      const pathCode = decodeURIComponent(url.pathname.slice(1)).replace(/\/$/, '')
+      const path = url.pathname.slice(1).replace(/\/$/, '')
+      const pathCode = decodeURIComponent(path)
       const code = pathCode || url.searchParams.get('puzzleid') || ''
-      if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && /^[A-Za-z0-9_-]{1,64}$/.test(code) &&
+      if ((host === 'sudokupad.app' || host === 'beta.sudokupad.app') && !/%2f/i.test(path) && publishedId.test(code) &&
         !/^(?:scl|ctc|scf|fpuz)/i.test(code)) return fromSudokuPad((await fetchPublishedExport('sudokupad', code)).code)
       return fromSudokuPad(code)
     },

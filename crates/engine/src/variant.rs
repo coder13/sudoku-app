@@ -47,7 +47,7 @@ pub use logical::{
     VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
 };
-use pairs::{PairClue, ParityClue, PositiveSum};
+use pairs::{DigitRestrictionClue, PairClue, ParityClue, PositiveSum};
 #[cfg(all(
     feature = "teaching",
     feature = "wasm-api",
@@ -128,6 +128,15 @@ pub enum Parity {
     Odd,
     /// The even digits in the layout.
     Even,
+}
+
+/// Shape used to display a digit restriction clue.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+pub enum DigitRestrictionShape {
+    Circle,
+    Cross,
+    Square,
 }
 
 /// Marked cell pairs and the optional negative rule for this marker type.
@@ -292,6 +301,15 @@ rules! {
         cells: Vec<usize>,
         /// Allowed parity.
         parity: Parity,
+    }
+    /// Restrict marked cells to an authored set of digits.
+    DigitRestriction => "digit-restriction" {
+        /// Affected cell indices.
+        cells: Vec<usize>,
+        /// Allowed digits.
+        digits: Vec<u8>,
+        /// Shape used to draw this clue.
+        shape: DigitRestrictionShape,
     }
     /// Require corresponding cells in cloned shapes to contain matching digits.
     Clone => "clone" {
@@ -740,6 +758,7 @@ pub struct CompiledVariant {
     positive_sums: Vec<PositiveSum>,
     pair_clue_memberships: [Vec<usize>; CELLS],
     parity_clues: Vec<ParityClue>,
+    digit_restriction_clues: Vec<DigitRestrictionClue>,
     extra_rule_cells: u128,
     kropki_marks: std::ops::Range<usize>,
 }

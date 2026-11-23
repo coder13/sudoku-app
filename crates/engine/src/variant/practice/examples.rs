@@ -495,6 +495,29 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
         ],
+        DigitRestriction => [
+            seed(
+                "041000700000104200587062100078603000023057609900281004300700025792000000005029060",
+                0, 6,
+                [PuzzleRule::DigitRestriction {
+                    cells: vec![0], digits: vec![1, 2, 3], shape: super::super::DigitRestrictionShape::Circle,
+                }, PuzzleRule::Parity { cells: vec![80], parity: CellParity::Odd }],
+            ),
+            seed(
+                "000370000002000005805400639000080026000000007010200080027008001406090003001000860",
+                0, 1,
+                [PuzzleRule::DigitRestriction {
+                    cells: vec![0], digits: vec![4, 5, 6, 7], shape: super::super::DigitRestrictionShape::Cross,
+                }, PuzzleRule::Parity { cells: vec![16], parity: CellParity::Even }],
+            ),
+            seed(
+                "890104072020800014000005900100050030080603149000000007210009700057280000340000000",
+                13, 3,
+                [PuzzleRule::DigitRestriction {
+                    cells: vec![13], digits: vec![8, 9], shape: super::super::DigitRestrictionShape::Square,
+                }, PuzzleRule::Parity { cells: vec![61], parity: CellParity::Even }],
+            ),
+        ],
         AntiKing => [
             seed(
                 "065000170908710063000269000609502310530001700007040090000300040400186937700050020",

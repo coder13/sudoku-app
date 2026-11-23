@@ -191,7 +191,7 @@ impl SquareTransform {
                     super::Diagonal::Anti
                 };
             }
-            ExtraHouse { cells } | Parity { cells, .. } => self.unordered(cells),
+            ExtraHouse { cells } | Parity { cells, .. } | DigitRestriction { cells, .. } => self.unordered(cells),
             DistinctCells { cells, color } => {
                 self.unordered(cells);
                 *color = None;

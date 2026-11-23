@@ -21,6 +21,17 @@ function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { 
   </g>
 }
 
+function DigitRestrictionClue({ shape, cells, size = 9 }: Extract<VariantRule, { type: 'digit-restriction' }> & { size?: number }) {
+  return <g className={`variant-digit-restriction variant-digit-restriction-${shape}`}>
+    {[...new Set(cells)].map(cell => {
+      const [cx, cy] = center(cell, size)
+      if (shape === 'circle') return <circle key={cell} cx={cx} cy={cy} r=".32" />
+      if (shape === 'square') return <rect key={cell} x={cx - .3} y={cy - .3} width=".6" height=".6" />
+      return <path key={cell} d={`M ${cx - .24} ${cy - .24} L ${cx + .24} ${cy + .24} M ${cx - .24} ${cy + .24} L ${cx + .24} ${cy - .24}`} />
+    })}
+  </g>
+}
+
 function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
   return <line className="variant-diagonal" x1={diagonal === 'main' ? 0 : size} y1="0"
     x2={diagonal === 'main' ? size : 0} y2={size} />
@@ -649,7 +660,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'lettered-quadruples' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
@@ -718,6 +729,8 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         }
         case 'parity':
           return <ParityClue key={index} {...rule} />
+        case 'digit-restriction':
+          return <DigitRestrictionClue key={index} {...rule} />
         case 'lettered-quadruples':
           return <g key={index}>{rule.clues.map(({ topLeft, letters }) =>
             <QuadrupleClue key={topLeft} topLeft={topLeft} digits={[...letters]} lettered />)}</g>
@@ -847,6 +860,9 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         for (const cell of rule.cells) labels[cell].push(rule.parity === 'odd'
           ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
           : 'even square, digit must be 2, 4, 6, or 8')
+        break
+      case 'digit-restriction':
+        for (const cell of rule.cells) labels[cell].push(`${rule.shape} shape, only digits ${rule.digits.join(', ')}`)
         break
       case 'lettered-quadruples':
         for (const { topLeft, letters } of rule.clues) for (const cell of quadrupleCells(topLeft)) {

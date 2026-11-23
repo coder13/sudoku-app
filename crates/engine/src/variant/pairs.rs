@@ -153,6 +153,13 @@ pub(super) struct ParityClue {
     pub allowed: u16,
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct DigitRestrictionClue {
+    pub rule: usize,
+    pub cell: usize,
+    pub allowed: u16,
+}
+
 #[derive(Default)]
 pub(super) struct PairCompiler {
     clues: Vec<PairClue>,
@@ -216,6 +223,19 @@ impl PairCompiler {
                         cell,
                         allowed,
                     });
+                }
+            }
+            PuzzleRule::DigitRestriction { cells, digits, .. } => {
+                valid_cells(cells, 1..=CELLS)?;
+                if digits.is_empty() || digits.iter().any(|digit| !(1..=9).contains(digit)) ||
+                    digits.iter().copied().collect::<std::collections::BTreeSet<_>>().len() != digits.len() {
+                    return Err(invalid);
+                }
+                let allowed = digits.iter().fold(0, |mask, &digit| mask | digit_bit(digit));
+                for &cell in cells {
+                    puzzle.allowed_digits[cell] &= allowed;
+                    if puzzle.allowed_digits[cell] == 0 { return Err(invalid); }
+                    puzzle.digit_restriction_clues.push(DigitRestrictionClue { rule: index, cell, allowed });
                 }
             }
             PuzzleRule::Clone { groups } => {

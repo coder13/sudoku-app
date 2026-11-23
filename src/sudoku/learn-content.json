@@ -8806,6 +8806,52 @@
       ]
     },
     {
+      "title": "Digit restrictions",
+      "overview": "Marked shapes limit which digits can go in their cells.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "digit-restriction",
+          "title": "Digit restrictions",
+          "summary": "A marked shape limits the digits allowed in its cell. Remove candidates outside that set.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Read the shape key"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "A digit restriction limits the candidates in marked cells. In Sudoku Coach, circles allow 1–3, crosses allow 4–7, and squares allow 8–9.",
+                "Use this rule whenever the puzzle marks cells with a digit restriction. Find the shape key, then scan each marked cell for candidates outside its allowed set."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "digit-restriction",
+              "copy": {
+                "description": "The circle in R1C1 allows 1, 2, or 3. Remove 6 from R1C1."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "digit-restriction", "title": "Apply the shape key" }
+              ],
+              "guide": {
+                "start": "Find a marked cell and identify its shape.",
+                "check": "Compare its candidates with the digits allowed by that shape.",
+                "reason": "Remove any candidate outside the allowed set."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        }
+      ]
+    },
+    {
       "title": "Outside clues",
       "overview": "Follow the cells named by the clue at the edge of the grid.",
       "variant": true,

@@ -3,6 +3,7 @@ import type { SizedConstraintRule, VariantRule } from '../engine.ts'
 import { isJigsawGrid, isJigsawSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from '../grid.ts'
 import { isSizedRuleList } from '../sized-rule-game.ts'
 import { hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record, standardRegion } from './shared.ts'
+import { cloneCellColor, coloredCloneShapes, hasColoredCloneRuleset } from './f-puzzles-clone.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
 export const FP_CODE = /^fpuz(?:zles)?/i
@@ -135,11 +136,12 @@ function knownJigsawRuleset(text: string, size: number) {
 }
 
 export function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportResult {
-  const code = input.replaceAll(' ', '+')
+  if (input.startsWith('{')) return fromFPuzzlesData(parseJSON(input, format))
+  let code = ''
+  try { code = decodeURIComponent(input).replaceAll(' ', '+') } catch { /* The code was not valid URI text. */ }
   // f-puzzles uses LZ-String Base64. Limit compressed input before decoding it.
-  const data = parseJSON(input.startsWith('{') ? input :
-    /^[A-Za-z0-9+/=]{1,10000}$/.test(code) ? lzString.decompressFromBase64(code) : '', format)
-  return fromFPuzzlesData(data)
+  const decoded = /^[A-Za-z0-9+/=]{1,10000}$/.test(code) ? lzString.decompressFromBase64(code) : ''
+  return fromFPuzzlesData(parseJSON(decoded, format))
 }
 
 function fromFPuzzlesData(data: unknown): ImportResult {
@@ -154,25 +156,32 @@ function fromFPuzzlesData(data: unknown): ImportResult {
   for (const [key, value] of Object.entries(data)) {
     if (!fields.has(key) && hasData(value)) throw new Error(`This f-puzzles rule is not supported yet (${key}).`)
   }
-  if (hasData(data.ruleset) && (typeof data.ruleset !== 'string' ||
+  const coloredClone = size === 9 && hasColoredCloneRuleset(data.ruleset)
+  if (!coloredClone && hasData(data.ruleset) && (typeof data.ruleset !== 'string' ||
     !PLAIN_RULES.test(data.ruleset) && !(mini && PLAIN_MINI_RULES.test(data.ruleset)) &&
     !(eight && PLAIN_EIGHT_RULES.test(data.ruleset)) && !(jigsaw && knownJigsawRuleset(data.ruleset, size)))) {
     throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
   }
   const labels: unknown[] = []
   const digits: string[] = []
+  const coloredCells = coloredClone ? new Map<number, string>() : undefined
   for (const row of data.grid) {
     if (!Array.isArray(row) || row.length !== size) throw new Error('This f-puzzles export has an invalid grid.')
     for (const cell of row) {
       if (!record(cell) || cell.given && (!/^[1-9]$/.test(String(cell.value)) || Number(cell.value) > size)) {
         throw new Error('This f-puzzles export has invalid givens.')
       }
+      const index = digits.length
+      if (coloredCells) {
+        const shade = cloneCellColor(cell)
+        if (shade) coloredCells.set(index, shade)
+      }
       for (const [key, value] of Object.entries(cell)) {
+        if (coloredClone && (key === 'c' || key === 'cArray')) continue
         if (!['value', 'given', 'region', 'centerPencilMarks', 'cornerPencilMarks'].includes(key) && hasData(value)) {
           throw new Error(`This f-puzzles cell clue is not supported yet (${key}).`)
         }
       }
-      const index = digits.length
       // On these Jigsaw grids, f-puzzles omits labels for the default row regions.
       const region = jigsaw ? Math.floor(index / size)
         : mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2) : eight ? undefined : standardRegion(index)
@@ -207,14 +216,22 @@ function fromFPuzzlesData(data: unknown): ImportResult {
       rules.push({ type: 'clone', groups: original.map((cell, i) => [cell, copies[i]]) })
     }
   }
+  const authoredClone = coloredCells && coloredCloneShapes(coloredCells)
+  if (authoredClone) rules.push(...authoredClone.rules)
   if (hasData(data.killercage)) {
     if (!Array.isArray(data.killercage)) throw new Error('This f-puzzles export has invalid Killer cages.')
-    rules.push({ type: 'killer-cages', cages: data.killercage.map((cage: unknown) => {
-      if (!record(cage) || !Array.isArray(cage.cells) || !/^[0-9]{1,2}$/.test(String(cage.value))) {
+    const cages = data.killercage.flatMap((cage: unknown) => {
+      if (!record(cage) || !Array.isArray(cage.cells)) throw new Error('This f-puzzles export has an invalid Killer cage.')
+      const cells = cage.cells.map(cell => fpCellIndex(cell, size))
+      // These publications use unsummed outlines around the colored Clone cells.
+      if (authoredClone && Object.keys(cage).length === 1 &&
+        authoredClone.outlines.delete([...cells].sort((a, b) => a - b).join(','))) return []
+      if (!/^[0-9]{1,2}$/.test(String(cage.value))) {
         throw new Error('This f-puzzles export has a Killer cage without a valid sum.')
       }
-      return { cells: cage.cells.map(cell => fpCellIndex(cell, size)), sum: Number(cage.value) }
-    }) })
+      return [{ cells, sum: Number(cage.value) }]
+    })
+    if (cages.length) rules.push({ type: 'killer-cages', cages })
   }
   if (eight) {
     const grid = labels.every((label): label is number => typeof label === 'number' && Number.isInteger(label) && label >= 0)
@@ -225,7 +242,10 @@ function fromFPuzzlesData(data: unknown): ImportResult {
     const author = typeof data.author === 'string' ? data.author.trim().slice(0, 72) : ''
     return { givens: digits.join(''), grid, sizedRules: rules, ...(title && { title }), ...(author && { sizedAuthor: author }) }
   }
-  return makeImportedPuzzle(digits.join(''), rules, readRegions(labels))
+  const imported = makeImportedPuzzle(digits.join(''), rules, readRegions(labels))
+  if (!authoredClone) return imported
+  const title = typeof data.title === 'string' ? data.title.trim().slice(0, 72) : ''
+  return { ...imported, givenCellColors: authoredClone.givenCellColors, ...(title && { title }) }
 }
 
 export const fPuzzles = {
