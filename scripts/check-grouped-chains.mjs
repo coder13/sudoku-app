@@ -135,7 +135,7 @@ async function run(profile) {
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
     const resume = page.getByRole('button', { name: 'Resume puzzle', exact: true })
     if (await resume.count()) await click(resume)
-    await page.waitForFunction(() => !document.querySelector('.puzzle-paused'))
+    await page.waitForFunction(() => !document.querySelector('.puzzle-play-layers')?.hasAttribute('data-paused'))
     await page.waitForFunction(() => !document.querySelector('.apply-chain-edits')?.disabled)
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
