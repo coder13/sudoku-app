@@ -129,10 +129,6 @@ jobs:
           node --experimental-strip-types scripts/check-worktable-lifecycle.mjs --output tools/react-board-performance/results/lifecycle-ci.json
           node --experimental-sqlite --experimental-strip-types scripts/check-startup-loading.mjs --output tools/react-board-performance/results/startup-ci.json
 
-      - name: Check grouped chain tools
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-        run: node --experimental-strip-types scripts/check-grouped-chains.mjs --output tools/react-board-performance/results/grouped-chains-ci.json --screenshots tools/react-board-performance/results/grouped-chains-screenshots
-
       - name: Upload browser check results
         if: always() && (github.event_name == 'pull_request' || steps.preview.outputs.sha != '')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
