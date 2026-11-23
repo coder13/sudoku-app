@@ -110,7 +110,7 @@ jobs:
       - run: npm ci
       - name: Check component catalog
         if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
-        run: node .agents/skills/sudoku-components/scripts/check-catalog.mjs
+        run: npm run check:catalog
       - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
       - run: npm run build:cloudflare
         env:
