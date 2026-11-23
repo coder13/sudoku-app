@@ -4,6 +4,7 @@ import { readLinkedDoubleArrowSudokuPad, readSizedRuleSudokuPad } from '../sized
 import { digitRuns } from './digit-runs.ts'
 import { FP_CODE, fromFPuzzles } from './f-puzzles.ts'
 import { fetchPublishedExport } from './published-link.ts'
+import { readClassicSudokuPad } from './sudoku-pad-classic.ts'
 import { record } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
@@ -12,6 +13,9 @@ export function fromSudokuPad(code: string): ImportResult {
   if (FP_CODE.test(code)) return fromFPuzzles(code.replace(FP_CODE, ''), 'SudokuPad')
   if (/^(scl|ctc)/i.test(code)) {
     const data = decodeSudokuPadEnvelope(code)
+    if (record(data) && Array.isArray(data.cells) && data.cells.length === 9) {
+      return readClassicSudokuPad(data)
+    }
     if (record(data) && Array.isArray(data.cells) && Array.isArray(data.regions) &&
       (data.regions.length === 4 || isRectangularSize(data.regions.length)) && data.cells.length === data.regions.length + 2) {
       return { ...readLinkedDoubleArrowSudokuPad(data) }
