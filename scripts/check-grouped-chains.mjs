@@ -22,7 +22,7 @@ const screenshotDirectory = option('--screenshots')
 const onlyProfile = option('--profile')
 const practice = JSON.parse(await readFile(resolve(root, 'src/sudoku/generated/lesson-examples.json'), 'utf8'))['grouped-aic'].practice
 const unnotedGame = makeGame('grouped-chain-contract', 'Grouped chain practice', practice.givens, 'imported', 1)
-const fixtureValues = [...fixtureValues].map((given, cell) => given === '0' ? (practice.entries[cell] ?? '0') : given)
+const fixtureValues = [...unnotedGame.givens].map((given, cell) => given === '0' ? (practice.entries[cell] ?? '0') : given)
 const legalCandidateMasks = fixtureValues.map((given, cell) => {
   if (given !== '0') return 0
   const row = Math.floor(cell / 9), column = cell % 9, boxRow = Math.floor(row / 3) * 3, boxColumn = Math.floor(column / 3) * 3
