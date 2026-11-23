@@ -131,7 +131,7 @@ async function run(profile) {
     const visibleMasks = await page.locator('.candidate-button').evaluateAll(buttons => {
       const masks = Array(81).fill(0)
       for (const button of buttons) {
-        const match = button.getAttribute('aria-label')?.match(/^(\\d+) in row (\\d+), column (\\d+)/)
+        const match = button.getAttribute('aria-label')?.match(/^(\d+) in row (\d+), column (\d+)/)
         if (match) masks[(Number(match[2]) - 1) * 9 + Number(match[3]) - 1] |= 1 << (Number(match[1]) - 1)
       }
       return masks
