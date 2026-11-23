@@ -204,9 +204,10 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
       const usesScopedTechniques = chosen.has('thermometer') || chosen.has('between') || chosen.has('palindrome') || chosen.has('clone') || usesDotHouses
       const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
       const hardOrHigher = DIFFICULTY_LEVELS.indexOf(difficulty) >= DIFFICULTY_LEVELS.indexOf('hard')
-      // Higher target grades need more layouts, especially when every edge is marked.
-      const maxLayouts = negative.size ? (usesDotHouses && hardOrHigher ? 72 : 36)
-        : hardOrHigher ? 24 : 12
+      // More layouts improve the chance of finding an exact rating for combined rules.
+      const maxLayouts = negative.size
+        ? usesDotHouses ? hardOrHigher ? 144 : 72 : 36
+        : hardOrHigher ? 48 : 24
       for (let attempt = 0; attempt < maxLayouts; attempt++) {
         searchSignal.throwIfAborted()
         const template = modeTemplate(chosen, random)
