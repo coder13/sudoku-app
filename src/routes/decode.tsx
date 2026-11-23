@@ -10,8 +10,8 @@ import { decodeSudokuPadPayload } from '../sudoku/sized-sudoku-pad'
 
 type DecodedPayload = { format: string; payload: unknown; isJson: boolean }
 
-const EMBEDDED_FORMAT = /^(?:SCv[3-7]_(?:[0-9]+_)?|scf|scl|ctc|fpuz(?:zles)?)/i
-const COACH_URL_CODE = /^SCv[3-7]_/i
+const EMBEDDED_FORMAT = /^(?:SCv[3-7]_(?:[0-9]+_)?|32_|scf|scl|ctc|fpuz(?:zles)?)/i
+const COACH_URL_CODE = /^(?:SCv[3-7]_|32_)/i
 const GRID_TEXT = /^[0-9.]{81}$/
 const URL_INPUT = /^(?:https?:\/\/|sudokupad:\/\/|www\.|(?:[a-z0-9-]+\.)*(?:sudoku\.coach|sudokupad\.app|sudokupad\.svencodes\.com|app\.crackingthecryptic\.com)\/)/i
 const SUDOKUPAD_HOSTS = new Set(['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'])
@@ -83,7 +83,7 @@ async function decodeInput(input: string): Promise<DecodedPayload> {
     try { return { format: 'JSON', payload: JSON.parse(code), isJson: true } }
     catch { throw new Error('This JSON payload is not valid.') }
   }
-  throw new Error('Supported inputs: Sudoku Coach SCv codes, SudokuPad SCF/SCL/CTC codes, F-Puzzles codes, JSON, or an 81-character grid.')
+  throw new Error('Supported inputs: Sudoku Coach SCv or 32_ codes, SudokuPad SCF/SCL/CTC codes, F-Puzzles codes, JSON, or an 81-character grid.')
 }
 
 function DecodePage() {
