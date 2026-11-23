@@ -56,9 +56,9 @@ export function makeImportedPuzzle(givens: string, rules: VariantRule[], regions
   return { givens, variant: { id, puzzle, ...(fog && { fog }) } }
 }
 
-export function parseJSON(text: string, format: string): unknown {
+export function parseJSON(text: string, format: string, limit = MAX_DECODED_LENGTH): unknown {
   try {
-    if (text && text.length <= MAX_DECODED_LENGTH) return JSON.parse(text)
+    if (text && text.length <= limit) return JSON.parse(text)
   } catch { /* Show a format-specific error below. */ }
   throw new Error(`This ${format} puzzle is unreadable. Copy it again and try once more.`)
 }

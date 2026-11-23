@@ -23,7 +23,9 @@ import type { ImportResult, PuzzleImporter } from './types.ts'
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
 const COACH_BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
+const COACH_WHOLE_PROGRESS = /^32_/
 const LEGACY_COACH_CODE = /^SCv([3-6])_/i
+const MAX_COACH_PROGRESS_LENGTH = 1_048_576
 const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64}\/){0,3}[a-z0-9-]{1,64})\/s\/([A-Za-z0-9]{1,16})\/?$/
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
@@ -84,7 +86,7 @@ function decodeBase32Hex(text: string) {
   return bytes
 }
 
-async function inflate(bytes: Uint8Array<ArrayBuffer>) {
+async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGTH) {
   const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate')).getReader()
   const decoder = new TextDecoder('utf-8', { fatal: true })
   const chunks: string[] = []
@@ -94,7 +96,7 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>) {
       const { done, value } = await reader.read()
       if (done) break
       length += value.byteLength
-      if (length > MAX_DECODED_LENGTH) throw new Error('This Sudoku Coach puzzle is too large.')
+      if (length > limit) throw new Error('This Sudoku Coach puzzle is too large.')
       chunks.push(decoder.decode(value, { stream: true }))
     }
     return chunks.join('') + decoder.decode()
@@ -107,18 +109,32 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
   const legacy = LEGACY_COACH_CODE.exec(code)
   if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as LegacyCoachVersion, MAX_DECODED_LENGTH)
+  const wholeProgress = COACH_WHOLE_PROGRESS.exec(code)
   const prefix = COACH_CODE.exec(code)
-  if (!prefix || prefix[1] !== '7' || prefix[2] !== '32') {
+  if (!wholeProgress && (!prefix || prefix[1] !== '7' || prefix[2] !== '32')) {
     throw new Error('This Sudoku Coach code uses an unsupported format. Copy the puzzle from Sudoku Coach and try again.')
   }
-  const bytes = decodeBase32Hex(code.slice(prefix[0].length))
+  const bytes = decodeBase32Hex(code.slice((wholeProgress ?? prefix)![0].length))
+  const limit = wholeProgress ? MAX_COACH_PROGRESS_LENGTH : MAX_DECODED_LENGTH
   let text: string
   try {
-    text = await inflate(bytes)
+    text = await inflate(bytes, limit)
   } catch {
     throw new Error('This Sudoku Coach code could not be opened. Copy the full puzzle code and try again.')
   }
-  const data = parseJSON(text, 'Sudoku Coach')
+  let data = parseJSON(text, 'Sudoku Coach', limit)
+  if (wholeProgress) {
+    const invalid = () => new Error('This Sudoku Coach progress has an invalid puzzle snapshot.')
+    if (!record(data) || typeof data.i !== 'number' || !Number.isSafeInteger(data.i) ||
+      !Array.isArray(data.a) || data.i < 0 || data.i >= data.a.length || typeof data.a[data.i] !== 'string') throw invalid()
+    let snapshot: unknown
+    try { snapshot = parseJSON(data.a[data.i], 'Sudoku Coach') }
+    catch { throw invalid() }
+    if (!record(snapshot) || snapshot.version !== 7) throw invalid()
+    const puzzle = { ...snapshot }
+    delete puzzle.version
+    data = puzzle
+  }
   if (!record(data)) throw new Error('This Sudoku Coach puzzle is unreadable.')
   for (const [key, value] of Object.entries(data)) {
     if (!COACH_FIELDS.has(key) && !key.startsWith('user') && hasData(value)) {
@@ -1024,13 +1040,13 @@ export const sudokuCoach = {
         return fromCoach(code, readPublication(coach))
       }
       const code = url.pathname.match(/^\/(?:[a-z]{2}\/)?(?:play|solver|construct)\/([^/]+)\/?$/i)?.[1] ?? ''
-      if (code.toLowerCase().startsWith('scv')) return fromCoach(decodeURIComponent(code))
+      if (code.toLowerCase().startsWith('scv') || COACH_WHOLE_PROGRESS.test(code)) return fromCoach(decodeURIComponent(code))
       if (/^[0-4.]{16}$/.test(code)) return { givens: code.replaceAll('.', '0'), grid: MINI_GRID }
       if (/^[0-9.]{81}$/.test(code)) return { givens: normalizeGivens(code) }
       throw new Error('This Sudoku Coach link does not contain a puzzle code. Open it and use Copy → Puzzle.')
     },
   },
   readText(text) {
-    if (text.toLowerCase().startsWith('scv')) return fromCoach(text)
+    if (text.toLowerCase().startsWith('scv') || COACH_WHOLE_PROGRESS.test(text)) return fromCoach(text)
   },
 } as const satisfies PuzzleImporter
