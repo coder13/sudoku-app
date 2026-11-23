@@ -25,7 +25,7 @@ export const Route = createFileRoute('/decode')({
   component: DecodePage,
 })
 
-function inputCode(input: string) {
+function inputCode(input: string): ExtractedInput {
   const text = input.trim()
   if (!text) throw new Error('Paste a puzzle code or link first.')
   if (URL_INPUT.test(text)) {
