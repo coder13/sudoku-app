@@ -260,8 +260,6 @@ export function Board({
                   left: 'inset 2px 0 0 var(--board-selected-border)',
                 }
                 const cellSelectionShadow = selectionEdges.map(edge => selectionShadows[edge]).join(', ')
-                const renderedCellStyle = inSelection && cellSelectionShadow
-                  ? { ...cellStyle, boxShadow: cellSelectionShadow } as CSSProperties : cellStyle
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)
                 const candidateAnnotations = annotations?.candidates?.get(index)
@@ -281,6 +279,8 @@ export function Board({
                   '--cell-fill': error ? undefined : cellAnnotation.fill,
                   color: error ? undefined : cellAnnotation.ink,
                 } as CSSProperties
+                const renderedCellStyle = inSelection && cellSelectionShadow
+                  ? { ...cellStyle, boxShadow: cellSelectionShadow } as CSSProperties : cellStyle
                 const candidateLabel = (candidateAnnotations || candidateColors) && [...new Set([...gridCandidates, ...centerCandidates])]
                   .map((digit) => {
                     const color = candidateColors?.[digit]
