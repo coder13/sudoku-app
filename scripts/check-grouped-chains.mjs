@@ -22,13 +22,14 @@ const screenshotDirectory = option('--screenshots')
 const onlyProfile = option('--profile')
 const practice = JSON.parse(await readFile(resolve(root, 'src/sudoku/generated/lesson-examples.json'), 'utf8'))['grouped-aic'].practice
 const unnotedGame = makeGame('grouped-chain-contract', 'Grouped chain practice', practice.givens, 'imported', 1)
-const legalCandidateMasks = [...unnotedGame.givens].map((given, cell) => {
+const fixtureValues = [...fixtureValues].map((given, cell) => given === '0' ? (practice.entries[cell] ?? '0') : given)
+const legalCandidateMasks = fixtureValues.map((given, cell) => {
   if (given !== '0') return 0
   const row = Math.floor(cell / 9), column = cell % 9, boxRow = Math.floor(row / 3) * 3, boxColumn = Math.floor(column / 3) * 3
   const used = new Set([
-    ...[...unnotedGame.givens].slice(row * 9, row * 9 + 9),
-    ...Array.from({ length: 9 }, (_, index) => unnotedGame.givens[index * 9 + column]),
-    ...Array.from({ length: 9 }, (_, index) => unnotedGame.givens[(boxRow + Math.floor(index / 3)) * 9 + boxColumn + index % 3]),
+    ...[...fixtureValues].slice(row * 9, row * 9 + 9),
+    ...Array.from({ length: 9 }, (_, index) => fixtureValues[index * 9 + column]),
+    ...Array.from({ length: 9 }, (_, index) => fixtureValues[(boxRow + Math.floor(index / 3)) * 9 + boxColumn + index % 3]),
   ])
   return Array.from({ length: 9 }, (_, index) => index + 1)
     .filter(digit => !used.has(String(digit)))
