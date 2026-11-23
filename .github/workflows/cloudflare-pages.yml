@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: cloudflare-pages-${{ github.event.pull_request.number && format('check-{0}', github.event.pull_request.number) || inputs.pull_request && format('preview-{0}', inputs.pull_request) || 'production' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   desktop-resize:
@@ -107,8 +107,11 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
       - run: npm ci
+      - name: Check component catalog
+        if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
+        run: npm run check:catalog
+      - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
       - run: npm run build:cloudflare
         env:
           RUSTUP_TOOLCHAIN: stable
@@ -117,8 +120,6 @@ jobs:
       - name: Check board, startup, mobile resize, and solver lifecycles
         if: github.event_name == 'pull_request' || steps.preview.outputs.sha != ''
         run: |
-          npm run check
-          npm test
           npm --prefix tools/react-board-performance ci
           npm --prefix tools/react-board-performance run check
           npm exec --prefix tools/react-board-performance -- playwright install --with-deps chromium

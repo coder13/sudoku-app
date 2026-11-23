@@ -71,6 +71,19 @@ function boardTree(props: Record<string, unknown>) {
   return tree
 }
 
+test('connected selections render a single outline without borders along shared edges', () => {
+  const cells = boardTree({
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    givens: '0'.repeat(16), values: '0'.repeat(16), selected: [0, 1, 4],
+  }).filter(({ props }) => props.role === 'gridcell')
+  const byIndex = new Map(cells.map(({ props }) => [props['data-cell'], props]))
+  assert.equal(byIndex.get(0)?.['data-selection-edge'], 'top left')
+  assert.equal(byIndex.get(1)?.['data-selection-edge'], 'top right bottom')
+  assert.equal(byIndex.get(4)?.['data-selection-edge'], 'right bottom left')
+  assert.match(String((byIndex.get(0)?.style as { boxShadow?: string }).boxShadow), /inset 0 2px 0.*inset 2px 0 0/)
+  assert.doesNotMatch(String((byIndex.get(1)?.style as { boxShadow?: string }).boxShadow), /inset 2px 0 0/)
+})
+
 test('imported cell colors retain each named shade and yield to conflicts and hidden player visuals', () => {
   const position = { center: Array(81).fill(0), corner: Array(81).fill(0),
     importedCellColors: { 0: ['blueHeavy', 'yellow'], 1: ['cyan'], 2: ['green'] } }

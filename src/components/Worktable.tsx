@@ -35,7 +35,8 @@ import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
-import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
+import { canStartCellSelectionDrag, cellsOnDragPath, extendCellSelectionPath, rectangleSelection } from '../sudoku/selection'
+import { togglePencilMode } from '../sudoku/puzzle-input-mode'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
@@ -55,6 +56,7 @@ import { SubsetsPanel } from './SubsetsPanel'
 import { useSubsets } from './useSubsets'
 import { useStrongLinkOverlay } from './useStrongLinkOverlay'
 import { CompletedPuzzle } from './CompletedPuzzle'
+import { KillerCombos } from './KillerCombos'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
@@ -249,6 +251,7 @@ export function Worktable({
   const puzzleStageId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pinnedActions] = usePlayPreference('pinnedActions')
+  const [showKillerCombinations] = usePlayPreference('showKillerCombinations')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [preferredDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
@@ -335,7 +338,7 @@ export function Worktable({
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
   const hintReturnFocus = useRef<HTMLElement | null>(null)
-  const dragSelection = useRef<{ pointerId: number; start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
+  const dragSelection = useRef<{ pointerId: number; start: number; previous: number; cells: Set<number>; base: number[]; additive: boolean; moved: boolean } | null>(null)
   const candidateDrag = useRef<CandidateDrag | null>(null)
   const cellPaintDrag = useRef<CellPaintDrag | null>(null)
   const [cellPaintPreview, setCellPaintPreview] = useState<CellPaintStroke | null>(null)
@@ -582,6 +585,9 @@ export function Worktable({
     !paintingCandidates && !sketch.drawing && !browsingStrongLinks && !hintAnnotations && !inspectSubset
   const pencilGroup = canEditPencil ? highlightedDigitMask & ((1 << gridSize) - 1) : 0
   const canDragCandidates = canEditPencil && !pencilGroup && !multi && selectedDigit !== null && selectedDigit > 0
+  const canSelectCellsByDrag = canStartCellSelectionDrag({
+    highlightMode, penOrPencil: penOrPencil && !sketch.drawing && !browsingStrongLinks && !hintAnnotations, selectedDigit,
+  })
   const pencilPreviewMask = pencilGroup || (canDragCandidates && selectedDigit ? 1 << (selectedDigit - 1) : 0)
   const canPreviewCandidates = Boolean(pencilPreviewMask) && (Boolean(pencilGroup) || selected.length === 0) && !solved &&
     !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen &&
@@ -1467,12 +1473,10 @@ export function Worktable({
     setPencil(pencil)
   }
 
-  function cycleMainInputMode() {
-    const wasHighlighting = savedHighlightMode || (drawingReturn.current?.gameId === id && drawingReturn.current.highlight)
+  function togglePenPencilMode() {
     if (mobile && (colorsVisible || subsetsVisible)) selectToolPanel('digits')
     else if (subsetsVisible) closeToolPanel('subsets', true)
-    if (!wasHighlighting && pencil) toggleHighlightMode()
-    else switchPenPencil(!wasHighlighting)
+    switchPenPencil(togglePencilMode(pencil))
   }
 
   function toggleChainDrawing() {
@@ -1611,10 +1615,12 @@ export function Worktable({
     }
     const maskToHighlight = mobile ? cellHighlightMask(index) : 0
     cellHold.start(event, maskToHighlight ? () => highlightCellCandidates(maskToHighlight) : undefined)
-    if (highlightMode) {
+    if (canSelectCellsByDrag) {
       dragSelection.current = {
         pointerId: event.pointerId,
         start: index,
+        previous: index,
+        cells: new Set([index]),
         base: [...selected],
         additive: multi || event.metaKey || event.ctrlKey,
         moved: false,
@@ -1692,14 +1698,14 @@ export function Worktable({
       return
     }
     const drag = dragSelection.current
-    if (!highlightMode || !drag || drag.pointerId !== event.pointerId || !pressed ||
-      index === drag.start && !drag.moved) return
+    if (!drag || drag.pointerId !== event.pointerId || !pressed || index === drag.previous) return
     event.preventDefault()
     drag.moved = true
-    const dragged = rectangleSelection(drag.start, index, gridSize)
+    drag.cells = extendCellSelectionPath(drag.cells, drag.previous, index, gridSize)
+    drag.previous = index
     setActive(index)
     setAnchor(drag.start)
-    setSelected(drag.additive ? [...new Set([...drag.base, ...dragged])] : dragged)
+    setSelected(drag.additive ? [...new Set([...drag.base, ...drag.cells])] : [...drag.cells])
   }
 
   function preventControlClickMenu(event: MouseEvent) {
@@ -1809,7 +1815,7 @@ export function Worktable({
       }
       if (!draft && shortcutMatches(event, shortcuts, 'pencilMode')) {
         event.preventDefault()
-        if (!event.repeat) cycleMainInputMode()
+        if (!event.repeat) togglePenPencilMode()
         return
       }
       if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved && (canApplyHintEdit || canApplyChainEdits)) {
@@ -2627,7 +2633,7 @@ export function Worktable({
       } : canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}
       onPaintCandidate={paintingCandidates && !inspectSubset ? colorCandidate : undefined}
-      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || highlightMode || canDragCandidates)}
+      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates)}
       onCellPointerDown={canSelectCell && !paintingCandidates && !inspectSubset ? startCellDrag : undefined}
       onCellPointerMove={canSelectCell && !paintingCandidates && !inspectSubset ? continueCellDrag : undefined}
       onGridPointerLeave={() => {
@@ -2834,6 +2840,8 @@ export function Worktable({
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
         <PuzzleCollectionCredit game={game} />
+        {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values}
+          active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>
           {visiblePinnedActions.map(id => {
             const action = quickActions[id]

@@ -22,3 +22,39 @@ export function rectangleSelection(start: number, end: number, size = 9): number
   }
   return result
 }
+
+export function canStartCellSelectionDrag({
+  highlightMode, penOrPencil, selectedDigit,
+}: {
+  highlightMode: boolean
+  penOrPencil: boolean
+  selectedDigit: number | null
+}): boolean {
+  return highlightMode || (penOrPencil && selectedDigit === null)
+}
+
+export type CellSelectionEdge = 'top' | 'right' | 'bottom' | 'left'
+
+/** Return only the exposed edges of each selected cell to outline connected groups as one shape. */
+export function cellSelectionEdges(cells: readonly number[], size = 9): Map<number, CellSelectionEdge[]> {
+  const selected = new Set(cells)
+  const edges = new Map<number, CellSelectionEdge[]>()
+  for (const cell of selected) {
+    const row = Math.floor(cell / size)
+    const column = cell % size
+    const exposed: CellSelectionEdge[] = []
+    if (row === 0 || !selected.has(cell - size)) exposed.push('top')
+    if (column === size - 1 || !selected.has(cell + 1)) exposed.push('right')
+    if (row === size - 1 || !selected.has(cell + size)) exposed.push('bottom')
+    if (column === 0 || !selected.has(cell - 1)) exposed.push('left')
+    edges.set(cell, exposed)
+  }
+  return edges
+}
+
+/** Extend a freehand selection through cells crossed between pointer samples. */
+export function extendCellSelectionPath(
+  cells: ReadonlySet<number>, start: number, end: number, size = 9,
+): Set<number> {
+  return new Set([...cells, ...cellsOnDragPath(start, end, size)])
+}

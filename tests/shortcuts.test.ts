@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { togglePencilMode } from '../src/sudoku/puzzle-input-mode.ts'
 import {
   appTextZoomShortcut, DEFAULT_SHORTCUTS, EDITABLE_SHORTCUTS, editableShortcutKey, highlightedDigitShortcut,
   parseShortcutPreferences, shortcutConflict, shortcutLabel, shortcutMatches, storedShortcutPreferences,
@@ -128,4 +129,9 @@ test('shortcut conflicts identify the command that already owns a key', () => {
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', DEFAULT_SHORTCUTS.pencilMode), 'pencilMode')
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'v'), null)
   assert.equal(shortcutConflict(DEFAULT_SHORTCUTS, 'digitMode', 'x'), 'chainDrawing')
+})
+
+test('the Pen/Pencil shortcut alternates modes without selecting Highlight', () => {
+  assert.equal(togglePencilMode(false), true, 'Pen switches to Pencil')
+  assert.equal(togglePencilMode(true), false, 'Pencil switches to Pen')
 })
