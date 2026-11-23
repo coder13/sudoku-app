@@ -188,7 +188,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
   const negative = new Set(options.negativeMarkers?.filter(marker => markers.includes(marker)))
   const timeout = AbortSignal.timeout(10_000)
   const searchSignal = signal ? AbortSignal.any([signal, timeout]) : timeout
-  const exhausted = () => new EngineError('No puzzle found for these rules at this difficulty.', 'search-limit')
+  const exhausted = () => new EngineError(`No ${difficulty} puzzle found for these rules.`, 'search-limit')
 
   try {
     return await withGenerationWorker(searchSignal, async run => {
@@ -219,7 +219,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
           const techniqueOrder = usesScopedTechniques ? await getVariantPlayOrder(clues.puzzle, clues.layouts) : defaultOrder
           return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
             maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
-            givens: [0, difficulty === 'beginner' ? 50 : difficulty === 'easy' ? 40 : 35], difficulty, techniqueOrder, exclude })
+            givens: [0, difficulty === 'beginner' ? 60 : difficulty === 'easy' ? 45 : 35], difficulty, techniqueOrder, exclude })
         } catch (error) {
           if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error
         }
