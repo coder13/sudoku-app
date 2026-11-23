@@ -36,6 +36,7 @@ import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 import { canStartCellSelectionDrag, cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
+import { nextPenPencilMode } from '../sudoku/puzzle-input-mode'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
@@ -1470,12 +1471,11 @@ export function Worktable({
     setPencil(pencil)
   }
 
-  function cycleMainInputMode() {
+  function togglePenPencilMode() {
     const wasHighlighting = savedHighlightMode || (drawingReturn.current?.gameId === id && drawingReturn.current.highlight)
     if (mobile && (colorsVisible || subsetsVisible)) selectToolPanel('digits')
     else if (subsetsVisible) closeToolPanel('subsets', true)
-    if (!wasHighlighting && pencil) toggleHighlightMode()
-    else switchPenPencil(!wasHighlighting)
+    switchPenPencil(nextPenPencilMode(pencil, wasHighlighting))
   }
 
   function toggleChainDrawing() {
@@ -1812,7 +1812,7 @@ export function Worktable({
       }
       if (!draft && shortcutMatches(event, shortcuts, 'pencilMode')) {
         event.preventDefault()
-        if (!event.repeat) cycleMainInputMode()
+        if (!event.repeat) togglePenPencilMode()
         return
       }
       if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved && (canApplyHintEdit || canApplyChainEdits)) {

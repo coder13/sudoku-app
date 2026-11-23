@@ -46,7 +46,7 @@ export const DEFAULT_SHORTCUTS: ShortcutPreferences = {
 
 export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'digitMode', label: 'Digit placement mode', description: 'Place digits in selected cells.', category: 'Input modes' },
-  { id: 'pencilMode', label: 'Cycle input mode', description: 'Cycle from Pen to Pencil to Highlight and back to Pen.', category: 'Input modes' },
+  { id: 'pencilMode', label: 'Toggle Pen and Pencil modes', description: 'Switch between Pen and Pencil; from Highlight mode, return to Pen.', category: 'Input modes' },
   { id: 'highlightMode', label: 'Highlight mode', description: 'Select cells while keeping a digit highlighted.', category: 'Input modes' },
   { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates.', category: 'Input modes' },
   { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
