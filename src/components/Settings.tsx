@@ -34,10 +34,10 @@ type GeneralSection = Exclude<Section, 'device-sync' | 'shortcuts' | 'appearance
 const sections: { id: Section; label: string; description: string; icon: typeof Eye }[] = [
   { id: 'appearance', label: 'Look & feel', description: 'Theme, grid labels, and sizing', icon: Eye },
   { id: 'input', label: 'Input controls', description: 'Candidates, colors, and selection', icon: PenTool },
+  { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'puzzle-buttons', label: 'Puzzle buttons', description: 'Shortcuts pinned below the grid', icon: Pin },
   { id: 'highlighting', label: 'Highlighting', description: 'Cells, digits, and candidates', icon: Highlighter },
   { id: 'chain-colors', label: 'Chain colors', description: 'Color pairs for drawing chains', icon: Palette },
-  { id: 'solving', label: 'Solving style', description: 'Errors and solving behavior', icon: SlidersHorizontal },
   { id: 'hints', label: 'Hints', description: 'Help while solving', icon: Lightbulb },
   { id: 'shortcuts', label: 'Keyboard shortcuts', description: 'View and customize key bindings', icon: Keyboard },
   { id: 'device-sync', label: 'Device sync', description: 'Link and manage devices', icon: Monitor },
@@ -445,6 +445,7 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
   const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
   const [experimentalMode, setExperimentalMode] = useExperimentalMode()
+  const [showKillerCombinations, setShowKillerCombinations] = usePlayPreference('showKillerCombinations')
   if (section === 'input') {
     return (
       <div className="settings-section mobile-title-duplicate">
@@ -473,11 +474,6 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
             </SelectControl>
           </label>
           <label className="advanced-toggle">
-            <input type="checkbox" checked={advancedModes.colorsEnabled}
-              onChange={(event) => setAdvancedModes({ ...advancedModes, colorsEnabled: event.target.checked })} />
-            <span><strong>Color mode</strong><small>Add colors to cells and candidates.</small></span>
-          </label>
-          <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.multiSelectButton}
               onChange={(event) => setAdvancedModes({ ...advancedModes, multiSelectButton: event.target.checked })} />
             <span><strong>Multi-select button</strong><small>Show the Multi-select button in the Advanced desktop workspace.</small></span>
@@ -499,16 +495,27 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
         <h3>Solving style</h3>
         <div className="advanced-options">
           <PuzzleTimingSettings />
-          <label className="advanced-toggle">
-            <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
-              onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
-            <span><strong>Automatically generate candidates</strong><small>Add candidates once per puzzle and again after a reset.</small></span>
-          </label>
-          <label className="advanced-toggle">
-            <input type="checkbox" checked={advancedModes.autoRemoveCandidates}
-              onChange={(event) => setAdvancedModes({ ...advancedModes, autoRemoveCandidates: event.target.checked })} />
-            <span><strong>Automatically remove candidates</strong><small>Remove candidates that a digit placement rules out.</small></span>
-          </label>
+          <fieldset>
+            <legend>Candidates</legend>
+            <label className="advanced-toggle">
+              <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
+                onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
+              <span><strong>Automatically generate candidates</strong><small>Add candidates once per puzzle and again after a reset.</small></span>
+            </label>
+            <label className="advanced-toggle">
+              <input type="checkbox" checked={advancedModes.autoRemoveCandidates}
+                onChange={(event) => setAdvancedModes({ ...advancedModes, autoRemoveCandidates: event.target.checked })} />
+              <span><strong>Automatically remove candidates</strong><small>Remove candidates that a digit placement rules out.</small></span>
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>Killer Sudoku</legend>
+            <label className="advanced-toggle">
+              <input type="checkbox" checked={showKillerCombinations}
+                onChange={(event) => setShowKillerCombinations(event.target.checked)} />
+              <span><strong>Combo calculator</strong><small>Show digit combinations for the selected cage.</small></span>
+            </label>
+          </fieldset>
           <label className="advanced-toggle">
             <input type="checkbox" checked={advancedModes.autoPlaceNakedSingles}
               onChange={(event) => setAdvancedModes({ ...advancedModes, autoPlaceNakedSingles: event.target.checked })} />
