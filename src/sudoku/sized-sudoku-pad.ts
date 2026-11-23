@@ -56,20 +56,33 @@ export function isSizedSudokuPadCode(code: unknown): code is string {
   return typeof code === 'string' && code.length <= MAX_CODE && /^(?:scl|ctc)[A-Za-z0-9+/=]+$/i.test(code)
 }
 
-/** Decode plain JSON and compact SCL envelopes before applying rule validation. */
-export function decodeSudokuPadEnvelope(code: string): unknown {
+function decompressSudokuPadPayload(code: string) {
   if (!isSizedSudokuPadCode(code)) {
     return reject('This SudokuPad code is damaged or too large.')
   }
   const decoded = lzString.decompressFromBase64(code.slice(3))
   if (!decoded || decoded.length > MAX_DECODED) return reject('This SudokuPad code is empty or too large.')
+  return decoded
+}
+
+function decodeSudokuPadData(decoded: string, normalize: boolean): unknown {
   try {
     let parsed: unknown
     try { parsed = JSON.parse(decoded) } catch { parsed = parseCompactSudokuPad(decoded) }
-    return normalizeCompactSudokuPad(parsed)
+    return normalize ? normalizeCompactSudokuPad(parsed) : parsed
   } catch {
     return reject('This SudokuPad code does not contain a supported puzzle export.')
   }
+}
+
+/** Decode a SudokuPad envelope to its payload before import normalization. */
+export function decodeSudokuPadPayload(code: string): unknown {
+  return decodeSudokuPadData(decompressSudokuPadPayload(code), false)
+}
+
+/** Decode plain JSON and compact SCL envelopes before applying rule validation. */
+export function decodeSudokuPadEnvelope(code: string): unknown {
+  return decodeSudokuPadData(decompressSudokuPadPayload(code), true)
 }
 
 export function decodeSizedSudokuPad(code: string, data = decodeSudokuPadEnvelope(code)): SizedSudokuPadImport {

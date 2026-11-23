@@ -2349,6 +2349,45 @@ svg { flex-shrink: 0; }
 }
 .puzzles-page-heading { flex: none; display: flex; align-items: center; gap: var(--space-10); margin-bottom: var(--space-20); }
 .puzzles-page-heading h1 { font-size: 1.5625rem; letter-spacing: -.035em; }
+.decode-page { width: min(100%, 1080px); }
+.decode-layout { grid-template: "heading" auto "content" minmax(0, 1fr) / minmax(0, 1fr); }
+.decode-content { display: grid; align-content: start; gap: var(--space-20); padding-inline: var(--space-6); }
+.decode-form { display: grid; gap: var(--space-8); }
+.decode-form > label { font-size: 0.875rem; font-weight: 700; }
+.decode-form textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+.decode-note { color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
+.decode-form .dialog-actions { justify-content: flex-end; }
+.decode-error { color: var(--danger-ink); font-size: 0.875rem; }
+.decode-result { display: grid; gap: var(--space-8); min-width: 0; }
+.decode-result-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-4) var(--space-12); }
+.decode-result-heading h2 { font-size: 1.125rem; }
+.decode-result-heading > span { color: var(--muted); font-size: 0.8125rem; }
+.decode-output {
+  max-height: min(62vh, 760px);
+  margin: 0;
+  padding: var(--space-12);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
 .puzzles-layout {
   flex: 1;
   min-height: 0;
@@ -3318,6 +3357,9 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .settings-mobile-section .mobile-title-duplicate > h3 { display: none; }
   .workspace-mode-options { grid-template-columns: minmax(0, 1fr); }
   .puzzles-page { width: 100%; padding: 17px 15px 0; }
+  .decode-page { padding-block-start: 0; }
+  .decode-content { padding-inline: 0; }
+  .decode-output { max-height: none; }
   .puzzles-page-heading { min-height: 42px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; margin-bottom: var(--space-18); }
   .puzzles-page-heading h1 { grid-column: 2; justify-self: center; font-size: 1.4375rem; text-align: center; }
   .puzzles-page-heading h1:focus { outline: none; }

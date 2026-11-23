@@ -135,13 +135,17 @@ function knownJigsawRuleset(text: string, size: number) {
     FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || FP_ROW_COLUMN_SUM.test(clause) || antiSumFromClause(clause, size) !== undefined)
 }
 
-export function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportResult {
-  if (input.startsWith('{')) return fromFPuzzlesData(parseJSON(input, format))
+export function decodeFPuzzlesPayload(input: string, format: 'f-puzzles' | 'SudokuPad' = 'f-puzzles'): unknown {
+  if (input.startsWith('{')) return parseJSON(input, format)
   let code = ''
   try { code = decodeURIComponent(input).replaceAll(' ', '+') } catch { /* The code was not valid URI text. */ }
   // f-puzzles uses LZ-String Base64. Limit compressed input before decoding it.
   const decoded = /^[A-Za-z0-9+/=]{1,10000}$/.test(code) ? lzString.decompressFromBase64(code) : ''
-  return fromFPuzzlesData(parseJSON(decoded, format))
+  return parseJSON(decoded, format)
+}
+
+export function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): ImportResult {
+  return fromFPuzzlesData(decodeFPuzzlesPayload(input, format))
 }
 
 function fromFPuzzlesData(data: unknown): ImportResult {

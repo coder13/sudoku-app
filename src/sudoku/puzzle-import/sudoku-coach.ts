@@ -105,7 +105,7 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGT
   }
 }
 
-async function decodeCoach(code: string): Promise<Record<string, unknown>> {
+export async function decodeSudokuCoachPayload(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
   const legacy = LEGACY_COACH_CODE.exec(code)
   if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as LegacyCoachVersion, MAX_DECODED_LENGTH)
@@ -136,6 +136,11 @@ async function decodeCoach(code: string): Promise<Record<string, unknown>> {
     data = puzzle
   }
   if (!record(data)) throw new Error('This Sudoku Coach puzzle is unreadable.')
+  return data
+}
+
+async function decodeCoach(code: string): Promise<Record<string, unknown>> {
+  const data = await decodeSudokuCoachPayload(code)
   for (const [key, value] of Object.entries(data)) {
     if (!COACH_FIELDS.has(key) && !key.startsWith('user') && hasData(value)) {
       throw new Error(`This Sudoku Coach puzzle uses an unsupported field (${key}).`)

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DecodeRouteImport } from './routes/decode'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as LearnRouteImport } from './routes/learn'
@@ -44,6 +45,11 @@ import { Route as SettingsDeviceSyncStepRouteImport } from './routes/settings.de
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DecodeRoute = DecodeRouteImport.update({
+  id: '/decode',
+  path: '/decode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImportRoute = ImportRouteImport.update({
@@ -199,6 +205,7 @@ const SettingsDeviceSyncStepRoute = SettingsDeviceSyncStepRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
   '/puzzles': typeof PuzzlesRouteWithChildren
@@ -232,6 +239,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/puzzles': typeof PuzzlesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
@@ -265,6 +273,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
   '/puzzles': typeof PuzzlesRouteWithChildren
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/decode'
     | '/import'
     | '/learn'
     | '/puzzles'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/decode'
     | '/import'
     | '/puzzles'
     | '/settings'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/decode'
     | '/import'
     | '/learn'
     | '/puzzles'
@@ -399,6 +411,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DecodeRoute: typeof DecodeRoute
   ImportRoute: typeof ImportRoute
   LearnRoute: typeof LearnRouteWithChildren
   PuzzlesRoute: typeof PuzzlesRouteWithChildren
@@ -414,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/decode': {
+      id: '/decode'
+      path: '/decode'
+      fullPath: '/decode'
+      preLoaderRoute: typeof DecodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/import': {
@@ -733,6 +753,7 @@ const SyncRouteWithChildren = SyncRoute._addFileChildren(SyncRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DecodeRoute: DecodeRoute,
   ImportRoute: ImportRoute,
   LearnRoute: LearnRouteWithChildren,
   PuzzlesRoute: PuzzlesRouteWithChildren,
