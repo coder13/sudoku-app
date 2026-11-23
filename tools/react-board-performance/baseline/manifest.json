@@ -3,7 +3,7 @@
   "files": {
     "Board.tsx": {
       "source": "src/components/Board.tsx",
-      "originalSha256": "/private/tmp/board-fixture.tsx",
+      "originalSha256": "0237d5230aa44f1424856dbe0afe9ff3442023bbce907156721bb63edbd78374",
       "fixtureSha256": "220100a22d785b7ca6e3c587d9ad565474ef4facfe03dbf198abbe36786c0631"
     },
     "BoardMarks.tsx": {
