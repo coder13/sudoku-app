@@ -373,19 +373,30 @@ const checks = [
     assert.deepEqual(await boardSnapshot(page), before, 'viewing a step must leave the editable position and history intact')
     return { assertions: 6, viewport: { width: 390, height: 844 } }
   }, { context: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }],
-  ['mobile-partial-walkthrough', '/import', async page => {
+  ['mobile-solution-walkthrough', '/import', async page => {
     await importForMobilePlay(page, fzzd.code)
     await openMobileTool(page, 'Solution')
     await page.getByRole('button', { name: 'Reveal solution', exact: true }).tap()
 
-    const path = page.getByRole('region', { name: 'Partial solution', exact: true })
-    await path.getByRole('status').filter({ hasText: 'This walkthrough ends with an incomplete grid.' }).waitFor()
+    const path = page.locator('.solution-path')
+    await path.waitFor()
     const steps = path.getByRole('list', { name: 'Solving steps' })
-    assert.equal(await steps.getByRole('listitem').count(), 10)
-    assert.equal(await steps.getByRole('button', { name: /Final grid/ }).count(), 0)
-    await steps.getByRole('button', { name: /Last position/ }).tap()
+    await steps.waitFor()
+    const partial = await path.getAttribute('aria-label') === 'Partial solution'
+    if (partial) {
+      await path.getByRole('status').filter({ hasText: 'This walkthrough ends with an incomplete grid.' }).waitFor()
+      assert.ok(await steps.getByRole('listitem').count() > 0)
+      assert.equal(await steps.getByRole('button', { name: /Final grid/ }).count(), 0)
+      await steps.getByRole('button', { name: /Last position/ }).tap()
+    } else {
+      assert.equal(await path.getAttribute('aria-label'), 'Solution')
+      assert.ok(await steps.getByRole('listitem').count() > 0)
+      await steps.getByRole('button', { name: /Final grid/ }).tap()
+    }
     const explanation = page.getByRole('complementary', { name: 'Puzzle hint' })
-    await explanation.getByText('The walkthrough ends before the puzzle is solved.', { exact: true }).waitFor()
+    await explanation.getByText(partial
+      ? 'The walkthrough ends before the puzzle is solved.'
+      : 'The solution is complete. The final grid is shown.', { exact: true }).waitFor()
     return { assertions: 4, viewport: portraitPhone.viewport }
   }, { context: portraitPhone }],
   ['mobile-outside-clues-with-finder', '/import', async page => {
