@@ -195,7 +195,7 @@ const BoardCell = memo(function BoardCell({
   const regularCellAction = Boolean(onCell && !candidateAction)
   // Keep given cells as stable grid buttons in a candidate tool, even when
   // their only action is the explicit strong-link digit callback.
-  const buttonCell = givenAction || regularCellAction || Boolean(fixed && onCell)
+  const buttonCell = givenAction || regularCellAction || Boolean(fixed && highlightedLinkDigit != null)
   const Cell = buttonCell ? 'button' : 'div'
   const centerCandidates = useMemo(() => marksOf(centerMask), [centerMask])
   const gridCandidates = useMemo(() => marksOf(displayedGridMask), [displayedGridMask])
