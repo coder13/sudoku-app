@@ -90,6 +90,7 @@ pub use variant::{
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
     VariantSumPairProof, VariantTechnique, VariantTrace, VariantTrialFailure, VariantVisibility, VariantVisibilityError,
     VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantGroupOrderBranch, VariantGroupOrderEliminationProof,
     VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
     VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
     VariantMatchingLayoutCase, VariantMatchingLayoutProof,

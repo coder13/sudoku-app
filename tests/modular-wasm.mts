@@ -30,6 +30,33 @@ const expected = [
   ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
   ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
 ] as const
+
+test('both Modular group orders rule out a candidate with a replayable hint proof', async () => {
+  const technique = 'group-order-elimination'
+  const source = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const { game } = await prepareImportedPuzzle(source.code)
+  const puzzle = game.variant!.puzzle
+  const position = variantPosition(game.variant!)
+  const techniqueOrder = await getVariantPlayOrder(puzzle)
+  assert.ok(techniqueOrder.includes(technique))
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
+  const stepIndex = trace.steps.findIndex(step => step.technique === technique)
+  assert.ok(stepIndex >= 0)
+  const deduction = trace.steps[stepIndex]
+  assert.equal(deduction.evidence.type, 'group-order-elimination')
+  assert.deepEqual(deduction.actions, [{ eliminate: { cell: 6, digit: 4 } }])
+  assert.equal(deduction.evidence.branches.length, 2)
+  assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'pair')))
+  assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'house')))
+  const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex })
+  assert.deepEqual(replay?.deduction, deduction)
+  const choice = variantHintChoice(deduction, puzzle)
+  assert.ok('variant' in choice.evidence)
+  assert.match(choice.evidence.variant.description, /Modular line.*two possible group orders/)
+  assert.match(choice.evidence.variant.reason, /Both orders rule out 4/)
+  assert.match(choice.evidence.variant.reason, /row 1|column|box/)
+})
+
 for (const [
   id,
   nativePoints,

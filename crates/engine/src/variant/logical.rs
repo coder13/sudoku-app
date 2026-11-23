@@ -20,6 +20,7 @@ mod tests;
 
 /// Version of the rating behavior for structured puzzles.
 pub const VARIANT_SCORING_VERSION: u32 = 22;
+const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 23;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -203,6 +204,8 @@ catalog! {
     GroupLineHouseSupport: "group-line-house-support", 64, Medium;
     /// Reject a repeating group order that contradicts a bounded series of clue and house checks.
     GroupOrderContradiction: "group-order-contradiction", 89, Hard;
+    /// Remove a candidate excluded by both possible repeating group orders.
+    GroupOrderElimination: "group-order-elimination", 76, Hard;
     /// Intersect Region Sum totals after requiring distinct digits inside each part.
     RegionSumDistinct: "region-sum-distinct", 67, Medium;
     /// Combine disjoint Region Sum parts using the digits in their shared region.
@@ -414,6 +417,8 @@ pub enum VariantEvidence {
     GroupLineHouseSupport(Box<VariantGroupLineHouseProof>),
     /// One or more repeating orders contradict the surrounding clues and houses.
     GroupOrder(Box<VariantGroupOrderProof>),
+    /// Both possible group orders exclude the same candidate.
+    GroupOrderElimination(Box<VariantGroupOrderEliminationProof>),
     /// A candidate refuted by a sequence of linked rule and house checks.
     LinkedClue(Box<VariantLinkedClueProof>),
     /// Matching cells and forced placements leave a house without the digit.
@@ -964,6 +969,32 @@ pub struct VariantGroupOrderProof {
     pub rejected: Vec<VariantGroupOrderRefutation>,
 }
 
+/// Restrictions proved within one possible repeating group order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderBranch {
+    /// Group masks for the three repeating positions.
+    pub groups: [u16; 3],
+    /// Restrictions that exclude the candidate, in replay order.
+    pub checks: Vec<VariantConstraintCheck>,
+}
+
+/// A candidate excluded under both possible orders of a repeating line.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct VariantGroupOrderEliminationProof {
+    /// Index of the source Entropic or Modular rule.
+    pub rule: usize,
+    /// Distinct source cells in first-visit order.
+    pub cells: Vec<usize>,
+    /// Candidate masks in those cells before considering either order.
+    pub domains: Vec<u16>,
+    /// Repeating position, from zero to two, of each source cell.
+    pub phases: Vec<usize>,
+    /// Both orders and their restrictions.
+    pub branches: [VariantGroupOrderBranch; 2],
+}
+
 /// The valid distinct-digit totals for each part of a Region Sum line.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
@@ -1269,6 +1300,9 @@ impl VariantPosition {
                 break;
             };
             let technique = step.technique;
+            if technique == VariantTechnique::GroupOrderElimination {
+                rating.scoring_version = GROUP_ORDER_ELIMINATION_SCORING_VERSION;
+            }
             *rating.counts.entry(technique).or_default() += 1;
             rating.points += u32::from(technique.cost());
             let rank =
@@ -1314,6 +1348,11 @@ impl VariantDeduction {
                 .iter()
                 .map(|order| order.checks.len() + 1)
                 .sum(),
+            VariantEvidence::GroupOrderElimination(proof) => proof
+                .branches
+                .iter()
+                .map(|branch| branch.checks.len())
+                .sum(),
             _ => 0,
         };
         let cells = match &self.evidence {
@@ -1345,6 +1384,7 @@ impl VariantDeduction {
             VariantEvidence::RenbanSumHouse(proof) => proof.cells.len(),
             VariantEvidence::GroupLineHouseSupport(proof) => proof.cells.len(),
             VariantEvidence::GroupOrder(proof) => proof.cells.len(),
+            VariantEvidence::GroupOrderElimination(proof) => proof.cells.len(),
             VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
             VariantEvidence::MatchingDigit(proof) => proof.checks.len() + 1,
             VariantEvidence::MatchingLayout(proof) => proof.cases.len() + proof.cases.iter().map(|case| case.checks.len()).sum::<usize>(),
@@ -1901,6 +1941,7 @@ impl CompiledVariant {
             RenbanSumHouse => self.renban_sum_house_proofs(position, technique, &mut proofs),
             GroupLineHouseSupport => self.group_line_house_proofs(position, &mut proofs),
             GroupOrderContradiction => self.group_order_proofs(position, &mut proofs),
+            GroupOrderElimination => self.group_order_eliminations(position, &mut proofs),
             LinkedClueContradiction => self.linked_clue_proofs(position, &mut proofs),
             MatchingDigitContradiction => self.matching_digit_proofs(position, &mut proofs, false),
             MatchingLayoutForcing => self.matching_layout_proofs(position, &mut proofs, false),

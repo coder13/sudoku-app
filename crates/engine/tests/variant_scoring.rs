@@ -87,6 +87,10 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
             let checks: u16 = proof.rejected.iter().map(|order| order.checks.len() as u16 + 1).sum();
             return 72 + 5 * checks + 2 * proof.rejected.len() as u16;
         }
+        VariantEvidence::GroupOrderElimination(proof) => {
+            let checks: u16 = proof.branches.iter().map(|branch| branch.checks.len() as u16).sum();
+            return 64 + 6 * checks;
+        }
         VariantEvidence::LineHouses(proof) => {
             let (cells, domains, houses) = (&proof.cells, &proof.domains, &proof.houses);
             return 24 + 2 * cells.len() as u16 + 2 * binary_choices(domains) + 3 * houses.len() as u16;
@@ -239,7 +243,12 @@ fn calibrated_costs_match_sample_proofs_and_bill_once_per_deduction() {
                 panic!("{} calibration path stalled", technique.id());
             };
             assert_eq!(trace.rating.technique_order, order);
-            assert_eq!(trace.rating.scoring_version, VARIANT_SCORING_VERSION);
+            let expected_version = if technique == VariantTechnique::GroupOrderElimination {
+                VARIANT_SCORING_VERSION + 1
+            } else {
+                VARIANT_SCORING_VERSION
+            };
+            assert_eq!(trace.rating.scoring_version, expected_version);
             assert_eq!(trace.rating.regions, position.puzzle.regions);
             assert_eq!(trace.rating.rules, position.puzzle.rules);
             let total: u32 = trace

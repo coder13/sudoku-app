@@ -6,12 +6,66 @@ use super::{
 };
 use crate::{CELLS, DIGITS};
 
+mod eliminations;
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ScopeResult {
+    Unchanged,
+    Restricted,
+    Conflict,
+}
+
 const MAX_PASSES: usize = 4;
 const MAX_EXPLANATION_CHECKS: usize = 8;
 const MAX_SCOPES_TO_MINIMIZE: usize = 40;
 type Domains = [u16; CELLS];
 
 impl CompiledVariant {
+    fn apply_order_scope_with(
+        &self,
+        scope: Scope,
+        domains: &mut Domains,
+        houses: &mut eliminations::HouseSupportCache,
+        mut report: impl FnMut(Scope, &[u16], &[u16]),
+    ) -> ScopeResult {
+        let cells = self.scope_cells(scope);
+        let mut before_storage = [0; CELLS];
+        let before = &mut before_storage[..cells.len()];
+        for (mask, &cell) in before.iter_mut().zip(cells) {
+            *mask = domains[cell];
+        }
+        let mut after_storage = [0; CELLS];
+        let after = &mut after_storage[..cells.len()];
+        match scope {
+            Scope::House(_) => {
+                if before.iter().all(|&mask| mask == DIGITS) {
+                    return ScopeResult::Unchanged;
+                }
+                let before_house: &[u16; 9] = (&*before).try_into().expect("a house has nine cells");
+                if let Some(supported) = houses.get(before_house) {
+                    after.copy_from_slice(supported);
+                } else {
+                    self.scope_support(scope, before, after);
+                    if houses.len() < 2048 {
+                        houses.insert(*before_house, after.try_into().expect("nine supported masks"));
+                    }
+                }
+            }
+            Scope::Pair(..) | Scope::Line(_) => self.scope_support(scope, before, after),
+        }
+        if before == after {
+            return ScopeResult::Unchanged;
+        }
+        report(scope, before, after);
+        if after.contains(&0) {
+            return ScopeResult::Conflict;
+        }
+        for (&cell, &mask) in cells.iter().zip(after.iter()) {
+            domains[cell] = mask;
+        }
+        ScopeResult::Restricted
+    }
+
     pub(super) fn group_order_proofs(
         &self,
         position: &ProofPosition<'_>,
