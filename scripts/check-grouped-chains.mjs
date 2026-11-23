@@ -129,7 +129,9 @@ async function run(profile) {
     equal(drawn.chainSketch.sketches[0].history.at(-1), expectedEdges, 'drawing includes the group-to-group link')
     equal(await page.locator('.board-chain-group').count(), 3, 'each group has one enclosure')
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
-    await click(page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true }))
+    const showEliminations = page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true })
+    if (await showEliminations.getAttribute('aria-checked') !== 'true') await click(showEliminations)
+    equal(await showEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations are visible')
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
 
