@@ -35,7 +35,7 @@ import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
-import { cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
+import { canStartCellSelectionDrag, cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
 import { defaultDigitHighlight, defaultToolPanels, playSession, PUZZLE_TOOL_ORDER, TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
@@ -582,6 +582,9 @@ export function Worktable({
     !paintingCandidates && !sketch.drawing && !browsingStrongLinks && !hintAnnotations && !inspectSubset
   const pencilGroup = canEditPencil ? highlightedDigitMask & ((1 << gridSize) - 1) : 0
   const canDragCandidates = canEditPencil && !pencilGroup && !multi && selectedDigit !== null && selectedDigit > 0
+  const canSelectCellsByDrag = canStartCellSelectionDrag({
+    highlightMode, penOrPencil: penOrPencil && !sketch.drawing && !browsingStrongLinks && !hintAnnotations, selectedDigit,
+  })
   const pencilPreviewMask = pencilGroup || (canDragCandidates && selectedDigit ? 1 << (selectedDigit - 1) : 0)
   const canPreviewCandidates = Boolean(pencilPreviewMask) && (Boolean(pencilGroup) || selected.length === 0) && !solved &&
     !modalOpen && !mobileHintPreview && !puzzleMenuOpen && !actionsOpen && !dialogResult && !resetOpen && !confirmCandidatesOpen &&
@@ -1611,7 +1614,7 @@ export function Worktable({
     }
     const maskToHighlight = mobile ? cellHighlightMask(index) : 0
     cellHold.start(event, maskToHighlight ? () => highlightCellCandidates(maskToHighlight) : undefined)
-    if (highlightMode) {
+    if (canSelectCellsByDrag) {
       dragSelection.current = {
         pointerId: event.pointerId,
         start: index,
@@ -1692,7 +1695,7 @@ export function Worktable({
       return
     }
     const drag = dragSelection.current
-    if (!highlightMode || !drag || drag.pointerId !== event.pointerId || !pressed ||
+    if (!drag || drag.pointerId !== event.pointerId || !pressed ||
       index === drag.start && !drag.moved) return
     event.preventDefault()
     drag.moved = true
@@ -2627,7 +2630,7 @@ export function Worktable({
       } : canSelectCell && !paintingCandidates ? clickCell : undefined}
       onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}
       onPaintCandidate={paintingCandidates && !inspectSubset ? colorCandidate : undefined}
-      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || highlightMode || canDragCandidates)}
+      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates)}
       onCellPointerDown={canSelectCell && !paintingCandidates && !inspectSubset ? startCellDrag : undefined}
       onCellPointerMove={canSelectCell && !paintingCandidates && !inspectSubset ? continueCellDrag : undefined}
       onGridPointerLeave={() => {

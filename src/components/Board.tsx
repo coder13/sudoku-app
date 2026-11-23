@@ -9,6 +9,7 @@ import { DEFAULT_HIGHLIGHT_PREFERENCES, type HighlightPreferences } from '../sud
 import type { PuzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { DISJOINT_GROUPS_RULE, disjointGroupRuleIndices, regionMembership, variantHouseFillCells, type VariantRuleSectionId } from '../sudoku/variants'
 import { outsideClueLayout } from '../sudoku/outside-clues'
+import { cellSelectionEdges } from '../sudoku/selection'
 import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '../sudoku/whispers-guide'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
@@ -149,6 +150,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   cellAnnotation?: CellAnnotation
   candidateAnnotations?: ReadonlyMap<number, CandidateAnnotation>
   selected: boolean
+  selectionEdges?: string
   active: boolean
   pointerFocused: boolean
   error: boolean
@@ -181,7 +183,7 @@ const BoardCell = memo(function BoardCell({
   geometry, value, fixed, fogged, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
   preview, candidateColors, importedCandidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
-  linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted,
+  linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateDigit, tabCandidateDigit, tabCandidateSlotted, selectionEdges,
   onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
 }: CellProps) {
   const { index, row, column: col, boxColumns, cageTotal, regionAtCell } = geometry
@@ -243,6 +245,18 @@ const BoardCell = memo(function BoardCell({
     countLabel,
     error ? 'incorrect' : '',
   ].filter(Boolean).join(', ')
+  const selectionBoxShadow = useMemo(() => {
+    const shadows: Record<string, string> = {
+      top: 'inset 0 2px 0 var(--board-selected-border)',
+      right: 'inset -2px 0 0 var(--board-selected-border)',
+      bottom: 'inset 0 -2px 0 var(--board-selected-border)',
+      left: 'inset 2px 0 0 var(--board-selected-border)',
+    }
+    return selectionEdges?.split(' ').map(edge => shadows[edge]).join(', ')
+  }, [selectionEdges])
+  const renderedCellStyle = useMemo(() => selected && selectionBoxShadow
+    ? { ...cellStyle, boxShadow: selectionBoxShadow } as CSSProperties
+    : cellStyle, [cellStyle, selected, selectionBoxShadow])
   const classes = [
     'cell', canSelectLinkCandidate ? 'chain-cell-target' : '', fixed ? 'given' : 'entry', related ? 'peer' : '', matching ? 'matching' : '',
     cellHighlight, countHighlighted ? 'candidate-count-match' : '',
@@ -339,12 +353,12 @@ const BoardCell = memo(function BoardCell({
     ...cellItems,
   ], [cageTotal, geometry.cageStyle, cellItems])
 
-  return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={cellStyle} aria-label={label}
+  return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={renderedCellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
     data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} ${previewDigits.length === 1 ? 'candidate' : 'candidates'} ${previewDigits.join(', ')}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
-    data-rule-highlighted={ruleHighlighted || undefined}
+    data-rule-highlighted={ruleHighlighted || undefined} data-selection-edge={selectionEdges || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
     data-cage-total={cageTotal !== undefined || undefined}
     type={onCell && 'button'} tabIndex={onCell ? (active ? 0 : -1) : undefined} aria-selected={onCell ? selected : undefined}
@@ -491,6 +505,9 @@ export function Board({
 
   const boardEvents = useBoardEvents({ onCell, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onLinkSelect })
   const selectedCells = useMemo(() => new Set(selected), [selected])
+  const visibleSelectedCells = useMemo(() => selected.filter(cell =>
+    rows.includes(Math.floor(cell / gridSize) + 1) && columns.includes(cell % gridSize + 1)), [selected, rows, columns, gridSize])
+  const exposedSelectionEdges = useMemo(() => cellSelectionEdges(visibleSelectedCells, gridSize), [visibleSelectedCells, gridSize])
   const relatedCells = useMemo(() => {
     const related = new Set<number>()
     if (!filterCandidates && highlighting.relatedCells) for (let index = 0; index < gridSize * gridSize; index++) {
@@ -571,7 +588,7 @@ export function Board({
           importedColors={!fogged ? (showImportedAnnotations ? position?.importedCellColors?.[index] : undefined)
             ?? givenCellColors?.[index] ?? fog?.cellColors?.[index] : undefined}
           cellAnnotation={annotations?.cells?.get(index)} candidateAnnotations={annotations?.candidates?.get(index)}
-          selected={selectedCells.has(index)} active={active === index} pointerFocused={pointerFocusedCell === index}
+          selected={selectedCells.has(index)} selectionEdges={exposedSelectionEdges.get(index)?.join(' ')} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
           ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
           cellHighlight={highlightsLinkTargetCell || (highlightsCell && (fullCandidateCellHighlight || !matchesWithExtras)) ? 'candidate-highlight-cell'
