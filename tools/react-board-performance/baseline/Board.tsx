@@ -247,6 +247,21 @@ export function Board({
                 const candidateColors = showPlayerColors && (!candidates || onCandidate) ? position?.candidateColors?.[index] : undefined
                 const color = showPlayerColors ? position?.colors?.[index] : undefined
                 const inSelection = selected.includes(index)
+                const selectionEdges = inSelection ? [
+                  Math.floor(index / gridSize) === 0 || !selected.includes(index - gridSize) ? 'top' : '',
+                  index % gridSize === gridSize - 1 || !selected.includes(index + 1) ? 'right' : '',
+                  Math.floor(index / gridSize) === gridSize - 1 || !selected.includes(index + gridSize) ? 'bottom' : '',
+                  index % gridSize === 0 || !selected.includes(index - 1) ? 'left' : '',
+                ].filter(Boolean) : []
+                const selectionShadows: Record<string, string> = {
+                  top: 'inset 0 2px 0 var(--board-selected-border)',
+                  right: 'inset -2px 0 0 var(--board-selected-border)',
+                  bottom: 'inset 0 -2px 0 var(--board-selected-border)',
+                  left: 'inset 2px 0 0 var(--board-selected-border)',
+                }
+                const cellSelectionShadow = selectionEdges.map(edge => selectionShadows[edge]).join(', ')
+                const renderedCellStyle = inSelection && cellSelectionShadow
+                  ? { ...cellStyle, boxShadow: cellSelectionShadow } as CSSProperties : cellStyle
                 const error = errors?.has(index)
                 const cellAnnotation = annotations?.cells?.get(index)
                 const candidateAnnotations = annotations?.candidates?.get(index)
@@ -363,7 +378,8 @@ export function Board({
                   </span>] : NO_MARKS
 
                 return (
-                  <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={cellStyle} aria-label={label}
+                  <Cell role="gridcell" key={col} data-cell={index} data-clone={clones.at[index]?.label} className={classes} style={renderedCellStyle} aria-label={label}
+                    data-selection-edge={selectionEdges.join(' ') || undefined}
                     data-pointer-focused={pointerFocusedCell === index || undefined}
                     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} candidate ${preview.digit}` : undefined}
                     data-box-edge={rectangularBoxes && col % boxColumns === 0 || undefined}
