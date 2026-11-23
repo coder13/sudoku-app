@@ -92,7 +92,9 @@ function snapshot(includeFades = false): NormalNode[] {
       if (!includeFades && attr.name === 'data-board-fade') continue
       if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
       let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board').sort().join(' ')
-        : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
+        : attr.name === 'style' && node.classList.contains('candidate-button')
+          ? [node.getBoundingClientRect().x, node.getBoundingClientRect().y, node.getBoundingClientRect().width, node.getBoundingClientRect().height].map(value => value.toFixed(2)).join(',')
+          : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
       if (node === groups?.grid && attr.name === 'aria-describedby' && groups.description) {
         value = value.split(/\s+/).filter(id => id !== groups.description!.id).join(' ')
         if (!value) continue
