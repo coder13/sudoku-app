@@ -323,7 +323,7 @@ const BoardCell = memo(function BoardCell({
       const linkTarget = hasCandidate(linkTargetMask, digit)
       const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color ? COLORS[color - 1] : imported && importedColorLabel(imported),
         highlighted && 'highlighted', linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
-      const classes = `board-candidate candidate-button ${onPaintCandidate ? 'paint-candidate' : 'chain-candidate'}`
+      const classes = `board-candidate candidate-button ${onPaintCandidate ? 'paint-candidate' : canSelectLinkCandidate ? 'chain-candidate' : ''}`
       return <button type="button" key={digit} className={classes} style={style}
         aria-label={candidateLabel} data-link-target={linkTarget || undefined}
         aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
