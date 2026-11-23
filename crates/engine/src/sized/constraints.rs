@@ -563,7 +563,7 @@ impl SizedConstraintGrid {
             upper = if mask == 0 {
                 0
             } else {
-                (1 << (u16::BITS - 1 - mask.leading_zeros())) - 1
+                (1 << (u16::BITS - 1 - mask.leading_zeros() + u32::from(allow_equal))) - 1
             };
         }
         changed
