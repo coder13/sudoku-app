@@ -103,10 +103,18 @@ async function run(profile) {
   let assertions = 0
   let phase = 'open fixture'
   const equal = (actual, expected, message) => { assert.deepEqual(actual, expected, message); assertions++ }
+  async function resumeIfPaused() {
+    const resume = page.getByRole('button', { name: 'Resume puzzle', exact: true })
+    if (await resume.isVisible()) await click(resume)
+    await page.locator('.puzzle-play-layers').waitFor()
+    await page.waitForFunction(() => {
+      const layers = document.querySelector('.puzzle-play-layers')
+      return layers !== null && !layers.hasAttribute('data-paused')
+    })
+  }
   async function ready() {
     await page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).waitFor()
-    const resume = page.getByRole('button', { name: 'Resume puzzle', exact: true })
-    if (await resume.count()) await click(resume)
+    await resumeIfPaused()
     await page.getByRole('button', { name: 'Create group', exact: true }).waitFor()
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create group' && !button.disabled))
   }
@@ -158,9 +166,7 @@ async function run(profile) {
     if (await showEliminations.getAttribute('aria-checked') !== 'true') await click(showEliminations)
     equal(await showEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations are visible')
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
-    const resume = page.getByRole('button', { name: 'Resume puzzle', exact: true })
-    if (await resume.count()) await click(resume)
-    await page.waitForFunction(() => !document.querySelector('.puzzle-play-layers')?.hasAttribute('data-paused'))
+    await resumeIfPaused()
     await page.waitForFunction(() => !document.querySelector('.apply-chain-edits')?.disabled)
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
