@@ -56,6 +56,7 @@ import { SubsetsPanel } from './SubsetsPanel'
 import { useSubsets } from './useSubsets'
 import { useStrongLinkOverlay } from './useStrongLinkOverlay'
 import { CompletedPuzzle } from './CompletedPuzzle'
+import { KillerCombos } from './KillerCombos'
 import { Controls } from './Controls'
 import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
@@ -250,6 +251,7 @@ export function Worktable({
   const puzzleStageId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pinnedActions] = usePlayPreference('pinnedActions')
+  const [showKillerCombinations] = usePlayPreference('showKillerCombinations')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const { active, selected, anchor, setActive, setSelected, setAnchor } = usePuzzleSelection(game.id, start)
   const [preferredDigit, setSelectedDigit] = usePlayPreference('selectedDigit')
@@ -2838,6 +2840,8 @@ export function Worktable({
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
         <PuzzleCollectionCredit game={game} />
+        {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values}
+          active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>
           {visiblePinnedActions.map(id => {
             const action = quickActions[id]
