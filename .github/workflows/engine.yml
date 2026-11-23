@@ -45,7 +45,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node .agents/skills/sudoku-components/scripts/check-catalog.mjs
+      - run: npm run check:catalog
 
   native:
     needs: fast-check
