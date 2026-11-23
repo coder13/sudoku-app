@@ -21,8 +21,21 @@ const output = option('--output')
 const screenshotDirectory = option('--screenshots')
 const onlyProfile = option('--profile')
 const practice = JSON.parse(await readFile(resolve(root, 'src/sudoku/generated/lesson-examples.json'), 'utf8'))['grouped-aic'].practice
-const initial = replaceCandidates(makeGame('grouped-chain-contract', 'Grouped chain practice', practice.givens, 'imported', 1),
-  practice.candidates, { recordHistory: false })
+const unnotedGame = makeGame('grouped-chain-contract', 'Grouped chain practice', practice.givens, 'imported', 1)
+const legalCandidateMasks = [...unnotedGame.givens].map((given, cell) => {
+  if (given !== '0') return 0
+  const row = Math.floor(cell / 9), column = cell % 9, boxRow = Math.floor(row / 3) * 3, boxColumn = Math.floor(column / 3) * 3
+  const used = new Set([
+    ...[...unnotedGame.givens].slice(row * 9, row * 9 + 9),
+    ...Array.from({ length: 9 }, (_, index) => unnotedGame.givens[index * 9 + column]),
+    ...Array.from({ length: 9 }, (_, index) => unnotedGame.givens[(boxRow + Math.floor(index / 3)) * 9 + boxColumn + index % 3]),
+  ])
+  return Array.from({ length: 9 }, (_, index) => index + 1)
+    .filter(digit => !used.has(String(digit)))
+    .reduce((mask, digit) => mask | (1 << (digit - 1)), 0)
+})
+const completePracticeCandidates = practice.candidates.map((mask, cell) => mask || legalCandidateMasks[cell])
+const initial = replaceCandidates(unnotedGame, completePracticeCandidates, { recordHistory: false })
 const fixture = { ...initial, started: true, difficulty: 'master', score: 4000,
   position: { ...initial.position, entries: practice.entries, eliminations: practice.eliminations } }
 const gameKey = 'sudoku-app:v1:game:' + fixture.id
