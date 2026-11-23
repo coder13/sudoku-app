@@ -167,7 +167,16 @@ async function run(profile) {
     equal(await showEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations are visible')
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
     await resumeIfPaused()
-    await page.waitForFunction(() => !document.querySelector('.apply-chain-edits')?.disabled)
+    await page.waitForTimeout(1000)
+    const analysisState = await page.evaluate(() => ({
+      paused: document.querySelector('.puzzle-play-layers')?.getAttribute('data-paused') ?? null,
+      resumeVisible: [...document.querySelectorAll('button')].some(button => button.textContent?.includes('Resume puzzle') && button.getClientRects().length > 0),
+      applyDisabled: document.querySelector('.apply-chain-edits')?.disabled ?? null,
+      chainAnalysis: document.querySelector('.chain-analysis')?.textContent?.trim() ?? null,
+      statusMessages: [...document.querySelectorAll('[role="status"]')].map(node => node.textContent?.trim()).filter(Boolean),
+    }))
+    console.log(`Grouped-chain UI state: ${JSON.stringify(analysisState)}`)
+    await page.waitForFunction(() => document.querySelector('.apply-chain-edits')?.disabled === false, undefined, { timeout: 5000 }).catch(() => {})
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
 
