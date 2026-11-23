@@ -51,6 +51,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-contradiction': 'Candidate contradiction',
   'sized-diagonal': 'Diagonal',
   'sized-parity': 'Odd and even',
+  'digit-restriction': 'Digit Restrictions',
   'sized-thermometer': 'Thermometer',
   'sized-quadruple': 'Quadruple',
   'sized-renban': 'Renban',

@@ -4430,6 +4430,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-extra-region path { fill: none; stroke: var(--region-clue-color, var(--board-selected-border)); stroke-opacity: .4; stroke-width: .025; }
 .variant-parity { fill: var(--board-ink); fill-opacity: .13; stroke: var(--board-ink); stroke-opacity: .4; stroke-width: .022; }
 .variant-preview .variant-parity { fill-opacity: .28; stroke-opacity: .8; stroke-width: .07; }
+.variant-digit-restriction { fill: none; stroke: var(--board-ink); stroke-opacity: .5; stroke-width: .035; stroke-linecap: round; }
+.variant-preview .variant-digit-restriction { stroke-opacity: .85; stroke-width: .09; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }
@@ -4532,6 +4534,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .board-body[data-highlighted-rule="quadruple"] .variant-quadruple:not([data-quadruple-sum]) text,
 .board-body[data-highlighted-rule="quadruple-sum"] .variant-quadruple[data-quadruple-sum] text { font-weight: 800; }
 .board-body[data-highlighted-rule="parity"] .variant-parity { fill: var(--rule-accent); fill-opacity: .2; stroke: var(--rule-accent); stroke-opacity: 1; }
+.board-body[data-highlighted-rule="digit-restriction"] .variant-digit-restriction { stroke: var(--rule-accent); stroke-opacity: 1; }
 .board-body[data-highlighted-rule="kropki"] .variant-dot { stroke: var(--rule-accent); stroke-width: .055; }
 .board-body[data-highlighted-rule="arrow"] :is(.variant-arrow-line, .variant-arrow-circle, .variant-arrow-head):not(.variant-pill-arrow *) {
   stroke: var(--rule-accent); opacity: 1;

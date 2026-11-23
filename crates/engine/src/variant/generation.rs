@@ -131,6 +131,7 @@ impl VariantPuzzle {
             .map(|rule| match rule {
                 PuzzleRule::KillerCages { cages, .. } => cages.len(),
                 PuzzleRule::Parity { cells, .. } => cells.len(),
+                PuzzleRule::DigitRestriction { cells, .. } => cells.len(),
                 PuzzleRule::Clone { groups } => groups.len(),
                 PuzzleRule::Kropki {
                     consecutive,

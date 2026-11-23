@@ -50,6 +50,7 @@ export type VariantRule =
   | { type: 'lettered-quadruples'; clues: readonly import('./lettered-quadruples.ts').LetteredQuadruple[] }
   | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
   | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
+  | { type: 'digit-restriction'; cells: readonly number[]; digits: readonly number[]; shape: 'circle' | 'cross' | 'square' }
   | { type: 'clone'; groups: readonly (readonly number[])[] }
   | { type: 'anti-knight' | 'anti-king' }
   | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }

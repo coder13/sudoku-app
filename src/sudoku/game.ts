@@ -200,7 +200,9 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   const definition = variant.fog
     ? { ...variant.puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
     : variant.puzzle
-  return `${variant.id}:${JSON.stringify(orderedPuzzleFields(definition))}`
+  const rules = definition.rules?.map(rule => rule.type === 'digit-restriction'
+    ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule)
+  return `${variant.id}:${JSON.stringify(orderedPuzzleFields(rules ? { ...definition, rules } : definition))}`
 }
 
 /** Bind a recorded uniqueness check to the starting givens and complete rules. */
@@ -301,6 +303,7 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGr
     const digit = Number(placed)
     if (sizedRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
       digit % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+    if (puzzle?.rules?.some(rule => rule.type === 'digit-restriction' && rule.cells.includes(i) && !rule.digits.includes(digit))) conflicts.add(i)
     for (let j = i + 1; j < cellCount; j++) {
       const other = values[j]
       if (other === '0') continue

@@ -105,6 +105,8 @@ catalog! {
     HiddenSingle: "hidden-single", Technique::HiddenSingle.cost(), Easy;
     /// Apply a declared odd or even digit restriction.
     Parity: "parity", 6, Easy;
+    /// Apply an authored set of allowed digits to marked cells.
+    DigitRestriction: "digit-restriction", 6, Easy;
     /// Apply the restriction between cells a king's move apart.
     AntiKing: "anti-king", 8, Easy;
     /// Apply the restriction between cells a knight's move apart.
@@ -1868,6 +1870,16 @@ impl CompiledVariant {
             Classic(classic) => self.classic_proofs(position, classic, &mut proofs),
             Parity => {
                 proofs.extend(self.parity_clues.iter().filter_map(|clue| {
+                    position.explain_constraint(
+                        technique,
+                        &[clue.rule],
+                        &[clue.cell],
+                        std::iter::once(position.domain(clue.cell) & clue.allowed),
+                    )
+                }));
+            }
+            DigitRestriction => {
+                proofs.extend(self.digit_restriction_clues.iter().filter_map(|clue| {
                     position.explain_constraint(
                         technique,
                         &[clue.rule],

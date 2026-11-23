@@ -39,6 +39,32 @@ function unsupportedClueStyling(settings: unknown) {
   return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
 }
 
+function readCoachDigitRestrictions(constraint: Record<string, unknown>): VariantRule[] {
+  const invalid = new Error('This Sudoku Coach shape layer has unsupported or invalid digit restrictions.')
+  const settings = constraint.settings
+  if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+    hasData(settings) && !record(settings) ||
+    record(settings) && (settings.gridSnapToCorners === true || settings.gridSnapToEdges === true ||
+      Object.keys(settings).some(key => !['gridSnapToCentres', 'gridSnapToCorners', 'gridSnapToEdges', 'shapeSize', 'opacity', 'colour', 'borderColour', 'borderThickness'].includes(key))) ||
+    !Array.isArray(constraint.segments) || !constraint.segments.length) throw invalid
+  const groups = new Map<'circle' | 'cross' | 'square', number[]>([['circle', []], ['cross', []], ['square', []]])
+  for (const segment of constraint.segments) {
+    if (!record(segment) || Object.keys(segment).some(key => !['cells', 'parameters'].includes(key)) ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 || !record(segment.parameters) ||
+      Object.keys(segment.parameters).some(key => key !== 'shape') ||
+      !['circle', 'cross', 'square'].includes(String(segment.parameters.shape))) throw invalid
+    const [column, row] = segment.cells[0]
+    if (typeof column !== 'number' || typeof row !== 'number' ||
+      ![column, row].every(value => Number.isInteger(value - .5) && value >= .5 && value <= 8.5)) throw invalid
+    groups.get(segment.parameters.shape as 'circle' | 'cross' | 'square')!.push((row - .5) * 9 + column - .5)
+  }
+  const cells = [...groups.values()].flat()
+  if (new Set(cells).size !== cells.length || [...groups.values()].some(group => !group.length)) throw invalid
+  return [...groups].map(([shape, cells]) => ({ type: 'digit-restriction', shape, cells,
+    digits: shape === 'circle' ? [1, 2, 3] : shape === 'cross' ? [4, 5, 6, 7] : [8, 9] }))
+}
+
 function decodeBase32Hex(text: string) {
   const bytes = new Uint8Array(Math.floor(text.length * 5 / 8))
   let bits = 0
@@ -598,8 +624,10 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       drawnLines.push(constraint)
       continue
     }
-    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'pillArrow', 'betweenLine', 'lockoutLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
-    if (constraint.type === 'minimum' || constraint.type === 'maximum') {
+    if (!['region', 'consecutiveLine', 'difference', 'ratio', 'odd', 'even', 'whisper', 'thermometer', 'arrow', 'pillArrow', 'betweenLine', 'lockoutLine', 'regionSumLine', 'palindromeLine', 'renban', 'entropicLine', 'modularLine', 'sandwich', 'littleKiller', 'cage', 'cosmeticShape'].includes(constraint.type) && hasData(constraint.settings)) throw new Error(`This Sudoku Coach puzzle uses unsupported settings for ${constraint.type}.`)
+    if (constraint.type === 'cosmeticShape') {
+      rules.push(...readCoachDigitRestrictions(constraint))
+    } else if (constraint.type === 'minimum' || constraint.type === 'maximum') {
       const { type, segments } = constraint
       if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
         throw new Error(`This Sudoku Coach puzzle has an invalid ${type} layer.`)

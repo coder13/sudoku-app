@@ -66,6 +66,7 @@ impl VariantPuzzle {
             positive_sums: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
             parity_clues: Vec::new(),
+            digit_restriction_clues: Vec::new(),
             extra_rule_cells: 0,
             kropki_marks: 0..0,
         };
@@ -169,6 +170,7 @@ impl VariantPuzzle {
                     compiled.lines.push(line);
                 }
                 PuzzleRule::Parity { .. }
+                | PuzzleRule::DigitRestriction { .. }
                 | PuzzleRule::Clone { .. }
                 | PuzzleRule::AntiKnight {}
                 | PuzzleRule::AntiKing {}
@@ -229,6 +231,7 @@ impl VariantPuzzle {
                     .map(|clue| cell_mask(&clue.cells).unwrap()),
             )
             .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
+            .chain(compiled.digit_restriction_clues.iter().map(|clue| 1u128 << clue.cell))
             .fold(0, |cells, scope| cells | scope);
         if compiled.global_entropy.is_some() || compiled.lettered_quadruples.is_some() {
             compiled.extra_rule_cells = (1u128 << CELLS) - 1;

@@ -123,6 +123,10 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
         const cells = rule.cells.filter(cell => visible.has(cell))
         return cells.length ? [{ ...rule, cells }] : []
       }
+      case 'digit-restriction': {
+        const cells = rule.cells.filter(cell => visible.has(cell))
+        return cells.length ? [{ ...rule, cells }] : []
+      }
       case 'killer-cages': {
         const cages = rule.cages.filter(cage => allVisible(cage.cells))
         return cages.length ? [{ type: 'killer-cages', cages }] : []
