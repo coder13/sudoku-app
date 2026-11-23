@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { canStartCellSelectionDrag, cellSelectionEdges, cellsOnDragPath, rectangleSelection } from '../src/sudoku/selection.ts'
+import { canStartCellSelectionDrag, cellSelectionEdges, cellsOnDragPath, extendCellSelectionPath, rectangleSelection } from '../src/sudoku/selection.ts'
 
 test('drag selection covers the rectangle between two cells in either direction', () => {
   const expected = [10, 11, 12, 19, 20, 21, 28, 29, 30]
@@ -32,4 +32,12 @@ test('connected cell selection exposes only the outside border', () => {
     [1, ['top', 'right', 'bottom']],
     [4, ['right', 'bottom', 'left']],
   ])
+})
+
+test('freehand cell selection follows an L path without filling its bounding rectangle', () => {
+  let cells = new Set([0])
+  cells = extendCellSelectionPath(cells, 0, 9)
+  cells = extendCellSelectionPath(cells, 9, 10)
+  assert.deepEqual([...cells], [0, 9, 10])
+  assert.equal(cells.has(1), false, 'R1C2 is outside the pointer path')
 })

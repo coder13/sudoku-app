@@ -35,7 +35,7 @@ import { canApplyPuzzleResult } from '../sudoku/puzzle-revision'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import type { AdvancedModes, AppearancePreferences, HighlightPreferences, WorkspaceMode } from '../sudoku/preferences'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
-import { canStartCellSelectionDrag, cellsOnDragPath, rectangleSelection } from '../sudoku/selection'
+import { canStartCellSelectionDrag, cellsOnDragPath, extendCellSelectionPath, rectangleSelection } from '../sudoku/selection'
 import { togglePencilMode } from '../sudoku/puzzle-input-mode'
 import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { roomStore } from '../sudoku/storage'
@@ -336,7 +336,7 @@ export function Worktable({
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
   const hintReturnFocus = useRef<HTMLElement | null>(null)
-  const dragSelection = useRef<{ pointerId: number; start: number; base: number[]; additive: boolean; moved: boolean } | null>(null)
+  const dragSelection = useRef<{ pointerId: number; start: number; previous: number; cells: Set<number>; base: number[]; additive: boolean; moved: boolean } | null>(null)
   const candidateDrag = useRef<CandidateDrag | null>(null)
   const cellPaintDrag = useRef<CellPaintDrag | null>(null)
   const [cellPaintPreview, setCellPaintPreview] = useState<CellPaintStroke | null>(null)
@@ -1617,6 +1617,8 @@ export function Worktable({
       dragSelection.current = {
         pointerId: event.pointerId,
         start: index,
+        previous: index,
+        cells: new Set([index]),
         base: [...selected],
         additive: multi || event.metaKey || event.ctrlKey,
         moved: false,
@@ -1694,14 +1696,14 @@ export function Worktable({
       return
     }
     const drag = dragSelection.current
-    if (!drag || drag.pointerId !== event.pointerId || !pressed ||
-      index === drag.start && !drag.moved) return
+    if (!drag || drag.pointerId !== event.pointerId || !pressed || index === drag.previous) return
     event.preventDefault()
     drag.moved = true
-    const dragged = rectangleSelection(drag.start, index, gridSize)
+    drag.cells = extendCellSelectionPath(drag.cells, drag.previous, index, gridSize)
+    drag.previous = index
     setActive(index)
     setAnchor(drag.start)
-    setSelected(drag.additive ? [...new Set([...drag.base, ...dragged])] : dragged)
+    setSelected(drag.additive ? [...new Set([...drag.base, ...drag.cells])] : [...drag.cells])
   }
 
   function preventControlClickMenu(event: MouseEvent) {

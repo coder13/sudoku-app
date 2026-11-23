@@ -51,3 +51,10 @@ export function cellSelectionEdges(cells: readonly number[], size = 9): Map<numb
   }
   return edges
 }
+
+/** Extend a freehand selection through cells crossed between pointer samples. */
+export function extendCellSelectionPath(
+  cells: ReadonlySet<number>, start: number, end: number, size = 9,
+): Set<number> {
+  return new Set([...cells, ...cellsOnDragPath(start, end, size)])
+}
