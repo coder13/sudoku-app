@@ -67,6 +67,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-region-sum': 'Region Sum',
   'group-line-house-support': 'Repeating groups and houses',
   'group-order-contradiction': 'Group order contradiction',
+  'group-order-elimination': 'Eliminations in both group orders',
   'whispers-house-support': 'Whispers and shared houses',
   'renban-locked-digit': 'Renban locked digit',
   'renban-house-support': 'Renban in one house',

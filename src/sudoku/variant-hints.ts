@@ -346,6 +346,51 @@ function explainGroupOrder(
   }
 }
 
+function explainGroupOrderElimination(
+  evidence: Extract<VariantDeduction['evidence'], { type: 'group-order-elimination' }>,
+  target: { cell: number; digit: number },
+  puzzle: VariantPuzzle,
+  at: (cell: number) => string,
+  houseLabel: (house: VariantHouse) => string,
+) {
+  const shown = new Set([...evidence.cells.slice(0, 3), target.cell])
+  const digits = (mask: number) => DIGITS.filter(digit => mask & 1 << (digit - 1)).join(', ')
+  const order = (groups: number[]) => groups.map(mask => `{${digits(mask)}}`).join(', then ')
+  const rule = puzzle.rules?.[evidence.rule]
+  const family = rule?.type === 'modular' ? 'Modular' : 'Entropic'
+  const describeCheck = (check: GroupOrderCheck, relevant: ReadonlySet<number>) => {
+    const narrowed = check.cells.flatMap((cell, index) =>
+      check.domains[index] !== check.supported[index] ? [{ cell, mask: check.supported[index] }] : [])
+    const focused = narrowed.filter(({ cell }) => relevant.has(cell))
+    const detail = focused.length ? focused : narrowed.slice(0, 1)
+    for (const { cell } of detail) shown.add(cell)
+    const restrictions = conjunction.format(detail.map(({ cell, mask }) => `${at(cell)} can use only ${digits(mask)}`))
+    if (check.scope.type === 'pair') {
+      const clue = constraintClue({ type: 'constraint', rules: check.scope.rules,
+        cells: check.cells, domains: check.domains }, puzzle, at, []).description
+      return `${clue} Across that clue, ${restrictions}.`
+    }
+    const lineRule = check.scope.type === 'line' ? puzzle.rules?.[check.scope.rule] : undefined
+    const lineFamily = lineRule?.type === 'modular' ? 'Modular' : 'Entropic'
+    const name = check.scope.type === 'house' ? houseLabel(check.scope.house)
+      : `the ${lineFamily} line starting at ${at(check.cells[0])}`
+    return `With ${name}, ${restrictions}.`
+  }
+  const cases = evidence.branches.map(({ groups, checks }) => {
+    const steps = checks.map((check, index) => {
+      const relevant = new Set([target.cell, ...checks.slice(index + 1).flatMap(next => next.cells)])
+      return describeCheck(check, relevant)
+    })
+    return [`Try ${order(groups)}.`, ...steps,
+      `${at(target.cell)} cannot be ${target.digit} in this order.`].join(' ')
+  })
+  return {
+    cells: [...shown],
+    description: `The ${family} line starting at ${at(evidence.cells[0])} has two possible group orders.`,
+    reason: [...cases, `Both orders rule out ${target.digit} in ${at(target.cell)}.`].join(' '),
+  }
+}
+
 function explainLinkedClue(
   evidence: Extract<VariantDeduction['evidence'], { type: 'linked-clue' }>,
   puzzle: VariantPuzzle,
@@ -983,6 +1028,13 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     case 'group-order': {
       const explanation = explainGroupOrder(evidence, puzzle, nameCell, houseLabel)
       cells = [...new Set([...explanation.cells, ...focus.map(({ cell }) => cell)])]
+      description = explanation.description
+      reason = explanation.reason
+      break
+    }
+    case 'group-order-elimination': {
+      const explanation = explainGroupOrderElimination(evidence, focus[0], puzzle, nameCell, houseLabel)
+      cells = explanation.cells
       description = explanation.description
       reason = explanation.reason
       break

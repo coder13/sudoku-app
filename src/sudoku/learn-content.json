@@ -8414,6 +8414,43 @@
           "difficulty": "medium"
         },
         {
+          "id": "group-order-elimination",
+          "title": "Eliminations in both group orders",
+          "summary": "When a repeating line has two possible group orders, check a candidate under each one. If both orders rule it out, the candidate cannot be the solution.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find a line with two possible group orders"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An Entropic or Modular line can have two group orders that fit all its candidates. A candidate must work under at least one order.",
+                "Check a nearby dot, sum, or inequality under the first order. Follow its effects through the affected houses and repeating lines.",
+                "Repeat the checks under the second order from the original candidates. If both orders rule out the same candidate, remove it."
+              ]
+            },
+            { "type": "diagram", "example": "group-order-elimination" },
+            {
+              "type": "practice",
+              "drills": [
+                { "example": "group-order-elimination", "title": "Eliminations in both group orders" }
+              ],
+              "guide": {
+                "start": "Find two orders that fit the whole line.",
+                "check": "Follow the nearby clues under each order and compare the candidates.",
+                "reason": "A candidate that both orders rule out cannot be the solution digit in that cell."
+              }
+            }
+          ],
+          "references": [
+            { "label": "Entropic lines", "href": "/learn/entropic" },
+            { "label": "Modular lines", "href": "/learn/modular" }
+          ],
+          "difficulty": "hard"
+        },
+        {
           "id": "group-order-contradiction",
           "title": "Group order contradiction",
           "summary": "Try an order for the groups on an Entropic or Modular line. Follow its effect on nearby clues until a rule makes that order impossible.",

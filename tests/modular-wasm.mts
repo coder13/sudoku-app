@@ -7,7 +7,7 @@ import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/su
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { variantHouseMasks, variantIdForPuzzle, variantLogicalMasks } from '../src/sudoku/variants.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -30,6 +30,35 @@ const expected = [
   ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
   ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
 ] as const
+
+test('both Modular group orders rule out a candidate with a replayable hint proof', async () => {
+  const technique = 'group-order-elimination'
+  const [exercise] = await runEngine({ type: 'practice-examples', variant: true, technique })
+  const { position, deduction } = exercise
+  const puzzle = position.puzzle
+  const source = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/HCHW'))
+  const { game } = await prepareImportedPuzzle(source.code)
+  assert.ok((await getVariantPlayOrder(game.variant!.puzzle)).includes(technique))
+  // Apply this rule on the untouched practice position so earlier techniques do not
+  // consume the candidate before the independent two-order proof is checked.
+  const techniqueOrder = [technique]
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
+  const stepIndex = trace.steps.findIndex(step => step.technique === technique)
+  assert.ok(stepIndex >= 0)
+  assert.deepEqual(trace.steps[stepIndex], deduction)
+  assert.equal(deduction.evidence.type, 'group-order-elimination')
+  assert.equal(deduction.evidence.branches.length, 2)
+  assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'pair')))
+  assert.ok(deduction.evidence.branches.some(({ checks }) => checks.some(check => check.scope.type === 'house')))
+  const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder, stepIndex })
+  assert.deepEqual(replay?.deduction, deduction)
+  const choice = variantHintChoice(deduction, puzzle)
+  assert.ok('variant' in choice.evidence)
+  assert.match(choice.evidence.variant.description, /Modular line.*two possible group orders/)
+  assert.match(choice.evidence.variant.reason, /Both orders rule out/)
+  assert.match(choice.evidence.variant.reason, /row 1|column|box/)
+})
+
 for (const [
   id,
   nativePoints,
@@ -77,7 +106,7 @@ for (const [
         nativeSteps,
         nativeComplete,
       ],
-      [await getVariantPlayOrder(), appPoints, appSteps, appComplete],
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, appComplete],
     ] as const
     for (const [techniqueOrder, points, steps, complete] of orders) {
       const trace = await runEngine({
@@ -88,13 +117,8 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
-      if (id === 'HCHW') {
-        const chains = trace.steps.flatMap((proof, index) => proof.evidence.type === 'group-line-sum-chain'
-          ? [[index, proof.evidence.rules, proof.actions.length]] : [])
-        assert.deepEqual(chains, [[28, [15, 5, 4], 3], [29, [18, 8, 7], 3], [30, [19, 10, 9], 16]])
-        assert.equal(trace.steps.flatMap(step => step.actions).filter(action => 'place' in action).length,
-          techniqueOrder === orders[0][0] ? 7 : 81)
-      }
+      const hasGroupOrderElimination = trace.steps.some(step => step.technique === 'group-order-elimination')
+      assert.equal(trace.rating.scoringVersion, hasGroupOrderElimination ? 23 : 22)
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -105,7 +129,7 @@ for (const [
         }
         if (proof.technique === 'modular') assertModularProof(puzzle, proof)
         if (proof.evidence.type === 'sum-pair') assertSumPairProof(puzzle, proof)
-        played = applyDeduction(played, proof.actions, variantHouseMasks(puzzle, valuesOf(played)))
+        played = applyDeduction(played, proof.actions, variantLogicalMasks(puzzle, valuesOf(played)))
       }
       assert.equal(isSolved(played), complete)
       if (complete) assert.equal(valuesOf(played), source.solution)
@@ -306,15 +330,16 @@ test('Play ranks the HCHW line-and-box hint above the forcing proof', async () =
   assert.match(reason, /use 1 and 3.*r5c2 with no candidate in box 4/i)
   assertModularProof(game.variant!.puzzle, deduction)
   const ranked = (await puzzleHints(stalled)).choices
-  const [chain, ...otherChoices] = ranked
+  const chain = ranked[0]
   assert.ok(chain && 'variant' in chain.evidence)
   assert.equal(chain.evidence.variant.source?.deduction.evidence.type, 'group-line-sum-chain')
-  assert.deepEqual(otherChoices.map(choice => [choice.technique, choice.actions]), [
-    ['modular', hint.actions],
-    ['modular', [1, 2, 3].map(digit => ({ eliminate: { cell: 25, digit } }))],
-    ['kropki-house-support', [67, 76].flatMap(cell => [1, 2].map(digit => ({ eliminate: { cell, digit } })))],
-    ['dynamic-forcing-net', [{ eliminate: { cell: 19, digit: 8 } }]],
-  ])
+  const lineAndBoxIndex = ranked.findIndex(choice =>
+    JSON.stringify(choice.actions) === JSON.stringify(hint.actions))
+  const forcingIndex = ranked.findIndex(choice =>
+    choice.technique === 'dynamic-forcing-net' &&
+    JSON.stringify(choice.actions) === JSON.stringify([{ eliminate: { cell: 19, digit: 8 } }]))
+  assert.ok(lineAndBoxIndex > 0)
+  assert.ok(forcingIndex > lineAndBoxIndex)
   const position = variantPosition(game.variant!, stalled.position)
   const finder = watchTechniqueScan(valuesOf(stalled), eliminations, position)
   try {

@@ -56,10 +56,10 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules)
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
-  const hasEntropicLine = rules.some(rule => rule.type === 'entropic')
-  const hasGroupPairs = hasEntropicLine && rules.some(rule =>
+  const hasGroupLine = rules.some(rule => rule.type === 'entropic' || rule.type === 'modular')
+  const hasGroupPairs = hasGroupLine && rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasEntropicLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
+  if (!renbans.length && !rays.length && !hasGroupLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -69,10 +69,10 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   return playProfile.then(({ techniqueOrder: order, catalog, tiers, firstBeyondHard }) => {
     const renbanOrder = renbans.length ? withRenbanTechniques(order) : order
     const rayOrder = rays.length ? withLittleKillerHouses(renbanOrder) : renbanOrder
-    const groupOrder = hasEntropicLine ? withGroupLineHouses(rayOrder) : rayOrder
+    const groupOrder = hasGroupLine ? withGroupLineHouses(rayOrder) : rayOrder
     const sumOrder = regionSumLines.length ? withRegionSumTechniques(groupOrder, regionSumLines.length >= 2) : groupOrder
     const scoped = sumOrder.flatMap(id => {
-      if (hasGroupPairs && id === 'group-line-house-support') return [id, 'group-order-contradiction']
+      if (hasGroupPairs && id === 'group-line-house-support') return [id, 'group-order-contradiction', 'group-order-elimination']
       if (id === 'little-killer-house-support' && joined.length) return [id, 'renban-sum']
       if (id === 'sandwich' && joined.length) return [id, 'renban-sum-ray-houses']
       if (id === 'x-sum' && hasCompanion) return [id, 'renban-sum-house']

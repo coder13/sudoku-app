@@ -659,6 +659,8 @@ export type VariantDeduction = {
       remaining: number[][];
       rejected: { groups: number[]; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
         houseConflict?: { cells: number[]; digits: number } }[] }
+    | { type: 'group-order-elimination'; rule: number; cells: number[]; domains: number[]; phases: number[];
+      branches: { groups: number[]; checks: VariantConstraintCheck[] }[] }
     | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
     | { type: 'entropy-areas'; rules: number[]; windows: [number, number, number, number][]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[] }
     | { type: 'ray-houses'; rules: number[]; cells: number[]; domains: number[]; houses: VariantHouse[]; supported: number[] }
