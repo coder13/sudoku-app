@@ -311,7 +311,8 @@ const BoardCell = memo(function BoardCell({
     const imported = importedCandidateColors?.[digit]
     const colorClass = candidateColorClass(color, imported, annotation?.mark)
     const style = {
-      gridArea: slotted ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
+      gridArea: slotted && visibleGridCandidates.length < (grid?.size ?? 9)
+        ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
       opacity: annotation?.opacity,
       '--annotation-color': annotation?.color,
       '--imported-candidate-tone': imported && !color ? importedColorFill(imported) : undefined,
