@@ -67,18 +67,56 @@ function readQuadruples(overlays: unknown) {
   if (!Array.isArray(overlays) || !overlays.length || overlays.length > 256) {
     return reject('This SudokuPad puzzle has invalid Quadruple clues.')
   }
-  return overlays.map(mark => {
-    if (!record(mark) || Object.keys(mark).some(key => ![
-      'center', 'width', 'height', 'rounded', 'text', 'backgroundColor', 'borderColor', 'borderSize', 'thickness', 'color', 'stroke',
-    ].includes(key)) || !Array.isArray(mark.center) || mark.center.length !== 2 ||
-      !mark.center.every(coordinate => Number.isInteger(coordinate)) ||
-      typeof mark.text !== 'string' || !/^[1-9]{1,4}$/.test(mark.text)) {
+  const markFields = ['center', 'width', 'height', 'rounded', 'text', 'backgroundColor', 'borderColor', 'borderSize', 'thickness', 'color', 'stroke']
+  const centered = (mark: Record<string, unknown>): mark is Record<string, unknown> & { center: [number, number] } =>
+    Array.isArray(mark.center) && mark.center.length === 2 && mark.center.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
+  const topLeft = (center: readonly number[]) => {
+    const [row, column] = center
+    if (!Number.isInteger(row) || !Number.isInteger(column) || row < 1 || row > 8 || column < 1 || column > 8) {
+      return reject('A SudokuPad Quadruple clue must sit between four cells.')
+    }
+    return (row - 1) * 9 + column - 1
+  }
+  const circles: Record<string, unknown>[] = []
+  const numbers: Record<string, unknown>[] = []
+  const direct: { topLeft: number; digits: number[] }[] = []
+  for (const mark of overlays) {
+    if (!record(mark) || Object.keys(mark).some(key => !markFields.includes(key)) || !centered(mark)) {
       return reject('This SudokuPad export has an unsupported Quadruple clue.')
     }
+    if (typeof mark.text === 'number' && Number.isInteger(mark.text) && mark.text >= 1 && mark.text <= 9 &&
+      mark.width === 0.1 && mark.height === 0.1) {
+      numbers.push(mark)
+    } else if (mark.text === '' && mark.rounded === true && mark.width === 0.62 && mark.height === 0.62 &&
+      typeof mark.backgroundColor === 'string' && mark.backgroundColor.toLowerCase() === '#ffffff' &&
+      typeof mark.borderColor === 'string' && mark.borderColor.toLowerCase() === '#000000') {
+      circles.push(mark)
+    } else if (typeof mark.text === 'string' && /^[1-9]{1,4}$/.test(mark.text)) {
+      direct.push({ topLeft: topLeft(mark.center), digits: [...mark.text].map(Number) })
+    } else return reject('This SudokuPad export has an unsupported Quadruple clue.')
+  }
+  if (direct.length && (circles.length || numbers.length) || !direct.length && (!circles.length || !numbers.length)) {
+    return reject('This SudokuPad export has an unsupported Quadruple clue.')
+  }
+  if (direct.length) return direct.map(rule => ({ type: 'quadruple', ...rule } as const))
+
+  const assigned = new Map<Record<string, unknown>, number[]>()
+  for (const circle of circles) assigned.set(circle, [])
+  for (const mark of numbers) {
     const [row, column] = mark.center as number[]
-    if (row < 1 || row > 8 || column < 1 || column > 8) return reject('A SudokuPad Quadruple clue must sit between four cells.')
-    const digits = [...mark.text].map(Number)
-    return { type: 'quadruple', topLeft: (row - 1) * 9 + column - 1, digits } as const
+    const matches = circles.map(circle => {
+      const [circleRow, circleColumn] = circle.center as number[]
+      return { circle, distance: Math.hypot(row - circleRow, column - circleColumn) }
+    }).filter(({ distance }) => distance <= 0.2).sort((left, right) => left.distance - right.distance)
+    if (!matches.length || matches[1]?.distance === matches[0].distance) {
+      return reject('This SudokuPad export has a number that does not belong to one Quadruple circle.')
+    }
+    assigned.get(matches[0].circle)?.push(mark.text as number)
+  }
+  return circles.map(circle => {
+    const digits = assigned.get(circle) ?? []
+    if (!digits.length || digits.length > 4) return reject('This SudokuPad export has an invalid Quadruple circle.')
+    return { type: 'quadruple', topLeft: topLeft(circle.center as number[]), digits }
   })
 }
 
