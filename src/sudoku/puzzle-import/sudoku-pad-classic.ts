@@ -116,7 +116,7 @@ function readQuadruples(overlays: unknown) {
   return circles.map(circle => {
     const digits = assigned.get(circle) ?? []
     if (!digits.length || digits.length > 4) return reject('This SudokuPad export has an invalid Quadruple circle.')
-    return { type: 'quadruple', topLeft: topLeft(circle.center as number[]), digits }
+    return { type: 'quadruple' as const, topLeft: topLeft(circle.center as number[]), digits }
   })
 }
 
