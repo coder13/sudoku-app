@@ -200,14 +200,33 @@ test('SudokuPad imports classic 9 × 9 Nonconsecutive, Quadruple, and Killer clu
     cells: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({}))),
     regions,
     cages: [{ cells: [[0, 0], [0, 1]], value: 3, unique: true }],
-    overlays: [{ center: [1, 1], width: .7, height: .7, rounded: true, text: '34', backgroundColor: '#fff' }],
+    overlays: [
+      ...[[1, 3], [4, 6], [5, 3], [8, 6], [2, 5], [7, 4], [7, 2], [2, 8]].map(center => ({
+        center, width: .62, height: .62, thickness: 1.28, rounded: true, text: '',
+        backgroundColor: '#FFFFFF', borderColor: '#000000',
+      })),
+      ...[
+        [[1, 2.915], 3], [[1, 3.085], 4],
+        [[4, 5.915], 3], [[4, 6.085], 4],
+        [[5, 2.915], 3], [[5, 3.085], 4],
+        [[8, 5.915], 3], [[8, 6.085], 4],
+        [[2, 5], 3], [[7, 4], 4], [[7, 2], 3], [[2, 8], 4],
+      ].map(([center, text]) => ({ center, width: .1, height: .1, text })),
+    ],
   }
   const imported = await detectPuzzle(encode(data))
   assert.equal(imported.givens, '0'.repeat(81))
   assert.equal(imported.title, '3s and 4s')
   assert.deepEqual(imported.variant?.puzzle.rules, [
     { type: 'non-consecutive' },
-    { type: 'quadruple', topLeft: 0, digits: [3, 4] },
+    { type: 'quadruple', topLeft: 2, digits: [3, 4] },
+    { type: 'quadruple', topLeft: 32, digits: [3, 4] },
+    { type: 'quadruple', topLeft: 38, digits: [3, 4] },
+    { type: 'quadruple', topLeft: 68, digits: [3, 4] },
+    { type: 'quadruple', topLeft: 13, digits: [3] },
+    { type: 'quadruple', topLeft: 57, digits: [4] },
+    { type: 'quadruple', topLeft: 55, digits: [3] },
+    { type: 'quadruple', topLeft: 16, digits: [4] },
     { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] },
   ])
   await assert.rejects(detectPuzzle(encode({ ...data, metadata: { ...data.metadata, rules: data.metadata.rules + '\nThermometers must increase.' } })),
