@@ -26,6 +26,7 @@ export type PlayPreferences = {
   colorBrush: number | null
   chainColorPairs: readonly ChainColorPair[]
   highlightCandidatePairs: boolean
+  showKillerCombinations: boolean
   experimentalMode: boolean | null
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
@@ -50,6 +51,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   colorBrush: null,
   chainColorPairs: CHAIN_COLOR_PAIRS,
   highlightCandidatePairs: false,
+  showKillerCombinations: true,
   experimentalMode: null,
   multi: false,
   puzzleBrowserView: 'active',
@@ -115,6 +117,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     colorBrush: inRange(saved.colorBrush, 0, COLORS.length) ? saved.colorBrush : null,
     chainColorPairs: parseChainColorPairs(saved.chainColorPairs),
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
+    showKillerCombinations: saved.showKillerCombinations !== false,
     experimentalMode: typeof saved.experimentalMode === 'boolean' ? saved.experimentalMode : null,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
