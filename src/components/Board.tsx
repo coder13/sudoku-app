@@ -195,6 +195,7 @@ const BoardCell = memo(function BoardCell({
   const regularCellAction = Boolean(onCell && !candidateAction)
   // Keep given cells as stable grid buttons in a candidate tool, even when
   // their only action is the explicit strong-link digit callback.
+  const fixedCellAction = fixed && Boolean(onCell)
   const buttonCell = givenAction || regularCellAction || Boolean(fixed && highlightedLinkDigit != null)
   const Cell = buttonCell ? 'button' : 'div'
   const centerCandidates = useMemo(() => marksOf(centerMask), [centerMask])
@@ -369,9 +370,9 @@ const BoardCell = memo(function BoardCell({
     data-rule-highlighted={ruleHighlighted || undefined} data-selection-edge={selectionEdges || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
     data-cage-total={cageTotal !== undefined || undefined}
-    type={Cell === 'button' ? 'button' : undefined}
-    tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : buttonCell ? -1 : undefined}
-    aria-selected={buttonCell ? selected : undefined}
+    type={buttonCell || fixedCellAction ? 'button' : undefined}
+    tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : buttonCell || fixedCellAction ? -1 : undefined}
+    aria-selected={buttonCell || fixedCellAction ? selected : undefined}
     onPointerDown={onCellPointerDown && ((event) => onCellPointerDown(index, event))}
     onClick={givenAction ? () => onGiven?.(value) : regularCellAction ? event => onCell?.(index, event) : highlightedLinkDigit != null ? event => {
       if (event.target instanceof Element && event.target.closest('.candidate-button')) return
