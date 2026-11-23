@@ -1141,16 +1141,50 @@ impl SizedConstraintGrid {
 }
 
 fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16; MAX_SIZE]) {
-    let mut shaft = [0; MAX_SIZE];
     let mut support = [0; MAX_SIZE];
-    for (mask, &cell) in shaft.iter_mut().zip(cells) {
-        *mask = candidates[cell];
+    let totals = u32::from(candidates[circle]) << 1;
+    if totals == 0 {
+        return (0, support);
     }
-    // A bulb is a single digit, so sums that exceed the bitset cannot qualify.
-    let totals = u128::from(candidates[circle]) << 1;
-    let [matching] = crate::variant::sum_support_with_prefix(
-        &shaft[..cells.len()], [totals], &mut support[..cells.len()], &mut [[0]; MAX_SIZE + 1],
-    );
+
+    // A bulb holds at most one digit. Prefix sums beyond its largest
+    // candidate cannot contribute to a completion of this arrow.
+    let limit = u32::MAX >> totals.leading_zeros();
+    let mut prefix = [0; MAX_SIZE + 1];
+    prefix[0] = 1;
+    for (index, &cell) in cells.iter().enumerate() {
+        let mut domain = candidates[cell];
+        let mut sums = 0;
+        while domain != 0 {
+            let digit = domain.trailing_zeros() + 1;
+            domain &= domain - 1;
+            sums |= prefix[index] << digit;
+        }
+        prefix[index + 1] = sums & limit;
+        if prefix[index + 1] == 0 {
+            return (0, support);
+        }
+    }
+    let matching = prefix[cells.len()] & totals;
+    if matching == 0 {
+        return (0, support);
+    }
+
+    let mut allowed = matching;
+    for (index, &cell) in cells.iter().enumerate().rev() {
+        let mut domain = candidates[cell];
+        let mut previous = 0;
+        while domain != 0 {
+            let bit = domain & domain.wrapping_neg();
+            domain ^= bit;
+            let viable = prefix[index] & (allowed >> (bit.trailing_zeros() + 1));
+            if viable != 0 {
+                support[index] |= bit;
+                previous |= viable;
+            }
+        }
+        allowed = previous;
+    }
     ((matching >> 1) as u16, support)
 }
 
@@ -1200,4 +1234,40 @@ fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; M
     let mut support = [0; MAX_SIZE];
     crate::variant::digit_set_support(digits, &input[..len], &mut support[..len]);
     support
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MAX_SIZE, arrow_masks};
+
+    #[test]
+    fn bounded_arrow_support_matches_the_general_sum_kernel() {
+        fn check(candidates: &[u16]) {
+            let cells = [1, 2, 3, 4];
+            let shaft = &cells[..candidates.len() - 1];
+            let mut support = [0; MAX_SIZE];
+            let [matched] = crate::variant::sum_support_with_prefix(
+                &candidates[1..],
+                [u128::from(candidates[0]) << 1],
+                &mut support[..shaft.len()],
+                &mut [[0]; MAX_SIZE + 1],
+            );
+            assert_eq!(arrow_masks(0, shaft, candidates), ((matched >> 1) as u16, support));
+        }
+
+        for bulb in 0..16 {
+            for a in 0..16 {
+                for b in 0..16 {
+                    check(&[bulb, a, b]);
+                    for c in 0..16 {
+                        check(&[bulb, a, b, c]);
+                    }
+                }
+            }
+        }
+        check(&[1 << 15, 1 << 15]);
+        check(&[1 << 15, 1 << 14, 1]);
+        check(&[1 << 15, 1 << 15, 1]);
+        check(&[u16::MAX, u16::MAX, u16::MAX, u16::MAX, u16::MAX]);
+    }
 }
