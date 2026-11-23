@@ -163,6 +163,7 @@ Family assignments are the starting policy. Proof length, grouped nodes, branche
 | `finned-jellyfish` | Very Hard |
 | `sashimi-jellyfish` | Very Hard |
 | `simple-coloring` | Very Hard |
+| `multi-coloring` | Very Hard (hints and custom solver profiles) |
 | `3d-medusa` | Very Hard |
 | `x-chain` | Very Hard |
 | `xy-chain` | Very Hard |

@@ -595,7 +595,11 @@ mod tests {
         }
         assert_eq!(Difficulty::ALL.len(), 10);
         assert!(Technique::DIFFICULTY_ORDER.windows(2).all(|pair| pair[0].difficulty() <= pair[1].difficulty()));
-        assert_eq!(Technique::DIFFICULTY_ORDER.len(), Technique::ALL.len());
+        let optional: Vec<_> = Technique::ALL
+            .into_iter()
+            .filter(|technique| !Technique::DIFFICULTY_ORDER.contains(technique))
+            .collect();
+        assert_eq!(optional, [Technique::MultiColoring]);
     }
 
     #[test]

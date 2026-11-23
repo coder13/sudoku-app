@@ -164,7 +164,7 @@ function isAltClick(event: Pick<MouseEvent, 'altKey' | 'shiftKey' | 'ctrlKey' | 
 function isChainStep(step?: Deduction) {
   if (!step) return false
   const { evidence, technique } = step
-  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence || 'coloring' in evidence ||
+  return 'chain' in evidence || 'inference' in evidence || 'single-digit-chain' in evidence || 'coloring' in evidence || 'multi-coloring' in evidence ||
     ['forcing-chain', 'als-chain', 'sk-loop'].includes(technique)
 }
 

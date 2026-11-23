@@ -512,6 +512,12 @@ type Evidence =
     } }
   | { 'sk-loop': { anchors: [number, number, number, number]; arms: number[][]; links: SectorLink[] } }
   | { 'multi-sector-locked-sets': { core: number[]; attachments: number[]; links: SectorLink[] } }
+  | { 'multi-coloring': {
+    groups: [[Candidate[], Candidate[]], [Candidate[], Candidate[]]]
+    links: CandidateLink[]
+    bridge: CandidateLink
+    other_bridge: CandidateLink | null
+  } }
   | { coloring: { colors: [Candidate[], Candidate[]]; links: CandidateLink[]; reason: ColoringReason } }
 
 export type DeductionAction = { place: Candidate } | { eliminate: Candidate }

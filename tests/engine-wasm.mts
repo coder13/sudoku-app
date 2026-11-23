@@ -100,6 +100,48 @@ test('technique counts match full deductions before and after a candidate edit',
   assert.equal(result.code, 'invalid-eliminations')
 })
 
+test('multi-coloring exports both two-group deductions and drops a broken proof', async () => {
+  const { run } = engineRequests()
+  const technique = 'multi-coloring'
+  const examples = await run({ type: 'practice-examples', technique })
+  assert.equal(examples.length, 3)
+  const expectedCells = [[37, 38], [46, 56, 68]]
+
+  for (const [index, example] of examples.slice(0, 2).entries()) {
+    const { deduction, eliminations, candidates, pattern } = example
+    const { actions, evidence } = deduction
+    assert.ok('multi-coloring' in evidence)
+    const { groups, bridge, other_bridge } = evidence['multi-coloring']
+    assert.equal(Boolean(other_bridge), index === 1)
+    const groupCells = groups.map(group => group.flat().map(({ cell }) => cell))
+    assert.ok(groupCells[0].includes(bridge.from.cell) && groupCells[1].includes(bridge.to.cell))
+    assert.ok(groupCells[0].every(cell => !groupCells[1].includes(cell)))
+
+    const values = lessonValues(example)
+    const solution = await run({ type: 'solve', values })
+    const removed = actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
+    assert.deepEqual(removed.map(({ cell }) => cell), expectedCells[index])
+    assert.ok(removed.every(({ cell, digit }) => solution && Number(solution[cell]) !== digit))
+
+    const request = { type: 'deductions', values, eliminations, techniqueOrder: [technique] } as const
+    const matches = await run(request)
+    const distinct = new Set(matches.flatMap(({ affectedCandidates }) => affectedCandidates.map(({ cell, digit }) => `${cell}:${digit}`)))
+    assert.equal(await run({ type: 'technique-count', technique, values, eliminations }), distinct.size)
+
+    const diagram = lessonDiagram({ deduction, candidates, pattern })
+    assert.equal(diagram.annotations.links?.filter(link => link.dashed).length, index + 1)
+    assert.match(diagram.reason, index === 0 ? /box 3/ : /both colors in the second group/)
+    if (other_bridge) {
+      assert.equal(diagram.annotations.cells?.get(bridge.from.cell)?.label, 'contradiction cell')
+      const restored = eliminations.slice()
+      restored[11] &= ~(1 << 2) // Restore 3 at R2C3. Row 2 loses a strong link for 3.
+      const edited = await run({ ...request, eliminations: restored })
+      assert.ok(edited.every(({ affectedCandidates }) =>
+        affectedCandidates.every(({ cell, digit }) => digit !== 3 || !expectedCells[index].includes(cell))))
+    }
+  }
+})
+
 test('rank requests find and replay a pointing removal with a shared budget', async () => {
   const { run } = engineRequests()
   const values = LOCKED_PAIR

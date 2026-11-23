@@ -364,6 +364,19 @@ impl<'a> Pattern<'a> {
                     ColoringReason::SameColorConflict(_) | ColoringReason::BothColors => {}
                 }
             }
+            HintEvidence::MultiColoring {
+                groups,
+                links,
+                bridge,
+                other_bridge,
+            } => {
+                for &candidate in groups.iter().flatten().flatten() {
+                    self.candidate(candidate);
+                }
+                for link in links.iter().chain([bridge]).chain(other_bridge.iter()) {
+                    self.source(link.source);
+                }
+            }
             HintEvidence::UniqueRectangle {
                 corners,
                 digits,

@@ -29,7 +29,7 @@ export const ANALYSIS_GROUPS = [
     'hidden-rectangle', 'unique-loop',
   ] },
   { title: 'Chains and coloring', techniques: [
-    '3d-medusa', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
+    '3d-medusa', 'multi-coloring', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
     'grouped-continuous-nice-loop', 'firework-aic', 'tridagon-aic',
     'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop',

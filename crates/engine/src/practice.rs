@@ -1225,6 +1225,7 @@ impl Technique {
             Self::SashimiSwordfish => return SASHIMI_SWORDFISH,
             Self::SashimiJellyfish => return SASHIMI_JELLYFISH,
             Self::SimpleColoring => return SIMPLE_COLORING,
+            Self::MultiColoring => return examples::MULTI_COLORING[0],
             Self::XChain => return X_CHAIN,
             Self::XYChain => return XY_CHAIN,
             Self::Medusa => return MEDUSA,

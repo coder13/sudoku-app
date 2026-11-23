@@ -18,7 +18,16 @@ pub(super) fn visit(
     technique: Technique,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
-    let medusa = technique == Technique::Medusa;
+    visit_components(graph, technique == Technique::Medusa, |component| {
+        component.visit(graph, technique, visit)
+    })
+}
+
+pub(super) fn visit_components(
+    graph: &CandidateLinks<'_>,
+    medusa: bool,
+    mut visit: impl FnMut(Component<'_>) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
     let mut colors = [UNCOLORED; CANDIDATE_COUNT];
     let mut members = Vec::new();
     let mut links = Vec::new();
@@ -62,21 +71,20 @@ pub(super) fn visit(
             {
                 continue;
             }
-            let component = Component {
+            visit(Component {
                 colors: &colors,
                 members: &members,
                 links: &links,
-            };
-            component.visit(graph, technique, visit)?;
+            })?;
         }
     }
     ControlFlow::Continue(())
 }
 
-struct Component<'a> {
-    colors: &'a [u8; CANDIDATE_COUNT],
-    members: &'a [usize],
-    links: &'a [CandidateLink],
+pub(super) struct Component<'a> {
+    pub(super) colors: &'a [u8; CANDIDATE_COUNT],
+    pub(super) members: &'a [usize],
+    pub(super) links: &'a [CandidateLink],
 }
 
 impl Component<'_> {
