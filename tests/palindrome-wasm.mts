@@ -31,7 +31,7 @@ test('published Palindromes import, replay complete app-order solves and reach t
     masks.forEach((mask, cell) => { if (puzzle.givens[cell] === '0') assert.ok(mask & (1 << (Number(solution[cell]) - 1))) })
     const techniqueOrder = await getVariantPlayOrder(), position = variantPosition(game.variant!)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-    assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 21)
+    assert.notEqual(trace.rating.status, 'stalled'); assert.equal(trace.rating.scoringVersion, 22)
     assert.deepEqual(trace.rating, await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }))
     assert.ok(trace.steps.some(step => step.technique === 'palindrome'))
     let played = game

@@ -2544,7 +2544,7 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 21)
+  assert.equal(catalog.scoringVersion, 22)
   assert.ok(!catalog.defaultOrder.includes('little-killer-house-support'))
   assert.ok(!catalog.defaultOrder.includes('renban-sum-ray-houses'))
   assert.ok(!catalog.defaultOrder.includes('renban-locked-digit'))

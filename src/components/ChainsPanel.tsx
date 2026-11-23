@@ -34,26 +34,18 @@ function pointName(point: BoardLink['from'], nameCell = cellName) {
   return `${point.digit} in ${nameCell(point.cell)}`
 }
 
-function compactPath(nodes: readonly ChainNode[], strengths: readonly LinkStrength[]) {
-  return nodes.map((id, i) => {
-    const members = chainNodeCandidates(id)
-    const candidate = typeof id === 'number'
-      ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
-      : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`
-    return i === 0 ? candidate : `${strengths[i - 1] === 'strong' ? '=' : '−'} ${candidate}`
-  }).join(' ')
-}
-
 function ChainNotation({ id, paths }: {
   id: string
-  paths: readonly { nodes: readonly number[]; strengths: readonly LinkStrength[] }[]
+  paths: readonly { nodes: readonly ChainNode[]; strengths: readonly LinkStrength[] }[]
 }) {
   return <span className="chain-notation" id={id}><code>{paths.map(({ nodes, strengths }, pathIndex) => (
     <span className="chain-notation-path" key={`${pathIndex}-${nodes.join('-')}`}>
       {pathIndex > 0 && ', '}
       {nodes.map((node, index) => {
-        const { cell, digit } = chainCandidate(node)
-        const candidate = `${digit}${cellName(cell).toLowerCase()}`
+        const members = chainNodeCandidates(node)
+        const candidate = typeof node === 'number'
+          ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
+          : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`
         if (index === 0) return <span className="chain-notation-node" key={`${node}-${index}`}>{candidate}</span>
         return <Fragment key={`${node}-${index}`}>
           {' '}<span className="chain-notation-step">
