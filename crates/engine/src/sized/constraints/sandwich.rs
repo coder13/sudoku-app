@@ -100,21 +100,21 @@ fn matching_support(cells: &[usize], domains: &[u16], digits: u16, size: usize, 
 
 fn can_match(order: &[usize], domains: &[u16], digits: u16, used: u16, memo: &mut [i8]) -> bool {
     if used == digits { return true; }
-    let cache = &mut memo[usize::from(used)];
-    if *cache >= 0 { return *cache == 1; }
+    let cache_index = usize::from(used);
+    if memo[cache_index] >= 0 { return memo[cache_index] == 1; }
     let depth = used.count_ones() as usize;
-    if depth >= order.len() { *cache = 0; return false; }
+    if depth >= order.len() { memo[cache_index] = 0; return false; }
     let cell = order[depth];
     let mut options = domains[cell] & digits & !used;
     while options != 0 {
         let bit = options & options.wrapping_neg();
         options &= !bit;
         if can_match(order, domains, digits, used | bit, memo) {
-            *cache = 1;
+            memo[cache_index] = 1;
             return true;
         }
     }
-    *cache = 0;
+    memo[cache_index] = 0;
     false
 }
 

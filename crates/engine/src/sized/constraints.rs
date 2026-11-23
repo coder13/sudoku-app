@@ -535,7 +535,7 @@ impl SizedConstraintGrid {
                 if !sandwich.support(candidates, &mut supported) {
                     return false;
                 }
-                for &cell in sandwich.cells() {
+                for cell in sandwich.cells() {
                     changed |= candidates[cell] != supported[cell];
                     candidates[cell] = supported[cell];
                 }
@@ -795,7 +795,7 @@ impl SizedConstraintGrid {
                     let sandwich = self.sandwiches[rule].as_ref()?;
                     let mut supported = [0; MAX_SIZE * MAX_SIZE];
                     if !sandwich.support(&domains, &mut supported) { return None; }
-                    for &cell in sandwich.cells() {
+                    for cell in sandwich.cells() {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
