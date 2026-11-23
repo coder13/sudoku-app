@@ -1,17 +1,19 @@
 import { VARIANTS, type PlayableVariant } from './variants.ts'
+import { DIFFICULTY_LEVELS, type CurrentDifficulty } from './difficulty.ts'
+import { notifySettingsEdit } from './settings-events.ts'
 
 export const coreSudokuModes = ['classic', 'diagonal', 'windoku', 'killer-cages', 'jigsaw'] as const
-export const coreModeLimit = 9
 const customDifficulties = ['easy', 'medium', 'hard'] as const
 const jigsawDifficulties = ['easy', 'medium', 'tricky'] as const
-export type CustomDifficulty = typeof customDifficulties[number] | typeof jigsawDifficulties[number]
+export type CustomDifficulty = CurrentDifficulty
 
 export function isCustomDifficulty(value: unknown): value is CustomDifficulty {
-  return value === 'easy' || value === 'medium' || value === 'tricky' || value === 'hard'
+  return typeof value === 'string' && (DIFFICULTY_LEVELS as readonly string[]).includes(value)
 }
 
 export function customModeDifficulties(rules: readonly CustomRule[]): readonly CustomDifficulty[] {
-  return rules.length === 1 && rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
+  if (rules.length > 1) return DIFFICULTY_LEVELS
+  return rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
 }
 
 const additionalRules = {
@@ -44,7 +46,7 @@ export type CustomModeDefinition = {
   negativeMarkers?: readonly MarkerRule[]
 }
 
-export type SudokuMode = CustomModeDefinition & { id: string; pinned: boolean }
+export type SudokuMode = CustomModeDefinition & { id: string }
 
 const { classic: _classic, ...variantRules } = VARIANTS
 export const customRules: Record<CustomRule, { name: string; rule: string }> = {
@@ -54,7 +56,9 @@ export const customRules: Record<CustomRule, { name: string; rule: string }> = {
 }
 export const customRuleIds = Object.keys(customRules) as CustomRule[]
 
-const storageKey = 'sudoku.custom-modes.v1'
+export const CUSTOM_MODES_KEY = 'sudoku-app:v1:custom-modes'
+// Keep reading existing local-only saves after moving modes into the settings namespace.
+const legacyStorageKey = 'sudoku.custom-modes.v1'
 const modePattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
 export const isSudokuModeId = (value: unknown): value is string => typeof value === 'string' && modePattern.test(value)
 export const isCustomRule = (value: unknown): value is CustomRule => typeof value === 'string' && Object.hasOwn(customRules, value)
@@ -72,21 +76,20 @@ export function readCustomModeDefinition(value: unknown): CustomModeDefinition |
 
 export function readSudokuModes(storage?: Pick<Storage, 'getItem'>): SudokuMode[] {
   try {
-    const values: unknown = JSON.parse((storage ?? localStorage).getItem(storageKey) ?? '[]')
+    const target = storage ?? localStorage
+    const values: unknown = JSON.parse(target.getItem(CUSTOM_MODES_KEY) ?? target.getItem(legacyStorageKey) ?? '[]')
     if (!Array.isArray(values)) return []
     const modes: SudokuMode[] = []
-    let pins = 0
     for (const item of values) {
       const mode = readCustomModeDefinition(item)
       if (!mode || !isSudokuModeId(item.id) || modes.some(saved => saved.id === item.id)) continue
-      const pinned = item.pinned === true && pins < coreModeLimit - coreSudokuModes.length
-      if (pinned) pins++
-      modes.push({ id: item.id, ...mode, pinned })
+      modes.push({ id: item.id, ...mode })
     }
     return modes
   } catch { return [] }
 }
 
 export function writeSudokuModes(modes: readonly SudokuMode[], storage: Pick<Storage, 'setItem'> = localStorage) {
-  storage.setItem(storageKey, JSON.stringify(modes))
+  storage.setItem(CUSTOM_MODES_KEY, JSON.stringify(modes))
+  notifySettingsEdit()
 }

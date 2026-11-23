@@ -44,7 +44,7 @@ test('all 35 rule choices generate unique puzzles at each offered difficulty', a
   }
 })
 
-test('the same mixed mode generates three actual difficulty grades with all selected rules', async () => {
+test('the same mixed mode generates each standard difficulty grade with all selected rules', async () => {
   const rules = ['windoku', 'arrow'] as const satisfies readonly CustomRule[]
   const completions = new Set<string>()
   for (const level of customModeDifficulties(rules)) {
@@ -74,7 +74,7 @@ test('the same mixed mode generates three actual difficulty grades with all sele
       assert.deepEqual(next.rating.status, { solved: level })
     }
   }
-  assert.equal(completions.size, 3)
+  assert.equal(completions.size, customModeDifficulties(rules).length)
 })
 
 test('white dots and Non-Consecutive use the same exception edges with either setting', async () => {
@@ -133,7 +133,7 @@ test('a black dot on consecutive digits exempts the edge from the negative white
 const mixedMarkers = ['kropki-white', 'xv-ten'] as const satisfies readonly MarkerRule[]
 const mixedRules = ['kropki', 'xv', 'arrow'] as const satisfies readonly CustomRule[]
 
-test('mixed complete marks retain all edge meanings, hints, and three exact ratings', async () => {
+test('mixed complete marks retain all edge meanings, hints, and exact ratings', async () => {
   for (const difficulty of customModeDifficulties(mixedRules)) {
     const { puzzle, solution, rating } = await generateCustomSudoku(mixedRules, difficulty, 5, [], { negativeMarkers: mixedMarkers })
     assert.deepEqual(rating.status, { solved: difficulty })

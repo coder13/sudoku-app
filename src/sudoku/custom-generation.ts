@@ -5,6 +5,7 @@ import { regionIndex } from './region-sum.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from './variant-generation.ts'
 import { generatePlayableVariant, getVariantPlayOrder } from './variant-play.ts'
 import { WINDOKU_REGIONS } from './variants.ts'
+import { DIFFICULTY_LEVELS } from './difficulty.ts'
 
 type Pair = [number, number]
 const cells = Array.from({ length: 81 }, (_, cell) => cell)
@@ -202,9 +203,10 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
       const usesDotHouses = markers.some(marker => marker.startsWith('kropki-'))
       const usesScopedTechniques = chosen.has('thermometer') || chosen.has('between') || chosen.has('palindrome') || chosen.has('clone') || usesDotHouses
       const exclude = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
-      // A full set of dots can leave fewer layouts at the requested Hard tier.
-      const maxLayouts = negative.size ? (usesDotHouses && difficulty === 'hard' ? 72 : 36)
-        : difficulty === 'hard' ? 24 : 12
+      const hardOrHigher = DIFFICULTY_LEVELS.indexOf(difficulty) >= DIFFICULTY_LEVELS.indexOf('hard')
+      // Higher target grades need more layouts, especially when every edge is marked.
+      const maxLayouts = negative.size ? (usesDotHouses && hardOrHigher ? 72 : 36)
+        : hardOrHigher ? 24 : 12
       for (let attempt = 0; attempt < maxLayouts; attempt++) {
         searchSignal.throwIfAborted()
         const template = modeTemplate(chosen, random)
@@ -216,7 +218,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
           const techniqueOrder = usesScopedTechniques ? await getVariantPlayOrder(clues.puzzle, clues.layouts) : defaultOrder
           return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
             maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
-            givens: [0, difficulty === 'easy' ? 40 : 35], difficulty, techniqueOrder, exclude })
+            givens: [0, difficulty === 'beginner' ? 50 : difficulty === 'easy' ? 40 : 35], difficulty, techniqueOrder, exclude })
         } catch (error) {
           if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error
         }

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createServer, type ViteDevServer } from 'vite'
-import { coreModeLimit, coreSudokuModes, customModeDifficulties, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
+import { customModeDifficulties, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
 let server: ViteDevServer
@@ -32,7 +33,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   for (const grid of ['mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages']) {
     assert.ok(builder.includes(`<option value="${grid}">`), grid)
   }
-  assert.match(builder, /Show in core modes/)
+  assert.doesNotMatch(builder, /Show in core modes/)
   assert.match(builder, /Save mode/)
   assert.match(builder, /Generate puzzle/)
   assert.match(builder, /<option value="hard">Hard<\/option>/)
@@ -41,7 +42,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   const xSudoku = await renderNewPuzzle('/puzzles/new/difficulty?variant=diagonal')
   assert.match(xSudoku, /Each of the two marked diagonals/)
   assert.deepEqual(customModeDifficulties(['jigsaw']), ['easy', 'medium', 'tricky'])
-  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), ['easy', 'medium', 'hard'])
+  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), DIFFICULTY_LEVELS)
 })
 
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {
@@ -59,18 +60,17 @@ test('smaller grids are configured inside custom generation and retain their dif
   assert.match(legacy, /href="\/puzzles\/new\/difficulty\?variant=mini&amp;difficulty=medium"/)
 })
 
-test('saved mode definitions and rule choices round-trip, with nine core slots in total', () => {
+test('saved mode definitions and rule choices round-trip without a core-mode limit', () => {
   const storage = new MemoryStorage()
   const modes = Array.from({ length: 6 }, (_, i) => ({
     id: `00000000-0000-4000-8000-00000000000${i}`, name: `Mode ${i}`,
-    rules: ['windoku', 'arrow'] as const, pinned: true,
+    rules: ['windoku', 'arrow'] as const,
   }))
   writeSudokuModes(modes, storage)
   const saved = readSudokuModes(storage)
   assert.equal(saved.length, 6)
-  assert.equal(coreSudokuModes.length + saved.filter(mode => mode.pinned).length, coreModeLimit)
   assert.deepEqual(saved[5].rules, ['windoku', 'arrow'])
-  assert.equal(saved[5].pinned, false)
+  assert.equal('pinned' in saved[5], false)
 })
 
 test('saved sets retain complete markings only for symbols the mode uses', () => {
@@ -78,7 +78,7 @@ test('saved sets retain complete markings only for symbols the mode uses', () =>
   const id = '00000000-0000-4000-8000-000000000000'
   assert.deepEqual(selectedMarkerRules(['kropki', 'xv', 'kropki-black']), ['kropki-white', 'kropki-black', 'xv-five', 'xv-ten'])
   writeSudokuModes([{ id, name: 'Dots and V', rules: ['kropki-black', 'xv-five'],
-    negativeMarkers: ['kropki-white', 'kropki-black', 'xv-five', 'xv-five', 'xv-ten'], pinned: true }], storage)
+    negativeMarkers: ['kropki-white', 'kropki-black', 'xv-five', 'xv-five', 'xv-ten'] }], storage)
   assert.deepEqual(readSudokuModes(storage), [{ id, name: 'Dots and V', rules: ['kropki-black', 'xv-five'],
-    negativeMarkers: ['kropki-black', 'xv-five'], pinned: true }])
+    negativeMarkers: ['kropki-black', 'xv-five'] }])
 })
