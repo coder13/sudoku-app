@@ -183,3 +183,33 @@ test('SudokuPad Region Sum keeps box visits and authored line geometry beside ot
   ])
   await assert.rejects(detectPuzzle(encode({ ...source, lines: [{ ...blue, color: '#bada55' }, pink] })), /markings without supported rules/)
 })
+
+test('SudokuPad imports classic 9 × 9 Nonconsecutive, Quadruple, and Killer clues', async () => {
+  const regions = Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, cell) => [
+    Math.floor(box / 3) * 3 + Math.floor(cell / 3), box % 3 * 3 + cell % 3,
+  ]))
+  const data = {
+    id: 'classic-nine',
+    metadata: {
+      title: '3s and 4s', author: 'addie',
+      rules: 'Standard 9x9 sudoku rules apply.\n' +
+        'Nonconsecutive: Any two orthogonally adjacent cells cannot contain consecutive digits.\n' +
+        'Quadruples: Digits in white circles must be present at least once in the cells the clue touches. If a digit appears more than once in a circle, it must be present at least that many times in the cells the clue touches.\n' +
+        'Killer Cages: Digits in a cage may not repeat and must sum to the number in the top left corner of that cage.',
+    },
+    cells: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({}))),
+    regions,
+    cages: [{ cells: [[0, 0], [0, 1]], value: 3, unique: true }],
+    overlays: [{ center: [1, 1], width: .7, height: .7, rounded: true, text: '34', backgroundColor: '#fff' }],
+  }
+  const imported = await detectPuzzle(encode(data))
+  assert.equal(imported.givens, '0'.repeat(81))
+  assert.equal(imported.title, '3s and 4s')
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'non-consecutive' },
+    { type: 'quadruple', topLeft: 0, digits: [3, 4] },
+    { type: 'killer-cages', cages: [{ cells: [0, 1], sum: 3 }] },
+  ])
+  await assert.rejects(detectPuzzle(encode({ ...data, metadata: { ...data.metadata, rules: data.metadata.rules + '\nThermometers must increase.' } })),
+    /authored rules this importer cannot verify/)
+})
