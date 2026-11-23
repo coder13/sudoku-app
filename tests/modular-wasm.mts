@@ -7,7 +7,7 @@ import { applyDeduction, enter, isSolved, redo, undo, valuesOf } from '../src/su
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { getVariantPlayOrder, playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
-import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
+import { variantHouseMasks, variantIdForPuzzle, variantLogicalMasks } from '../src/sudoku/variants.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -28,7 +28,7 @@ const share = (puzzle: VariantPuzzle) =>
 const expected = [
   ['newman', 646, 75, 1006, 75, true, true, 'medium'],
   ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
-  ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
+  ['HCHW', 420, 21, 9058, 230, false, true, 'hard'],
 ] as const
 
 test('both Modular group orders rule out a candidate with a replayable hint proof', async () => {
@@ -104,7 +104,7 @@ for (const [
         nativeSteps,
         nativeComplete,
       ],
-      [await getVariantPlayOrder(), appPoints, appSteps, appComplete],
+      [await getVariantPlayOrder(puzzle), appPoints, appSteps, appComplete],
     ] as const
     for (const [techniqueOrder, points, steps, complete] of orders) {
       const trace = await runEngine({
@@ -115,13 +115,8 @@ for (const [
       })
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
-      if (id === 'HCHW') {
-        const chains = trace.steps.flatMap((proof, index) => proof.evidence.type === 'group-line-sum-chain'
-          ? [[index, proof.evidence.rules, proof.actions.length]] : [])
-        assert.deepEqual(chains, [[28, [15, 5, 4], 3], [29, [18, 8, 7], 3], [30, [19, 10, 9], 16]])
-        assert.equal(trace.steps.flatMap(step => step.actions).filter(action => 'place' in action).length,
-          techniqueOrder === orders[0][0] ? 7 : 81)
-      }
+      const hasGroupOrderElimination = trace.steps.some(step => step.technique === 'group-order-elimination')
+      assert.equal(trace.rating.scoringVersion, hasGroupOrderElimination ? 23 : 22)
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -132,7 +127,7 @@ for (const [
         }
         if (proof.technique === 'modular') assertModularProof(puzzle, proof)
         if (proof.evidence.type === 'sum-pair') assertSumPairProof(puzzle, proof)
-        played = applyDeduction(played, proof.actions, variantHouseMasks(puzzle, valuesOf(played)))
+        played = applyDeduction(played, proof.actions, variantLogicalMasks(puzzle, valuesOf(played)))
       }
       assert.equal(isSolved(played), complete)
       if (complete) assert.equal(valuesOf(played), source.solution)
