@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
@@ -22,6 +23,39 @@ const input = {
   cages: [{ cells: [[1,0],[1,1]], value: 'n+2' }, { cells: [[2,0]], value: 'n-1' }],
 }
 const encode = (payload: unknown) => 'scl' + lzString.compressToBase64(JSON.stringify(payload))
+
+function permutations(values: number[]): number[][] {
+  if (values.length === 1) return [values]
+  return values.flatMap((value, index) => permutations(values.filter((_, other) => other !== index))
+    .map(rest => [value, ...rest]))
+}
+
+function classicFourByFourSolutions() {
+  const rows: number[][] = []
+  const solutions: number[][] = []
+  const rowPermutations = permutations([1, 2, 3, 4])
+  function visit() {
+    if (rows.length === 4) {
+      solutions.push(rows.flat())
+      return
+    }
+    const rowIndex = rows.length
+    for (const row of rowPermutations) {
+      if (rows.some(previous => row.some((digit, column) => previous[column] === digit))) continue
+      if (rowIndex % 2 === 1) {
+        const previous = rows[rowIndex - 1]
+        if ([0, 2].some(start => new Set([...previous.slice(start, start + 2), ...row.slice(start, start + 2)]).size !== 4)) continue
+      }
+      rows.push(row)
+      visit()
+      rows.pop()
+    }
+  }
+  visit()
+  return solutions
+}
+
+const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
 
 test('sized SudokuPad definitions retain cage order, labels, offsets, and authored metadata', () => {
   const code = encode(input)
@@ -76,6 +110,48 @@ test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear c
     assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [0, 1, 2, 3] }])
     assert.equal(imported.sizedAuthor, 'Test author')
   }
+})
+
+test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {
+  const imported = await detectPuzzle(easyThermoCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.givens, '0'.repeat(16))
+  assert.deepEqual(imported.grid, { size: 4, boxRows: 2, boxColumns: 2 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'thermometer', cells: [8, 4, 5] },
+    { type: 'thermometer', cells: [13, 14, 15] },
+  ])
+  assert.equal(imported.title, 'Easy Thermo 1')
+  assert.equal(imported.sizedAuthor, 'addie')
+
+  const classic = classicFourByFourSolutions()
+  assert.equal(classic.length, 288)
+  const thermometers = imported.sizedRules!.filter(rule => rule.type === 'thermometer')
+  const matching = classic.filter(solution => thermometers.every(rule =>
+    rule.cells.every((cell, index) => index === 0 || solution[rule.cells[index - 1]] < solution[cell])))
+  assert.deepEqual(matching.map(solution => solution.join('')), ['1234341223414123'])
+  assert.equal(imported.authoredSolution, matching[0].join(''))
+
+  const source = JSON.parse(lzString.decompressFromBase64(easyThermoCode.slice(3))!)
+  const slowThermo = encode({ ...source,
+    metadata: { ...source.metadata, rules: source.metadata.rules.replace('increase from bulb to tip', 'increase or stay the same from bulb to tip') },
+  })
+  await assert.rejects(detectPuzzle(slowThermo), /authored rules this importer cannot verify/)
+
+  const fetch = mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.ok([
+      '/api/v1/import/sudokupad/rin34es86q',
+      '/api/v1/import/sudokupad/james-sinclair/easy-thermo-1',
+    ].includes(path))
+    return Response.json({ code: easyThermoCode })
+  })
+  const shortLink = await detectPuzzle('https://sudokupad.app/rin34es86q')
+  assert.deepEqual(shortLink.sizedRules, imported.sizedRules)
+  const linked = await detectPuzzle('https://sudokupad.app/james-sinclair/easy-thermo-1?setting-hidecolours=1')
+  assert.equal(linked.title, 'Easy Thermo 1')
+  assert.equal(linked.sizedAuthor, 'addie')
+  assert.deepEqual(linked.sizedRules, imported.sizedRules)
+  assert.equal(fetch.mock.callCount(), 2)
 })
 
 test('compact SudokuPad thermometers can use a darker bulb and still follow its endpoint', async () => {

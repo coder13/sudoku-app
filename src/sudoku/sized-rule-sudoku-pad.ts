@@ -152,10 +152,10 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   // text identifies what they mean, and the bulb determines direction.
   const rulesText = metadata.rules.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i).map(part => part.replace(/\s+/g, ' '))
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
-  const shortBase = /^Normal (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
+  const shortBase = /^(?:Normal|Standard) (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
-  const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip)\.$/i
+  const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip|Thermometers: digits along a thermometer increase from bulb to tip)\.$/i
   const compactThermometer = /^THERMOMETER - Digits increase in value along a thermometer, starting from the bulb end\.(?: They don't have to be adjacent, for example 1-3-4 or 2-4 would be just fine\.)?$/i
   const renban = /^Digits along a pink line form a set of non-repeating consecutive digits in any order\.$/i
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i

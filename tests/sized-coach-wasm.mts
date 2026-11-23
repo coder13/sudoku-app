@@ -14,6 +14,9 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker(process.env.SIZED_COACH_WASM)
 
+const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
+const easyThermoSolution = '1234341223414123'
+
 const constraints = [
   { type: 'diagonalPositive', segments: [] },
   { type: 'thermometer', segments: [{ cells: [1, 7, 13, 14] }, { cells: [32, 26, 20] }] },
@@ -38,6 +41,17 @@ test('six-by-six Coach constraints reach Wasm together and change the exact solu
     const partial = { ...position, rules: rules.filter(rule => rule.type !== ruleType) }
     assert.equal(await runEngine({ type: 'sized-variant', position: partial, operation: 'analyze' }), 'multiple')
   }
+})
+
+test('Easy Thermo 1 reaches Preview with both original paths and its unique solution', async () => {
+  const { game, format } = await prepareImportedPuzzle(easyThermoCode)
+  assert.equal(format, 'SudokuPad')
+  assert.equal(game.grid?.size, 4)
+  assert.deepEqual(game.sized?.rules, [
+    { type: 'thermometer', cells: [8, 4, 5] },
+    { type: 'thermometer', cells: [13, 14, 15] },
+  ])
+  assert.equal(game.sized?.solution, easyThermoSolution)
 })
 
 test('a Coach short link preserves 6 × 6 rules through Play, undo, reload and sharing', async ({ mock }) => {
