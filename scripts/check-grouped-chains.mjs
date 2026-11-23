@@ -132,6 +132,9 @@ async function run(profile) {
     const showEliminations = page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true })
     if (await showEliminations.getAttribute('aria-checked') !== 'true') await click(showEliminations)
     equal(await showEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations are visible')
+    await page.keyboard.press('Escape')
+    await ready()
+    equal(await page.getByRole('button', { name: 'Resume puzzle', exact: true }).count(), 0, 'the puzzle is resumed before applying deductions')
     equal(await page.getByRole('button', { name: 'Apply edits', exact: true }).isDisabled(), false, 'the grouped chain has deductions')
     await screenshot(page, profile.name, 'grouped-aic')
 
