@@ -236,6 +236,18 @@ test('Coach Current State preserves Quick Draw lines, edge crosses, and cell sym
   ]) await assert.rejects(detectPuzzle(coach({ ...data, ...override })), /invalid or unsupported Quick Draw/)
 })
 
+test('ignores 9 × 9 Coach candidate marks without a cell coordinate', async () => {
+  for (const cellCandidates of [0, 511]) {
+    const imported = await detectPuzzle(coach({ givenDigits: STARTER, cells: { 'NaN,NaN': { cellCandidates } } }))
+    assert.equal(imported.format, 'Sudoku Coach')
+    assert.equal(imported.givens, STARTER)
+    assert.equal(imported.progress, undefined)
+  }
+  for (const cellCandidates of [-1, 1.5, 512]) {
+    await assert.rejects(detectPuzzle(coach({ cells: { 'NaN,NaN': { cellCandidates } } })), /invalid or unsupported Quick Draw/)
+  }
+})
+
 test('accepts empty Coach Current State and reports malformed progress separately from givens', async () => {
   const emptyMasks = Array(81).fill('0').join('-')
   assert.deepEqual(await detectPuzzle(coach({

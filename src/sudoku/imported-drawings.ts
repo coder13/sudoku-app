@@ -67,6 +67,9 @@ export function readCoachQuickDraw(data: Record<string, unknown>): readonly Impo
     if (!record(marks)) throw invalid()
     for (const [key, value] of Object.entries(marks)) {
       if (!record(value)) throw invalid()
+      if (field === 'cells' && key === 'NaN,NaN' && Object.keys(value).length === 1 &&
+        typeof value.cellCandidates === 'number' && Number.isInteger(value.cellCandidates) &&
+        value.cellCandidates >= 0 && value.cellCandidates <= 511) continue
       if (field === 'quickDrawLineSegments') {
         const ends = key.split('=>')
         const from = readPoint(ends[0]), to = readPoint(ends[1] ?? '')
