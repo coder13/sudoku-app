@@ -13,6 +13,8 @@ Avoid `take`, `takes`, `taking`, `taken`, and `took` in Learn articles, practice
 
 When adding, choosing, or changing UI components, use the [Sudoku components skill](.agents/skills/sudoku-components/SKILL.md). Update its component catalog in the same change as additions, renames, removals, or changes to when a component should be used. Keep usage notes and Storybook examples for shared components current.
 
+When adding or changing UI motion, follow the [animation guidelines](docs/animation-guidelines.md). For pointer-driven motion, keep previews frame-coalesced, honor reduced motion, and verify both snap directions at a mobile viewport.
+
 # Shipping
 
 When asked to ship work in this repository, carry it through the start of the production deployment.

@@ -1,6 +1,6 @@
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from 'react'
 
-type MotionSpeed = 'standard' | 'overlay' | 'panel'
+type MotionSpeed = 'standard' | 'overlay' | 'panel' | 'snap'
 type PresenceState = 'open' | 'exit'
 const EXIT_PAINT_BUFFER_MS = 34
 
@@ -11,19 +11,23 @@ export function motionDuration(speed: MotionSpeed) {
   return duration > 0 ? duration : 0
 }
 
-export function animatePanelLayout(element: HTMLElement, before: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>, duration: number) {
+export function animatePanelLayout(element: HTMLElement, before: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>, duration: number, anchorX: 'left' | 'center' = 'left') {
+  if (duration <= 0) return
   const after = element.getBoundingClientRect()
   if (!after.width || !after.height) return
-  const x = before.left - after.left
+  const x = anchorX === 'center'
+    ? before.left + before.width / 2 - (after.left + after.width / 2)
+    : before.left - after.left
   const y = before.top - after.top
   const scaleX = before.width / after.width
   const scaleY = before.height / after.height
   if (Math.abs(x) < .5 && Math.abs(y) < .5 &&
     Math.abs(before.width - after.width) < .5 && Math.abs(before.height - after.height) < .5) return
   const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+  const transformOrigin = anchorX === 'center' ? 'center top' : 'top left'
   return element.animate([
-    { transform: `translate(${x}px, ${y}px) scale(${scaleX}, ${scaleY})`, transformOrigin: 'top left' },
-    { transform: 'none', transformOrigin: 'top left' },
+    { transform: `translate(${x}px, ${y}px) scale(${scaleX}, ${scaleY})`, transformOrigin },
+    { transform: 'none', transformOrigin },
   ], { duration, easing })
 }
 

@@ -18,6 +18,7 @@ import { regionSumState, sizedRegionSumState } from './region-sum.ts'
 import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
+import { createUuid } from '../uuid.ts'
 import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
 import type { SizedRuleGame } from './sized-rule-game.ts'
@@ -113,12 +114,7 @@ const HOUSES = [
 ]
 
 export function createGameId(): string {
-  // getRandomValues works on plain HTTP. Set the UUID v4 version and variant bits.
-  const bytes = crypto.getRandomValues(new Uint8Array(16))
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
-  return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`
+  return createUuid()
 }
 
 export function makeGame(id: string, title: string, givens: string, source: Source, created = Date.now(), grid?: SizedGrid): Game {
@@ -600,6 +596,25 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   const position = { ...game.position, entries, center, corner }
   if (replacedEntry) delete position.eliminations
   return move(game, position)
+}
+
+/** Remove any selected marks in the cell, or add the whole group when none are present. */
+export function toggleCandidateGroup(game: Game, cell: number, mode: 'candidate' | 'center' | 'corner', selected: number): Game {
+  const mask = selected & ((1 << (game.grid ?? CLASSIC_GRID).size) - 1)
+  const position = game.position
+  if (!mask || visibleGivensOf(game)[cell] !== '0' || position.entries[cell] !== '0') return game
+  const existing = mode === 'candidate' ? position.center[cell] | position.corner[cell] : position[mode][cell]
+  const remove = Boolean(existing & mask)
+  let { center, corner } = position
+  if (mode === 'center' || (mode === 'candidate' && remove && (center[cell] & mask))) {
+    center = center.slice()
+    center[cell] = remove ? center[cell] & ~mask : center[cell] | mask
+  }
+  if (mode !== 'center') {
+    corner = corner.slice()
+    corner[cell] = remove ? corner[cell] & ~mask : corner[cell] | mask
+  }
+  return move(game, { ...position, center, corner })
 }
 
 /** Rebuild a live Pencil drag from its starting position so the whole stroke is one undo step. */

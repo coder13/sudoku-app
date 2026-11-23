@@ -671,7 +671,7 @@ function queueSave(id: string, edit: PuzzleEdit) {
     queue = { edits: [] }
     saveQueues.set(id, queue)
   }
-  saveWriter ??= crypto.randomUUID()
+  saveWriter ??= createGameId()
   queue.edits.push({ ...edit, sequence: ++saveSequence })
   void startSave(id, queue)
 }

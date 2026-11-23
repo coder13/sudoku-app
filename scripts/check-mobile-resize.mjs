@@ -55,21 +55,25 @@ async function snapshot(page) {
     const grid = document.querySelector('.sudoku-grid')
     const frame = document.querySelector('.board-frame')
     const badge = document.querySelector('.puzzle-mode-tab')
+    const handle = document.querySelector('.mobile-input-resize')
     const box = element => {
       const { x, y, width, height } = element.getBoundingClientRect()
       return { x, y, width, height }
     }
     const badgeBox = box(badge)
+    const handleBox = box(handle)
     return {
       input: box(input), grid: box(grid), frame: box(frame), badge: badgeBox,
       outsideClues: [...document.querySelectorAll('[data-outside-clue]')].map(clue => ({
         type: clue.dataset.outsideClue, box: box(clue),
       })),
       edge: document.querySelector('[data-mobile-panel="input"]').dataset.resizeEdge,
-      preview: Boolean(document.querySelector('[data-resize-preview]')),
+      preview: Boolean(document.querySelector('[data-resize-preview], .puzzle[style*="--mobile-input-resize-puzzle-scale"]')),
       resizing: layout.hasAttribute('data-input-resizing'),
       commits: window.resizeCommits.length,
       savedHeight: layout.style.getPropertyValue('--mobile-resized-input-height'),
+      boardLimit: layout.style.getPropertyValue('--mobile-fit-board-height'),
+      resizeHandleReachable: handle.contains(document.elementFromPoint(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)),
       badgeVisible: badge.contains(document.elementFromPoint(badgeBox.x + badgeBox.width / 2, badgeBox.y + badgeBox.height / 2)),
       styles: [...document.querySelectorAll('.mobile-input-tabs, .puzzle-column, .puzzle, .puzzle-zoom, .puzzle-zoom-content, .puzzle-metadata, .puzzle-actions')]
         .map(element => element.getAttribute('style') || ''),
@@ -200,7 +204,10 @@ async function checkBehavior(page, client) {
     lastPreview = current
   }
   assert.ok(widths.every((width, index) => index === 0 || width >= widths[index - 1]), 'board growth must be gradual')
-  assert.ok(widths.at(-1) > widths[0] + 20, 'a previously shrunken board must grow again')
+  assert.ok(widths.at(-1) > widths[0] + 20,
+    `a previously shrunken board must grow again: ${widths.join(' → ')}, ` +
+    `input heights ${small.input.height} → ${lastPreview.input.height}, board limit ${small.boardLimit}, ` +
+    `resize handle reachable: ${small.resizeHandleReachable}, resizing: ${lastPreview.resizing}`)
   await finishDrag(page, client)
   const expanded = await snapshot(page)
   assertGeometry(expanded, 'after expansion commits')

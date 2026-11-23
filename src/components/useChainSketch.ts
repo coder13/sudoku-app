@@ -367,7 +367,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       const remaining = edges.filter(edge => !edge.includes(id))
       if (remaining.length === edges.length - 1) {
         changeEdges(remaining)
-        setStatus('Branch tip removed.')
+        setStatus('')
         return
       }
     }
@@ -397,7 +397,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     if (!extension) return
     setDrawingIntent(true)
     changeEdges([...edges, ...extension], null, drawing ? undefined : startHighlightDigit ?? undefined)
-    setStatus(`Loop completed with ${extension.length} ${extension.length === 1 ? 'link' : 'links'}.`)
+    setStatus('')
   }
 
   function stop() {
@@ -507,7 +507,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     },
     clear() {
       changeEdges([])
-      setStatus('Links cleared.')
+      setStatus('')
     },
   }
 }

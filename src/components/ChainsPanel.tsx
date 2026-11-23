@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, Redo2, RotateCw, Trash2, Undo2 } from 'lucide-react'
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Deduction } from '../sudoku/engine'
 import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
 import { chainCandidate, type LinkStrength } from '../sudoku/chains'
@@ -40,6 +40,27 @@ function compactPath(nodes: readonly number[], strengths: readonly LinkStrength[
     const candidate = `${digit}${cellName(cell).toLowerCase()}`
     return i === 0 ? candidate : `${strengths[i - 1] === 'strong' ? '=' : '−'} ${candidate}`
   }).join(' ')
+}
+
+function ChainNotation({ id, paths }: {
+  id: string
+  paths: readonly { nodes: readonly number[]; strengths: readonly LinkStrength[] }[]
+}) {
+  return <span className="chain-notation" id={id}><code>{paths.map(({ nodes, strengths }, pathIndex) => (
+    <span className="chain-notation-path" key={`${pathIndex}-${nodes.join('-')}`}>
+      {pathIndex > 0 && ', '}
+      {nodes.map((node, index) => {
+        const { cell, digit } = chainCandidate(node)
+        const candidate = `${digit}${cellName(cell).toLowerCase()}`
+        if (index === 0) return <span className="chain-notation-node" key={`${node}-${index}`}>{candidate}</span>
+        return <Fragment key={`${node}-${index}`}>
+          {' '}<span className="chain-notation-step">
+            {strengths[index - 1] === 'strong' ? '=' : '−'} {candidate}
+          </span>
+        </Fragment>
+      })}
+    </span>
+  ))}</code></span>
 }
 
 function LinkLegend({ notation = false }: { notation?: boolean }) {
@@ -151,8 +172,9 @@ function ChainResults({ proofs, onPreview, showEliminations }: {
   </article>
 }
 
-function ChainActionsMenu({ actions }: {
-  actions: { label: string; icon: typeof Link2; disabled: boolean; title?: string; opensDialog?: boolean; run: () => void }[]
+function ChainActionsMenu({ actions, label = 'Chain actions' }: {
+  actions: { label: string; icon: typeof Link2; disabled: boolean; title?: string; opensDialog?: boolean; checked?: boolean; toggle?: boolean; run: () => void }[]
+  label?: string
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -192,9 +214,19 @@ function ChainActionsMenu({ actions }: {
     trigger.current?.focus({ preventScroll: true })
   }
 
+  const items = actions.map(({ label: actionLabel, icon: Icon, disabled, title, opensDialog, checked, toggle, run }) => (
+    <button type="button" key={actionLabel} role={toggle ? 'menuitemcheckbox' : 'menuitem'} tabIndex={-1} aria-disabled={disabled}
+      aria-checked={toggle ? Boolean(checked) : undefined}
+      aria-haspopup={opensDialog ? 'dialog' : undefined} title={title} onClick={() => {
+      if (disabled) return
+      if (!toggle) close()
+      run()
+    }}><Icon size={16} aria-hidden="true" />{actionLabel}</button>
+  ))
+
   return <>
-    <IconButton ref={trigger} variant="quiet" aria-label="Chain actions"
-      title="Chain actions" aria-haspopup="menu" aria-expanded={open} popoverTarget={id}
+    <IconButton ref={trigger} variant="quiet" aria-label={label}
+      title={label} aria-haspopup="menu" aria-expanded={open} popoverTarget={id}
       onKeyDown={(event) => {
         if (event.key !== 'ArrowDown') return
         event.preventDefault()
@@ -202,7 +234,7 @@ function ChainActionsMenu({ actions }: {
       }}>
       <MoreHorizontal size={18} aria-hidden="true" />
     </IconButton>
-    <div ref={popover} id={id} popover="auto" className="app-menu chain-actions-menu" role="menu" aria-label="Chain actions"
+    <div ref={popover} id={id} popover="auto" className="app-menu chain-actions-menu" role="menu" aria-label={label}
       onToggle={(event) => setOpen(event.currentTarget.matches(':popover-open'))}
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Tab') {
@@ -217,14 +249,7 @@ function ChainActionsMenu({ actions }: {
           items[next]?.focus()
         }
       }}>
-      {actions.map(({ label, icon: Icon, disabled, title, opensDialog, run }) => (
-        <button type="button" key={label} role="menuitem" tabIndex={-1} aria-disabled={disabled}
-          aria-haspopup={opensDialog ? 'dialog' : undefined} title={title} onClick={() => {
-          if (disabled) return
-          close()
-          run()
-        }}><Icon size={16} aria-hidden="true" />{label}</button>
-      ))}
+      {items}
     </div>
   </>
 }
@@ -292,18 +317,22 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   return <section className="chains-panel" aria-label="Chains">
     {unavailable ? <p role="status">{unavailable}</p> : <>
       <div className="chain-panel-tools">
-        <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
-          <Plus size={15} aria-hidden="true" /> New chain
-        </Button>
-        <div className="chain-panel-end-actions">
+        <div className="chain-panel-primary-actions">
+          <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
+            <Plus size={15} aria-hidden="true" /> New chain
+          </Button>
           <Button variant="primary" className="apply-chain-edits" disabled={!sketch.allActions.length}
             title={`Apply deductions from all chains (${applyKey})`} aria-keyshortcuts={applyKey} onClick={onApply}>
             Apply edits
           </Button>
-          {eliminations && <Button variant="quiet" aria-pressed={eliminations.shown} onClick={eliminations.toggle}>
-            {eliminations.shown ? 'Hide eliminations' : 'Show eliminations'}
-          </Button>}
-          {strongLinks && <Button aria-pressed={strongLinks.shown} onClick={strongLinks.toggle}>Show strong links</Button>}
+        </div>
+        <div className="chain-panel-display-actions">
+          <ChainActionsMenu label="Chain display options" actions={[
+            ...(eliminations ? [{ label: 'Show eliminations', icon: Eye, disabled: false, toggle: true,
+              checked: eliminations.shown, run: eliminations.toggle }] : []),
+            ...(strongLinks ? [{ label: 'Show strong links', icon: Link2, disabled: false, toggle: true,
+              checked: strongLinks.shown, run: strongLinks.toggle }] : []),
+          ]} />
         </div>
       </div>
       {applyFailed && <p role="status">Some chain edits conflict or the grid has changed.</p>}
@@ -336,7 +365,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
                   {typeId && <span id={typeId} className="chain-type-label">{visibleTypes.join(' · ')}</span>}
                 </span>
                 {notationId
-                  ? <span className="chain-notation" id={notationId}><code>{paths.map(({ nodes, strengths }) => compactPath(nodes, strengths)).join(', ')}</code></span>
+                  ? <ChainNotation id={notationId} paths={paths} />
                   : <span className="chain-empty">No links yet.</span>}
               </button>
               <IconButton variant="quiet" aria-label={visibilityLabel} title={visibilityLabel}

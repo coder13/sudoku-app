@@ -2,6 +2,7 @@ import {
   calcudokuCandidateSignatures, calcudokuRecipeKey, calcudokuRecipeSignature,
 } from '../calcudoku/generator.ts'
 import type { NumberPuzzleDifficulty } from './catalog.ts'
+import { createUuid } from '../uuid.ts'
 import {
   decodeGeneratedNumberPuzzle, encodeGeneratedNumberPuzzle, generatedNumberToken, RECENT_GENERATED_PUZZLE_LIMIT,
 } from './generated.ts'
@@ -164,7 +165,7 @@ export async function generateIndexedCalcudoku(
         const recipe = selection.recipe ??
           olderCalcudoku(difficulty, sessions.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
         // Let the board open before the index writes compete with the session save.
-        await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()), Boolean(last || reset))
+        await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, createUuid()), Boolean(last || reset))
         if (last || reset) await saveLayouts(db, checkpoint, last, additions, true).catch(() => {})
         return
       }
@@ -176,7 +177,7 @@ export async function generateIndexedCalcudoku(
         const { sessions: history } = await readCalcudokuSessions()
         recipe = olderCalcudoku(difficulty, history.map(({ id }) => id), selection.excluded) ?? selection.catalogRecipe()
       }
-      await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, crypto.randomUUID()))
+      await publish(encodeGeneratedNumberPuzzle({ game: 'calcudoku', difficulty, recipe }, createUuid()))
       return
     }
     throw new Error('Calcudoku layout history changed during indexing.')

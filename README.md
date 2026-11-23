@@ -25,6 +25,8 @@ Run `npm run test:wasm` to build and test the browser engine. Run `cargo bench -
 
 This project is still in early, active development. Changes can be committed and pushed directly to `main`; pull requests are not required at this stage. Use a pull request only when a change specifically needs review or isolated discussion.
 
+For UI transitions and pointer-driven movement, follow the [animation guidelines](docs/animation-guidelines.md).
+
 The coverage benchmark reports logical solve rates and rating times for fixed everyday, 17-clue, and expert grids. To save replayable stalled positions, redirect standard output to a JSON Lines file. The group totals and timings appear on standard error.
 
 ```sh

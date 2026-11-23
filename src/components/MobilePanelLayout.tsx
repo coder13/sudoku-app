@@ -17,10 +17,14 @@ type Props = {
   blocked: boolean
   puzzleId: string
   withHint: boolean
+  fitContent?: boolean
   resizableInput?: boolean
   inputTabCount?: number
   savedInputHeight?: number
   onInputHeightChange?: (height: number | undefined) => void
+  puzzleTopSpace?: number
+  puzzleShrink?: number
+  onPuzzleTopSpaceChange?: (space: number, shrink: number) => void
   hintSwipe?: HintSwipeActions
 }
 type Hold = { pointerId: number; x: number; y: number; timer: number }
@@ -41,6 +45,350 @@ type Drag = {
 }
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
+const PUZZLE_GESTURE_ANCHOR_SIZE = 32
+const PUZZLE_GESTURE_LOCK_FALLBACK_MS = 450
+type PuzzleGesture = {
+  pointerId: number
+  startY: number
+  latestY: number
+  startSpace: number
+  startShrink: number
+  minSpace: number
+  gapFree: number
+  maxShrink: number
+  boardHeight: number
+  panelHeight: number
+  space: number
+  shrink: number
+  moved: boolean
+  frame: number | null
+}
+type PuzzleGesturePointer = {
+  pointerId: number
+  isPrimary: boolean
+  button: number
+  clientX: number
+  clientY: number
+  preventDefault: () => void
+  stopPropagation?: () => void
+}
+type PuzzlePosition = { delta: number; space: number; shrink: number; minDelta: number; maxDelta: number }
+
+function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }: {
+  value: number
+  shrink: number
+  onChange?: (space: number, shrink: number) => void
+  disabled: boolean
+  edge: 'top' | 'bottom'
+}) {
+  const zone = useRef<HTMLDivElement>(null)
+  const drag = useRef<PuzzleGesture | null>(null)
+  const pendingPointer = useRef<{ pointerId: number; startX: number; startY: number } | null>(null)
+  const preview = useRef<HTMLElement | null>(null)
+  const puzzlePreview = useRef<HTMLElement | null>(null)
+  const pageRef = useRef<HTMLElement | null>(null)
+  const lockCancel = useRef<(() => void) | null>(null)
+  const gestureHandlers = useRef<{ start: (event: PuzzleGesturePointer, fromDrag?: boolean, startY?: number) => void; move: (event: PuzzleGesturePointer, allowBubble?: boolean) => void; finish: (event: PuzzleGesturePointer, commit: boolean) => void } | null>(null)
+
+  function setPreview(current: PuzzleGesture) {
+    const panel = preview.current
+    if (!panel) return
+    const panelHeight = Math.max(1, current.panelHeight)
+    const scale = Math.max(0.25, (panelHeight - current.shrink) / panelHeight)
+    const translate = `${current.space - current.startSpace}px`
+    if (panel.style.getPropertyValue('--puzzle-gesture-translate') !== translate) {
+      panel.style.setProperty('--puzzle-gesture-translate', translate)
+    }
+    const puzzleContent = puzzlePreview.current
+    if (puzzleContent) {
+      const nextScale = String(scale)
+      if (puzzleContent.style.getPropertyValue('--mobile-puzzle-gesture-scale') !== nextScale) {
+        puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', nextScale)
+        // The scale layer is only needed once the pointer has actually changed
+        // the puzzle's size. Avoid invalidating the full puzzle subtree on
+        // every frame while the gesture is only translating it.
+        if (!puzzleContent.hasAttribute('data-puzzle-gesture-scaling')) {
+          puzzleContent.setAttribute('data-puzzle-gesture-scaling', '')
+        }
+      }
+    }
+    if (!panel.hasAttribute('data-puzzle-gesture-moving')) {
+      panel.setAttribute('data-puzzle-gesture-moving', '')
+    }
+  }
+
+  function positionAtDelta(current: PuzzleGesture, rawDelta: number): PuzzlePosition {
+    const maxDelta = current.gapFree + current.maxShrink
+    // Pulling up first restores any gesture shrink, then uses the saved top
+    // inset until the board reaches the top edge of the page.
+    const minDelta = current.minSpace - current.startSpace - current.startShrink
+    const delta = Math.max(minDelta, Math.min(maxDelta, rawDelta))
+    const shrinkDelta = delta < 0
+      ? Math.max(-current.startShrink, delta)
+      : Math.max(0, delta - current.gapFree)
+    const travelDelta = delta - shrinkDelta
+    return {
+      delta,
+      space: Math.max(current.minSpace, current.startSpace + travelDelta),
+      shrink: current.startShrink + shrinkDelta,
+      minDelta,
+      maxDelta,
+    }
+  }
+
+  function updatePreview(current: PuzzleGesture, y: number) {
+    const position = positionAtDelta(current, y - current.startY)
+    current.moved ||= Math.abs(position.delta) > 6
+    current.space = position.space
+    current.shrink = position.shrink
+    setPreview(current)
+  }
+
+  function start(event: PuzzleGesturePointer, fromDrag = false, startY = event.clientY) {
+    if (disabled || !event.isPrimary || (!fromDrag && event.button !== 0) || drag.current) return
+    lockCancel.current?.()
+    lockCancel.current = null
+    const gestureZone = zone.current
+    const layout = gestureZone?.closest('.mobile-panel-layout')
+    const page = layout?.closest<HTMLElement>('.standard-workspace-page')
+    const puzzlePanel = layout?.querySelector<HTMLElement>('[data-mobile-panel="puzzle"]')
+    const board = puzzlePanel?.querySelector<HTMLElement>('.puzzle-zoom, .puzzle-stage .board-frame')
+    const puzzleContent = puzzlePanel?.querySelector<HTMLElement>('.puzzle')
+    const gap = layout?.querySelector<HTMLElement>('.mobile-panel-gap')
+    if (!layout || !page || !puzzlePanel || !board || !puzzleContent || !gap) return
+    event.preventDefault()
+    if (!fromDrag) event.stopPropagation?.()
+    gestureZone?.setPointerCapture(event.pointerId)
+    preview.current = puzzlePanel
+    puzzlePreview.current = puzzleContent
+    pageRef.current = page
+    const gapHeight = Number.parseFloat(getComputedStyle(gap).blockSize) || 0
+    const gapMinimum = Number.parseFloat(getComputedStyle(gap).flexBasis) || 0
+    const boardHeight = Math.max(1, board.offsetHeight)
+    const minBoard = layout.hasAttribute('data-fit-content') ? 130 : 180
+    // Upward movement can remove added space, but keep the workspace's top
+    // inset so the puzzle metadata and controls remain visible.
+    const minSpace = 0
+    const startSpace = Math.max(minSpace, value)
+    const current: PuzzleGesture = {
+      pointerId: event.pointerId, startY, latestY: event.clientY,
+      startSpace, startShrink: shrink, minSpace, gapFree: Math.max(0, gapHeight - gapMinimum),
+      maxShrink: Math.max(0, boardHeight - minBoard - shrink), boardHeight,
+      panelHeight: Math.max(1, puzzleContent.offsetHeight),
+      space: startSpace, shrink, moved: false, frame: null,
+    }
+    drag.current = current
+  }
+
+  function move(event: PuzzleGesturePointer, allowBubble = false) {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    event.preventDefault()
+    if (!allowBubble) event.stopPropagation?.()
+    current.latestY = event.clientY
+    if (current.frame !== null) return
+    current.frame = requestAnimationFrame(() => {
+      current.frame = null
+      if (drag.current === current) updatePreview(current, current.latestY)
+    })
+  }
+
+  function finish(event: PuzzleGesturePointer, commit: boolean) {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    if (current.frame !== null) cancelAnimationFrame(current.frame)
+    current.frame = null
+    if (commit) updatePreview(current, event.clientY)
+    drag.current = null
+    const gestureZone = zone.current
+    if (gestureZone?.hasPointerCapture(event.pointerId)) gestureZone.releasePointerCapture(event.pointerId)
+    const panel = preview.current
+    const puzzleContent = puzzlePreview.current
+    const page = pageRef.current
+    const layout = gestureZone?.closest<HTMLElement>('.mobile-panel-layout')
+    if (!panel || !puzzleContent || !page || !layout) return
+
+    const clearPreview = () => {
+      panel.removeAttribute('data-puzzle-gesture-moving')
+      panel.removeAttribute('data-puzzle-gesture-locking')
+      panel.style.removeProperty('--puzzle-gesture-translate')
+      puzzleContent.removeAttribute('data-puzzle-gesture-scaling')
+      puzzleContent.removeAttribute('data-puzzle-gesture-locking')
+      preview.current = null
+      puzzlePreview.current = null
+      pageRef.current = null
+    }
+
+    if (!commit || !current.moved) {
+      const panelHeight = Math.max(1, current.panelHeight)
+      puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', String(Math.max(0.25, (panelHeight - shrink) / panelHeight)))
+      clearPreview()
+      return
+    }
+
+    const visualTop = panel.getBoundingClientRect().top
+    const rawDelta = (current.space - current.startSpace) + (current.shrink - current.startShrink)
+    const rawPosition = positionAtDelta(current, rawDelta)
+    // Each settled position is an anchor. Snap the gesture's displacement
+    // relative to that position so page padding cannot shift the grid and make
+    // a downward gesture settle behind the release point.
+    const anchorDelta = Math.round(rawPosition.delta / PUZZLE_GESTURE_ANCHOR_SIZE) * PUZZLE_GESTURE_ANCHOR_SIZE
+    const snappedDelta = rawPosition.delta <= rawPosition.minDelta + 0.001
+      ? rawPosition.minDelta
+      : rawPosition.delta >= rawPosition.maxDelta - 0.001
+        ? rawPosition.maxDelta
+        : anchorDelta
+    const targetPosition = positionAtDelta(current, snappedDelta)
+    const targetSpace = targetPosition.space
+    const targetShrink = targetPosition.shrink
+
+    if (targetSpace !== 0) {
+      page.style.setProperty('--puzzle-top-space', `${targetSpace}px`)
+      page.setAttribute('data-puzzle-top-space', '')
+    } else {
+      page.style.removeProperty('--puzzle-top-space')
+      page.removeAttribute('data-puzzle-top-space')
+    }
+    if (targetShrink > 0) layout.setAttribute('data-puzzle-shrunk', '')
+    else layout.removeAttribute('data-puzzle-shrunk')
+    if (targetShrink !== shrink || targetSpace !== value) onChange?.(targetSpace, targetShrink)
+
+    const committedTop = panel.getBoundingClientRect().top
+    // `committedTop` still includes the live drag transform. Remove that
+    // transform to get the new layout top, then offset from it to the exact
+    // position the panel occupied before the snap commit.
+    const liveTranslate = current.space - current.startSpace
+    const correctedTranslate = liveTranslate + visualTop - committedTop
+    panel.style.setProperty('--puzzle-gesture-translate', `${correctedTranslate}px`)
+
+    const panelHeight = Math.max(1, current.panelHeight)
+    const startScale = Number.parseFloat(puzzleContent.style.getPropertyValue('--mobile-puzzle-gesture-scale')) || 1
+    const targetScale = Math.max(0.25, (panelHeight - targetShrink) / panelHeight)
+    const needsPanelLock = Math.abs(correctedTranslate) > 0.5
+    const needsPuzzleLock = Math.abs(startScale - targetScale) > 0.001
+    const needsLock = needsPanelLock || needsPuzzleLock
+    if (!needsLock || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', String(targetScale))
+      clearPreview()
+      if (targetShrink === 0) puzzleContent.style.removeProperty('--mobile-puzzle-gesture-scale')
+      return
+    }
+
+    // Commit the corrected start transform with transitions still disabled.
+    // Otherwise the browser can coalesce this value with the final zero value
+    // and animate from the old drag offset, which can reverse the snap.
+    void panel.getBoundingClientRect()
+    void getComputedStyle(puzzleContent).transform
+    panel.setAttribute('data-puzzle-gesture-locking', '')
+    puzzleContent.setAttribute('data-puzzle-gesture-scaling', '')
+    puzzleContent.setAttribute('data-puzzle-gesture-locking', '')
+    void getComputedStyle(panel).transform
+    void getComputedStyle(puzzleContent).transform
+    if (needsPanelLock) panel.style.setProperty('--puzzle-gesture-translate', '0px')
+    if (needsPuzzleLock) puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', String(targetScale))
+
+    let timeout = 0
+    let panelDone = !needsPanelLock
+    let puzzleDone = !needsPuzzleLock
+    let cancelLock: () => void
+    const finishLock = (event?: Event) => {
+      if (event instanceof TransitionEvent && event.target === panel && event.propertyName === 'transform') panelDone = true
+      if (event instanceof TransitionEvent && event.target === puzzleContent && event.propertyName === 'transform') puzzleDone = true
+      if (event && (!panelDone || !puzzleDone)) return
+      window.clearTimeout(timeout)
+      panel.removeEventListener('transitionend', onTransitionEnd)
+      puzzleContent.removeEventListener('transitionend', onTransitionEnd)
+      panel.removeAttribute('data-puzzle-gesture-locking')
+      puzzleContent.removeAttribute('data-puzzle-gesture-locking')
+      panel.removeAttribute('data-puzzle-gesture-moving')
+      panel.style.removeProperty('--puzzle-gesture-translate')
+      puzzleContent.removeAttribute('data-puzzle-gesture-scaling')
+      preview.current = null
+      puzzlePreview.current = null
+      pageRef.current = null
+      if (targetShrink === 0) puzzleContent.style.removeProperty('--mobile-puzzle-gesture-scale')
+      if (lockCancel.current === cancelLock) lockCancel.current = null
+    }
+    const onTransitionEnd = (event: Event) => finishLock(event)
+    cancelLock = () => finishLock()
+    lockCancel.current = cancelLock
+    panel.addEventListener('transitionend', onTransitionEnd)
+    puzzleContent.addEventListener('transitionend', onTransitionEnd)
+    timeout = window.setTimeout(cancelLock, PUZZLE_GESTURE_LOCK_FALLBACK_MS)
+  }
+
+  gestureHandlers.current = { start, move, finish }
+
+  useEffect(() => () => { lockCancel.current?.() }, [])
+
+  useEffect(() => {
+    if (edge !== 'top') return
+    const pointerDown = (event: PointerEvent) => {
+      const gestureZone = zone.current
+      const puzzlePanel = gestureZone?.closest<HTMLElement>('[data-mobile-panel="puzzle"]')
+      const target = event.target instanceof Element ? event.target : null
+      if (!event.isPrimary || !gestureZone || !puzzlePanel || !target) return
+      const layout = gestureZone.closest<HTMLElement>('.mobile-panel-layout')
+      const page = layout?.closest<HTMLElement>('.standard-workspace-page')
+      const isAbovePuzzle = Boolean(page?.contains(target) && !puzzlePanel.contains(target)
+        && target.closest('.mobile-panel') === null
+        && event.clientY < puzzlePanel.getBoundingClientRect().top)
+      if (!puzzlePanel.contains(target) && !isAbovePuzzle) return
+      if (target.closest('.puzzle-mode-tab')) {
+        pendingPointer.current = null
+        return
+      }
+      if (getComputedStyle(gestureZone).display === 'none') return
+      const isGestureZone = isAbovePuzzle || Boolean(target.closest('.mobile-puzzle-gesture-zone[data-edge="top"]'))
+      if (!isGestureZone && target.closest('input, textarea, select, [role="checkbox"], [role="gridcell"], [data-cell], .candidate-button')) return
+      if (!isGestureZone && target.closest('button, a, [role="button"]')) {
+        pendingPointer.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY }
+        return
+      }
+      gestureHandlers.current?.start(event)
+    }
+    const pointerMove = (event: PointerEvent) => {
+      if (drag.current) {
+        gestureHandlers.current?.move(event)
+        return
+      }
+      const pending = pendingPointer.current
+      if (!pending || pending.pointerId !== event.pointerId) return
+      const deltaX = event.clientX - pending.startX
+      const deltaY = event.clientY - pending.startY
+      if (Math.abs(deltaX) > MOVE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+        pendingPointer.current = null
+        return
+      }
+      if (Math.abs(deltaY) <= MOVE_THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return
+      pendingPointer.current = null
+      gestureHandlers.current?.start(event, true, pending.startY)
+      if (drag.current) gestureHandlers.current?.move(event, true)
+    }
+    const pointerUp = (event: PointerEvent) => {
+      pendingPointer.current = null
+      if (drag.current) gestureHandlers.current?.finish(event, true)
+    }
+    const pointerCancel = (event: PointerEvent) => {
+      pendingPointer.current = null
+      if (drag.current) gestureHandlers.current?.finish(event, false)
+    }
+    document.addEventListener('pointerdown', pointerDown, true)
+    document.addEventListener('pointermove', pointerMove, true)
+    document.addEventListener('pointerup', pointerUp, true)
+    document.addEventListener('pointercancel', pointerCancel, true)
+    return () => {
+      document.removeEventListener('pointerdown', pointerDown, true)
+      document.removeEventListener('pointermove', pointerMove, true)
+      document.removeEventListener('pointerup', pointerUp, true)
+      document.removeEventListener('pointercancel', pointerCancel, true)
+    }
+  }, [edge])
+
+  return <div ref={zone} className="mobile-puzzle-gesture-zone" data-edge={edge} data-no-panel-hold aria-hidden="true"
+    onPointerDown={edge === 'bottom' ? start : undefined} onPointerMove={edge === 'bottom' ? move : undefined} onPointerUp={edge === 'bottom' ? event => finish(event, true) : undefined}
+    onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)} />
+}
 
 type MotionProps = {
   root: RefObject<HTMLDivElement | null>
@@ -99,7 +447,8 @@ class MobilePanelMotion extends Component<MotionProps, Record<string, never>, La
 
     for (const { element, rect } of snapshot.cards) {
       if (!element.isConnected) continue
-      const animation = animatePanelLayout(element, rect, snapshot.duration)
+      const anchorX = element.closest('[data-mobile-panel="puzzle"]') ? 'center' : 'left'
+      const animation = animatePanelLayout(element, rect, snapshot.duration, anchorX)
       if (animation) this.animations.push(animation)
     }
   }
@@ -121,6 +470,7 @@ export function MobilePanelLayout(props: Props) {
   const [saveFailed, setSaveFailed] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const inputId = useId()
+  const puzzleGestureBase = useRef<{ puzzleId: string; height: number } | null>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const hold = useRef<Hold | null>(null)
@@ -142,11 +492,12 @@ export function MobilePanelLayout(props: Props) {
     const hintPanel = props.withHint ? layout?.querySelector<HTMLElement>('[data-mobile-panel="hint"]') : null
     const gap = layout?.querySelector<HTMLElement>('.mobile-panel-gap')
     if (!layout || !page || !workspace || !puzzle || !input || !gap) return
-
-    const blockSize = (element: HTMLElement) => parseFloat(getComputedStyle(element).blockSize)
+    const blockSize = (element: HTMLElement) => element.getBoundingClientRect().height
     const fitBoard = () => {
-      // The resize preview owns the measured split until release. Avoid geometry
-      // reads from this observer while the pointer updates its wrapper sizes.
+      // The resize handle drives the card and puzzle preview at pointer cadence.
+      // Avoid layout reads and keypad zoom updates here: zoom changes force a
+      // layout of every digit control on each frame. The observed panel size
+      // triggers this once more after the gesture commits.
       if (layout.hasAttribute('data-input-resizing')) return
       // The footer must remain as wide as the input card even after the grid shrinks.
       const inputWidth = input.getBoundingClientRect().width
@@ -156,38 +507,77 @@ export function MobilePanelLayout(props: Props) {
           layout.style.setProperty('--mobile-input-panel-width', value)
         }
       }
-      const fitHint = layout.hasAttribute('data-fit-hint')
-      const sideBySide = fitHint && getComputedStyle(workspace).display === 'grid'
-      if (layout.hasAttribute('data-input-sized') && !sideBySide) return
+      const digits = input.querySelector<HTMLElement>('.mobile-input-digits')
+      const digitControls = digits?.querySelector<HTMLElement>(':scope > .workspace-controls')
+      if (digits && digitControls) {
+        const visibleHeight = digits.getBoundingClientRect().height
+        const currentScale = Number.parseFloat(digitControls.style.getPropertyValue('--mobile-digit-fit-scale')) || 1
+        const naturalHeight = digitControls.getBoundingClientRect().height / currentScale
+        const fitScale = naturalHeight > 0 ? Math.min(1, visibleHeight / naturalHeight) : 1
+        const nextScale = String(Math.round(fitScale * 1000) / 1000)
+        if (digitControls.style.getPropertyValue('--mobile-digit-fit-scale') !== nextScale) {
+          digitControls.style.setProperty('--mobile-digit-fit-scale', nextScale)
+        }
+      }
+      const aboveHeight = Math.max(0, puzzle.getBoundingClientRect().top - page.getBoundingClientRect().top)
+      const gestureHeight = `${Math.ceil(aboveHeight)}px`
+      if (layout.style.getPropertyValue('--mobile-puzzle-above-height') !== gestureHeight) {
+        layout.style.setProperty('--mobile-puzzle-above-height', gestureHeight)
+      }
       const board = puzzle.querySelector<HTMLElement>('.puzzle-zoom, .puzzle-stage .board-frame')
       const puzzleColumn = board?.closest<HTMLElement>('.puzzle-column')
-      if (!board || !puzzleColumn) return
-      const pageStyle = getComputedStyle(page)
-      const margins = [puzzle, input, hintPanel].reduce((sum, card) => (
-        sum + (card ? parseFloat(getComputedStyle(card).marginBlockStart) : 0)
-      ), 0)
-      const available = parseFloat(pageStyle.blockSize) - parseFloat(pageStyle.paddingBlockStart) - parseFloat(pageStyle.paddingBlockEnd)
-        - parseFloat(getComputedStyle(workspace).paddingBlockStart) - parseFloat(getComputedStyle(gap).flexBasis) - margins
-      // With a hint open the keypad can scroll, so budget only its minimum usable height.
-      const inputSpace = fitHint ? parseFloat(getComputedStyle(input).minBlockSize) : blockSize(input)
-      const puzzleSpace = sideBySide ? blockSize(puzzle) : available - inputSpace - (hintPanel ? blockSize(hintPanel) : 0)
-      const boardSpace = puzzleSpace - (blockSize(sideBySide ? puzzleColumn : puzzle) - blockSize(board))
-      const limit = `${Math.floor(boardSpace)}px`
-      if (layout.style.getPropertyValue('--mobile-fit-board-height') !== limit) {
-        layout.style.setProperty('--mobile-fit-board-height', limit)
+      const puzzleContent = puzzle.querySelector<HTMLElement>('.puzzle')
+      if (!board || !puzzleColumn || !puzzleContent) return
+      const fitContent = layout.hasAttribute('data-fit-content')
+      const panelHeight = Math.max(1, puzzleContent.offsetHeight)
+      const puzzleShrink = props.puzzleShrink ?? 0
+      const savedNaturalHeight = parseFloat(layout.style.getPropertyValue('--mobile-natural-puzzle-height'))
+      const samePuzzleBase = puzzleGestureBase.current?.puzzleId === props.puzzleId
+      const baseHeight = puzzleShrink === 0
+        ? panelHeight
+        : samePuzzleBase ? puzzleGestureBase.current!.height : savedNaturalHeight || panelHeight + puzzleShrink
+      puzzleGestureBase.current = { puzzleId: props.puzzleId, height: baseHeight }
+      const puzzleScale = Math.max(0.25, (baseHeight - puzzleShrink) / baseHeight)
+      if (!puzzleContent.hasAttribute('data-puzzle-gesture-scaling')) {
+        puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', String(puzzleScale))
+      }
+      // Keep the input card at the bottom edge and fit the board into the
+      // space above it. Shrinking the card gives the board room to grow back
+      // to its gesture-set ceiling; growing it consumes board space first.
+      if (getComputedStyle(workspace).display === 'flex') {
+        const pageStyle = getComputedStyle(page)
+        const workspaceStyle = getComputedStyle(workspace)
+        const gapStyle = getComputedStyle(gap)
+        const pixels = (value: string) => Number.parseFloat(value) || 0
+        const margins = [puzzle, input, hintPanel].reduce((sum, card) => (
+          sum + (card ? pixels(getComputedStyle(card).marginBlockStart) + pixels(getComputedStyle(card).marginBlockEnd) : 0)
+        ), 0)
+        const inputSpace = fitContent && layout.classList.contains('with-hint')
+          ? pixels(getComputedStyle(input).minBlockSize) : blockSize(input)
+        const available = page.clientHeight - pixels(pageStyle.paddingBlockStart) - pixels(pageStyle.paddingBlockEnd)
+          - pixels(workspaceStyle.paddingBlockStart) - pixels(workspaceStyle.paddingBlockEnd)
+          - pixels(gapStyle.flexBasis) - margins - inputSpace
+          - (hintPanel ? blockSize(hintPanel) : 0)
+        const puzzleChrome = Math.max(0, puzzleContent.offsetHeight - board.offsetHeight)
+        const boardLimit = `${Math.max(64, Math.floor(available - puzzleChrome))}px`
+        if (layout.style.getPropertyValue('--mobile-fit-board-height') !== boardLimit) {
+          layout.style.setProperty('--mobile-fit-board-height', boardLimit)
+        }
+      } else {
+        layout.style.removeProperty('--mobile-fit-board-height')
       }
     }
 
     fitBoard()
     const observer = new ResizeObserver(fitBoard)
-    for (const element of [page, puzzle, puzzle.querySelector('.puzzle-column'), input, hintPanel]) {
+    for (const element of [page, puzzle, puzzle.querySelector('.puzzle-column'), puzzle.querySelector('.puzzle-zoom, .puzzle-stage .board-frame'), input, hintPanel]) {
       if (element) observer.observe(element)
     }
     return () => {
       observer.disconnect()
       layout.style.removeProperty('--mobile-input-panel-width')
     }
-  }, [order, props.inputTabCount, props.rearranging, props.withHint])
+  }, [order, props.inputTabCount, props.puzzleId, props.puzzleShrink, props.rearranging, props.withHint, props.fitContent])
 
   function cancelHold() {
     if (hold.current) window.clearTimeout(hold.current.timer)
@@ -375,7 +765,8 @@ export function MobilePanelLayout(props: Props) {
   }, [visible.join(',')])
 
   const layout = <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
-    data-fit-hint={props.withHint && props.resizableInput && !props.rearranging || undefined}
+    data-fit-content={(props.withHint || props.fitContent) && !props.rearranging || undefined}
+    data-puzzle-shrunk={Boolean(props.puzzleShrink) || undefined}
     data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
     onPointerDownCapture={startHold}
     onContextMenuCapture={(event) => { if (hold.current || props.rearranging) event.preventDefault() }}
@@ -413,8 +804,11 @@ export function MobilePanelLayout(props: Props) {
             ...(moving ? { transform: `translate(${dragView.x}px, ${dragView.y}px)` } : {}),
           } as CSSProperties}>
           <div className="mobile-panel-content" inert={props.rearranging} aria-hidden={props.rearranging || undefined}>
+            {id === 'puzzle' && <MobilePuzzleTopSpaceGesture edge="top" value={props.puzzleTopSpace ?? 0} shrink={props.puzzleShrink ?? 0}
+              onChange={props.onPuzzleTopSpaceChange} disabled={props.blocked || props.rearranging} />}
             {resizeEdge && <MobileInputResizeHandle inputId={inputId} edge={resizeEdge}
               disabled={props.blocked || props.rearranging} withHint={props.withHint}
+              fitContent={Boolean(props.fitContent)}
               hasOpenTabs={Boolean(props.inputTabCount)} savedHeight={props.savedInputHeight}
               onHeightChange={props.onInputHeightChange} />}
             {id === 'hint' ? <MobileHintSwipe exiting={exiting}
@@ -430,7 +824,10 @@ export function MobilePanelLayout(props: Props) {
             </button>
           </div>}
         </div>
-        {index === 0 && visible.length > 1 && <div className="mobile-panel-gap" aria-hidden="true" />}
+        {index === 0 && visible.length > 1 && <div className="mobile-panel-gap" aria-hidden="true">
+          {id === 'puzzle' && <MobilePuzzleTopSpaceGesture edge="bottom" value={props.puzzleTopSpace ?? 0} shrink={props.puzzleShrink ?? 0}
+            onChange={props.onPuzzleTopSpaceChange} disabled={props.blocked || props.rearranging} />}
+        </div>}
       </Fragment>
     })}
     <span className="sr-only" role="status">{announcement}</span>

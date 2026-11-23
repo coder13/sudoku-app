@@ -31,15 +31,15 @@ export type WorkspaceMode = 'standard' | 'advanced'
 export type ColorMode = 'system' | 'light' | 'dark'
 export type { ThemeId } from './themes.ts'
 export const PUZZLE_BORDER_WIDTHS = [1, 2, 3, 4, 5, 6] as const
-export const MOBILE_PUZZLE_TOP_SPACES = Array.from({ length: 17 }, (_, index) => index * 16)
 export type AppearancePreferences = {
   colorMode: ColorMode
   lightTheme: ThemeId
   darkTheme: ThemeId
   flatAppearance: boolean
   showGuides: boolean
-  puzzleBorderWidth: typeof PUZZLE_BORDER_WIDTHS[number] | null
+  puzzleBorderWidth: typeof PUZZLE_BORDER_WIDTHS[number]
   mobilePuzzleTopSpace: number
+  mobilePuzzleShrink: number
   puzzleControlsPosition: 'top' | 'bottom'
   gridTextScale: number
   candidateTextSize: typeof CANDIDATE_TEXT_SIZES[number]
@@ -70,8 +70,9 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   darkTheme: DEFAULT_DARK_THEME,
   flatAppearance: false,
   showGuides: false,
-  puzzleBorderWidth: null,
+  puzzleBorderWidth: 2,
   mobilePuzzleTopSpace: 0,
+  mobilePuzzleShrink: 0,
   puzzleControlsPosition: 'top',
   gridTextScale: DEFAULT_GRID_TEXT_SCALE,
   candidateTextSize: 100,
@@ -152,7 +153,10 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         flatAppearance: savedAppearance.flatAppearance === true,
         showGuides: savedAppearance.showGuides === true,
         puzzleBorderWidth: PUZZLE_BORDER_WIDTHS.find(width => width === savedAppearance.puzzleBorderWidth) ?? DEFAULT_APPEARANCE.puzzleBorderWidth,
-        mobilePuzzleTopSpace: MOBILE_PUZZLE_TOP_SPACES.find(space => space === savedAppearance.mobilePuzzleTopSpace) ?? DEFAULT_APPEARANCE.mobilePuzzleTopSpace,
+        mobilePuzzleTopSpace: typeof savedAppearance.mobilePuzzleTopSpace === 'number' && Number.isFinite(savedAppearance.mobilePuzzleTopSpace)
+          ? Math.max(-256, savedAppearance.mobilePuzzleTopSpace) : DEFAULT_APPEARANCE.mobilePuzzleTopSpace,
+        mobilePuzzleShrink: typeof savedAppearance.mobilePuzzleShrink === 'number' && Number.isFinite(savedAppearance.mobilePuzzleShrink)
+          ? Math.max(0, savedAppearance.mobilePuzzleShrink) : DEFAULT_APPEARANCE.mobilePuzzleShrink,
         puzzleControlsPosition: savedAppearance.puzzleControlsPosition === 'bottom' ? 'bottom' : DEFAULT_APPEARANCE.puzzleControlsPosition,
         gridTextScale: clampGridTextScale(savedAppearance.gridTextScale),
         candidateTextSize: CANDIDATE_TEXT_SIZES.find(size => size === savedAppearance.candidateTextSize) ?? DEFAULT_APPEARANCE.candidateTextSize,

@@ -41,6 +41,7 @@
   --motion-standard-duration: 150ms;
   --motion-overlay-duration: 240ms;
   --motion-panel-duration: 240ms;
+  --motion-snap-duration: 320ms;
   --motion-press-duration: 60ms;
   --motion-move: cubic-bezier(.4, 0, .2, 1);
   --motion-enter: cubic-bezier(0, 0, .2, 1);
@@ -246,6 +247,7 @@ svg { flex-shrink: 0; }
   text-decoration: none;
 }
 .app-menu button[aria-pressed="true"] { background: var(--selected-bg); color: var(--dark-purple); }
+.app-menu button[role="menuitemcheckbox"][aria-checked="true"] { background: var(--primary-bg); color: var(--primary-ink); }
 .app-menu button:disabled { opacity: .45; cursor: default; }
 .app-menu-separator { height: 1px; margin: var(--space-4) 5px; background: var(--border); }
 .mobile-menu-only { display: none !important; }
@@ -658,9 +660,12 @@ svg { flex-shrink: 0; }
 .chains-panel p { color: var(--muted); overflow-wrap: anywhere; }
 .chain-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-6); }
 .chains-panel .button { min-height: 34px; padding-inline: 9px; font-size: 0.75rem; }
-.chain-panel-tools { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-8); }
-.chain-panel-end-actions { display: contents; }
-.chain-panel-tools .apply-chain-edits { margin-inline-start: auto; }
+.chain-panel-tools { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--space-4); min-inline-size: 0; }
+.chain-panel-primary-actions { display: flex; flex: 0 1 auto; flex-wrap: nowrap; align-items: center; gap: var(--space-4); min-inline-size: 0; }
+.chain-panel-display-actions { flex: 0 0 auto; margin-inline-start: auto; }
+.chains-panel .chain-panel-tools .button { padding-inline: var(--space-4); gap: var(--space-2); font-size: 0.6875rem; white-space: nowrap; }
+.chain-panel-tools .chain-panel-display-actions > .icon-button { flex: 0 0 auto; }
+.chain-panel-tools .apply-chain-edits { margin-inline-start: 0; }
 .apply-chain-edits.button:disabled {
   background: var(--surface-muted);
   border-color: var(--border);
@@ -668,17 +673,8 @@ svg { flex-shrink: 0; }
   box-shadow: none;
   opacity: 1;
 }
-.desktop-insight-body .chain-panel-tools { justify-content: flex-start; align-items: center; gap: var(--space-6); }
-.desktop-insight-body .chain-panel-tools .button { padding-inline: var(--space-6); gap: var(--space-4); }
-.desktop-insight-body .chain-panel-end-actions {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-inline-size: 100%;
-  gap: inherit;
-  margin-inline-start: auto;
-}
+.desktop-insight-body .chain-panel-tools { justify-content: flex-start; align-items: center; gap: var(--space-4); }
+.desktop-insight-body .chain-panel-tools .button { padding-inline: var(--space-4); gap: var(--space-2); }
 .desktop-insight-body .chain-panel-tools .apply-chain-edits { margin-inline-start: 0; }
 .chain-draw-tools, .chain-path-actions, .chain-edit-actions { gap: var(--space-4); }
 .chain-path-actions, .chain-edit-actions { display: flex; }
@@ -726,7 +722,9 @@ svg { flex-shrink: 0; }
 .chain-swatches i { width: 8px; height: 8px; border-radius: 50%; }
 .chain-row h2 { font-size: 0.75rem; margin-bottom: 2px; }
 .chain-row > :is(h2, p) { cursor: pointer; user-select: none; }
-.chain-row .chain-notation { color: var(--ink); }
+.chain-row .chain-notation { display: block; color: var(--ink); overflow-wrap: normal; }
+.chain-notation code { white-space: normal; }
+.chain-notation-step, .chain-notation-node { white-space: nowrap; }
 .chain-editor { display: grid; gap: var(--space-8); margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px solid var(--border); }
 .chains-panel label { display: grid; gap: 4px; min-width: 0; color: var(--muted); font-size: 0.75rem; font-weight: 650; }
 .chains-panel select {
@@ -3161,6 +3159,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .key.tone-key:not(:disabled):hover { background: var(--tone); border-color: #644d78; }
   .game-row:hover { background: var(--surface-active); }
   .app-menu button:not(:disabled):hover { background: var(--surface-hover); }
+  .app-menu button[role="menuitemcheckbox"][aria-checked="true"]:not(:disabled):hover { background: var(--primary-bg); }
   .button[aria-pressed="true"]:not(:disabled):hover,
   .icon-button[aria-pressed="true"]:not(:disabled):hover,
   .key:not(.tone-key)[aria-pressed="true"]:not(:disabled):hover,
@@ -3467,6 +3466,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     height: calc(100dvh - var(--topbar-height));
     overflow-y: auto;
     padding: var(--space-8);
+    --mobile-puzzle-base-top-padding: var(--space-8);
   }
   .puzzle-zoom {
     width: var(--board-frame-width);
@@ -3507,14 +3507,38 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     flex-direction: column;
     align-items: stretch;
     gap: 0;
+    justify-content: flex-end;
   }
   /* Stable sibling panels keep their state and the original spacing when reordered. */
   .mobile-panel-layout { display: contents; -webkit-touch-callout: none; }
+  .mobile-puzzle-gesture-zone { display: none; }
+  .mobile-panel[data-mobile-panel="puzzle"][data-puzzle-gesture-moving] {
+    transform: translate3d(0, var(--puzzle-gesture-translate, 0px), 0);
+    will-change: transform;
+  }
+  .mobile-panel[data-mobile-panel="puzzle"][data-puzzle-gesture-locking] {
+    transition: transform var(--motion-snap-duration) var(--motion-move);
+  }
+  .mobile-panel[data-mobile-panel="puzzle"] .puzzle[data-puzzle-gesture-scaling],
+  .mobile-panel-layout[data-puzzle-shrunk] .mobile-panel[data-mobile-panel="puzzle"] .puzzle {
+    transform: scale(var(--mobile-puzzle-gesture-scale, 1));
+    transform-origin: bottom center;
+    will-change: transform;
+  }
+  .mobile-panel[data-mobile-panel="puzzle"] .puzzle[data-puzzle-gesture-locking] {
+    transition: transform var(--motion-snap-duration) var(--motion-move);
+  }
+  .mobile-panel-layout[data-input-resizing] .mobile-panel[data-mobile-panel="puzzle"] .puzzle {
+    transform: scale(calc(var(--mobile-puzzle-gesture-scale, 1) * var(--mobile-input-resize-puzzle-scale, 1)));
+    transform-origin: bottom center;
+    will-change: transform;
+  }
   .standard-workspace-page:has(.mobile-panel-layout[data-input-resizing]) { overflow-anchor: none; }
-  .standard-workspace-page:has(.mobile-panel-layout[data-fit-hint]) { overflow: clip; }
-  .standard-workspace-page .workspace:has(> .mobile-panel-layout[data-fit-hint]) {
+  .standard-workspace-page:has(.mobile-panel-layout[data-fit-content]) { overflow: clip; }
+  .standard-workspace-page .workspace:has(> .mobile-panel-layout:is([data-fit-content], [data-input-sized])) {
     height: 100%;
     min-height: 0;
+    justify-content: flex-end;
   }
   .mobile-panel { position: relative; flex: none; min-width: 0; }
   .mobile-panel[data-after-gap] { margin-top: 8px; }
@@ -3527,13 +3551,37 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     visibility: var(--hint-exit-visibility, hidden);
   }
   .mobile-panel-gap { flex: 1 0 var(--space-8); }
-  .mobile-panel-layout[data-fit-hint] .mobile-panel-gap { flex-grow: 0; }
   @media (orientation: portrait) {
-    /* Keep the reserved space outside the play scroller so it stays clear while scrolling. */
+    /* Once the player has moved the puzzle, keep the puzzle/card gap fixed.
+       Resizing the input card then uses space below it instead of separating
+       it from the lowered puzzle. */
+    .mobile-panel-layout[data-puzzle-shrunk] .mobile-panel-gap,
+    .standard-workspace-page[data-puzzle-top-space]:has(.mobile-panel-layout) .mobile-panel-gap {
+      flex: 0 0 var(--space-8);
+    }
+    /* Borrow from the flexible gap so the input card stays in place. */
     .standard-workspace-page[data-puzzle-top-space]:has(.mobile-panel-layout) {
-      margin-block-start: min(var(--puzzle-top-space), 30dvh);
+      padding-block-start: max(var(--mobile-puzzle-base-top-padding, var(--space-8)), calc(var(--mobile-puzzle-base-top-padding, var(--space-8)) + var(--puzzle-top-space)));
       overflow-y: auto;
       overflow-anchor: none;
+    }
+    .mobile-puzzle-gesture-zone {
+      display: block;
+      touch-action: none;
+      user-select: none;
+    }
+    .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-zone[data-edge="top"] {
+      position: absolute;
+      z-index: 2;
+      inset-inline: 0;
+      block-size: var(--mobile-puzzle-above-height, 48px);
+      inset-block-start: calc(-1 * var(--mobile-puzzle-above-height, 48px));
+    }
+    /* A puzzle placed below the input card must leave that card's controls reachable. */
+    .mobile-panel[data-mobile-panel="puzzle"]:not([data-first]) .mobile-puzzle-gesture-zone[data-edge="top"] { pointer-events: none; }
+    .mobile-panel-gap > .mobile-puzzle-gesture-zone[data-edge="bottom"] {
+      inline-size: 100%;
+      block-size: 100%;
     }
 
     /* Use a shared inset, including for new and imported puzzles. */
@@ -3543,14 +3591,14 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     }
 
     /* Let the input card grow only when the user explicitly resizes it. */
-    .mobile-panel-layout:not([data-input-sized], [data-fit-hint])
+    .mobile-panel-layout:not([data-input-sized], [data-fit-content])
       > .mobile-panel[data-mobile-panel="input"] {
       flex: none;
     }
 
-    /* Fit the board alongside the input card within the available portrait height. */
-    .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
-      --board-frame-limit: max(var(--mobile-fit-min-board-width, 220px), var(--mobile-fit-board-height, 100dvh));
+    /* The board fills the available column; only its own gesture can scale it. */
+    .standard-workspace-page .mobile-panel-layout:not([data-fit-content], [data-input-sized]) .puzzle.puzzle-flat {
+      --board-frame-limit: min(100dvh, var(--mobile-fit-board-height, 100dvh));
     }
     /* Center the puzzle itself as well as its zoomed content at every size. */
     .standard-workspace-page .mobile-panel[data-mobile-panel="puzzle"] .puzzle-column {
@@ -3561,7 +3609,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     .standard-workspace-page .mobile-panel .puzzle.puzzle-flat {
       box-sizing: border-box;
       inline-size: 100%;
-      max-inline-size: min(100%, var(--board-frame-limit));
+      max-inline-size: none;
       margin-inline: auto;
       min-inline-size: 0;
       justify-self: center;
@@ -3584,10 +3632,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       justify-self: start;
       margin-inline-start: calc((100% - var(--mobile-input-panel-width, 100%)) / 2);
     }
-    /* If dragging the input makes the board smaller, the header follows the grid. */
-    .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle.puzzle-flat {
-      max-inline-size: min(100%, var(--board-frame-limit));
-    }
     /* Put row numbers in the side gutter instead of taking width from the grid. */
     .standard-workspace-page .puzzle-flat .board-frame:not(.has-outside-clues) {
       --board-guide-width: 0px;
@@ -3602,18 +3646,22 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       overflow: visible;
     }
   }
-  .mobile-panel-layout[data-fit-hint] > .mobile-panel[data-mobile-panel="input"] {
+  .mobile-panel-layout[data-fit-content] > .mobile-panel[data-mobile-panel="input"] {
     display: flex;
     flex: 0 1 auto;
     flex-direction: column;
     min-height: min(110px, 28dvh);
   }
-  .mobile-panel-layout[data-fit-hint] > [data-mobile-panel="input"] > .mobile-panel-content {
+  .mobile-panel-layout[data-fit-content][data-input-sized] > .mobile-panel[data-mobile-panel="input"] {
+    flex: none;
+    min-height: var(--mobile-resized-input-height);
+  }
+  .mobile-panel-layout[data-fit-content] > [data-mobile-panel="input"] > .mobile-panel-content {
     display: flex;
     flex-direction: column;
     min-height: 0;
   }
-  .mobile-panel-layout[data-fit-hint] .mobile-input-tabs { min-height: 0; }
+  .mobile-panel-layout[data-fit-content] .mobile-input-tabs { min-height: 0; }
   .workspace:has(.mobile-panel-layout[data-rearranging]) { padding-top: 64px; }
   .page:has(.mobile-panel-layout[data-rearranging]) { overflow-x: hidden; }
   .mobile-panel-layout[data-rearranging] { user-select: none; }
@@ -3680,8 +3728,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-panel[data-drop="after"]::after { bottom: -6px; }
   .standard-workspace-page .puzzle {
     --puzzle-padding-inline: var(--space-6);
-    /* Reserve room for the header and keypad on short portrait screens. */
-    --board-frame-limit: max(220px, min(var(--mobile-fit-board-height, 100dvh), calc(100dvh - var(--topbar-height) - 320px)));
+    --board-frame-limit: min(100dvh, var(--mobile-fit-board-height, 100dvh));
     padding-block: var(--space-4) var(--space-6);
     row-gap: var(--space-2);
   }
@@ -3728,26 +3775,29 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .standard-workspace-page .puzzle-mode-tab[data-edge="bottom"] svg { width: 13px; height: 13px; }
   .standard-workspace-page :is(.puzzle-menu-trigger, .puzzle-pause-trigger, .puzzle-zoom-reset) { width: 44px; min-height: 44px; }
   .floating-puzzle-menu button { min-height: 44px; }
-  .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint:not([data-fit-hint])) .puzzle {
-    --board-frame-limit: max(130px, min(var(--mobile-fit-board-height, 100dvh), calc(100dvh - var(--topbar-height) - 540px)));
+  .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint:not([data-fit-content])) .puzzle {
+    --board-frame-limit: min(100dvh, var(--mobile-fit-board-height, 100dvh));
   }
-  .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle {
-    --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), max(130px, calc(100dvh - var(--topbar-height) - 540px))));
+  .standard-workspace-page .mobile-panel-layout.with-hint[data-fit-content]:not([data-input-sized]) .puzzle {
+    --board-frame-limit: max(130px, min(100dvh, var(--mobile-fit-board-height, 100dvh)));
   }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle-column {
     box-sizing: content-box;
-    min-block-size: var(--mobile-resized-puzzle-height);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    align-content: center;
+    align-content: end;
+    min-block-size: 0;
   }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle {
     inline-size: 100%;
-    --board-frame-limit: calc(var(--mobile-resized-puzzle-height) - var(--mobile-puzzle-chrome-height));
+    --board-frame-limit: max(220px, min(100dvh, var(--mobile-fit-board-height, 100dvh)));
   }
-  .mobile-panel-layout:is([data-input-sized], [data-fit-hint]) .puzzle-play-layers { position: relative; }
-  .mobile-panel-layout:is([data-input-sized], [data-fit-hint]) .puzzle-pause-layer { position: absolute; inset: 0; overflow-y: auto; }
-  .mobile-panel-layout[data-fit-hint] .row-labels { contain: size; }
+  .standard-workspace-page .mobile-panel-layout.with-hint[data-input-sized] .puzzle {
+    --board-frame-limit: max(130px, min(100dvh, var(--mobile-fit-board-height, 100dvh)));
+  }
+  .mobile-panel-layout:is([data-input-sized], [data-fit-content]) .puzzle-play-layers { position: relative; }
+  .mobile-panel-layout:is([data-input-sized], [data-fit-content]) .puzzle-pause-layer { position: absolute; inset: 0; overflow-y: auto; }
+  .mobile-panel-layout[data-fit-content] .row-labels { contain: size; }
   .standard-workspace-page .draft-tip {
     grid-area: draft;
     width: auto;
@@ -3761,7 +3811,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     position: relative;
     display: flex;
     flex-direction: column;
-    height: var(--mobile-resized-input-height, auto);
+    min-width: 0;
+    min-height: 0;
+    height: var(--mobile-resized-input-layout-height, var(--mobile-resized-input-height, auto));
+    zoom: var(--mobile-input-content-scale, 1);
   }
   .mobile-panel[data-resize-edge="top"] .mobile-input-tabs:not([data-tools-open]) { padding-block-start: 16px; }
   .mobile-panel[data-resize-edge="bottom"] .mobile-input-tabs { padding-block-end: 16px; }
@@ -3836,9 +3889,28 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-input-toolbar > .input-tools > .icon-button:focus-visible { outline-offset: -2px; }
   .mobile-input-tabs .compact-controls { border: 0; background: transparent; box-shadow: none; }
   .mobile-input-panels {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    touch-action: pan-y pinch-zoom;
+  }
+  .mobile-input-tabs[data-tools-open] .mobile-input-panels { overflow: clip; }
+  .mobile-input-track {
     position: relative;
     display: grid;
+    grid-template-rows: inherit;
     align-items: center;
+    min-width: 0;
+    min-height: 0;
+    touch-action: pan-y pinch-zoom;
+  }
+  .mobile-input-track > [data-swipe-slot="left"],
+  .mobile-input-track[data-two-tab-side="left"] > [data-swipe-slot="either"] { translate: -100% 0; }
+  .mobile-input-track > [data-swipe-slot="right"],
+  .mobile-input-track:not([data-two-tab-side="left"]) > [data-swipe-slot="either"] { translate: 100% 0; }
+  /* The browser resolves touch-action up to the nearest scroll container. */
+  .mobile-input-panels :is(.mobile-input-tool, .solution-path, .solution-path-steps, .mobile-completion-actions, .completion-techniques-panel) {
+    touch-action: pan-y pinch-zoom;
   }
   .mobile-input-menu-slot {
     position: absolute;
@@ -3848,19 +3920,25 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     touch-action: manipulation;
   }
   .mobile-panel[data-resize-edge="top"] .mobile-input-menu-slot { inset-block-start: calc(16px + var(--space-6)); }
-  .mobile-panel-layout:is([data-input-sized], [data-fit-hint]) .mobile-input-panels {
+  .mobile-panel-layout:is([data-input-sized], [data-fit-content]) .mobile-input-panels {
     flex: 1 1 auto;
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
+    overflow: clip;
   }
-  .mobile-panel-layout:is([data-input-sized], [data-fit-hint]) .mobile-input-digits {
+  .mobile-panel-layout:is([data-input-sized], [data-fit-content]) .mobile-input-track > [role="tabpanel"] {
+    min-width: 0;
+    min-height: 0;
+  }
+  .mobile-panel-layout:is([data-input-sized], [data-fit-content]) .mobile-input-digits {
+    height: 100%;
     max-height: 100%;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
+    min-width: 0;
+    min-height: 0;
+    overflow: clip;
   }
-  .mobile-input-panels > [role="tabpanel"]:not([inert]) > * {
-    animation: mobile-input-enter var(--motion-standard-duration) var(--motion-enter);
-  }
+  .mobile-input-digits { overflow: clip; }
+  .mobile-input-digits > .workspace-controls { zoom: var(--mobile-digit-fit-scale, 1); }
   .mobile-input-tool .chain-row[data-active] .chain-editor {
     animation: mobile-input-enter var(--motion-fast-duration) var(--motion-enter);
   }
@@ -3868,7 +3946,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     from { opacity: .85; }
   }
   /* Keep the keypad's space reserved while a tool scrolls within the same slot. */
-  .mobile-input-digits[inert] { visibility: hidden; }
+  .mobile-input-digits[inert]:not([data-swipe-slot]) { visibility: hidden; }
   .mobile-input-tool {
     position: absolute;
     inset: 0;
@@ -3910,6 +3988,12 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-input-tool .input-switch { padding: var(--space-2); }
   .mobile-input-tabs .mobile-input-tool :is(button, select, summary) { min-width: var(--tool-target-size); min-height: var(--tool-target-size); }
   .mobile-input-tool .button { padding-inline: var(--space-8); gap: var(--space-4); font-size: 0.75rem; }
+  @container (width < 420px) {
+    .mobile-input-tool .chain-panel-tools { width: 100%; gap: var(--space-2); }
+    .mobile-input-tool .chain-panel-primary-actions { gap: var(--space-2); }
+    .mobile-input-tool .chain-panel-tools .button { min-inline-size: 0; padding-inline: var(--space-2); gap: var(--space-2); font-size: 0.625rem; }
+    .mobile-input-tool .chain-panel-tools .icon-button { width: var(--tool-target-size); }
+  }
   .mobile-input-tool .icon-button { width: var(--tool-target-size); flex-shrink: 0; }
   .mobile-input-tool .chain-draw-tools { display: flex; flex-wrap: wrap; align-items: center; }
   .mobile-input-tool .chain-path-actions { flex: 1 1 auto; flex-wrap: wrap; }
@@ -4037,7 +4121,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-hint-panel .hint-card { --hint-heading-action-size: 44px; width: 100%; height: 100%; padding: var(--space-4) var(--space-10) var(--space-6); }
   .mobile-panel-layout .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
-  .mobile-panel-layout[data-fit-hint] .mobile-hint-panel { height: clamp(72px, calc(32dvh - 64px), 205px); }
+  .mobile-panel-layout[data-fit-content] .mobile-hint-panel { height: clamp(72px, calc(32dvh - 64px), 205px); }
   .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 var(--space-6); }
   .mobile-hint-panel .hint-card-icon { width: 24px; height: 24px; border-radius: 6px; }
@@ -4080,6 +4164,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     .standard-workspace-page:has(.mobile-panel-layout) {
       overflow-y: auto;
       padding-block: var(--space-4);
+      --mobile-puzzle-base-top-padding: var(--space-4);
     }
     .standard-workspace-page .puzzle-column { --puzzle-badge-gutter-block: var(--space-4); }
     .standard-workspace-page .mobile-panel-layout .mobile-panel .puzzle.puzzle-flat {
@@ -4096,8 +4181,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       .puzzle-stage:not(:has(.puzzle-mode-tab[data-edge="bottom"])) { margin-block-end: 0; }
     .standard-workspace-page .mobile-input-toolbar { padding-block: var(--space-2); }
     .standard-workspace-page .mobile-panel-layout { --mobile-fit-min-board-width: 180px; }
-    .standard-workspace-page .mobile-panel-layout:not([data-fit-hint], [data-input-sized]) .puzzle.puzzle-flat {
-      --board-frame-limit: max(var(--mobile-fit-min-board-width), var(--mobile-fit-board-height, 100dvh));
+    .standard-workspace-page .mobile-panel-layout:not([data-fit-content], [data-input-sized]) .puzzle.puzzle-flat {
+      --board-frame-limit: min(100dvh, var(--mobile-fit-board-height, 100dvh));
     }
     .standard-workspace-page .mobile-panel-layout:not(.with-hint) .compact-controls .controls-content {
       --compact-keypad-width: min(var(--input-size, 210px), max(146px, 100dvh - 450px));
@@ -4119,6 +4204,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 
 @media (max-width: 900px) and (orientation: landscape) and (min-width: 560px),
   (max-width: 1440px) and (pointer: coarse) and (orientation: landscape) and (min-width: 560px) {
+  .mobile-puzzle-gesture-zone { display: none; }
   .standard-workspace-page .workspace:has(> .mobile-panel-layout) {
     display: grid;
     grid-template: auto / minmax(0, 1fr) minmax(0, .85fr);
@@ -4130,27 +4216,26 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-panel[data-after-gap] { margin-top: 0; }
   .mobile-panel[data-first] { grid-column: 1; grid-row: 1 / span var(--mobile-secondary-count); }
   .mobile-panel:not([data-first], [data-presence="exit"]) { grid-column: 2; grid-row: var(--mobile-panel-row); }
-  .standard-workspace-page .workspace:has(> .mobile-panel-layout[data-fit-hint]) {
+  .standard-workspace-page .workspace:has(> .mobile-panel-layout[data-fit-content]) {
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }
-  .mobile-panel-layout[data-fit-hint] > .mobile-panel { align-self: stretch; }
-  .mobile-panel-layout[data-fit-hint] > .mobile-panel[data-mobile-panel="input"] { min-height: 0; }
-  .mobile-panel-layout[data-fit-hint] > [data-mobile-panel="hint"] > .mobile-panel-content,
-  .mobile-panel-layout[data-fit-hint] .hint-swipe,
-  .mobile-panel-layout[data-fit-hint] .hint-swipe-card { height: 100%; }
-  .mobile-panel-layout[data-fit-hint] .mobile-hint-panel { max-height: 100%; }
-  .standard-workspace-page .mobile-panel-layout[data-fit-hint][data-input-sized] .puzzle-column {
+  .mobile-panel-layout[data-fit-content] > .mobile-panel { align-self: stretch; }
+  .mobile-panel-layout[data-fit-content] > .mobile-panel[data-mobile-panel="input"] { min-height: 0; }
+  .mobile-panel-layout[data-fit-content] > [data-mobile-panel="hint"] > .mobile-panel-content,
+  .mobile-panel-layout[data-fit-content] .hint-swipe,
+  .mobile-panel-layout[data-fit-content] .hint-swipe-card { height: 100%; }
+  .mobile-panel-layout[data-fit-content] .mobile-hint-panel { max-height: 100%; }
+  .standard-workspace-page .mobile-panel-layout[data-fit-content][data-input-sized] .puzzle-column {
     box-sizing: border-box;
     min-block-size: 0;
   }
   .standard-workspace-page .puzzle,
-  .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint:not([data-fit-hint])) .puzzle {
+  .standard-workspace-page .workspace:has(.mobile-panel-layout.with-hint:not([data-fit-content])) .puzzle {
     /* Hint and keypad share the other column, so neither reduces grid height. */
     --board-frame-limit: max(180px, calc(100dvh - var(--topbar-height) - 80px));
   }
-  .standard-workspace-page .workspace:has(.mobile-panel-layout[data-fit-hint]) .puzzle {
-    --board-frame-limit: max(40px, min(var(--mobile-fit-board-height, 100dvh),
-      calc(var(--mobile-resized-puzzle-height, 100dvh) - var(--mobile-puzzle-chrome-height, 0px))));
+  .standard-workspace-page .workspace:has(.mobile-panel-layout[data-fit-content]) .puzzle {
+    --board-frame-limit: min(100dvh, var(--mobile-fit-board-height, 100dvh));
   }
   .puzzles-layout .main-difficulty-options {
     grid-template-columns: repeat(3, minmax(0, 1fr));

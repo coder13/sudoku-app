@@ -1,5 +1,6 @@
 import type { Game } from './game.ts'
 import { activityPrefix } from './puzzle-activity.ts'
+import { createUuid } from '../uuid.ts'
 
 export const GAME_PREFIX = 'sudoku-app:v1:game:'
 const legacyPrefix = 'gridroom:v1:game:'
@@ -161,7 +162,7 @@ export function createIndexedPuzzleSaves(factory: IDBFactory, legacy: () => Stor
   function signal(id: string) {
     try {
       if (channel) channel.postMessage(id)
-      else if (useStorageEvents) legacy().setItem(changeKey, JSON.stringify([id, crypto.randomUUID()]))
+      else if (useStorageEvents) legacy().setItem(changeKey, JSON.stringify([id, createUuid()]))
     } catch { /* A notification failure cannot undo a committed save. */ }
   }
 

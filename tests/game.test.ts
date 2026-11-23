@@ -8,8 +8,26 @@ import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/varian
 import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantDigitExclusions, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
-  needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, undo, valuesOf,
+  needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, toggleCandidateGroup, undo, valuesOf,
 } from '../src/sudoku/game.ts'
+
+test('Pencil groups remove a partial match or add the whole group as one move', () => {
+  const cell = 2
+  const group = (1 << (2 - 1)) | (1 << (4 - 1))
+  const partial = enter(enter(STARTER_GAME, [cell], 'candidate', 2), [cell], 'candidate', 9)
+  const removed = toggleCandidateGroup(partial, cell, 'candidate', group)
+  assert.deepEqual(marksOf(removed.position.corner[cell]), [9])
+  const added = toggleCandidateGroup(removed, cell, 'candidate', group)
+  assert.deepEqual(marksOf(added.position.corner[cell]), [2, 4, 9])
+  assert.equal(undo(added).position, removed.position)
+  assert.equal(undo(removed).position, partial.position)
+  assert.equal(toggleCandidateGroup(added, 0, 'candidate', group), added)
+
+  const split = enter(partial, [cell], 'center', 4)
+  const clearedCenter = toggleCandidateGroup(split, cell, 'center', group)
+  assert.equal(clearedCenter.position.center[cell], 0)
+  assert.equal(clearedCenter.position.corner, split.position.corner)
+})
 
 test('Jigsaw uses irregular regions for candidate removal and conflicts', () => {
   const givens = '0'.repeat(81)
