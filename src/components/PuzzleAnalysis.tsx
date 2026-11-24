@@ -10,7 +10,7 @@ import { ALGEBRAIC_CAGES_NAME, MINI_NAME, sizedGridName } from '../sudoku/new-pu
 import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
-import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
+import { analysisGroupsForCatalog, classicBasicTechniqueCounts, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
 import { puzzleTechniqueCatalog, variantHintProblem } from '../sudoku/puzzle-help'
 import { variantPosition } from '../sudoku/variant-play'
@@ -168,6 +168,8 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const position = game.variant && variantPosition(game.variant, game.position)
   const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
   const positionProblem = variantHintProblem(game, values, eliminationMasks)
+  const immediateCounts = useMemo(() => !variant && !positionProblem
+    ? classicBasicTechniqueCounts(values, eliminationMasks) : {}, [eliminationMasks, positionProblem, values, variant])
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -193,7 +195,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
 
   useEffect(() => {
     if (!active || solved || !catalog || positionProblem) return
-    const cached = cachedTechniqueCounts(snapshotKey)
+    const cached = { ...cachedTechniqueCounts(snapshotKey), ...immediateCounts }
     const missing = techniques.filter((technique) => !cached[technique])
     setScan({ key: snapshotKey, results: cached })
     let current = true
@@ -245,9 +247,10 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
       })()
     }, SCAN_DEBOUNCE_MS)
     return () => { current = false; window.clearTimeout(timer); scan?.close() }
-  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem])
+  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem, immediateCounts])
 
-  const results = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
+  const workerResults = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
+  const results = { ...workerResults, ...immediateCounts }
   const completed = Object.keys(results).length
   const total = groups.reduce((count, group) => count + group.techniques.length, 0)
   const visibleGroups = filterAnalysisGroups(groups, results, hideZero, solved)

@@ -55,6 +55,110 @@ export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [
 
 export type AnalysisGroup = { title: string; techniques: string[] }
 
+const CLASSIC_SIZE = 9
+const CLASSIC_CELLS = CLASSIC_SIZE * CLASSIC_SIZE
+const CLASSIC_HOUSES = [
+  ...Array.from({ length: CLASSIC_SIZE }, (_, row) => Array.from({ length: CLASSIC_SIZE }, (_, column) => row * CLASSIC_SIZE + column)),
+  ...Array.from({ length: CLASSIC_SIZE }, (_, column) => Array.from({ length: CLASSIC_SIZE }, (_, row) => row * CLASSIC_SIZE + column)),
+  ...Array.from({ length: CLASSIC_SIZE }, (_, box) => Array.from({ length: CLASSIC_SIZE }, (_, offset) =>
+    (Math.floor(box / 3) * 3 + Math.floor(offset / 3)) * CLASSIC_SIZE + (box % 3) * 3 + offset % 3)),
+]
+
+/** Count the basic classic techniques directly from one position's candidates.
+ * These bounded scans match the engine's distinct cell/digit target counts.
+ */
+export function classicBasicTechniqueCounts(values: string, eliminations?: readonly number[]) {
+  if (values.length !== CLASSIC_CELLS) return {}
+  const masks = Array<number>(CLASSIC_CELLS).fill(0)
+  for (let cell = 0; cell < CLASSIC_CELLS; cell++) {
+    if (values[cell] !== '0') continue
+    const row = Math.floor(cell / CLASSIC_SIZE)
+    const column = cell % CLASSIC_SIZE
+    const boxRow = Math.floor(row / 3) * 3
+    const boxColumn = Math.floor(column / 3) * 3
+    let mask = 0x1ff
+    for (let index = 0; index < CLASSIC_SIZE; index++) {
+      const rowDigit = Number(values[row * CLASSIC_SIZE + index])
+      const columnDigit = Number(values[index * CLASSIC_SIZE + column])
+      if (rowDigit) mask &= ~(1 << (rowDigit - 1))
+      if (columnDigit) mask &= ~(1 << (columnDigit - 1))
+      const boxDigit = Number(values[(boxRow + Math.floor(index / 3)) * CLASSIC_SIZE + boxColumn + index % 3])
+      if (boxDigit) mask &= ~(1 << (boxDigit - 1))
+    }
+    masks[cell] = mask & ~(eliminations?.[cell] ?? 0) & 0x1ff
+  }
+  if (masks.some((mask, cell) => values[cell] === '0' && mask === 0)) return {}
+  for (const house of CLASSIC_HOUSES) {
+    const placed = new Set<string>()
+    for (const cell of house) {
+      const digit = values[cell]
+      if (digit !== '0' && placed.has(digit)) return {}
+      if (digit !== '0') placed.add(digit)
+    }
+  }
+
+  const targets = new Map<string, Set<number>>([
+    ['full-house', new Set()], ['hidden-single-box', new Set()], ['naked-single', new Set()],
+    ['hidden-single', new Set()], ['pointing', new Set()], ['claiming', new Set()],
+  ])
+  function record(technique: string, cell: number, digit: number) {
+    targets.get(technique)?.add(cell * 9 + digit)
+  }
+  for (let cell = 0; cell < CLASSIC_CELLS; cell++) {
+    if (masks[cell] && !(masks[cell] & (masks[cell] - 1))) record('naked-single', cell, Math.log2(masks[cell]) + 1)
+  }
+  for (let houseIndex = 0; houseIndex < CLASSIC_HOUSES.length; houseIndex++) {
+    const house = CLASSIC_HOUSES[houseIndex]
+    const empty = house.filter(cell => values[cell] === '0')
+    if (empty.length === 1) {
+      const bit = masks[empty[0]] & -masks[empty[0]]
+      if (bit) record('full-house', empty[0], Math.log2(bit) + 1)
+    }
+    for (let digit = 1; digit <= 9; digit++) {
+      const bit = 1 << (digit - 1)
+      const positions = house.filter(cell => masks[cell] & bit)
+      if (positions.length === 1) {
+        record('hidden-single', positions[0], digit)
+        if (houseIndex >= CLASSIC_SIZE * 2) record('hidden-single-box', positions[0], digit)
+      }
+    }
+  }
+
+  function recordIntersection(technique: 'pointing' | 'claiming', source: readonly number[], target: readonly number[], digit: number) {
+    const sourceCells = new Set(source)
+    for (const cell of target) if (!sourceCells.has(cell) && masks[cell] & (1 << (digit - 1))) record(technique, cell, digit)
+  }
+
+  for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
+    const box = CLASSIC_HOUSES[18 + boxIndex]
+    for (let digit = 1; digit <= 9; digit++) {
+      const positions = box.filter(cell => masks[cell] & (1 << (digit - 1)))
+      if (positions.length < 2) continue
+      const row = Math.floor(positions[0] / 9)
+      const column = positions[0] % 9
+      if (positions.every(cell => Math.floor(cell / 9) === row)) {
+        recordIntersection('pointing', box, CLASSIC_HOUSES[row], digit)
+      }
+      if (positions.every(cell => cell % 9 === column)) {
+        recordIntersection('pointing', box, CLASSIC_HOUSES[9 + column], digit)
+      }
+    }
+  }
+  for (let houseIndex = 0; houseIndex < CLASSIC_SIZE * 2; houseIndex++) {
+    const line = CLASSIC_HOUSES[houseIndex]
+    for (let digit = 1; digit <= 9; digit++) {
+      const positions = line.filter(cell => masks[cell] & (1 << (digit - 1)))
+      if (positions.length < 2) continue
+      const boxIndex = Math.floor(Math.floor(positions[0] / 9) / 3) * 3 + Math.floor((positions[0] % 9) / 3)
+      if (positions.every(cell => Math.floor(Math.floor(cell / 9) / 3) * 3 + Math.floor((cell % 9) / 3) === boxIndex)) {
+        recordIntersection('claiming', line, CLASSIC_HOUSES[18 + boxIndex], digit)
+      }
+    }
+  }
+
+  return Object.fromEntries([...targets].map(([technique, found]) => [technique, { count: found.size }]))
+}
+
 /** One hint per distinct proof pattern, with all of its supported actions.
  * Multiple candidate eliminations from the same pointing group appear together.
  */
