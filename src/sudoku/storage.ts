@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 12986)
-Total output lines: 1063
-
 import { readCustomModeDefinition } from './custom-modes.ts'
 import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix, rememberPuzzleActivity } from './puzzle-activity.ts'
@@ -463,7 +460,91 @@ function hydrate() {
 function onStorage(event: StorageEvent) {
   if (event.storageArea !== localStorage) return
   if (event.key === null) {
-    for (const id of pendingE…986 tokens truncated…ng key allows the default selection.
+    for (const id of pendingElapsed.keys()) clearPendingElapsed(id)
+    if (!indexedPuzzleSaves) hydrate()
+    return
+  }
+  const key = storageKey(event.key)
+  if (key.startsWith(RATING_PREFIX)) {
+    const id = key.slice(RATING_PREFIX.length)
+    const outcome = readRatingEvent(id)
+    if (outcome) ratingEvents.set(id, outcome)
+    else ratingEvents.delete(id)
+    publish({ ...room, playerRating: playerRatingFor(room.games) })
+    return
+  }
+  if (indexedPuzzleSaves || !key.startsWith(GAME_PREFIX)) return
+  const id = key.slice(GAME_PREFIX.length)
+  const raw = readSaved(localStorage, key)
+  const pending = pendingElapsed.get(id)
+  const current = room.games.find(game => game.id === id)
+  const incoming = pending && pending.raw === raw && current ? current : readGame(id, raw)
+  if (pending && pending.raw !== raw) clearPendingElapsed(id)
+  const outcomeSaved = rememberOutcome(incoming?.ratingAttempt?.outcome)
+  const games = room.games.filter((game) => game.id !== id)
+  if (incoming) games.push(incoming)
+  const sorted = orderGames(games)
+  // Filing a puzzle in another tab can leave it open in this one.
+  const active = room.stoppedPlaying || sorted.some((game) => game.id === room.active)
+    ? room.active : sorted.find((game) => !game.savedForLater)?.id ?? null
+  publish({ ...room, games: sorted, active, storageAvailable: room.storageAvailable && outcomeSaved,
+    playerRating: playerRatingFor(sorted) })
+}
+
+function remember(id: string | null) {
+  return persist(() => {
+    rememberActive(localStorage, id)
+    try { rememberActive(sessionStorage, id) } catch { /* local storage still holds the last active game */ }
+  })
+}
+
+function rememberActive(storage: Storage, id: string | null) {
+  if (id !== null) storage.setItem(ACTIVE, id)
+  else {
+    storage.removeItem(legacyKey(ACTIVE))
+    storage.removeItem(ACTIVE)
+  }
+}
+
+function withSavedForLater(state: Room, game: Game, savedForLater: true | undefined, onlyUnstarted = false): Room {
+  if (indexedPuzzleSaves) {
+    const filePuzzle = (current?: Game) => {
+      if (!current || (onlyUnstarted && !shouldOfferPuzzleSave(current)) ||
+          (savedForLater && (current.source === 'draft' || isSolved(current)))) return current
+      const next = { ...current, savedForLater }
+      if (savedForLater) delete next.pendingSave
+      return next
+    }
+    const updated = filePuzzle(game)
+    if (!updated || updated === game) return state
+    const clock = pendingElapsed.get(game.id)
+    clearPendingElapsed(game.id)
+    queueSave(game.id, { before: clock?.base ?? game, after: updated, rebase: filePuzzle })
+    return { ...state, games: state.games.map(item => item.id === game.id ? updated : item) }
+  }
+  const key = GAME_PREFIX + game.id
+  let current = game
+  if (state.storageAvailable || pendingElapsed.has(game.id)) {
+    // A move from another tab may have reached storage before its storage event.
+    try {
+      const stored = readSaved(localStorage, key)
+      const pending = pendingElapsed.get(game.id)
+      if (pending && (pending.raw === undefined ? stored !== null : pending.raw !== stored)) clearPendingElapsed(game.id)
+      if (stored === null && (state.storageAvailable || storedSnapshots.has(game))) return state
+      if (stored !== null) current = storedSnapshots.get(game) === stored ? game : readGame(game.id, stored) ?? game
+    } catch { /* Keep the session's progress when storage is unavailable. */ }
+  }
+  if (savedForLater && (current.source === 'draft' || isSolved(current))) return state
+  const updated = { ...current, savedForLater }
+  if (savedForLater) delete updated.pendingSave
+  const saved = persist(() => writeGame(updated))
+  if (!saved) retainStoredSnapshot(current, updated)
+  return { ...state, games: state.games.map(item => item.id === game.id ? updated : item),
+    storageAvailable: state.storageAvailable && saved }
+}
+
+function publishSelection(state: Room, active: string | null) {
+  // An empty ID records an explicit stop. A missing key allows the default selection.
   const saved = remember(active ?? '')
   publish({ ...state, active, stoppedPlaying: active === null, storageAvailable: state.storageAvailable && saved })
 }
