@@ -346,9 +346,9 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   if (!isFutoshiki && !isCalcudoku) return
   const supported = isFutoshiki ? new Set(['greaterLess', 'odd', 'even']) : new Set(['cage', 'cosmeticCage', 'odd', 'even'])
   if (types.some(type => !supported.has(type))) {
-    // A boxless 7 × 7 grid with other supported rules remains a sized Sudoku.
-    if (size === 7) return
-    throw new Error('This Sudoku Coach boxless puzzle combines unsupported rules.')
+    // Let the regular importer handle boxless Sudoku variants that combine
+    // Futoshiki or Calcudoku with other supported rule families.
+    return
   }
   if (isFutoshiki && isCalcudoku) throw new Error('This Sudoku Coach puzzle mixes Futoshiki signs and Calcudoku cages.')
   const givens = data.givenDigits === undefined ? '0'.repeat(Number(size) ** 2) : data.givenDigits
