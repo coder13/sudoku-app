@@ -47,6 +47,7 @@ type Props = {
   onCheck?: () => void
   onActions?: () => void
   actionsMenu?: ReactNode
+  inputTools?: ReactNode
   actionsButtonRef?: Ref<HTMLButtonElement>
   actionsOpen?: boolean
   reserveSolvingSlots?: boolean
@@ -194,6 +195,7 @@ export function Controls(props: Props) {
                 {props.actionsMenu}
               </div>
             ) : props.reserveSolvingSlots && <span className="controls-actions-space" aria-hidden="true" />}
+            {props.inputTools}
           </div>
 
           <div className="keypad-stack">

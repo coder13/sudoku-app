@@ -260,9 +260,12 @@ export function pruneChainsAfterMove(previous: Game, next: Game,
   candidateMasks?: (game: Game) => readonly number[] | null): Game {
   const state = next.chainSketch
   if (!state || next.position === previous.position) return next
+  // Bookmarks restore the sketch that was saved with the destination board.
+  if (next.past.at(-1)?.chainSketch !== undefined &&
+    previous.bookmarks?.some(bookmark => bookmark.position === next.position && bookmark.chainSketch === state)) return next
   // Puzzle undo or redo can restore a board and its matching sketch together.
-  if (state !== previous.chainSketch &&
-    (state === previous.past.at(-1)?.chainSketch || state === previous.future.at(-1)?.chainSketch)) return next
+  if ((next.past.length === previous.past.length - 1 && state === previous.past.at(-1)?.chainSketch) ||
+    (next.future.length === previous.future.length - 1 && state === previous.future.at(-1)?.chainSketch)) return next
   const { entries, center, corner, eliminations } = next.position
   const old = previous.position
   const removed = center.map((mask, cell) => (old.center[cell] | old.corner[cell]) & ~(mask | corner[cell]))
