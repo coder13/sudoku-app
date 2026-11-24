@@ -106,13 +106,15 @@ export function createClassificationScope() {
 
 type ActionPosition = Parameters<ActionMatcher>[0]
 
-export async function variantActionProofs(position: ActionPosition, variant: VariantGame, run: EngineRunner = runEngine) {
+export async function variantActionProofs(position: ActionPosition, variant: VariantGame, run: EngineRunner = runEngine,
+  technique?: string) {
   const board = variant.fog ? variantPosition(variant, { entries: position.entries ?? position.values })
     : { puzzle: variant.puzzle, entries: position.values }
   return run({
     type: 'variant', operation: 'hints',
     position: { ...board, eliminations: position.eliminations },
-    techniqueOrder: await getVariantPlayOrder(board.puzzle), limit: 64,
+    techniqueOrder: technique ? [technique] : await getVariantPlayOrder(board.puzzle),
+    limit: technique ? 0xffff_ffff : 64,
   }, { background: true })
 }
 

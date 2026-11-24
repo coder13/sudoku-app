@@ -19,7 +19,7 @@ const ENTROPIC_LINE_RATING_VERSION = 12
 const RENBAN_AND_LITTLE_KILLER_RATING_VERSION = 11
 const QUADRUPLE_RATING_VERSION = 20
 
-type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion'>
+type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion' | 'practiceTechnique'>
 
 function variantRatingVersion(variant: Game['variant']) {
   const rules = variant?.puzzle.rules
@@ -43,6 +43,7 @@ function fogRatingVersion(variant: Game['variant']) {
 }
 
 export function puzzleGradeIsStale(game: GradedPuzzle) {
+  if (game.practiceTechnique) return false
   const version = variantRatingVersion(game.variant)
   const fogVersion = fogRatingVersion(game.variant)
   return fogVersion !== undefined && game.fogRatingVersion !== fogVersion ||

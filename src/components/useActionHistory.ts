@@ -18,7 +18,7 @@ function watchHistory(game: Game, key: string) {
     const identity = puzzleIdentity(game)
     const queue = createActionHistoryQueue(() => {
       const scope = createClassificationScope()
-      return { match: actionHistoryMatcher(game.variant, scope.run, game.grid, game.sized), close: scope.close }
+      return { match: actionHistoryMatcher(game.variant, scope.run, game.grid, game.sized, game.practiceTechnique), close: scope.close }
     }, (entries, matches) => {
       roomStore.update(game.id, latest => puzzleIdentity(latest) === identity
         ? applyActionMatches(latest, entries, matches) : latest, { derived: true })
@@ -47,7 +47,7 @@ function watchHistory(game: Game, key: string) {
 }
 
 export function useActionHistory(game: Game) {
-  const key = JSON.stringify([game.id, puzzleIdentity(game)])
+  const key = JSON.stringify([game.id, puzzleIdentity(game), game.practiceTechnique])
   const current = useRef<ReturnType<typeof watchHistory> | null>(null)
   useEffect(() => {
     const watched = watchHistory(game, key)

@@ -1,8 +1,12 @@
 import { Button } from './Button'
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { Link2 } from 'lucide-react'
 import type { Candidate, DeductionAction, PositionSnapshot, VariantPuzzle } from '../sudoku/engine'
-import { alternateColorShade, COLORS, conflictsOf, enter, onlyCandidate, paintCandidate, redo, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
-import { functionKeyDigit, givenDigitAt, onlyGivensSelected } from '../sudoku/highlighting'
+import { runEngine } from '../sudoku/engine'
+import { applyChainDeduction, pruneChainsAfterMove } from '../sudoku/chain-sketch'
+import { chainCandidate, chainNodeCandidates, makeChainGraph } from '../sudoku/chains'
+import { alternateColorShade, COLORS, completeCandidateMasks, conflictsOf, enter, onlyCandidate, paintCandidate, redo, toggleCandidateGroup, undo, valuesOf, type ColorTarget, type Mode } from '../sudoku/game'
+import { functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { latestLessonActions, makeLessonGame, revealLessonAction, sameLessonDigits } from '../sudoku/lesson-workbench'
 import { variantLessonClues } from '../sudoku/lesson-examples'
 import { DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE, readPreferences } from '../sudoku/preferences'
@@ -11,7 +15,11 @@ import { highlightedDigitShortcut, shortcutMatches, shortcutStore, type Editable
 import { Board } from './Board'
 import type { BoardAnnotations, BoardRegion } from './BoardAnnotations'
 import { Controls } from './Controls'
+import { ChainColorsDialog, ChainsPanel } from './ChainsPanel'
+import { InputToolsMenu } from './InputToolsMenu'
+import { useChainSketch } from './useChainSketch'
 import { useGridClickAway } from './useGridClickAway'
+import { useStrongLinkOverlay } from './useStrongLinkOverlay'
 
 export type LessonTools = {
   actions: DeductionAction[]
@@ -19,7 +27,7 @@ export type LessonTools = {
   reveal: (action: DeductionAction) => void
 }
 
-export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, showTools = !preview, guide, children }: {
+export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, showTools = !preview, showChainTools = false, guide, children }: {
   puzzle: Pick<PositionSnapshot, 'givens' | 'entries'> & { candidates: readonly number[]; variantPuzzle?: VariantPuzzle }
   label: string
   annotations?: BoardAnnotations
@@ -28,6 +36,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   onEdit?: () => void
   preview?: boolean
   showTools?: boolean
+  showChainTools?: boolean
   guide?: (ready: boolean) => ReactNode
   children?: (tools: LessonTools) => ReactNode
 }) {
@@ -40,6 +49,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const [active, setActive] = useState(start)
   const [selected, setSelected] = useState<number[]>([])
   const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
+  const [digitHighlights, setDigitHighlights] = useState({ mask: 0, match: 'all' as DigitHighlightMatch })
   const [selectedColor, setSelectedColor] = useState<number | null>(null)
   const [savedPencil, setPencil] = useState(initialPencil)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
@@ -49,6 +59,13 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const [eraseMode, setEraseMode] = useState(false)
   const [multi, setMulti] = useState(false)
   const [showAnnotations, setShowAnnotations] = useState(true)
+  const [chainsOpen, setChainsOpen] = useState(false)
+  const [drawingIntent, setDrawingIntent] = useState(false)
+  const [showStrongLinks, setShowStrongLinks] = useState(false)
+  const [chainColorsOpen, setChainColorsOpen] = useState(false)
+  const [failedChainActions, setFailedChainActions] = useState<readonly DeductionAction[]>()
+  const [legalCandidates, setLegalCandidates] = useState<{ values: string; masks: number[] | null }>()
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [panelHeight, setPanelHeight] = useState(280)
   const [preferences, setPreferences] = useState({ advancedModes: DEFAULT_ADVANCED_MODES,
     appearance: DEFAULT_APPEARANCE, errorMode: DEFAULT_ERROR_MODE, highlighting: DEFAULT_HIGHLIGHT_PREFERENCES, inputSize: DEFAULT_INPUT_SIZE })
@@ -78,21 +95,108 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     ? preferences.advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind : 'value'
   const painting = colorMode && colorTarget === 'candidate' && selectedColor !== null
   const actions = useMemo(() => latestLessonActions(game), [game])
+  useEffect(() => {
+    if (!chainsOpen || !interactive || values === initial.givens) return
+    const controller = new AbortController()
+    void runEngine({ type: 'notes', values }, { signal: controller.signal }).then(masks => {
+      if (!controller.signal.aborted) setLegalCandidates({ values, masks })
+    }, () => {
+      if (!controller.signal.aborted) setLegalCandidates({ values, masks: null })
+    })
+    return () => controller.abort()
+  }, [chainsOpen, initial.givens, interactive, values])
+  const baseMasks = values === initial.givens ? puzzle.candidates : legalCandidates?.values === values ? legalCandidates.masks : undefined
+  const chainMasks = useMemo(() => {
+    if (!chainsOpen || !interactive || !baseMasks) return null
+    const shown = completeCandidateMasks(game)
+    const masks = shown?.map((mask, cell) => values[cell] === '0' ? mask & baseMasks[cell] : 0)
+    return masks && !masks.some((mask, cell) => !mask && values[cell] === '0') ? masks : null
+  }, [baseMasks, chainsOpen, game, interactive, values])
+  const chainGraph = useMemo(() => chainMasks ? makeChainGraph(chainMasks) : null, [chainMasks])
+  const highlightMask = digitHighlights.mask || (selectedDigit === null ? 0 : 1 << (selectedDigit - 1))
+  const sketch = useChainSketch(game, chainGraph, {
+    canDraw: chainsOpen && interactive, graphCurrent: Boolean(chainGraph), canAnalyze: Boolean(chainGraph),
+    startHighlightDigit: onlyCandidate(highlightMask), drawingIntent, setDrawingIntent,
+    updateGame: change => setGame(change(game)),
+  })
+  const strongLinksVisible = showStrongLinks && Boolean(chainGraph)
+  const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, highlightMask, sketch.annotations,
+    sketch.colorPairs, sketch.usedColorPairs, sketch.assignedColors)
+  const usingChains = sketch.drawing || strongLinksVisible
+  const sketchAnnotations = chainsOpen && sketch.annotations.links?.length ? sketch.annotations : undefined
+  const boardAnnotations = usingChains ? strongLinksVisible ? strongLinks.annotations : sketch.annotations
+    : showAnnotations && annotations ? annotations : sketchAnnotations
+  const selectedChainCandidates = sketch.grouping ? sketch.groupSelection.map(chainCandidate)
+    : sketch.pending === null ? [] : chainNodeCandidates(sketch.pending)
 
   function commit(transform: (current: typeof game) => typeof game) {
-    const next = transform(game)
-    if (next === game) return
+    const changed = transform(game)
+    if (changed === game) return false
+    const next = pruneChainsAfterMove(game, changed, completeCandidateMasks)
     if (!sameLessonDigits(game.position, next.position)) onEdit?.()
     setGame(next)
+    return true
   }
-  function switchPenPencil(pencil: boolean) { setPencil(pencil); setColorMode(false); setHighlightMode(false); setEraseMode(false) }
-  function toggleHighlight() { setHighlightMode(!highlightMode); setColorMode(false); setEraseMode(false) }
+
+  function leaveChainInput() {
+    if (drawingIntent) sketch.stop()
+    setShowStrongLinks(false)
+  }
+  function switchPenPencil(pencil: boolean) { leaveChainInput(); setPencil(pencil); setColorMode(false); setHighlightMode(false); setEraseMode(false) }
+  function toggleHighlight() { leaveChainInput(); setHighlightMode(!highlightMode); setColorMode(false); setEraseMode(false) }
   function cycleDigitMode() {
     if (pencil) toggleHighlight()
     else switchPenPencil(!highlightMode)
   }
-  function toggleColor() { setColorMode(!colorMode); setHighlightMode(false); setEraseMode(false) }
-  function toggleErase() { setEraseMode(!eraseMode); setColorMode(false); setHighlightMode(false); setSelected([]) }
+  function toggleColor() { leaveChainInput(); setColorMode(!colorMode); setHighlightMode(false); setEraseMode(false) }
+  function toggleErase() { leaveChainInput(); setEraseMode(!eraseMode); setColorMode(false); setHighlightMode(false); setSelected([]) }
+
+  function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
+    setSelectedDigit(null)
+    setSelected([])
+    setDigitHighlights({ mask: highlightMask ^ (1 << (digit - 1)), match })
+  }
+
+  function toggleChainDrawing() {
+    if (!chainsOpen) {
+      setChainsOpen(true)
+      setDrawingIntent(true)
+    } else sketch.toggle()
+    setColorMode(false); setHighlightMode(false); setEraseMode(false)
+  }
+
+  function toggleChainsPanel() {
+    if (chainsOpen) leaveChainInput()
+    setChainsOpen(!chainsOpen)
+  }
+
+  function applyChainEdits() {
+    if (!chainMasks || !sketch.allActions.length) return
+    const applied = commit(current => applyChainDeduction(current, sketch.appliedChainIds, sketch.allActions, chainMasks, true))
+    setFailedChainActions(applied ? undefined : sketch.allActions)
+    if (applied) {
+      sketch.suspend()
+      setShowStrongLinks(false)
+    }
+  }
+
+  function chooseChainDigit(digit: number) {
+    if (strongLinksVisible) {
+      const mask = digit ? 1 << (digit - 1) : 0
+      setSelectedDigit(null)
+      setDigitHighlights({ mask: mask === highlightMask ? 0 : mask, match: 'any' })
+    } else sketch.setHighlightedDigit(digit === sketch.active.highlightedDigit || !digit ? null : digit)
+  }
+
+  function beginStrongLinkChain(candidate: Candidate) {
+    sketch.beginAt(candidate, strongLinks.component(candidate))
+  }
+
+  function selectChainCandidate(candidate: Candidate) {
+    if (!strongLinksVisible || sketch.drawing && (sketch.grouping || sketch.pending !== null || sketch.contains(candidate))) {
+      sketch.select(candidate)
+    } else beginStrongLinkChain(candidate)
+  }
 
   function switchColorShade() {
     if (!interactive || !colorMode || selectedColor === null) return
@@ -110,6 +214,7 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     }
     if ((highlightMode && inputMode === 'value' && onlyGivensSelected(game.givens, cells)) || !cells.length) {
       setSelected([])
+      setDigitHighlights({ mask: 0, match: 'all' })
       setSelectedDigit(selectedDigit === digit || digit === 0 ? null : digit)
       return
     }
@@ -129,7 +234,12 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       input(selectedDigit, mode, [cell], mode === 'value' && !eraseMode); return
     }
     const given = givenDigitAt(game.givens, cell)
-    if (given) setSelectedDigit(given)
+    if (highlightMode && given) { toggleDigitHighlight(given, digitHighlights.match); return }
+    if (given) { setSelectedDigit(given); setDigitHighlights({ mask: 0, match: 'all' }) }
+    else if (pencil && digitHighlights.mask && !selected.length && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      commit(current => toggleCandidateGroup(current, cell, mode === 'center' ? 'center' : mode === 'corner' ? 'corner' : 'candidate', digitHighlights.mask))
+      return
+    }
     else if (!highlightMode) setSelectedDigit(null)
     if (event.shiftKey && selected.length) setSelected(rectangleSelection(anchor.current, cell))
     else {
@@ -145,12 +255,15 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     anchor.current = start; drag.current = null; suppressClick.current = false
     setCandidateKind('corner'); setColorTarget('cell')
     setPencil(initialPencil); setHighlightMode(false); setColorMode(false); setEraseMode(false); setMulti(false)
+    setDigitHighlights({ mask: 0, match: 'all' })
+    setDrawingIntent(false); setShowStrongLinks(false); setFailedChainActions(undefined)
     setShowAnnotations(true)
   }
   useEffect(() => { reset() }, [initial, initialPencil, start])
 
   function reveal(action: DeductionAction) {
     setGame(revealLessonAction(initial, action)); setSelected([]); setSelectedDigit(null)
+    setDrawingIntent(false); setShowStrongLinks(false)
     const { cell } = 'place' in action ? action.place : action.eliminate
     setActive(cell); anchor.current = cell
   }
@@ -160,22 +273,37 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
       && (event.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|A)$/.test(event.target.tagName)))) return
     const shortcut = event.metaKey || event.ctrlKey
     const key = event.key.toLowerCase()
+    const apply = shortcutMatches(event.nativeEvent, shortcuts, 'applyEdits') && chainsOpen && sketch.allActions.length
+    const draw = shortcutMatches(event.nativeEvent, shortcuts, 'chainDrawing') && showChainTools
+    if (apply || draw) {
+      event.preventDefault()
+      if (!event.repeat) { if (apply) applyChainEdits(); else toggleChainDrawing() }
+      return
+    }
     if (shortcut && (key === 'z' || key === 'y')) {
-      event.preventDefault(); commit(key === 'y' || event.shiftKey ? redo : undo); return
+      event.preventDefault()
+      const forward = key === 'y' || event.shiftKey
+      if (sketch.drawing) { if (forward) sketch.redo(); else sketch.undo() }
+      else commit(forward ? redo : undo)
+      return
     }
     const highlighted = highlightedDigitShortcut(event.nativeEvent) ?? functionKeyDigit(event.key)
     if (highlighted !== null) {
-      event.preventDefault(); setSelected([]); setSelectedDigit(selectedDigit === highlighted ? null : highlighted); return
+      event.preventDefault()
+      if (sketch.drawing && !strongLinksVisible) chooseChainDigit(highlighted)
+      else toggleDigitHighlight(highlighted, 'any')
+      return
     }
     if (/^[1-9]$/.test(key)) {
       event.preventDefault()
+      if (usingChains) { chooseChainDigit(Number(key)); return }
       const focused = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-cell]') : null
+      if (shortcut && !selected.length && !focused) { toggleDigitHighlight(Number(key), 'all'); return }
       const cells = shortcut && !selected.length && focused ? [Number(focused.dataset.cell)] : selected
       input(Number(key), shortcut ? preferences.advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind : mode, cells)
       return
     }
     if (shortcut) return
-    const shortcuts = shortcutStore.getSnapshot()
     if (!event.nativeEvent.isComposing && shortcutMatches(event.nativeEvent, shortcuts, 'switchColorShade')) {
       event.preventDefault()
       if (!event.repeat) switchColorShade()
@@ -187,7 +315,11 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     const control = controls.find(([binding]) => shortcutMatches(event.nativeEvent, shortcuts, binding))
     if (control) { event.preventDefault(); if (control[0] !== 'pencilMode' || !event.repeat) control[1](); return }
     if (key === 'delete' || key === 'backspace' || key === '0') { event.preventDefault(); input(0); return }
-    if (key === 'escape') { setSelected([]); setSelectedDigit(null); setSelectedColor(null); setEraseMode(false); return }
+    if (key === 'escape') {
+      if (usingChains) leaveChainInput()
+      else { setSelected([]); setSelectedDigit(null); setSelectedColor(null); setEraseMode(false); setDigitHighlights({ mask: 0, match: 'all' }) }
+      return
+    }
     const offsets: Record<string, number> = { arrowleft: -1, arrowright: 1, arrowup: -9, arrowdown: 9 }
     if (key in offsets) {
       const next = active + offsets[key]
@@ -206,31 +338,42 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   return <div className="lesson-workbench" data-ready={ready} data-tools={showTools} role="group" aria-label={showTools ? `${label} and input tools` : label} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
     <div className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
       <Board givens={puzzle.givens} values={values} position={shownGame.position} region={region} errors={errors} variantPuzzle={puzzle.variantPuzzle}
-        annotations={showAnnotations ? annotations : undefined} showGuides
-        label={label} selected={preview ? [] : selected} active={active} boardRef={board} onCell={interactive ? select : undefined}
-        dragSelect={highlightMode}
-        onCellPointerDown={interactive && highlightMode ? (cell, event) => {
+        candidates={usingChains ? chainMasks ?? undefined : undefined}
+        annotations={boardAnnotations} showGuides
+        label={label} selected={preview || usingChains ? [] : selected} active={active} boardRef={board}
+        onCell={interactive && !usingChains ? select : undefined}
+        dragSelect={highlightMode && !usingChains}
+        onCellPointerDown={interactive && highlightMode && !usingChains ? (cell, event) => {
           if (event.button !== 0) return
           suppressClick.current = false
           anchor.current = cell
           drag.current = { start: cell, base: selected, additive: multi || event.ctrlKey || event.metaKey }
         } : undefined}
-        onCellPointerMove={interactive && highlightMode ? (cell, event) => {
+        onCellPointerMove={interactive && highlightMode && !usingChains ? (cell, event) => {
           const current = drag.current
           if (!current || cell === null || !(event.buttons & 1) || cell === current.start) return
           event.preventDefault(); suppressClick.current = true; setActive(cell)
           const rectangle = rectangleSelection(current.start, cell)
           setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)
         } : undefined}
-        highlightedDigit={preview ? null : selectedDigit} highlighting={preferences.highlighting}
+        highlightedDigit={preview || strongLinksVisible ? null : sketch.drawing ? sketch.active.highlightedDigit : selectedDigit}
+        highlightedDigitMask={strongLinksVisible ? highlightMask : preview || colorMode || eraseMode || sketch.drawing ? 0 : digitHighlights.mask}
+        highlightedDigitMatch={usingChains ? 'any' : digitHighlights.match} highlighting={preferences.highlighting}
         highlightCandidateCells={!colorMode && !eraseMode}
-        candidateLayout={showAnnotations && annotations?.links?.length ? 'grid' : preferences.advancedModes.candidateLayout}
-        onCellDoubleClick={interactive && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
+        fullCandidateCellHighlight={usingChains} linkDrawing={sketch.drawing}
+        onCandidate={usingChains ? selectChainCandidate : undefined}
+        onCandidateHover={sketch.drawing ? sketch.hover : undefined}
+        onLinkSelect={strongLinksVisible ? beginStrongLinkChain : undefined}
+        onGiven={strongLinksVisible ? chooseChainDigit : undefined}
+        isLinkTarget={usingChains ? sketch.isLinkTarget : undefined}
+        selectedCandidates={usingChains ? selectedChainCandidates : undefined}
+        candidateLayout={usingChains || boardAnnotations?.links?.length ? 'grid' : preferences.advancedModes.candidateLayout}
+        onCellDoubleClick={interactive && !usingChains && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode &&
           !colorMode && !eraseMode && selectedDigit === null ? (cell) => {
           const digit = onlyCandidate(game.position.center[cell] | game.position.corner[cell])
           if (digit !== null) input(digit, 'value', [cell])
         } : undefined}
-        onPaintCandidate={interactive && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
+        onPaintCandidate={interactive && !usingChains && painting ? (candidate: Candidate) => commit((current) => paintCandidate(current, candidate, selectedColor!)) : undefined} />
       {ruleClues.length > 0 && <ul className="lesson-rule-clues" aria-label="Puzzle rule clues">
         {ruleClues.map((clue, index) => <li key={index}>{clue}</li>)}
       </ul>}
@@ -241,10 +384,35 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         advancedModes={preferences.advancedModes} colorMode={colorMode} colorTarget={colorTarget}
         setColorTarget={(target) => { setColorTarget(target); setSelectedColor(null) }} toggleColorMode={toggleColor} onSwitchShade={switchColorShade}
         highlightMode={highlightMode} toggleHighlightMode={toggleHighlight} eraseMode={eraseMode} toggleEraseMode={toggleErase}
-        selectedDigit={preview ? null : colorMode ? selectedColor : selectedDigit} hasCellSelection={!preview && selected.length > 0} values={values} input={input}
+        selectedDigit={preview || strongLinksVisible ? null : sketch.drawing ? sketch.active.highlightedDigit : colorMode ? selectedColor : selectedDigit}
+        highlightedDigitMask={strongLinksVisible ? highlightMask : sketch.drawing ? 0 : digitHighlights.mask}
+        onToggleDigitHighlight={!sketch.drawing || strongLinksVisible ? toggleDigitHighlight : undefined}
+        digitHighlightMatch={digitHighlights.match} onDigitHighlightMatchChange={match => setDigitHighlights(current => ({ ...current, match }))}
+        hasCellSelection={!preview && !usingChains && selected.length > 0} values={values} input={usingChains ? chooseChainDigit : input}
+        chainDrawing={usingChains}
+        inputTools={showChainTools ? <InputToolsMenu disabled={!interactive} preferBelow>
+          <button type="button" aria-pressed={chainsOpen} onClick={toggleChainsPanel}>
+            <Link2 size={16} aria-hidden="true" /> Chains
+          </button>
+        </InputToolsMenu> : undefined}
         undo={() => commit(undo)} redo={() => commit(redo)} canUndo={game.past.length > 0} canRedo={game.future.length > 0}
         compact disabled={!interactive} draft={false} inputSize={preferences.inputSize} panelHeight={panelHeight} setPanelHeight={setPanelHeight}
         beginResize={() => {}} multi={multi} toggleMulti={() => setMulti(!multi)} />
+      {chainsOpen && <div className="surface lesson-chain-tools">
+        <ChainsPanel sketch={sketch} onToggleDrawing={toggleChainDrawing} onApply={applyChainEdits}
+          applyFailed={failedChainActions === sketch.allActions} onChooseColors={() => setChainColorsOpen(true)} shortcuts={shortcuts}
+          unavailable={!interactive ? 'Close the solution to draw links.'
+            : baseMasks === undefined ? 'Loading candidates…'
+            : baseMasks === null ? 'Resolve the grid conflicts to draw links.'
+            : !chainGraph ? 'Restore candidates in empty cells before you mark chains.' : undefined}
+          eliminations={{ shown: sketch.showEliminations, toggle: sketch.toggleEliminations }}
+          strongLinks={{ shown: showStrongLinks, hasHighlights: highlightMask !== 0, count: strongLinks.count, toggle: () => {
+            setShowStrongLinks(!showStrongLinks)
+            setColorMode(false); setHighlightMode(false); setEraseMode(false)
+          } }} />
+        <ChainColorsDialog open={chainColorsOpen} first={sketch.active.color} second={sketch.active.secondColor}
+          onSelect={sketch.setColors} onClose={() => setChainColorsOpen(false)} />
+      </div>}
       {(annotations || guide) && <Button type="button" variant="quiet" className="lesson-workbench-highlights" aria-pressed={Boolean(annotations) && showAnnotations}
         disabled={!annotations} onClick={() => setShowAnnotations(!showAnnotations)}>{guide ? 'Grid highlights' : 'Explanation highlights'}</Button>}
       {children ? children({ actions, reset, reveal })

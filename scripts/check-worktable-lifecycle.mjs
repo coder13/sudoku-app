@@ -401,6 +401,8 @@ const checks = [
     await openMobileTool(page, 'Techniques')
     const finder = page.getByRole('table', { name: 'Available candidates by technique' })
     await finder.waitFor()
+    const inputCard = page.getByRole('group', { name: 'Input card', exact: true })
+    const inputHeight = await inputCard.evaluate(element => element.offsetHeight)
     await page.getByRole('button', { name: 'Open puzzle options' }).tap()
     await page.locator('#puzzle-menu').getByRole('button', { name: 'View hint', exact: true }).tap()
     await page.getByRole('group', { name: 'Hint navigation' }).waitFor()
@@ -423,6 +425,7 @@ const checks = [
         overflow: Math.max(element.scrollHeight - element.clientHeight, element.scrollWidth - element.clientWidth) }
     })
     assert.deepEqual(layout, { inside: true, obscured: 0, clues: 16, finderVisible: true, overflow: 0 })
+    assert.equal(await inputCard.evaluate(element => element.offsetHeight), inputHeight, 'opening the hint preserves the input card height')
     const badge = page.getByRole('button', { name: 'Cycle input mode' })
     const offset = await badge.getAttribute('style')
     await badge.press('ArrowRight')
@@ -432,11 +435,14 @@ const checks = [
 
     const matchingTechnique = finder.getByRole('row', { name: /Hidden single/i })
       .filter({ has: page.getByRole('cell', { name: /^[1-9]\d*$/ }) }).first()
-    await matchingTechnique.getByRole('button').tap()
     const tools = page.getByRole('tabpanel', { name: 'Techniques' })
-    assert.ok(await tools.evaluate(element => element.scrollTop > 0), 'the technique list scrolls inside the card')
+    assert.ok(await tools.evaluate(element => {
+      element.scrollTop = 48
+      return element.scrollTop > 0
+    }), 'the technique list scrolls inside the card')
+    await matchingTechnique.getByRole('button').tap()
     await page.getByRole('complementary', { name: 'Puzzle hint' }).getByRole('heading', { name: /Hidden single/i }).waitFor()
-    return { assertions: 7, viewport: portraitPhone.viewport, gridWidth: width }
+    return { assertions: 8, viewport: portraitPhone.viewport, gridWidth: width }
   }, { context: portraitPhone, pinnedActions: [] }],
   ['edit-import-during-verification', '/import', async page => {
     const input = page.getByRole('textbox', { name: 'Puzzle text or link' })

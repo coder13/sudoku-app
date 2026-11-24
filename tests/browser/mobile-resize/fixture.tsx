@@ -18,7 +18,7 @@ const empty = '0'.repeat(81)
 const position = { center: Array(81).fill(511), corner: Array(81).fill(0), colors: Array(81).fill(0) }
 const noop = () => {}
 const badgePosition = { edge: 'bottom', offset: .6 } as const
-const withHint = new URLSearchParams(location.search).has('hint')
+const startWithHint = new URLSearchParams(location.search).has('hint')
 const outsidePuzzle: VariantPuzzle | undefined = new URLSearchParams(location.search).has('outside') ? {
   version: 1, givens: empty, rules: [
     { type: 'sandwich', direction: 'south', cells: [0, 9, 18, 27, 36, 45, 54, 63, 72], sum: 15 },
@@ -31,6 +31,7 @@ const PanelLayout = new URLSearchParams(location.search).has('baseline') ? Basel
 Object.assign(window, { resizeCommits: [], puzzleGestureCommits: [] })
 
 function Fixture() {
+  const [withHint, setWithHint] = useState(startWithHint)
   const [savedHeight, setSavedHeight] = useState<number>()
   const [puzzlePosition, setPuzzlePosition] = useState({ space: 0, shrink: 0 })
   const boundary = useRef<HTMLDivElement>(null)
@@ -68,14 +69,14 @@ function Fixture() {
                     position={badgePosition} onPosition={noop} onActivate={noop} boundaryLabel="Sudoku grid" />} />
               </div></div></div>
               <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions">
-                <button className="button">Hint</button><button className="button">Undo</button><button className="button">Redo</button>
+                <button className="button" onClick={() => setWithHint(true)}>Hint</button><button className="button">Undo</button><button className="button">Redo</button>
               </nav>
             </section>
           </div> },
           input: { title: 'Input', content: <MobileInputTabs active="digits" open={[]} activeTabRef={null}
             toolsDisabled={false} toolToggles={<button className="button">Settings</button>} onSelect={noop} onClose={noop}
             panels={{ digits: controls, solution: null, techniques: null, colors: null, chains: null }} /> },
-          ...(withHint ? { hint: { title: 'Hint', content: <div className="mobile-hint-panel" style={{ height: 130 }}>Hint panel</div> } } : {}),
+          ...(withHint ? { hint: { title: 'Hint', content: <div className="mobile-hint-panel" style={{ height: 130 }}><button onClick={() => setWithHint(false)}>Close hint</button></div> } } : {}),
         }} /></div>
     </main>
   </div>

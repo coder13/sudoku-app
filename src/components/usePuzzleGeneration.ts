@@ -4,7 +4,9 @@ import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-
 import { createEngineSession, EngineError, type EngineRunner, type EngineSession } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
 import { isCustomDifficulty, type CustomModeDefinition } from '../sudoku/custom-modes'
-import { createGameId, makeGame } from '../sudoku/game'
+import { createGameId, makeGame, type Game } from '../sudoku/game'
+import { techniqueLabel } from '../sudoku/hints'
+import { generatePracticePuzzle, generateVariantPracticePuzzle, hasVariantPracticePuzzles } from '../sudoku/practice-play'
 import { ratingAttemptFor } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
 import { techniqueHistory } from '../sudoku/technique-history'
@@ -38,7 +40,7 @@ export function usePuzzleGeneration() {
     }
   }, [])
 
-  async function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows; customMode?: CustomModeDefinition }) {
+  async function withGeneration(work: (seed: number, run: EngineRunner, active: () => boolean) => Promise<void>, searchError?: string) {
     if (pending.current) return
     const session = createEngineSession()
     pending.current = session
@@ -50,6 +52,49 @@ export function usePuzzleGeneration() {
     setError('')
     try {
       const seed = crypto.getRandomValues(new Uint32Array(1))[0]
+      await work(seed, run, active)
+    } catch (reason) {
+      if (active() && !(reason instanceof Error && reason.name === 'AbortError')) {
+        setError(reason instanceof EngineError && reason.code === 'search-limit' && searchError
+          ? searchError : (reason as Error).message)
+      }
+    } finally {
+      session.close()
+      if (pending.current === session) {
+        customSearch.current = null
+        pending.current = null
+        if (mounted.current) setBusy(false)
+      }
+    }
+  }
+
+  function generatePractice(technique: string, current?: Game) {
+    return withGeneration(async (seed, run, active) => {
+      const games = roomStore.getSnapshot().games
+      const title = `${techniqueLabel(technique)} practice`
+      if (hasVariantPracticePuzzles(technique)) {
+        const latest = current ?? games.find(game => game.practiceTechnique === technique)
+        const previous = [latest?.variant?.puzzle, ...games.flatMap(game => game.id !== latest?.id && game.variant ? [game.variant.puzzle] : [])]
+          .filter(puzzle => puzzle !== undefined)
+        const { puzzle, rating, solution } = await generateVariantPracticePuzzle(technique, seed, previous, run)
+        if (!active() || rating.status === 'stalled') return
+        const id = variantIdForPuzzle(puzzle)
+        if (id === 'classic') throw new Error('The practice puzzle is missing its rules.')
+        const game = makeGame(createGameId(), title, puzzle.givens, 'generated')
+        roomStore.add({ ...game, practiceTechnique: technique, difficulty: rating.status.solved, score: rating.points,
+          variant: { id, puzzle, solution } })
+        return
+      }
+      const previous = games.filter(game => !game.variant && !game.grid).map(game => game.givens)
+      const { board, rating } = await generatePracticePuzzle(technique, seed, previous, run)
+      if (!active() || rating.status === 'stalled') return
+      const game = makeGame(createGameId(), title, board, 'generated')
+      roomStore.add({ ...game, practiceTechnique: technique, difficulty: rating.status.solved, score: rating.score.points })
+    })
+  }
+
+  function generate(preference: DifficultyPreference, onGenerated?: () => void, variant: NewPuzzleId = 'classic', options?: VariantGenerationOptions & { boxRows?: RectangularBoxRows; customMode?: CustomModeDefinition }) {
+    return withGeneration(async (seed, run, active) => {
       if (options?.customMode) {
         const mode = options.customMode
         const difficulty = isCustomDifficulty(preference) ? preference : 'medium'
@@ -145,24 +190,11 @@ export function usePuzzleGeneration() {
       }, auto ? undefined : 'fixed')
       roomStore.add({ ...game, pendingSave: true, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
-    } catch (reason) {
-      if (active() && !(reason instanceof Error && reason.name === 'AbortError')) {
-        setError(reason instanceof EngineError && reason.code === 'search-limit'
-          ? options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
-            : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.'
-          : (reason as Error).message)
-      }
-    } finally {
-      session.close()
-      if (pending.current === session) {
-        customSearch.current = null
-        pending.current = null
-        if (mounted.current) setBusy(false)
-      }
-    }
+    }, options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
+      : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.')
   }
 
-  return { busy, error, generate, cancelGeneration: () => customSearch.current?.abort() }
+  return { busy, error, generate, generatePractice, cancelGeneration: () => customSearch.current?.abort() }
 }
 
 

@@ -91,17 +91,15 @@ export function TechniqueNavigation() {
               ? difficulties.some(({ families }) => families.some(({ lessons }) => lessons.includes(current)))
               : !group}>
             <summary>{title}</summary>
-            {difficulties.map(({ title, families, count }) => {
+            {difficulties.map(({ title, families }) => {
               const lessons = families.flatMap(family => family.lessons)
               const links = <ul>{lessons.map(({ id, title }) => <li key={id}>
                 <Link to="/learn/$technique" params={{ technique: id }} activeOptions={activeOptions}
                   className="learn-nav-link" aria-current={current?.id === id ? 'page' : undefined} onClick={select}>{title}</Link>
               </li>)}</ul>
-              return !group && count > 8
-                ? <details className="learn-nav-group" key={title} open={current && lessons.includes(current)}>
-                    <summary>{title}</summary>{links}
-                  </details>
-                : <div className="learn-nav-group" key={title}><h2>{title}</h2>{links}</div>
+              return <details className="learn-nav-group" key={title} open={current && lessons.includes(current)}>
+                <summary>{title}</summary>{links}
+              </details>
             })}
           </details>)}
         </div>

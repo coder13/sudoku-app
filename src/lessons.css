@@ -53,7 +53,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   cursor: pointer;
 }
 .learn-nav-group { margin-block-start: var(--space-6); }
-.learn-nav-group > :is(h2, summary) { margin: 0 9px 3px; font-size: 0.8125rem; font-weight: 740; color: var(--muted); }
+.learn-nav-group > summary { margin: 0 9px 3px; font-size: 0.8125rem; font-weight: 740; color: var(--muted); }
 .learn-nav-group > summary { min-height: 28px; align-content: center; cursor: pointer; }
 .learn-nav-group ul { margin: 0; padding: 0; list-style: none; }
 .learn-nav-link {
@@ -127,7 +127,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-prerequisite-link:hover, .lesson-prerequisite-link:focus-visible { border-color: var(--selected-border); background: var(--selected-bg); }
 .lesson-overview { --lesson-section-gap: clamp(var(--space-28), 5cqw, 44px); }
 .lesson-overview-section { display: grid; gap: var(--space-10); font-size: 1rem; line-height: 1.65; }
-.lesson-overview-level > :is(h3, summary) { font-size: 1rem; font-weight: 730; }
+.lesson-overview-level > summary { font-size: 1rem; font-weight: 730; }
 .lesson-overview-level > summary { cursor: pointer; }
 .lesson-overview-family > h4 { margin-block-start: var(--space-8); font-size: 0.875rem; color: var(--muted); }
 .lesson-overview-basics { max-width: 64ch; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
@@ -167,7 +167,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-explanation > :not(:first-child) { margin-block-start: var(--space-12); }
 .lesson-explanation > .article-subheading:not(:first-child) { margin-block-start: var(--space-24); }
 .lesson-explanation > .article-subheading + * { margin-block-start: var(--space-8); }
-.lesson-explanation, .lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
+.lesson-explanation, .lesson-worked-examples, .lesson-practice, .lesson-article h2, .lesson-example-notes {
   scroll-margin-top: calc(var(--topbar-height) + var(--space-20));
 }
 .article-subheading, .lesson-practice-heading h2 {
@@ -242,6 +242,8 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-workbench[data-tools="false"] { grid-template-columns: minmax(0, 1fr); }
 .lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
 .lesson-workbench-tools { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
+.lesson-chain-tools { min-width: 0; padding: var(--space-8); }
+.lesson-chain-tools .chain-toolbar { flex-wrap: wrap; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: var(--space-8); }
 .lesson-workbench .controls-content { height: auto; grid-template-columns: 48px minmax(0, min(var(--input-size, 210px), calc(100cqw - 108px))) 44px; gap: var(--space-8); }
 .lesson-workbench .keypad-stack { width: auto; }
@@ -392,6 +394,7 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     .learn-navigation[data-expanded="true"] .learn-nav-panel { opacity: 0; transform: translateY(-4px); }
   }
   .learn-nav-link { min-height: 44px; }
+  :is(.learn-nav-group, .lesson-overview-level) > summary { min-height: 44px; align-content: center; }
   .lesson-metadata { margin-block-start: 0; row-gap: var(--space-6); }
   .lesson-tag-label, .lesson-chip { font-size: 0.75rem; }
   .lesson-tags { column-gap: 3px; }
@@ -406,12 +409,6 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     width: min(100%, var(--mobile-page-width));
     padding-inline: var(--mobile-page-gutter);
   }
-  .app-shell .lesson-heading {
-    position: sticky;
-    inset-block-start: var(--topbar-height);
-    z-index: 2;
-    background: var(--page-bg);
-  }
   .learn-breadcrumbs ol { justify-content: center; flex-wrap: wrap; }
   .lesson-title-row { display: grid; justify-items: center; text-align: center; }
   .lesson-title { font-size: var(--mobile-page-title-size); }
@@ -424,7 +421,6 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     grid-auto-flow: column;
     grid-auto-columns: 44px;
   }
-  :root:has(.app-shell .learn-page) { scroll-padding-block-start: calc(var(--topbar-height) + 6rem); }
 }
 
 @container (max-width: 640px) {

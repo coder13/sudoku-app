@@ -22,6 +22,7 @@ import { puzzleTiming } from './puzzle-timing.ts'
 import { isImportedColor, validGivenCellColors, validImportedCellColors } from './imported-colors.ts'
 import { validImportedDrawings } from './imported-drawings.ts'
 import { validAuthoredArtwork } from './authored-artwork.ts'
+import { hasPracticePuzzles, hasVariantPracticePuzzles } from './practice-play.ts'
 
 export { GAME_PREFIX } from './puzzle-saves.ts'
 
@@ -179,6 +180,11 @@ export function readGame(id: string, data: string | Game | null): Game | undefin
         else delete value.customMode
       }
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
+      if (value.practiceTechnique !== undefined &&
+        (value.source !== 'generated' || value.grid || !hasPracticePuzzles(value.practiceTechnique) ||
+          Boolean(value.variant) !== hasVariantPracticePuzzles(value.practiceTechnique))) {
+        delete value.practiceTechnique
+      }
       const attempt = value.ratingAttempt
       if (attempt !== undefined && (value.source === 'draft' || !isRatingAttempt(attempt) ||
         (attempt.outcome && (attempt.outcome.gameId !== id || attempt.outcome.givens !== value.givens ||

@@ -591,7 +591,6 @@ export function MobilePanelLayout(props: Props) {
       const puzzleColumn = board?.closest<HTMLElement>('.puzzle-column')
       const puzzleContent = puzzle.querySelector<HTMLElement>('.puzzle')
       if (!board || !puzzleColumn || !puzzleContent) return
-      const fitContent = layout.hasAttribute('data-fit-content')
       const panelHeight = Math.max(1, puzzleContent.offsetHeight)
       const puzzleShrink = props.puzzleShrink ?? 0
       const savedNaturalHeight = parseFloat(layout.style.getPropertyValue('--mobile-natural-puzzle-height'))
@@ -628,13 +627,11 @@ export function MobilePanelLayout(props: Props) {
         const margins = [puzzle, input, hintPanel].reduce((sum, card) => (
           sum + (card ? pixels(getComputedStyle(card).marginBlockStart) + pixels(getComputedStyle(card).marginBlockEnd) : 0)
         ), 0)
-        const inputSpace = fitContent && layout.classList.contains('with-hint')
-          ? pixels(getComputedStyle(input).minBlockSize) : input.offsetHeight
         const available = page.clientHeight - pixels(pageStyle.paddingBlockStart) - pixels(pageStyle.paddingBlockEnd)
           - pixels(workspaceStyle.paddingBlockStart) - pixels(workspaceStyle.paddingBlockEnd)
-          - pixels(gapStyle.flexBasis) - margins - inputSpace
+          - pixels(gapStyle.flexBasis) - margins - input.offsetHeight
           - (hintPanel ? blockSize(hintPanel) : 0)
-        const puzzleChrome = Math.max(0, puzzleContent.offsetHeight - board.offsetHeight)
+        const puzzleChrome = Math.max(0, puzzle.offsetHeight - board.offsetHeight)
         const boardLimit = `${Math.max(64, Math.floor(available - puzzleChrome))}px`
         if (layout.style.getPropertyValue('--mobile-fit-board-height') !== boardLimit) {
           layout.style.setProperty('--mobile-fit-board-height', boardLimit)

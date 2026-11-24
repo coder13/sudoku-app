@@ -129,7 +129,7 @@ export function PuzzleCollectionCredit({ game }: { game: Game }) {
   const { collection, puzzle } = entry
   // The catalog title preserves the printed code, including leading zeros.
   const puzzleNumber = puzzle.title.match(/(?:^|\s)([\w-]*\d[\w-]*)$/)?.[1]
-  return <div className="puzzle-collection-credit">
+  return <div className="puzzle-caption puzzle-collection-credit">
     <Link to="/puzzles/collections" search={{ collection: collection.id, difficulty: puzzle.difficulty ?? undefined, puzzle: puzzle.id }}>
       <BookOpen size={14} aria-hidden="true" /><span>{collection.title} · {puzzleNumber ?? puzzle.title}</span>
     </Link>

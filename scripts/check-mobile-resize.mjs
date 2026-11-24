@@ -53,6 +53,7 @@ async function snapshot(page) {
   return page.evaluate(() => {
     const layout = document.querySelector('.mobile-panel-layout')
     const input = document.querySelector('.mobile-input-tabs')
+    const digit = input.querySelector('.key')
     const grid = document.querySelector('.sudoku-grid')
     const frame = document.querySelector('.board-frame')
     const badge = document.querySelector('.puzzle-mode-tab')
@@ -64,7 +65,7 @@ async function snapshot(page) {
     const badgeBox = box(badge)
     const handleBox = box(handle)
     return {
-      input: box(input), grid: box(grid), frame: box(frame), badge: badgeBox,
+      input: box(input), digit: box(digit), grid: box(grid), frame: box(frame), badge: badgeBox,
       outsideClues: [...document.querySelectorAll('[data-outside-clue]')].map(clue => ({
         type: clue.dataset.outsideClue, box: box(clue),
       })),
@@ -388,12 +389,62 @@ try {
       } finally { await context.close() }
     }
   }
+  console.log('Checking input size through hint dismissal')
+  {
+    const { context, page } = await openPage()
+    try {
+      await page.locator('.mobile-input-resize').press('End')
+      await frames(page, 3)
+      const before = await snapshot(page)
+      await page.getByRole('button', { name: 'Hint', exact: true }).tap()
+      const close = page.getByRole('button', { name: 'Close hint', exact: true })
+      const hint = page.locator('[data-mobile-panel="hint"]')
+      await close.waitFor()
+      await hint.evaluate(panel => Promise.allSettled(panel.getAnimations().map(animation => animation.finished)))
+      const opened = await snapshot(page)
+      assert.ok(opened.grid.height < before.grid.height, 'the grid shrinks to make room for the hint')
+      const sizes = await close.evaluate(button => new Promise(resolve => {
+        const input = document.querySelector('.mobile-input-tabs')
+        const digit = input.querySelector('.key')
+        const samples = []
+        const start = performance.now()
+        function sample() {
+          const card = input.getBoundingClientRect()
+          const key = digit.getBoundingClientRect()
+          samples.push([card.width, card.height, key.width, key.height])
+          if (performance.now() - start < 350) requestAnimationFrame(sample)
+          else resolve(samples)
+        }
+        button.click()
+        requestAnimationFrame(sample)
+      }))
+      const expected = [opened.input.width, opened.input.height, opened.digit.width, opened.digit.height]
+      for (const size of sizes) assert.ok(size.every((value, index) => Math.abs(value - expected[index]) < 1),
+        `input and digit size must stay fixed while the hint closes (expected ${expected}, got ${size})`)
+      await hint.waitFor({ state: 'detached' })
+      assert.ok(Math.abs((await snapshot(page)).grid.height - before.grid.height) < 1, 'the grid grows back after the hint closes')
+      report.checks.push({ scenario: 'constant input size while closing hint', frames: sizes.length })
+    } finally { await context.close() }
+  }
+  const withoutHint = await openPage()
+  const noHint = await snapshot(withoutHint.page)
+  await withoutHint.context.close()
   for (const scenario of [{ query: '', reversed: true, name: 'input above puzzle' },
     { query: '?hint=1', reversed: false, name: 'hint panel open' },
     { query: '?outside=1', reversed: false, name: 'outside clues at side, top, and diagonal' }]) {
     console.log(`Checking ${scenario.name}`)
     const { context, page, client } = await openPage(scenario.query, scenario.reversed)
-    try { report.checks.push({ scenario: scenario.name, ...await checkBehavior(page, client) }) }
+    try {
+      if (scenario.query === '?hint=1') {
+        const withHint = await snapshot(page)
+        for (const item of ['input', 'digit']) {
+          assert.ok(Math.abs(withHint[item].height - noHint[item].height) < 1, `hint must preserve ${item} height`)
+          assert.ok(Math.abs(withHint[item].width - noHint[item].width) < 1, `hint must preserve ${item} width`)
+        }
+        assert.ok(withHint.grid.height < noHint.grid.height, 'hint must make room by shrinking the grid')
+      }
+      report.checks.push({ scenario: scenario.name, ...await checkBehavior(page, client) })
+    }
     finally { await context.close() }
   }
   console.log('Checking puzzle resize from its side')

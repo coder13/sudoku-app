@@ -445,7 +445,7 @@ export function Worktable({
   const sizedRules = sized?.rules ?? game.position.draftSizedRules
   const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid ? sizedGridName(grid) : MINI_NAME
   const needsRating = needsPuzzleGrade(game)
-  const needsAttempt = !grid && !completed && !game.ratingAttempt && (!variant?.fog || game.score !== null)
+  const needsAttempt = !grid && !completed && !game.practiceTechnique && !game.ratingAttempt && (!variant?.fog || game.score !== null)
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const panelSupported = (panel: PuzzleTool) => !placeholder && !draft &&
@@ -2858,7 +2858,9 @@ export function Worktable({
           {puzzleControlsBelow
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
-        <PuzzleCollectionCredit game={game} />
+        {game.practiceTechnique
+          ? <div className="puzzle-caption">{techniqueLabel(game.practiceTechnique)}</div>
+          : <PuzzleCollectionCredit game={game} />}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values}
           active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>

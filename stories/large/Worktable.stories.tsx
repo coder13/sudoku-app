@@ -57,6 +57,21 @@ const mixedRulesGame = {
 }
 
 export const Starter: Story = {}
+const practiceGame = {
+  ...makeGame('story-wxyz-practice', 'WXYZ-Wing practice', '217693458050000963693548127502004019070905042040032576005006200000050700001000605', 'generated'),
+  practiceTechnique: 'wxyz-wing', difficulty: 'very-hard' as const,
+}
+export const PracticeTechniqueName: Story = {
+  args: { game: practiceGame, games: [practiceGame] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas }) => {
+    const puzzle = canvas.getByRole('region', { name: 'WXYZ-Wing practice' })
+    const grid = within(puzzle).getByRole('grid')
+    const title = within(puzzle).getByText('WXYZ-Wing', { exact: true })
+    await expect(title).toBeVisible()
+    await expect(title.getBoundingClientRect().top).toBeGreaterThanOrEqual(grid.getBoundingClientRect().bottom)
+  },
+}
 const importedDrawingGame: Game = {
   ...inProgress, id: 'story-imported-drawings', source: 'imported',
   position: { ...inProgress.position, importedDrawings: [

@@ -6,6 +6,7 @@ import { miniHints, miniSolutionTrace, visibleMiniHints } from './mini-play.ts'
 import { sizedRuleHintChoices, sizedRuleSolutionTrace } from './sized-rule-play.ts'
 import { algebraicHintChoices, algebraicSolutionTrace } from './algebraic-play.ts'
 import { techniqueHintsFromMatches } from './puzzle-analysis.ts'
+import { practiceTechniqueOrder, variantPracticeTechniqueOrder } from './practice-play.ts'
 import { variantHintChoice, variantSolutionPath } from './variant-hints.ts'
 import { getVariantPlayOrder, variantHintOrder, variantPosition } from './variant-play.ts'
 import { variantHouseMasks } from './variants.ts'
@@ -72,6 +73,8 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
   if (game.grid) return miniHints(game, limit, technique, run)
   const values = valuesOf(game)
   const eliminations = hintEliminations(values, completeCandidateMasks(game), game.position.eliminations)
+  const practiceOpening = game.practiceTechnique && values === game.givens && !eliminations?.some(Boolean)
+    ? game.practiceTechnique : undefined
   const problem = variantHintProblem(game, values, eliminations)
   if (problem) throw new EngineError(problem === 'conflict'
     ? 'The placed digits conflict with this puzzle’s solution.' : 'A required candidate is missing.', problem)
@@ -80,21 +83,34 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
     const position = variantPosition(variant, game.position)
     const request = {
       type: 'variant', operation: 'hints', position: { ...position, eliminations },
-      techniqueOrder: technique ? [technique] : await variantHintOrder(position.puzzle),
       limit: technique || limit === 'all' ? 0xffff_ffff : limit,
       preferProgress: !technique, difficulty: game.difficulty ?? 'medium',
     } as const
     const candidates = variantHouseMasks(position.puzzle, values, eliminations)
-    if (collection !== undefined) {
-      const first = await run({ ...request, collection })
-      return { ...first, choices: first.choices.map((hint) => variantHintChoice(hint, position.puzzle)), candidates }
+    async function findVariantHints(techniqueOrder: readonly string[]) {
+      if (collection !== undefined) {
+        const first = await run({ ...request, techniqueOrder, collection })
+        return { ...first, choices: first.choices.map(hint => variantHintChoice(hint, position.puzzle)), candidates }
+      }
+      const found = await run({ ...request, techniqueOrder }, { interactive: Boolean(technique) })
+      return { choices: found.map(hint => variantHintChoice(hint, position.puzzle)), available: found.length, candidates }
     }
-    const found = await run(request, { interactive: Boolean(technique) })
-    return { choices: found.map((hint) => variantHintChoice(hint, position.puzzle)), available: found.length,
-      candidates }
+    if (practiceOpening && !technique) {
+      const opening = await findVariantHints([practiceOpening])
+      if (opening.available) return opening
+    }
+    return findVariantHints(technique ? [technique] : await variantHintOrder(position.puzzle))
   }
-  if (!technique) return run({ type: 'hints', values, eliminations, limit, collection, includePatterns: true,
-    preferProgress: true, difficulty: game.difficulty ?? 'medium' })
+  if (!technique) {
+    const request = { type: 'hints', values, eliminations, limit, collection, includePatterns: true,
+      preferProgress: true, difficulty: game.difficulty ?? 'medium' } as const
+    if (practiceOpening) {
+      const { techniques } = await run({ type: 'techniques' })
+      const opening = await run({ ...request, disabledTechniques: techniques.filter(({ id }) => id !== practiceOpening).map(({ id }) => id) })
+      if (opening.available > 0) return opening
+    }
+    return run(request)
+  }
   const [matches, { candidates }] = await Promise.all([
     run({ type: 'deductions', values, eliminations, techniqueOrder: [technique] }, { interactive: true }),
     run({ type: 'hints', values, eliminations, includePatterns: true, limit: 0 }),
@@ -118,10 +134,17 @@ export async function puzzleSolution(game: Game, run = runEngine) {
   if (game.grid) return miniSolutionTrace(game.givens, run)
   if (game.variant?.fog) return solveFogPath(game.variant, run, true)
   const { variant } = game
-  if (!variant) return run({ type: 'logical-solve', values: game.givens, includeStepDetails: true, includeMoveAvailability: true })
+  if (!variant) {
+    const techniqueOrder = game.practiceTechnique
+      ? practiceTechniqueOrder(await run({ type: 'techniques' }), game.practiceTechnique) : undefined
+    return run({ type: 'logical-solve', values: game.givens, techniqueOrder,
+      includeStepDetails: true, includeMoveAvailability: true })
+  }
   const position = variantPosition(variant)
+  const techniqueOrder = game.practiceTechnique ? await variantPracticeTechniqueOrder(game.practiceTechnique, run)
+    : await getVariantPlayOrder(variant.puzzle)
   const path = variantSolutionPath(await run({
-    type: 'variant', operation: 'trace', position, techniqueOrder: await getVariantPlayOrder(variant.puzzle),
+    type: 'variant', operation: 'trace', position, techniqueOrder,
   }))
   if (path.rating.status !== 'stalled' || game.source === 'draft') return path
 
