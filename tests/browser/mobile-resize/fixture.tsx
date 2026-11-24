@@ -45,7 +45,9 @@ function Fixture() {
     inputSize={210} panelHeight={280} setPanelHeight={noop} beginResize={noop} multi={false} toggleMulti={noop} />
   </div>
   return <div className="app-shell">
-    <div style={{ height: 'var(--topbar-height)' }} />
+    <header className="topbar"><nav className="topbar-inner" aria-label="Primary navigation">
+      <button type="button" className="button">Puzzles</button>
+    </nav></header>
     <main className="page standard-workspace-page" aria-label="Mobile resize fixture">
       <div className="workspace"><PanelLayout puzzleId="resize-regression" rearranging={false}
         onRearrangingChange={noop} blocked={false} withHint={withHint} resizableInput savedInputHeight={savedHeight}

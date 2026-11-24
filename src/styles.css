@@ -3602,7 +3602,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .standard-workspace-page {
     height: calc(100dvh - var(--topbar-height));
     overflow-y: auto;
-    padding: var(--space-8);
+    --mobile-play-page-inline-padding: var(--space-8);
+    padding: var(--space-8) var(--mobile-play-page-inline-padding);
     --mobile-puzzle-base-top-padding: var(--space-8);
   }
   .puzzle-zoom {
@@ -3713,10 +3714,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     }
     .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-zone[data-edge="top"] {
       position: absolute;
-      z-index: 2;
-      inset-inline: 0;
-      block-size: var(--mobile-puzzle-above-height, 48px);
+      inset-inline: calc(-1 * var(--mobile-play-page-inline-padding));
       inset-block-start: calc(-1 * var(--mobile-puzzle-above-height, 48px));
+      inset-block-end: calc(100% - var(--mobile-puzzle-gesture-top, 0px));
+      touch-action: pan-x pinch-zoom;
+    }
+    /* Let the gap receive pointer input beneath the puzzle and its badge. */
+    .mobile-panel[data-mobile-panel="puzzle"][data-first] .puzzle-column { pointer-events: none; }
+    :where(.mobile-panel[data-mobile-panel="puzzle"][data-first] .puzzle-column > .puzzle) {
+      pointer-events: auto;
     }
     .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-side {
       position: absolute;

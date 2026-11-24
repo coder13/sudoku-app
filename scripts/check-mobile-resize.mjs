@@ -146,6 +146,43 @@ async function dragPuzzleFromSide(page, distance) {
   return page.evaluate(() => window.puzzleGestureCommits.at(-1))
 }
 
+async function checkPuzzleDragAbove(page, client) {
+  const header = await page.locator('.topbar').boundingBox()
+  const puzzle = page.locator('.mobile-panel .puzzle')
+  const panel = page.locator('[data-mobile-panel="puzzle"]')
+  const rightEdge = page.viewportSize().width - 2
+  const before = await snapshot(page)
+  const assertTopTarget = async (x, y) => {
+    assert.ok(await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)
+      ?.matches('.mobile-puzzle-gesture-zone[data-edge="top"]')), { x, y }), `top gap at ${x}, ${y} must receive touch drags`)
+  }
+  const dragFrom = async (x, y, distance) => {
+    await assertTopTarget(x, y)
+    const point = { x, y, id: 1 }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
+    await moveDrag(page, client, point, distance, 8)
+    await finishDrag(page, client)
+    await page.locator('[data-puzzle-gesture-locking]').first().waitFor({ state: 'detached' })
+  }
+
+  await page.getByRole('button', { name: 'Puzzles' }).tap()
+  assert.equal(await page.evaluate(() => window.puzzleGestureCommits.length), 0, 'the navigation must stay reachable')
+  await dragFrom(2, header.y + header.height + 2, 300)
+  const smaller = await snapshot(page)
+  assert.ok(smaller.grid.width < before.grid.width, 'dragging down from just below the navigation must shrink the puzzle')
+
+  const puzzleBox = await puzzle.boundingBox()
+  const panelBox = await panel.boundingBox()
+  const y = puzzleBox.y - 3
+  assert.ok(y > panelBox.y, 'the return drag must start in the gap created by shrinking the puzzle')
+  await assertTopTarget(puzzleBox.x + puzzleBox.width / 2, y)
+  await dragFrom(rightEdge, y, -96)
+  const larger = await snapshot(page)
+  assert.ok(larger.grid.width > smaller.grid.width, 'dragging up from just above the puzzle must restore its size')
+  assert.equal(await page.evaluate(() => window.puzzleGestureCommits.length), 2, 'each drag must save exactly once')
+  assertGeometry(larger, 'top-gap drag settled')
+}
+
 async function metrics(client) {
   return Object.fromEntries((await client.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]))
 }
@@ -460,6 +497,15 @@ try {
       const lowered = await dragPuzzleFromSide(page, 22)
       assert.ok(Math.abs(displacement(larger, lowered) - 16) < 1, 'a downward puzzle drag must snap to the nearest 16 px anchor')
       report.checks.push({ scenario: 'shrink and restore puzzle from side negative space', smaller, larger, lowered })
+    } finally { await context.close() }
+  }
+  console.log('Checking puzzle resize between the navigation and puzzle')
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { context, page, client } = await openPage()
+    try {
+      await page.emulateMedia({ reducedMotion })
+      await checkPuzzleDragAbove(page, client)
+      report.checks.push({ scenario: 'shrink and restore puzzle by touch from above', reducedMotion })
     } finally { await context.close() }
   }
   assert.deepEqual(errors, [], 'resize must not produce browser or ResizeObserver errors')
