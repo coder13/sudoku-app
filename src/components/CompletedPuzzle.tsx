@@ -27,7 +27,7 @@ function activePuzzleSummary(game: Game) {
   return [name, rating, progress].filter(Boolean).join(' · ')
 }
 
-/** Show solve results and continue with the next active puzzle, a collection puzzle, or a new puzzle. */
+/** Show solve results and continue a practice playlist, a collection, or ordinary Play. */
 export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
@@ -43,7 +43,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   onChooseVariant: () => void
 }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
+  const { busy, error, generate, generatePractice, cancelGeneration } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const heading = useRef<HTMLHeadingElement>(null)
   const [collectionError, setCollectionError] = useState('')
@@ -74,7 +74,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const nextDifficulty = game.customMode ? (isCustomDifficulty(difficultyPreference) ? difficultyPreference : 'medium')
     : sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
   const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
-  const nextLabel = needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
+  const nextLabel = game.practiceTechnique ? 'Next practice puzzle'
+    : needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
@@ -87,6 +88,10 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const canPlayNext = collectionEntry ? Boolean(collectionNext) && !ratingPending && !loadingNext : canGenerate
   const playNext = useCallback(() => {
     if (!canPlayNext) return
+    if (game.practiceTechnique) {
+      void generatePractice(game.practiceTechnique, game)
+      return
+    }
     if (needsChoice) {
       onChooseVariant()
       return
@@ -104,7 +109,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         setLoadingNext(false)
       })
     } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows, customMode: game.customMode })
-  }, [canPlayNext, inCollection, needsChoice, game.id, game.customMode, recipe, ruleset, boxRows, generate, onChooseVariant, online, nextDifficulty])
+  }, [canPlayNext, inCollection, needsChoice, game, recipe, ruleset, boxRows,
+    generate, generatePractice, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

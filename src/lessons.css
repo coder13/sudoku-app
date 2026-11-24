@@ -242,6 +242,8 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-workbench[data-tools="false"] { grid-template-columns: minmax(0, 1fr); }
 .lesson-workbench .board-frame { max-width: min(470px, calc(var(--diagram-columns, 9) * 46px + 20px)); margin-inline: auto; }
 .lesson-workbench-tools { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
+.lesson-chain-tools { min-width: 0; padding: var(--space-8); }
+.lesson-chain-tools .chain-toolbar { flex-wrap: wrap; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: var(--space-8); }
 .lesson-workbench .controls-content { height: auto; grid-template-columns: 48px minmax(0, min(var(--input-size, 210px), calc(100cqw - 108px))) 44px; gap: var(--space-8); }
 .lesson-workbench .keypad-stack { width: auto; }

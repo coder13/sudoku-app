@@ -29,6 +29,8 @@ export const RatedWithHints: Story = {
   },
 }
 export const FirstSolve: Story = { args: { games: [solved], preferredDifficulty: 'medium' } }
+const practiceSolved: Game = { ...solved, source: 'generated', title: 'WXYZ-Wing practice', difficulty: 'very-hard', practiceTechnique: 'wxyz-wing' }
+export const PracticePlaylist: Story = { args: { game: practiceSolved, games: [practiceSolved] } }
 const miniSolved: Game = {
   ...fillEntries(makeGame('mini-solved', 'Mini Sudoku', '0234341221434321', 'generated', 0, MINI_GRID), '1234341221434321'),
   elapsed: 94, difficulty: 'easy',

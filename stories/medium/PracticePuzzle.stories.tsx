@@ -14,6 +14,25 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Placement: Story = {}
 export const CandidateRemoval: Story = { args: { puzzle: lessonExamples['xy-wing'].practice, technique: 'XY-wing' } }
+export const DrawLinks: Story = {
+  args: { puzzle: lessonExamples['wxyz-wing'].practice, technique: 'WXYZ-Wing' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const grid = canvas.getByRole('grid')
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Chains$/ }))
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(canvas.getByRole('button', { name: 'Draw links' }))
+    const start = grid.querySelector<HTMLButtonElement>('.chain-candidate')!
+    start.focus()
+    await userEvent.keyboard('{Enter}')
+    const target = grid.querySelector<HTMLButtonElement>('[data-link-target="true"]')!
+    await userEvent.click(target)
+    await expect(canvas.getByRole('button', { name: 'Undo edit' })).toBeEnabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Done drawing' }))
+    await expect(canvas.getByRole('group', { name: 'Digit pad' })).toBeVisible()
+  },
+}
 export const RevealAndReset: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     await canvasElement.ownerDocument.fonts.ready

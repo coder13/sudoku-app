@@ -45,6 +45,8 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
 }) {
   const canPlace = puzzle.answers.some((answer) => 'place' in answer)
   const canRemove = puzzle.answers.some((answer) => 'eliminate' in answer)
+  const evidence = puzzle.deduction.evidence
+  const showChainTools = !puzzle.variantPuzzle && (canRemove || 'inference' in evidence || 'forcing' in evidence)
   const defaultInstruction = canPlace && canRemove ? 'Place one digit or remove one candidate.'
     : canPlace ? 'Find one digit you can place.' : 'Use Pencil mode to remove a candidate.'
   const [result, setResult] = useState<{ actions: DeductionAction[]; revealed: boolean } | null>(null)
@@ -110,7 +112,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
 
   return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
     initialPencil={canRemove && !canPlace}
-    preview={solution} showTools guide={guide}
+    preview={solution} showTools showChainTools={showChainTools} guide={guide}
     onEdit={() => { setResult(null); setGuidance(undefined) }}>
     {({ actions, reset, reveal }) => <>
       <div className="lesson-practice-actions">

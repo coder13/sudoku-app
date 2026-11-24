@@ -18,6 +18,8 @@ import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
+import { hasPracticePuzzles } from '../sudoku/practice-play'
+import { usePuzzleGeneration } from './usePuzzleGeneration'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
@@ -179,11 +181,17 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
   const [generated, setGenerated] = useState<LessonExercise | null>(null)
   const [generation, setGeneration] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [ready, setReady] = useState(false)
   const generationId = useRef(0)
   const initial = useMemo(() => lessonExample(lessonExamples[chosen.example]).practice, [chosen.example])
   const puzzle = generated ?? initial
   const grid = lessonValues(puzzle)
   const difficulty = techniqueDifficulties[chosen.example]
+  const { busy: startingPractice, error: practiceError, generatePractice } = usePuzzleGeneration()
+  useEffect(() => {
+    setReady(true)
+    return () => { generationId.current++ }
+  }, [])
 
   async function newExample() {
     const id = ++generationId.current
@@ -212,7 +220,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
         <div className="lesson-practice-heading-actions">
           {drills.length > 1 && <label className="lesson-drill">
             <span>{selectLabel ?? 'Technique'}</span>
-            <SelectControl value={chosen.example} onChange={(event) => {
+            <SelectControl value={chosen.example} disabled={!ready || startingPractice} onChange={(event) => {
               const next = drills.find(({ example }) => example === event.target.value)
               if (!next || next === chosen) return
               generationId.current++
@@ -223,17 +231,23 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
               {drills.map(({ example, title }) => <option key={example} value={example}>{title}</option>)}
             </SelectControl>
           </label>}
-          <Button type="button" className="lesson-new-example" disabled={generation === 'loading'}
+          <Button type="button" className="lesson-new-example" disabled={!ready || generation === 'loading' || startingPractice}
             aria-busy={generation === 'loading'} onClick={newExample}>
             <RefreshCw size={16} aria-hidden="true" /> New example
           </Button>
+          {!editorPreview && hasPracticePuzzles(chosen.example) &&
+            <Button type="button" variant="primary" disabled={!ready || startingPractice} aria-busy={startingPractice}
+              onClick={() => { void generatePractice(chosen.example) }}>
+              {startingPractice ? 'Generating puzzle…' : 'Play practice puzzles'}
+            </Button>}
         </div>
       </header>
       <p role="status" className={generation === 'error' ? 'lesson-new-example-error' : 'sr-only'}>
         {generation === 'loading' ? 'Generating example…' : generation === 'ready' ? 'New example ready.'
           : generation === 'error' ? 'Could not generate an example. Try again.' : ''}
       </p>
-    <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} practiceGuide={block.guide} />
+      {practiceError && <p role="alert" className="lesson-new-example-error">{practiceError}</p>}
+      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} practiceGuide={block.guide} />
     </section>
   )
 }

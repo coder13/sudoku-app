@@ -445,7 +445,7 @@ export function Worktable({
   const sizedRules = sized?.rules ?? game.position.draftSizedRules
   const sizedName = cages ? ALGEBRAIC_CAGES_NAME : grid ? sizedGridName(grid) : MINI_NAME
   const needsRating = needsPuzzleGrade(game)
-  const needsAttempt = !grid && !completed && !game.ratingAttempt && (!variant?.fog || game.score !== null)
+  const needsAttempt = !grid && !completed && !game.practiceTechnique && !game.ratingAttempt && (!variant?.fog || game.score !== null)
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const panelSupported = (panel: PuzzleTool) => !placeholder && !draft &&

@@ -57,9 +57,10 @@ function drawnEdges(sketches: readonly ChainSketch[], activeId: number) {
 const weakLinkStatus = 'A path can have at most two weak links in a row.'
 const EMPTY_GROUP_SELECTION: number[] = []
 
-export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent }: {
+export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent, updateGame }: {
   canDraw: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
   drawingIntent: boolean | null; setDrawingIntent: (intent: boolean) => void
+  updateGame?: (change: (current: Game) => Game) => void
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
   const [status, setStatus] = useState('')
@@ -318,11 +319,13 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }, [pending, hovered, linkTargets, grouping])
 
   function save(change: (state: ChainSketchState, current: Game) => ChainSketchState) {
-    roomStore.update(game.id, (current) => {
+    const update = (current: Game) => {
       const saved = current.chainSketch ?? emptySketch
       const chainSketch = change(saved, current)
       return chainSketch === saved ? current : { ...current, chainSketch }
-    })
+    }
+    if (updateGame) updateGame(update)
+    else roomStore.update(game.id, update)
   }
 
   function redoFor(current: Game, state: ChainSketchState) {

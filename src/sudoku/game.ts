@@ -82,6 +82,7 @@ export type Game = {
   algebraic?: AlgebraicGame
   sized?: SizedRuleGame
   customMode?: CustomModeDefinition
+  practiceTechnique?: string
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
   analysisUsed?: true
@@ -158,6 +159,7 @@ export function restartGame(game: Game): Game {
     algebraic: game.algebraic,
     sized: game.sized,
     customMode: game.customMode,
+    ...(game.practiceTechnique && { practiceTechnique: game.practiceTechnique }),
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ...(game.bookmarks && { bookmarks: game.bookmarks }),
