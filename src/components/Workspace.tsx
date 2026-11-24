@@ -19,8 +19,10 @@ import {
   ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
   INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
   saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
-  saveNewPuzzlePreference, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
+  saveNewPuzzlePreference, ADVANCED_PANEL_VISIBILITY_KEY, DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY,
+  MOBILE_PANEL_ORDER_KEY, HIDE_ZERO_TECHNIQUES_KEY, PANEL_HEIGHT_KEY, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
+import { notifySettingsEdit } from '../sudoku/settings-events'
 import { deviceSync } from '../sudoku/device-sync'
 import { roomStore } from '../sudoku/storage'
 import { playSession } from '../sudoku/play-session'
@@ -45,7 +47,6 @@ type Panel = 'import' | 'share' | 'publish' | 'cages' | 'sized-rules' | 'jigsaw-
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
-const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
 const DEFAULT_ADVANCED_PANEL_VISIBILITY: AdvancedPanelVisibility = { left: true, right: true, bottom: true, articles: true }
 const COLOR_MODE_ORDER: ColorMode[] = ['system', 'light', 'dark']
 const COLOR_MODE_LABELS: Record<ColorMode, string> = { system: 'System', light: 'Light', dark: 'Dark' }
@@ -63,12 +64,13 @@ function readAdvancedPanelVisibility() {
 }
 
 function saveAdvancedPanelVisibility(value: AdvancedPanelVisibility) {
-  try { localStorage.setItem(ADVANCED_PANEL_VISIBILITY_KEY, JSON.stringify(value)) }
+  try { localStorage.setItem(ADVANCED_PANEL_VISIBILITY_KEY, JSON.stringify(value)); notifySettingsEdit() }
   catch { /* Panel visibility remains active for this session. */ }
 }
 
 const shellPreferenceKeys = new Set([ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY,
-  ERROR_MODE_KEY, HIGHLIGHT_KEY, INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY])
+  ERROR_MODE_KEY, HIGHLIGHT_KEY, INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, ADVANCED_PANEL_VISIBILITY_KEY,
+  DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY, MOBILE_PANEL_ORDER_KEY, HIDE_ZERO_TECHNIQUES_KEY])
 
 const PlayContent = createContext<ReactNode>(null)
 
@@ -277,6 +279,8 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       if (matches(DIFFICULTY_KEY)) setDifficultyState(preferences.difficulty)
       if (matches(NEW_PUZZLE_KEY)) setNewPuzzlePreference(readNewPuzzlePreference())
       if (matches(WORKSPACE_MODE_KEY)) setPreferredWorkspaceMode(preferences.workspaceMode)
+      if (matches(ADVANCED_PANEL_VISIBILITY_KEY)) setAdvancedPanels(readAdvancedPanelVisibility())
+      if (matches(PANEL_HEIGHT_KEY)) setPanelHeight(readPanelHeight() ?? 280)
     }
     function onStorage(event: StorageEvent) {
       if (event.storageArea === localStorage && (event.key === null || shellPreferenceKeys.has(event.key))) refreshPreferences(event.key)

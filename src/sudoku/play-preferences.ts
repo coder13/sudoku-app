@@ -130,6 +130,10 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
   }
 }
 
+export function readPlayPreferences(storage: Pick<Storage, 'getItem'>): PlayPreferences {
+  return parsePlayPreferences(readSavedPreferences(storage))
+}
+
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 function readSavedPreferences(storage: Pick<Storage, 'getItem'>): Record<string, unknown> | null {
@@ -169,13 +173,12 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
     getSnapshot: () => current,
     getServerSnapshot: () => DEFAULT_PLAY_PREFERENCES,
     refreshPinnedActions() {
-      if (pending.pinnedActions !== undefined) return
-      let pinnedActions
-      try { pinnedActions = readPinnedActions(storage ?? localStorage) }
+      if (Object.keys(pending).length) return
+      let saved: PlayPreferences
+      try { saved = readPlayPreferences(storage ?? localStorage) }
       catch { return }
-      if (pinnedActions.length === current.pinnedActions.length &&
-          pinnedActions.every((id, index) => id === current.pinnedActions[index])) return
-      current = { ...current, pinnedActions }
+      if (JSON.stringify(saved) === JSON.stringify(current)) return
+      current = saved
       listeners.forEach((listener) => listener())
     },
     set<K extends keyof PlayPreferences>(key: K, value: PlayPreferences[K] | ((previous: PlayPreferences[K]) => PlayPreferences[K])) {
@@ -191,9 +194,8 @@ export function createPlayPreferenceStore(storage?: PreferenceStorage) {
         const target = storage ?? localStorage
         // Preserve unrelated settings from other tabs, including fields from newer app versions.
         target.setItem(PLAY_PREFERENCES_KEY, JSON.stringify({ ...(readSavedPreferences(target) ?? current), ...pending }))
-        const syncedEdit = pending.pinnedActions !== undefined
         pending = {}
-        if (syncedEdit && storage === undefined) notifySettingsEdit()
+        if (storage === undefined) notifySettingsEdit()
       }
       catch { /* Controls remain usable for this session when storage is full or blocked. */ }
       listeners.forEach((listener) => listener())

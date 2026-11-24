@@ -256,7 +256,7 @@ test('pinned puzzle buttons persist in order and ignore invalid saved entries', 
   }
 })
 
-test('refreshing pinned buttons keeps local tool settings and pending pin edits', () => {
+test('refreshing saved play preferences updates remote changes and keeps pending edits', () => {
   const storage = memoryStorage(JSON.stringify({ pinnedActions: ['hint'], pencil: false }))
   let full = false
   const store = createPlayPreferenceStore({
@@ -274,7 +274,7 @@ test('refreshing pinned buttons keeps local tool settings and pending pin edits'
   store.refreshPinnedActions()
   store.refreshPinnedActions()
   assert.deepEqual(store.getSnapshot().pinnedActions, ['colors', 'check'])
-  assert.equal(store.getSnapshot().pencil, false)
+  assert.equal(store.getSnapshot().pencil, true)
   assert.equal(notifications, 1)
 
   full = true

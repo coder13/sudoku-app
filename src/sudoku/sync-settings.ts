@@ -1,12 +1,14 @@
 import {
   ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
-  INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, readNewPuzzlePreference, readPreferences,
+  INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, PANEL_HEIGHT_KEY, DESKTOP_PANEL_LAYOUT_KEY,
+  DESKTOP_PANEL_LAYOUT_VERSION_KEY, MOBILE_PANEL_ORDER_KEY, ADVANCED_PANEL_VISIBILITY_KEY, HIDE_ZERO_TECHNIQUES_KEY,
+  readNewPuzzlePreference, readPreferences,
 } from './preferences.ts'
 import { readTiming, TIMING_KEY } from './puzzle-timing.ts'
 import { readShortcuts, SHORTCUTS_KEY, storedShortcutPreferences } from './shortcuts.ts'
 import { DISABLED_HINTS_KEY, readDisabledHintTechniques } from './hint-preferences.ts'
 import { readSolverProfile, SOLVER_PROFILE_KEY } from './solver-profile.ts'
-import { PLAY_PREFERENCES_KEY, readPinnedActions } from './play-preferences.ts'
+import { PLAY_PREFERENCES_KEY, readPlayPreferences } from './play-preferences.ts'
 import { parsePinnedActions } from './pinned-actions.ts'
 import { CUSTOM_MODES_KEY, readSudokuModes, type SudokuMode } from './custom-modes.ts'
 import type { SyncRequest } from './sync-engine.ts'
@@ -21,9 +23,15 @@ function groups(storage: Pick<Storage, 'getItem'>): Group[] {
     { key: ADVANCED_MODE_KEY, fields: prefs.advancedModes, format: 'fields' },
     { key: HIGHLIGHT_KEY, fields: prefs.highlighting, format: 'fields' },
     { key: TIMING_KEY, fields: readTiming(storage), format: 'fields' },
-    { key: PLAY_PREFERENCES_KEY, fields: { pinnedActions: readPinnedActions(storage) }, format: 'fields' },
+    { key: PLAY_PREFERENCES_KEY, fields: readPlayPreferences(storage), format: 'fields' },
     single(ERROR_MODE_KEY, prefs.errorMode), single(CELL_REFERENCE_STYLE_KEY, prefs.cellReferenceStyle),
     single(INPUT_SIZE_KEY, prefs.inputSize), single(WORKSPACE_MODE_KEY, prefs.workspaceMode),
+    single(PANEL_HEIGHT_KEY, storage.getItem(PANEL_HEIGHT_KEY)),
+    single(DESKTOP_PANEL_LAYOUT_KEY, storage.getItem(DESKTOP_PANEL_LAYOUT_KEY)),
+    single(DESKTOP_PANEL_LAYOUT_VERSION_KEY, storage.getItem(DESKTOP_PANEL_LAYOUT_VERSION_KEY)),
+    single(MOBILE_PANEL_ORDER_KEY, storage.getItem(MOBILE_PANEL_ORDER_KEY)),
+    single(ADVANCED_PANEL_VISIBILITY_KEY, storage.getItem(ADVANCED_PANEL_VISIBILITY_KEY)),
+    single(HIDE_ZERO_TECHNIQUES_KEY, storage.getItem(HIDE_ZERO_TECHNIQUES_KEY)),
     single(DIFFICULTY_KEY, prefs.difficulty), single(NEW_PUZZLE_KEY, readNewPuzzlePreference(storage), 'json'),
     // A key map is one choice: merging individual shortcuts could bind two actions to the same key.
     single(SHORTCUTS_KEY, storedShortcutPreferences(readShortcuts(storage)), 'json'),

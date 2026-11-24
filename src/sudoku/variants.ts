@@ -168,6 +168,84 @@ export type PlayableVariant = Exclude<VariantId, 'classic'>
 export type PuzzleVariantId = keyof typeof PUZZLE_VARIANTS | 'mixed'
 export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string; fog?: FogDefinition }
 
+/** Variant rules that automatic solving tools can include. Empty selections use classic Sudoku rules. */
+export const VARIANT_TOOL_OPTIONS = [
+  { id: 'killer-cages', label: 'Killer cages' },
+  { id: 'windoku', label: 'Windoku regions' },
+  { id: 'extra-regions', label: 'Other extra regions' },
+  { id: 'diagonal', label: 'Diagonal' },
+  { id: 'jigsaw', label: 'Jigsaw regions' },
+  { id: 'latin-square', label: 'Latin Square' },
+  { id: 'inside-grid', label: 'Inside Grid' },
+  { id: 'anti-knight', label: 'Anti-Knight' },
+  { id: 'anti-king', label: 'Anti-King' },
+  { id: 'non-consecutive', label: 'Non-Consecutive' },
+  { id: 'thermometer', label: 'Thermometer' },
+  { id: 'arrow', label: 'Arrow' },
+  { id: 'pill-arrow', label: 'Pill Arrows' },
+  { id: 'kropki', label: 'Kropki' },
+  { id: 'numbered-dots', label: 'Numbered dots' },
+  { id: 'xv', label: 'XV' },
+  { id: 'adjacent-total', label: 'Two-cell sums' },
+  { id: 'whispers', label: 'Whispers' },
+  { id: 'between', label: 'Between Lines' },
+  { id: 'lockout', label: 'Lockout Lines' },
+  { id: 'consecutive-run', label: 'Consecutive Lines' },
+  { id: 'entropic', label: 'Entropic Lines' },
+  { id: 'modular', label: 'Modular Lines' },
+  { id: 'palindrome', label: 'Palindrome' },
+  { id: 'renban', label: 'Renban' },
+  { id: 'region-sum', label: 'Region Sum Lines' },
+  { id: 'inequality', label: 'Inequality' },
+  { id: 'minimum-maximum', label: 'Minimum and Maximum' },
+  { id: 'parity', label: 'Odd/Even' },
+  { id: 'digit-restriction', label: 'Digit restrictions' },
+  { id: 'distinct-cells', label: 'Different digits' },
+  { id: 'clone', label: 'Clone' },
+  { id: 'quadruple', label: 'Quadruple' },
+  { id: 'quadruple-sum', label: 'Quad-Arrows' },
+  { id: 'lettered-quadruples', label: 'Lettered Quadruples' },
+  { id: 'global-entropy', label: 'Global Entropy' },
+  { id: 'sandwich', label: 'Sandwich' },
+  { id: 'x-sum', label: 'X-Sums' },
+  { id: 'little-killer', label: 'Little Killer' },
+  { id: 'skyscrapers', label: 'Skyscrapers' },
+] as const
+export type VariantToolId = typeof VARIANT_TOOL_OPTIONS[number]['id']
+const variantToolIds = new Set<string>(VARIANT_TOOL_OPTIONS.map(({ id }) => id))
+export function isVariantToolId(value: unknown): value is VariantToolId {
+  return typeof value === 'string' && variantToolIds.has(value)
+}
+
+function toolForRule(rule: VariantRule): VariantToolId | null {
+  if (rule.type === 'extra-house') {
+    return WINDOKU_REGIONS.some(region => region.length === rule.cells.length && region.every(cell => rule.cells.includes(cell)))
+      ? 'windoku' : 'extra-regions'
+  }
+  if (rule.type === 'inside-grid') return 'inside-grid'
+  if (rule.type === 'minimum' || rule.type === 'maximum') return 'minimum-maximum'
+  if (rule.type === 'labeled-dots') return 'numbered-dots'
+  return variantToolIds.has(rule.type) ? rule.type as VariantToolId : null
+}
+
+/** Keep classic Sudoku rules and only the selected variant rules. */
+export function puzzleForVariantTools(puzzle: VariantPuzzle, enabled: readonly VariantToolId[] = []): VariantPuzzle {
+  const selected = new Set(enabled)
+  const rules = (puzzle.rules ?? []).filter(rule => {
+    const tool = toolForRule(rule)
+    return tool !== null && selected.has(tool)
+  })
+  let regions: VariantPuzzle['regions']
+  if (puzzle.regions?.type === 'jigsaw') {
+    if (selected.has('jigsaw')) regions = puzzle.regions
+  } else if (puzzle.regions?.type === 'partial') {
+    if (selected.has('latin-square')) regions = puzzle.regions
+    else if (selected.has('extra-regions')) rules.push(...puzzle.regions.regions.map(cells => ({ type: 'extra-house' as const, cells })))
+  }
+  const { regions: _regions, ...base } = puzzle
+  return { ...base, ...(regions ? { regions } : {}), rules }
+}
+
 export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
 }

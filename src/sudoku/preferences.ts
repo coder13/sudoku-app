@@ -6,7 +6,7 @@ import { clampGridTextScale, DEFAULT_GRID_TEXT_SCALE } from './grid-text-scale.t
 import { DEFAULT_CELL_REFERENCE_STYLE, isCellReferenceStyle, type CellReferenceStyle } from './hints.ts'
 import { DEFAULT_DARK_THEME, THEME_IDS_SET, type ThemeId } from './themes.ts'
 import { isNewPuzzleId, isSizedPuzzleId, miniDifficulty, rectangularBoxRows, type NewPuzzleId } from './new-puzzle.ts'
-import { variantDifficulty } from './variants.ts'
+import { isVariantToolId, variantDifficulty, type VariantToolId } from './variants.ts'
 import { generationRuleset, type GenerationRulesetId } from './variant-rulesets.ts'
 
 export {
@@ -19,6 +19,9 @@ export type AdvancedModes = {
   multiSelectButton: boolean
   autoGenerateCandidates: boolean
   autoRemoveCandidates: boolean
+  generateCandidateVariants: VariantToolId[]
+  solveSinglesVariants: VariantToolId[]
+  autoRemoveCandidateVariants: VariantToolId[]
   autoPlaceNakedSingles: boolean
   keypadProgress: 'off' | 'dim' | 'count'
   doubleClickSingles: boolean
@@ -58,6 +61,9 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   multiSelectButton: false,
   autoGenerateCandidates: false,
   autoRemoveCandidates: true,
+  generateCandidateVariants: [],
+  solveSinglesVariants: [],
+  autoRemoveCandidateVariants: [],
   autoPlaceNakedSingles: false,
   keypadProgress: 'dim',
   doubleClickSingles: true,
@@ -92,6 +98,11 @@ export const ADVANCED_MODE_KEY = 'sudoku-app:v1:advanced-modes'
 export const ERROR_MODE_KEY = 'sudoku-app:v1:error-mode'
 export const INPUT_SIZE_KEY = 'sudoku-app:v1:input-size'
 export const PANEL_HEIGHT_KEY = 'sudoku-app:v1:input-panel-height'
+export const DESKTOP_PANEL_LAYOUT_KEY = 'sudoku-app:v1:desktop-panel-layout'
+export const DESKTOP_PANEL_LAYOUT_VERSION_KEY = 'sudoku-app:v1:desktop-panel-layout-version'
+export const MOBILE_PANEL_ORDER_KEY = 'sudoku-app:v1:mobile-panel-order'
+export const ADVANCED_PANEL_VISIBILITY_KEY = 'sudoku-app:v1:advanced-panel-visibility'
+export const HIDE_ZERO_TECHNIQUES_KEY = 'sudoku-app:v1:hide-zero-techniques'
 export const APPEARANCE_KEY = 'sudoku-app:v1:appearance'
 export const HIGHLIGHT_KEY = 'sudoku-app:v1:highlighting'
 export const WORKSPACE_MODE_KEY = 'sudoku-app:v1:workspace-mode'
@@ -129,6 +140,12 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         multiSelectButton: savedModes.multiSelectButton === true,
         autoGenerateCandidates: savedModes.autoGenerateCandidates === true,
         autoRemoveCandidates: savedModes.autoRemoveCandidates !== false,
+        generateCandidateVariants: Array.isArray(savedModes.generateCandidateVariants)
+          ? [...new Set(savedModes.generateCandidateVariants.filter(isVariantToolId))] : [],
+        solveSinglesVariants: Array.isArray(savedModes.solveSinglesVariants)
+          ? [...new Set(savedModes.solveSinglesVariants.filter(isVariantToolId))] : [],
+        autoRemoveCandidateVariants: Array.isArray(savedModes.autoRemoveCandidateVariants)
+          ? [...new Set(savedModes.autoRemoveCandidateVariants.filter(isVariantToolId))] : [],
         autoPlaceNakedSingles: savedModes.autoPlaceNakedSingles === true,
         keypadProgress: savedModes.keypadProgress === 'off' || savedModes.keypadProgress === 'count' ? savedModes.keypadProgress : 'dim',
         doubleClickSingles: savedModes.doubleClickSingles !== false,
@@ -247,6 +264,6 @@ export function readPanelHeight() {
 }
 
 export function savePanelHeight(value: number) {
-  try { localStorage.setItem(PANEL_HEIGHT_KEY, String(value)) }
+  try { localStorage.setItem(PANEL_HEIGHT_KEY, String(value)); notifySettingsEdit() }
   catch { /* The setting remains active for this session. */ }
 }

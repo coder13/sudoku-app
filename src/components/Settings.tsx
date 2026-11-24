@@ -19,6 +19,7 @@ import {
 import { syncStepTitles, type SyncStep } from '../sudoku/sync-steps'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
 import { resetDesktopPanelLayout } from './DesktopDockLayout'
+import { VARIANT_TOOL_OPTIONS, type VariantToolId } from '../sudoku/variants'
 import { ChainSwatches } from './ChainsPanel'
 import { DeviceSyncSettings } from './DeviceSyncSettings'
 import { KeyboardShortcutSettings } from './KeyboardShortcutSettings'
@@ -404,28 +405,47 @@ const cellReferenceStyles = Object.keys(CELL_REFERENCE_LABELS) as CellReferenceS
 function PuzzleTimingSettings() {
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
   return <fieldset>
-    <legend>Timer and pause</legend>
+    <legend>Solve timing</legend>
     <label className="advanced-toggle">
-      <input type="checkbox" checked={timing.showTimer}
-        onChange={(event) => puzzleTiming.set('showTimer', event.target.checked)} />
-      <span><strong>Show timer while solving</strong><small>Hide the clock during play and still see your time in the results.</small></span>
+      <input type="checkbox" checked={timing.trackTime} aria-describedby="track-solve-time-description"
+        onChange={(event) => puzzleTiming.set('trackTime', event.target.checked)} />
+      <span><strong>Track solve time</strong><small id="track-solve-time-description">Turn this off to make puzzles untimed.</small></span>
     </label>
     <label className="advanced-toggle">
-      <input type="checkbox" checked={timing.showPause}
+      <input type="checkbox" checked={timing.showTimer} disabled={!timing.trackTime}
+        onChange={(event) => puzzleTiming.set('showTimer', event.target.checked)} />
+      <span><strong>Show timer</strong></span>
+    </label>
+    <label className="advanced-toggle">
+      <input type="checkbox" checked={timing.showPause} disabled={!timing.trackTime}
         onChange={(event) => puzzleTiming.set('showPause', event.target.checked)} />
-      <span><strong>Show pause button</strong><small>Keep a pause control next to the grid.</small></span>
+      <span><strong>Show pause button</strong></span>
     </label>
     <label className="advanced-toggle">
       <input type="checkbox" checked={timing.pauseOnOpen}
         onChange={(event) => puzzleTiming.set('pauseOnOpen', event.target.checked)} />
       <span><strong>Pause on open</strong><small>Pause the puzzle when you open the app. Turn this off to reopen it as you left it.</small></span>
     </label>
-    <label className="advanced-toggle">
-      <input type="checkbox" checked={timing.trackTime}
-        onChange={(event) => puzzleTiming.set('trackTime', event.target.checked)} />
-      <span><strong>Track solve time</strong><small>Turning this off makes the current solve untimed.</small></span>
-    </label>
   </fieldset>
+}
+
+function VariantToolChoices({ title, description, selected, onChange }: {
+  title: string
+  description: string
+  selected: readonly VariantToolId[]
+  onChange: (selected: VariantToolId[]) => void
+}) {
+  return <details className="variant-tool-choices">
+    <summary>{title}</summary>
+    <p>{description}</p>
+    <div className="variant-tool-choice-list">
+      {VARIANT_TOOL_OPTIONS.map(({ id, label }) => <label key={id}>
+        <input type="checkbox" checked={selected.includes(id)} onChange={(event) => onChange(
+          event.target.checked ? [...selected, id] : selected.filter(item => item !== id))} />
+        <span>{label}</span>
+      </label>)}
+    </div>
+  </details>
 }
 
 export function GeneralSettings({ section, advancedModes, setAdvancedModes, errorMode, setErrorMode, draft,
@@ -500,13 +520,25 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
             <label className="advanced-toggle">
               <input type="checkbox" checked={advancedModes.autoGenerateCandidates}
                 onChange={(event) => setAdvancedModes({ ...advancedModes, autoGenerateCandidates: event.target.checked })} />
-              <span><strong>Automatically generate candidates</strong><small>Add candidates once per puzzle and again after a reset.</small></span>
+              <span><strong>Automatically generate candidates</strong><small>Use normal Sudoku rules by default. Select variant rules below to include them.</small></span>
             </label>
             <label className="advanced-toggle">
               <input type="checkbox" checked={advancedModes.autoRemoveCandidates}
                 onChange={(event) => setAdvancedModes({ ...advancedModes, autoRemoveCandidates: event.target.checked })} />
-              <span><strong>Automatically remove candidates</strong><small>Remove candidates that a digit placement rules out.</small></span>
+              <span><strong>Automatically remove candidates</strong><small>Use normal Sudoku rules by default. Select variant rules below to include them.</small></span>
             </label>
+            <VariantToolChoices title="Generate candidates: variant rules"
+              description="Choose which variant rules Generate Candidates and automatic candidate generation should use. Normal Sudoku rules apply by default."
+              selected={advancedModes.generateCandidateVariants}
+              onChange={(generateCandidateVariants) => setAdvancedModes({ ...advancedModes, generateCandidateVariants })} />
+            <VariantToolChoices title="Solve singles: variant rules"
+              description="Choose which variant rules Solve Singles should use. Normal Sudoku rules apply by default."
+              selected={advancedModes.solveSinglesVariants}
+              onChange={(solveSinglesVariants) => setAdvancedModes({ ...advancedModes, solveSinglesVariants })} />
+            <VariantToolChoices title="Automatic candidate removal: variant rules"
+              description="Choose which variant rules remove candidates after you place a digit. Normal Sudoku rules apply by default."
+              selected={advancedModes.autoRemoveCandidateVariants}
+              onChange={(autoRemoveCandidateVariants) => setAdvancedModes({ ...advancedModes, autoRemoveCandidateVariants })} />
           </fieldset>
           <fieldset>
             <legend>Killer Sudoku</legend>
