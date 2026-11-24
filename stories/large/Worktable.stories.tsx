@@ -66,7 +66,10 @@ export const PracticeTechniqueName: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas }) => {
     const puzzle = canvas.getByRole('region', { name: 'WXYZ-Wing practice' })
-    await expect(within(puzzle).getByText('WXYZ-Wing', { exact: true })).toBeVisible()
+    const grid = within(puzzle).getByRole('grid')
+    const title = within(puzzle).getByText('WXYZ-Wing', { exact: true })
+    await expect(title).toBeVisible()
+    await expect(title.getBoundingClientRect().top).toBeGreaterThanOrEqual(grid.getBoundingClientRect().bottom)
   },
 }
 const importedDrawingGame: Game = {

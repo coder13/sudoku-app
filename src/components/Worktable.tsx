@@ -2747,7 +2747,6 @@ export function Worktable({
     previewing, showResults, sketch.drawing, browsingStrongLinks])
 
   const puzzleMetadata = (!draft || placeholder) && <div key="metadata" className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
-    {game.practiceTechnique && <span className="puzzle-name">{techniqueLabel(game.practiceTechnique)}</span>}
     {difficulty && <span className="puzzle-difficulty">
       <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
     </span>}
@@ -2859,7 +2858,9 @@ export function Worktable({
           {puzzleControlsBelow
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
-        <PuzzleCollectionCredit game={game} />
+        {game.practiceTechnique
+          ? <div className="puzzle-caption">{techniqueLabel(game.practiceTechnique)}</div>
+          : <PuzzleCollectionCredit game={game} />}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values}
           active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>

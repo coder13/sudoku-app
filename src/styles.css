@@ -1252,9 +1252,18 @@ svg { flex-shrink: 0; }
   align-self: center;
   gap: var(--space-6) 9px;
 }
-.puzzle:is([data-desktop-solved], :has(.sudoku-grid)) :is(.puzzle-metadata, .puzzle-collection-credit) { margin-inline-start: var(--puzzle-grid-inset); }
+.puzzle:is([data-desktop-solved], :has(.sudoku-grid)) :is(.puzzle-metadata, .puzzle-caption) { margin-inline-start: var(--puzzle-grid-inset); }
 
-.puzzle-name { min-width: 0; font-size: 0.875rem; font-weight: 740; overflow-wrap: anywhere; }
+.puzzle-caption {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
 .puzzle-difficulty { color: var(--muted); font-size: 0.8125rem; font-weight: 720; }
 .puzzle-auto-mode { color: var(--muted); font-size: 0.75rem; }
 .non-unique-chip { display: inline-flex; align-items: center; min-height: 22px; padding-inline: var(--space-8);
