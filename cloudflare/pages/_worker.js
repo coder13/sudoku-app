@@ -59,7 +59,9 @@ const publicPuzzleSources = {
   },
   sudokupad: {
     pattern: /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})?$/,
-    url: id => `https://sudokupad.app/api/puzzle/${id}`,
+    url: id => id.startsWith('endless/')
+      ? `https://sudokupad.svencodes.com/ctclegacy/${id.slice('endless/'.length)}`
+      : `https://sudokupad.app/api/puzzle/${id}`,
     maxBytes: 20_024,
     code(text) {
       let value
