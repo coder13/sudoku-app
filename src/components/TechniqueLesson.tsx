@@ -208,11 +208,11 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   }
 
   return (
-    <section className="surface lesson-practice" aria-labelledby="trainer" data-lesson-block={blockIndex}>
+    <section id="trainer" className="surface lesson-practice" aria-labelledby="trainer-title" data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
         <div>
           <div className="lesson-title-row">
-            <h2 id="trainer">Trainer</h2>
+            <h2 id="trainer-title">Trainer</h2>
             {difficulty && <LessonDifficulty label={DIFFICULTY_LABELS[difficulty]} />}
           </div>
           {(title || editorPreview) && <p className="lesson-trainer-title">{title}</p>}

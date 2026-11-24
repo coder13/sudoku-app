@@ -2747,6 +2747,7 @@ export function Worktable({
     previewing, showResults, sketch.drawing, browsingStrongLinks])
 
   const puzzleMetadata = (!draft || placeholder) && <div key="metadata" className="puzzle-metadata" aria-hidden={Boolean(placeholder) || undefined}>
+    {game.practiceTechnique && <span className="puzzle-name">{techniqueLabel(game.practiceTechnique)}</span>}
     {difficulty && <span className="puzzle-difficulty">
       <span className="sr-only">Puzzle difficulty </span>{formatPuzzleRating(difficulty, score)}
     </span>}

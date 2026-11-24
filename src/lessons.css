@@ -167,7 +167,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-explanation > :not(:first-child) { margin-block-start: var(--space-12); }
 .lesson-explanation > .article-subheading:not(:first-child) { margin-block-start: var(--space-24); }
 .lesson-explanation > .article-subheading + * { margin-block-start: var(--space-8); }
-.lesson-explanation, .lesson-worked-examples, .lesson-article h2, .lesson-example-notes {
+.lesson-explanation, .lesson-worked-examples, .lesson-practice, .lesson-article h2, .lesson-example-notes {
   scroll-margin-top: calc(var(--topbar-height) + var(--space-20));
 }
 .article-subheading, .lesson-practice-heading h2 {
@@ -408,12 +408,6 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     width: min(100%, var(--mobile-page-width));
     padding-inline: var(--mobile-page-gutter);
   }
-  .app-shell .lesson-heading {
-    position: sticky;
-    inset-block-start: var(--topbar-height);
-    z-index: 2;
-    background: var(--page-bg);
-  }
   .learn-breadcrumbs ol { justify-content: center; flex-wrap: wrap; }
   .lesson-title-row { display: grid; justify-items: center; text-align: center; }
   .lesson-title { font-size: var(--mobile-page-title-size); }
@@ -426,7 +420,6 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     grid-auto-flow: column;
     grid-auto-columns: 44px;
   }
-  :root:has(.app-shell .learn-page) { scroll-padding-block-start: calc(var(--topbar-height) + 6rem); }
 }
 
 @container (max-width: 640px) {
