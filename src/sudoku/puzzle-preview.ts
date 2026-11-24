@@ -59,13 +59,6 @@ export function findImportAttempt(games: readonly Game[], preview: PuzzlePreview
     sameImportedCellColors(game.givenCellColors, saved.givenCellColors) &&
     sameAuthoredArtwork(game.authoredArtwork, saved.authoredArtwork) &&
     puzzleIdentity(saved) === identity)
-  return prepareDetectedPuzzle(imported, games, { deferRating, onDecoded, signal, photoProgress })
-}
-
-/** Verify a puzzle that has already been decoded by the import pipeline. */
-export async function prepareDetectedPuzzle(imported: ImportedPuzzle, games: readonly Game[] = [], {
-  deferRating = false, onDecoded, signal, photoProgress,
-}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {
 }
 
 /** Decode and verify the complete puzzle before the app offers to save or play it. */
@@ -73,7 +66,13 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
   deferRating = false, onDecoded, signal, photoProgress,
 }: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {
   const imported = await detectPuzzle(input)
-  signal?.throwIfAborted()
+  return prepareDetectedPuzzle(imported, games, { deferRating, onDecoded, signal, photoProgress })
+}
+
+/** Verify a puzzle that has already been decoded by the import pipeline. */
+export async function prepareDetectedPuzzle(imported: ImportedPuzzle, games: readonly Game[] = [], {
+  deferRating = false, onDecoded, signal, photoProgress,
+}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {  signal?.throwIfAborted()
   if (imported.format === 'Text grid' && !imported.grid && photoProgress) {
     const entries = [...imported.givens].map((clue, cell) => clue === '0' ? photoProgress.entries[cell] ?? '0' : '0').join('')
     const corner = [...imported.givens].map((clue, cell) =>
