@@ -62,6 +62,10 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzlePayload {
   }
 }
 
+export function puzzleExportText(game: Game) {
+  return `${JSON.stringify({ ...puzzleDefinitionForSharing(game), format: 'sudoku-app-puzzle' }, null, 2)}\n`
+}
+
 async function sharingRequest(path: string, definition?: SharedPuzzlePayload, signal?: AbortSignal): Promise<unknown> {
   const timeout = AbortSignal.timeout(20_000)
   let response: Response
@@ -91,7 +95,32 @@ export async function publishSharedPuzzle(game: Game, signal?: AbortSignal): Pro
 
 export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Promise<SharedPuzzleDefinition> {
   if (!isSharedPuzzleId(id)) throw new Error('This puzzle link is invalid.')
-  const data = await sharingRequest(`/${id.toLowerCase()}`, undefined, signal) as Partial<SharedPuzzlePayload>
+  return validatePuzzleDefinition(await sharingRequest(`/${id.toLowerCase()}`, undefined, signal), 'link')
+}
+
+export function parsePuzzleExport(text: string): SharedPuzzleDefinition {
+  let value: unknown
+  try { value = JSON.parse(text) }
+  catch { throw new Error('This puzzle export is unreadable. Copy it again and try once more.') }
+  if (!value || typeof value !== 'object' || Array.isArray(value) || (value as { format?: unknown }).format !== 'sudoku-app-puzzle') {
+    throw new Error('This puzzle export uses an unsupported definition.')
+  }
+  return validatePuzzleDefinition(value)
+}
+
+export function isPuzzleExport(text: string) {
+  try {
+    const value: unknown = JSON.parse(text)
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value) && (value as { format?: unknown }).format === 'sudoku-app-puzzle')
+  } catch { return false }
+}
+
+function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'export'): SharedPuzzleDefinition {
+  const unsupported = source === 'link' ? 'This link uses an unsupported puzzle definition.' : 'This puzzle export uses an unsupported definition.'
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(unsupported)
+  }
+  const data = value as Partial<SharedPuzzlePayload>
   const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide, givenCellColors, authoredArtwork } = data
   const legacy = sixRules !== undefined || sixAuthor !== undefined
   const sizedRules = legacy ? sixRules : data.sizedRules
@@ -111,7 +140,7 @@ export async function downloadSharedPuzzle(id: string, signal?: AbortSignal): Pr
       !validGivenCellColors(givenCellColors, variant, grid))) ||
     (authoredArtwork !== undefined && (grid !== undefined || !variant || variant.fog !== undefined || !validAuthoredArtwork(authoredArtwork))) ||
     (collection !== undefined && !isCollectionReference(collection))) {
-    throw new Error('This link uses an unsupported puzzle definition.')
+    throw new Error(unsupported)
   }
   return { version, title, givens, variant, collection, grid, sizedRules, sizedAuthor,
     ...(algebraic && { algebraic }), ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }),

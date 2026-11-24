@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Download, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -22,6 +22,7 @@ import { sizedRulePosition, sizedRuleDescriptions } from '../sudoku/sized-rule-g
 import { sizedRuleSingles } from '../sudoku/sized-rule-play'
 import { algebraicRules, analyzeAlgebraic, checkAlgebraicHintPosition } from '../sudoku/algebraic-play'
 import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
+import { puzzleExportText } from '../sudoku/puzzle-sharing'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -103,17 +104,32 @@ function candidateToolMasks(notes: readonly number[] | null | undefined, values:
     ? mask & (displayed?.[cell] ?? mask) & ~(eliminations?.[cell] ?? 0) : 0) ?? null
 }
 
+function downloadPuzzleCopy(game: Game) {
+  const filename = game.title.normalize('NFKD').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'sudoku-puzzle'
+  const url = URL.createObjectURL(new Blob([puzzleExportText(game)], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${filename}.sudoku.json`
+  link.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 async function solveSingleValues({ grid, variant, algebraic, sized, position }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'> & Partial<Pick<Game, 'position'>>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine, variantRules?: AdvancedModes['solveSinglesVariants']) {
   if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates, run)
   if (grid?.size === 4) {
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
     return miniSingles(values, eliminations, displayedCandidates, run)
   }
-  if (!variant) return run({ type: 'solve-singles', values, eliminations, displayedCandidates })
+  // Always solve singles that follow from standard Sudoku rules first. Variant
+  // candidates and houses must not hide those singles when the matching variant
+  // rule is disabled for Solve Singles.
+  const classicValues = await run({ type: 'solve-singles', values, eliminations,
+    displayedCandidates: variant ? undefined : displayedCandidates })
+  if (!variant || !variantRules?.length) return classicValues
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
-  const filteredPuzzle = variantRules ? puzzleForVariantTools(puzzle, variantRules) : puzzle
-  const entries = [...values].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
-  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates: variantRules ? undefined : displayedCandidates,
+  const filteredPuzzle = puzzleForVariantTools(puzzle, variantRules)
+  const entries = [...classicValues].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
+  return run({ type: 'variant', operation: 'solve-singles',
     position: { puzzle: filteredPuzzle, entries, eliminations } })
 }
 
@@ -2512,6 +2528,9 @@ export function Worktable({
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
     </button>
+    {!draft && <button onClick={() => { setPuzzleMenuOpen(false); downloadPuzzleCopy(game) }}>
+      <Download size={17} aria-hidden="true" /> Export puzzle
+    </button>}
     {showPuzzleSync && <>
       <button type="button" disabled={!storageAvailable || syncStatus === 'saving' || syncStatus === 'offline' || syncStatus === 'offline-clean'}
         onClick={() => { void deviceSync.syncPuzzle(game.id) }}>
