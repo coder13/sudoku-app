@@ -150,6 +150,9 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
   const snapAnimations = useRef<Animation[]>([])
   const lastTap = useRef<Tap | null>(null)
   const preferredHeight = useRef(savedHeight)
+  // A hint changes the board's space. Keep the applied input size through the transition.
+  const hintOpen = useRef(withHint)
+  hintOpen.current = withHint
   const optionsTimer = useRef<number | null>(null)
   const suppressClick = useRef(false)
   const [options, setOptions] = useState<Pick<Split, 'input' | 'min' | 'max'> | null>(null)
@@ -242,12 +245,12 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       cancelSizeOptions()
       lastTap.current = null
       clearSplit(layout)
-      const split = measureSplit(layout, withHint)
+      const split = measureSplit(layout, hintOpen.current)
       if (!split) return
       const preferred = preferredHeight.current
       if (preferred === undefined) describe(split)
       // An open hint can make the page scroll when the board reaches its minimum.
-      else updateHeight(layout, split, withHint ? Math.max(split.min, preferred) : clampHeight(split, preferred))
+      else updateHeight(layout, split, hintOpen.current ? Math.max(split.min, preferred) : clampHeight(split, preferred))
     }
     fitToLayout()
     const page = layout.closest<HTMLElement>('.standard-workspace-page')
@@ -257,7 +260,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
         fitToLayout()
         return
       }
-      const split = measureSplit(layout, withHint)
+      const split = measureSplit(layout, hintOpen.current)
       if (!split) return
       // Layout constraints can temporarily change the visible size. Only an
       // explicit resize should overwrite the player's saved height.
@@ -268,6 +271,8 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     const keypad = input?.querySelector('.mobile-input-digits > .workspace-controls')
     if (input) observer.observe(input)
     if (keypad) observer.observe(keypad)
+    const board = layout.querySelector('[data-mobile-panel="puzzle"] .puzzle-zoom, [data-mobile-panel="puzzle"] .puzzle-stage .board-frame')
+    if (board) observer.observe(board)
     if (page) observer.observe(page)
     window.addEventListener('resize', fitToLayout)
     return () => {
@@ -278,7 +283,14 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       stopResize()
       clearSplit(layout)
     }
-  }, [withHint, fitContent, edge, hasOpenTabs])
+  }, [fitContent, edge, hasOpenTabs])
+
+  useLayoutEffect(() => {
+    const current = drag.current
+    if (!current) return
+    stopResize()
+    restoreHeight(current.layout, current.split)
+  }, [withHint])
 
   // Saving a completed drag must not clear the sizing styles and briefly snap
   // the board back to its initial position. Apply only independent height changes.

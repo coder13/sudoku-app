@@ -389,6 +389,43 @@ try {
       } finally { await context.close() }
     }
   }
+  console.log('Checking input size through hint dismissal')
+  {
+    const { context, page } = await openPage()
+    try {
+      await page.locator('.mobile-input-resize').press('End')
+      await frames(page, 3)
+      const before = await snapshot(page)
+      await page.getByRole('button', { name: 'Hint', exact: true }).tap()
+      const close = page.getByRole('button', { name: 'Close hint', exact: true })
+      const hint = page.locator('[data-mobile-panel="hint"]')
+      await close.waitFor()
+      await hint.evaluate(panel => Promise.allSettled(panel.getAnimations().map(animation => animation.finished)))
+      const opened = await snapshot(page)
+      assert.ok(opened.grid.height < before.grid.height, 'the grid shrinks to make room for the hint')
+      const sizes = await close.evaluate(button => new Promise(resolve => {
+        const input = document.querySelector('.mobile-input-tabs')
+        const digit = input.querySelector('.key')
+        const samples = []
+        const start = performance.now()
+        function sample() {
+          const card = input.getBoundingClientRect()
+          const key = digit.getBoundingClientRect()
+          samples.push([card.width, card.height, key.width, key.height])
+          if (performance.now() - start < 350) requestAnimationFrame(sample)
+          else resolve(samples)
+        }
+        button.click()
+        requestAnimationFrame(sample)
+      }))
+      const expected = [opened.input.width, opened.input.height, opened.digit.width, opened.digit.height]
+      for (const size of sizes) assert.ok(size.every((value, index) => Math.abs(value - expected[index]) < 1),
+        `input and digit size must stay fixed while the hint closes (expected ${expected}, got ${size})`)
+      await hint.waitFor({ state: 'detached' })
+      assert.ok(Math.abs((await snapshot(page)).grid.height - before.grid.height) < 1, 'the grid grows back after the hint closes')
+      report.checks.push({ scenario: 'constant input size while closing hint', frames: sizes.length })
+    } finally { await context.close() }
+  }
   const withoutHint = await openPage()
   const noHint = await snapshot(withoutHint.page)
   await withoutHint.context.close()
