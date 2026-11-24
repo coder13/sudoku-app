@@ -27,6 +27,7 @@ export const settingArgs = {
   setInputSize: fn(),
   workspaceMode: DEFAULT_WORKSPACE_MODE,
   setWorkspaceMode: fn(),
+  onResetLayout: fn(),
   draft: false,
 } satisfies SettingsProps
 

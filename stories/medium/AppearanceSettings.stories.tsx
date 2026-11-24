@@ -4,11 +4,11 @@ import { MIN_INPUT_SIZE, MAX_INPUT_SIZE } from '../../src/sudoku/preferences'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 
-const { appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode } = settingArgs
+const { appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode, onResetLayout } = settingArgs
 const meta = {
   title: 'Medium/Settings/Appearance',
   component: AppearanceSettings,
-  args: { appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode },
+  args: { appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode, onResetLayout },
   decorators: [(Story) => <Width><Story /></Width>],
 } satisfies Meta<typeof AppearanceSettings>
 export default meta
