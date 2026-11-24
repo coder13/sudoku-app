@@ -1,8 +1,9 @@
-import { type ComponentProps, type ReactNode, type Ref, useLayoutEffect, useRef } from 'react'
+import { type ComponentProps, type PointerEvent, type ReactNode, type Ref, useLayoutEffect, useRef } from 'react'
 import { ListChecks, X } from 'lucide-react'
 import { IconButton } from './Button'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { animatePanelLayout, MotionSurface, motionDuration } from './Presence'
+import { RESIZE_STEP } from './ResizeStepControls'
 
 type InsightTab<Id extends string> = { id: Id; label: string }
 type Insights<Id extends string> = {
@@ -30,13 +31,14 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   advanced?: ReactNode
 }) {
   const puzzleStack = useRef<HTMLDivElement>(null)
+  const hintSlot = useRef<HTMLDivElement>(null)
   const standardDesktop = desktop && !advanced
   useLayoutEffect(() => {
     if (!standardDesktop) return
     const stack = puzzleStack.current
     const column = stack?.querySelector<HTMLElement>(':scope > .puzzle-column')
-    const slot = stack?.querySelector<HTMLElement>(':scope > .standard-hint-slot')
-    const content = slot?.querySelector<HTMLElement>(':scope > div')
+    const slot = hintSlot.current
+    const content = slot?.querySelector<HTMLElement>(':scope > .standard-hint-content')
     if (!stack || !column || !slot || !content) return
 
     let hintRevealHeight = 0
@@ -101,8 +103,9 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   return <>
     <div ref={puzzleStack} className="standard-puzzle-stack">
       {puzzle}
-      <div className="standard-hint-slot" data-open={Boolean(hint)}>
-        <div><MotionSurface>{hint}</MotionSurface></div>
+      <div ref={hintSlot} className="standard-hint-slot" id="standard-puzzle-hint" data-open={Boolean(hint)}>
+        <div className="standard-hint-content"><MotionSurface>{hint}</MotionSurface></div>
+        {hint && <DesktopHintDivider />}
       </div>
     </div>
     <div className="standard-input-stack" id="standard-digit-input">
@@ -110,6 +113,138 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
       <MotionSurface>{insights && <PlayInsights {...insights} />}</MotionSurface>
     </div>
   </>
+}
+
+type HintDrag = {
+  divider: HTMLDivElement
+  slot: HTMLElement
+  pointerId: number
+  startY: number
+  y: number
+  height: number
+  min: number
+  max: number
+  scale: number
+  savedSize: string
+  frame: number | null
+}
+
+function DesktopHintDivider() {
+  const divider = useRef<HTMLDivElement>(null)
+  const drag = useRef<HintDrag | null>(null)
+
+  function measure() {
+    const slot = divider.current?.parentElement
+    const card = slot?.querySelector<HTMLElement>('.hint-card')
+    if (!slot || !card) return
+    const style = getComputedStyle(card)
+    const max = Math.floor(parseFloat(style.maxBlockSize))
+    if (!Number.isFinite(max)) return
+    const height = card.offsetHeight
+    const body = card.querySelector<HTMLElement>('.hint-card-body')
+    const min = Math.min(max, Math.max(96, height - (body?.offsetHeight ?? height) + 24))
+    return { slot, height, min, max }
+  }
+
+  function reportHeight() {
+    const range = measure()
+    if (!range) return
+    const { height, min, max } = range
+    divider.current?.setAttribute('aria-valuemin', String(Math.min(min, height)))
+    divider.current?.setAttribute('aria-valuemax', String(Math.max(max, height)))
+    divider.current?.setAttribute('aria-valuenow', String(height))
+    divider.current?.setAttribute('aria-valuetext', `${height} pixels`)
+  }
+
+  function finish(pointerId?: number, y?: number) {
+    const current = drag.current
+    if (!current || (pointerId !== undefined && current.pointerId !== pointerId)) return
+    const { slot, divider } = current
+    drag.current = null
+    if (current.frame !== null) cancelAnimationFrame(current.frame)
+    if (y !== undefined && y !== current.startY) {
+      slot.style.setProperty('--desktop-hint-size', `${heightAtPointer(current, y)}px`)
+    } else if (current.savedSize) {
+      slot.style.setProperty('--desktop-hint-size', current.savedSize)
+    } else {
+      slot.style.removeProperty('--desktop-hint-size')
+    }
+    slot.removeAttribute('data-hint-resizing')
+    if (divider.hasPointerCapture(current.pointerId)) divider.releasePointerCapture(current.pointerId)
+  }
+
+  useLayoutEffect(() => {
+    const slot = divider.current?.parentElement
+    if (!slot) return
+    reportHeight()
+    const observer = new ResizeObserver(reportHeight)
+    const content = slot.querySelector('.standard-hint-content')
+    if (content) observer.observe(content)
+    if (slot.parentElement) observer.observe(slot.parentElement)
+    const cancel = () => finish()
+    window.addEventListener('resize', cancel)
+    window.addEventListener('blur', cancel)
+    return () => {
+      cancel()
+      observer.disconnect()
+      window.removeEventListener('resize', cancel)
+      window.removeEventListener('blur', cancel)
+    }
+  }, [])
+
+  function heightAtPointer(current: HintDrag, y: number) {
+    const height = current.height + (current.startY - y) / current.scale
+    return Math.min(current.max, Math.max(current.min, Math.round(height)))
+  }
+
+  function start(event: PointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary || event.button !== 0 || drag.current || event.currentTarget.closest('[data-layout-resizing]')) return
+    const range = measure()
+    if (!range) return
+    const { slot, height, min, max } = range
+    const scale = Number(getComputedStyle(slot).getPropertyValue('--desktop-layout-scale')) || 1
+    drag.current = {
+      divider: event.currentTarget, slot, pointerId: event.pointerId, startY: event.clientY, y: event.clientY,
+      height, min, max, scale,
+      savedSize: slot.style.getPropertyValue('--desktop-hint-size'), frame: null,
+    }
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function move(event: PointerEvent<HTMLDivElement>) {
+    const current = drag.current
+    if (current?.pointerId !== event.pointerId) return
+    current.y = event.clientY
+    if (current.frame !== null) return
+    current.frame = requestAnimationFrame(() => {
+      current.frame = null
+      current.slot.setAttribute('data-hint-resizing', '')
+      current.slot.style.setProperty('--desktop-hint-size', `${heightAtPointer(current, current.y)}px`)
+    })
+  }
+
+  return <div ref={divider} className="desktop-hint-divider" role="separator" aria-orientation="horizontal"
+    aria-label="Resize hint panel" aria-controls="standard-puzzle-hint" title="Drag to resize hint panel" tabIndex={0}
+    onPointerDown={start} onPointerMove={move}
+    onPointerUp={event => finish(event.pointerId, event.clientY)}
+    onPointerCancel={event => finish(event.pointerId)}
+    onLostPointerCapture={event => finish(event.pointerId)}
+    onKeyDown={event => {
+      if (!['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return
+      const range = measure()
+      if (!range) return
+      event.preventDefault()
+      event.stopPropagation()
+      finish()
+      const { slot, height, min, max } = range
+      if (event.key === 'Home') {
+        slot.style.removeProperty('--desktop-hint-size')
+      } else {
+        const step = event.key === 'ArrowUp' ? RESIZE_STEP : -RESIZE_STEP
+        slot.style.setProperty('--desktop-hint-size', `${Math.min(max, Math.max(min, height + step))}px`)
+      }
+    }} />
 }
 
 export function scrollActiveTabIntoView(list: HTMLElement | null) {

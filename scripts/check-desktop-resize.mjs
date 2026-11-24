@@ -40,7 +40,7 @@ const temporary = await mkdtemp(resolve(tmpdir(), 'sudoku-desktop-resize-'))
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
   'src/components/DesktopPlayLayout.tsx', 'src/components/desktop-resize-preview.ts', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
-  'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
+  'src/components/HintCard.tsx', 'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/Controls.tsx', 'src/components/ModeBadge.tsx', 'src/components/Modal.tsx',
   'src/components/ResizeStepControls.tsx', 'src/components/Presence.tsx', 'src/components/usePlayPreference.ts',
   'src/sudoku/play-preferences.ts', 'src/sudoku/themes.ts', 'src/styles.css', 'package-lock.json',
@@ -527,6 +527,59 @@ async function checkDividerLimits(page) {
   return { limits: records }
 }
 
+async function checkHintDivider(page) {
+  const divider = page.getByRole('separator', { name: 'Resize hint panel' })
+  const card = page.getByRole('complementary', { name: 'Puzzle hint' })
+  const toolbar = page.locator('.hint-toolbar')
+  const close = toolbar.getByRole('button', { name: 'Close hint' })
+  const navigation = toolbar.getByRole('group', { name: 'Hint navigation' })
+  const board = page.locator('.board-frame')
+  await navigation.getByRole('button', { name: 'Next hint' }).click()
+  assert.equal(await navigation.locator('span').textContent(), '2/2')
+  const cardBox = await card.boundingBox(), toolbarBox = await toolbar.boundingBox()
+  assert.ok(toolbarBox.y + toolbarBox.height <= cardBox.y, 'toolbar must sit above the card')
+  assert.ok((await navigation.boundingBox()).x < (await close.boundingBox()).x, 'navigation must precede Close')
+  const title = await card.getByRole('heading', { name: 'WXYZ-Wing' }).boundingBox()
+  const action = await card.getByRole('button', { name: 'Apply hint' }).boundingBox()
+  assert.ok(title.y >= action.y && title.y + title.height <= action.y + action.height, 'actions and title must share a row')
+
+  const roomyBoard = await board.boundingBox()
+  await divider.press('ArrowUp')
+  await ready(page)
+  assert.ok((await card.boundingBox()).height > cardBox.height, 'Up Arrow must grow the hint')
+  assert.equal((await board.boundingBox()).width, roomyBoard.width, 'the board must use the spare room before shrinking')
+  await divider.press('Home')
+  await ready(page)
+
+  await page.setViewportSize({ width: viewport.width, height: 760 })
+  await ready(page)
+  const before = { card: await card.boundingBox(), board: await board.boundingBox() }
+  const handle = await divider.boundingBox()
+  const x = handle.x + handle.width / 2, y = handle.y + handle.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x, y - 96, { steps: 10 })
+  await frames(page)
+  assert.ok((await card.boundingBox()).height > before.card.height + 48, 'drag must grow the card during the gesture')
+  assert.ok((await board.boundingBox()).width < before.board.width, 'the board must shrink once it needs the space')
+  const liveHeight = (await card.boundingBox()).height
+  await page.mouse.up()
+  await ready(page)
+  assert.equal((await card.boundingBox()).height, liveHeight, 'release must keep the chosen height')
+  assert.equal(await card.locator('.hint-card-body').evaluate(body => body.scrollHeight > body.clientHeight), true)
+
+  await divider.press('ArrowDown')
+  await ready(page)
+  assert.ok((await card.boundingBox()).height < liveHeight, 'Down Arrow must shrink the card')
+  await divider.press('Home')
+  await ready(page)
+  assert.equal((await card.boundingBox()).height, before.card.height, 'Home must restore the compact height')
+  await close.click()
+  await divider.waitFor({ state: 'detached' })
+  await ready(page)
+  assert.ok((await board.boundingBox()).width >= before.board.width, 'closing the hint must restore space to the board')
+}
+
 async function ready(page) {
   await page.locator('.desktop-layout-divider').waitFor()
   await page.evaluate(() => document.fonts.ready)
@@ -667,6 +720,7 @@ try {
         return { ...await checkDragAndSave(page, handle, true), viewport: { width: viewport.width, height: 640 } }
       })
     }
+    await runCheck('hint-divider', 'hint-detail=1', checkHintDivider)
     await runCheck('badge-edges', 'outside=1', async page => {
       for (const edge of ['top', 'right', 'bottom', 'left']) {
         await page.evaluate(edge => window.desktopResizeFixture.setBadge({ edge, offset: .5 }), edge)

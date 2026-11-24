@@ -829,7 +829,7 @@ export function Worktable({
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
     target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel, .bookmarks-panel')
       || target.closest('.puzzle-menu-wrap, .desktop-dock .dv-tab')
-      || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu, .puzzle-quick-actions')
+      || target.closest('.controls, .cell-color-palette, .hint-dock, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu, .puzzle-quick-actions')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
   ))
 
@@ -2321,7 +2321,7 @@ export function Worktable({
     ? explainCandidateRecovery(game, recovery, cellReferenceStyle) : undefined
   const hintPanel = (solutionHintPanel || visibleHint || hintLoading || mobileHintOpen) && (
     <PlayHint mobile={mobile} panelRef={mobile ? mobileHintPanelRef : undefined}>
-      <HintCard hint={solutionHintPanel ? solutionHintCopy
+      <HintCard compact={!mobile} hint={solutionHintPanel ? solutionHintCopy
         : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
         lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
         removals={revealedDeduction ? describeHintRemovals(revealedDeduction, {
