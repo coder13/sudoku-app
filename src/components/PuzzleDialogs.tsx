@@ -1,5 +1,5 @@
 import { Button, ChoiceButton } from './Button'
-import { type FormEvent, type RefObject, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { type FormEvent, type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useBlocker, useLocation, type ShouldBlockFn } from '@tanstack/react-router'
 import { Bookmark, Clipboard, Link2, Trash2 } from 'lucide-react'
 import { analyzeMini } from '../sudoku/mini-play'
@@ -135,6 +135,7 @@ export function ManagePuzzle({ game, close }: {
 
 const formats: ['link' | ShareFormat, string][] = [
   ['link', 'Puzzle link'],
+  ['name', 'Canonical puzzle name'],
   ['givens', '81-character givens'],
   ['grid', '9-line text grid'],
   ['hodoku', 'HoDoKu library line'],
@@ -158,7 +159,8 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
   const text = useRef<HTMLTextAreaElement>(null)
   const pending = useRef<AbortController | null>(null)
   const size = game.grid?.size ?? 9
-  const value = format === 'link' ? link : exportPuzzle(game.givens, format, size)
+  const value = useMemo(() => format === 'link' ? link : exportPuzzle(game.givens, format, size),
+    [format, game.givens, link, size])
   useEffect(() => () => pending.current?.abort(), [])
 
   async function createLink() {
@@ -207,9 +209,10 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
         </>}
         {loopback && format === 'link' && <p>This link opens only on this device.</p>}
         {format === 'link' && <p>Anyone with the link can open the starting grid and rules.</p>}
+        {format === 'name' && <p>Equivalent classic Sudoku boards share this name. Paste it into Import to open the puzzle in a standard orientation.</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         {value && <>
-          <label htmlFor="share-output">{format === 'link' ? 'Puzzle link' : 'Puzzle to share'}</label>
+          <label htmlFor="share-output">{format === 'link' ? 'Puzzle link' : format === 'name' ? 'Canonical puzzle name' : 'Puzzle to share'}</label>
           <textarea id="share-output" ref={text} value={value} readOnly rows={format === 'grid' ? size : 3} spellCheck={false} />
         </>}
         <div className="dialog-actions spread">

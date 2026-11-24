@@ -1,3 +1,5 @@
+import { classicPuzzleName, puzzleFromName } from './classic-puzzle-name.ts'
+
 const GRID = /^[0-9.]{81}$/
 
 export const STARTER = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
@@ -5,6 +7,8 @@ export const STARTER = '53007000060019500009800006080006000340080300170002000606
 export function parsePuzzle(input: string): string {
   const text = input.trim()
   if (text.length > 10_000) throw new Error('Paste one puzzle at a time.')
+
+  if (text.startsWith('s1')) return puzzleFromName(text)
 
   let cells: string
   if (/^https?:\/\//i.test(text)) {
@@ -49,7 +53,7 @@ export function textGridCells(text: string): string {
     .replace(/[\s|│┃]/g, '')
 }
 
-export type ShareFormat = 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach'
+export type ShareFormat = 'givens' | 'grid' | 'hodoku' | 'exchange' | 'coach' | 'name'
 
 export function exportPuzzle(givens: string, format: ShareFormat, size = 9): string {
   const dots = givens.replace(/0/g, '.')
@@ -59,5 +63,8 @@ export function exportPuzzle(givens: string, format: ShareFormat, size = 9): str
     case 'hodoku': return `:0000:x:${dots}:::`
     case 'exchange': return `https://sudokuexchange.com/play/?s=${givens}`
     case 'coach': return `https://sudoku.coach/en/play/${givens}`
+    case 'name':
+      if (size !== 9) throw new Error('Canonical puzzle names support classic 9×9 Sudoku only.')
+      return classicPuzzleName(givens)
   }
 }
