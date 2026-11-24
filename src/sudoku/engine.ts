@@ -68,6 +68,7 @@ export type VariantRule =
   | { type: 'entropic'; cells: readonly number[] }
   | { type: 'modular'; cells: readonly number[] }
   | { type: 'global-entropy' }
+  | { type: 'entropy-window-group'; cells: readonly [number, number, number, number]; group: 'low' | 'middle' | 'high' }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
   | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }

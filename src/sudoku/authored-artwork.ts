@@ -4,6 +4,9 @@ type Point = readonly [x: number, y: number]
 
 export type AuthoredMark = { type: 'outline' | 'divider'; points: readonly Point[]; thickness: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
+  | { type: 'tile'; center: Point; size: number; rotation: number; color: string; opacity: number }
+  | { type: 'text'; center: Point; text: string; size: number; color: string; opacity: number;
+      outlineColor: string; outlineThickness: number; offsetY: number }
 
 function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
@@ -18,8 +21,13 @@ function size(value: unknown): value is number {
   return typeof value === 'number' && value > 0 && value <= .5
 }
 
+function artworkPoint(value: unknown): value is Point {
+  return Array.isArray(value) && value.length === 2 && value.every(coordinate =>
+    typeof coordinate === 'number' && Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 9)
+}
+
 export function validAuthoredArtwork(value: unknown): value is readonly AuthoredMark[] {
-  return Array.isArray(value) && value.length > 0 && value.length <= 81 && value.every(mark => {
+  return Array.isArray(value) && value.length > 0 && value.length <= 512 && value.every(mark => {
     if (!record(mark)) return false
     if (mark.type === 'outline' || mark.type === 'divider') {
       const { points } = mark
@@ -30,8 +38,21 @@ export function validAuthoredArtwork(value: unknown): value is readonly Authored
           ? points[0].every((coordinate, axis) => coordinate === points.at(-1)![axis])
           : points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1])))
     }
-    return mark.type === 'disc' && Object.keys(mark).length === 4 && size(mark.radius) &&
+    if (mark.type === 'disc') return Object.keys(mark).length === 4 && size(mark.radius) &&
       point(mark.center, false) && typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
+    if (mark.type === 'tile') return Object.keys(mark).length === 6 && artworkPoint(mark.center) &&
+      typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 1 &&
+      typeof mark.rotation === 'number' && Number.isFinite(mark.rotation) && Math.abs(mark.rotation) <= 360 &&
+      typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
+      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
+    return mark.type === 'text' && Object.keys(mark).length === 9 && artworkPoint(mark.center) &&
+      typeof mark.text === 'string' && mark.text.length > 0 && mark.text.length <= 100 &&
+      typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 2 &&
+      typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
+      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color) &&
+      typeof mark.outlineColor === 'string' && /^#[0-9a-f]{6}$/i.test(mark.outlineColor) &&
+      typeof mark.outlineThickness === 'number' && Number.isFinite(mark.outlineThickness) && mark.outlineThickness >= 0 && mark.outlineThickness <= .1 &&
+      typeof mark.offsetY === 'number' && Number.isFinite(mark.offsetY) && Math.abs(mark.offsetY) <= 1
   })
 }
 
@@ -40,10 +61,19 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
   if (!a || !b || a.length !== b.length) return false
   return a.every((mark, index) => {
     const other = b[index]
-    return mark.type === other.type && mark.type !== 'disc' && other.type !== 'disc'
-      ? mark.thickness === other.thickness && JSON.stringify(mark.points) === JSON.stringify(other.points)
-      : mark.type === 'disc' && other.type === 'disc' && mark.radius === other.radius &&
+    if (mark.type !== other.type) return false
+    if (mark.type === 'outline' || mark.type === 'divider') return other.type === mark.type &&
+      mark.thickness === other.thickness && JSON.stringify(mark.points) === JSON.stringify(other.points)
+    if (mark.type === 'disc') return other.type === 'disc' && mark.radius === other.radius &&
         mark.color === other.color && mark.center[0] === other.center[0] && mark.center[1] === other.center[1]
+    if (mark.type === 'text') return other.type === 'text' && mark.text === other.text && mark.size === other.size &&
+      mark.opacity === other.opacity && mark.color === other.color && mark.outlineColor === other.outlineColor &&
+      mark.outlineThickness === other.outlineThickness && mark.offsetY === other.offsetY &&
+      mark.center[0] === other.center[0] && mark.center[1] === other.center[1]
+    if (mark.type !== 'tile' || other.type !== 'tile') return false
+    return mark.size === other.size && mark.rotation === other.rotation &&
+      mark.opacity === other.opacity && mark.color === other.color && mark.center[0] === other.center[0] &&
+      mark.center[1] === other.center[1]
   })
 }
 
@@ -55,6 +85,12 @@ const reviewedDrawings = new Map<string, { layer: string; title: string; partial
   ['349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
   ['12f8cfe5848c2ae3d1ebb478a484d05ff6311c689d10c3d6a585bcde0e828f7f', { layer: 'cosmeticLine', title: 'Windoku I' }],
   ['df51c464f943b9c2436f9897ce4d5cbaaaaf3309da5c2eef68bc93ed1e8ab095', { layer: 'cosmeticShape', title: 'Khachkar' }],
+])
+
+// CS1G uses dense, rotated rectangle layers to spell the author's thank-you.
+// Its visible rule list contains the puzzle's active rules; these shapes are art.
+const reviewedShapeArtwork = new Map([
+  ['512f5f0ace1feb1cae309b457724cfe8a9e36a91207358d9f9bdf4d0067a1e16', 'Thank RP you'],
 ])
 
 // These reviews cover the complete authoring data and ordered cell shades.
@@ -91,9 +127,39 @@ export async function reviewedCoachFillTitle(data: Record<string, unknown>, fill
 }
 
 export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
+  const hash = await reviewKey(code)
+  const reviewedTitle = hash && reviewedShapeArtwork.get(hash)
+  if (reviewedTitle) {
+    const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape')
+    const expected = [
+      { color: '#be3c04', opacity: 8, size: 1, rotation: 0, count: 81 },
+      { color: '#f15d1e', opacity: 178, size: .17, rotation: 45, count: 164 },
+      { color: '#2142ff', opacity: 195, size: .15, rotation: 45, count: 160 },
+    ]
+    if (layers.length !== expected.length) return
+    const artwork: AuthoredMark[] = []
+    for (let index = 0; index < expected.length; index++) {
+      const layer = layers[index]
+      const spec = expected[index]
+      if (!record(layer) || !record(layer.settings) || !Array.isArray(layer.segments) || layer.segments.length !== spec.count) return
+      const settings = layer.settings
+      if (settings.colour !== spec.color || settings.opacity !== spec.opacity ||
+          settings.shapeSize !== spec.size * 100 || settings.borderThickness !== 0 ||
+          (settings.shapeRotation ?? 0) !== spec.rotation ||
+          Object.keys(settings).some(key => !['gridSnapToCentres', 'gridSnapToEdges', 'opacity', 'colour', 'shapeSize', 'shapeRotation', 'borderThickness'].includes(key))) return
+      for (const segment of layer.segments) {
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+            !record(segment.parameters) || segment.parameters.shape !== 'rect' ||
+            Object.keys(segment.parameters).some(key => key !== 'shape') || !artworkPoint(segment.cells[0])) return
+        artwork.push({ type: 'tile', center: segment.cells[0] as Point, size: spec.size,
+          rotation: spec.rotation, color: spec.color, opacity: spec.opacity })
+      }
+    }
+    if (!validAuthoredArtwork(artwork)) return
+    return { layers, artwork, title: reviewedTitle }
+  }
   const drawn = constraints.filter(layer => record(layer) && (layer.type === 'cosmeticLine' || layer.type === 'cosmeticShape'))
   if (drawn.length !== 1 || !record(drawn[0])) return
-  const hash = await reviewKey(code)
   if (!hash) return
   const review = reviewedDrawings.get(hash)
   const layer = drawn[0]

@@ -116,11 +116,16 @@ export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
 }) {
   const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
   return <svg className="board-authored-artwork" viewBox={bounds} aria-hidden="true">
-    {artwork.map((mark, index) => mark.type !== 'disc'
+    {artwork.map((mark, index) => mark.type === 'outline' || mark.type === 'divider'
       ? <polyline key={index} data-authored-divider={mark.type === 'divider' || undefined} points={mark.points.map(([x, y]) => `${x},${y}`).join(' ')}
         fill="none" stroke="var(--board-ink)" strokeWidth={mark.thickness} strokeLinejoin="round" />
-      : <circle key={index} cx={mark.center[0]} cy={mark.center[1]} r={mark.radius}
-        fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />)}
+      : mark.type === 'disc'
+        ? <circle key={index} cx={mark.center[0]} cy={mark.center[1]} r={mark.radius}
+          fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />
+        : mark.type === 'tile'
+          ? <rect key={index} x={mark.center[0] - mark.size / 2} y={mark.center[1] - mark.size / 2}
+            width={mark.size} height={mark.size} fill={mark.color} fillOpacity={mark.opacity / 255}
+            transform={`rotate(${mark.rotation} ${mark.center[0]} ${mark.center[1]})`} /> : null)}
   </svg>
 })
 

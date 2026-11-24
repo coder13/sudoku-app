@@ -7,6 +7,8 @@ import { MAX_IMPORT_LENGTH } from './puzzle-import/shared.ts'
 import { sudokuCoach } from './puzzle-import/sudoku-coach.ts'
 import { sudokuExchange } from './puzzle-import/sudoku-exchange.ts'
 import { sudokuPad } from './puzzle-import/sudoku-pad.ts'
+import { decodeSizedSudokuPad } from './sized-sudoku-pad.ts'
+import { isPuzzleExport, parsePuzzleExport } from './puzzle-sharing.ts'
 import type { ImportResult, PuzzleImporter } from './puzzle-import/types.ts'
 
 export { importSharedPuzzle } from './puzzle-import/native-link.ts'
@@ -14,7 +16,7 @@ export { decodeCoachSix } from './puzzle-import/sudoku-coach.ts'
 export { MAX_IMPORT_LENGTH } from './puzzle-import/shared.ts'
 
 const importers = [sudokuCoach, sudokuExchange, sudokuPad, hoDoKu, fPuzzles] as const satisfies readonly PuzzleImporter[]
-export type ImportFormat = typeof importers[number]['format'] | NativeImport['format'] | 'Text grid' | 'Manual entry'
+export type ImportFormat = typeof importers[number]['format'] | NativeImport['format'] | 'Puzzle export' | 'Text grid' | 'Manual entry'
 export type ImportedPuzzle = ImportResult & { format: ImportFormat }
 
 type LinkReader = {
@@ -44,6 +46,15 @@ function parseImportUrl(text: string, origin: string) {
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   const text = input.trim().replace(/^```(?:text)?\s*([\s\S]*?)\s*```$/i, '$1')
   if (text.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
+  if (isPuzzleExport(text)) {
+    const { title, givens, variant, collection, grid, sizedRules, sizedAuthor, algebraic, whispersGuide, givenCellColors, authoredArtwork } = parsePuzzleExport(text)
+    const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
+    if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the exported givens.')
+    const cages = sizing ? { rules: sizing.rules, source: sizing.source } : algebraic && 'rules' in algebraic ? algebraic : undefined
+    return { givens, title, variant, collection, grid, sizedRules, sizedAuthor, ...(cages && { algebraic: cages }),
+      ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), ...(authoredArtwork && { authoredArtwork }),
+      format: 'Puzzle export' }
+  }
   const ownOrigin = globalThis.window?.location?.origin
   const url = parseImportUrl(text, ownOrigin ?? 'https://sudoku.invalid')
   if (url) {

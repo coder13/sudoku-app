@@ -71,6 +71,23 @@ test('Quadruple circles occupy the intended internal intersections and retain re
   }
 })
 
+test('Global Entropy group markers use the correct 2×2 intersection and digit-range label', () => {
+  const rules: VariantRule[] = [
+    { type: 'entropy-window-group', cells: [0, 1, 9, 10], group: 'low' },
+    { type: 'entropy-window-group', cells: [13, 14, 22, 23], group: 'middle' },
+    { type: 'entropy-window-group', cells: [24, 25, 33, 34], group: 'high' },
+  ]
+  const svg = renderToStaticMarkup(createElement(VariantClues, { rules }))
+  assert.match(svg, /class="variant-entropy-window-group variant-entropy-window-group-low" data-entropy-window-group="low"/)
+  assert.match(svg, /class="variant-entropy-window-group variant-entropy-window-group-middle" data-entropy-window-group="middle"/)
+  assert.match(svg, /class="variant-entropy-window-group variant-entropy-window-group-high" data-entropy-window-group="high"/)
+  assert.match(svg, /<rect x="0\.85" y="0\.85" width="\.3" height="\.3"/)
+  assert.match(svg, /<circle cx="7" cy="3" r="\.16"/)
+  const board = renderToStaticMarkup(createElement(Board, { givens: '0'.repeat(81), values: '0'.repeat(81),
+    variantPuzzle: { version: 1, givens: '0'.repeat(81), rules } }))
+  assert.match(board, /aria-label="Row 2, column 5, empty, Global Entropy 2 by 2 window, digits 4 to 6 appear twice/)
+})
+
 test('the actual mobile puzzle panel renders every published circle and accessible rule label', () => {
   const html = renderToStaticMarkup(createElement(MobilePanelLayout, {
     puzzleId: 'quad-mobile', rearranging: false, onRearrangingChange() {}, blocked: false, withHint: false,

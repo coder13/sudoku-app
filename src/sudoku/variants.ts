@@ -586,6 +586,13 @@ function isPlayableRule(rule: VariantRule): boolean {
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
     case 'lettered-quadruples': return Object.keys(rule).length === 2 && validLetteredQuadruples(rule.clues)
     case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
+    case 'entropy-window-group': {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'group'].includes(key)) ||
+        !Array.isArray(rule.cells) || rule.cells.length !== 4 || !['low', 'middle', 'high'].includes(rule.group)) return false
+      const [topLeft, topRight, bottomLeft, bottomRight] = rule.cells
+      return Number.isInteger(topLeft) && topLeft >= 0 && topLeft < 72 && topLeft % 9 < 8 &&
+        topRight === topLeft + 1 && bottomLeft === topLeft + 9 && bottomRight === topLeft + 10
+    }
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
       validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
@@ -691,6 +698,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'x-sum': VARIANTS['x-sum'].name,
   skyscrapers: VARIANTS.skyscrapers.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
+  'entropy-window-group': 'Global Entropy shape',
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
@@ -780,6 +788,11 @@ function describedVariantRules(puzzle: VariantPuzzle) {
       case 'global-entropy':
         descriptions.push(PUZZLE_VARIANTS['global-entropy'].rule)
         break
+      case 'entropy-window-group': {
+        const group = rule.group === 'low' ? 'low (1–3)' : rule.group === 'middle' ? 'middle (4–6)' : 'high (7–9)'
+        descriptions.push(`In each marked 2 × 2 window, the four cells contain at least one low, middle, and high digit. The ${group} shape shows which digit group appears twice.`)
+        break
+      }
       case 'entropic':
         descriptions.push(PUZZLE_VARIANTS.entropic.rule)
         break

@@ -154,6 +154,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'killer-cages':
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'digit-restriction': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
+        case 'entropy-window-group': return { ...rule, cells: rule.cells.map(cell).sort((a, b) => a - b) as [number, number, number, number] }
         case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
         case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
           ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),

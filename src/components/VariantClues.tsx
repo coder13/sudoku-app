@@ -32,6 +32,19 @@ function DigitRestrictionClue({ shape, cells, size = 9 }: Extract<VariantRule, {
   </g>
 }
 
+function EntropyWindowGroupClue({ cells, group }: Extract<VariantRule, { type: 'entropy-window-group' }>) {
+  const [first] = cells
+  const cx = first % 9 + 1
+  const cy = Math.floor(first / 9) + 1
+  return <g className={`variant-entropy-window-group variant-entropy-window-group-${group}`} data-entropy-window-group={group}>
+    {group === 'middle'
+      ? <path d={`M ${cx - .18} ${cy - .1} L ${cx} ${cy - .2} L ${cx + .18} ${cy - .1} L ${cx + .18} ${cy + .1} L ${cx} ${cy + .2} L ${cx - .18} ${cy + .1} Z`} />
+      : group === 'low'
+        ? <rect x={cx - .15} y={cy - .15} width=".3" height=".3" />
+        : <circle cx={cx} cy={cy} r=".16" />}
+  </g>
+}
+
 function DiagonalClue({ diagonal, size = 9 }: { diagonal: 'main' | 'anti'; size?: number }) {
   return <line className="variant-diagonal" x1={diagonal === 'main' ? 0 : size} y1="0"
     x2={diagonal === 'main' ? size : 0} y2={size} />
@@ -689,7 +702,7 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
   // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
+  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' || rule.type === 'entropy-window-group' ? -2 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
     rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'lettered-quadruples' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
   const drawingOrder = rules.flatMap((rule, index) => [
     { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
@@ -760,6 +773,8 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
           return <ParityClue key={index} {...rule} />
         case 'digit-restriction':
           return <DigitRestrictionClue key={index} {...rule} />
+        case 'entropy-window-group':
+          return <EntropyWindowGroupClue key={index} {...rule} />
         case 'lettered-quadruples':
           return <g key={index}>{rule.clues.map(({ topLeft, letters }) =>
             <QuadrupleClue key={topLeft} topLeft={topLeft} digits={[...letters]} lettered />)}</g>
@@ -893,6 +908,11 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
       case 'digit-restriction':
         for (const cell of rule.cells) labels[cell].push(`${rule.shape} shape, only digits ${rule.digits.join(', ')}`)
         break
+      case 'entropy-window-group': {
+        const [low, high] = rule.group === 'low' ? [1, 3] : rule.group === 'middle' ? [4, 6] : [7, 9]
+        for (const cell of rule.cells) labels[cell].push(`Global Entropy 2 by 2 window, digits ${low} to ${high} appear twice`)
+        break
+      }
       case 'lettered-quadruples':
         for (const { topLeft, letters } of rule.clues) for (const cell of quadrupleCells(topLeft)) {
           labels[cell].push(`Lettered Quadruple ${[...letters].join(', ')}, circle touching ${reference(topLeft)} and its three neighbors`)

@@ -32,7 +32,7 @@ import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { EditJigsawRegions } from './EditJigsawRegions'
 import { EditSizedRules } from './EditSizedRules'
-import { EditCages, SavePuzzle, SaveUnstartedPuzzle, SharePuzzle, useUnstartedPuzzleDeparture } from './PuzzleDialogs'
+import { EditCages, ExportPuzzle, SavePuzzle, SaveUnstartedPuzzle, SharePuzzle, useUnstartedPuzzleDeparture } from './PuzzleDialogs'
 import { SharedPuzzlePage } from './SharedPuzzlePage'
 import { MotionSurface, Presence } from './Presence'
 import { useMobileLayout } from './mobile-layout'
@@ -43,7 +43,7 @@ import { usePageAppearance } from './usePageAppearance'
 import { usePlayPreference } from './usePlayPreference'
 import { Worktable, type WorktableActions } from './Worktable'
 
-type Panel = 'import' | 'share' | 'publish' | 'cages' | 'sized-rules' | 'jigsaw-regions' | null
+type Panel = 'import' | 'share' | 'export' | 'publish' | 'cages' | 'sized-rules' | 'jigsaw-regions' | null
 type SettingsReturnLocation = { href: string; left: number; top: number; articleTop: number }
 const PUZZLE_LINK = /^(?:puzzle|variant|sized)=/
 type AdvancedPanelVisibility = { left: boolean; right: boolean; bottom: boolean; articles: boolean }
@@ -673,7 +673,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                 onEditCages={() => setPanel('cages')}
                 onEditSizedRules={() => setPanel('sized-rules')} onEditRegions={() => setPanel('jigsaw-regions')}
                 onEditChainColors={() => openSettings('chain-colors')}
-                onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onPublish={() => setPanel('publish')}
+                onCancelDraft={cancelDraft} onShare={() => setPanel('share')} onExport={() => setPanel('export')} onPublish={() => setPanel('publish')}
                 onSelectPuzzle={id => {
                   if (id === game?.id) return
                   puzzleDeparture.requestDeparture(game?.id, leave => { if (leave) roomStore.select(id) })
@@ -708,6 +708,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
       {panel === 'import' && <ImportPuzzle close={close} onPlay={close} />}
       {panel === 'share' && game && <SharePuzzle key={game.id} game={game} close={close} />}
+      {panel === 'export' && game && <ExportPuzzle key={game.id} game={game} close={close} />}
       {settingsRoute && <Settings close={closeSettings} section={settingsSection} syncStep={syncStep}
         advancedModes={advancedModes} setAdvancedModes={setAdvancedModes}
         appearance={appearance} setAppearance={setAppearance}

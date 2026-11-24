@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { createGameId, enter, makeGame, restartGame, type Game } from '../src/sudoku/game.ts'
-import { findSharedAttempt, isSharedPuzzleId, puzzleDefinitionForSharing, sharedPuzzleLink } from '../src/sudoku/puzzle-sharing.ts'
+import { findSharedAttempt, isSharedPuzzleId, puzzleDefinitionForSharing, puzzleExportText, sharedPuzzleLink } from '../src/sudoku/puzzle-sharing.ts'
 import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { GAME_PREFIX, readGame } from '../src/sudoku/storage.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
@@ -44,6 +44,23 @@ test('sharing an in-progress variant publishes an immutable definition under a U
     await assert.rejects(api(`shares/${createGameId()}`), { status: 404 })
     await assert.rejects(api('shares'), { status: 405 })
   } finally { sqlite.close() }
+})
+
+test('exported puzzle copies round-trip through import without player progress', async () => {
+  const { puzzle, solution } = mixedFixtures['x-killer']
+  const original = {
+    ...makeGame('private-attempt', 'X-Killer', puzzle.givens, 'collection'),
+    collection: { collectionId: 'x-killer', puzzleId: '1' },
+    variant: { id: 'mixed' as const, puzzle, solution },
+  }
+  const exported = puzzleExportText(enter(original, [0], 'candidate', 4))
+  const imported = await detectPuzzle(exported)
+  assert.equal(imported.format, 'Puzzle export')
+  assert.equal(imported.title, original.title)
+  assert.equal(imported.givens, original.givens)
+  assert.deepEqual(imported.variant, { id: 'mixed', puzzle })
+  assert.deepEqual(imported.collection, original.collection)
+  assert.equal(imported.progress, undefined)
 })
 
 test('Mini Sudoku shares keep the four-by-four grid specification', async () => {

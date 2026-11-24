@@ -1,7 +1,7 @@
 import { Button, IconButton } from './Button'
 import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
-import type { TechniqueCatalog } from '../sudoku/engine'
+import { createEngineSession, type TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { sizedRuleHintChoices, SIZED_RULE_TECHNIQUES } from '../sudoku/sized-rule-play'
 import { MINI_TECHNIQUES, miniHintChoices } from '../sudoku/mini-play'
@@ -10,7 +10,7 @@ import { ALGEBRAIC_CAGES_NAME, MINI_NAME, sizedGridName } from '../sudoku/new-pu
 import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
-import { analysisGroupsForCatalog, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
+import { analysisGroupsForCatalog, classicBasicTechniqueCounts, filterAnalysisGroups, TECHNIQUE_FINDER_TITLE, type AnalysisCount, type AnalysisGroup } from '../sudoku/puzzle-analysis'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../sudoku/technique-scan'
 import { puzzleTechniqueCatalog, variantHintProblem } from '../sudoku/puzzle-help'
 import { variantPosition } from '../sudoku/variant-play'
@@ -18,7 +18,7 @@ import { Modal } from './Modal'
 import { HIDE_ZERO_TECHNIQUES_KEY } from '../sudoku/preferences'
 import { notifySettingsEdit } from '../sudoku/settings-events'
 
-const SCAN_DELAY_MS = 100
+const SCAN_DEBOUNCE_MS = 1000
 
 function useHideZeroTechniques() {
   const [hideZero, setHideZero] = useState(true)
@@ -113,24 +113,32 @@ function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps
   useEffect(() => {
     if (!active || solved) return
     let current = true
-    const request = sized && grid ? sizedRuleHintChoices(sized, grid, values, eliminations)
-      : algebraic ? algebraicHintChoices(algebraic, values, eliminations) : miniHintChoices(values, eliminations)
-    void request.then(found => {
-      if (!current) return
-      if (!found) { setFailedKey(key); return }
-      const counts = new Map<string, Set<string>>()
-      for (const choice of found.choices) {
-        const targets = counts.get(choice.technique) ?? new Set<string>()
-        for (const action of choice.actions) {
-          const { cell, digit } = 'place' in action ? action.place : action.eliminate
-          targets.add(`${cell}:${digit}`)
+    let engine: ReturnType<typeof createEngineSession> | null = null
+    const timer = window.setTimeout(() => {
+      // Keep finder work off the shared play worker so candidate input stays
+      // responsive while this position is being analyzed.
+      const session = createEngineSession()
+      engine = session
+      const request = sized && grid ? sizedRuleHintChoices(sized, grid, values, eliminations, session.run)
+        : algebraic ? algebraicHintChoices(algebraic, values, eliminations, session.run)
+          : miniHintChoices(values, eliminations, session.run)
+      void request.then(found => {
+        if (!current) return
+        if (!found) { setFailedKey(key); return }
+        const counts = new Map<string, Set<string>>()
+        for (const choice of found.choices) {
+          const targets = counts.get(choice.technique) ?? new Set<string>()
+          for (const action of choice.actions) {
+            const { cell, digit } = 'place' in action ? action.place : action.eliminate
+            targets.add(`${cell}:${digit}`)
+          }
+          counts.set(choice.technique, targets)
         }
-        counts.set(choice.technique, targets)
-      }
-      setFailedKey(undefined)
-      setScan({ key, results: Object.fromEntries(techniques.map(id => [id, { count: counts.get(id)?.size ?? 0 }])) })
-    }, () => { if (current) setFailedKey(key) })
-    return () => { current = false }
+        setFailedKey(undefined)
+        setScan({ key, results: Object.fromEntries(techniques.map(id => [id, { count: counts.get(id)?.size ?? 0 }])) })
+      }, () => { if (current) setFailedKey(key) })
+    }, SCAN_DEBOUNCE_MS)
+    return () => { current = false; window.clearTimeout(timer); engine?.close() }
   }, [active, algebraic, grid, sized, solved, values, eliminations, key, techniques])
 
   const results = scan?.key === key ? scan.results : {}
@@ -160,6 +168,9 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const position = game.variant && variantPosition(game.variant, game.position)
   const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
   const positionProblem = variantHintProblem(game, values, eliminationMasks)
+  // These six techniques use normal Sudoku row, column, and box rules on every
+  // 9x9 board, while respecting the player's current candidate removals.
+  const immediateCounts = useMemo(() => classicBasicTechniqueCounts(values, eliminationMasks), [eliminationMasks, values])
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -184,8 +195,8 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     .sort((left, right) => left.cost - right.cost).map(({ id }) => id), [catalog])
 
   useEffect(() => {
-    if (!active || solved || !catalog || positionProblem) return
-    const cached = cachedTechniqueCounts(snapshotKey)
+    if (!active || solved || !catalog) return
+    const cached = { ...cachedTechniqueCounts(snapshotKey), ...immediateCounts }
     const missing = techniques.filter((technique) => !cached[technique])
     setScan({ key: snapshotKey, results: cached })
     let current = true
@@ -208,9 +219,10 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     }
 
     if (missing.length < techniques.length) recordAssistance()
-    if (missing.length === 0) return
+    // Variant errors block variant-aware scans, but not the classic results above.
+    if (positionProblem || missing.length === 0) return
 
-    const scan = watchTechniqueScan(values, eliminationMasks, position)
+    let scan: ReturnType<typeof watchTechniqueScan> | null = null
 
     function showResult(technique: string, result: AnalysisCount) {
       setScan((previous) => previous?.key === snapshotKey
@@ -219,11 +231,12 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     }
 
     const timer = window.setTimeout(() => {
+      scan = watchTechniqueScan(values, eliminationMasks, position)
       void (async () => {
         for (const technique of missing) {
           if (!current) return
           try {
-            const count = await scan.count(technique)
+            const count = await scan!.count(technique)
             if (!current) return
             showResult(technique, { count })
             recordAssistance()
@@ -234,11 +247,12 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
           }
         }
       })()
-    }, SCAN_DELAY_MS)
-    return () => { current = false; window.clearTimeout(timer); scan.close() }
-  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem])
+    }, SCAN_DEBOUNCE_MS)
+    return () => { current = false; window.clearTimeout(timer); scan?.close() }
+  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem, immediateCounts])
 
-  const results = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
+  const workerResults = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
+  const results = { ...workerResults, ...immediateCounts }
   const completed = Object.keys(results).length
   const total = groups.reduce((count, group) => count + group.techniques.length, 0)
   const visibleGroups = filterAnalysisGroups(groups, results, hideZero, solved)

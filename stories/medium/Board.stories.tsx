@@ -38,6 +38,22 @@ export const AuthoredVariantArtwork: Story = {
   },
   decorators: [(Story) => <Width width={320}><Story /></Width>],
 }
+export const GlobalEntropyShapeWindows: Story = {
+  args: {
+    variantPuzzle: {
+      version: 1,
+      givens: '0'.repeat(81),
+      rules: [
+        { type: 'global-entropy' },
+        { type: 'entropy-window-group', cells: [0, 1, 9, 10], group: 'low' },
+        { type: 'entropy-window-group', cells: [13, 14, 22, 23], group: 'middle' },
+        { type: 'entropy-window-group', cells: [24, 25, 33, 34], group: 'high' },
+      ],
+    },
+    selected: [14],
+  },
+  decorators: [(Story) => <Width width={385}><Story /></Width>],
+}
 export const MiniSudoku: Story = {
   args: { grid: MINI_GRID, givens: '0234341221434321', values: '0234341221434321',
     candidates: [1, ...Array<number>(15).fill(0)], selected: [0] },

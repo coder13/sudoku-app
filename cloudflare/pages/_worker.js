@@ -424,10 +424,18 @@ const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
   points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
 const artworkDivider = points => list(artworkCorner, 2, 128)(points) &&
   points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1]))
+const artworkPoint = list(value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 9, 2, 2)
+const artworkTile = mark => fields(mark, {
+  type: oneOf('tile'), center: artworkPoint,
+  size: value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 1,
+  rotation: value => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 360,
+  color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  opacity: value => Number.isInteger(value) && value >= 0 && value <= 255,
+})
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
-    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }), 1, 81)
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) || artworkTile(mark), 1, 512)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -464,6 +472,7 @@ const ruleFields = {
   lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
   entropic: [{ cells: list(cell, 1) }],
+  'entropy-window-group': [{ cells: list(cell, 4, 4), group: oneOf('low', 'middle', 'high') }],
   'global-entropy': [{}],
   inequality: [{ less: cell, greater: cell }],
   minimum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
@@ -501,6 +510,11 @@ const rule = value => {
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
   if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
+  if (value.type === 'entropy-window-group') {
+    const [topLeft, topRight, bottomLeft, bottomRight] = value.cells
+    return topLeft < 72 && topLeft % 9 < 8 && topRight === topLeft + 1 &&
+      bottomLeft === topLeft + 9 && bottomRight === topLeft + 10
+  }
   if (value.type !== 'pill-arrow') return true
   const [a, b] = value.pill
   return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) <= 1 && Math.abs(a % 9 - b % 9) <= 1 &&

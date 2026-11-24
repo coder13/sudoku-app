@@ -140,6 +140,18 @@ pub enum DigitRestrictionShape {
     Square,
 }
 
+/// The low, middle, or high digit group in an Entropy area.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+pub enum EntropyGroup {
+    /// Digits 1–3.
+    Low,
+    /// Digits 4–6.
+    Middle,
+    /// Digits 7–9.
+    High,
+}
+
 /// Marked cell pairs and the optional negative rule for this marker type.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
@@ -461,6 +473,13 @@ rules! {
     }
     /// Require low (1–3), middle (4–6) and high (7–9) digits in every 2 × 2 area.
     GlobalEntropy => "global-entropy" {}
+    /// Require the indicated group to appear twice in a 2 × 2 area, with each other group once.
+    EntropyWindowGroup => "entropy-window-group" {
+        /// The four cells of one 2 × 2 area in row-major order.
+        cells: [usize; 4],
+        /// Which entropy group appears twice.
+        group: EntropyGroup,
+    }
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
         /// Cell indices in line order, including both endpoints.
@@ -755,6 +774,7 @@ pub struct CompiledVariant {
     quadruples: Vec<Quadruple>,
     lettered_quadruples: Option<LetteredQuadruples>,
     global_entropy: Option<usize>,
+    entropy_window_groups: Vec<(usize, [usize; 4], EntropyGroup)>,
     pair_clues: Vec<PairClue>,
     positive_sums: Vec<PositiveSum>,
     pair_clue_memberships: [Vec<usize>; CELLS],

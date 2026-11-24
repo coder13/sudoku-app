@@ -4536,6 +4536,11 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .variant-preview .variant-parity { fill-opacity: .28; stroke-opacity: .8; stroke-width: .07; }
 .variant-digit-restriction { fill: none; stroke: var(--board-ink); stroke-opacity: .5; stroke-width: .035; stroke-linecap: round; }
 .variant-preview .variant-digit-restriction { stroke-opacity: .85; stroke-width: .09; }
+.variant-entropy-window-group { stroke: #111; stroke-width: .022; fill-opacity: .42; }
+.variant-entropy-window-group-low { fill: #2c9b68; }
+.variant-entropy-window-group-middle { fill: #8560bd; }
+.variant-entropy-window-group-high { fill: #df5b8b; }
+.variant-preview .variant-entropy-window-group { stroke-width: .06; }
 .variant-diagonal { stroke: var(--board-selected-border); opacity: .26; stroke-width: .032; }
 .variant-preview .variant-diagonal { opacity: .65; stroke-width: .2; }
 .variant-cage-edge { fill: none; stroke: var(--board-ink); opacity: .52; stroke-width: .022; stroke-dasharray: .067 .049; }

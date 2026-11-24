@@ -316,6 +316,15 @@ impl CompiledVariant {
                 return Err(VariantPositionError::Puzzle(Analysis::Conflict));
             }
         }
+        for (_, cells, group) in self.entropy_group_windows() {
+            let domains = cells.map(|cell| match board[cell] {
+                0 => DIGITS,
+                digit => digit_bit(digit),
+            });
+            if super::global_entropy::support_repeated_group(domains, group)[0] == 0 {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+        }
         if let Some(clue) = &self.lettered_quadruples {
             let domains = board.map(|digit| if digit == 0 { DIGITS } else { digit_bit(digit) });
             if !clue.permits(&domains) {
@@ -555,6 +564,20 @@ impl CompiledVariant {
                     .into_iter()
                     .zip(super::global_entropy::support(domains))
                 {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            for (_, cells, group) in self.entropy_group_windows() {
+                let domains = cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                for (cell, mask) in cells.into_iter().zip(
+                    super::global_entropy::support_repeated_group(domains, group),
+                ) {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;

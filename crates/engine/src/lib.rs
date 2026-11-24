@@ -79,7 +79,7 @@ pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHi
 pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{
-    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, MarkedPairs,
+    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage, MarkedPairs,
     Parity, LetteredQuadruple, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
     VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
     VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,

@@ -1873,6 +1873,15 @@ impl CompiledVariant {
                         proofs.push(proof);
                     }
                 }
+                for (rule, cells, group) in self.entropy_group_windows() {
+                    let domains = cells.map(|cell| position.domain(cell));
+                    if let Some(proof) = position.explain_constraint(
+                        technique, &[rule], &cells,
+                        super::global_entropy::support_repeated_group(domains, group).into_iter(),
+                    ) {
+                        proofs.push(proof);
+                    }
+                }
             }
             Quadruple => self.quadruple_proofs(position, &mut proofs),
             LetteredQuadruples => {

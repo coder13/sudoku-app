@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -109,11 +109,16 @@ async function solveSingleValues({ grid, variant, algebraic, sized, position }: 
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
     return miniSingles(values, eliminations, displayedCandidates, run)
   }
-  if (!variant) return run({ type: 'solve-singles', values, eliminations, displayedCandidates })
+  // Always solve singles that follow from standard Sudoku rules first. Variant
+  // candidates and houses must not hide those singles when the matching variant
+  // rule is disabled for Solve Singles.
+  const classicValues = await run({ type: 'solve-singles', values, eliminations,
+    displayedCandidates: variant ? undefined : displayedCandidates })
+  if (!variant || !variantRules?.length) return classicValues
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
-  const filteredPuzzle = variantRules ? puzzleForVariantTools(puzzle, variantRules) : puzzle
-  const entries = [...values].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
-  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates: variantRules ? undefined : displayedCandidates,
+  const filteredPuzzle = puzzleForVariantTools(puzzle, variantRules)
+  const entries = [...classicValues].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
+  return run({ type: 'variant', operation: 'solve-singles',
     position: { puzzle: filteredPuzzle, entries, eliminations } })
 }
 
@@ -179,7 +184,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, pauseShortcutsEnabled = true, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle, onMobilePuzzleTopSpaceChange,
+  beginResize, toggleMulti, onShare, onExport, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle, onMobilePuzzleTopSpaceChange,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -203,6 +208,7 @@ export function Worktable({
   beginResize: () => void
   toggleMulti: () => void
   onShare: () => void
+  onExport?: () => void
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
@@ -2512,6 +2518,9 @@ export function Worktable({
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
     </button>
+    {!draft && <button onClick={() => { setPuzzleMenuOpen(false); onExport?.() }}>
+      <Clipboard size={17} aria-hidden="true" /> Export puzzle
+    </button>}
     {showPuzzleSync && <>
       <button type="button" disabled={!storageAvailable || syncStatus === 'saving' || syncStatus === 'offline' || syncStatus === 'offline-clean'}
         onClick={() => { void deviceSync.syncPuzzle(game.id) }}>
