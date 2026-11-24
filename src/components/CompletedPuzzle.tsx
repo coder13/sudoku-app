@@ -2,11 +2,12 @@ import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { createPortal } from 'react-dom'
-import { ArrowRight, CircleCheck } from 'lucide-react'
+import { ArrowRight, Check, CircleCheck, CircleHelp, Lightbulb, Search } from 'lucide-react'
 import { isCustomDifficulty } from '../sudoku/custom-modes'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
-import type { CellReferenceStyle } from '../sudoku/hints'
+import { cellReference, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
+import { practiceTechniqueResult } from '../sudoku/action-history'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
 import { gameGenerationVariant, gameVariantId, isSizedPuzzleId, miniDifficulty, sizedGridName } from '../sudoku/new-puzzle'
@@ -25,6 +26,37 @@ function activePuzzleSummary(game: Game) {
     : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')
+}
+
+function PracticeTechniqueResult({ technique, game, cellReferenceStyle }: {
+  technique: string; game: Game; cellReferenceStyle: CellReferenceStyle
+}) {
+  const outcome = practiceTechniqueResult(technique, game.actionHistory)
+  const name = techniqueLabel(technique)
+  const labels = {
+    found: { title: `${name} found`, Icon: Check },
+    hint: { title: `${name} hint used`, Icon: Lightbulb },
+    checking: { title: `Checking for ${name}…`, Icon: Search },
+    unconfirmed: { title: `${name} unconfirmed`, Icon: CircleHelp },
+  }
+  const { title, Icon } = labels[outcome.status]
+  let detail = outcome.status === 'checking' ? 'Matching your recorded moves.' : 'Review your moves in Action history.'
+  if (outcome.action) {
+    const { action } = outcome
+    const candidate = 'place' in action ? action.place : action.eliminate
+    const cell = cellReference(candidate.cell, cellReferenceStyle, game.difficulty ?? undefined)
+    if ('place' in action) detail = outcome.status === 'hint'
+      ? `You applied the hint to place ${candidate.digit} in ${cell}.`
+      : `You placed ${candidate.digit} in ${cell}.`
+    else detail = outcome.status === 'hint'
+      ? `You applied the hint to remove ${candidate.digit} from ${cell}.`
+      : `You removed ${candidate.digit} from ${cell}.`
+  }
+
+  return <div className="completion-practice" data-outcome={outcome.status} role="status" aria-atomic="true">
+    <span className="completion-practice-icon"><Icon size={18} aria-hidden="true" /></span>
+    <div><strong>{title}</strong><p>{detail}</p></div>
+  </div>
 }
 
 /** Show solve results and continue a practice playlist, a collection, or ordinary Play. */
@@ -171,13 +203,15 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   return (
     <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
       aria-labelledby="completion-title">
-      <div className="completion completion-results">
+      <div className="completion completion-results" data-practice={Boolean(game.practiceTechnique) || undefined}>
         <div className="completion-summary" role="region" aria-label="Solve details" tabIndex={0}>
           <header className="completion-heading">
             <span className="completion-icon" aria-hidden="true"><CircleCheck size={29} /></span>
             <h1 id="completion-title" ref={heading} tabIndex={-1}>Puzzle solved</h1>
             <p>{game.title}</p>
           </header>
+          {game.practiceTechnique && <PracticeTechniqueResult technique={game.practiceTechnique} game={game}
+            cellReferenceStyle={cellReferenceStyle ?? 'concise'} />}
           <dl className="completion-result">
             {!game.timeUntracked && <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
             <div>

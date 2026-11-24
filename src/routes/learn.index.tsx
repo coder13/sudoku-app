@@ -25,7 +25,7 @@ export function LessonOverview() {
       {lessonsByVariant.map(({ title, group, difficulties }) => <section className="lesson-overview-section" key={title}>
         <h2 className="article-subheading" data-lesson-group-title={group?.index}>{title}</h2>
         {group && <p className="article-paragraph" data-lesson-group-overview={group.index}>{group.overview}</p>}
-        {difficulties.map(({ title, families, count }) => {
+        {difficulties.map(({ title, families }) => {
           const links = families.map(family => <div className="lesson-overview-family" key={family.index}>
             {!group && families.length > 1 &&
               <h4 data-lesson-group-title={family.index}>{family.title}</h4>}
@@ -37,9 +37,7 @@ export function LessonOverview() {
               </Link>
             </li>)}</ul>
           </div>)
-          return !group && count > 8
-            ? <details className="lesson-overview-level" key={title}><summary>{title}</summary>{links}</details>
-            : <div className="lesson-overview-level" key={title}><h3>{title}</h3>{links}</div>
+          return <details className="lesson-overview-level" key={title}><summary>{title}</summary>{links}</details>
         })}
       </section>)}
     </article>

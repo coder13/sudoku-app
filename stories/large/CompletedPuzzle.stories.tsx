@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import { CompletedPuzzle } from '../../src/components/CompletedPuzzle'
 import { ActionHistoryPanel } from '../../src/components/ActionHistoryPanel'
 import { fillEntries, makeGame, type Game } from '../../src/sudoku/game'
@@ -29,8 +29,34 @@ export const RatedWithHints: Story = {
   },
 }
 export const FirstSolve: Story = { args: { games: [solved], preferredDifficulty: 'medium' } }
-const practiceSolved: Game = { ...solved, source: 'generated', title: 'WXYZ-Wing practice', difficulty: 'very-hard', practiceTechnique: 'wxyz-wing' }
-export const PracticePlaylist: Story = { args: { game: practiceSolved, games: [practiceSolved] } }
+const practiceSolved: Game = {
+  ...fillEntries(makeGame('story-practice-solved', 'WXYZ-Wing practice',
+    '217693458050000963693548127502004019070905042040032576005006200000050700001000605', 'generated'),
+  '217693458854127963693548127582764319376915842149832576735486291968251734421379685'),
+  difficulty: 'very-hard', score: 520, elapsed: 151, practiceTechnique: 'wxyz-wing',
+  actionHistory: [{
+    id: 'wing', at: 1, lastAt: 1, elapsed: 134, kind: 'edit', technique: 'wxyz-wing',
+    changes: [{ kind: 'candidate', cell: 38, digit: 8, added: false }],
+  }],
+}
+export const PracticePlaylist: Story = {
+  args: { game: practiceSolved, games: [practiceSolved], cellReferenceStyle: 'concise' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const frame = canvas.getByRole('region', { name: 'Puzzle solved' })
+    const height = frame.getBoundingClientRect().height
+    await expect(canvas.getByRole('status')).toHaveTextContent('WXYZ-Wing found')
+    await expect(canvas.getByText('You removed 8 from r5c3.')).toBeVisible()
+    await userEvent.click(canvas.getByText('Action history'))
+    await expect(frame.getBoundingClientRect().height).toBe(height)
+    await expect(canvas.getByRole('button', { name: 'Next practice puzzle' })).toBeVisible()
+  },
+}
+const practiceWithHint: Game = {
+  ...practiceSolved,
+  actionHistory: practiceSolved.actionHistory?.map(entry => ({ ...entry, kind: 'hint' })),
+}
+export const PracticeWithHint: Story = { args: { game: practiceWithHint, games: [practiceWithHint] } }
 const miniSolved: Game = {
   ...fillEntries(makeGame('mini-solved', 'Mini Sudoku', '0234341221434321', 'generated', 0, MINI_GRID), '1234341221434321'),
   elapsed: 94, difficulty: 'easy',

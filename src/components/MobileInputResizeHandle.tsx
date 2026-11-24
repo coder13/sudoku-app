@@ -82,11 +82,10 @@ function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
   // hint floor is the lower bound for a new gesture in either direction.
   const minPanel = withHint ? Math.min(110, window.innerHeight * .28) : 0
   const fitLimit = parseFloat(layout.style.getPropertyValue('--mobile-fit-board-height'))
-  const fittedInput = withHint && !layout.hasAttribute('data-input-sized') ? minPanel : height
   // The board fit already includes unused vertical space. Measuring below the
   // input card would count the puzzle twice when the input card sits first.
   const max = Number.isFinite(fitLimit)
-    ? fittedInput + Math.max(0, fitLimit - minGridHeight)
+    ? height + Math.max(0, fitLimit - minGridHeight)
     : height + Math.max(0, grid.offsetHeight - minGridHeight)
   const min = Math.max(minPanel, naturalInput * MIN_INPUT_CONTENT_SCALE)
   return {

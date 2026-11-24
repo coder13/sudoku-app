@@ -53,7 +53,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
   cursor: pointer;
 }
 .learn-nav-group { margin-block-start: var(--space-6); }
-.learn-nav-group > :is(h2, summary) { margin: 0 9px 3px; font-size: 0.8125rem; font-weight: 740; color: var(--muted); }
+.learn-nav-group > summary { margin: 0 9px 3px; font-size: 0.8125rem; font-weight: 740; color: var(--muted); }
 .learn-nav-group > summary { min-height: 28px; align-content: center; cursor: pointer; }
 .learn-nav-group ul { margin: 0; padding: 0; list-style: none; }
 .learn-nav-link {
@@ -127,7 +127,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-prerequisite-link:hover, .lesson-prerequisite-link:focus-visible { border-color: var(--selected-border); background: var(--selected-bg); }
 .lesson-overview { --lesson-section-gap: clamp(var(--space-28), 5cqw, 44px); }
 .lesson-overview-section { display: grid; gap: var(--space-10); font-size: 1rem; line-height: 1.65; }
-.lesson-overview-level > :is(h3, summary) { font-size: 1rem; font-weight: 730; }
+.lesson-overview-level > summary { font-size: 1rem; font-weight: 730; }
 .lesson-overview-level > summary { cursor: pointer; }
 .lesson-overview-family > h4 { margin-block-start: var(--space-8); font-size: 0.875rem; color: var(--muted); }
 .lesson-overview-basics { max-width: 64ch; color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
@@ -394,6 +394,7 @@ ul.lesson-outcomes { padding-inline-start: 1.3em; }
     .learn-navigation[data-expanded="true"] .learn-nav-panel { opacity: 0; transform: translateY(-4px); }
   }
   .learn-nav-link { min-height: 44px; }
+  :is(.learn-nav-group, .lesson-overview-level) > summary { min-height: 44px; align-content: center; }
   .lesson-metadata { margin-block-start: 0; row-gap: var(--space-6); }
   .lesson-tag-label, .lesson-chip { font-size: 0.75rem; }
   .lesson-tags { column-gap: 3px; }

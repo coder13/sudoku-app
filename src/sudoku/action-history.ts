@@ -30,6 +30,17 @@ export function deductionActions(changes: readonly ActionChange[]): DeductionAct
     : change.before === 0 && change.after > 0 ? [{ place: { cell: change.cell, digit: change.after } }] : [])
 }
 
+export function practiceTechniqueResult(technique: string, entries: readonly ActionHistoryEntry[] = []) {
+  for (const entry of entries) {
+    // Resolve earlier moves before attributing the first matching move to the player or a hint.
+    if (entry.pending) return { status: 'checking' } as const
+    if (entry.technique !== technique || (entry.kind !== 'edit' && entry.kind !== 'hint')) continue
+    const action = deductionActions(entry.changes)[0]
+    if (action) return { status: entry.kind === 'hint' ? 'hint' : 'found', action } as const
+  }
+  return { status: 'unconfirmed' } as const
+}
+
 export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit',
   options: { at?: number; technique?: string; actions?: readonly DeductionAction[] } = {}): Game {
   if (before === after || before.source === 'draft' ||

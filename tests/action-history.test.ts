@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   ACTION_GROUP_DELAY, applyActionMatches, deductionActions, matchActionBatch, matchingTechnique,
-  pendingActionBatch, recordAction, validActionHistory, type ActionHistoryEntry,
+  pendingActionBatch, practiceTechniqueResult, recordAction, validActionHistory, type ActionHistoryEntry,
 } from '../src/sudoku/action-history.ts'
 import { enter, makeGame, paintCandidateStroke, redo, replaceCandidates, restartGame, undo } from '../src/sudoku/game.ts'
 
@@ -11,6 +11,18 @@ function remove(game = notes(), cell = 0, digit = 3, at = 1000) {
   return recordAction(game, enter(game, [cell], 'candidate', digit), 'edit', { at })
 }
 const entry = (cell: number, at: number) => remove(notes(), cell, 3, at).actionHistory![0]
+
+test('practice results use the first verified move and distinguish an applied hint', () => {
+  const pending = entry(38, 1000)
+  const found = { ...pending, pending: undefined, technique: 'wxyz-wing' }
+  const hint = { ...found, kind: 'hint' as const }
+  const action = { eliminate: { cell: 38, digit: 3 } }
+  assert.deepEqual(practiceTechniqueResult('wxyz-wing', [pending, hint]), { status: 'checking' })
+  assert.deepEqual(practiceTechniqueResult('wxyz-wing', [found, pending, hint]), { status: 'found', action })
+  assert.deepEqual(practiceTechniqueResult('wxyz-wing', [hint, found]), { status: 'hint', action })
+  assert.deepEqual(practiceTechniqueResult('wxyz-wing', [{ ...found, technique: 'x-wing' },
+    { ...found, kind: 'singles' }, { ...found, changes: [] }]), { status: 'unconfirmed' })
+})
 
 test('placements do not count automatic peer cleanup as user removals', () => {
   const before = notes()

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
+import { actionHistoryMatcher } from '../src/sudoku/action-history-matcher.ts'
 import { makeGame } from '../src/sudoku/game.ts'
 import { articles } from '../src/sudoku/lessons.ts'
 import { practiceBases } from '../src/sudoku/practice-bases.ts'
@@ -34,6 +35,8 @@ test('standard Play hints and the solution start with the selected practice tech
   const solution = await puzzleSolution(game)
   assert.equal(solution.steps[0]?.technique, technique)
   assert.equal(solution.rating.score.hardest, technique)
+  const match = actionHistoryMatcher(undefined, runEngine, undefined, undefined, technique)
+  assert.equal(await match({ values: board }, solution.steps[0].actions), technique)
 })
 
 test('next WXYZ-Wing puzzle excludes previous grids even when the seed repeats', async () => {
@@ -58,6 +61,9 @@ test('variant practice playlists keep the trainer rules and can continue in Play
     if (id === 'classic') assert.fail('Expected a variant puzzle.')
     const game = { ...makeGame('variant-practice', 'Variant practice', next.puzzle.givens, 'generated'),
       practiceTechnique: technique, variant: { id, puzzle: next.puzzle, solution: next.solution } }
-    assert.equal((await puzzleHints(game)).choices[0]?.technique, technique)
+    const opening = (await puzzleHints(game)).choices[0]
+    assert.equal(opening?.technique, technique)
+    const match = actionHistoryMatcher(game.variant, runEngine, undefined, undefined, technique)
+    assert.equal(await match({ values: game.givens }, opening.actions), technique)
   }
 })
