@@ -6,9 +6,13 @@ import type { SizedGrid } from '../grid.ts'
 import type { ImportedCellColors } from '../imported-colors.ts'
 import type { SizedRuleGame } from '../sized-rule-game.ts'
 import type { VariantGame } from '../variants.ts'
+import type { FutoshikiEntry } from '../../futoshiki/catalog.ts'
+import type { CalcudokuEntry } from '../../calcudoku/catalog.ts'
 
 export type ImportResult = {
   givens: string
+  futoshiki?: FutoshikiEntry
+  calcudoku?: CalcudokuEntry
   variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>
   grid?: SizedGrid
   sizedRules?: SizedRuleGame['rules']

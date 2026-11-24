@@ -1,6 +1,6 @@
 export type LatinRule = {
   label: string
-  kind?: 'line'
+  kind?: 'line' | 'parity'
   cells: readonly number[]
   support: (domains: readonly number[]) => readonly number[] | null
 }

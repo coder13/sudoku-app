@@ -1,10 +1,11 @@
 import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
+import { latinParityRules, type LatinParity } from '../latin/parity.ts'
 
 export const operatorSymbol = { equal: '', add: '+', multiply: '×', subtract: '−', divide: '÷' } as const
 export type CageOperator = keyof typeof operatorSymbol
-export type Cage = { target: number; operator: CageOperator; cells: readonly number[] }
+export type Cage = { target: number; operator: CageOperator; cells: readonly number[]; distinct?: true }
 
-export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[] }
+export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[]; parity: readonly LatinParity[] }
 
 const tupleTables = new Map<string, Uint16Array>()
 
@@ -16,7 +17,7 @@ function cageTuples(size: number, cage: Cage): Uint16Array {
     const cell = cells[i]
     for (let p = 0; p < i; p++) {
       const peer = cells[p]
-      if (cell % size === peer % size || Math.floor(cell / size) === Math.floor(peer / size)) {
+      if (cage.distinct || cell % size === peer % size || Math.floor(cell / size) === Math.floor(peer / size)) {
         layout |= 1 << (4 * i + p)
       }
     }
@@ -90,15 +91,22 @@ function checkCages(size: number, cages: readonly Cage[]) {
   if (covered.size !== size * size) throw new Error('Every Calcudoku cell needs exactly one cage.')
 }
 
-export function createCalcudoku(size: number, cages: readonly Cage[]): CalcudokuPuzzle {
+export function createCalcudoku(size: number, cages: readonly Cage[], options: { givens?: readonly number[]; parity?: readonly LatinParity[] } = {}): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
+  const parity = options.parity ?? []
+  const givens = options.givens ? [...options.givens] : Array<number>(size * size).fill(0)
+  if (givens.length !== size * size || givens.some(value => !Number.isInteger(value) || value < 0 || value > size)) {
+    throw new Error('Invalid Calcudoku givens.')
+  }
   checkCages(size, cages)
-  const givens = Array<number>(size * size).fill(0)
   const rules = cages.map(cage => {
     const { cells, operator, target } = cage
     const tuples = cageTuples(size, cage)
     if (!tuples.length) throw new Error('A Calcudoku cage has no valid arithmetic combinations.')
-    if (operator === 'equal') givens[cells[0]] = target
+    if (operator === 'equal') {
+      if (givens[cells[0]] && givens[cells[0]] !== target) throw new Error('A Calcudoku given conflicts with its cage.')
+      givens[cells[0]] = target
+    }
     const length = cells.length
     const cache = new Map<number, readonly number[] | null>()
     return {
@@ -126,5 +134,5 @@ export function createCalcudoku(size: number, cages: readonly Cage[]): Calcudoku
       },
     }
   })
-  return { ...createLatinPuzzle(size, givens, rules), cages }
+  return { ...createLatinPuzzle(size, givens, [...rules, ...latinParityRules(size, parity)]), cages, parity }
 }

@@ -1,6 +1,7 @@
 import { fogView } from '../sudoku/fog'
+import { useNavigate } from '@tanstack/react-router'
 import { Button, IconButton, buttonClassName } from './Button'
-import { type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { lazy, Suspense, type ClipboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, Bookmark, Camera, Clipboard, FileUp, ImageUp, Play } from 'lucide-react'
 import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
 import { deviceSync } from '../sudoku/device-sync'
@@ -23,6 +24,15 @@ import { PhotoPuzzleReview, type PhotoImportOptions } from './PhotoPuzzleReview'
 import { PuzzleCamera } from './PuzzleCamera'
 export type { PuzzlePreview } from '../sudoku/puzzle-preview'
 
+const LazyFutoshikiImportPreview = lazy(async () => {
+  const { FutoshikiImportPreview } = await import('./Futoshiki')
+  return { default: FutoshikiImportPreview }
+})
+const LazyCalcudokuImportPreview = lazy(async () => {
+  const { CalcudokuImportPreview } = await import('./Calcudoku')
+  return { default: CalcudokuImportPreview }
+})
+
 function preparePuzzle(input: string): Promise<PuzzlePreview> {
   return prepareImportedPuzzle(input, roomStore.getSnapshot().games)
 }
@@ -34,6 +44,7 @@ function preparePreview(input: string, progress: PreviewProgress): Promise<Puzzl
 }
 
 export function finishImport(preview: PuzzlePreview, play: boolean) {
+  if (preview.futoshiki || preview.calcudoku) return false
   const { game, grade } = preview
   const existing = findImportAttempt(roomStore.getSnapshot().games, preview)
   if (existing) {
@@ -59,6 +70,7 @@ export function finishImport(preview: PuzzlePreview, play: boolean) {
 export async function openPuzzle(input: string, cancelled: () => boolean, { freshCopy = false }: { freshCopy?: boolean } = {}) {
   const preview = await preparePuzzle(input)
   if (cancelled()) return
+  if (preview.futoshiki || preview.calcudoku) return
   if (freshCopy) roomStore.add(preview.game)
   else finishImport(preview, true)
 }
@@ -69,6 +81,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   fullPage?: boolean
   onPreview?: (input: string, progress: PreviewProgress) => Promise<PuzzlePreview>
 }) {
+  const navigate = useNavigate()
   const id = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const summary = useRef<HTMLParagraphElement>(null)
@@ -223,10 +236,12 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
     setCameraOpen(false)
   }
 
-  const puzzle = preview?.game ?? decoded
+  const standalonePreview = preview && (preview.futoshiki || preview.calcudoku) ? preview : undefined
+  const standalone = Boolean(standalonePreview)
+  const puzzle = standalone ? undefined : preview?.game ?? decoded
   const progress = preview ? preview.hasProgress ? preview.game.position : undefined : decoded?.progress
   const fog = fogView(puzzle?.variant, progress?.entries)
-  const proofStatus = preview && hasUniquenessProof(preview.game) ? 'unique' : verificationError ?? (busy ? 'checking' : 'unverified')
+  const proofStatus = standalone ? 'unique' : preview && hasUniquenessProof(preview.game) ? 'unique' : verificationError ?? (busy ? 'checking' : 'unverified')
   const puzzlePreview = puzzle && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>
@@ -270,6 +285,36 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
         </Button>
         <Button type="button" variant="primary" disabled={!preview} onClick={() => { if (preview) { finishImport(preview, true); onPlay?.() } }}>
           <Play size={17} aria-hidden="true" /> {progress ? 'Open puzzle' : 'Start playing'}
+        </Button>
+      </div>
+    </div>
+  )
+
+  const numberPuzzlePreview = standalonePreview && (
+    <div className="import-preview">
+      <p className="import-preview-meta" ref={summary} tabIndex={-1}>
+        <strong>{standalonePreview.futoshiki ? `Futoshiki · ${standalonePreview.futoshiki.puzzle.size} × ${standalonePreview.futoshiki.puzzle.size}`
+          : `Calcudoku · ${standalonePreview.calcudoku!.puzzle.size} × ${standalonePreview.calcudoku!.puzzle.size}`}</strong>
+        <span className="import-preview-rating" role="status">{originalSolutionStatus[proofStatus]}</span>
+        <span className="import-preview-format">{standalonePreview.format}</span>
+      </p>
+      {(standalonePreview.futoshiki?.initialPosition || standalonePreview.calcudoku?.initialPosition) && <p>This import includes your progress.</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <Suspense fallback={<p role="status">Loading puzzle preview…</p>}>
+        {standalonePreview.futoshiki ? <LazyFutoshikiImportPreview entry={standalonePreview.futoshiki} />
+          : standalonePreview.calcudoku && <LazyCalcudokuImportPreview entry={standalonePreview.calcudoku} />}
+      </Suspense>
+      <div className="dialog-actions import-preview-actions">
+        <Button type="button" className="import-edit" onClick={editPreview}>Edit input</Button>
+        <Button type="button" variant="primary" onClick={() => {
+          onPlay?.()
+          if (standalonePreview.futoshiki) {
+            void navigate({ to: '/puzzles/futoshiki/$puzzle', params: { puzzle: standalonePreview.futoshiki.id } })
+          } else if (standalonePreview.calcudoku) {
+            void navigate({ to: '/puzzles/calcudoku/$puzzle', params: { puzzle: standalonePreview.calcudoku.id } })
+          }
+        }}>
+          <Play size={17} aria-hidden="true" /> {standalonePreview.hasProgress ? 'Open puzzle' : 'Start playing'}
         </Button>
       </div>
     </div>
@@ -376,6 +421,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   </section>
 
   const content = <>
+    {numberPuzzlePreview}
     {puzzlePreview}
     {photo && <PhotoPuzzleReview image={photo} visible={!showingPreview} onBack={backToInput}
       onCheck={(givens, options) => void check(givens, options)} onEdit={() => setError('')} checking={busy} checkError={error} />}

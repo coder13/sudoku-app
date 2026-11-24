@@ -2,10 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { expect, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
-import { FutoshikiDifficultyPage } from '../../src/components/Futoshiki'
+import { FutoshikiDifficultyPage, FutoshikiImportPreview } from '../../src/components/Futoshiki'
 import { KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
+import { createImportedFutoshiki } from '../../src/futoshiki/imported'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { solveLatin } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
@@ -19,6 +20,15 @@ const meta = {
 } satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
+
+export const ImportedParityPreview: Story = {
+  render: () => <div className="import-preview">
+    <FutoshikiImportPreview entry={createImportedFutoshiki(4, '0000000000000000', [
+      { less: 0, greater: 1 }, { less: 7, greater: 11 },
+    ], [{ cell: 0, parity: 'odd' }, { cell: 10, parity: 'even' }])} />
+  </div>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
 
 export const LoadingDifficultyResults: Story = {
   render: function LoadingResults() {

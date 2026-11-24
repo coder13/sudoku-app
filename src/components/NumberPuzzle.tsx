@@ -12,7 +12,7 @@ import {
 import {
   advanceNumberClock, emptyNumberPosition, hasNumberMoves, loadNumberDifficulty, loadNumberProgress, NUMBER_HISTORY_SIZE,
   parseNumberProgress, readNumberProgress, rememberNumberDifficulty, saveNumberClock, saveNumberProgress,
-  type NumberClock, type NumberMove, type NumberProgress, type SavedNumberProgress,
+  type NumberClock, type NumberMove, type NumberPosition, type NumberProgress, type SavedNumberProgress,
 } from '../number-puzzles/progress'
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultyOptions, PuzzleDifficultyStep } from './DifficultySelector'
@@ -62,6 +62,34 @@ export type NumberBoard = {
   check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
   hints: (values: readonly number[], limit?: number) => readonly Hint[]
   solve: () => readonly number[] | null
+}
+
+export function NumberPuzzlePreview({ board, label, position }: {
+  board: NumberBoard; label: string; position?: NumberPosition
+}) {
+  const { width } = board
+  return <div className="number-puzzle-import-preview">
+    <div className="number-puzzle-grid" role="group" aria-label={label}
+      style={{ '--number-puzzle-columns': width } as CSSProperties}>
+      {board.cells.map((cell, index) => {
+        const value = cell.given || position?.values[index] || 0
+        const notes = position?.notes[index] ?? 0
+        const candidates = Array.from({ length: board.maxValue }, (_, digit) => digit + 1).filter(digit => notes & (1 << (digit - 1)))
+        const cellName = `R${Math.floor(index / width) + 1}C${index % width + 1}`
+        const description = cell.printed !== undefined ? String(cell.printed)
+          : value ? `${cell.given ? 'given ' : ''}${value}` : candidates.length ? `notes ${candidates.join(', ')}` : 'empty'
+        return <div key={index} className="number-puzzle-cell" role="img"
+          aria-label={`${cellName}, ${description}${cell.label ? `, ${cell.label}` : ''}`}
+          data-edges={cell.edges} data-given={Boolean(cell.given)} data-endpoint={cell.endpoint}
+          data-decorated={Boolean(cell.decoration)}>
+          {cell.decoration}
+          {cell.printed !== undefined ? <span>{cell.printed}</span> : value ? value
+            : candidates.length ? <span className="number-puzzle-notes" aria-hidden="true">{Array.from({ length: 9 }, (_, digit) =>
+              <span key={digit}>{candidates.includes(digit + 1) ? digit + 1 : ''}</span>)}</span> : null}
+        </div>
+      })}
+    </div>
+  </div>
 }
 
 export type NumberGameConfig<Entry extends NumberPuzzleEntry> = {
@@ -394,9 +422,12 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       })
       return () => { active = false }
     }
-    restore(load())
+    const initial = entry.initialPosition
+      ? { position: entry.initialPosition, past: [], future: [], clock: 'untimed' as const }
+      : undefined
+    restore(load() ?? initial)
     setReady(true)
-  }, [editable, entry.id, generatedGame, load, maxValue])
+  }, [editable, entry.id, entry.initialPosition, generatedGame, load, maxValue])
 
   function positionActionsMenu(menu: HTMLDivElement) {
     const anchor = actionsButton.current?.getBoundingClientRect()

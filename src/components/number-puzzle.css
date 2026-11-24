@@ -88,6 +88,19 @@
   container-type: inline-size;
 }
 
+.number-puzzle-import-preview {
+  width: min(100%, 30rem);
+  margin-inline: auto;
+}
+
+.number-puzzle-parity {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  pointer-events: none;
+}
+
 .number-puzzle-grid > * {
   aspect-ratio: 1;
   min-width: 0;
