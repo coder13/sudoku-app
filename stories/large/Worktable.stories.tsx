@@ -1274,14 +1274,14 @@ export const MedusaHintStages: Story = {
     await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
     const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
     const hint = within(card)
-    if (!hint.queryByRole('heading', { name: '3D Medusa' })) await userEvent.click(hint.getByRole('button', { name: 'Next hint' }))
+    if (!hint.queryByRole('heading', { name: '3D Medusa' })) await userEvent.click(canvas.getByRole('button', { name: 'Next hint' }))
     const title = hint.getByRole('heading', { name: '3D Medusa' })
     const more = hint.getByRole('button', { name: 'More detail' })
     const less = hint.getByRole('button', { name: 'Less detail' })
     const geometry = () => {
       const bounds = card.getBoundingClientRect()
       const controls = [title, hint.getByRole('link', { name: /Review .* lesson/ }),
-        hint.getByRole('button', { name: 'Close hint' }), hint.getByRole('group', { name: 'Hint navigation' }),
+        canvas.getByRole('button', { name: 'Close hint' }), canvas.getByRole('group', { name: 'Hint navigation' }),
         less, more, card.querySelector('.hint-card-summary :is(.hint-card-visuals, .hint-card-visuals-space)')!,
         card.querySelector('.hint-card-detail-actions .primary')!,
       ].flatMap(element => {

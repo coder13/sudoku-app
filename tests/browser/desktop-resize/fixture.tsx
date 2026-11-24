@@ -6,6 +6,7 @@ import type { BoardAnnotations } from '../../../src/components/BoardAnnotations'
 import { Button, IconButton } from '../../../src/components/Button'
 import { Controls } from '../../../src/components/Controls'
 import { DesktopPlayLayout, PlayWorkspace } from '../../../src/components/DesktopPlayLayout'
+import { HintCard } from '../../../src/components/HintCard'
 import { DesktopPlayLayout as BaselineDesktopPlayLayout, PlayWorkspace as BaselinePlayWorkspace } from 'virtual:desktop-resize-baseline'
 import { ModeBadge } from '../../../src/components/ModeBadge'
 import { PlayHint, PlayLayout } from '../../../src/components/PlayLayout'
@@ -135,7 +136,15 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
     canUndo={false} canRedo={false} disabled={false} draft={false} inputSize={210} panelHeight={280}
     setPanelHeight={noop} beginResize={noop} showMultiSelectButton multi={false} toggleMulti={noop} />
   </div>
-  const hint = query.has('hint') ? <PlayHint mobile={false}><section className="surface hint-card" style={{ minHeight: 130 }}>
+  const [showHint, setShowHint] = useState(query.has('hint-detail'))
+  const [hintIndex, setHintIndex] = useState(0)
+  const hint = showHint ? <PlayHint mobile={false}><HintCard compact
+    hint={{ title: 'WXYZ-Wing', text: '' }}
+    navigation={{ index: hintIndex, count: 2, onMove: offset => setHintIndex((hintIndex + offset + 2) % 2) }}
+    lesson={{ id: 'wxyz-wing', title: 'WXYZ-Wing' }} visuals={{ visible: true, onToggle: noop }}
+    detailNavigation={{ first: false, last: true, onMove: noop }} action={{ label: 'Apply hint', onClick: noop }}
+    explanation={Array(8).fill('The four wing cells have four possible digits between them. Compare their candidates to find the elimination.')}
+    onClose={() => setShowHint(false)} /></PlayHint> : query.has('hint') ? <PlayHint mobile={false}><section className="surface hint-card" style={{ minHeight: 130 }}>
     <h2>Hint</h2><p>Compare the candidates in the highlighted row.</p>
   </section></PlayHint> : undefined
   return <PlayLayout desktop puzzle={puzzlePanel} input={inputPanel} hint={hint} mobile={{

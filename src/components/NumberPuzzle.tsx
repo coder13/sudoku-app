@@ -720,10 +720,10 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
 
   const hintChoice = hint && cellChoices?.labels[hint.value - 1]
   const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
-    <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
+    <HintCard compact hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
       detail={solutionStep && explanation(solutionStep)} />
   </PlayHint> : !previewing && hint && hintSelection ? <PlayHint mobile={mobile}>
-    <HintCard hint={{
+    <HintCard compact={!mobile} hint={{
       title: depth >= 2 ? placement(hint) : hint.technique,
       text: hintChoice ? depth === 0 ? 'Use this technique to make a choice.'
         : depth === 1 ? `Look for a number to ${hintChoice.toLowerCase()}.`
