@@ -4,17 +4,17 @@ import { outsideClueLabel, type outsideClueLayout } from '../sudoku/outside-clue
 type Layout = ReturnType<typeof outsideClueLayout>
 
 /** Draw outside clues in the same cell viewport as grid links; Board reserves their edge and corner gutters. */
-export function OutsideClues({ layout, hidden }: { layout: Layout; hidden?: boolean }) {
+export function OutsideClues({ layout, hidden, size = 9 }: { layout: Layout; hidden?: boolean; size?: number }) {
   const marker = useId()
   if (!layout.clues.length) return null
   return (
     <svg
       className="board-outside-clues"
       aria-hidden={hidden || undefined}
-      viewBox="0 0 9 9"
+      viewBox={`0 0 ${size} ${size}`}
       focusable="false"
       role="img"
-      aria-label={layout.clues.map(({ rule }) => outsideClueLabel(rule)).join(' ')}
+      aria-label={layout.clues.map(({ rule }) => outsideClueLabel(rule, size)).join(' ')}
     >
       {layout.clues.some((clue) => clue.arrow) && (
         <defs>

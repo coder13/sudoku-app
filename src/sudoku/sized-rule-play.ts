@@ -6,7 +6,7 @@ import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -70,6 +70,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
+          : rule.type === 'xv' ? [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].flat()
         : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
   let description: string
@@ -127,6 +128,18 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'difference') {
     description = `The digits across this numbered marker differ by exactly ${rule.difference}.`
     reason = 'Remove the candidates that have no partner at that difference in the neighboring cell.'
+  } else if (rule.type === 'slow-thermometer') {
+    description = 'Digits stay the same or increase from the bulb to the tip of this slow thermometer.'
+    reason = 'Remove each candidate that cannot fit in a non-decreasing sequence along the line.'
+  } else if (rule.type === 'whispers') {
+    description = `Neighboring digits on this Whispers line differ by at least ${rule.minDifference}.`
+    reason = 'Remove each candidate that cannot pair with a digit in the next cell at the required difference.'
+  } else if (rule.type === 'xv') {
+    description = 'Digits joined by V add to 5. Digits joined by X add to 10.'
+    reason = 'Remove each candidate that cannot fit the total shown by the marker.'
+  } else if (rule.type === 'sandwich') {
+    description = `The digits between 1 and ${size} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
+    reason = 'Remove each candidate that cannot fit a row or column arrangement with the printed sandwich total.'
   } else {
     description = 'The digits strictly increase along this thermometer, from the bulb to the tip.'
     reason = 'Each remaining candidate fits in at least one increasing sequence using the candidates along the thermometer. Remove the candidates that fit in none.'
@@ -166,6 +179,9 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       conflict = 'There is no way to place all the digits in the circle in separate surrounding cells.'
     } else if (rule.type === 'killer-cages') {
       conflict = 'A cage cannot reach its total with different digits.'
+    } else if (rule.type === 'xv') {
+      locations.push(...(rule.five?.pairs ?? []).flat(), ...(rule.ten?.pairs ?? []).flat())
+      conflict = 'An X or V marker has no pair of digits with its required total.'
     } else if ('cells' in rule) {
       locations.push(...rule.cells)
       conflict = rule.type === 'parity' ? 'A marked cell has no digit of the required parity.'
@@ -173,7 +189,10 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
         : rule.type === 'renban' ? 'No set of different consecutive digits fits the Renban line.'
           : rule.type === 'difference' ? `No pair of digits differs by exactly ${rule.difference} across the marker.`
             : rule.type === 'region-sum' ? 'No total fits every part of this Region Sum line.'
-              : 'The thermometer has no strictly increasing sequence from bulb to tip.'
+              : rule.type === 'whispers' ? 'No neighboring digits meet the minimum difference on this Whispers line.'
+                : rule.type === 'sandwich' ? `The row or column cannot fit the sandwich total of ${rule.sum}.`
+                  : rule.type === 'slow-thermometer' ? 'The slow thermometer has no non-decreasing sequence from bulb to tip.'
+                    : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
   } else if (failure.type === 'killer-cage') {
     const rule = rules[failure.rule]

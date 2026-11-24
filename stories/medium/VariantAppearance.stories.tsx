@@ -14,7 +14,7 @@ import sandwichMurphy from '../../tests/fixtures/sandwich-murphy.json'
 import cloneMurphy from '../../tests/fixtures/clone-murphy.json'
 import { Board } from '../../src/components/Board'
 import { detectPuzzle } from '../../src/sudoku/puzzle-import'
-import type { VariantPuzzle } from '../../src/sudoku/engine'
+import type { SizedConstraintRule, VariantPuzzle } from '../../src/sudoku/engine'
 import { jigsawLayout, variantSeeds } from '../../src/sudoku/variant-generation'
 import { variantHouseMasks } from '../../src/sudoku/variants'
 import { Width } from '../support/frames'
@@ -173,6 +173,25 @@ export const SandwichAllEdges: Story = {
     { type: 'sandwich', direction: 'east', cells: [0,1,2,3,4,5,6,7,8], sum: 0 },
   ] }, 'Outside clues on all four edges with repeated zero totals'),
   parameters: { gridWidth: 290 },
+}
+
+export const SizedSudokuPadImport: Story = {
+  args: {
+    label: '6×6 SudokuPad puzzle with combined clues',
+    givens: '0'.repeat(36),
+    values: '0'.repeat(36),
+    grid: { size: 6, boxRows: 2, boxColumns: 3 },
+    sizedRules: [
+      { type: 'slow-thermometer', cells: [33, 26, 21, 14, 9, 2] },
+      { type: 'whispers', cells: [26, 20, 14, 8, 2, 7, 12, 13], minDifference: 2 },
+      { type: 'whispers', cells: [27, 21, 15, 16], minDifference: 3 },
+      { type: 'xv', five: { pairs: [[1, 2]] }, ten: { pairs: [[10, 16]] } },
+      { type: 'sandwich', direction: 'south', cells: [2, 8, 14, 20, 26, 32], sum: 6 },
+    ] as SizedConstraintRule[],
+  },
+  parameters: { gridWidth: 360, docs: { description: { story:
+    'A 6×6 grid shows the sized import clues together. Slow Thermometers use a dashed line, Whispers show their minimum, XV markers show their sums, and Sandwich totals sit outside the grid.',
+  } } },
 }
 
 export const LittleKiller: Story = {

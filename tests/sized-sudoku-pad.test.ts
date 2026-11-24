@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
+import { readSizedRuleSudokuPad } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 
 const metadata = {
   title: 'Shared totals',
@@ -56,6 +57,8 @@ function classicFourByFourSolutions() {
 }
 
 const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
+const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo-6x6.scl', import.meta.url), 'utf8').trim()
+const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
 
 test('sized SudokuPad definitions retain cage order, labels, offsets, and authored metadata', () => {
   const code = encode(input)
@@ -80,6 +83,39 @@ test('sized SudokuPad rejects unrepresented rules and geometry', () => {
   assert.throws(() => decodeSizedSudokuPad(encode({
     ...input, cages: [{ cells: [[0,0],[0,0]], value: 'n' }],
   })), /same cell twice/)
+})
+
+test('published 6 × 6 SudokuPad imports keep their combined rules and authored solutions', async () => {
+  const zigZagSnack = await detectPuzzle(slowThermo6x6Code)
+  assert.equal(zigZagSnack.format, 'SudokuPad')
+  assert.equal(zigZagSnack.title, '6x6 Zig Zag Snack')
+  assert.equal(zigZagSnack.givens, '0'.repeat(36))
+  assert.deepEqual(zigZagSnack.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(zigZagSnack.sizedRules, [
+    { type: 'slow-thermometer', cells: [33, 26, 21, 14, 9, 2] },
+    { type: 'slow-thermometer', cells: [32, 27, 20, 15, 8, 3] },
+    { type: 'xv', five: { pairs: [[7, 8], [21, 22], [19, 20], [21, 27], [33, 34]] }, ten: { pairs: [[2, 8]] } },
+    { type: 'sandwich', direction: 'south', cells: [3, 9, 15, 21, 27, 33], sum: 6 },
+  ])
+  assert.equal(zigZagSnack.authoredSolution, '326541514632145263632415263154451326')
+
+  const smallSailboat = await detectPuzzle(smallSailboatCode)
+  assert.equal(smallSailboat.format, 'SudokuPad')
+  assert.equal(smallSailboat.title, 'Small Sailboat')
+  assert.deepEqual(smallSailboat.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(smallSailboat.sizedRules, [
+    { type: 'thermometer', cells: [24, 31, 32, 33, 34, 29] },
+    { type: 'whispers', cells: [26, 20, 14, 8, 2, 7, 12, 13], minDifference: 2 },
+    { type: 'whispers', cells: [27, 21, 15, 16], minDifference: 3 },
+    { type: 'whispers', cells: [15, 9, 3, 10, 17], minDifference: 3 },
+    { type: 'sandwich', direction: 'west', cells: [5, 4, 3, 2, 1, 0], sum: 2 },
+  ])
+  assert.equal(smallSailboat.authoredSolution, '536214412563365142241635154326623451')
+
+  const source = decodeSudokuPadEnvelope(smallSailboatCode) as { metadata: { rules: string }; [key: string]: unknown }
+  assert.throws(() => readSizedRuleSudokuPad({ ...source, metadata: { ...source.metadata,
+    rules: `${source.metadata.rules}\n-----German whisper lines:\nTwo cells connected by a German whisper line must have a difference of at least 2.`,
+  } }), /authored rules this importer cannot verify/)
 })
 
 function thermoExport(boxRows: 2 | 3) {

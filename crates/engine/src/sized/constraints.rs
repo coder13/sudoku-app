@@ -5,6 +5,7 @@ mod pairs;
 mod quadruple;
 mod quadruple_overlap;
 mod region_sum;
+mod sandwich;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 use crate::{Analysis, Candidate, HintAction, House};
@@ -17,6 +18,7 @@ pub use self::linked_double_arrow::SizedSumEnd;
 use self::pairs::{RowColumnSum, SizedPairLink, UnmarkedSumSupport, compile_pairs};
 use self::quadruple::SizedQuadruple;
 use self::region_sum::RegionSum;
+use self::sandwich::Sandwich;
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +31,22 @@ pub enum SizedConstraint {
     },
     Thermometer {
         cells: Vec<usize>,
+    },
+    SlowThermometer {
+        cells: Vec<usize>,
+    },
+    Whispers {
+        cells: Vec<usize>,
+        min_difference: u8,
+    },
+    Xv {
+        five: MarkedPairs,
+        ten: MarkedPairs,
+    },
+    Sandwich {
+        cells: Vec<usize>,
+        direction: crate::ClueDirection,
+        sum: u16,
     },
     Arrow {
         circle: usize,
@@ -183,7 +201,7 @@ pub struct SizedConstraintGrid {
     parity: Vec<(usize, u16)>,
     diagonals: Vec<Vec<usize>>,
     extra_houses: Vec<Vec<usize>>,
-    thermometers: Vec<Vec<usize>>,
+    thermometers: Vec<(Vec<usize>, bool)>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
     double_arrows: Vec<Option<DoubleArrow>>,
@@ -193,6 +211,7 @@ pub struct SizedConstraintGrid {
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
     row_column_sums: Vec<Option<RowColumnSum>>,
+    sandwiches: Vec<Option<Sandwich>>,
 }
 
 impl SizedConstraintGrid {
@@ -213,6 +232,7 @@ impl SizedConstraintGrid {
         let mut linked_double_arrows = Vec::new();
         let mut region_sums = Vec::new();
         let mut row_column_sums = Vec::new();
+        let mut sandwiches = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -255,7 +275,23 @@ impl SizedConstraintGrid {
                     {
                         return None;
                     }
-                    thermometers.push(cells.clone());
+                    thermometers.push((cells.clone(), false));
+                }
+                SizedConstraint::SlowThermometer { cells } => {
+                    if !(2..=size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    thermometers.push((cells.clone(), true));
+                }
+                SizedConstraint::Whispers { cells, min_difference } => {
+                    if cells.len() < 2 || cells.len() > size * size || *min_difference == 0 || *min_difference as usize >= size ||
+                        cells.iter().any(|&cell| cell >= layout.cell_count()) || cells.windows(2).any(|pair| pair[0] == pair[1]) {
+                        return None;
+                    }
                 }
                 SizedConstraint::Arrow { circle, cells } => {
                     if *circle >= layout.cell_count()
@@ -301,10 +337,14 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
                 | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. }
-                | SizedConstraint::Quadruple { .. } => {}
+                | SizedConstraint::Quadruple { .. } | SizedConstraint::Xv { .. } => {}
                 SizedConstraint::RowColumnSum { pairs, require_unmarked } => {
                     row_column_sums.resize_with(index + 1, || None);
                     row_column_sums[index] = Some(RowColumnSum::compile(size, pairs, *require_unmarked, rules)?);
+                }
+                SizedConstraint::Sandwich { cells, direction, sum } => {
+                    sandwiches.resize_with(index + 1, || None);
+                    sandwiches[index] = Some(Sandwich::compile(size, cells, *direction, *sum)?);
                 }
             }
         }
@@ -337,6 +377,7 @@ impl SizedConstraintGrid {
             linked_double_arrows,
             pair_links,
             row_column_sums,
+            sandwiches,
         })
     }
 
@@ -406,8 +447,8 @@ impl SizedConstraintGrid {
                     candidates[cell] = mask;
                 }
             }
-            for cells in &self.thermometers {
-                changed |= self.restrict_thermometer(cells, candidates);
+            for (cells, allow_equal) in &self.thermometers {
+                changed |= self.restrict_thermometer(cells, candidates, *allow_equal);
             }
             for cells in &self.renbans {
                 for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
@@ -489,20 +530,30 @@ impl SizedConstraintGrid {
                     UnmarkedSumSupport::Unrestricted => {}
                 }
             }
+            for sandwich in self.sandwiches.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                if !sandwich.support(candidates, &mut supported) {
+                    return false;
+                }
+                for cell in sandwich.cells() {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
+                }
+            }
             if !changed {
                 return true;
             }
         }
     }
 
-    fn restrict_thermometer(&self, cells: &[usize], candidates: &mut [u16]) -> bool {
+    fn restrict_thermometer(&self, cells: &[usize], candidates: &mut [u16], allow_equal: bool) -> bool {
         let mut changed = false;
         let mut lower = self.layout.full_mask;
         for &cell in cells {
             let mask = candidates[cell] & lower;
             changed |= mask != candidates[cell];
             candidates[cell] = mask;
-            lower = u16::MAX.checked_shl(mask.trailing_zeros() + 1).unwrap_or(0);
+            lower = u16::MAX.checked_shl(mask.trailing_zeros() + u32::from(!allow_equal)).unwrap_or(0);
         }
         let mut upper = self.layout.full_mask;
         for &cell in cells.iter().rev() {
@@ -512,7 +563,8 @@ impl SizedConstraintGrid {
             upper = if mask == 0 {
                 0
             } else {
-                (1 << (u16::BITS - 1 - mask.leading_zeros())) - 1
+                let highest = 1u16 << (u16::BITS - 1 - mask.leading_zeros());
+                if allow_equal { highest | (highest - 1) } else { highest - 1 }
             };
         }
         changed
@@ -619,9 +671,9 @@ impl SizedConstraintGrid {
                     actions.sort_unstable();
                     actions.dedup();
                 }
-                SizedConstraint::Thermometer { cells } => {
+                SizedConstraint::Thermometer { cells } | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
-                    self.restrict_thermometer(cells, &mut support);
+                    self.restrict_thermometer(cells, &mut support, matches!(constraint, SizedConstraint::SlowThermometer { .. }));
                     if support.contains(&0) {
                         return None;
                     }
@@ -740,6 +792,14 @@ impl SizedConstraintGrid {
                         }
                     }
                 }
+                SizedConstraint::Sandwich { .. } => {
+                    let sandwich = self.sandwiches[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !sandwich.support(&domains, &mut supported) { return None; }
+                    for cell in sandwich.cells() {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
                 SizedConstraint::Difference { .. } => {
                     let link = self.pair_links[rule].first()?;
                     let support = link.supports(&domains);
@@ -772,6 +832,17 @@ impl SizedConstraintGrid {
                             }
                         }
                     }
+                }
+                SizedConstraint::Xv { .. } | SizedConstraint::Whispers { .. } => {
+                    for link in &self.pair_links[rule] {
+                        let support = link.supports(&domains);
+                        if support.contains(&0) { return None; }
+                        for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
+                            eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                        }
+                    }
+                    actions.sort_unstable();
+                    actions.dedup();
                 }
             }
             if !actions.is_empty() {
@@ -963,10 +1034,17 @@ impl SizedConstraintGrid {
                     };
                     cells.iter().any(|&cell| domains[cell] & allowed == 0)
                 }
-                SizedConstraint::Thermometer { cells } => {
+                SizedConstraint::Thermometer { cells } | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
-                    self.restrict_thermometer(cells, &mut support);
+                    self.restrict_thermometer(cells, &mut support, matches!(constraint, SizedConstraint::SlowThermometer { .. }));
                     support.contains(&0)
+                }
+                SizedConstraint::Whispers { .. } | SizedConstraint::Xv { .. } => {
+                    self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
+                }
+                SizedConstraint::Sandwich { .. } => {
+                    let sandwich = self.sandwiches[rule].as_ref()?;
+                    !sandwich.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])
                 }
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
@@ -1081,7 +1159,7 @@ impl SizedConstraintGrid {
                 }
                 true
             })
-            && self.thermometers.iter().all(|cells| {
+            && self.thermometers.iter().all(|(cells, allow_equal)| {
                 let mut low = 1;
                 for (index, &cell) in cells.iter().enumerate() {
                     let digit = usize::from(digits[cell]);
@@ -1091,12 +1169,15 @@ impl SizedConstraintGrid {
                         }
                         low = digit;
                     }
-                    if low + cells.len() - index - 1 > self.layout.size() {
+                    if !allow_equal && low + cells.len() - index - 1 > self.layout.size() {
                         return false;
                     }
-                    low += 1;
+                    if !allow_equal { low += 1; }
                 }
                 true
+            })
+            && self.sandwiches.iter().flatten().all(|sandwich| {
+                sandwich.permits(digits)
             })
             && self.renbans.iter().all(|cells| {
                 let mut used = 0u16;
@@ -1238,7 +1319,51 @@ fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; M
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_SIZE, arrow_masks};
+    use super::{GridSpec, MAX_SIZE, SizedConstraint, SizedConstraintGrid, arrow_masks};
+    use crate::{Analysis, ClueDirection, variant::MarkedPairs};
+
+    fn digits(solution: &str) -> Vec<u8> {
+        solution.bytes().map(|digit| digit - b'0').collect()
+    }
+
+    #[test]
+    fn six_by_six_slow_thermometers_allow_equal_digits_with_xv_and_sandwich() {
+        let spec = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+        let slow = vec![
+            SizedConstraint::SlowThermometer { cells: vec![33, 26, 21, 14, 9, 2] },
+            SizedConstraint::SlowThermometer { cells: vec![32, 27, 20, 15, 8, 3] },
+            SizedConstraint::Xv {
+                five: MarkedPairs { pairs: vec![[7, 8], [21, 22], [19, 20], [21, 27], [33, 34]], negative: false },
+                ten: MarkedPairs { pairs: vec![[2, 8]], negative: false },
+            },
+            SizedConstraint::Sandwich { cells: vec![3, 9, 15, 21, 27, 33], direction: ClueDirection::South, sum: 6 },
+        ];
+        let solution = digits("326541514632145263632415263154451326");
+        let grid = SizedConstraintGrid::new(spec, &slow).unwrap();
+        assert_eq!(grid.solve_unique(&solution, 100), Ok(solution.clone()));
+
+        let strict: Vec<_> = slow.iter().map(|rule| match rule {
+            SizedConstraint::SlowThermometer { cells } => SizedConstraint::Thermometer { cells: cells.clone() },
+            other => other.clone(),
+        }).collect();
+        let strict_grid = SizedConstraintGrid::new(spec, &strict).unwrap();
+        assert_eq!(strict_grid.analyze(&solution, 100), Analysis::Conflict);
+    }
+
+    #[test]
+    fn six_by_six_whispers_keep_separate_minimums_with_thermometer_and_sandwich() {
+        let spec = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+        let rules = vec![
+            SizedConstraint::Thermometer { cells: vec![24, 31, 32, 33, 34, 29] },
+            SizedConstraint::Whispers { cells: vec![26, 20, 14, 8, 2, 7, 12, 13], min_difference: 2 },
+            SizedConstraint::Whispers { cells: vec![27, 21, 15, 16], min_difference: 3 },
+            SizedConstraint::Whispers { cells: vec![15, 9, 3, 10, 17], min_difference: 3 },
+            SizedConstraint::Sandwich { cells: vec![5, 4, 3, 2, 1, 0], direction: ClueDirection::West, sum: 2 },
+        ];
+        let solution = digits("536214412563365142241635154326623451");
+        let grid = SizedConstraintGrid::new(spec, &rules).unwrap();
+        assert_eq!(grid.solve_unique(&solution, 100), Ok(solution));
+    }
 
     #[test]
     fn bounded_arrow_support_matches_the_general_sum_kernel() {

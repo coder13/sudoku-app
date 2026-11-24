@@ -85,7 +85,7 @@ export function parseCompactSudokuPad(text: string): unknown {
     if (token === 't' || token === 'true') return true
     if (token === 'f' || token === 'false') return false
     if (token === 'null') return null
-    if (key === 'c' || key === 'c1' || key === 'c2') {
+    if (key === 'c' || key === 'c1' || key === 'c2' || key === 'stroke' || key === 'fontC' || key === 'outlineC') {
       if (token === '#0') return '#000000'
       if (token === '#F') return '#ffffff'
       if (/^#?(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(token)) return token.startsWith('#') ? token : '#' + token
@@ -118,7 +118,8 @@ export function normalizeCompactSudokuPad(value: unknown): unknown {
     if (Object.hasOwn(data, 'metadata')) throw new Error('Duplicate SudokuPad metadata.')
     const metadata: RecordValue = Object.create(null)
     data.cages = data.cages.map(cage => expand(cage, { ce: 'cells', v: 'value' })).filter(cage => {
-      if (!record(cage) || Object.keys(cage).length !== 1 || typeof cage.value !== 'string') return true
+      if (!record(cage) || Object.keys(cage).some(key => !['value', 'fontC', 'outlineC'].includes(key)) ||
+        typeof cage.value !== 'string' || ['fontC', 'outlineC'].some(key => cage[key] !== undefined && typeof cage[key] !== 'string')) return true
       const match = /^(title|author|rules|solution|source): ([\s\S]*)$/.exec(cage.value)
       if (!match) return true
       if (Object.hasOwn(metadata, match[1])) throw new Error('Duplicate SudokuPad metadata.')

@@ -190,7 +190,8 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
 export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'whispers' | 'xv' | 'sandwich' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
+  | { type: 'slow-thermometer'; cells: readonly number[] }
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
