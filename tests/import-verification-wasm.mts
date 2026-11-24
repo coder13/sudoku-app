@@ -137,8 +137,22 @@ test('scanned entries and candidates survive import as editable progress', async
   assert.equal(findImportAttempt([game], { ...fresh, startFresh: true }), undefined)
 })
 
-test('failed uniqueness checks preserve the decoded grid and distinguish why play is unavailable', async ({ mock }) => {
-  for (const [input, status] of [[empty, 'multiple'], [unsolvable, 'unsolvable'], ['11' + empty.slice(2), 'conflict']]) {
+test('multiple-solution puzzles remain playable while invalid puzzles preserve their verification errors', async ({ mock }) => {
+  const multiple = await prepareImportedPuzzle(empty, [], { deferRating: true })
+  assert.equal(multiple.game.nonUnique, true)
+  assert.equal(multiple.game.uniquenessProof, undefined)
+  assert.equal(restartGame(multiple.game).nonUnique, true)
+  assert.equal(readGame(multiple.game.id, JSON.stringify(multiple.game))?.nonUnique, true)
+
+  const ambiguousVariant = '#variant=' + encodeURIComponent(JSON.stringify({ id: 'mixed', puzzle: {
+    version: 1, givens: empty, rules: [{ type: 'diagonal', diagonal: 'main' }],
+  } }))
+  const variantPreview = await prepareImportedPuzzle(ambiguousVariant, [], { deferRating: true })
+  assert.equal(variantPreview.game.nonUnique, true)
+  assert.equal(variantPreview.game.variant?.solution.length, 81)
+  assert.equal(variantPreview.game.uniquenessProof, undefined)
+
+  for (const [input, status] of [[unsolvable, 'unsolvable'], ['11' + empty.slice(2), 'conflict']]) {
     let shown: string | undefined
     await assert.rejects(prepareImportedPuzzle(input, [], { onDecoded: puzzle => { shown = puzzle.givens } }),
       (error: unknown) => error instanceof PuzzleVerificationError && error.status === status)
