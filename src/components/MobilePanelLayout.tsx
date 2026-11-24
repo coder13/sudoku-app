@@ -5,7 +5,7 @@ import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
 import { MobileInputResizeHandle } from './MobileInputResizeHandle'
 import { animatePanelLayout, MotionSurface, motionDuration, usePresentContent } from './Presence'
 import {
-  MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
+  MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_LAYOUT_RESET_EVENT, MOBILE_PANEL_ORDER_KEY, MOBILE_PANEL_IDS, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
 } from '../sudoku/mobile-panels'
 import { notifySettingsEdit } from '../sudoku/settings-events'
@@ -50,6 +50,7 @@ const PUZZLE_GESTURE_ANCHOR_SIZE = 32
 const PUZZLE_GESTURE_LOCK_FALLBACK_MS = 450
 type PuzzleGesture = {
   pointerId: number
+  zone: HTMLDivElement
   startY: number
   latestY: number
   startSpace: number
@@ -59,6 +60,10 @@ type PuzzleGesture = {
   maxShrink: number
   boardHeight: number
   panelHeight: number
+  panelWidth: number
+  boardBaseTop: number
+  boardBaseWidth: number
+  boardBaseHeight: number
   space: number
   shrink: number
   moved: boolean
@@ -70,6 +75,7 @@ type PuzzleGesturePointer = {
   button: number
   clientX: number
   clientY: number
+  target?: EventTarget | null
   preventDefault: () => void
   stopPropagation?: () => void
 }
@@ -96,6 +102,12 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
     if (!panel) return
     const panelHeight = Math.max(1, current.panelHeight)
     const scale = Math.max(0.25, (panelHeight - current.shrink) / panelHeight)
+    const sideWidth = Math.max(0, (current.panelWidth - current.boardBaseWidth * scale) / 2)
+    const sideTop = panelHeight + (current.boardBaseTop - panelHeight) * scale
+    const sideHeight = current.boardBaseHeight * scale
+    panel.style.setProperty('--mobile-puzzle-gesture-side-width', `${sideWidth}px`)
+    panel.style.setProperty('--mobile-puzzle-gesture-side-top', `${sideTop}px`)
+    panel.style.setProperty('--mobile-puzzle-gesture-side-height', `${sideHeight}px`)
     const translate = `${current.space - current.startSpace}px`
     if (panel.style.getPropertyValue('--puzzle-gesture-translate') !== translate) {
       panel.style.setProperty('--puzzle-gesture-translate', translate)
@@ -149,33 +161,41 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
     if (disabled || !event.isPrimary || (!fromDrag && event.button !== 0) || drag.current) return
     lockCancel.current?.()
     lockCancel.current = null
-    const gestureZone = zone.current
+    const eventTarget = event.target instanceof Element ? event.target.closest<HTMLDivElement>('.mobile-puzzle-gesture-zone') : null
+    const gestureZone = eventTarget ?? zone.current
     const layout = gestureZone?.closest('.mobile-panel-layout')
     const page = layout?.closest<HTMLElement>('.standard-workspace-page')
     const puzzlePanel = layout?.querySelector<HTMLElement>('[data-mobile-panel="puzzle"]')
     const board = puzzlePanel?.querySelector<HTMLElement>('.puzzle-zoom, .puzzle-stage .board-frame')
     const puzzleContent = puzzlePanel?.querySelector<HTMLElement>('.puzzle')
     const gap = layout?.querySelector<HTMLElement>('.mobile-panel-gap')
-    if (!layout || !page || !puzzlePanel || !board || !puzzleContent || !gap) return
+    if (!gestureZone || !layout || !page || !puzzlePanel || !board || !puzzleContent || !gap) return
     event.preventDefault()
     if (!fromDrag) event.stopPropagation?.()
-    gestureZone?.setPointerCapture(event.pointerId)
+    gestureZone.setPointerCapture(event.pointerId)
     preview.current = puzzlePanel
     puzzlePreview.current = puzzleContent
     pageRef.current = page
     const gapHeight = Number.parseFloat(getComputedStyle(gap).blockSize) || 0
     const gapMinimum = Number.parseFloat(getComputedStyle(gap).flexBasis) || 0
     const boardHeight = Math.max(1, board.offsetHeight)
+    const panelHeight = Math.max(1, puzzleContent.offsetHeight)
+    const startScale = Math.max(0.25, (panelHeight - shrink) / panelHeight)
+    const boardRect = board.getBoundingClientRect()
+    const panelRect = puzzlePanel.getBoundingClientRect()
+    const boardBaseWidth = boardRect.width / startScale
+    const boardBaseHeight = boardRect.height / startScale
+    const boardBaseTop = panelHeight + (boardRect.top - panelRect.top - panelHeight) / startScale
     const minBoard = layout.hasAttribute('data-fit-content') ? 130 : 180
     // Upward movement can remove added space, but keep the workspace's top
     // inset so the puzzle metadata and controls remain visible.
     const minSpace = 0
     const startSpace = Math.max(minSpace, value)
     const current: PuzzleGesture = {
-      pointerId: event.pointerId, startY, latestY: event.clientY,
+      pointerId: event.pointerId, zone: gestureZone, startY, latestY: event.clientY,
       startSpace, startShrink: shrink, minSpace, gapFree: Math.max(0, gapHeight - gapMinimum),
       maxShrink: Math.max(0, boardHeight - minBoard - shrink), boardHeight,
-      panelHeight: Math.max(1, puzzleContent.offsetHeight),
+      panelHeight, panelWidth: panelRect.width, boardBaseTop, boardBaseWidth, boardBaseHeight,
       space: startSpace, shrink, moved: false, frame: null,
     }
     drag.current = current
@@ -201,12 +221,12 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
     current.frame = null
     if (commit) updatePreview(current, event.clientY)
     drag.current = null
-    const gestureZone = zone.current
-    if (gestureZone?.hasPointerCapture(event.pointerId)) gestureZone.releasePointerCapture(event.pointerId)
+    const gestureZone = current.zone
+    if (gestureZone.hasPointerCapture(event.pointerId)) gestureZone.releasePointerCapture(event.pointerId)
     const panel = preview.current
     const puzzleContent = puzzlePreview.current
     const page = pageRef.current
-    const layout = gestureZone?.closest<HTMLElement>('.mobile-panel-layout')
+    const layout = gestureZone.closest<HTMLElement>('.mobile-panel-layout')
     if (!panel || !puzzleContent || !page || !layout) return
 
     const clearPreview = () => {
@@ -331,16 +351,29 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       if (!event.isPrimary || !gestureZone || !puzzlePanel || !target) return
       const layout = gestureZone.closest<HTMLElement>('.mobile-panel-layout')
       const page = layout?.closest<HTMLElement>('.standard-workspace-page')
+      const pageBounds = page?.getBoundingClientRect()
+      const isWithinPage = Boolean(pageBounds && event.clientX >= pageBounds.left && event.clientX <= pageBounds.right
+        && event.clientY >= pageBounds.top && event.clientY <= pageBounds.bottom)
+      const isOutsidePanel = target.closest('.mobile-panel') === null
+      const isInteractive = Boolean(target.closest('button, a, input, textarea, select, [role="button"], [role="checkbox"], [role="gridcell"]'))
+      // Empty workspace space belongs to the puzzle resize gesture too. The
+      // panel and control checks keep this from intercepting the keypad or
+      // other movable panels when they happen to be near the puzzle.
+      const isWorkspaceNegativeSpace = isWithinPage && isOutsidePanel && !isInteractive
+      // Side hit targets start in React's target phase so board pointer handlers
+      // cannot capture the pointer first when a scaled edge overlaps a cell.
+      if (target.closest('.mobile-puzzle-gesture-side')) return
       const isAbovePuzzle = Boolean(page?.contains(target) && !puzzlePanel.contains(target)
-        && target.closest('.mobile-panel') === null
+        && isOutsidePanel
         && event.clientY < puzzlePanel.getBoundingClientRect().top)
-      if (!puzzlePanel.contains(target) && !isAbovePuzzle) return
+      if (!puzzlePanel.contains(target) && !isWorkspaceNegativeSpace) return
       if (target.closest('.puzzle-mode-tab')) {
         pendingPointer.current = null
         return
       }
       if (getComputedStyle(gestureZone).display === 'none') return
-      const isGestureZone = isAbovePuzzle || Boolean(target.closest('.mobile-puzzle-gesture-zone[data-edge="top"]'))
+      const isGestureZone = isWorkspaceNegativeSpace || isAbovePuzzle
+        || Boolean(target.closest('.mobile-puzzle-gesture-zone[data-edge="top"]'))
       if (!isGestureZone && target.closest('input, textarea, select, [role="checkbox"], [role="gridcell"], [data-cell], .candidate-button')) return
       if (!isGestureZone && target.closest('button, a, [role="button"]')) {
         pendingPointer.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY }
@@ -386,9 +419,19 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
     }
   }, [edge])
 
-  return <div ref={zone} className="mobile-puzzle-gesture-zone" data-edge={edge} data-no-panel-hold aria-hidden="true"
-    onPointerDown={edge === 'bottom' ? start : undefined} onPointerMove={edge === 'bottom' ? move : undefined} onPointerUp={edge === 'bottom' ? event => finish(event, true) : undefined}
-    onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)} />
+  return <>
+    <div ref={zone} className="mobile-puzzle-gesture-zone" data-edge={edge} data-no-panel-hold aria-hidden="true"
+      onPointerDown={edge === 'bottom' ? start : undefined} onPointerMove={edge === 'bottom' ? move : undefined} onPointerUp={edge === 'bottom' ? event => finish(event, true) : undefined}
+      onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)} />
+    {edge === 'top' && <>
+      <div className="mobile-puzzle-gesture-zone mobile-puzzle-gesture-side" data-edge="left" data-no-panel-hold aria-hidden="true"
+        onPointerDown={start} onPointerMove={move} onPointerUp={event => finish(event, true)}
+        onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)} />
+      <div className="mobile-puzzle-gesture-zone mobile-puzzle-gesture-side" data-edge="right" data-no-panel-hold aria-hidden="true"
+        onPointerDown={start} onPointerMove={move} onPointerUp={event => finish(event, true)}
+        onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)} />
+    </>}
+  </>
 }
 
 type MotionProps = {
@@ -495,6 +538,16 @@ export function MobilePanelLayout(props: Props) {
   const panels = { ...props.panels, hint: hint || undefined }
   const visible = order.filter((id) => props.panels[id])
 
+  useEffect(() => {
+    const resetOrder = () => {
+      const next = [...MOBILE_PANEL_IDS]
+      orderRef.current = next
+      setOrder(next)
+    }
+    window.addEventListener(MOBILE_PANEL_LAYOUT_RESET_EVENT, resetOrder)
+    return () => window.removeEventListener(MOBILE_PANEL_LAYOUT_RESET_EVENT, resetOrder)
+  }, [])
+
   useLayoutEffect(() => {
     const layout = root.current
     const page = layout?.closest<HTMLElement>('.standard-workspace-page')
@@ -552,6 +605,19 @@ export function MobilePanelLayout(props: Props) {
       const puzzleScale = Math.max(0.25, (baseHeight - puzzleShrink) / baseHeight)
       if (!puzzleContent.hasAttribute('data-puzzle-gesture-scaling')) {
         puzzleContent.style.setProperty('--mobile-puzzle-gesture-scale', String(puzzleScale))
+      }
+      const panelRect = puzzle.getBoundingClientRect()
+      const boardRect = board.getBoundingClientRect()
+      const boardBaseWidth = boardRect.width / puzzleScale
+      const boardBaseHeight = boardRect.height / puzzleScale
+      const boardBaseTop = panelHeight + (boardRect.top - panelRect.top - panelHeight) / puzzleScale
+      const sideGeometry = {
+        '--mobile-puzzle-gesture-side-width': `${Math.max(0, (panelRect.width - boardBaseWidth * puzzleScale) / 2)}px`,
+        '--mobile-puzzle-gesture-side-top': `${panelHeight + (boardBaseTop - panelHeight) * puzzleScale}px`,
+        '--mobile-puzzle-gesture-side-height': `${boardBaseHeight * puzzleScale}px`,
+      }
+      for (const [property, nextValue] of Object.entries(sideGeometry)) {
+        if (puzzle.style.getPropertyValue(property) !== nextValue) puzzle.style.setProperty(property, nextValue)
       }
       // Keep the input card at the bottom edge and fit the board into the
       // space above it. Shrinking the card gives the board room to grow back

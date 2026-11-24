@@ -3669,6 +3669,16 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       block-size: var(--mobile-puzzle-above-height, 48px);
       inset-block-start: calc(-1 * var(--mobile-puzzle-above-height, 48px));
     }
+    .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-side {
+      position: absolute;
+      z-index: 2;
+      inset-block-start: var(--mobile-puzzle-gesture-side-top, 0px);
+      block-size: var(--mobile-puzzle-gesture-side-height, 0px);
+      width: var(--mobile-puzzle-gesture-side-width, 0px);
+      touch-action: none;
+    }
+    .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-side[data-edge="left"] { inset-inline-start: 0; }
+    .mobile-panel[data-mobile-panel="puzzle"] > .mobile-panel-content > .mobile-puzzle-gesture-side[data-edge="right"] { inset-inline-end: 0; }
     /* A puzzle placed below the input card must leave that card's controls reachable. */
     .mobile-panel[data-mobile-panel="puzzle"]:not([data-first]) .mobile-puzzle-gesture-zone[data-edge="top"] { pointer-events: none; }
     .mobile-panel-gap > .mobile-puzzle-gesture-zone[data-edge="bottom"] {

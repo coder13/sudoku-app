@@ -28,10 +28,11 @@ const outsidePuzzle: VariantPuzzle | undefined = new URLSearchParams(location.se
   ],
 } : undefined
 const PanelLayout = new URLSearchParams(location.search).has('baseline') ? BaselineMobilePanelLayout : MobilePanelLayout
-Object.assign(window, { resizeCommits: [] })
+Object.assign(window, { resizeCommits: [], puzzleGestureCommits: [] })
 
 function Fixture() {
   const [savedHeight, setSavedHeight] = useState<number>()
+  const [puzzlePosition, setPuzzlePosition] = useState({ space: 0, shrink: 0 })
   const boundary = useRef<HTMLDivElement>(null)
   const zoom = usePuzzleZoom(true, 'resize-regression', noop)
   const controls = <div className="workspace-controls"><Controls
@@ -47,6 +48,11 @@ function Fixture() {
     <main className="page standard-workspace-page" aria-label="Mobile resize fixture">
       <div className="workspace"><PanelLayout puzzleId="resize-regression" rearranging={false}
         onRearrangingChange={noop} blocked={false} withHint={withHint} resizableInput savedInputHeight={savedHeight}
+        puzzleTopSpace={puzzlePosition.space} puzzleShrink={puzzlePosition.shrink}
+        onPuzzleTopSpaceChange={(space, shrink) => {
+          (window as unknown as { puzzleGestureCommits: { space: number; shrink: number }[] }).puzzleGestureCommits.push({ space, shrink })
+          setPuzzlePosition({ space, shrink })
+        }}
         onInputHeightChange={height => {
           (window as unknown as { resizeCommits: (number | undefined)[] }).resizeCommits.push(height)
           setSavedHeight(height)

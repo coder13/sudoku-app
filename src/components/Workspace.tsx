@@ -24,10 +24,13 @@ import {
 } from '../sudoku/preferences'
 import { notifySettingsEdit } from '../sudoku/settings-events'
 import { deviceSync } from '../sudoku/device-sync'
+import { DEFAULT_PLAY_PREFERENCES, playPreferenceStore } from '../sudoku/play-preferences'
+import { resetMobilePanelLayout } from '../sudoku/mobile-panels'
 import { roomStore } from '../sudoku/storage'
 import { playSession } from '../sudoku/play-session'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { appTextZoomShortcut, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
+import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { DesktopPlayLayout, PlayWorkspace } from './DesktopPlayLayout'
 import { ImportPuzzle, openPuzzle } from './ImportPuzzle'
 import { EditJigsawRegions } from './EditJigsawRegions'
@@ -530,6 +533,17 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     })
   }
 
+  function resetWorkspaceLayout() {
+    resetDesktopPanelLayout()
+    resetMobilePanelLayout()
+    setAppearance(current => ({ ...current, mobilePuzzleTopSpace: 0, mobilePuzzleShrink: 0 }))
+    playPreferenceStore.set('desktopLayoutWidth', DEFAULT_PLAY_PREFERENCES.desktopLayoutWidth)
+    playPreferenceStore.set('desktopPanelWidths', DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+    setAdvancedPanels(DEFAULT_ADVANCED_PANEL_VISIBILITY)
+    saveAdvancedPanelVisibility(DEFAULT_ADVANCED_PANEL_VISIBILITY)
+    if (game) playSession.set(game.id, 'toolPanels', current => ({ ...current, height: undefined }))
+  }
+
   function cancelDraft() {
     if (!game || game.source !== 'draft') return
     const returnId = game.returnId ?? game.editingId
@@ -716,6 +730,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         errorMode={errorMode} setErrorMode={setErrorMode} inputSize={inputSize} setInputSize={setInputSize}
         cellReferenceStyle={cellReferenceStyle} setCellReferenceStyle={setCellReferenceStyle}
         workspaceMode={workspaceMode} setWorkspaceMode={mobile ? undefined : setWorkspaceMode}
+        onResetLayout={resetWorkspaceLayout}
         draft={game?.source === 'draft'} />}
       {puzzleDeparture.departure && <SaveUnstartedPuzzle close={() => puzzleDeparture.finish()} resolve={puzzleDeparture.finish} />}
       {panel === 'publish' && game?.source === 'draft' && <SavePuzzle game={game} close={close} />}

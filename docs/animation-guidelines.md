@@ -61,7 +61,7 @@ Test the actual interaction at a narrow mobile viewport and, when possible, on a
 
 - Both directions from an unchanged anchor, including cases where the target is above or below the release position.
 - The first and last anchors, minimum scale, and the point where free gap changes into shrinking.
-- Gestures that begin above and below the moving object, plus taps and horizontal gestures nearby.
+- Gestures that begin above, below, and beside the moving object, plus taps and horizontal gestures nearby.
 - A second gesture that interrupts an active snap, pointer cancellation, and reduced-motion mode.
 - The position shortly after release and after the transition ends. Compare the visible element's start and destination rectangles; do not infer direction from the finger direction alone.
 - That every related element stays aligned, the input card remains usable, no page scroll or release jump appears, and temporary styles are removed.

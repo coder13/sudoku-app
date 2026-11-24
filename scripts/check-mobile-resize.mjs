@@ -118,6 +118,31 @@ async function finishDrag(page, client, cancel = false) {
   await frames(page, 3)
 }
 
+async function dragPuzzleFromSide(page, distance) {
+  const frame = await page.locator('.board-frame').boundingBox()
+  assert.ok(frame)
+  const point = { x: frame.x - 8, y: frame.y + frame.height / 2, id: 2 }
+  assert.ok(point.x >= 0, 'the side drag point must stay inside the mobile viewport')
+  const target = await page.evaluate(({ x, y }) => {
+    const element = document.elementFromPoint(x, y)
+    return { className: element?.className?.toString() ?? '', panel: element?.closest('.mobile-panel')?.getAttribute('data-mobile-panel') ?? null,
+      touchAction: getComputedStyle(element).touchAction }
+  }, point)
+  assert.equal(target.panel, 'puzzle', 'the drag must start beside the puzzle within its panel')
+  assert.ok(target.className.includes('mobile-puzzle-gesture-side'), 'the side gap must have its own touch target')
+  assert.equal(target.touchAction, 'none', 'the side hit target must keep touch drags from scrolling the page')
+  assert.ok(!target.className.includes('cell'), 'the side drag must start in blank space, outside the grid')
+  await page.mouse.move(point.x, point.y)
+  await page.mouse.down()
+  for (let step = 1; step <= 18; step++) {
+    await page.mouse.move(point.x, point.y + distance * step / 18)
+    await frames(page, 1)
+  }
+  await page.mouse.up()
+  await frames(page, 3)
+  return page.evaluate(() => window.puzzleGestureCommits.at(-1))
+}
+
 async function metrics(client) {
   return Object.fromEntries((await client.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]))
 }
@@ -353,6 +378,17 @@ try {
     const { context, page, client } = await openPage(scenario.query, scenario.reversed)
     try { report.checks.push({ scenario: scenario.name, ...await checkBehavior(page, client) }) }
     finally { await context.close() }
+  }
+  console.log('Checking puzzle resize from its side')
+  {
+    const { context, page, client } = await openPage()
+    try {
+      const smaller = await dragPuzzleFromSide(page, 300)
+      assert.ok(smaller?.shrink > 0, 'dragging down beside the puzzle must shrink it')
+      const larger = await dragPuzzleFromSide(page, -96)
+      assert.ok(larger?.shrink < smaller.shrink, 'dragging up from the side after shrinking must restore puzzle size')
+      report.checks.push({ scenario: 'shrink and restore puzzle from side negative space', smaller, larger })
+    } finally { await context.close() }
   }
   assert.deepEqual(errors, [], 'resize must not produce browser or ResizeObserver errors')
   assert.deepEqual(await hashes(), sourceHashes, 'Sources must not change during the resize checks or measurements')

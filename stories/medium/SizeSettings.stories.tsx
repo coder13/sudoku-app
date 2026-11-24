@@ -6,11 +6,11 @@ import { MAX_INPUT_SIZE, MIN_INPUT_SIZE } from '../../src/sudoku/preferences'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 
-const { appearance, setAppearance, inputSize, setInputSize, workspaceMode } = settingArgs
+const { appearance, setAppearance, inputSize, setInputSize, workspaceMode, onResetLayout } = settingArgs
 const meta = {
   title: 'Medium/Settings/Input size',
   component: SizeSettings,
-  args: { appearance, setAppearance, inputSize, setInputSize, workspaceMode },
+  args: { appearance, setAppearance, inputSize, setInputSize, workspaceMode, onResetLayout },
   decorators: [(Story) => <Width><Story /></Width>],
   render: (args) => {
     const [size, setSize] = useState(args.inputSize)
@@ -31,5 +31,11 @@ export const PuzzleBorder: Story = {
     await userEvent.selectOptions(select, '6')
     const preview = canvasElement.querySelector('.puzzle-border-preview .variant-preview')!
     await expect(getComputedStyle(preview).borderTopWidth).toBe('6px')
+  },
+}
+export const ResetLayout: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Reset layout' }))
+    await expect(args.onResetLayout).toHaveBeenCalled()
   },
 }

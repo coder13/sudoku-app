@@ -18,7 +18,6 @@ import {
 } from '../sudoku/preferences'
 import { syncStepTitles, type SyncStep } from '../sudoku/sync-steps'
 import { THEME_OPTIONS, themePreview } from '../sudoku/themes'
-import { resetDesktopPanelLayout } from './DesktopDockLayout'
 import { VARIANT_TOOL_OPTIONS, type VariantToolId } from '../sudoku/variants'
 import { ChainSwatches } from './ChainsPanel'
 import { DeviceSyncSettings } from './DeviceSyncSettings'
@@ -242,12 +241,13 @@ export function ThemeSettings({ appearance, setAppearance }: {
   )
 }
 
-export function SizeSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode }: {
+export function SizeSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode, onResetLayout }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
   inputSize: number
   setInputSize: (size: number) => void
   workspaceMode: WorkspaceMode
+  onResetLayout: () => void
 }) {
   return (
     <div className="settings-section size-settings">
@@ -331,11 +331,11 @@ export function SizeSettings({ appearance, setAppearance, inputSize, setInputSiz
             onClick={() => setInputSize(Math.min(MAX_INPUT_SIZE, inputSize + INPUT_SIZE_STEP))}><Plus size={18} /></IconButton>
         </div>
       </div>
-      {workspaceMode === 'advanced' && <div className="desktop-layout-setting">
+      <div className="desktop-layout-setting">
         <span className="settings-menu-icon"><PanelsTopLeft size={20} /></span>
-        <span><strong>Advanced panel layout</strong><small>Restore the default positions and sizes for every named panel.</small></span>
-        <Button onClick={resetDesktopPanelLayout}>Reset</Button>
-      </div>}
+        <span><strong>Layout</strong><small>Restore default puzzle and input sizes, mobile panel order, and desktop panel positions.</small></span>
+        <Button onClick={onResetLayout}>Reset layout</Button>
+      </div>
     </div>
   )
 }
@@ -360,13 +360,14 @@ export function GuideSetting({ appearance, setAppearance, heading = true }: {
   )
 }
 
-export function AppearanceSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode }: {
+export function AppearanceSettings({ appearance, setAppearance, inputSize, setInputSize, workspaceMode, setWorkspaceMode, onResetLayout }: {
   appearance: AppearancePreferences
   setAppearance: (appearance: AppearancePreferences) => void
   inputSize: number
   setInputSize: (size: number) => void
   workspaceMode: WorkspaceMode
   setWorkspaceMode?: (mode: WorkspaceMode) => void
+  onResetLayout: () => void
 }) {
   const workspaceModeGroup = useId()
   return (
@@ -390,7 +391,7 @@ export function AppearanceSettings({ appearance, setAppearance, inputSize, setIn
       </div>}
       <ThemeSettings appearance={appearance} setAppearance={setAppearance} />
       <SizeSettings appearance={appearance} setAppearance={setAppearance}
-        inputSize={inputSize} setInputSize={setInputSize} workspaceMode={workspaceMode} />
+        inputSize={inputSize} setInputSize={setInputSize} workspaceMode={workspaceMode} onResetLayout={onResetLayout} />
     </div>
   )
 }
@@ -619,11 +620,13 @@ type SettingsProps = {
   setCellReferenceStyle: (style: CellReferenceStyle) => void
   workspaceMode: WorkspaceMode
   setWorkspaceMode?: (mode: WorkspaceMode) => void
+  onResetLayout: () => void
 }
 
 export function Settings({
   close, section = null, syncStep = null, advancedModes, setAdvancedModes, appearance, setAppearance, highlighting, setHighlighting, errorMode, setErrorMode,
   inputSize, setInputSize, draft, cellReferenceStyle, setCellReferenceStyle, workspaceMode, setWorkspaceMode,
+  onResetLayout,
 }: SettingsProps) {
   const router = useRouter()
   const canGoBack = useCanGoBack()
@@ -685,7 +688,7 @@ export function Settings({
   function renderSection(screen: Exclude<Section, 'device-sync'>) {
     if (screen === 'appearance') {
       return <AppearanceSettings appearance={appearance} setAppearance={setAppearance} inputSize={inputSize}
-        setInputSize={setInputSize} workspaceMode={workspaceMode} setWorkspaceMode={setWorkspaceMode} />
+        setInputSize={setInputSize} workspaceMode={workspaceMode} setWorkspaceMode={setWorkspaceMode} onResetLayout={onResetLayout} />
     }
     if (screen === 'highlighting') {
       return <HighlightSettings highlighting={highlighting} setHighlighting={setHighlighting} />
