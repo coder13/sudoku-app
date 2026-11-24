@@ -199,10 +199,9 @@ async function importForMobilePlay(page, code) {
 }
 
 async function openMobileTool(page, name) {
-  const options = page.getByRole('button', { name: 'Open puzzle options' })
-  await options.tap()
-  await page.locator('#puzzle-menu').getByRole('button', { name, exact: true }).tap()
-  await options.tap()
+  await page.getByRole('button', { name: 'Input tools', exact: true }).tap()
+  await page.getByRole('group', { name: 'Input tools' }).getByRole('button', { name, exact: true }).tap()
+  await page.keyboard.press('Escape')
 }
 
 const checks = [
@@ -354,10 +353,7 @@ const checks = [
   }],
   ['mobile-solution-step-explanation', '/?puzzle=' + game.id, async page => {
     const before = await boardSnapshot(page)
-    const options = page.getByRole('button', { name: 'Open puzzle options' })
-    await options.tap()
-    await page.locator('#puzzle-menu').getByRole('button', { name: 'Solution', exact: true }).tap()
-    await options.tap()
+    await openMobileTool(page, 'Solution')
     await page.getByRole('button', { name: 'Reveal solution', exact: true }).tap()
 
     const steps = page.getByRole('list', { name: 'Solving steps' })

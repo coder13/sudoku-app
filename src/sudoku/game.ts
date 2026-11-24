@@ -53,6 +53,15 @@ export type Position = {
 
 export type HistoryPosition = Position & { chainSketch?: ChainSketchState | null }
 
+export type PuzzleBookmark = {
+  id: string
+  name: string
+  position: Position
+  chainSketch?: ChainSketchState
+}
+
+export const BOOKMARK_NAME_LIMIT = 72
+
 export type Game = {
   id: string
   title: string
@@ -80,6 +89,7 @@ export type Game = {
   position: Position
   past: HistoryPosition[]
   future: HistoryPosition[]
+  bookmarks?: readonly PuzzleBookmark[]
   actionHistory?: ActionHistoryEntry[]
   chainSketch?: ChainSketchState
   elapsed: number
@@ -150,6 +160,7 @@ export function restartGame(game: Game): Game {
     customMode: game.customMode,
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
+    ...(game.bookmarks && { bookmarks: game.bookmarks }),
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
       timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,
@@ -164,7 +175,7 @@ export function restartGame(game: Game): Game {
 
 export function shouldOfferPuzzleSave(game: Game | undefined): game is Game & { pendingSave: true } {
   return Boolean(game?.source === 'generated' && game.pendingSave && !game.started && !game.saved &&
-    !game.savedForLater && !game.archived && !isSolved(game))
+    !game.savedForLater && !game.archived && !game.bookmarks?.length && !isSolved(game))
 }
 
 export function isPuzzleSaved(game: Game): boolean {
@@ -531,6 +542,29 @@ export function redo(game: Game): Game {
     ...step.game,
     future: game.future.slice(0, -1),
     past: [...game.past, step.snapshot],
+  }
+}
+
+export function createPuzzleBookmark(game: Game, name: string): PuzzleBookmark {
+  const names = new Set(game.bookmarks?.map(bookmark => bookmark.name))
+  let number = 1
+  while (names.has(`Bookmark ${number}`)) number++
+  return {
+    id: createGameId(), name: name.trim().slice(0, BOOKMARK_NAME_LIMIT) || `Bookmark ${number}`,
+    position: game.position, ...(game.chainSketch && { chainSketch: game.chainSketch }),
+  }
+}
+
+export function restorePuzzleBookmark(game: Game, bookmark: PuzzleBookmark): Game {
+  if (game.source === 'draft' || (game.position === bookmark.position && game.chainSketch === bookmark.chainSketch)) return game
+  return {
+    ...game,
+    position: bookmark.position,
+    chainSketch: bookmark.chainSketch,
+    past: [...game.past.slice(1 - HISTORY_SIZE), { ...game.position, chainSketch: game.chainSketch ?? null }],
+    future: [],
+    candidatesInitialized: true,
+    started: true,
   }
 }
 

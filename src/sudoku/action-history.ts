@@ -9,7 +9,7 @@ export type ActionChange =
   | { kind: 'entry'; cell: number; before: number; after: number }
   | { kind: 'candidate'; cell: number; digit: number; added: boolean }
 
-export type ActionKind = 'edit' | 'undo' | 'redo' | 'candidates' | 'singles' | 'hint' | 'recovery'
+export type ActionKind = 'edit' | 'undo' | 'redo' | 'candidates' | 'singles' | 'hint' | 'recovery' | 'bookmark'
 export type ActionHistoryEntry = {
   id: string
   at: number
@@ -32,7 +32,8 @@ export function deductionActions(changes: readonly ActionChange[]): DeductionAct
 
 export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit',
   options: { at?: number; technique?: string; actions?: readonly DeductionAction[] } = {}): Game {
-  if (before === after || before.source === 'draft' || before.position === after.position) return after
+  if (before === after || before.source === 'draft' ||
+    (before.position === after.position && (kind !== 'bookmark' || before.chainSketch === after.chainSketch))) return after
   const size = (before.grid ?? CLASSIC_GRID).size
   const visibleGivens = visibleGivensOf(before)
   const changes: ActionChange[] = []
@@ -60,7 +61,7 @@ export function recordAction(before: Game, after: Game, kind: ActionKind = 'edit
       }
     }
   }
-  if (changes.length === 0 && kind !== 'undo' && kind !== 'redo') return after
+  if (changes.length === 0 && kind !== 'undo' && kind !== 'redo' && kind !== 'bookmark') return after
   const at = options.at ?? Date.now()
   const actions = deductionActions(changes)
   const pending = kind === 'edit' && actions.length > 0 && actions.length === changes.length
@@ -148,7 +149,7 @@ export function validActionHistory(value: unknown, grid: PlayGrid = CLASSIC_GRID
   const fullMask = (1 << grid.size) - 1
   const integer = (number: unknown, max = Number.MAX_SAFE_INTEGER): number is number =>
     typeof number === 'number' && Number.isSafeInteger(number) && number >= 0 && number <= max
-  const kinds: ActionKind[] = ['edit', 'undo', 'redo', 'candidates', 'singles', 'hint', 'recovery']
+  const kinds: ActionKind[] = ['edit', 'undo', 'redo', 'candidates', 'singles', 'hint', 'recovery', 'bookmark']
   return Array.isArray(value) && value.every((entry: ActionHistoryEntry) => entry &&
     typeof entry.id === 'string' && entry.id.length > 0 && entry.id.length <= 100 &&
     integer(entry.at) && integer(entry.lastAt) && entry.lastAt >= entry.at && integer(entry.elapsed) && kinds.includes(entry.kind) &&

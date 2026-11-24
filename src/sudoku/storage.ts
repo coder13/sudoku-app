@@ -7,7 +7,7 @@ import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
-import { COLORS, createGameId, hasUniquenessProof, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
+import { BOOKMARK_NAME_LIMIT, COLORS, createGameId, hasUniquenessProof, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
 import { isSizedRuleList, restoreSizedRuleGame } from './sized-rule-game.ts'
 import { algebraicPosition, restoreAlgebraicGame } from './algebraic-game.ts'
 import { algebraicLabel, isAlgebraicCageList, type AlgebraicCage } from './algebraic-cages.ts'
@@ -156,6 +156,19 @@ export function readGame(id: string, data: string | Game | null): Game | undefin
       if (value.sharedPuzzleId !== undefined && !isSharedPuzzleId(value.sharedPuzzleId)) delete value.sharedPuzzleId
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
+      if (value.bookmarks !== undefined) {
+        const ids = new Set<string>()
+        const bookmarks = !draft && Array.isArray(value.bookmarks) ? value.bookmarks.filter(bookmark => {
+          if (!bookmark || typeof bookmark.id !== 'string' || !bookmark.id || bookmark.id.length > 100 || ids.has(bookmark.id) ||
+            typeof bookmark.name !== 'string' || !bookmark.name.trim() || bookmark.name.length > BOOKMARK_NAME_LIMIT ||
+            !validPosition(bookmark.position, grid, false, false) ||
+            (bookmark.chainSketch !== undefined && !validChainSketchState(bookmark.chainSketch))) return false
+          ids.add(bookmark.id)
+          return true
+        }) : []
+        if (bookmarks.length) value.bookmarks = bookmarks
+        else delete value.bookmarks
+      }
       if (value.actionHistory !== undefined && !validActionHistory(value.actionHistory, grid)) delete value.actionHistory
       if (value.timeUntracked !== true) delete value.timeUntracked
       if (value.savedForLater !== true) delete value.savedForLater
