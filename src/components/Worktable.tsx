@@ -12,6 +12,7 @@ import { applyChainDeduction } from '../sudoku/chain-sketch'
 import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
+import { classicPuzzleName } from '../sudoku/classic-puzzle-name'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, createPuzzleBookmark, enter, fillEntries,
   formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, marksOf, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, restorePuzzleBookmark, setGamePaused, singleFromCandidates, toggleCandidateGroup, undo, valuesOf, withCellColors,
@@ -2849,6 +2850,11 @@ export function Worktable({
   </div>
   const puzzleTopActions = puzzleControlsBelow && (puzzleZoom.zoomed || variant || grid || (!viewToggleBesideMenu && viewToggle))
     ? <div key="top-actions" className="puzzle-actions puzzle-top-actions">{puzzleUtilityActions}</div> : null
+  const showCanonicalName = game.source !== 'draft' && !variant && !grid && !game.algebraic && !game.sized &&
+    (!game.title.trim() || game.source === 'imported' && game.title === 'Imported puzzle' ||
+      game.source === 'generated' && /^Puzzle \d+$/.test(game.title))
+  const canonicalName = useMemo(() => showCanonicalName ? classicPuzzleName(game.givens) : null,
+    [showCanonicalName, game.givens])
   const puzzlePanel = (
       <div className="puzzle-column" data-reserve-badge-space={!placeholder && !draft || undefined}>
         <section ref={puzzleCardRef} className="puzzle puzzle-flat" aria-label={game.title} data-placeholder={Boolean(placeholder) || undefined}
@@ -2859,6 +2865,7 @@ export function Worktable({
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
         <PuzzleCollectionCredit game={game} />
+        {canonicalName && <p className="puzzle-canonical-name"><span>Canonical name</span><code>{canonicalName}</code></p>}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values}
           active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         {visiblePinnedActions.length > 0 && <nav className="puzzle-quick-actions" aria-label="Pinned puzzle actions" data-no-panel-hold>
