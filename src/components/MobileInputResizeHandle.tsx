@@ -246,7 +246,8 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       if (!split) return
       const preferred = preferredHeight.current
       if (preferred === undefined) describe(split)
-      else updateHeight(layout, split, clampHeight(split, preferred))
+      // An open hint can make the page scroll when the board reaches its minimum.
+      else updateHeight(layout, split, withHint ? Math.max(split.min, preferred) : clampHeight(split, preferred))
     }
     fitToLayout()
     const page = layout.closest<HTMLElement>('.standard-workspace-page')
