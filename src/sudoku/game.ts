@@ -15,7 +15,7 @@ import { sandwichState } from './sandwich.ts'
 import { xSumState } from './x-sum.ts'
 import { skyscrapersState } from './skyscrapers.ts'
 import { regionSumState, sizedRegionSumState } from './region-sum.ts'
-import { isPuzzleVariantId, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame } from './variants.ts'
+import { isPuzzleVariantId, puzzleForVariantTools, variantDigitExclusions, variantHouseCells, variantPeers, type VariantGame, type VariantToolId } from './variants.ts'
 import type { RatingAttempt } from './player-rating.ts'
 import type { ActionHistoryEntry } from './action-history.ts'
 import { createUuid } from '../uuid.ts'
@@ -34,7 +34,7 @@ export type CandidateLayout = 'grid' | 'center-corner'
 export type ColorTarget = 'cell' | 'candidate'
 export type ErrorMode = 'all' | 'incorrect' | 'conflicts' | 'none'
 export type Source = 'starter' | 'generated' | 'imported' | 'collection' | 'custom' | 'draft'
-export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove'; removeCandidates?: boolean }
+export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolean; candidateAction?: 'add' | 'remove'; removeCandidates?: boolean; variantRules?: readonly VariantToolId[] }
 
 export type Position = {
   entries: string
@@ -552,7 +552,8 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
     }
     if (value && options.removeCandidates !== false) {
       const bit = 1 << (value - 1)
-      const puzzle = playVariantPuzzle(game.variant, entries)
+      const currentPuzzle = playVariantPuzzle(game.variant, entries)
+      const puzzle = currentPuzzle && options.variantRules ? puzzleForVariantTools(currentPuzzle, options.variantRules) : currentPuzzle
       const grid = game.grid ?? CLASSIC_GRID
       const sizedRules = game.sized?.rules
       const values = gridValues(puzzle?.givens ?? givens, entries)
@@ -679,12 +680,13 @@ export function hintEliminations(values: string, displayedCandidates: readonly n
   })
 }
 
-export function fillEntries(game: Game, nextValues: string, removeCandidates = true): Game {
+export function fillEntries(game: Game, nextValues: string, removeCandidates = true, variantRules?: readonly VariantToolId[]): Game {
   if (!isGridText(nextValues, game.grid ?? CLASSIC_GRID)) return game
   const entries = [...game.position.entries]
   const center = [...game.position.center]
   const corner = [...game.position.corner]
-  const puzzle = playVariantPuzzle(game.variant, game.position.entries)
+  const currentPuzzle = playVariantPuzzle(game.variant, game.position.entries)
+  const puzzle = currentPuzzle && variantRules ? puzzleForVariantTools(currentPuzzle, variantRules) : currentPuzzle
   const givens = visibleGivensOf(game)
   let changed = false
 
@@ -708,7 +710,8 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
 
   if (changed && removeCandidates) {
     const placed = entries.join('')
-    const revealed = playVariantPuzzle(game.variant, placed)
+    const revealedPuzzle = playVariantPuzzle(game.variant, placed)
+    const revealed = revealedPuzzle && variantRules ? puzzleForVariantTools(revealedPuzzle, variantRules) : revealedPuzzle
     const values = gridValues(revealed?.givens ?? givens, placed)
     const ruleMasks = placedRuleState(revealed, values, game.grid ?? CLASSIC_GRID, game.sized?.rules)?.allowed
     if (ruleMasks) for (let cell = 0; cell < values.length; cell++) {
@@ -719,14 +722,15 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
   return changed ? move(game, { ...game.position, entries: entries.join(''), center, corner }) : game
 }
 
-export function applyDeduction(game: Game, actions: readonly DeductionAction[], candidates: readonly number[], removeCandidates = true): Game {
+export function applyDeduction(game: Game, actions: readonly DeductionAction[], candidates: readonly number[], removeCandidates = true,
+  variantRules?: readonly VariantToolId[]): Game {
   const first = actions[0]
   if (!first) return game
   const values = valuesOf(game)
   if ('place' in first) {
     const { cell, digit } = first.place
     if (values[cell] !== '0' || !hasCandidate(candidates[cell], digit)) return game
-    return fillEntries(game, values.slice(0, cell) + digit + values.slice(cell + 1), removeCandidates)
+    return fillEntries(game, values.slice(0, cell) + digit + values.slice(cell + 1), removeCandidates, variantRules)
   }
 
   const { center, corner } = game.position

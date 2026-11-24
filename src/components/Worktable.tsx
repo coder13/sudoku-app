@@ -47,7 +47,7 @@ import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { matchesHintPosition, puzzleHintPage, puzzleHints, puzzleSolution, type HintPosition } from '../sudoku/puzzle-help'
 import { playCandidates } from '../sudoku/variant-play'
-import { variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
+import { puzzleForVariantTools, variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
@@ -103,7 +103,7 @@ function candidateToolMasks(notes: readonly number[] | null | undefined, values:
     ? mask & (displayed?.[cell] ?? mask) & ~(eliminations?.[cell] ?? 0) : 0) ?? null
 }
 
-async function solveSingleValues({ grid, variant, algebraic, sized, position }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'> & Partial<Pick<Game, 'position'>>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
+async function solveSingleValues({ grid, variant, algebraic, sized, position }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'> & Partial<Pick<Game, 'position'>>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine, variantRules?: AdvancedModes['solveSinglesVariants']) {
   if (sized && grid) return sizedRuleSingles(sized, grid, values, eliminations, displayedCandidates, run)
   if (grid?.size === 4) {
     if (algebraic) checkAlgebraicHintPosition(algebraic, values, hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size))
@@ -111,9 +111,10 @@ async function solveSingleValues({ grid, variant, algebraic, sized, position }: 
   }
   if (!variant) return run({ type: 'solve-singles', values, eliminations, displayedCandidates })
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
-  const entries = [...values].map((digit, cell) => puzzle.givens[cell] === '0' ? digit : '0').join('')
-  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates,
-    position: { puzzle, entries, eliminations } })
+  const filteredPuzzle = variantRules ? puzzleForVariantTools(puzzle, variantRules) : puzzle
+  const entries = [...values].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
+  return run({ type: 'variant', operation: 'solve-singles', displayedCandidates: variantRules ? undefined : displayedCandidates,
+    position: { puzzle: filteredPuzzle, entries, eliminations } })
 }
 
 export type WorktableActions = { check: () => void }
@@ -959,20 +960,20 @@ export function Worktable({
     let current = true
     const engine = createEngineSession()
     const check = variant
-      ? solveSingleValues({ variant }, givens, undefined, undefined, engine.run).then((board) => board.includes('0'))
+      ? solveSingleValues({ variant }, givens, undefined, undefined, engine.run, advancedModes.solveSinglesVariants).then((board) => board.includes('0'))
       : engine.run({ type: 'rate', values: givens, techniqueOrder: SINGLE_TECHNIQUES }).then(({ status }) => status === 'stalled')
     void check.then((needsMore) => {
       if (current) setSinglesCheck({ givens, variant, needsMore })
     }).catch(() => { /* Leave the action hidden when the starting puzzle cannot be checked. */ }).finally(() => engine.close())
     return () => { current = false; engine.close() }
-  }, [draft, game.paused, givens, needsSinglesCheck, solved, variant])
+  }, [advancedModes.solveSinglesVariants, draft, game.paused, givens, needsSinglesCheck, solved, variant])
 
   useEffect(() => {
     if (!autoGenerateCandidates || !masks || disabled) return
     updateWorkingGame((current) => !current.paused && current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
       ? replaceCandidates(current, masks, { recordHistory: false })
       : current)
-  }, [autoGenerateCandidates, disabled, givens, masks, updateWorkingGame, values])
+  }, [advancedModes.generateCandidateVariants, autoGenerateCandidates, disabled, givens, masks, updateWorkingGame, values])
 
   useEffect(() => {
     let current = true
@@ -982,7 +983,7 @@ export function Worktable({
       ...options, latestKey: candidateRefreshKey.current, signal: abort.signal,
     })
 
-    void playCandidates(game, run).then((masks) => {
+    void playCandidates(game, run, advancedModes.generateCandidateVariants).then((masks) => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks })
     }).catch(() => {
       if (current) setNotes({ gameId: id, values, eliminations: variantEliminations, variant, algebraic, sized, masks: null, failed: true })
@@ -1214,7 +1215,7 @@ export function Worktable({
     nakedSinglesRequest.current++
     nakedSinglesAbort.current?.abort()
     nakedSinglesAbort.current = null
-  }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, disabled, id, modalOpen, session])
+  }, [advancedModes.autoPlaceNakedSingles, advancedModes.autoRemoveCandidates, advancedModes.autoRemoveCandidateVariants, disabled, id, modalOpen, session])
 
   function edit(transform: (current: Game) => Game, kind: ActionKind = transform === undo ? 'undo' : transform === redo ? 'redo' : 'edit',
     options?: { technique?: string; actions?: readonly DeductionAction[] }) {
@@ -1236,7 +1237,11 @@ export function Worktable({
     let placement: Game | undefined
     edit((current) => {
       const origin = current
-      const next = enter(origin, cells, inputMode, digit, { removeCandidates: advancedModes.autoRemoveCandidates, ...options })
+      const next = enter(origin, cells, inputMode, digit, {
+        removeCandidates: advancedModes.autoRemoveCandidates,
+        variantRules: advancedModes.autoRemoveCandidateVariants,
+        ...options,
+      })
       const actions = playerActions(origin, next, cells, inputMode, digit)
       if (actions.length && !completed) void observeTechniqueActions(origin, actions, 'independent',
         hintEliminations(valuesOf(origin), completeCandidateMasks(origin), origin.position.eliminations, gridSize))
@@ -1256,7 +1261,7 @@ export function Worktable({
     if (isSolved(origin) || conflictsOf(entered, playVariantPuzzle(origin.variant, origin.position.entries), origin.grid, origin.sized?.rules).size) return
     try {
       const run: EngineRunner = (request, options) => runEngine(request, { ...options, signal: abort.signal })
-      const available = await playCandidates(origin, run)
+      const available = await playCandidates(origin, run, advancedModes.solveSinglesVariants)
       if (request !== nakedSinglesRequest.current || !available || available.some((mask, cell) => entered[cell] === '0' && !mask)) return
       const placements = available.flatMap((mask, cell) => {
         const digit = entered[cell] === '0' ? onlyCandidate(mask) : null
@@ -1269,7 +1274,8 @@ export function Worktable({
       if (conflictsOf(filled, playVariantPuzzle(origin.variant, origin.position.entries), origin.grid, origin.sized?.rules).size) return
       updateWorkingGame((current) => {
         if (!canApplyPuzzleResult(origin, current)) return current
-        const next = recordAction(current, fillEntries(current, filled, advancedModes.autoRemoveCandidates), 'singles')
+        const next = recordAction(current, fillEntries(current, filled, advancedModes.autoRemoveCandidates,
+          advancedModes.autoRemoveCandidateVariants), 'singles')
         void observeTechniqueActions(current, placements, 'automated')
         return current.ratingAttempt ? { ...next, ratingAttempt: addSinglesAssistance(current.ratingAttempt, 'partial') } : next
       })
@@ -2027,7 +2033,7 @@ export function Worktable({
     setActionsOpen(false)
     const task = beginPuzzleTask(false, false)
     try {
-      const masks = await playCandidates(game, task.engine.run)
+      const masks = await playCandidates(game, task.engine.run, advancedModes.generateCandidateVariants)
       if (!currentTaskGame(task)) return
       if (!masks) {
         setDialogResult({ title: 'Puzzle action', text: 'Candidates cannot be generated until the grid conflicts are resolved.', tone: 'error' })
@@ -2050,7 +2056,8 @@ export function Worktable({
     setActionsOpen(false)
     const task = beginPuzzleTask(false, false)
     try {
-      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined, task.engine.run)
+      const result = await solveSingleValues(game, values, eliminations, displayedCandidates ?? undefined, task.engine.run,
+        advancedModes.solveSinglesVariants)
       if (!currentTaskGame(task)) return
       if (result === values) {
         setDialogResult({ title: 'Puzzle action', text: 'There are no singles to solve right now.', tone: 'neutral' })
@@ -2061,7 +2068,8 @@ export function Worktable({
       const assistance = values === givens && !removedCandidates && !result.includes('0') ? 'all' : 'partial'
       updateWorkingGame((latest) => {
         if (!canApplyPuzzleResult(task.origin, latest)) return latest
-        const next = recordAction(latest, fillEntries(latest, result, advancedModes.autoRemoveCandidates), 'singles')
+        const next = recordAction(latest, fillEntries(latest, result, advancedModes.autoRemoveCandidates,
+          advancedModes.autoRemoveCandidateVariants), 'singles')
         if (completed) return next
         const placements = [...result].flatMap((digit, cell) => digit !== '0' && values[cell] !== digit ? [{ place: { cell, digit: Number(digit) } }] : [])
         void observeTechniqueActions(latest, placements, 'automated')
@@ -2206,8 +2214,10 @@ export function Worktable({
     edit((current) => {
       const currentPosition = matchesHintPosition(current, hintSnapshot ?? hintPosition)
       if (!currentPosition || (chainIds && current.chainSketch !== savedGame.chainSketch)) return current
-      const next = chainIds ? applyChainDeduction(current, chainIds, actions, candidates, advancedModes.autoRemoveCandidates)
-        : applyDeduction(current, actions, candidates, advancedModes.autoRemoveCandidates)
+      const next = chainIds ? applyChainDeduction(current, chainIds, actions, candidates, advancedModes.autoRemoveCandidates,
+        advancedModes.autoRemoveCandidateVariants)
+        : applyDeduction(current, actions, candidates, advancedModes.autoRemoveCandidates,
+          advancedModes.autoRemoveCandidateVariants)
       applied = next !== current
       if (applied && !hintSnapshot && !completed) void observeTechniqueActions(current, actions, 'independent',
         hintEliminations(valuesOf(current), completeCandidateMasks(current), current.position.eliminations))
@@ -2788,7 +2798,7 @@ export function Worktable({
       <>
         {!puzzleControlsBelow && puzzleUtilityActions}
         {viewToggleBesideMenu && viewToggle}
-        {timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
+        {timing.trackTime && timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && <IconButton type="button" variant="quiet" className="puzzle-pause-trigger"
           aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
           title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
           aria-pressed={game.paused} aria-keyshortcuts={pauseKeys.join(' ')} onClick={togglePause}>

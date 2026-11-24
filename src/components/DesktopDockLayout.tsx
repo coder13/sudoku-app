@@ -12,9 +12,9 @@ import { animatePanelLayout, motionDuration } from './Presence'
 import { IconButton } from './Button'
 import { Modal } from './Modal'
 import { ResizeStepControls } from './ResizeStepControls'
+import { DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY } from '../sudoku/preferences'
+import { notifySettingsEdit } from '../sudoku/settings-events'
 
-const DESKTOP_LAYOUT_KEY = 'sudoku-app:v1:desktop-panel-layout'
-const DESKTOP_LAYOUT_VERSION_KEY = 'sudoku-app:v1:desktop-panel-layout-version'
 const DESKTOP_LAYOUT_VERSION = '6'
 const RESET_DESKTOP_LAYOUT_EVENT = 'sudoku-app:reset-desktop-panel-layout'
 const PANEL_GAP = 2
@@ -382,16 +382,17 @@ function addDefaultPanels(api: DockviewApi, visibility: PanelVisibility) {
 
 function saveLayout(api: DockviewApi) {
   try {
-    localStorage.setItem(DESKTOP_LAYOUT_KEY, JSON.stringify(api.toJSON()))
-    localStorage.setItem(DESKTOP_LAYOUT_VERSION_KEY, DESKTOP_LAYOUT_VERSION)
+    localStorage.setItem(DESKTOP_PANEL_LAYOUT_KEY, JSON.stringify(api.toJSON()))
+    localStorage.setItem(DESKTOP_PANEL_LAYOUT_VERSION_KEY, DESKTOP_LAYOUT_VERSION)
+    notifySettingsEdit()
   }
   catch { /* The layout remains active for this session. */ }
 }
 
 function restoreLayout(api: DockviewApi) {
   try {
-    const saved = localStorage.getItem(DESKTOP_LAYOUT_KEY)
-    const version = localStorage.getItem(DESKTOP_LAYOUT_VERSION_KEY)
+    const saved = localStorage.getItem(DESKTOP_PANEL_LAYOUT_KEY)
+    const version = localStorage.getItem(DESKTOP_PANEL_LAYOUT_VERSION_KEY)
     if (saved && version === DESKTOP_LAYOUT_VERSION) {
       api.fromJSON(JSON.parse(saved))
       const panelIds = new Set(api.panels.map(({ id }) => id))
@@ -404,8 +405,9 @@ function restoreLayout(api: DockviewApi) {
 
 export function resetDesktopPanelLayout() {
   try {
-    localStorage.removeItem(DESKTOP_LAYOUT_KEY)
-    localStorage.removeItem(DESKTOP_LAYOUT_VERSION_KEY)
+    localStorage.removeItem(DESKTOP_PANEL_LAYOUT_KEY)
+    localStorage.removeItem(DESKTOP_PANEL_LAYOUT_VERSION_KEY)
+    notifySettingsEdit()
   }
   catch { /* The active layout can still be reset. */ }
   window.dispatchEvent(new Event(RESET_DESKTOP_LAYOUT_EVENT))
@@ -457,13 +459,23 @@ export function DesktopDockLayout({
       addDefaultPanels(api, visibility.current)
       saveLayout(api)
     }
+    function restoreSyncedLayout(event: StorageEvent) {
+      if (event.storageArea !== localStorage || (event.key !== null
+        && event.key !== DESKTOP_PANEL_LAYOUT_KEY && event.key !== DESKTOP_PANEL_LAYOUT_VERSION_KEY)) return
+      const api = apiRef.current
+      if (!api) return
+      api.clear()
+      restoreLayout(api)
+    }
     window.addEventListener(RESET_DESKTOP_LAYOUT_EVENT, reset)
+    window.addEventListener('storage', restoreSyncedLayout)
     window.addEventListener('pointerdown', handlePointerDown, true)
     window.addEventListener('pointerup', handlePointerEnd, true)
     window.addEventListener('pointercancel', handlePointerEnd, true)
     window.addEventListener('pagehide', saveBeforeLeaving)
     return () => {
       window.removeEventListener(RESET_DESKTOP_LAYOUT_EVENT, reset)
+      window.removeEventListener('storage', restoreSyncedLayout)
       window.removeEventListener('pointerdown', handlePointerDown, true)
       window.removeEventListener('pointerup', handlePointerEnd, true)
       window.removeEventListener('pointercancel', handlePointerEnd, true)

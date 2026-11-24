@@ -8,6 +8,7 @@ import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_ORDER_KEY, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
 } from '../sudoku/mobile-panels'
+import { notifySettingsEdit } from '../sudoku/settings-events'
 
 type Panel = { title: string; content: ReactNode }
 type Props = {
@@ -478,6 +479,16 @@ export function MobilePanelLayout(props: Props) {
   const drag = useRef<Drag | null>(null)
   const scrollFrame = useRef<number | null>(null)
   const orderRef = useRef(order)
+  useEffect(() => {
+    function refreshOrder(event: StorageEvent) {
+      if (event.storageArea !== localStorage || (event.key !== null && event.key !== MOBILE_PANEL_ORDER_KEY)) return
+      const next = readMobilePanelOrder()
+      orderRef.current = next
+      setOrder(next)
+    }
+    window.addEventListener('storage', refreshOrder)
+    return () => window.removeEventListener('storage', refreshOrder)
+  }, [])
   const latest = useRef(props)
   latest.current = props
   const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
@@ -596,6 +607,7 @@ export function MobilePanelLayout(props: Props) {
     setOrder(next)
     try {
       localStorage.setItem(MOBILE_PANEL_ORDER_KEY, JSON.stringify(next))
+      notifySettingsEdit()
       setSaveFailed(false)
     } catch { setSaveFailed(true) }
     const shown = next.filter((panel) => latest.current.panels[panel])

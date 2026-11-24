@@ -1,4 +1,5 @@
 import { playVariantPuzzle } from './fog.ts'
+import { puzzleForVariantTools, type VariantToolId } from './variants.ts'
 import { difficultyIndex } from './difficulty.ts'
 import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantClueLayout, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
 import { type Game, valuesOf } from './game.ts'
@@ -164,13 +165,15 @@ export function variantPosition(
   return { puzzle, entries, eliminations: position?.eliminations }
 }
 
-export async function playCandidates(game: Game, run: EngineRunner = runEngine) {
+export async function playCandidates(game: Game, run: EngineRunner = runEngine, variantRules?: readonly VariantToolId[]) {
   if (game.sized && game.grid) return sizedRuleCandidates(game.sized, game.grid, valuesOf(game), game.position.eliminations, run)
   if (game.algebraic) return algebraicCandidates(game.algebraic, valuesOf(game), game.position.eliminations, run)
   if (game.grid) return miniCandidates(valuesOf(game), game.position.eliminations, run)
   if (!game.variant) return run({ type: 'notes', values: valuesOf(game) })
   try {
-    return await run({ type: 'variant', operation: 'candidates', position: variantPosition(game.variant, game.position) })
+    const position = variantPosition(game.variant, game.position)
+    if (variantRules) position.puzzle = puzzleForVariantTools(position.puzzle, variantRules)
+    return await run({ type: 'variant', operation: 'candidates', position })
   } catch (error) {
     if (error instanceof EngineError && (error.code === 'conflict' || error.code === 'unsolvable')) return null
     throw error

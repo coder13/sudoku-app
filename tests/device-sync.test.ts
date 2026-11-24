@@ -8,7 +8,11 @@ import { recordAction } from '../src/sudoku/action-history.ts'
 import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
 import { activityPrefix, inProgress } from '../src/sudoku/puzzle-activity.ts'
 import { readTiming, TIMING_KEY } from '../src/sudoku/puzzle-timing.ts'
-import { ADVANCED_MODE_KEY, APPEARANCE_KEY, ERROR_MODE_KEY, readPreferences } from '../src/sudoku/preferences.ts'
+import {
+  ADVANCED_MODE_KEY, APPEARANCE_KEY, ERROR_MODE_KEY, PANEL_HEIGHT_KEY, DESKTOP_PANEL_LAYOUT_KEY,
+  DESKTOP_PANEL_LAYOUT_VERSION_KEY, MOBILE_PANEL_ORDER_KEY, ADVANCED_PANEL_VISIBILITY_KEY, HIDE_ZERO_TECHNIQUES_KEY,
+  readPreferences,
+} from '../src/sudoku/preferences.ts'
 import { createPlayPreferenceStore, PLAY_PREFERENCES_KEY } from '../src/sudoku/play-preferences.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { syncSettings } from '../src/sudoku/sync-settings.ts'
@@ -434,7 +438,7 @@ test('settings seed missing choices, merge individual offline edits and reflect 
       assert.equal(read(device, appearance).showGuides, true)
       assert.equal(read(device, timing).showTimer, false)
     }
-    assert.equal(a.storage.getItem('sudoku-app:v1:input-panel-height'), null)
+    assert.equal(a.storage.getItem('sudoku-app:v1:input-panel-height'), '330')
     write(a, timing, { ...read(a, timing), showTimer: true })
     write(b, timing, { ...read(b, timing), showPause: false })
     await Promise.all([a.run(), b.run()])
@@ -480,7 +484,7 @@ test('pause on open and the last puzzle pause state travel between linked device
   } finally { sqlite.close() }
 })
 
-test('linked devices seed, reorder, and clear puzzle buttons without syncing local play controls', async () => {
+test('linked devices sync saved play preferences and puzzle button order', async () => {
   const { sqlite, creator, phone, second, computer } = await library()
   try {
     const a = client(creator, phone), b = client(second, computer)
@@ -500,12 +504,12 @@ test('linked devices seed, reorder, and clear puzzle buttons without syncing loc
     computerPrefs.set('desktopLayoutWidth', 1400)
     computerPrefs.set('selectedDigit', 4)
 
-    await a.run(); await b.run()
+    await a.run(); await b.run(); await a.run(); await b.run()
     computerPrefs.refreshPinnedActions()
     assert.deepEqual(computerPrefs.getSnapshot().pinnedActions, ['colors', 'hint'])
     assert.equal(computerPrefs.getSnapshot().selectedDigit, 4)
     assert.equal(JSON.parse(b.storage.getItem(PLAY_PREFERENCES_KEY)!).desktopLayoutWidth, 1400)
-    assert.equal(JSON.parse(a.storage.getItem(PLAY_PREFERENCES_KEY)!).desktopLayoutWidth, 1200)
+    assert.equal(JSON.parse(a.storage.getItem(PLAY_PREFERENCES_KEY)!).desktopLayoutWidth, 1400)
 
     computerPrefs.set('pinnedActions', ['hint', 'colors'])
     await b.run(); await a.run()
@@ -550,6 +554,31 @@ test('solving options, candidate size, and puzzle border sync through their exis
     assert.equal(received.appearance.candidateTextSize, 115)
     assert.equal(received.appearance.puzzleBorderWidth, 5)
     assert.equal(received.errorMode, 'all')
+  } finally { sqlite.close() }
+})
+
+test('variant tool choices and remaining interface preferences sync between devices', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const defaults = readPreferences(a.storage)
+    a.storage.setItem(ADVANCED_MODE_KEY, JSON.stringify({ ...defaults.advancedModes,
+      generateCandidateVariants: ['diagonal', 'killer-cages'], solveSinglesVariants: ['thermometer'],
+      autoRemoveCandidateVariants: ['windoku'] }))
+    a.storage.setItem(PANEL_HEIGHT_KEY, '412')
+    a.storage.setItem(DESKTOP_PANEL_LAYOUT_KEY, '{"panels":[]}')
+    a.storage.setItem(DESKTOP_PANEL_LAYOUT_VERSION_KEY, '6')
+    a.storage.setItem(MOBILE_PANEL_ORDER_KEY, '["input","puzzle","hint","completion"]')
+    a.storage.setItem(ADVANCED_PANEL_VISIBILITY_KEY, '{"left":false,"right":true,"bottom":true,"articles":false}')
+    a.storage.setItem(HIDE_ZERO_TECHNIQUES_KEY, 'false')
+    await a.run(); await b.run()
+    assert.deepEqual(readPreferences(b.storage).advancedModes.generateCandidateVariants, ['diagonal', 'killer-cages'])
+    assert.deepEqual(readPreferences(b.storage).advancedModes.solveSinglesVariants, ['thermometer'])
+    assert.deepEqual(readPreferences(b.storage).advancedModes.autoRemoveCandidateVariants, ['windoku'])
+    for (const key of [PANEL_HEIGHT_KEY, DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY,
+      MOBILE_PANEL_ORDER_KEY, ADVANCED_PANEL_VISIBILITY_KEY, HIDE_ZERO_TECHNIQUES_KEY]) {
+      assert.equal(b.storage.getItem(key), a.storage.getItem(key), key)
+    }
   } finally { sqlite.close() }
 })
 

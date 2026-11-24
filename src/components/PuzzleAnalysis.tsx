@@ -15,20 +15,27 @@ import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../
 import { puzzleTechniqueCatalog, variantHintProblem } from '../sudoku/puzzle-help'
 import { variantPosition } from '../sudoku/variant-play'
 import { Modal } from './Modal'
+import { HIDE_ZERO_TECHNIQUES_KEY } from '../sudoku/preferences'
+import { notifySettingsEdit } from '../sudoku/settings-events'
 
 const SCAN_DELAY_MS = 100
-const HIDE_ZERO_KEY = 'sudoku-app:v1:hide-zero-techniques'
 
 function useHideZeroTechniques() {
   const [hideZero, setHideZero] = useState(true)
   useEffect(() => {
-    try { setHideZero(localStorage.getItem(HIDE_ZERO_KEY) !== 'false') }
-    catch { /* The filter still works when storage is unavailable. */ }
+    function refresh(event?: StorageEvent) {
+      if (event && (event.storageArea !== localStorage || (event.key !== null && event.key !== HIDE_ZERO_TECHNIQUES_KEY))) return
+      try { setHideZero(localStorage.getItem(HIDE_ZERO_TECHNIQUES_KEY) !== 'false') }
+      catch { /* The filter still works when storage is unavailable. */ }
+    }
+    refresh()
+    window.addEventListener('storage', refresh)
+    return () => window.removeEventListener('storage', refresh)
   }, [])
 
   function changeHideZero(checked: boolean) {
     setHideZero(checked)
-    try { localStorage.setItem(HIDE_ZERO_KEY, String(checked)) }
+    try { localStorage.setItem(HIDE_ZERO_TECHNIQUES_KEY, String(checked)); notifySettingsEdit() }
     catch { /* Keep the preference for this session. */ }
   }
   return [hideZero, changeHideZero] as const

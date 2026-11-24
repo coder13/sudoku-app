@@ -2,6 +2,7 @@ import { playVariantPuzzle } from './fog.ts'
 import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, chainNodeCandidates, chainNodeDigit, makeChainGraph, sameEdge, validChainNode, type ChainEdge, type ChainNode } from './chains.ts'
 import type { DeductionAction } from './engine.ts'
 import { applyDeduction, conflictsOf, fillEntries, hasCandidate, move, valuesOf, type Game } from './game.ts'
+import type { VariantToolId } from './variants.ts'
 
 export const CHAIN_COLORS = ['Blue', 'Orange', 'Purple', 'Teal', 'Pink', 'Green', 'Gold', 'Indigo', 'Red', 'Slate'] as const
 export type ChainColor = typeof CHAIN_COLORS[number]
@@ -140,12 +141,12 @@ function legacyUndoSelection(active: ChainSketch, restored: readonly ChainSketch
 }
 
 export function applyChainDeduction(game: Game, chainIds: readonly number[], actions: readonly DeductionAction[],
-  candidates: readonly number[], removeCandidates: boolean): Game {
+  candidates: readonly number[], removeCandidates: boolean, variantRules?: readonly VariantToolId[]): Game {
   const before = game.chainSketch
   if (!before || !actions.length || !chainIds.some(id => before.sketches.some(sketch => sketch.id === id))) return game
 
   const removals = actions.filter(action => 'eliminate' in action)
-  const eliminated = applyDeduction(game, removals, candidates, removeCandidates)
+  const eliminated = applyDeduction(game, removals, candidates, removeCandidates, variantRules)
   if (removals.length && eliminated === game) return game
   const placements = actions.filter(action => 'place' in action)
   let position = eliminated.position
@@ -157,7 +158,7 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
     }
     const filled = values.join('')
     if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
-    position = fillEntries(eliminated, filled, removeCandidates).position
+    position = fillEntries(eliminated, filled, removeCandidates, variantRules).position
   }
 
   const sketches = before.sketches.filter(({ id }) => !chainIds.includes(id))

@@ -2018,6 +2018,13 @@ svg { flex-shrink: 0; }
 .advanced-options strong, .advanced-options small { display: block; }
 .advanced-options strong { font-size: 0.875rem; }
 .advanced-options small { margin-top: var(--space-2); color: var(--muted); line-height: 1.4; }
+.advanced-options label:has(input:disabled) { cursor: not-allowed; opacity: .55; }
+.variant-tool-choices { border-top: 1px solid var(--border); padding-top: var(--space-10); }
+.variant-tool-choices > summary { min-height: 40px; line-height: 40px; cursor: pointer; font-size: 0.8125rem; font-weight: 720; }
+.variant-tool-choices > p { margin: var(--space-6) 0; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
+.variant-tool-choice-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-16); }
+.advanced-options .variant-tool-choice-list label { align-items: center; gap: var(--space-6); padding: var(--space-6) 0; font-size: 0.8125rem; }
+.variant-tool-choice-list input { flex: none; margin-top: 0; }
 .input-control-options > .advanced-toggle { padding-block: var(--space-10); }
 .pinned-action-settings { display: grid; gap: 0; }
 .pinned-action-row {
@@ -2040,7 +2047,7 @@ svg { flex-shrink: 0; }
 .chain-pair-settings legend .chain-swatches { margin-inline-start: var(--space-4); }
 .dialog.settings-dialog {
   width: min(960px, calc(100vw - 28px));
-  height: min(690px, calc(100dvh - 28px));
+  height: min(820px, calc(100dvh - 28px));
   overflow: hidden;
 }
 .settings-dialog .dialog-inner { height: 100%; display: flex; flex-direction: column; }
