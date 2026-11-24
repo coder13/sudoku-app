@@ -28,7 +28,7 @@ function verify(value: GeneratedVariant) {
   assert.ok(value.puzzle.rules!.every(rule => rule.type === 'modular'))
   const lines = value.puzzle.rules!.map(rule => rule.type === 'modular' ? rule.cells : [])
   assert.ok(fixture.sources.some(source => JSON.stringify(source.lines) === JSON.stringify(lines)))
-  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 22)
+  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 24)
   assert.ok(value.rating.counts.modular); assert.ok(value.givens >= 14 && value.givens <= 20)
   const independent = countLineSolutions(value.puzzle)
   assert.equal(independent.count, 1); assert.equal(independent.solution, value.solution)

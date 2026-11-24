@@ -24,7 +24,7 @@ fn microseconds_per_call(iterations: u32, mut operation: impl FnMut()) -> f64 {
 }
 
 fn main() {
-    let order = Technique::DEFAULT_ORDER;
+    let order = Technique::default_order();
     let msls = Technique::MultiSectorLockedSets.practice_example().givens;
     for (name, givens) in [
         ("easy", EASY),

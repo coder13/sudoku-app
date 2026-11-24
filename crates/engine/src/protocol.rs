@@ -163,8 +163,13 @@ enum Request {
         technique: String,
         action: HintAction,
     },
-    HintPage { collection: u32, index: usize },
-    ReleaseHints { collection: u32 },
+    HintPage {
+        collection: u32,
+        index: usize,
+    },
+    ReleaseHints {
+        collection: u32,
+    },
     Hints {
         collection: Option<u32>,
         values: String,
@@ -317,7 +322,8 @@ struct HintWithPattern {
 
 impl HintWithPattern {
     fn new(hint: Hint, masks: &[u16; super::CELLS]) -> Self {
-        let pattern = ProofPattern::from_evidence(&hint.evidence, hint.actions[0].candidate(), masks);
+        let pattern =
+            ProofPattern::from_evidence(&hint.evidence, hint.actions[0].candidate(), masks);
         Self { hint, pattern }
     }
 }
@@ -342,7 +348,10 @@ enum ResponseValue {
     #[cfg(all(feature = "generation", feature = "variants"))]
     AlgebraicPuzzle(sized_variant::Definition),
     HintPage(hint_pages::HintPage),
-    Hints { choices: Vec<Hint>, available: usize },
+    Hints {
+        choices: Vec<Hint>,
+        available: usize,
+    },
     HintsWithPatterns {
         choices: Vec<HintWithPattern>,
         available: usize,
@@ -432,7 +441,11 @@ fn play_masks(
 ) -> ResultValue<[u16; super::CELLS]> {
     let shown = elimination_masks(displayed)?.unwrap_or([super::DIGITS; super::CELLS]);
     let removed = elimination_masks(removed)?.unwrap_or([0; super::CELLS]);
-    if shown.iter().chain(&removed).any(|mask| mask & !super::DIGITS != 0) {
+    if shown
+        .iter()
+        .chain(&removed)
+        .any(|mask| mask & !super::DIGITS != 0)
+    {
         return Err(INVALID_ELIMINATIONS);
     }
     Ok(std::array::from_fn(|cell| shown[cell] & !removed[cell]))
@@ -657,60 +670,118 @@ fn trace_value(trace: &super::LogicalSolve) -> Value {
 fn execute(request: Request) -> ResultValue<ResponseValue> {
     let result = match request {
         #[cfg(feature = "generation")]
-        Request::GenerateMini { seed, difficulty, exclude } => {
-            crate::generate_mini(seed, difficulty, &exclude).map(|puzzle| json!(puzzle))
-                .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
-        }
+        Request::GenerateMini {
+            seed,
+            difficulty,
+            exclude,
+        } => crate::generate_mini(seed, difficulty, &exclude)
+            .map(|puzzle| json!(puzzle))
+            .ok_or_else(|| puzzle_error(Analysis::SearchLimit)),
         #[cfg(feature = "generation")]
-        Request::GenerateSix { seed, difficulty, grid, exclude } => {
+        Request::GenerateSix {
+            seed,
+            difficulty,
+            grid,
+            exclude,
+        } => {
             if grid.size != 6 || !matches!((grid.box_rows, grid.box_columns), (2, 3) | (3, 2)) {
                 return Err(("invalid-layout", "Use six 2 × 3 or 3 × 2 boxes."));
             }
-            if exclude.iter().any(|puzzle| puzzle.len() != 36 || puzzle.iter().any(|digit| *digit > 6)) {
-                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            if exclude
+                .iter()
+                .any(|puzzle| puzzle.len() != 36 || puzzle.iter().any(|digit| *digit > 6))
+            {
+                return Err((
+                    "invalid-grid",
+                    "The cell count and digits must match the grid size.",
+                ));
             }
-            crate::generate_six(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+            crate::generate_six(grid, seed, difficulty, &exclude)
+                .map(|puzzle| json!(puzzle.as_slice()))
                 .ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(feature = "generation")]
-        Request::GenerateRectangular { seed, difficulty, grid, exclude } => {
-            if !matches!((grid.size, grid.box_rows, grid.box_columns), (6, 2, 3) | (6, 3, 2) | (8, 2, 4) | (8, 4, 2)) {
-                return Err(("invalid-layout", "Use a supported grid size and rectangular box layout."));
+        Request::GenerateRectangular {
+            seed,
+            difficulty,
+            grid,
+            exclude,
+        } => {
+            if !matches!(
+                (grid.size, grid.box_rows, grid.box_columns),
+                (6, 2, 3) | (6, 3, 2) | (8, 2, 4) | (8, 4, 2)
+            ) {
+                return Err((
+                    "invalid-layout",
+                    "Use a supported grid size and rectangular box layout.",
+                ));
             }
-            if exclude.iter().any(|puzzle| puzzle.len() != grid.size * grid.size ||
-                puzzle.iter().any(|digit| usize::from(*digit) > grid.size)) {
-                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            if exclude.iter().any(|puzzle| {
+                puzzle.len() != grid.size * grid.size
+                    || puzzle.iter().any(|digit| usize::from(*digit) > grid.size)
+            }) {
+                return Err((
+                    "invalid-grid",
+                    "The cell count and digits must match the grid size.",
+                ));
             }
             let puzzle = if grid.size == 6 {
-                crate::generate_six(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                crate::generate_six(grid, seed, difficulty, &exclude)
+                    .map(|puzzle| json!(puzzle.as_slice()))
             } else {
-                crate::generate_eight(grid, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                crate::generate_eight(grid, seed, difficulty, &exclude)
+                    .map(|puzzle| json!(puzzle.as_slice()))
             };
             puzzle.ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(feature = "generation")]
-        Request::GenerateJigsaw { seed, difficulty, grid, exclude } => {
+        Request::GenerateJigsaw {
+            seed,
+            difficulty,
+            grid,
+            exclude,
+        } => {
             let layout = sized::Layout::Regions(grid).build()?;
             let size = layout.size();
             if !matches!(size, 5 | 7) {
-                return Err(("invalid-layout", "Use a 5 × 5 or 7 × 7 grid with connected regions."));
+                return Err((
+                    "invalid-layout",
+                    "Use a 5 × 5 or 7 × 7 grid with connected regions.",
+                ));
             }
-            if exclude.iter().any(|puzzle| puzzle.len() != layout.cell_count() ||
-                puzzle.iter().any(|digit| usize::from(*digit) > size)) {
-                return Err(("invalid-grid", "The cell count and digits must match the grid size."));
+            if exclude.iter().any(|puzzle| {
+                puzzle.len() != layout.cell_count()
+                    || puzzle.iter().any(|digit| usize::from(*digit) > size)
+            }) {
+                return Err((
+                    "invalid-grid",
+                    "The cell count and digits must match the grid size.",
+                ));
             }
             let puzzle = if size == 5 {
-                crate::generate_five_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                crate::generate_five_jigsaw(&layout, seed, difficulty, &exclude)
+                    .map(|puzzle| json!(puzzle.as_slice()))
             } else {
-                crate::generate_jigsaw(&layout, seed, difficulty, &exclude).map(|puzzle| json!(puzzle.as_slice()))
+                crate::generate_jigsaw(&layout, seed, difficulty, &exclude)
+                    .map(|puzzle| json!(puzzle.as_slice()))
             };
             puzzle.ok_or_else(|| puzzle_error(Analysis::SearchLimit))
         }
         #[cfg(all(feature = "generation", feature = "variants"))]
-        Request::GenerateAlgebraic { seed, difficulty, exclude } => return sized_variant::generate(seed, difficulty, exclude),
-        Request::SizedClassic { position, operation } => return sized::execute(position, operation),
+        Request::GenerateAlgebraic {
+            seed,
+            difficulty,
+            exclude,
+        } => return sized_variant::generate(seed, difficulty, exclude),
+        Request::SizedClassic {
+            position,
+            operation,
+        } => return sized::execute(position, operation),
         #[cfg(feature = "variants")]
-        Request::SizedVariant { position, operation } => return sized_variant::execute(position, operation),
+        Request::SizedVariant {
+            position,
+            operation,
+        } => return sized_variant::execute(position, operation),
         #[cfg(feature = "generation")]
         Request::ImpossibleTemplates => Ok(json!(
             crate::impossible_templates()
@@ -730,7 +801,11 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             position,
             options,
         } => variant::execute(operation, position, options),
-        Request::SolveSingles { values, eliminations, displayed_candidates } => {
+        Request::SolveSingles {
+            values,
+            eliminations,
+            displayed_candidates,
+        } => {
             let allowed = play_masks(displayed_candidates, eliminations)?;
             let filled = super::classic_singles(board(&values)?, &allowed)
                 .ok_or_else(|| puzzle_error(Analysis::Conflict))?;
@@ -940,7 +1015,8 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 return hint_pages::start(collection, cached).map(ResponseValue::HintPage);
             }
             if include_patterns {
-                let choices: Vec<_> = choices.into_iter()
+                let choices: Vec<_> = choices
+                    .into_iter()
                     .map(|hint| HintWithPattern::new(hint, position.masks()))
                     .collect();
                 return Ok(ResponseValue::HintsWithPatterns {
@@ -949,7 +1025,10 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                     candidates: position.masks().to_vec(),
                 });
             }
-            return Ok(ResponseValue::Hints { available: choices.len(), choices });
+            return Ok(ResponseValue::Hints {
+                available: choices.len(),
+                choices,
+            });
         }
         Request::NextDeduction {
             values,
@@ -1090,7 +1169,7 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
         #[cfg(feature = "variants")]
         Request::Techniques { variant: true } => Ok(variant::catalog()),
         Request::Techniques { variant: false } => Ok(json!({
-            "defaultOrder": Technique::DEFAULT_ORDER,
+            "defaultOrder": Technique::default_order(),
             "difficultyOrder": Technique::DIFFICULTY_ORDER,
             "scoringVersion": SCORING_VERSION,
             "techniques": Technique::ALL.into_iter().map(|technique| json!({
@@ -1173,18 +1252,28 @@ mod tests {
                 {"type":"algebraic-cage","cells":[0],"total":{"type":"variable","name":"x","offset":-5},"label":"x-5"},
             ],
         });
-        let send = |operation: &str| request(json!({
-            "type": "sized-variant", "operation": operation, "position": position, "rule": 2,
-        }));
+        let send = |operation: &str| {
+            request(json!({
+                "type": "sized-variant", "operation": operation, "position": position, "rule": 2,
+            }))
+        };
         assert_eq!(send("analyze")["value"], "unique");
         assert_eq!(send("solve")["value"]["variables"]["x"], 6);
         assert_eq!(send("cage-proof")["value"]["target"], 2);
-        assert_eq!(send("cage-proof")["value"]["actions"].as_array().unwrap().len(), 3);
+        assert_eq!(
+            send("cage-proof")["value"]["actions"]
+                .as_array()
+                .unwrap()
+                .len(),
+            3
+        );
         let trace = send("trace");
         let positions = trace["value"].as_array().unwrap();
         assert_eq!(positions[0]["step"]["type"], "cage");
-        assert_eq!(positions.last().unwrap()["digits"], send("solve")["value"]["digits"]);
-
+        assert_eq!(
+            positions.last().unwrap()["digits"],
+            send("solve")["value"]["digits"]
+        );
     }
 
     #[test]
@@ -1194,17 +1283,22 @@ mod tests {
             "grid": { "size": 4, "boxRows": 2, "boxColumns": 2 },
             "digits": [0,2,3,4,3,4,1,2,2,1,4,3,4,3,2,1],
         });
-        let run = |operation: &str, position: Value| request(json!({
-            "type": "sized-classic", "operation": operation, "position": position,
-        }));
+        let run = |operation: &str, position: Value| {
+            request(json!({
+                "type": "sized-classic", "operation": operation, "position": position,
+            }))
+        };
         assert_eq!(run("analyze", position.clone())["value"], "unique");
         assert_eq!(run("candidates", position.clone())["value"][0], 1);
         assert_eq!(run("solve", position.clone())["value"][0], 1);
-        assert_eq!(run("next-deduction", position.clone())["value"], json!({
-            "technique": "naked-single", "houses": [],
-            "candidates": [{"cell": 0, "digit": 1}],
-            "actions": [{"place": {"cell": 0, "digit": 1}}],
-        }));
+        assert_eq!(
+            run("next-deduction", position.clone())["value"],
+            json!({
+                "technique": "naked-single", "houses": [],
+                "candidates": [{"cell": 0, "digit": 1}],
+                "actions": [{"place": {"cell": 0, "digit": 1}}],
+            })
+        );
         let mut unsupported = position.clone();
         unsupported["rules"] = json!([{ "type": "diagonal" }]);
         assert!(run("analyze", unsupported).get("error").is_some());
@@ -1343,11 +1437,13 @@ fn unavailable_capability(request: &Value) -> Option<&'static str> {
         return Some("teaching");
     }
     if !cfg!(feature = "variants")
-        && (matches!(kind, "variant" | "sized-variant" | "generate-variant" | "generate-algebraic")
-            || (matches!(
-                kind,
-                "techniques" | "practice-examples" | "generate-practice-example"
-            ) && request["variant"] == true))
+        && (matches!(
+            kind,
+            "variant" | "sized-variant" | "generate-variant" | "generate-algebraic"
+        ) || (matches!(
+            kind,
+            "techniques" | "practice-examples" | "generate-practice-example"
+        ) && request["variant"] == true))
     {
         return Some("variants");
     }

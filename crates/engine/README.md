@@ -35,7 +35,7 @@ let givens = parse_givens(
 ).unwrap();
 assert_eq!(analyze(&givens), Analysis::Unique);
 
-let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+let trace = solve_logically(&givens, Technique::default_order()).unwrap();
 assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Beginner));
 assert_eq!(trace.score.points, 504);
 assert_eq!(trace.positions().count(), trace.steps.len() + 1);
@@ -56,7 +56,7 @@ The exact search tracks used digits in rows, columns, and boxes with bit masks. 
 
 [`solve_logically`] starts from the givens. [`solve_position`] continues from a snapshot with placements and removals. At each position the solver takes the first productive deduction in the supplied technique order, applies all its actions, and starts again at the top of the order. A valid puzzle can return [`SolveStatus::Stalled`] when the selected techniques run out of moves. That trace still contains the positions it reached and a partial point total.
 
-Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER`] for the default profile. [`SolverProfile::from_ids`] accepts stable IDs in priority order, validates unknown and duplicate IDs, and allows an empty list. Omit a technique to disable it. [`Technique::aliases`] supplies alternate names for display. Use the stable ID when saving a profile.
+Use [`Technique::ALL`] for the detector inventory and [`Technique::default_order()`] for the default profile. [`SolverProfile::from_ids`] accepts stable IDs in priority order, validates unknown and duplicate IDs, and allows an empty list. Omit a technique to disable it. [`Technique::aliases`] supplies alternate names for display. Use the stable ID when saving a profile.
 
 | Family | Detectors |
 | --- | --- |
@@ -290,7 +290,7 @@ let criteria = GenerationCriteria {
     clues: 17..=17,
     rating: Some(GenerationRating::Score(1_001..=1_600)),
     technique: None,
-    technique_order: Technique::DEFAULT_ORDER,
+    technique_order: Technique::default_order(),
 };
 let puzzle = generate_from_pool(
     42, &criteria, TechniqueTargetMode::Anywhere, builtin_templates(), 208,
@@ -578,7 +578,7 @@ Classic detectors can run when the puzzle uses standard boxes. X-Wing, Swordfish
 
 The engine caches that result within one proof position. Unique Rectangle AIC and both Unique Rectangle Nice Loops first check for a two-box rectangle with four corners outside the added rule scopes. The live candidates must share a digit pair at all four corners and supply at least two further candidates across those corners. When no rectangle meets those requirements, the engine skips the exact check and graph search. The three techniques share that result for the current position. Cheap searches defer the uniqueness check until they find a proof, and all uniqueness searches reuse a cached failure. Every offered uniqueness proof must also keep all cells that can exchange digits outside every additional rule. The proof records those cells. Computational eligibility does not change technique costs, selection, order or scoring versions. Within that same immutable position, the three Unique Rectangle inference techniques share their constructed graph, including a completed empty result. Each technique still searches its own paths in the original order. The private cache checks the full board and candidate masks before reuse and is discarded with the logical position. Changed entries or removals cannot inherit its links.
 
-For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::DEFAULT_ORDER`]. Exact validation continues to enforce every puzzle rule. Hints rank available proofs by difficulty and cost, then by proof size. For group-order contradictions, the number of checks comes before the number of line cells. They return a single deduction when it is the only move available.
+For a `variant` request, set `operation` to `trace`, `rate`, or `hints`. Use `techniqueOrder` to choose the enabled techniques. An empty list disables all techniques, while an omitted field uses [`VariantTechnique::default_order()`]. Exact validation continues to enforce every puzzle rule. Hints rank available proofs by difficulty and cost, then by proof size. For group-order contradictions, the number of checks comes before the number of line cells. They return a single deduction when it is the only move available.
 
 For Entropic and Modular lines, add `group-line-house-support` (64 points, Medium) to combine a repeating group order with one house. Add `group-order-contradiction` (89 points, Hard) to reject orders that fail a bounded sequence of pair, house, and repeating-line checks. Pair clues include Kropki, XV, Adjacent Total, and Inequality. Each rejected order records the candidate masks before and after every check. A terminal house conflict also records the cells or digits that cannot fit. The app includes the Hard technique when the puzzle has a repeating line and a supported pair clue.
 

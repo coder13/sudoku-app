@@ -27,10 +27,10 @@ const distinctTechnique = 'region-sum-distinct'
 const houseTechnique = 'region-sum-house'
 const appResults = [
   [published, 986, 68, true, 0],
-  [mixed, 3830, 156, true, 6],
-  [coach[1], 2815, 219, true, 1],
-  [coach[2], 3218, 146, true, 4],
-  [coach[3], 3977, 108, true, 7],
+  [mixed, 4550, 156, true, 6],
+  [coach[1], 2946, 219, true, 1],
+  [coach[2], 4064, 146, true, 4],
+  [coach[3], 5704, 108, true, 7],
 ] as const
 for (const [source, points, steps, complete, newProofs] of appResults) {
   test(`complete source ${source.title} imports with checked rules, retained hints and an honest solution path`, async () => {
@@ -52,11 +52,11 @@ for (const [source, points, steps, complete, newProofs] of appResults) {
       const previousOrder = (await getVariantPlayOrder(position.puzzle)).filter(technique => technique !== houseTechnique)
       const previous = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: previousOrder })
       assert.equal(previous.steps.length, 22)
-      assert.equal(previous.rating.points, 881)
+      assert.equal(previous.rating.points, 1313)
       assert.equal(previous.rating.status, 'stalled')
     }
     const solution = await puzzleSolution(game)
-    assert.equal(solution.rating.scoringVersion, 22)
+    assert.equal(solution.rating.scoringVersion, 24)
     assert.equal(solution.rating.score.points, points)
     assert.equal(solution.rating.score.counts[distinctTechnique] ?? 0, newProofs)
     assert.equal(solution.steps.length, steps)
@@ -102,7 +102,7 @@ test('an imported Region Sum puzzle refreshes its saved score after the logical 
   const legacy = { ...game, difficulty: null, score: null, variantRatingVersion: 14 }
   assert.equal(needsPuzzleGrade(legacy), true)
   const updated = await prepareImportedPuzzle(mixed.code, [legacy])
-  assert.equal(updated.game.score, 3830)
+  assert.equal(updated.game.score, 4550)
   assert.equal(updated.game.difficulty, 'medium')
   assert.equal(needsPuzzleGrade(updated.game), false)
 })

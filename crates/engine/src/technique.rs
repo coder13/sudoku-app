@@ -6,7 +6,7 @@ macro_rules! catalog {
         /// A deduction rule with a stable ID, point cost, and difficulty tier.
         #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
         pub enum Technique {
-            $(#[doc = concat!("Catalog technique `", $id, "`, worth ", stringify!($cost), " points.")]
+            $(#[doc = concat!("Catalog technique `", $id, "`, with a reference cost of ", stringify!($cost), " points.")]
             $name),+
         }
 
@@ -29,9 +29,22 @@ macro_rules! catalog {
                 match self { $(Self::$name => &[$($alias),*]),+ }
             }
 
-            /// Points added each time the solver applies one deduction of this technique.
+            /// Reference point cost; evidence-sensitive scoring may adjust each deduction.
             pub const fn cost(self) -> u16 {
                 match self { $(Self::$name => $cost),+ }
+            }
+
+            /// Lowest evidence-adjusted point cost this technique can receive.
+            pub const fn minimum_cost(self) -> u16 {
+                match self {
+                    Self::Medusa | Self::XChain | Self::XYChain
+                    | Self::Aic | Self::DiscontinuousNiceLoop | Self::ContinuousNiceLoop
+                    | Self::GroupedAic | Self::GroupedDiscontinuousNiceLoop | Self::GroupedContinuousNiceLoop
+                    | Self::UniqueLoop | Self::Tridagon | Self::TridagonAic
+                    | Self::ForcingChain | Self::ForcingNet | Self::DynamicForcingNet
+                    | Self::AdvancedForcingNet | Self::NestedForcingNet | Self::TridagonForcingNet => self.cost() / 2,
+                    _ => self.cost(),
+                }
             }
 
             /// Minimum puzzle difficulty when a complete solve uses this technique.
@@ -62,7 +75,7 @@ pub enum ProfileError {
 
 impl Default for SolverProfile {
     fn default() -> Self {
-        Self(Technique::DEFAULT_ORDER.to_vec())
+        Self(Technique::default_order().to_vec())
     }
 }
 
@@ -140,7 +153,9 @@ catalog! {
     GroupedAic: "grouped-aic", 300, Master, false, ["Grouped Alternating Inference Chain"];
     GroupedDiscontinuousNiceLoop: "grouped-discontinuous-nice-loop", 300, Master, false, [];
     GroupedContinuousNiceLoop: "grouped-continuous-nice-loop", 300, Master, false, ["Grouped AIC Loop"];
-    UniqueRectangle1: "unique-rectangle-1", 100, Hard, true, ["Uniqueness Test 1"];
+    // Local calibration experiment: SudokuWiki's UR1 weight is 20 versus 50
+    // for Types 2–5, so UR1 uses a 40-point reference here while UR2–6 remain 100.
+    UniqueRectangle1: "unique-rectangle-1", 40, Hard, true, ["Uniqueness Test 1"];
     UniqueRectangle2: "unique-rectangle-2", 100, Hard, true, ["Uniqueness Test 2"];
     UniqueRectangle3: "unique-rectangle-3", 100, Hard, true, ["Uniqueness Test 3"];
     UniqueRectangle4: "unique-rectangle-4", 100, Hard, true, ["Uniqueness Test 4"];
@@ -203,9 +218,10 @@ impl Technique {
             _ => None,
         }
     }
+}
 
-    /// Techniques used by the built-in difficulty profiles, in tier order.
-    /// Multi-Coloring is available in hints and custom solver profiles.
+impl Technique {
+    /// Techniques used by built-in difficulty profiles, in curated tier order.
     pub const DIFFICULTY_ORDER: &'static [Self] = &[
         Self::FullHouse,
         Self::HiddenSingleBox,
@@ -298,65 +314,54 @@ impl Technique {
         Self::QuintuplePatternOverlay,
     ];
 
-    /// Default analysis profile. Specialist methods remain available explicitly.
-    pub const DEFAULT_ORDER: &'static [Self] = &[
-        Self::FullHouse,
-        Self::HiddenSingleBox,
-        Self::NakedSingle,
-        Self::HiddenSingle,
-        Self::LockedPair,
-        Self::LockedTriple,
-        Self::Pointing,
-        Self::Claiming,
-        Self::NakedPair,
-        Self::NakedTriple,
-        Self::HiddenPair,
-        Self::HiddenTriple,
-        Self::XWing,
-        Self::Swordfish,
-        Self::Skyscraper,
-        Self::TwoStringKite,
-        Self::EmptyRectangle,
-        Self::NakedQuadruple,
-        Self::HiddenQuadruple,
-        Self::Jellyfish,
-        Self::BugPlusOne,
-        Self::WWing,
-        Self::XYWing,
-        Self::XYZWing,
-        Self::UniqueRectangle1,
-        Self::UniqueRectangle2,
-        Self::UniqueRectangle3,
-        Self::UniqueRectangle4,
-        Self::UniqueRectangle5,
-        Self::UniqueRectangle6,
-        Self::HiddenRectangle,
-        Self::FinnedXWing,
-        Self::SashimiXWing,
-        Self::FinnedSwordfish,
-        Self::SashimiSwordfish,
-        Self::FinnedJellyfish,
-        Self::SashimiJellyfish,
-        Self::SimpleColoring,
-        Self::Medusa,
-        Self::XChain,
-        Self::XYChain,
-        Self::WxyzWing,
-        Self::Aic,
-        Self::DiscontinuousNiceLoop,
-        Self::ContinuousNiceLoop,
-        Self::GroupedAic,
-        Self::GroupedDiscontinuousNiceLoop,
-        Self::GroupedContinuousNiceLoop,
-        Self::SueDeCoq,
-        Self::AlsXz,
-        Self::AlsXyWing,
-        Self::AlsChain,
-        Self::DeathBlossom,
-        Self::SkLoop,
-        Self::Exocet,
-        Self::MultiSectorLockedSets,
-        Self::ForcingChain,
-        Self::ForcingNet,
-    ];
+    /// Default analysis profile, derived by filtering the curated order.
+    pub fn default_order() -> &'static [Self] {
+        static ORDER: std::sync::OnceLock<Vec<Technique>> = std::sync::OnceLock::new();
+        ORDER
+            .get_or_init(|| {
+                Self::DIFFICULTY_ORDER
+                    .iter()
+                    .copied()
+                    .filter(|technique| !technique.is_specialist_profile_only())
+                    .collect()
+            })
+            .as_slice()
+    }
+
+    const fn is_specialist_profile_only(self) -> bool {
+        matches!(
+            self,
+            Self::UniqueLoop
+                | Self::UniqueRectangleAic
+                | Self::UniqueRectangleDiscontinuousNiceLoop
+                | Self::UniqueRectangleContinuousNiceLoop
+                | Self::Fireworks
+                | Self::FireworkWWing
+                | Self::FireworkLWing
+                | Self::FireworkAlsWing
+                | Self::FireworkAic
+                | Self::AlignedPairExclusion
+                | Self::AlsAic
+                | Self::AlsDiscontinuousNiceLoop
+                | Self::AlsContinuousNiceLoop
+                | Self::AlignedTripletExclusion
+                | Self::Tridagon
+                | Self::TridagonAic
+                | Self::TridagonForcingNet
+                | Self::DynamicForcingNet
+                | Self::AdvancedForcingNet
+                | Self::SeniorExocet
+                | Self::DoubleExocet
+                | Self::FrankenFish
+                | Self::MutantFish
+                | Self::KrakenFish1
+                | Self::KrakenFish2
+                | Self::NestedForcingNet
+                | Self::PatternOverlay
+                | Self::PairwisePatternOverlay
+                | Self::TriplePatternOverlay
+                | Self::QuadruplePatternOverlay
+                | Self::QuintuplePatternOverlay
+        )
+    }
 }

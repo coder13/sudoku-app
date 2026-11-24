@@ -102,7 +102,7 @@ fn main() {
         let (rating, hints) = if fixture.name == "classic" {
             let board = position.puzzle.givens;
             (
-                sample(|| rate_puzzle(&board, Technique::DEFAULT_ORDER).unwrap()),
+                sample(|| rate_puzzle(&board, Technique::default_order()).unwrap()),
                 sample(|| ranked_hints(&board, None, 10, &[]).unwrap()),
             )
         } else {

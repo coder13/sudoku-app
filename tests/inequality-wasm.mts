@@ -36,14 +36,14 @@ test('the complete published mixed puzzle imports, offers multiple hints and rep
   const techniqueOrder = await getVariantPlayOrder(position.puzzle)
   const legacy = await runEngine({ type: 'variant', operation: 'trace', position,
     techniqueOrder: techniqueOrder.filter(technique => technique !== linked && technique !== matching && technique !== layouts) })
-  assert.deepEqual([legacy.rating.status, legacy.rating.points, legacy.steps.length], ['stalled', 98, 9])
+  assert.deepEqual([legacy.rating.status, legacy.rating.points, legacy.steps.length], ['stalled', 328, 9])
   const withoutLayouts = techniqueOrder.filter(technique => technique !== layouts)
   const prior = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder: withoutLayouts })
-  assert.deepEqual([prior.rating.status, prior.rating.points, prior.steps.length], ['stalled', 2833, 48])
+  assert.deepEqual([prior.rating.status, prior.rating.points, prior.steps.length], ['stalled', 4458, 48])
   assert.equal(prior.rating.counts[linked], 2)
   assert.equal(prior.rating.counts[matching], 31)
   const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  assert.deepEqual([trace.rating.status, trace.rating.points, trace.steps.length], [{ solved: 'extreme' }, 30602, 386])
+  assert.deepEqual([trace.rating.status, trace.rating.points, trace.steps.length], [{ solved: 'extreme' }, 42273, 386])
   assert.equal(trace.rating.counts[layouts], 63)
   assert.deepEqual(trace.steps.slice(0, prior.steps.length), prior.steps)
   const stale = { ...game, variantRatingVersion: 19 }

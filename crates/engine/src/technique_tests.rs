@@ -546,13 +546,22 @@ fn transpose_hint(hint: &Hint) -> Hint {
         },
         HintEvidence::UniqueRectangle {
             corners,
+            candidate_counts,
             digits,
             support,
         } => {
-            let mut corners = corners.map(transpose);
-            corners.sort_unstable();
+            let mut corner_counts: Vec<_> = corners
+                .iter()
+                .copied()
+                .zip(candidate_counts.iter().copied())
+                .map(|(cell, count)| (transpose(cell), count))
+                .collect();
+            corner_counts.sort_unstable_by_key(|&(cell, _)| cell);
+            let corners = std::array::from_fn(|index| corner_counts[index].0);
+            let candidate_counts = std::array::from_fn(|index| corner_counts[index].1);
             HintEvidence::UniqueRectangle {
                 corners,
+                candidate_counts,
                 digits: *digits,
                 support: transpose_uniqueness_support(support),
             }
@@ -1256,11 +1265,13 @@ fn rectangle_hint(
     technique: Technique,
     support: RectangleSupport,
     actions: Vec<HintAction>,
+    masks: &Masks,
 ) -> Hint {
     Hint {
         technique,
         evidence: HintEvidence::UniqueRectangle {
             corners: RECTANGLE,
+            candidate_counts: RECTANGLE.map(|cell| masks[cell].count_ones() as u8),
             digits: [1, 2],
             support,
         },
@@ -1284,6 +1295,7 @@ fn rectangle_one_removes_both_pair_digits_from_its_only_roof() {
             technique,
             RectangleSupport::ExtraCandidates(vec![Candidate { cell: 28, digit: 3 }]),
             remove_digits([28], &[1, 2]),
+            &masks,
         ),
         (EMPTY, miss),
     );
@@ -1321,6 +1333,7 @@ fn rectangle_two_and_five_eliminate_the_extra_seen_by_every_roof() {
                         .collect(),
                 ),
                 remove_digits(targets.iter().copied(), &[3]),
+                &masks,
             ),
             (EMPTY, miss),
         );
@@ -1344,6 +1357,7 @@ fn rectangle_three_locks_the_extra_candidates_with_a_subset() {
                 digits: vec![3, 4],
             },
             remove_digits([3, 4, 5, 6, 7, 8, 9, 10, 11, 18, 19, 20], &[3, 4]),
+            &masks,
         ),
         (EMPTY, miss),
     );
@@ -1366,6 +1380,7 @@ fn rectangle_four_removes_the_other_digit_when_one_is_conjugate() {
                 digit: 1,
             },
             remove_digits([0, 1], &[2]),
+            &masks,
         ),
         (EMPTY, miss),
     );
@@ -1414,6 +1429,7 @@ fn rectangle_six_and_hidden_rectangle_require_their_conjugate_links() {
                     digit: 1,
                 },
                 remove_digits(candidates_to_remove.iter().copied(), &[removed_digit]),
+                &masks,
             ),
             (EMPTY, miss),
         );

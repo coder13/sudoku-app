@@ -11,7 +11,7 @@ mod easter;
 
 pub fn run() {
     let givens = parse_givens(easter::EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     assert_eq!(trace.steps.len(), 4);
     let snapshot = trace.positions().last().unwrap();
     let solution = solve(&givens).unwrap();

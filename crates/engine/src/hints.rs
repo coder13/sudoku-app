@@ -5,7 +5,13 @@ use super::{Analysis, Board, CELLS, PositionSnapshot, Technique, coordinates, lo
 
 #[path = "patterns/mod.rs"]
 mod patterns;
-#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
+#[cfg(any(
+    feature = "variants",
+    all(
+        feature = "wasm-api",
+        any(target_arch = "wasm32", test, feature = "cli")
+    )
+))]
 pub(crate) use patterns::OverlaySearch;
 #[cfg(feature = "variants")]
 pub(crate) use patterns::{RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses};
@@ -455,6 +461,18 @@ impl ForcingBranch {
             Some(ForcingConflict::Cases(cases)) => {
                 cases.iter().map(|case| case.branch.proof_size()).sum()
             }
+            _ => 0,
+        };
+        1 + self.steps.len() + nested
+    }
+
+    fn longest_path_size(&self) -> usize {
+        let nested = match &self.conflict {
+            Some(ForcingConflict::Cases(cases)) => cases
+                .iter()
+                .map(|case| case.branch.longest_path_size())
+                .max()
+                .unwrap_or(0),
             _ => 0,
         };
         1 + self.steps.len() + nested
@@ -949,6 +967,8 @@ pub enum HintEvidence {
     UniqueRectangle {
         /// The four corners of the rectangle.
         corners: [usize; 4],
+        /// Candidate counts at those corners when the deduction was found.
+        candidate_counts: [u8; 4],
         /// The shared pair of digits.
         digits: [u8; 2],
         /// Additional facts used by this rectangle type.
@@ -1146,6 +1166,10 @@ impl Deduction {
             DeductionActions::Eliminations(actions) => actions,
         }
     }
+
+    pub(crate) fn score_cost(&self) -> u16 {
+        self.evidence.estimated_cost(self.technique)
+    }
 }
 
 impl From<Deduction> for Hint {
@@ -1164,8 +1188,8 @@ impl From<Deduction> for Hint {
 
 impl Hint {
     /// Points charged once when this deduction is applied.
-    pub const fn cost(&self) -> u16 {
-        self.technique.cost()
+    pub fn cost(&self) -> u16 {
+        self.evidence.estimated_cost(self.technique)
     }
 
     fn pattern_size(&self) -> usize {
@@ -1186,6 +1210,88 @@ impl Hint {
 }
 
 impl HintEvidence {
+    pub(crate) fn estimated_cost(&self, technique: Technique) -> u16 {
+        let base = usize::from(technique.cost());
+        match self {
+            Self::Coloring { colors, .. } if technique == Technique::Medusa => {
+                let network_nodes: usize = colors.iter().map(Vec::len).sum();
+                scaled_effort_cost(base, network_nodes, 10)
+            }
+            Self::UniqueRectangle {
+                candidate_counts, ..
+            } => {
+                let corner_candidates: usize = candidate_counts.iter().map(|&count| usize::from(count)).sum();
+                scaled_effort_cost(base, corner_candidates, 9)
+            }
+            Self::Chain { links } => scaled_effort_cost(base, links.len(), 4),
+            Self::Inference { links } => {
+                let grouped_members: usize = links
+                    .iter()
+                    .map(|link| {
+                        [&link.from, &link.to]
+                            .into_iter()
+                            .map(|node| match node {
+                                InferenceNode::Candidate(_) => 0,
+                                InferenceNode::Group { cells, .. } => cells.len().saturating_sub(1),
+                                InferenceNode::MixedGroup(candidates) => {
+                                    candidates.len().saturating_sub(1)
+                                }
+                            })
+                            .sum::<usize>()
+                    })
+                    .sum();
+                scaled_effort_cost(base, links.len() + 2 * grouped_members, 6)
+            }
+            Self::Fish { fins, .. } => base
+                .saturating_add(fins.len().saturating_sub(1).saturating_mul(12))
+                .min(usize::from(u16::MAX)) as u16,
+            Self::ComplexFish {
+                bases,
+                covers,
+                fins,
+                ..
+            } => {
+                let extra_houses = bases.len().saturating_add(covers.len()).saturating_sub(6);
+                base.saturating_add(extra_houses.saturating_mul(12))
+                    .saturating_add(fins.len().saturating_mul(16))
+                    .min(usize::from(u16::MAX)) as u16
+            }
+            Self::KrakenFish { branches, .. } => {
+                let total_links: usize = branches.iter().map(Vec::len).sum();
+                let longest = branches.iter().map(Vec::len).max().unwrap_or(0);
+                base.saturating_add(total_links.saturating_mul(4))
+                    .saturating_add(longest.saturating_mul(6))
+                    .min(usize::from(u16::MAX)) as u16
+            }
+            Self::UniqueLoop { sides, .. } => {
+                let size = sides[0].len() + sides[1].len();
+                scaled_effort_cost(base, size, 6)
+            }
+            Self::Forcing { branches, .. } => forcing_effort_cost(
+                base,
+                branches.iter().map(|branch| branch.proof_size()),
+                branches.iter().map(ForcingBranch::longest_path_size),
+                branches.len(),
+            ),
+            Self::Tridagon {
+                guardians,
+                branches,
+                ..
+            } => {
+                let work = branches
+                    .iter()
+                    .map(|branch| branch.proof_size() + guardians.len());
+                forcing_effort_cost(
+                    base,
+                    work,
+                    branches.iter().map(ForcingBranch::longest_path_size),
+                    branches.len(),
+                )
+            }
+            _ => technique.cost(),
+        }
+    }
+
     pub(crate) fn pattern_size(&self) -> usize {
         match self {
             HintEvidence::Intersection { cells, .. } | HintEvidence::Subset { cells, .. } => {
@@ -1319,6 +1425,28 @@ impl HintEvidence {
             _ => 0,
         }
     }
+}
+
+fn scaled_effort_cost(base: usize, effort: usize, reference: usize) -> u16 {
+    let scaled = base.saturating_mul(effort) / reference.max(1);
+    scaled.max(base / 2).min(usize::from(u16::MAX)) as u16
+}
+
+fn forcing_effort_cost(
+    base: usize,
+    branch_work: impl Iterator<Item = usize>,
+    longest_paths: impl Iterator<Item = usize>,
+    branch_count: usize,
+) -> u16 {
+    let total_work: usize = branch_work.sum();
+    let longest = longest_paths.max().unwrap_or(0);
+    // A typical two-branch proof with about five inferences per branch is the
+    // reference. Total work captures alternatives; the longest path captures
+    // sustained reasoning within one alternative.
+    let effort = total_work
+        .saturating_add(longest)
+        .saturating_add(branch_count.saturating_sub(1) * 2);
+    scaled_effort_cost(base, effort, 20)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1468,14 +1596,20 @@ pub(crate) fn rank_position(
     choices
 }
 
-#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+#[cfg(any(
+    test,
+    all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+))]
 fn technique_rank(technique: &Technique) -> (super::Difficulty, u16) {
     (technique.difficulty(), technique.cost())
 }
 
 /// Play hints prefer the cheapest proof that unlocks placements through singles.
 /// This bounded probe does not change rating, attribution, or the solver profile.
-#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+#[cfg(any(
+    test,
+    all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+))]
 pub(crate) fn rank_useful_position(
     position: &Position,
     limit: usize,
@@ -1565,7 +1699,10 @@ pub(crate) fn rank_useful_position(
     choices
 }
 
-#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+#[cfg(any(
+    test,
+    all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+))]
 fn singles_progress(mut position: Position) -> usize {
     let mut placed = 0;
     while !position.is_solved() {
@@ -1582,7 +1719,10 @@ fn singles_progress(mut position: Position) -> usize {
     placed
 }
 
-#[cfg(any(test, all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))))]
+#[cfg(any(
+    test,
+    all(feature = "wasm-api", any(target_arch = "wasm32", feature = "cli"))
+))]
 fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
     let mut techniques: Vec<_> = Technique::ALL
         .into_iter()
@@ -1593,7 +1733,10 @@ fn ordered_hint_techniques(disabled: &[Technique]) -> Vec<Technique> {
 }
 
 /// Attribute each action independently. A proof may also affect other candidates.
-#[cfg(all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 pub(crate) fn classify_actions(
     board: &Board,
     eliminations: Option<&[u16; CELLS]>,
@@ -1700,7 +1843,9 @@ fn checked_position_with_solution(
         .flatten();
     let mut position = Position::known_unique(board);
     if let Some(eliminations) = eliminations {
-        let answer = solution.as_ref().ok_or(HintError::Puzzle(Analysis::SearchLimit))?;
+        let answer = solution
+            .as_ref()
+            .ok_or(HintError::Puzzle(Analysis::SearchLimit))?;
         if !position.retain_eliminations(eliminations, answer) {
             return Err(HintError::InvalidEliminations);
         }
@@ -2314,15 +2459,33 @@ mod tests {
     #[test]
     fn next_deduction_uses_established_removals_and_reserves_the_answer_for_the_final_stage() {
         let mut snapshot = PositionSnapshot::new(parse_givens(WARMUP).unwrap());
-        let original = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
+        let original = next_enabled_deduction(
+            &snapshot.values().unwrap(),
+            snapshot.removals(),
+            &[Technique::HiddenSingleBox],
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(
             original.deduction.actions,
             [HintAction::Place(Candidate { cell: 40, digit: 5 })]
         );
 
         snapshot.eliminations[2] = digit_bit(1) | digit_bit(2);
-        let stages = next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]).unwrap().unwrap();
-        let choices = ranked_hints(&snapshot.values().unwrap(), snapshot.removals(), 10, &[Technique::HiddenSingleBox]).unwrap();
+        let stages = next_enabled_deduction(
+            &snapshot.values().unwrap(),
+            snapshot.removals(),
+            &[Technique::HiddenSingleBox],
+        )
+        .unwrap()
+        .unwrap();
+        let choices = ranked_hints(
+            &snapshot.values().unwrap(),
+            snapshot.removals(),
+            10,
+            &[Technique::HiddenSingleBox],
+        )
+        .unwrap();
         assert!(choices.len() >= 2);
         assert_eq!(stages.deduction, choices[0]);
         assert_eq!(stages.technique, Technique::NakedSingle);
@@ -2344,7 +2507,11 @@ mod tests {
         );
         snapshot.eliminations[2] |= digit_bit(4);
         assert_eq!(
-            next_enabled_deduction(&snapshot.values().unwrap(), snapshot.removals(), &[Technique::HiddenSingleBox]),
+            next_enabled_deduction(
+                &snapshot.values().unwrap(),
+                snapshot.removals(),
+                &[Technique::HiddenSingleBox]
+            ),
             Err(HintError::InvalidEliminations)
         );
     }

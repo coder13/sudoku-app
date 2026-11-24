@@ -26,9 +26,9 @@ const newman = load('newman') as { puzzle: VariantPuzzle; solution: string }
 const share = (puzzle: VariantPuzzle) =>
   '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 const expected = [
-  ['newman', 646, 75, 1006, 75, true, true, 'medium'],
-  ['Hu9m', 2126, 160, 2566, 160, true, true, 'easy'],
-  ['HCHW', 1604, 75, 4665, 202, false, true, 'medium'],
+  ['newman', 628, 75, 988, 75, true, true, 'medium'],
+  ['Hu9m', 2358, 160, 2798, 160, true, true, 'easy'],
+  ['HCHW', 1805, 75, 4877, 202, false, true, 'medium'],
 ] as const
 
 test('both Modular group orders rule out a candidate with a replayable hint proof', async () => {
@@ -118,7 +118,7 @@ for (const [
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
       const hasGroupOrderElimination = trace.steps.some(step => step.technique === 'group-order-elimination')
-      assert.equal(trace.rating.scoringVersion, hasGroupOrderElimination ? 23 : 22)
+      assert.equal(trace.rating.scoringVersion, hasGroupOrderElimination ? 25 : 24)
       if (complete) assert.deepEqual(trace.rating.status, { solved: difficulty })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game

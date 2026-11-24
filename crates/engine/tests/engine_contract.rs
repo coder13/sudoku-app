@@ -56,7 +56,7 @@ fn mixed_senior_exocet_is_a_replayable_opening_from_the_givens() {
     );
     let verified = VerifiedTemplate::verify(givens).unwrap();
     assert!(![2, 7].contains(&verified.solution()[15]));
-    assert_eq!(trace.score.points, u32::from(technique.cost()));
+    assert_eq!(trace.score.points, u32::from(step.cost()));
     assert_eq!(
         rate_puzzle(&givens, &[technique]).unwrap().score,
         trace.score
@@ -69,7 +69,7 @@ fn mixed_senior_exocet_is_a_replayable_opening_from_the_givens() {
 #[test]
 fn double_exocet_can_resume_a_grid_after_ordinary_junior_deductions_stall() {
     let givens = parse_givens(Technique::DoubleExocet.practice_example().givens).unwrap();
-    let baseline = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let baseline = solve_logically(&givens, Technique::default_order()).unwrap();
     assert_eq!(baseline.status, SolveStatus::Stalled);
     assert!(
         baseline
@@ -83,7 +83,7 @@ fn double_exocet_can_resume_a_grid_after_ordinary_junior_deductions_stall() {
             .unwrap()
             .is_empty()
     );
-    let resume_order = [Technique::DEFAULT_ORDER, &[Technique::DoubleExocet]].concat();
+    let resume_order = [Technique::default_order(), &[Technique::DoubleExocet]].concat();
     let resumed = solve_position(&stalled, &resume_order).unwrap();
     assert_eq!(resumed.steps[0].technique, Technique::DoubleExocet);
     assert!(matches!(
@@ -110,8 +110,8 @@ fn advanced_branch_patterns_reduce_nested_search_on_ai_escargot() {
     let dynamic = Technique::DynamicForcingNet;
     let advanced = Technique::AdvancedForcingNet;
     let nested = Technique::NestedForcingNet;
-    let baseline = [Technique::DEFAULT_ORDER, &[dynamic, nested]].concat();
-    let extended = [Technique::DEFAULT_ORDER, &[dynamic, advanced, nested]].concat();
+    let baseline = [Technique::default_order(), &[dynamic, nested]].concat();
+    let extended = [Technique::default_order(), &[dynamic, advanced, nested]].concat();
     let solution = VerifiedTemplate::verify(givens).unwrap();
     let solve_and_check = |order| {
         let trace = solve_logically(&givens, order).unwrap();
@@ -165,10 +165,10 @@ fn kraken_fish_completes_a_published_forcing_puzzle() {
         "708000300000201000500000000040000026300080000000100090090600004000070500000000000",
     )
     .unwrap();
-    let baseline = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let baseline = solve_logically(&givens, Technique::default_order()).unwrap();
     assert_eq!(baseline.status, SolveStatus::Stalled);
     let order = [
-        Technique::DEFAULT_ORDER,
+        Technique::default_order(),
         &[Technique::KrakenFish1, Technique::KrakenFish2],
     ]
     .concat();
@@ -268,7 +268,7 @@ fn unique_loops_complete_five_published_stalls() {
             result
                 .steps
                 .iter()
-                .map(|step| u32::from(step.technique.cost()))
+                .map(|step| u32::from(step.cost()))
                 .sum::<u32>()
         );
     }
@@ -459,7 +459,7 @@ fn a_guardian_constraint_resolves_depth_three_line_66643() {
 }
 
 fn assert_replayed_trace(givens: Board, level: Difficulty, expected_points: u32) {
-    let order = Technique::DEFAULT_ORDER;
+    let order = Technique::default_order();
     let rating = rate_puzzle(&givens, order).unwrap();
     let trace = solve_logically(&givens, order).unwrap();
     assert_eq!(rating.status, SolveStatus::Solved(level));
@@ -533,7 +533,7 @@ fn a_permuted_verified_template_can_match_even_when_raw_search_runs_out() {
     let constraints = GenerationConstraints {
         clues: 17,
         score: Some(846..=846),
-        technique_order: Technique::DEFAULT_ORDER,
+        technique_order: Technique::default_order(),
     };
     let generated = generate_constrained(42, &constraints, &[template], 1).unwrap();
     assert_eq!(generated.iter().filter(|&&cell| cell != 0).count(), 17);
@@ -546,7 +546,7 @@ fn expert_rating_replays_the_same_deductions_with_the_same_score() {
     let board = parse_givens(technique.practice_example().givens).unwrap();
     assert_replayed_trace(board, Difficulty::Extreme, 2234);
     assert_eq!(
-        rate_puzzle(&board, Technique::DEFAULT_ORDER)
+        rate_puzzle(&board, Technique::default_order())
             .unwrap()
             .score
             .hardest,
@@ -561,16 +561,16 @@ fn every_catalog_id_is_unique_and_every_default_entry_resolves() {
         .map(|technique| technique.id())
         .collect();
     assert_eq!(ids.len(), Technique::ALL.len());
-    for &technique in Technique::DEFAULT_ORDER {
+    for &technique in Technique::default_order() {
         assert!(Technique::ALL.contains(&technique));
         assert!(technique.cost() > 0);
     }
     assert_eq!(
-        Technique::DEFAULT_ORDER
+        Technique::default_order()
             .iter()
             .collect::<BTreeSet<_>>()
             .len(),
-        Technique::DEFAULT_ORDER.len()
+        Technique::default_order().len()
     );
     assert!(ids.contains("x-wing"));
     for technique in Technique::ALL {
@@ -598,7 +598,7 @@ fn profiles_round_trip_stable_ids_and_keep_disabled_techniques_disabled() {
     );
     assert_eq!(
         SolverProfile::default().technique_order(),
-        Technique::DEFAULT_ORDER
+        Technique::default_order()
     );
     assert_eq!(
         SolverProfile::from_ids(["x-wing", "x-wing"]),
@@ -613,7 +613,7 @@ fn profiles_round_trip_stable_ids_and_keep_disabled_techniques_disabled() {
 #[test]
 fn deduction_search_groups_the_move_and_keeps_each_selected_proof() {
     let board = parse_givens(SPARSE).unwrap();
-    let mut complete = solve_logically(&board, Technique::DEFAULT_ORDER)
+    let mut complete = solve_logically(&board, Technique::default_order())
         .unwrap()
         .board;
     let target = Candidate {

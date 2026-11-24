@@ -7,7 +7,7 @@
     "difficulty": "beginner",
     "points": 406,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004eeded3db",
@@ -17,7 +17,7 @@
     "difficulty": "beginner",
     "points": 384,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0000183b305c",
@@ -27,7 +27,7 @@
     "difficulty": "beginner",
     "points": 514,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004686971dc",
@@ -37,7 +37,7 @@
     "difficulty": "beginner",
     "points": 504,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0001d5d6314e",
@@ -47,7 +47,7 @@
     "difficulty": "beginner",
     "points": 552,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00023580f347",
@@ -57,7 +57,7 @@
     "difficulty": "beginner",
     "points": 532,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004bab224ce",
@@ -67,7 +67,7 @@
     "difficulty": "beginner",
     "points": 420,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004125f628d",
@@ -77,7 +77,7 @@
     "difficulty": "beginner",
     "points": 528,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0003af4e2943",
@@ -87,7 +87,7 @@
     "difficulty": "beginner",
     "points": 584,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004464633b4",
@@ -97,7 +97,7 @@
     "difficulty": "beginner",
     "points": 562,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000212406270",
@@ -107,7 +107,7 @@
     "difficulty": "beginner",
     "points": 542,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00031006ebf1",
@@ -117,7 +117,7 @@
     "difficulty": "beginner",
     "points": 584,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00024d60bdaf",
@@ -127,7 +127,7 @@
     "difficulty": "medium",
     "points": 516,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000595eb7354",
@@ -137,7 +137,7 @@
     "difficulty": "medium",
     "points": 620,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0000847b216e",
@@ -147,7 +147,7 @@
     "difficulty": "medium",
     "points": 578,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00010f10503b",
@@ -157,7 +157,7 @@
     "difficulty": "medium",
     "points": 572,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0002a00dec12",
@@ -167,7 +167,7 @@
     "difficulty": "medium",
     "points": 596,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00057aae90e4",
@@ -177,7 +177,7 @@
     "difficulty": "medium",
     "points": 594,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0006f1eaebbb",
@@ -187,7 +187,7 @@
     "difficulty": "medium",
     "points": 572,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000293df085f",
@@ -197,7 +197,7 @@
     "difficulty": "medium",
     "points": 620,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0003d0c36fe4",
@@ -207,7 +207,7 @@
     "difficulty": "medium",
     "points": 612,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00065780345c",
@@ -217,7 +217,7 @@
     "difficulty": "medium",
     "points": 688,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0005f23524c4",
@@ -227,7 +227,7 @@
     "difficulty": "medium",
     "points": 706,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00062d1ba715",
@@ -237,7 +237,7 @@
     "difficulty": "medium",
     "points": 814,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000160237251",
@@ -247,7 +247,7 @@
     "difficulty": "tricky",
     "points": 674,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000175e5f83b",
@@ -257,7 +257,7 @@
     "difficulty": "tricky",
     "points": 628,
     "hardestTechnique": "skyscraper",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00027b37be71",
@@ -267,7 +267,7 @@
     "difficulty": "hard",
     "points": 690,
     "hardestTechnique": "w-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00026b82b6d3",
@@ -277,7 +277,7 @@
     "difficulty": "tricky",
     "points": 788,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00013f7e562a",
@@ -287,7 +287,7 @@
     "difficulty": "tricky",
     "points": 846,
     "hardestTechnique": "two-string-kite",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00023f11679e",
@@ -297,7 +297,7 @@
     "difficulty": "hard",
     "points": 856,
     "hardestTechnique": "w-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0001786dfc8c",
@@ -307,7 +307,7 @@
     "difficulty": "hard",
     "points": 872,
     "hardestTechnique": "xyz-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000297080c70",
@@ -315,9 +315,9 @@
     "givens": "600040001030008700009700000003096000906000103000120500000002400002400080400010002",
     "sourceRating": 4.5,
     "difficulty": "hard",
-    "points": 900,
+    "points": 911,
     "hardestTechnique": "unique-rectangle-2",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0002fd0d447f",
@@ -327,7 +327,7 @@
     "difficulty": "hard",
     "points": 916,
     "hardestTechnique": "w-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0000d2fa4f03",
@@ -337,7 +337,7 @@
     "difficulty": "tricky",
     "points": 1102,
     "hardestTechnique": "two-string-kite",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0001767b888a",
@@ -347,7 +347,7 @@
     "difficulty": "tricky",
     "points": 1066,
     "hardestTechnique": "swordfish",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0000b2c3fc62",
@@ -357,7 +357,7 @@
     "difficulty": "hard",
     "points": 1282,
     "hardestTechnique": "xy-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000274921f39",
@@ -365,9 +365,9 @@
     "givens": "590000007040010083008034900001402000069000820000109300004670200980040030700000016",
     "sourceRating": 7.1,
     "difficulty": "very-hard",
-    "points": 696,
+    "points": 1464,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00057d44a4af",
@@ -377,7 +377,7 @@
     "difficulty": "very-hard",
     "points": 950,
     "hardestTechnique": "finned-swordfish",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0007ac38ad81",
@@ -387,7 +387,7 @@
     "difficulty": "very-hard",
     "points": 1002,
     "hardestTechnique": "finned-swordfish",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000a8d1be106",
@@ -395,9 +395,9 @@
     "givens": "000600309306700010001004720900500000010000070000006001053900100070005804809007000",
     "sourceRating": 7.2,
     "difficulty": "expert",
-    "points": 1242,
+    "points": 1288,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000756d0f0f7",
@@ -405,9 +405,9 @@
     "givens": "000030000560749083000802000000000000001608500090307040300090006070103050005000800",
     "sourceRating": 7.2,
     "difficulty": "very-hard",
-    "points": 1296,
+    "points": 1595,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004477c8766",
@@ -415,9 +415,9 @@
     "givens": "000310000060097040001420300030000502786000139502000060003059700020680010000074000",
     "sourceRating": 5.6,
     "difficulty": "very-hard",
-    "points": 1272,
+    "points": 1536,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00015097c6c3",
@@ -425,9 +425,9 @@
     "givens": "083020090000800100029300008000098700070000060006740000300006980002005000010030540",
     "sourceRating": 7.2,
     "difficulty": "very-hard",
-    "points": 1412,
+    "points": 1916,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0006756dc1bd",
@@ -435,9 +435,9 @@
     "givens": "031006009000040060008007300184070020000000000090020148005800400040060000300500780",
     "sourceRating": 6.3,
     "difficulty": "very-hard",
-    "points": 1482,
+    "points": 1997,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0001d2888928",
@@ -445,9 +445,9 @@
     "givens": "200050006010000090600801003007090600000703000900080002100000005060902010003060200",
     "sourceRating": 7.1,
     "difficulty": "very-hard",
-    "points": 1430,
+    "points": 1633,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0004d93c5158",
@@ -455,9 +455,9 @@
     "givens": "030000080000791000005000700004080500001204300200305008002508600000000000503010809",
     "sourceRating": 4.6,
     "difficulty": "very-hard",
-    "points": 1596,
+    "points": 2456,
     "hardestTechnique": "3d-medusa",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00076ba18179",
@@ -465,9 +465,9 @@
     "givens": "074800900001050004500000063000305008060070090900106000730000006800030200005004830",
     "sourceRating": 7.4,
     "difficulty": "expert",
-    "points": 1758,
+    "points": 2175,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000654a43039",
@@ -477,7 +477,7 @@
     "difficulty": "hard",
     "points": 1922,
     "hardestTechnique": "w-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00077de87893",
@@ -487,7 +487,7 @@
     "difficulty": "hard",
     "points": 1970,
     "hardestTechnique": "xyz-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0003c85d91eb",
@@ -495,9 +495,9 @@
     "givens": "000000000560000032230040079000060000070501090000708000053000920009806500700000004",
     "sourceRating": 6.6,
     "difficulty": "very-hard",
-    "points": 2190,
+    "points": 2288,
     "hardestTechnique": "x-chain",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000bed0aa5cf",
@@ -505,9 +505,9 @@
     "givens": "040607080100050004003104200006803100000000000480070053020000010507000908000030000",
     "sourceRating": 6.8,
     "difficulty": "expert",
-    "points": 2476,
+    "points": 4118,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000673abbc89",
@@ -515,9 +515,9 @@
     "givens": "850000031000070000000809000003000600970301052000020000100407006205000307000080000",
     "sourceRating": 7.2,
     "difficulty": "expert",
-    "points": 2554,
+    "points": 4006,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000aa07acb1b",
@@ -525,9 +525,9 @@
     "givens": "030004000000800020900026400100000050049050170060000003003740009020001000000500060",
     "sourceRating": 7.3,
     "difficulty": "expert",
-    "points": 3794,
+    "points": 6188,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000a10a08982",
@@ -535,9 +535,9 @@
     "givens": "040062000900000020026300480000004870007000600052800000085001360030000008000530010",
     "sourceRating": 7.7,
     "difficulty": "master",
-    "points": 2788,
+    "points": 2984,
     "hardestTechnique": "als-xy-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0006848206bf",
@@ -545,9 +545,9 @@
     "givens": "100605009000000000053010840000951000000060000002080600607000905300807002009000100",
     "sourceRating": 8.4,
     "difficulty": "expert",
-    "points": 3440,
+    "points": 5311,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000c289df2d8",
@@ -555,9 +555,9 @@
     "givens": "024600007006070000003800560000200800300000004002001000069002100000030600100006240",
     "sourceRating": 8.2,
     "difficulty": "master",
-    "points": 4090,
+    "points": 5311,
     "hardestTechnique": "grouped-aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "0009f6bd294e",
@@ -565,9 +565,9 @@
     "givens": "502070430000400050000020700400502073000010000970603001008050000010004000059030807",
     "sourceRating": 7.8,
     "difficulty": "master",
-    "points": 4134,
+    "points": 4982,
     "hardestTechnique": "grouped-aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "00035f2db993",
@@ -575,9 +575,9 @@
     "givens": "006000200900000004243000896000591000002080300400203001300000007000907000010408020",
     "sourceRating": 8.2,
     "difficulty": "expert",
-    "points": 4542,
+    "points": 5303,
     "hardestTechnique": "aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000885973139",
@@ -585,9 +585,9 @@
     "givens": "300090002020104000000300700603500080870000014010007605002001000000905020900030006",
     "sourceRating": 8.5,
     "difficulty": "master",
-    "points": 5222,
+    "points": 5925,
     "hardestTechnique": "als-chain",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "000a17154422",
@@ -595,8 +595,8 @@
     "givens": "040280030010006007609070008000092000900000004000740000500020803400800010070035090",
     "sourceRating": 8.4,
     "difficulty": "master",
-    "points": 5442,
+    "points": 10017,
     "hardestTechnique": "grouped-aic",
-    "scoringVersion": 11
+    "scoringVersion": 15
   }
 ]

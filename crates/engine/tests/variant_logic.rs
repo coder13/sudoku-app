@@ -175,7 +175,7 @@ fn profile_order_controls_the_trace_and_rating_and_replay_keeps_rule_context() {
     assert_eq!(trace.rating.technique_order, order);
     assert_eq!(trace.rating.counts[&CageHouseSum], 4);
     assert_eq!(trace.rating.counts[&NakedSingle], 2);
-    assert_eq!(trace.rating.points, 276);
+    assert_eq!(trace.rating.points, 363);
     assert_eq!(trace.end.entries[8], 2);
     assert_eq!(trace.end.entries[17], 8);
     assert_eq!(start.rate(&[]).unwrap().points, 0);
@@ -252,7 +252,11 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
         ),
         (PuzzleRule::AntiKnight {}, &[(10, 4)], [29, 4]),
         (PuzzleRule::AntiKing {}, &[(20, 4)], [30, 4]),
-        (PuzzleRule::NonConsecutive { except: vec![] }, &[(30, 4)], [31, 3]),
+        (
+            PuzzleRule::NonConsecutive { except: vec![] },
+            &[(30, 4)],
+            [31, 3],
+        ),
         (
             PuzzleRule::Inequality {
                 less: 10,
@@ -331,7 +335,10 @@ fn each_local_rule_explains_a_candidate_that_its_relationship_excludes() {
             [1, 5],
         ),
         (
-            PuzzleRule::Renban { cells: vec![0, 40, 80], segments: None },
+            PuzzleRule::Renban {
+                cells: vec![0, 40, 80],
+                segments: None,
+            },
             &[(0, 2), (40, 4)],
             [80, 6],
         ),

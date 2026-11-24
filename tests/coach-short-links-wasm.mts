@@ -372,7 +372,7 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     try { assert.equal(await scan.count('kropki'), actions.size) } finally { scan.close() }
 
     const walkthrough = await puzzleSolution(game)
-    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2452, 22])
+    assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2631, 24])
     assert.deepEqual(walkthrough.rating.status, { solved: 'medium' })
     assert.equal(walkthrough.board, solution)
     assert.ok(walkthrough.steps.some(step => step.technique === 'kropki-house-support'))
@@ -444,7 +444,7 @@ test('220V imports its complete published rules and centered paths through the s
     const counted = countLineSolutions(game.variant.puzzle)
     assert.deepEqual(counted.solutions, [solution])
     assert.equal(grade?.difficulty, 'medium')
-    assert.equal(grade.points, 3815)
+    assert.equal(grade.points, 4124)
 
     const ranked = await puzzleHints(game)
     assert.ok(ranked.choices.length > 1)
@@ -502,7 +502,7 @@ test('220V imports its complete published rules and centered paths through the s
     assert.ok('rating' in path)
     assert.deepEqual(path.rating.status, { solved: 'medium' })
     assert.equal(path.steps.length, 200)
-    assert.equal(path.rating.score.points, 3815)
+    assert.equal(path.rating.score.points, 4124)
     assert.equal(path.rating.score.counts['region-sum-distinct'], 3)
     let played = game
     for (const step of path.steps) {
@@ -601,7 +601,7 @@ test('the published Ksy3 link imports Mirrored Renbans and every encoded compani
     assert.deepEqual(game.variant, (await prepareImportedPuzzle(code)).game.variant)
     assert.equal(game.variant.solution, solution)
     assertVariantCompletion(puzzle, solution)
-    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2730])
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 3871])
     assert.ok((await puzzleHints(game)).choices.length > 1)
     const selected = await puzzleHints(game, 'all', 'adjacent-total')
     const targets = new Set(selected.choices.flatMap(hint => hint.actions.map(action => JSON.stringify(action))))
@@ -641,7 +641,7 @@ test('the published Cmdt short link preserves its full mixed puzzle, hints, Find
     assert.deepEqual(game.variant.puzzle, (await detectPuzzle(code)).variant?.puzzle)
     assert.equal(game.variant.solution, solution)
     assertVariantCompletion(game.variant.puzzle, solution)
-    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 3910])
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 4233])
     const ranked = await puzzleHints(game)
     assert.equal(ranked.choices.length, 10)
     const selected = await puzzleHints(game, 'all', 'thermometer')
@@ -754,7 +754,7 @@ test('the Whispers lesson verifies, rates, and keeps its guide through attempts 
     assert.equal(game.variant?.id, 'whispers')
     assert.equal(game.variant.solution, solution)
     assertVariantCompletion(game.variant.puzzle, solution)
-    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2534])
+    assert.deepEqual([grade?.difficulty, grade?.points], ['medium', 2737])
     assert.equal(findImportAttempt([{ ...game, whispersGuide: undefined }], preview), undefined)
     const restored = readGame(game.id, JSON.stringify(game))!
     assert.equal(findImportAttempt([restored], preview), restored)

@@ -139,7 +139,7 @@ pub fn search_alternate_path(
         if position.is_solved() {
             let mut tally = RatingTally::default();
             for step in &steps {
-                tally.record(step.technique);
+                tally.record_hint(step);
             }
             let rating = tally.finish(true, &order);
             return Ok(AlternatePath {

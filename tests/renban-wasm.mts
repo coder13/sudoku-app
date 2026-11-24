@@ -19,7 +19,7 @@ const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/renba
 const clover = load('clover') as { puzzle: VariantPuzzle; solution: string }
 const share = (puzzle: VariantPuzzle) => '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 
-for (const [name, appPoints, nativePoints, steps] of [['clover',1260,940,77],['killer-clover',1184,954,75]] as const) {
+for (const [name, appPoints, nativePoints, steps] of [['clover',1276,956,77],['killer-clover',1304,1074,75]] as const) {
   test(`the complete published ${name} path replays every intended action and Renban proof`, async () => {
     const source = load(name), { game } = await prepareImportedPuzzle(share(source.puzzle))
     const puzzle = game.variant!.puzzle
@@ -51,9 +51,9 @@ for (const [name, appPoints, nativePoints, steps] of [['clover',1260,940,77],['k
 
 test('original modern Coach sources retain checked complete and partial profiles', async () => {
   const expected = [
-    { app: [7470, 117, 16], original: [15870, 122], native: [484, 16] },
-    { app: [1404, 69, 1], original: [2744, 69], native: [308, 8] },
-    { app: [232, 4, 0], original: [54, 2], native: [54, 2] },
+    { app: [10234, 117, 16], original: [44828, 122], native: [732, 16] },
+    { app: [1524, 69, 1], original: [2886, 69], native: [348, 8] },
+    { app: [285, 4, 0], original: [74, 2], native: [74, 2] },
   ] as const
   let index = 0
   for (const source of load('coach').examples.filter((source: { deferred?: string }) => !source.deferred)) {
@@ -132,7 +132,7 @@ test('Renbann9 offers both group-count proofs at its genuine two-step stall', as
   const path = await puzzleSolution(game)
   assert.deepEqual(path.steps.slice(2).map(choice => choice.actions), expected)
   assert.equal(path.rating.score.counts[technique], 2)
-  assert.equal(path.rating.score.points, 232)
+  assert.equal(path.rating.score.points, 285)
   assert.equal(path.rating.status, 'stalled')
   assert.deepEqual(path.rating.techniqueOrder, order)
   for (const [index, choice] of requested.choices.entries()) {

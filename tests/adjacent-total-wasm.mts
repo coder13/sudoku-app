@@ -30,7 +30,7 @@ test('the unmodified published sum-15 source preserves its complete definition a
   candidates!.forEach((mask, cell) => { if (game.givens[cell] === '0') assert.ok(mask & 1 << (Number(source.solution[cell]) - 1)) })
   const techniqueOrder = await getVariantPlayOrder()
   const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder })
-  assert.equal(trace.steps.length, 212); assert.equal(trace.rating.points, 4250)
+  assert.equal(trace.steps.length, 212); assert.equal(trace.rating.points, 4254)
   assert.deepEqual(trace.rating.status, { solved: 'impossible' })
   assert.equal(trace.rating.counts['adjacent-total'], 1)
   let played = game
@@ -45,7 +45,7 @@ test('the unmodified published sum-15 source preserves its complete definition a
   assert.equal(isSolved(played), true); assert.equal(valuesOf(played), source.solution)
   const nativeOrder = (await runEngine({ type: 'techniques', variant: true })).defaultOrder
   const native = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: nativeOrder })
-  assert.equal(native.steps.length, 78); assert.equal(native.rating.points, 932); assert.equal(native.rating.status, 'stalled')
+  assert.equal(native.steps.length, 78); assert.equal(native.rating.points, 928); assert.equal(native.rating.status, 'stalled')
   for (const step of native.steps) {
     for (const action of step.actions) {
       const c = 'place' in action ? action.place : action.eliminate

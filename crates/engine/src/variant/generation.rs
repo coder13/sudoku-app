@@ -201,7 +201,7 @@ pub fn start_variant_generation(
             return Err(InvalidTechnique);
         }
         if options.rating.as_ref().is_some_and(|rating| match rating {
-            GenerationRating::Score(range) => *range.end() < u32::from(technique.cost()),
+            GenerationRating::Score(range) => *range.end() < u32::from(technique.minimum_cost()),
             GenerationRating::Difficulty(level) => *level < technique.difficulty(),
         }) {
             return Err(InvalidRating);
@@ -348,13 +348,17 @@ fn accept(
         }
     }
     if let Some(GenerationRating::Difficulty(level)) = options.rating {
-        if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 { return None; }
+        if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 {
+            return None;
+        }
         let lower: Vec<_> = VariantTechnique::all()
             .filter(|t| !t.is_optional() && t.difficulty() < level)
             .collect();
         if !lower.is_empty() {
             let (_, easier) = position.run_with_compiled(compiled, &lower, |_| {}).ok()?;
-            if matches!(easier.status, SolveStatus::Solved(_)) { return None; }
+            if matches!(easier.status, SolveStatus::Solved(_)) {
+                return None;
+            }
         }
     }
     Some(rating)
@@ -376,10 +380,16 @@ fn without_family(puzzle: &VariantPuzzle, id: &str) -> Option<CompiledVariant> {
     }
     let mut reduced = puzzle.clone();
     reduced.rules.retain(|rule| rule.id() != id);
-    let exemptions: Vec<_> = puzzle.rules.iter().filter_map(|rule| match rule {
-        PuzzleRule::AdjacentTotal { cells, sum: 5 | 10 } if id == "adjacent-total" => Some(*cells),
-        _ => None,
-    }).collect();
+    let exemptions: Vec<_> = puzzle
+        .rules
+        .iter()
+        .filter_map(|rule| match rule {
+            PuzzleRule::AdjacentTotal { cells, sum: 5 | 10 } if id == "adjacent-total" => {
+                Some(*cells)
+            }
+            _ => None,
+        })
+        .collect();
     reduced.compile_with_xv_exemptions(true, &exemptions).ok()
 }
 
@@ -389,21 +399,42 @@ mod adjacent_total_tests {
 
     #[test]
     fn removing_total_constraints_does_not_activate_negative_xv_on_their_marks() {
-        let solution = crate::parse_givens("534678912672195348198342567859761423426853791713924856961537284287419635345286179").unwrap();
+        let solution = crate::parse_givens(
+            "534678912672195348198342567859761423426853791713924856961537284287419635345286179",
+        )
+        .unwrap();
         let mut puzzle = VariantPuzzle::classic([0; CELLS]);
         for a in 0..CELLS {
-            for b in [if a % 9 < 8 { a + 1 } else { CELLS }, if a < 72 { a + 9 } else { CELLS }] {
+            for b in [
+                if a % 9 < 8 { a + 1 } else { CELLS },
+                if a < 72 { a + 9 } else { CELLS },
+            ] {
                 if b < CELLS && matches!(solution[a] + solution[b], 5 | 10) {
-                    puzzle.rules.push(PuzzleRule::AdjacentTotal { cells: [a, b], sum: solution[a] + solution[b] });
+                    puzzle.rules.push(PuzzleRule::AdjacentTotal {
+                        cells: [a, b],
+                        sum: solution[a] + solution[b],
+                    });
                 }
             }
         }
         puzzle.rules.push(PuzzleRule::Xv {
-            five: MarkedPairs { pairs: vec![], negative: true },
-            ten: MarkedPairs { pairs: vec![], negative: true },
+            five: MarkedPairs {
+                pairs: vec![],
+                negative: true,
+            },
+            ten: MarkedPairs {
+                pairs: vec![],
+                negative: true,
+            },
         });
-        assert_eq!(puzzle.compile().unwrap().analyze(&solution, &[0; CELLS], 1), Ok(Analysis::Unique));
+        assert_eq!(
+            puzzle.compile().unwrap().analyze(&solution, &[0; CELLS], 1),
+            Ok(Analysis::Unique)
+        );
         let reduced = without_family(&puzzle, "adjacent-total").unwrap();
-        assert_eq!(reduced.analyze(&solution, &[0; CELLS], 1), Ok(Analysis::Unique));
+        assert_eq!(
+            reduced.analyze(&solution, &[0; CELLS], 1),
+            Ok(Analysis::Unique)
+        );
     }
 }

@@ -15,10 +15,10 @@ fn every_build_validates_solves_rates_and_finds_sound_hint_choices() {
     assert_eq!(analyze(&givens), Analysis::Unique);
     assert_eq!(solve(&givens), Some(solution));
     assert_eq!(candidates(&givens).unwrap()[2], 0b1011);
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     assert_eq!(trace.board, solution);
     assert_eq!(
-        rate_puzzle(&givens, Technique::DEFAULT_ORDER).unwrap(),
+        rate_puzzle(&givens, Technique::default_order()).unwrap(),
         trace.rating()
     );
     let HintChoices::Choices(hints) = hint_choices(&givens, None).unwrap() else {

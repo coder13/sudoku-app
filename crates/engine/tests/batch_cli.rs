@@ -65,7 +65,7 @@ fn batch_rating_records_order_seed_and_scoring_version_for_each_row() {
     assert_eq!(records[0]["seed"], Value::Null);
     assert_eq!(
         records[0]["techniqueOrder"],
-        json!(Technique::DEFAULT_ORDER)
+        json!(Technique::default_order())
     );
     assert_eq!(records[0]["result"]["rating"]["score"]["points"], 4);
     assert_eq!(records[1]["result"]["status"], "invalid");
@@ -175,7 +175,10 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
         records[5]["result"]["rating"]["status"],
         json!({ "solved": "medium" })
     );
-    assert_eq!(records[6]["techniqueOrder"], json!(["full-house", "hidden-single-box"]));
+    assert_eq!(
+        records[6]["techniqueOrder"],
+        json!(["full-house", "hidden-single-box"])
+    );
     assert_eq!(
         records[6]["result"]["rating"]["techniqueOrder"],
         json!(["full-house", "hidden-single-box"])

@@ -47,7 +47,7 @@ for (const [index, source] of sources.entries()) {
     const solution = await puzzleSolution(game)
     assert.notEqual(solution.rating.status, 'stalled')
     assert.equal(solution.board, source.solution)
-    if (index < 4) assert.equal(solution.rating.score.points, [3036, 2710, 1916, 5514][index])
+    if (index < 4) assert.equal(solution.rating.score.points, [3178, 2744, 1940, 6414][index])
     let play = game
     const trace = await runEngine({
       type: 'variant',

@@ -548,14 +548,14 @@ test('published Jigsaw Fog hides authored colors alongside givens and cages unti
     const catalog = await runEngine({ type: 'techniques', variant: true })
     const techniques = new Map(catalog.techniques.map(technique => [technique.id, technique]))
     const counts: Record<string, number> = {}
-    let points = 0
     for (const { technique } of solution.steps) {
       assert.equal(typeof techniques.get(technique)?.cost, 'number')
       counts[technique] = (counts[technique] ?? 0) + 1
-      points += techniques.get(technique)!.cost
     }
     assert.ok(counts['pattern-overlay'] > 0)
-    assert.deepEqual(solution.rating.score, { points, hardest: 'pattern-overlay', counts })
+    assert.deepEqual(solution.rating.score.counts, counts)
+    assert.equal(solution.rating.score.hardest, 'pattern-overlay')
+    const points = solution.rating.score.points
     assert.deepEqual(solution.rating.status, { solved: techniques.get('pattern-overlay')!.difficulty })
     assert.equal(game.score, points)
     assert.equal(game.difficulty, techniques.get('pattern-overlay')!.difficulty)

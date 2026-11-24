@@ -23,7 +23,7 @@ Impossible puzzles still have exactly one solution. Some can be solved by a skil
 
 ## Grading and generation
 
-Classic scoring version 11 and variant scoring version 5 remove promotion based on total points. Points remain trace diagnostics and are retained in existing saves. They do not choose the level.
+Classic scoring version 15 and variant scoring version 24 (25 for group-order elimination) remove promotion based on total points. Version 15 also experiments with a lower reference cost for Unique Rectangle 1. Candidate-density weighting is being measured separately and is not part of the engine score yet. Point totals remain trace diagnostics and do not choose the level. Re-rating under a newer scoring version may produce a different point total.
 
 The Rust technique catalog is the source of truth. The browser's technique metadata is produced by `scripts/build-wasm.mjs`. The ten selectable names and order live in `src/sudoku/difficulty.ts`.
 
@@ -46,7 +46,7 @@ Impossible uses a larger, separately certified bank of distinct canonical struct
 
 The lower-tier checks explore three greedy orders. They reject all 15 known lower-tier counterexamples from the first audit, but are not an exhaustive proof that no human can find an easier route. Keep this distinction in any user-facing claim about a technique being required. The existing alternate-path API can strengthen certification for a curated bank; an inconclusive search must remain inconclusive.
 
-This changes generation acceptance, not the technique grading scale. Classic scoring stays at version 11, and historical ratings are unchanged. Audit quality-policy version 2 records the new floors separately.
+This changes generation acceptance, not the technique grading scale. Historical ratings keep their recorded scoring version. Audit quality-policy version 2 records the new floors separately.
 
 An attempt limit returns a search-limit result. It must not silently substitute an easier puzzle with the requested label. Impossible currently uses the implemented computer-oriented logical methods; an arbitrary solver timeout is never upgraded into a rating.
 
@@ -108,7 +108,7 @@ Some family articles still contain several levels. Further course work can split
 
 ## Saved data and compatibility
 
-Keep old puzzles, grades, scores, and earned outcomes. A saved `unfair` grade still displays Unfair. A legacy `unfair` generation preference maps to Expert, and the engine accepts it as an input alias. New output and the selector use only the ten current levels. Do not relabel old puzzles as if they were newly rated under version 11.
+Keep saved puzzles and earned outcomes. Point totals may be recalculated under the current scoring version. A saved `unfair` grade still displays Unfair. A legacy `unfair` generation preference maps to Expert, and the engine accepts it as an input alias. New output and the selector use only the ten current levels. Do not relabel old puzzles as if they were newly rated under the current scoring policy.
 
 New players start at 855 with Medium as the Auto recommendation. On upgrade, saved results without a player rating version use the original five levels when the app calculates the rating. New results continue from that rating and use the ten levels. An old Auto recommendation of Unfair becomes Expert. The browser keeps the existing records, including scores from puzzles the player deleted.
 
