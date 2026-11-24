@@ -40,6 +40,13 @@ test('published SudokuPad paths keep the author namespace and decode a percent-e
   assert.equal((await request('sudokupad/author-name/first-puzzle')).status, 422)
 })
 
+test('SudokuPad endless IDs resolve through its CORS-enabled legacy export endpoint', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async () => new Response('sclN4Export+'))
+  const response = await request('sudokupad/endless/p8eox828os')
+  assert.deepEqual(await response.json(), { code: 'sclN4Export+' })
+  assert.equal(fetcher.mock.calls[0].arguments[0], 'https://sudokupad.svencodes.com/ctclegacy/p8eox828os')
+})
+
 test('the Pages worker does not follow a redirect from a published provider', async ({ mock }) => {
   const fetcher = mock.method(globalThis, 'fetch', async () =>
     new Response(null, { status: 302, headers: { Location: 'https://another.example/puzzle' } }))

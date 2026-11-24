@@ -1,111 +1,147 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ExternalLink } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Button, iconButtonClassName } from '../components/Button'
+import { Button, buttonClassName, iconButtonClassName } from '../components/Button'
+import { Board } from '../components/Board'
+import { detectPuzzle, MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
 import { decodeSudokuCoachPayload } from '../sudoku/puzzle-import/sudoku-coach'
-import { decodeDigitRunGrid } from '../sudoku/puzzle-import/digit-runs'
-import { decodeFPuzzlesPayload, FP_CODE } from '../sudoku/puzzle-import/f-puzzles'
-import { fetchPublishedExport } from '../sudoku/puzzle-import/published-link'
-import { decodeSudokuPadPayload } from '../sudoku/sized-sudoku-pad'
+import { prepareDetectedPuzzle, type PuzzlePreview } from '../sudoku/puzzle-preview'
+import { DIFFICULTY_LABELS } from '../sudoku/difficulty'
+import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
+import { variantName, variantRuleDescriptions } from '../sudoku/variants'
+import { sizedGridName } from '../sudoku/new-puzzle'
 
-type DecodedPayload = { format: string; payload: unknown; isJson: boolean }
-
-const EMBEDDED_FORMAT = /^(?:SCv[3-7]_(?:[0-9]+_)?|32_|scf|scl|ctc|fpuz(?:zles)?)/i
-const COACH_URL_CODE = /^(?:SCv[3-7]_|32_)/i
-const GRID_TEXT = /^[0-9.]{81}$/
-const URL_INPUT = /^(?:https?:\/\/|sudokupad:\/\/|www\.|(?:[a-z0-9-]+\.)*(?:sudoku\.coach|sudokupad\.app|sudokupad\.svencodes\.com|app\.crackingthecryptic\.com)\/)/i
-const SUDOKUPAD_HOSTS = new Set(['sudokupad.app', 'beta.sudokupad.app', 'sudokupad.svencodes.com', 'app.crackingthecryptic.com'])
-const SUDOKU_COACH_HOSTS = new Set(['sudoku.coach', 'www.sudoku.coach'])
-
-type ExtractedInput = { code: string } | { published: { source: 'sudoku-coach' | 'sudokupad'; path: string } }
+type ImportError = { stage: 'Format and parsing' | 'Puzzle validation'; message: string }
+type Inspection = { imported?: ImportedPuzzle; payload?: unknown; preview?: PuzzlePreview; errors: ImportError[]; format?: string }
 
 export const Route = createFileRoute('/decode')({
   staticData: { standalonePuzzlePage: true },
-  head: () => ({ meta: [{ title: 'Decode puzzle data | Sudoku' }] }),
+  head: () => ({ meta: [{ title: 'Inspect puzzle import | Sudoku' }] }),
   component: DecodePage,
 })
 
-function inputCode(input: string): ExtractedInput {
-  const text = input.trim()
-  if (!text) throw new Error('Paste a puzzle code or link first.')
-  if (URL_INPUT.test(text)) {
-    let url: URL
-    try { url = new URL(/^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`) }
-    catch { throw new Error('This link is not valid.') }
-    let path = ''
-    try { path = decodeURIComponent(url.pathname) }
-    catch { throw new Error('This link contains invalid URL encoding.') }
-    const segments = path.split('/').filter(Boolean)
-    const formatIndex = segments.findIndex(segment => EMBEDDED_FORMAT.test(segment))
-    if (formatIndex >= 0) return { code: segments.slice(formatIndex).join('/') }
-    const grid = segments.find(segment => GRID_TEXT.test(segment))
-    if (grid) return { code: grid }
-    const host = url.hostname.toLowerCase()
-    if (SUDOKU_COACH_HOSTS.has(host)) {
-      const lowerSegments = segments.map(segment => segment.toLowerCase())
-      const collectionIndex = lowerSegments.indexOf('collections')
-      const shareIndex = lowerSegments.lastIndexOf('s')
-      if (collectionIndex >= 0 && shareIndex > collectionIndex + 1 && segments[shareIndex + 1]) {
-        return { published: { source: 'sudoku-coach', path: `collections/${segments.slice(collectionIndex + 1, shareIndex).join('/')}/${segments[shareIndex + 1]}` } }
-      }
-      if (shareIndex >= 0 && segments[shareIndex + 1]) {
-        return { published: { source: 'sudoku-coach', path: segments[shareIndex + 1] } }
-      }
-    }
-    if (SUDOKUPAD_HOSTS.has(host)) {
-      const id = url.searchParams.get('puzzleid') || (segments.length === 1 ? segments[0] : '')
-      if (id) return { published: { source: 'sudokupad', path: id } }
-    }
-    throw new Error('This link does not contain a supported puzzle payload.')
-  }
-  return { code: text }
+function jsonText(value: unknown) {
+  return JSON.stringify(value, null, 2)
 }
 
-async function decodeInput(input: string): Promise<DecodedPayload> {
-  const extracted = inputCode(input)
-  const code = 'published' in extracted
-    ? (await fetchPublishedExport(extracted.published.source, extracted.published.path)).code
-    : extracted.code
-  if (COACH_URL_CODE.test(code)) {
-    return { format: 'Sudoku Coach', payload: await decodeSudokuCoachPayload(code), isJson: true }
-  }
-  if (/^scf/i.test(code)) {
-    return { format: 'SudokuPad SCF', payload: decodeDigitRunGrid(code.slice(3), 'SudokuPad'), isJson: false }
-  }
-  if (/^(?:scl|ctc)/i.test(code)) {
-    return { format: `SudokuPad ${code.slice(0, 3).toUpperCase()}`, payload: decodeSudokuPadPayload(code), isJson: true }
-  }
-  if (FP_CODE.test(code)) {
-    return { format: 'F-Puzzles', payload: decodeFPuzzlesPayload(code.replace(FP_CODE, ''), 'SudokuPad'), isJson: true }
-  }
-  if (GRID_TEXT.test(code)) return { format: '81-character grid', payload: code, isJson: false }
-  if (code.startsWith('{') || code.startsWith('[')) {
-    try { return { format: 'JSON', payload: JSON.parse(code), isJson: true } }
-    catch { throw new Error('This JSON payload is not valid.') }
-  }
-  throw new Error('Supported inputs: Sudoku Coach SCv or 32_ codes, SudokuPad SCF/SCL/CTC codes, F-Puzzles codes, JSON, or an 81-character grid.')
+function HighlightedJson({ value }: { value: string }) {
+  const parts = value.split(/("(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b)/g)
+  return <pre className="decode-output" aria-label="Formatted JSON payload">{parts.map((part, index) => {
+    const kind = /^"/.test(part) ? /^\s*:/.test(parts[index + 1] ?? '') ? 'key' : 'string'
+      : /^(?:true|false|null)$/.test(part) ? 'literal' : /^-?\d/.test(part) ? 'number' : ''
+    return kind ? <span className={`decode-json-${kind}`} key={index}>{part}</span> : part
+  })}</pre>
+}
+
+function sizeLabel(puzzle: ImportedPuzzle) {
+  if (puzzle.grid) return `${sizedGridName(puzzle.grid)} · ${puzzle.grid.size} × ${puzzle.grid.size}`
+  return 'Classic 9 × 9'
+}
+
+function payloadSizeLabel(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || !('gridSize' in payload) || typeof payload.gridSize !== 'number') return 'Unknown'
+  return payload.gridSize === 9 ? 'Classic 9 × 9' : `${payload.gridSize} × ${payload.gridSize}`
+}
+
+function rulesets(puzzle: ImportedPuzzle) {
+  const descriptions = puzzle.variant
+    ? variantRuleDescriptions(puzzle.variant.puzzle, puzzle.variant.fog)
+    : puzzle.sizedRules && puzzle.grid ? sizedRuleDescriptions(puzzle.grid, puzzle.sizedRules)
+      : puzzle.algebraic ? ['Algebraic cages'] : []
+  if (puzzle.variant) return [variantName(puzzle.variant), ...descriptions]
+  if (!descriptions.length) return ['Classic rows, columns, and boxes']
+  return descriptions
+}
+
+function difficultyLabel(preview?: PuzzlePreview, busy = false) {
+  if (preview?.ratingPending || busy && !preview) return 'Calculating…'
+  if (preview?.game.difficulty) return DIFFICULTY_LABELS[preview.game.difficulty]
+  if (preview?.game.difficulty === null) return 'Not rated for this puzzle type'
+  return preview ? 'Rating unavailable' : 'Unavailable until import validates'
+}
+
+function issueLink(input: string, inspection: Inspection | null) {
+  if (!inspection) return
+  const puzzle = inspection.imported
+  const summary = [
+    `Import result: ${inspection.errors.length ? 'failed' : 'successful'}`,
+    `Detected format: ${inspection.format ?? puzzle?.format ?? 'Unknown'}`,
+    `Grid size: ${puzzle ? sizeLabel(puzzle) : 'Unknown'}`,
+    `Detected rulesets: ${puzzle ? rulesets(puzzle).join('; ') : 'Unknown'}`,
+    `Difficulty: ${difficultyLabel(inspection.preview)}`,
+    `Errors:\n${inspection.errors.length ? inspection.errors.map(error => `- ${error.stage}: ${error.message}`).join('\n') : '- None'}`,
+  ].join('\n')
+  const maxInputChars = 800
+  const source = input.length > maxInputChars
+    ? `${input.slice(0, maxInputChars)}\n\n[Input truncated to fit the GitHub issue link; original length: ${input.length} characters.]`
+    : input
+  const decodedPayload = inspection.payload !== undefined ? jsonText(inspection.payload) : puzzle ? jsonText(puzzle) : ''
+  const payloadExcerpt = decodedPayload.length > 900
+    ? `${decodedPayload.slice(0, 900)}\n[Decoded payload truncated to fit the GitHub issue link; full length: ${decodedPayload.length} characters.]`
+    : decodedPayload || '[No puzzle payload could be decoded.]'
+  const body = [
+    '## Import triage', '', summary, '',
+    '## Puzzle input', '', '```text', source, '```', '',
+    '## Decoded payload', '', '```json', payloadExcerpt, '```',
+  ].join('\n')
+  const title = `Import issue: ${inspection.format ?? puzzle?.format ?? 'unknown format'} puzzle`
+  return `https://github.com/coder13/sudoku-app/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`
 }
 
 function DecodePage() {
   const heading = useRef<HTMLHeadingElement>(null)
   const [input, setInput] = useState('')
-  const [decoded, setDecoded] = useState<DecodedPayload | null>(null)
-  const [error, setError] = useState('')
+  const [inspection, setInspection] = useState<Inspection | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function inspect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
-    setError('')
-    setDecoded(null)
-    try { setDecoded(await decodeInput(input)) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'This payload could not be decoded.') }
-    finally { setBusy(false) }
+    setInspection(null)
+    try {
+      const imported = await detectPuzzle(input)
+      setInspection({ imported, errors: [], format: imported.format })
+      try {
+        const preview = await prepareDetectedPuzzle(imported)
+        setInspection({ imported, preview, errors: [], format: imported.format })
+      } catch (cause) {
+        setInspection({ imported, errors: [{
+          stage: 'Puzzle validation',
+          message: cause instanceof Error ? cause.message : 'The decoded puzzle could not be validated.',
+        }], format: imported.format })
+      }
+    } catch (cause) {
+      const text = input.trim()
+      const payload = /^SCv7_32_/i.test(text)
+        ? await decodeSudokuCoachPayload(text).catch(() => undefined)
+        : undefined
+      setInspection({ errors: [{
+        stage: 'Format and parsing',
+        message: cause instanceof Error ? cause.message : 'The input could not be parsed as a supported puzzle.',
+      }], ...(payload !== undefined && { payload, format: 'Sudoku Coach' }) })
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const output = decoded && (decoded.isJson ? JSON.stringify(decoded.payload, null, 2) : String(decoded.payload))
+  const imported = inspection?.imported
+  let payload: unknown = inspection?.payload ?? imported ?? input
+  let payloadIsJson = inspection?.payload !== undefined || Boolean(imported)
+  const inputText = input.trim()
+  if (!/^\d{81}$/.test(inputText)) {
+    try {
+      const parsed = JSON.parse(inputText)
+      payload = parsed
+      payloadIsJson = true
+    } catch { /* The normalized imported puzzle is still shown when available. */ }
+  }
+  const formattedPayload = payloadIsJson ? jsonText(payload) : String(payload ?? '')
+  const reportUrl = issueLink(input, inspection)
+  const previewGrid = imported && <Board grid={imported.grid} label="Imported puzzle preview" givens={imported.givens} values={imported.givens}
+    givenCellColors={imported.givenCellColors} authoredArtwork={imported.authoredArtwork}
+    candidateLayout="center-corner" variantPuzzle={imported.variant?.puzzle} showGuides={false} />
 
   return <main className="puzzles-page puzzles-subscreen decode-page">
     <div className="puzzles-layout decode-layout">
@@ -113,25 +149,58 @@ function DecodePage() {
         <Link to="/puzzles/browse" className={iconButtonClassName()} aria-label="Back to puzzles">
           <ChevronLeft size={21} aria-hidden="true" />
         </Link>
-        <h1 ref={heading} tabIndex={-1}>Decode puzzle data</h1>
+        <h1 ref={heading} tabIndex={-1}>Inspect puzzle import</h1>
       </header>
       <section className="main-menu-panel decode-content">
-        <form className="decode-form" onSubmit={event => { void submit(event) }}>
-          <label htmlFor="puzzle-payload">Puzzle code or link</label>
-          <textarea id="puzzle-payload" value={input} spellCheck={false} autoCapitalize="off"
-            autoCorrect="off" onChange={event => { setInput(event.currentTarget.value); setDecoded(null); setError('') }}
-            placeholder="Paste a Sudoku Coach or SudokuPad code, a puzzle link, or JSON" />
-          <p className="decode-note">Published Sudoku Coach and SudokuPad links are looked up before their payload is decoded.</p>
-          <div className="dialog-actions">
-            <Button type="button" disabled={!input} onClick={() => { setInput(''); setDecoded(null); setError('') }}>Clear</Button>
-            <Button type="submit" variant="primary" disabled={!input.trim() || busy}>{busy ? 'Decoding…' : 'Decode'}</Button>
+        <div className="decode-inspector">
+          <div className="decode-left-column">
+            <form className="decode-form" onSubmit={event => { void inspect(event) }}>
+              <label htmlFor="puzzle-payload">Puzzle code or link</label>
+              <textarea id="puzzle-payload" value={input} spellCheck={false} autoCapitalize="off" autoCorrect="off"
+                maxLength={MAX_IMPORT_LENGTH} onChange={event => { setInput(event.currentTarget.value); setInspection(null) }}
+                placeholder="Paste a Sudoku Coach or SudokuPad code, puzzle link, or JSON" />
+              <div className="dialog-actions">
+                <Button type="button" disabled={!input} onClick={() => { setInput(''); setInspection(null) }}>Clear</Button>
+                <Button type="submit" variant="primary" disabled={!input.trim() || busy}>{busy ? 'Inspecting…' : 'Inspect import'}</Button>
+              </div>
+            </form>
+
+            {inspection && <section className="decode-triage" aria-live="polite">
+              <h2>Import details</h2>
+              {imported ? <dl className="decode-properties">
+                <div><dt>Format</dt><dd>{imported.format}</dd></div>
+                <div><dt>Grid size</dt><dd>{sizeLabel(imported)}</dd></div>
+                <div><dt>Difficulty</dt><dd>{difficultyLabel(inspection.preview, busy)}</dd></div>
+              </dl> : inspection.format ? <dl className="decode-properties">
+                <div><dt>Format</dt><dd>{inspection.format}</dd></div>
+                <div><dt>Grid size</dt><dd>{payloadSizeLabel(inspection.payload)}</dd></div>
+                <div><dt>Difficulty</dt><dd>Unavailable until import validates</dd></div>
+              </dl> : <p className="decode-format-unknown">Format could not be identified.</p>}
+              {imported && <div className="decode-rulesets"><h3>Detected rulesets</h3><ul>
+                {rulesets(imported).map((rule, index) => <li key={`${index}-${rule}`}>{rule}</li>)}
+              </ul></div>}
+
+              {inspection.errors.length > 0 && <section className="decode-errors" role="alert">
+                <h3>Import errors</h3><ul>{inspection.errors.map((error, index) =>
+                  <li key={`${error.stage}-${index}`}><strong>{error.stage}:</strong> {error.message}</li>)}</ul>
+              </section>}
+              {imported && <section className="decode-puzzle-preview">
+                <h3>Puzzle preview</h3>{previewGrid}
+                {inspection.preview && <p className="decode-validation-success">Puzzle parsed and passed import validation.</p>}
+              </section>}
+              {reportUrl && <a className={buttonClassName('secondary', 'decode-file-issue')} href={reportUrl} target="_blank" rel="noreferrer">
+                File issue <ExternalLink size={16} aria-hidden="true" />
+              </a>}
+            </section>}
           </div>
-        </form>
-        {error && <p className="decode-error" role="alert">{error}</p>}
-        {decoded && output !== undefined && <section className="decode-result" aria-live="polite">
-          <div className="decode-result-heading"><h2>Decoded payload</h2><span>{decoded.format} · {decoded.isJson ? 'JSON' : 'text'}</span></div>
-          <pre className="decode-output">{output}</pre>
-        </section>}
+
+          <section className="decode-payload" aria-label="Formatted source payload">
+            <div className="decode-result-heading"><h2>Payload</h2>
+              <span>{payloadIsJson ? 'JSON · syntax highlighted' : 'Text input'}</span></div>
+            {payloadIsJson ? <HighlightedJson value={formattedPayload} />
+              : <pre className="decode-output">{formattedPayload || 'The decoded payload will appear here.'}</pre>}
+          </section>
+        </div>
       </section>
     </div>
   </main>

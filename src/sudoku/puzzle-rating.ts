@@ -53,13 +53,18 @@ export function needsPuzzleGrade(game: GradedPuzzle) {
   return !game.grid && (game.difficulty === undefined || game.score === undefined || puzzleGradeIsStale(game))
 }
 
-export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine): Promise<PuzzleGrade | null> {
+export async function ratePuzzle(givens: string, variant?: Game['variant'], run = runEngine, allowStalled = false): Promise<PuzzleGrade | null> {
   const rating = variant?.fog ? (await solveFogPath(variant, run, false)).rating
     : variant ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(variant.puzzle) })
       : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })
-  if (rating.status === 'stalled') return null
+  if (rating.status === 'stalled' && !allowStalled) return null
+  const points = 'score' in rating ? rating.score.points : rating.points
+  const hardest = 'score' in rating ? rating.score.hardest : rating.hardest
+  const difficulty = rating.status === 'stalled'
+    ? (await run({ type: 'techniques', variant: Boolean(variant) })).techniques.find(technique => technique.id === hardest)?.difficulty ?? 'beginner'
+    : rating.status.solved
   return {
-    difficulty: rating.status.solved, points: 'score' in rating ? rating.score.points : rating.points,
+    difficulty, points,
     scoringVersion: rating.scoringVersion, techniqueOrder: rating.techniqueOrder,
   }
 }
