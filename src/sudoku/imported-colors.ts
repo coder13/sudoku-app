@@ -1,3 +1,6 @@
+import type { VariantGame } from './variants.ts'
+import type { SizedGrid } from './grid.ts'
+
 const COACH_CELL_COLORS = {
   white: '#ffffff', grey: '#e2e2e2', lime: '#def7c5', blue: '#c5e4f7', purple: '#d1c5f7',
   red: '#f7c5c5', green: '#c5f7d3', yellow: '#f7f7c5', orange: '#f7e4c5',
@@ -36,6 +39,36 @@ export function validImportedCellColors(value: unknown): value is ImportedCellCo
     Object.entries(value).every(([cell, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(cell) &&
       Array.isArray(shades) && shades.length > 0 && shades.length <= 62 &&
       shades.every(isImportedColor) && new Set(shades).size === shades.length))
+}
+
+/** Validate the published region palette as a one-to-one legend for its Jigsaw regions. */
+export function validGivenCellColors(value: unknown, variant?: Pick<VariantGame, 'puzzle' | 'fog'>, grid?: SizedGrid): value is ImportedCellColors {
+  if (!validImportedCellColors(value)) return false
+  if (grid) {
+    if (variant) return false
+    if (!('regions' in grid) || Object.keys(value).length !== grid.size ** 2) return true
+    return validRegionLegend(value, grid.regions, grid.size)
+  }
+  if (!variant) return true
+  const regions = variant.puzzle.regions
+  if (variant.fog) return false
+  if (regions?.type !== 'jigsaw') return true
+  // Sparse colors are ordinary authored fills. A complete cell map is the
+  // source's region legend and must match the full partition.
+  if (Object.keys(value).length !== 81) return true
+  return validRegionLegend(value, regions.regions, 9)
+}
+
+function validRegionLegend(value: ImportedCellColors, regions: readonly (readonly number[])[], size: number) {
+  if (Object.keys(value).length !== size ** 2) return false
+  const legend = new Set<string>()
+  for (const region of regions) {
+    const shade = value[region[0]]?.[0]
+    if (!shade || legend.has(shade) || region.some(cell =>
+      value[cell]?.length !== 1 || value[cell]?.[0] !== shade)) return false
+    legend.add(shade)
+  }
+  return legend.size === size
 }
 
 export function sameImportedCellColors(a?: ImportedCellColors, b?: ImportedCellColors): boolean {

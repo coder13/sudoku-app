@@ -7,7 +7,7 @@ import { isFogDefinition, type FogDefinition } from '../fog.ts'
 import { normalizeGivens } from '../formats.ts'
 import { EMPTY } from '../game.ts'
 import { gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from '../grid.ts'
-import { isHexColor, isImportedColor, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../imported-colors.ts'
+import { isHexColor, isImportedColor, validGivenCellColors, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../imported-colors.ts'
 import { readCoachQuickDraw } from '../imported-drawings.ts'
 import { insideGridColumns, validInsideGridRows } from '../inside-grid.ts'
 import { validLetteredQuadruples } from '../lettered-quadruples.ts'
@@ -32,7 +32,6 @@ const COACH_FIELDS = new Set([
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'cells', 'acid', 'givenColours',
 ])
 const COACH_DRAWINGS = ['quickDrawLineSegments', 'quickDrawSymbols', 'cells']
-const COACH_AUTHORED_MARKINGS = [...COACH_DRAWINGS, 'givenColours', 'colours']
 
 const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
 const LINE_STYLING = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
@@ -239,11 +238,11 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
   }
 }
 
-function readCoachColourCells(colours: unknown, value: unknown): string[] | undefined {
+function readCoachColourCells(colours: unknown, value: unknown, size = 9): string[] | undefined {
   if (value === undefined || value === '') return []
   if (typeof value !== 'string') return
   const cellColours = value.split(',')
-  if (cellColours.length !== 81) return
+  if (cellColours.length !== size ** 2) return
   if (!cellColours.some(Boolean)) return []
   if (!Array.isArray(colours) || !colours.length || colours.length > COACH_BASE62.length ||
     !colours.every(colour => typeof colour === 'string' && colour.length > 0)) return
@@ -436,12 +435,13 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     if (fromCollection && (!publication || publication.hasAuthorInstructions)) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
-    const { givens, grid, rules } = readCoachSized(data)
+    const { givens, grid, rules, givenCellColors, reviewedTitle } = await readCoachSized(data)
     if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     return { givens, grid, ...(grid.size !== 4 || rules.length ? { sizedRules: rules } : {}),
-      ...(publication?.title && { title: publication.title }) }
+      ...(givenCellColors && { givenCellColors }),
+      ...((publication?.title ?? reviewedTitle) && { title: publication?.title ?? reviewedTitle }) }
   }
   if (data.gridSize !== 9) {
     throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 6 × 6, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 Sudoku Coach grids.')
@@ -508,9 +508,12 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const unsupportedDrawings = publication && COACH_DRAWINGS.some(key => hasData(data[key]))
   if (unsupportedDrawings || !cellColours) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
-  let givenCellColors: ImportedCellColors | undefined
-  let fillTitle: string | undefined
-  if (!whispersGuide && !declaredMirroredRenban) {
+  const regionLegend = !fog && regions?.type === 'jigsaw' && cellColours.length
+    ? readCoachColorNames(cellColours, palette) : undefined
+  let givenCellColors = regionLegend && validGivenCellColors(regionLegend, { puzzle: { version: 1, givens, regions } })
+    ? regionLegend : undefined
+  let fillTitle: string | undefined = givenCellColors ? reviewedColorTitle : undefined
+  if (!givenCellColors && !whispersGuide && !declaredMirroredRenban) {
     const remaining = coachColoursWithoutExtraHouses(cellColours, rules)
     if (remaining.some(Boolean) && !coachMirroredRenbansMatch(remaining, rules, false)) {
       if (!fog && !publication?.hasAuthorInstructions) {
@@ -965,13 +968,13 @@ export async function decodeCoachSix(code: string) {
   return readCoachSized(data)
 }
 
-function readCoachSized(data: Record<string, unknown>) {
+async function readCoachSized(data: Record<string, unknown>) {
   const { gridSize: size, regions } = data
   const labels = Array.isArray(regions) && regions.every(label => Number.isInteger(label) && label >= 0) ? regions : undefined
   const distinct = isJigsawSize(size) && labels ? [...new Set<number>(labels)] : []
   const explicit = isJigsawSize(size) && labels?.length === size ** 2 && distinct.length === size
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const grid = isJigsawSize(size) ? size === 7 && labels?.length === 0 ? SEVEN_BOXLESS_GRID : isJigsawGrid(explicit) ? explicit : undefined
+  const grid = isJigsawSize(size) ? size === 7 && labels?.length === 0 ? SEVEN_BOXLESS_GRID : isJigsawGrid(explicit, true) ? explicit : undefined
     : isRectangularSize(size) ? labels && rectangularGridFromRegions(size, labels)
       : regions === undefined || hasMiniBoxes(regions) ? MINI_GRID : undefined
   if (!grid) throw new Error(size === 4 ? 'Mini Sudoku import requires four 2 × 2 boxes.'
@@ -981,7 +984,20 @@ function readCoachSized(data: Record<string, unknown>) {
   const givenDigits = grid.size === 6 ? data.givenDigits ?? undefined : data.givenDigits
   const givens = givenDigits === undefined ? '0'.repeat(grid.size ** 2) : givenDigits
   if (!isGridText(givens, grid)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
-  if (COACH_AUTHORED_MARKINGS.some(key => hasData(data[key]))) {
+  const rawCellColors = readCoachColourCells(data.colours, data.givenColours, grid.size)
+  const palette = Array.isArray(data.colours) ? data.colours : []
+  const regionLegend = rawCellColors?.length && 'regions' in grid
+    ? readCoachColorNames(rawCellColors, palette) : undefined
+  let givenCellColors = regionLegend && validGivenCellColors(regionLegend, undefined, grid) ? regionLegend : undefined
+  let reviewedTitle: string | undefined
+  if (!givenCellColors && (hasData(data.givenColours) || hasData(data.colours))) {
+    const fills = rawCellColors?.length ? readCoachColorNames(rawCellColors, palette) : undefined
+    reviewedTitle = fills ? await reviewedCoachFillTitle(data, fills) : undefined
+    if (!fills || !reviewedTitle) throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
+    givenCellColors = fills
+  }
+  if (COACH_DRAWINGS.some(key => hasData(data[key])) ||
+    (hasData(data.givenColours) && !givenCellColors) || (hasData(data.colours) && !givenCellColors)) {
     throw new Error('This Sudoku Coach puzzle has unsupported authored markings.')
   }
   const constraints = grid.size === 6 ? data.givenConstraints ?? [] :
@@ -1014,7 +1030,7 @@ function readCoachSized(data: Record<string, unknown>) {
       : marks.map(({ cells, value }) => ({ type: 'difference', cells, difference: value }))
   })
   if (!isSizedRuleList(rules, grid)) throw new Error('This Sudoku Coach export contains invalid rules.')
-  return { version: 2 as const, grid, givens, rules }
+  return { version: 2 as const, grid, givens, rules, ...(givenCellColors && { givenCellColors }), ...(reviewedTitle && { reviewedTitle }) }
 }
 
 function readPublication(coach: unknown): CoachPublication | null {

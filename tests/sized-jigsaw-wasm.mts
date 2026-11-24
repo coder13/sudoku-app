@@ -106,7 +106,7 @@ test('a 7 × 7 Jigsaw Thermometer keeps its authored houses through import, play
     const request = await fetcher('https://sudoku.test/api/v1/shares', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...puzzleDefinitionForSharing(game), grid: { size: 7, regions: disconnected } }),
     })
-    assert.equal(request.status, 400)
+    assert.equal(request.status, 201, 'authored region membership may include disconnected pieces')
   } finally {
     sqlite.close()
   }

@@ -122,7 +122,7 @@ impl SizedGrid {
         Some(Self::from_region_ids(size, regions))
     }
 
-    /// Build a layout whose connected regions partition the grid.
+    /// Build a layout whose authored regions partition the grid.
     pub fn with_regions(size: usize, regions: &[Vec<usize>]) -> Option<Self> {
         if !(4..=MAX_SIZE).contains(&size) || regions.len() != size {
             return None;
@@ -139,11 +139,6 @@ impl SizedGrid {
                 }
                 *region = index;
             }
-        }
-        if regions.iter().enumerate().any(|(index, cells)| {
-            !connected_region(size, &region_ids, index, cells[0])
-        }) {
-            return None;
         }
         Some(Self::from_region_ids(size, region_ids.into_iter()))
     }
@@ -570,27 +565,6 @@ impl SizedGrid {
         };
         (outcome, search.first)
     }
-}
-
-fn connected_region(size: usize, regions: &[usize], region: usize, first: usize) -> bool {
-    let mut reached = vec![first];
-    let mut next = 0;
-    while let Some(&cell) = reached.get(next) {
-        next += 1;
-        let (row, column) = (cell / size, cell % size);
-        let neighbors = [
-            (row > 0).then(|| cell - size),
-            (row + 1 < size).then_some(cell + size),
-            (column > 0).then(|| cell - 1),
-            (column + 1 < size).then_some(cell + 1),
-        ];
-        for neighbor in neighbors.into_iter().flatten() {
-            if regions[neighbor] == region && !reached.contains(&neighbor) {
-                reached.push(neighbor);
-            }
-        }
-    }
-    reached.len() == size
 }
 
 struct Search<'a> {

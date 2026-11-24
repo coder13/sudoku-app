@@ -302,7 +302,7 @@ function jigsawGrid(value) {
   if (size !== 5 && size !== 7) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
-  return value.regions.every(part => connectedRegion(part, size))
+  return true
 }
 function connectedRegion(part, size) {
   const connected = new Set([part[0]])
@@ -394,6 +394,27 @@ const cellColor = value => typeof value === 'string' && (clueColor(value) ||
 const cellColors = value => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.entries(value).every(([site, shades]) => /^(?:[0-9]|[1-7][0-9]|80)$/.test(site) &&
     list(cellColor, 1, 62)(shades) && new Set(shades).size === shades.length)
+const regionLegend = (value, regions, size) => {
+  if (!Array.isArray(regions) || regions.length !== size || Object.keys(value).length !== size ** 2) return false
+  const legend = new Set()
+  for (const region of regions) {
+    const shade = value[region[0]]?.[0]
+    if (!shade || legend.has(shade) || region.some(cell => value[cell]?.length !== 1 || value[cell]?.[0] !== shade)) return false
+    legend.add(shade)
+  }
+  return legend.size === size
+}
+const givenCellColors = (value, variant, grid) => {
+  if (!cellColors(value)) return false
+  if (grid) return !Array.isArray(grid.regions) || Object.keys(value).length !== grid.size ** 2 ||
+    regionLegend(value, grid.regions, grid.size)
+  if (!variant) return true
+  const regions = variant.puzzle.regions
+  if (variant.fog) return false
+  if (regions?.type !== 'jigsaw') return true
+  if (Object.keys(value).length !== 81) return true
+  return regionLegend(value, regions.regions, 9)
+}
 const artworkSize = value => typeof value === 'number' && value > 0 && value <= .5
 const artworkCorner = list(integer(0, 9), 2, 2)
 const artworkCenter = list(value => typeof value === 'number' && value >= .5 && value <= 8.5 && Number.isInteger(value - .5), 2, 2)
@@ -511,7 +532,7 @@ async function sharePuzzle(request, db, path) {
         !Object.hasOwn(data, 'algebraic') && sizedRules(value, data.grid),
       sizedAuthor: value => Object.hasOwn(data, 'sizedRules') && ruleAuthor(value),
       variant: value => data.grid === undefined && variant(value, data.givens), collection,
-      givenCellColors: value => data.grid === undefined && data.variant?.fog === undefined && cellColors(value),
+      givenCellColors: value => data.variant?.fog === undefined && givenCellColors(value, data.variant, data.grid),
       authoredArtwork: value => data.grid === undefined && data.variant && data.variant.fog === undefined && authoredArtwork(value),
       whispersGuide: value => data.variant?.id === 'whispers' && value === true }) ||
       (data.grid && data.grid.size !== 4 && !Object.hasOwn(data, 'sixRules') && !Object.hasOwn(data, 'sizedRules'))) {
