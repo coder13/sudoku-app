@@ -3934,18 +3934,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       --board-frame-limit: max(130px, min(100dvh, var(--mobile-fit-board-height, 100dvh)));
     }
   }
-  @media (orientation: portrait) {
-    .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle:has(.has-outside-clues) {
-      /* The measured space includes the frame and its gutters. Let the input panel scroll. */
-      --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), 100dvh));
-    }
-  }
-  @media (orientation: portrait) {
-    .standard-workspace-page .mobile-panel-layout[data-fit-hint]:not([data-input-sized]) .puzzle:has(.has-outside-clues) {
-      /* The measured space includes the frame and its outside clues. */
-      --board-frame-limit: max(64px, min(var(--mobile-fit-board-height, 100dvh), 100dvh));
-    }
-  }
   .standard-workspace-page .mobile-panel-layout[data-input-sized] .puzzle-column {
     box-sizing: content-box;
     display: grid;
@@ -4286,6 +4274,15 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .mobile-hint-panel .hint-card { --hint-heading-action-size: 44px; width: 100%; height: 100%; padding: var(--space-4) var(--space-10) var(--space-6); }
   .mobile-panel-layout .mobile-hint-panel { height: clamp(130px, 24dvh, 205px); }
   .mobile-panel-layout[data-fit-content] .mobile-hint-panel { height: clamp(72px, calc(32dvh - 64px), 205px); }
+  @media (orientation: portrait) {
+    .mobile-panel-layout[data-fit-content]:has(.puzzle-stage .has-outside-clues) .mobile-hint-panel {
+      /* Reserve room for the clue gutters as well as the cells. */
+      max-height: 112px;
+    }
+    .standard-workspace-page .mobile-panel-layout[data-fit-content]:has(.mobile-hint-panel) .puzzle-column:has(.has-outside-clues) {
+      --puzzle-badge-gutter-block: var(--space-4);
+    }
+  }
   .mobile-panel-layout .mobile-hint-panel .hint-card { max-height: 100%; }
   .mobile-hint-panel .hint-card-heading { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 var(--space-6); }
   .mobile-hint-panel .hint-card-icon { width: 24px; height: 24px; border-radius: 6px; }

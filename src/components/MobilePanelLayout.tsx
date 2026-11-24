@@ -631,7 +631,7 @@ export function MobilePanelLayout(props: Props) {
           - pixels(workspaceStyle.paddingBlockStart) - pixels(workspaceStyle.paddingBlockEnd)
           - pixels(gapStyle.flexBasis) - margins - input.offsetHeight
           - (hintPanel ? blockSize(hintPanel) : 0)
-        const puzzleChrome = Math.max(0, puzzleContent.offsetHeight - board.offsetHeight)
+        const puzzleChrome = Math.max(0, puzzle.offsetHeight - board.offsetHeight)
         const boardLimit = `${Math.max(64, Math.floor(available - puzzleChrome))}px`
         if (layout.style.getPropertyValue('--mobile-fit-board-height') !== boardLimit) {
           layout.style.setProperty('--mobile-fit-board-height', boardLimit)
