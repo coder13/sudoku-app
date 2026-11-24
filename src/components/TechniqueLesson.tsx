@@ -25,6 +25,11 @@ const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonEx
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
 type DiagramBlock = Extract<LessonBlock, { type: 'diagram' }>
 type PracticeBlock = Extract<LessonBlock, { type: 'practice' }>
+type PracticeLaunch = {
+  busy: boolean
+  error: string
+  onPlay: (technique: string) => void
+}
 
 export function Diagram({ example, block, blockIndex, editorPreview, fallbackReason }: {
   example: WorkedExample
@@ -174,8 +179,8 @@ function WorkedExamples({ article, block, variant, diagrams, editorPreview }: {
   </section>
 }
 
-export function Practice({ block, variant, blockIndex, editorPreview }: {
-  block: PracticeBlock; variant: string; blockIndex?: number; editorPreview?: boolean
+export function Practice({ block, variant, launch, blockIndex, editorPreview }: {
+  block: PracticeBlock; variant: string; launch: PracticeLaunch; blockIndex?: number; editorPreview?: boolean
 }) {
   const { drills, title, selectLabel } = block
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
@@ -187,7 +192,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   const puzzle = generated ?? initial
   const grid = lessonValues(puzzle)
   const difficulty = techniqueDifficulties[chosen.example]
-  const { busy: startingPractice, error: practiceError, generatePractice } = usePuzzleGeneration()
+  const { busy: startingPractice, error: practiceError, onPlay } = launch
   useEffect(() => {
     setReady(true)
     return () => { generationId.current++ }
@@ -208,7 +213,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
   }
 
   return (
-    <section id="trainer" className="surface lesson-practice" aria-labelledby="trainer-title" data-lesson-block={blockIndex}>
+    <section id="trainer" className="surface lesson-practice" aria-labelledby="trainer-title" tabIndex={-1} data-lesson-block={blockIndex}>
       <header className="lesson-practice-heading">
         <div>
           <div className="lesson-title-row">
@@ -237,7 +242,7 @@ export function Practice({ block, variant, blockIndex, editorPreview }: {
           </Button>
           {!editorPreview && hasPracticePuzzles(chosen.example) &&
             <Button type="button" variant="primary" disabled={!ready || startingPractice} aria-busy={startingPractice}
-              onClick={() => { void generatePractice(chosen.example) }}>
+              onClick={() => onPlay(chosen.example)}>
               {startingPractice ? 'Generating puzzle…' : 'Play practice puzzles'}
             </Button>}
         </div>
@@ -306,6 +311,9 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
   const next = lessonReadingOrder[index + 1]
   const practice = lesson.blocks.find(block => block.type === 'practice')
   const drills = practice?.drills ?? []
+  const practiceTechnique = drills.find(({ example }) => example === variant)?.example ?? drills[0]?.example
+  const { busy: startingPractice, error: practiceError, generatePractice } = usePuzzleGeneration()
+  const [practiceFromHeading, setPracticeFromHeading] = useState(false)
   const diagrams = useMemo(() => lesson.blocks.flatMap((block, index) =>
     block.type === 'diagram' ? [{ block, index }] : []), [lesson.blocks])
   const headings = new Set(lesson.blocks.flatMap(block => block.type === 'heading' ? [block.id] : []))
@@ -316,9 +324,22 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
     return () => cancelAnimationFrame(frame)
   }, [lesson.id, variant])
 
+  function playPractice(technique: string, fromHeading: boolean) {
+    setPracticeFromHeading(fromHeading)
+    void generatePractice(technique)
+  }
+
+  const practiceAction = !editorPreview && practice && (hasPracticePuzzles(practiceTechnique)
+    ? <Button type="button" variant="primary" disabled={startingPractice} aria-busy={startingPractice && practiceFromHeading}
+        onClick={() => playPractice(practiceTechnique, true)}>
+        {startingPractice && practiceFromHeading ? 'Starting…' : 'Practice'}
+      </Button>
+    : <a className={buttonClassName('primary')} href="#trainer">Practice</a>)
+
   return (
     <article className="technique-lesson">
-      <LearnHeading title={lesson.title} difficulty={lessonDifficultyLabels.get(lesson.id)}>
+      <LearnHeading title={lesson.title} difficulty={lessonDifficultyLabels.get(lesson.id)} action={practiceAction}>
+        {practiceFromHeading && practiceError && <p role="alert" className="lesson-new-example-error">{practiceError}</p>}
         <div className="lesson-metadata">
           {!!lesson.prerequisites?.length && <LessonTags label="Learn first">
             {lesson.prerequisites.map(id => <li key={id}>
@@ -340,7 +361,9 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
         </section>
         {practice && <>
           <WorkedExamples article={lesson.id} block={practice} variant={variant} diagrams={diagrams} editorPreview={showEditableExamples} />
-          <Practice block={practice} variant={variant} blockIndex={lesson.blocks.indexOf(practice)} editorPreview={showEditableExamples} />
+          <Practice block={practice} variant={variant} blockIndex={lesson.blocks.indexOf(practice)} editorPreview={showEditableExamples}
+            launch={{ busy: startingPractice, error: practiceFromHeading ? '' : practiceError,
+              onPlay: technique => playPractice(technique, false) }} />
         </>}
       </div>
 
