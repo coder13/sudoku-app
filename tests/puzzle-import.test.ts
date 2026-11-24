@@ -315,7 +315,7 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   await assert.rejects(detectPuzzle('SCv7_32_zzzz'), /invalid character/)
   await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
   mock.method(globalThis, 'fetch', async (path: string) => {
-    assert.ok(['/api/v1/import/sudokupad/example-share-id', '/api/v1/import/sudoku-coach/DMnw'].includes(path))
+    assert.ok(['/api/v1/import/sudokupad/example-share-id', '/api/v1/import/sudokupad/endless/p8eox828os', '/api/v1/import/sudoku-coach/DMnw'].includes(path))
     return Response.json({ error: 'The published puzzle could not be found.' }, { status: 404 })
   })
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /published puzzle could not be found/)
@@ -469,6 +469,32 @@ test('supported SudokuPad hosts, compact codes, and encoded f-puzzles exports pr
   for (const input of [`scf${shortGrid}`, `fpuz${code}`, `fpuzzles${code}`]) {
     assert.equal((await detectPuzzle(input)).givens, STARTER, input)
   }
+})
+
+test('SudokuPad endless links preserve Windoku and X-Sudoku rules', async ({ mock }) => {
+  const grid = Array.from({ length: 9 }, (_, row) => `[${Array.from({ length: 9 }, (_, column) =>
+    row === 0 && column === 0 ? '{v:8}' : '{}').join(',')}]`).join(',')
+  const boxes = Array.from({ length: 9 }, (_, box) => `[${Array.from({ length: 9 }, (_, offset) => {
+    const row = Math.floor(box / 3) * 3 + Math.floor(offset / 3)
+    const column = box % 3 * 3 + offset % 3
+    return `[${row},${column}]`
+  }).join(',')}]`).join(',')
+  const windokuMarks = [[2.5, 2.5], [2.5, 6.5], [6.5, 2.5], [6.5, 6.5]]
+    .map(([row, column]) => `{ct:[${row},${column}],w:3,h:3,c2:CFCFCF}`).join(',')
+  const metadata = "metadata:{rules:['Normal sudoku rules apply.','Windoku: there are 4 indicated additional 3x3 regions.','X-sudoku: digits cannot repeat along major diagonals.'],author:'sudokusolver.nl',t:'X4Q-Sudoku',nextpuzzle:'endless/zt5zmk2jnc'}"
+  const compact = `{id:'ewA4r0aP13sPxwAjutK7w2',${metadata},windoku:t,'diagonal+':t,'diagonal-':t,ce:[${grid}],re:[${boxes}],u:[${windokuMarks}],l:[{wp:[[0,0],[9,9]],c:34BBE6,th:2},{wp:[[0,9],[9,0]],c:34BBE6,th:2}]}`
+  const code = 'scl' + lzString.compressToBase64(compact)
+  mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudokupad/endless/p8eox828os')
+    return Response.json({ code })
+  })
+
+  const puzzle = await detectPuzzle('https://sudokupad.app/endless/p8eox828os')
+  assert.equal(puzzle.format, 'SudokuPad')
+  assert.equal(puzzle.givens, '8' + '0'.repeat(80))
+  assert.equal(puzzle.title, 'X4Q-Sudoku')
+  assert.equal(puzzle.variant?.puzzle.rules?.length, 6)
+  assert.equal(isPlayablePuzzle('mixed', puzzle.variant!.puzzle), true)
 })
 
 test('internal sharing round-trips all eight playable variants and fragment-only links', async () => {

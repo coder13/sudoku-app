@@ -241,7 +241,7 @@ export function ImportPuzzle({ close, onPlay, fullPage = false, onPreview = prep
   const puzzle = standalone ? undefined : preview?.game ?? decoded
   const progress = preview ? preview.hasProgress ? preview.game.position : undefined : decoded?.progress
   const fog = fogView(puzzle?.variant, progress?.entries)
-  const proofStatus = standalone ? 'unique' : preview && hasUniquenessProof(preview.game) ? 'unique' : verificationError ?? (busy ? 'checking' : 'unverified')
+  const proofStatus = standalone ? 'unique' : preview?.game.nonUnique ? 'multiple' : preview && hasUniquenessProof(preview.game) ? 'unique' : verificationError ?? (busy ? 'checking' : 'unverified')
   const puzzlePreview = puzzle && (
     <div className="import-preview">
       <p className="import-preview-meta" ref={summary} tabIndex={-1}>

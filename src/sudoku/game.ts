@@ -63,6 +63,7 @@ export type Game = {
   givenCellColors?: ImportedCellColors
   authoredArtwork?: readonly AuthoredMark[]
   uniquenessProof?: string
+  nonUnique?: true
   difficulty?: Difficulty | null
   score?: number | null
   fogRatingVersion?: number
@@ -139,6 +140,7 @@ export function restartGame(game: Game): Game {
     ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
     ...(game.authoredArtwork && { authoredArtwork: game.authoredArtwork }),
     ...(game.uniquenessProof && { uniquenessProof: game.uniquenessProof }),
+    ...(game.nonUnique && { nonUnique: true as const }),
     score: game.score,
     ...(game.fogRatingVersion !== undefined && { fogRatingVersion: game.fogRatingVersion }),
     ...(game.variantRatingVersion !== undefined && { variantRatingVersion: game.variantRatingVersion }),

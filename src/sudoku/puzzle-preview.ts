@@ -66,7 +66,13 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
   deferRating = false, onDecoded, signal, photoProgress,
 }: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {
   const imported = await detectPuzzle(input)
-  signal?.throwIfAborted()
+  return prepareDetectedPuzzle(imported, games, { deferRating, onDecoded, signal, photoProgress })
+}
+
+/** Verify a puzzle that has already been decoded by the import pipeline. */
+export async function prepareDetectedPuzzle(imported: ImportedPuzzle, games: readonly Game[] = [], {
+  deferRating = false, onDecoded, signal, photoProgress,
+}: { deferRating?: boolean; onDecoded?: (puzzle: ImportedPuzzle) => void; signal?: AbortSignal; photoProgress?: PhotoProgress } = {}): Promise<PuzzlePreview> {  signal?.throwIfAborted()
   if (imported.format === 'Text grid' && !imported.grid && photoProgress) {
     const entries = [...imported.givens].map((clue, cell) => clue === '0' ? photoProgress.entries[cell] ?? '0' : '0').join('')
     const corner = [...imported.givens].map((clue, cell) =>
@@ -155,15 +161,19 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
       game.variant = { ...variant, solution: existing.variant.solution }
     } else {
       const result = await run({ type: 'variant', operation: 'solve-unique', position, maxNodes: IMPORT_VARIANT_SEARCH_NODES })
-      if (result.status !== 'unique') throw new PuzzleVerificationError(result.status)
-      game.variant = { ...variant, solution: result.solution }
+      if (result.status === 'unique') game.variant = { ...variant, solution: result.solution }
+      else if (result.status === 'multiple') {
+        game.nonUnique = true
+        game.variant = { ...variant, solution: await run({ type: 'variant', operation: 'solve', position }) }
+      } else throw new PuzzleVerificationError(result.status)
     }
   } else if (!existing || !grid && !hasUniquenessProof(existing)) {
     const status = grid ? await analyzeMini(givens) : await run({ type: 'analyze', values: givens })
-    if (status !== 'unique') throw new PuzzleVerificationError(status)
+    if (status === 'multiple') game.nonUnique = true
+    else if (status !== 'unique') throw new PuzzleVerificationError(status)
   }
   if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null }
-  game.uniquenessProof = uniquenessKey(game)
+  if (!game.nonUnique) game.uniquenessProof = uniquenessKey(game)
   if (progress) {
     game = markSolveUntimed({
       ...game, position: { ...game.position, ...progress },
@@ -180,7 +190,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     if (savedGrade) return { ...preview, game: applyPuzzleGrade(game, savedGrade), grade: savedGrade }
     if (deferRating) return { ...preview, game, ratingPending: true }
     try {
-      const grade = await ratePuzzle(givens, game.variant, run)
+      const grade = await ratePuzzle(givens, game.variant, run, game.nonUnique)
       return { ...preview, game: applyPuzzleGrade(game, grade), grade }
     } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }

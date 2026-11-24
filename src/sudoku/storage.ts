@@ -147,6 +147,7 @@ export function readGame(id: string, data: string | Game | null): Game | undefin
       } else if (value.grid && grid.size !== 4 && !draft) return
       if (value.difficulty != null && !isDifficulty(value.difficulty)) delete value.difficulty
       if (value.uniquenessProof !== undefined && !hasUniquenessProof(value)) delete value.uniquenessProof
+      if (value.nonUnique !== true) delete value.nonUnique
       if (value.score != null && (!Number.isSafeInteger(value.score) || value.score < 0)) delete value.score
       if (value.variantRatingVersion !== undefined && (!value.variant || !Number.isSafeInteger(value.variantRatingVersion) ||
         value.variantRatingVersion < 1)) delete value.variantRatingVersion
