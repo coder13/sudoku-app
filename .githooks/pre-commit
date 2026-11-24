@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+rust_files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs')
+if [ -n "$rust_files" ]; then
+  printf '%s\n' '==> Rust formatting (staged files)'
+  printf '%s\n' "$rust_files" | while IFS= read -r file; do
+    rustfmt --check --edition 2024 "$file"
+  done
+
+  printf '%s\n' '==> Rust compile check'
+  cargo check --workspace --all-targets
+fi
+
+printf '%s\n' '==> JavaScript and TypeScript checks'
+npm run check
