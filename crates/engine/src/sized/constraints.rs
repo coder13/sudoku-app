@@ -563,7 +563,8 @@ impl SizedConstraintGrid {
             upper = if mask == 0 {
                 0
             } else {
-                (1 << (u16::BITS - 1 - mask.leading_zeros() + u32::from(allow_equal))) - 1
+                let highest = 1u16 << (u16::BITS - 1 - mask.leading_zeros());
+                if allow_equal { highest | (highest - 1) } else { highest - 1 }
             };
         }
         changed
