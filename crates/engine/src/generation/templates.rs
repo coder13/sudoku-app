@@ -31,7 +31,7 @@ impl VerifiedTemplate {
 
 /// The supplied sparse and expert puzzles, verified once and shared across requests.
 pub fn builtin_templates() -> &'static [VerifiedTemplate] {
-    static POOL: OnceLock<[VerifiedTemplate; 17]> = OnceLock::new();
+    static POOL: OnceLock<[VerifiedTemplate; 21]> = OnceLock::new();
     POOL.get_or_init(|| {
         [
             // Gordon Royle's 17-clue collection. These also serve as generation benchmarks.
@@ -54,6 +54,12 @@ pub fn builtin_templates() -> &'static [VerifiedTemplate] {
             "300700020000001600000000000000200070016000000050000000800420300900000100000000500",
             "710050000000600050000000000000001400006000080200070000060800000003000200000000107",
             "601000000000500700000000000400000026050900000000070010530000400000002800000010000",
+            // Generated calibration puzzles that still pass the Medium quality checks
+            // after the solver tries direct placements at Easy.
+            "163700000002030409080000070098300000000040000015000040007001000200070398000080001",
+            "000090047100074025700002000003061700020003000070000903400059070059000000010008030",
+            "000000700075002039002070006000000073200030010080020000900601000000850000800000605",
+            "200005037087000000000000601009700003520800000000400010056000000000264300000000900",
         ]
         .map(|text| {
             let givens = parse_givens(text).expect("a builtin template has 81 cells");

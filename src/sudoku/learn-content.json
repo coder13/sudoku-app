@@ -657,6 +657,13 @@
               "example": "claiming"
             },
             {
+              "type": "text",
+              "paragraphs": [
+                "Pointing can reveal a digit you can place right away. Follow the locked digit along the shared line into another box. If the line rules out all but one place for that digit in the other box, place it there.",
+                "For Direct Claiming, check the other lines that cross the box. If the box rules out all but one place for the digit in one of those lines, place it in the spot left."
+              ]
+            },
+            {
               "type": "practice",
               "drills": [
                 {
@@ -666,6 +673,14 @@
                 {
                   "example": "claiming",
                   "title": "Claiming"
+                },
+                {
+                  "example": "direct-pointing",
+                  "title": "Direct Pointing"
+                },
+                {
+                  "example": "direct-claiming",
+                  "title": "Direct Claiming"
                 }
               ]
             }
@@ -1017,6 +1032,12 @@
               "example": "hidden-quadruple"
             },
             {
+              "type": "text",
+              "paragraphs": [
+                "A Hidden Pair or Triple can show where a different digit goes. If the reserved cells include every candidate for that digit except one in the house, place the digit in the one cell outside the subset."
+              ]
+            },
+            {
               "type": "practice",
               "drills": [
                 {
@@ -1030,6 +1051,14 @@
                 {
                   "example": "hidden-quadruple",
                   "title": "Hidden quadruple"
+                },
+                {
+                  "example": "direct-hidden-pair",
+                  "title": "Direct Hidden Pair"
+                },
+                {
+                  "example": "direct-hidden-triple",
+                  "title": "Direct Hidden Triple"
                 }
               ]
             }

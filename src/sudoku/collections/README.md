@@ -104,7 +104,7 @@ npm run test:collections
 The rating script checks uniqueness and logical completion before it writes
 either catalog. It does not change givens, IDs, titles, source ratings, or order.
 Ratings use the full canonical technique order and the current ten-level scale
-(classic scoring version 11). The generation-only quality floors do not remove
+(classic scoring version 16). The generation-only quality floors do not remove
 or alter authored puzzles in these collections.
 The WASM test checks every puzzle against its stored app rating. The regular
 test suite checks identity, credits, progress, resuming, batch downloads,

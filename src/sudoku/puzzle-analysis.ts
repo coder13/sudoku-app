@@ -6,10 +6,10 @@ export const TECHNIQUE_FINDER_TITLE = 'Techniques'
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
   { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
-  { title: 'Locked candidates', techniques: ['pointing', 'claiming'] },
+  { title: 'Locked candidates', techniques: ['pointing', 'claiming', 'direct-pointing', 'direct-claiming'] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
-    'hidden-triple', 'naked-quadruple', 'hidden-quadruple',
+    'hidden-triple', 'naked-quadruple', 'hidden-quadruple', 'direct-hidden-pair', 'direct-hidden-triple',
   ] },
   { title: 'Wings', techniques: [
     'w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing',

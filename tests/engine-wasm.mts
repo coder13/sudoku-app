@@ -765,7 +765,8 @@ test('ranked hints count distinct moves and prefer the easier proof at a tied co
   assert.equal(choices.length, 10)
   assert.equal(new Set(choices.map(choice => JSON.stringify(choice.actions))).size, 10)
   const remove = (cell: number, digit: number) => ({ eliminate: { cell, digit } })
-  assert.deepEqual(choices.slice(0, 6).map(({ technique, actions }) => [technique, actions]), [
+  assert.deepEqual(choices.slice(0, 7).map(({ technique, actions }) => [technique, actions]), [
+    ['direct-hidden-pair', [{ place: { cell: 52, digit: 8 } }]],
     ['locked-pair', [remove(2, 4), remove(5, 8), remove(16, 4), remove(16, 8)]],
     ['pointing', [remove(19, 5)]],
     ['pointing', [remove(48, 9)]],
@@ -840,8 +841,8 @@ test('hint diagrams use the current candidates and exclude previously removed ca
   const values = LOCKED_PAIR
   const { choices, candidates } = await run({ type: 'hints', values, includePatterns: true })
   assert.equal(candidates?.length, 81)
-  const first = choices[0]
-  assert.equal(first.technique, 'locked-pair')
+  const first = choices.find(({ technique }) => technique === 'locked-pair')
+  assert.ok(first)
   assert.ok(first.pattern?.candidates.length)
   assert.ok(first.pattern.houses.length)
   const eliminations = Array(81).fill(0)
@@ -942,7 +943,7 @@ test('hint limits and disabled techniques apply before ranking and choosing a pr
 
 test('ten ranked hints match the full search after accounting for candidate removals and disabled techniques', async () => {
   const { run } = engineRequests()
-  const { choices } = await run({ type: 'hints', values: LOCKED_PAIR, limit: 1 })
+  const { choices } = await run({ type: 'hints', values: LOCKED_PAIR, limit: 1, disabledTechniques: ['direct-hidden-pair'] })
   assert.equal(choices[0].technique, 'locked-pair')
   const eliminations = Array<number>(81).fill(0)
   for (const action of choices[0].actions) {
@@ -980,11 +981,11 @@ test('next deduction supports a single move and reveals the same proof in three 
   const { choices } = await run({ type: 'hints', values: LOCKED_PAIR })
   const stages = await run({ type: 'next-deduction', values: LOCKED_PAIR })
   assert.deepEqual(stages, {
-    technique: 'locked-pair',
+    technique: 'direct-hidden-pair',
     pattern: {
-      houses: [{ row: 0 }, { box: 2 }],
-      cells: [6, 8],
-      candidates: [{ cell: 6, digit: 4 }, { cell: 6, digit: 8 }, { cell: 8, digit: 4 }, { cell: 8, digit: 8 }],
+      houses: [{ row: 5 }],
+      cells: [49, 51, 52],
+      candidates: [{ cell: 49, digit: 5 }, { cell: 49, digit: 6 }, { cell: 51, digit: 5 }, { cell: 51, digit: 6 }, { cell: 51, digit: 8 }],
     },
     deduction: choices[0],
   })
@@ -1118,7 +1119,7 @@ test('solve-path availability counts distinct enabled easy moves and marks unfin
   const availability = trace.moveAvailability
   assert.ok(availability)
   assert.equal(availability.length, trace.steps.length + 1)
-  assert.deepEqual(availability[0], { easyMoves: 16, bottleneck: false })
+  assert.deepEqual(availability[0], { easyMoves: 20, bottleneck: false })
   assert.deepEqual(availability.at(-2), { easyMoves: 1, bottleneck: true })
   assert.deepEqual(availability.at(-1), { easyMoves: 0, bottleneck: false })
 
@@ -1993,7 +1994,7 @@ test('the worker protocol reaches the compiled browser engine', async () => {
 
   assert.equal(await run({ type: 'analyze', values: SPARSE }), 'unique')
   const rating = await run({ type: 'rate', values: SPARSE })
-  assert.equal(rating.score.points, 846)
+  assert.equal(rating.score.points, 832)
   assert.deepEqual(rating.status, { solved: 'medium' })
   assert.deepEqual(rating.techniqueOrder, catalog.defaultOrder)
   assert.equal(rating.scoringVersion, catalog.scoringVersion)
@@ -2019,9 +2020,9 @@ test('the worker protocol reaches the compiled browser engine', async () => {
   }
   const targeted = await raw({ type: 'generate-targeted', seed: 795_642_738, maxAttempts: 1, target: { type: 'opening', technique: 'hidden-single' } })
   assert.ok('code' in targeted && targeted.code === 'search-limit')
-  const matched = await run({ type: 'generate-constrained', seed: 42, maxAttempts: 1, clues: 17, score: [846, 846], templates: [TEMPLATE] })
+  const matched = await run({ type: 'generate-constrained', seed: 42, maxAttempts: 1, clues: 17, score: [832, 832], templates: [TEMPLATE] })
   assert.equal(matched.replaceAll('0', '').length, 17)
-  assert.equal((await run({ type: 'rate', values: matched })).score.points, 846)
+  assert.equal((await run({ type: 'rate', values: matched })).score.points, 832)
 })
 
 test('a custom solving profile can continue past the default AI Escargot stall', async () => {
@@ -2558,7 +2559,8 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.ok(!catalog.defaultOrder.includes('kropki-house-support'))
   assert.ok(!catalog.defaultOrder.includes('matching-digit-contradiction'))
   assert.ok(!catalog.defaultOrder.includes('matching-layout-forcing'))
-  const expectedIds = new Set([...catalog.defaultOrder, 'region-sum-distinct', 'region-sum-house', 'thermometer-house-support', 'kropki-house-support', 'linked-clue-contradiction', 'matching-digit-contradiction', 'matching-layout-forcing', 'group-line-house-support', 'group-order-contradiction', 'group-order-elimination', 'little-killer-house-support', 'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house', ...classic.techniques.map(technique => technique.id)])
+  const classicIds = classic.techniques.map(({ id }) => id).filter(id => !id.startsWith('direct-'))
+  const expectedIds = new Set([...catalog.defaultOrder, 'region-sum-distinct', 'region-sum-house', 'thermometer-house-support', 'kropki-house-support', 'linked-clue-contradiction', 'matching-digit-contradiction', 'matching-layout-forcing', 'group-line-house-support', 'group-order-contradiction', 'group-order-elimination', 'little-killer-house-support', 'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house', ...classicIds])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))

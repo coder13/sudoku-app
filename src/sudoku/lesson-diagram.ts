@@ -163,6 +163,24 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
         : `${capital(group)} needs one ${first.digit}. No other cell there allows it.`,
     }
   }
+  if ('direct-placement' in evidence) {
+    const { house, premise, removed } = evidence['direct-placement']
+    const rule = describePattern({
+      technique: technique.slice('direct-'.length), evidence: premise,
+      actions: [{ eliminate: { cell: removed[0], digit: first.digit } }],
+    }, candidates, nameCell)
+    const cells = list.format(removed.map(nameCell))
+    return {
+      ...rule,
+      houses: [...(rule?.houses ?? []), house],
+      candidates: rule?.candidates ?? [],
+      description: rule?.description ?? '',
+      ...explainSteps([
+        rule?.reason ?? '',
+        `That rules out ${first.digit} in ${cells} and leaves one spot in ${houseName(house)}. Place ${first.digit} in ${nameCell(first.cell)}.`,
+      ].filter(Boolean)),
+    }
+  }
   if ('intersection' in evidence) {
     const { source, target, cells } = evidence.intersection
     const digit = first.digit

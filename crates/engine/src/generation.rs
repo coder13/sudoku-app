@@ -997,7 +997,7 @@ mod tests {
         for clues in 17..=20 {
             let constraints = GenerationConstraints {
                 clues,
-                score: Some(1001..=1600),
+                score: Some(600..=900),
                 technique_order: &order,
             };
             let board = generate_constrained(0, &constraints, &[template], 32).unwrap();
@@ -1007,7 +1007,7 @@ mod tests {
                 rating.status,
                 SolveStatus::Solved(crate::Difficulty::Medium)
             );
-            assert!((1001..=1600).contains(&rating.score.points));
+            assert!((600..=900).contains(&rating.score.points));
         }
         let criteria = GenerationCriteria {
             clues: 17..=20,

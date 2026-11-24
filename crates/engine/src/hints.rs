@@ -30,6 +30,9 @@ pub(crate) mod technique_counts;
 #[path = "subsets.rs"]
 mod subsets;
 
+#[path = "hints/direct.rs"]
+mod direct;
+
 #[cfg(test)]
 #[path = "technique_tests.rs"]
 mod technique_tests;
@@ -802,6 +805,15 @@ pub enum HintEvidence {
     Cell(usize),
     /// A house determines the placement of a digit.
     House(House),
+    /// An elimination pattern leaves one place for a digit in a house.
+    DirectPlacement {
+        /// House in which the digit has only one possible cell after the proof.
+        house: House,
+        /// Elimination pattern that establishes the placement.
+        premise: Box<HintEvidence>,
+        /// Ruled out cells for the placed digit in that house.
+        removed: Vec<usize>,
+    },
     /// A digit is locked into the overlap of two houses.
     Intersection {
         /// House that confines the digit to the overlap.
@@ -1294,6 +1306,7 @@ impl HintEvidence {
 
     pub(crate) fn pattern_size(&self) -> usize {
         match self {
+            HintEvidence::DirectPlacement { premise, .. } => premise.pattern_size() + 1,
             HintEvidence::Intersection { cells, .. } | HintEvidence::Subset { cells, .. } => {
                 cells.len()
             }
@@ -1952,6 +1965,18 @@ fn visit_technique(
     technique: Technique,
     mut visit: impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
+    if let Some(premise) = technique.direct_premise() {
+        direct::visit(search, technique, premise, &mut visit)
+    } else {
+        visit_regular_technique(search, technique, visit)
+    }
+}
+
+fn visit_regular_technique(
+    search: &DeductionSearch<'_>,
+    technique: Technique,
+    mut visit: impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
     let (board, masks) = (search.board, search.masks);
     if technique == Technique::NakedSingle {
         for (cell, &mask) in masks.iter().enumerate() {
@@ -2430,7 +2455,8 @@ mod tests {
         let HintChoices::Choices(choices) = hint_choices(&board, None).unwrap() else {
             panic!("expected multiple choices");
         };
-        let expected: [(Technique, &[HintAction]); 6] = [
+        let expected: [(Technique, &[HintAction]); 7] = [
+            (Technique::DirectHiddenPair, &[HintAction::Place(Candidate { cell: 52, digit: 8 })]),
             (
                 LockedPair,
                 &[remove(2, 4), remove(5, 8), remove(16, 4), remove(16, 8)],

@@ -56,6 +56,16 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
         : `Which empty cells in ${houseName(house)} still allow ${first.digit}? Look for a placed ${first.digit} in each crossing house.` },
     }
   }
+  if ('direct-placement' in evidence) {
+    const { house, premise } = evidence['direct-placement']
+    const source = 'intersection' in premise ? premise.intersection.source
+      : 'pair' in premise ? premise.pair.house
+        : 'subset' in premise ? premise.subset.house : house
+    return {
+      start: { houses: [source], text: `Find the pattern in ${houseName(source)}.` },
+      check: { houses: [house], text: `Which candidates for ${first.digit} does the pattern rule out in ${houseName(house)}? Find the one place left.` },
+    }
+  }
   if ('intersection' in evidence) {
     const { source, target, cells } = evidence.intersection
     return {

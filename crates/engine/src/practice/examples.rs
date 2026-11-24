@@ -134,6 +134,7 @@ pub(super) const ALS_CELL_CONTINUOUS_NICE_LOOP: PracticeExample = PracticeExampl
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
+        Technique::DirectPointing | Technique::DirectClaiming | Technique::DirectHiddenPair | Technique::DirectHiddenTriple => unreachable!(),
         Technique::UniqueRectangleAic => [rectangle_chains::AIC[1], rectangle_chains::AIC[2]],
         Technique::UniqueRectangleDiscontinuousNiceLoop => [
             rectangle_chains::DISCONTINUOUS[1],

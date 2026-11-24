@@ -117,6 +117,10 @@ catalog! {
     HiddenSingleBox: "hidden-single-box", 14, Beginner, false, ["Hidden Single in a Box"];
     NakedSingle: "naked-single", 4, Easy, false, [];
     HiddenSingle: "hidden-single", 14, Easy, false, [];
+    DirectPointing: "direct-pointing", 50, Easy, false, [];
+    DirectClaiming: "direct-claiming", 50, Easy, false, [];
+    DirectHiddenPair: "direct-hidden-pair", 70, Easy, false, [];
+    DirectHiddenTriple: "direct-hidden-triple", 100, Easy, false, [];
     Pointing: "pointing", 50, Medium, false, ["Locked Candidates Type 1"];
     Claiming: "claiming", 50, Medium, false, ["Locked Candidates Type 2", "Box-Line Reduction"];
     NakedPair: "naked-pair", 60, Medium, false, [];
@@ -227,6 +231,10 @@ impl Technique {
         Self::HiddenSingleBox,
         Self::NakedSingle,
         Self::HiddenSingle,
+        Self::DirectPointing,
+        Self::DirectClaiming,
+        Self::DirectHiddenPair,
+        Self::DirectHiddenTriple,
         Self::LockedPair,
         Self::LockedTriple,
         Self::Pointing,
@@ -313,6 +321,16 @@ impl Technique {
         Self::QuadruplePatternOverlay,
         Self::QuintuplePatternOverlay,
     ];
+
+    pub(crate) const fn direct_premise(self) -> Option<Self> {
+        Some(match self {
+            Self::DirectPointing => Self::Pointing,
+            Self::DirectClaiming => Self::Claiming,
+            Self::DirectHiddenPair => Self::HiddenPair,
+            Self::DirectHiddenTriple => Self::HiddenTriple,
+            _ => return None,
+        })
+    }
 
     /// Default analysis profile, derived by filtering the curated order.
     pub fn default_order() -> &'static [Self] {
