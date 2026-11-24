@@ -597,8 +597,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
     constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
     ? constraints.filter(layer => layer.type !== 'whisper') : []
+  const artworkLayers = artwork && 'layers' in artwork ? artwork.layers ?? [] : artwork ? [artwork.layer] : []
   const encodedRules = guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
-    : artwork ? constraints.filter(layer => layer !== artwork.layer) : constraints
+    : artworkLayers.length ? constraints.filter(layer => !artworkLayers.includes(layer)) : constraints
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasQuadruples = encodedRules.some(layer => record(layer) && layer.type === 'quadruple')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
@@ -767,7 +768,8 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
     }
     // These layers contribute nothing when the export contains no paths or labels.
-    if ((constraint.type === 'consecutiveLine' || !grid && constraint.type === 'cosmeticText') && constraint.segments.length === 0 &&
+    if ((constraint.type === 'consecutiveLine' || constraint.type === 'cosmeticCage' || !grid && constraint.type === 'cosmeticText') &&
+      constraint.segments.length === 0 &&
       (constraint.settings === undefined || record(constraint.settings) && Object.keys(constraint.settings).length === 0) &&
       Object.keys(constraint).every(key => ['id', 'type', 'segments', 'settings'].includes(key))) continue
     if (constraint.type === 'cosmeticText' && authoredRule === 'x-sum') {

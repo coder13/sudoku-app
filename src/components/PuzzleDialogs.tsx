@@ -10,7 +10,7 @@ import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-
 import { exportPuzzle, type ShareFormat } from '../sudoku/formats'
 import { isSolved, makeGame, shouldOfferPuzzleSave, move, valuesOf, type Game } from '../sudoku/game'
 import { MINI_GRID } from '../sudoku/grid'
-import { publishSharedPuzzle, sharedPuzzleLink } from '../sudoku/puzzle-sharing'
+import { publishSharedPuzzle, puzzleExportText, sharedPuzzleLink } from '../sudoku/puzzle-sharing'
 import { roomStore } from '../sudoku/storage'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
@@ -216,6 +216,37 @@ export function SharePuzzle({ game, close }: { game: Game; close: () => void }) 
           <span className="dialog-status" role="status">{status}</span>
           {value ? <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy</Button>
             : <Button variant="primary" onClick={createLink} disabled={sharing}><Link2 size={16} /> {sharing ? 'Creating link…' : 'Create link'}</Button>}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+export function ExportPuzzle({ game, close }: { game: Game; close: () => void }) {
+  const [status, setStatus] = useState('')
+  const text = useRef<HTMLTextAreaElement>(null)
+  const value = puzzleExportText(game)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value)
+      setStatus('Encoding copied.')
+    } catch {
+      text.current?.select()
+      setStatus('Text selected. Use your device’s Copy command.')
+    }
+  }
+
+  return (
+    <Modal title="Export puzzle" onClose={close}>
+      <div className="dialog-form">
+        <p>Copy this encoding to save a copy of the puzzle. You can import it later.</p>
+        <label htmlFor="puzzle-export-output">Puzzle encoding</label>
+        <textarea id="puzzle-export-output" ref={text} value={value} readOnly rows={10} spellCheck={false}
+          onFocus={event => event.currentTarget.select()} />
+        <div className="dialog-actions spread">
+          <span className="dialog-status" role="status">{status}</span>
+          <Button variant="primary" onClick={copy}><Clipboard size={16} /> Copy encoding</Button>
         </div>
       </div>
     </Modal>

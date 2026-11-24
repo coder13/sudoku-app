@@ -62,6 +62,7 @@ impl VariantPuzzle {
             quadruples: Vec::new(),
             lettered_quadruples: None,
             global_entropy: None,
+            entropy_window_groups: Vec::new(),
             pair_clues: Vec::new(),
             positive_sums: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
@@ -126,6 +127,14 @@ impl VariantPuzzle {
                 }
                 PuzzleRule::GlobalEntropy {} => {
                     compiled.global_entropy.get_or_insert(index);
+                }
+                PuzzleRule::EntropyWindowGroup { cells, group } => {
+                    let [top_left, top_right, bottom_left, bottom_right] = *cells;
+                    if top_left >= 72 || top_left % 9 >= 8 || top_right != top_left + 1 ||
+                        bottom_left != top_left + 9 || bottom_right != top_left + 10 {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    compiled.entropy_window_groups.push((index, *cells, *group));
                 }
                 PuzzleRule::Quadruple { top_left, digits }
                 | PuzzleRule::QuadrupleSum { top_left, digits } => {

@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, CloudUpload, Download, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -22,7 +22,6 @@ import { sizedRulePosition, sizedRuleDescriptions } from '../sudoku/sized-rule-g
 import { sizedRuleSingles } from '../sudoku/sized-rule-play'
 import { algebraicRules, analyzeAlgebraic, checkAlgebraicHintPosition } from '../sudoku/algebraic-play'
 import { isAlgebraicCageList } from '../sudoku/algebraic-cages'
-import { puzzleExportText } from '../sudoku/puzzle-sharing'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
 import { cellReference, describeHint, describeHintDigits, describeHintRemovals, HINT_CANDIDATES_ERROR, HINT_ERROR, NO_HINT, moveHintIndex, moveHintStage, techniqueLabel, type CellReferenceStyle, type HintStage, type PuzzleHint } from '../sudoku/hints'
@@ -102,16 +101,6 @@ const ARROWS: Record<string, [number, number]> = {
 function candidateToolMasks(notes: readonly number[] | null | undefined, values: string, displayed: readonly number[] | null, eliminations?: readonly number[]) {
   return notes?.map((mask, cell) => values[cell] === '0'
     ? mask & (displayed?.[cell] ?? mask) & ~(eliminations?.[cell] ?? 0) : 0) ?? null
-}
-
-function downloadPuzzleCopy(game: Game) {
-  const filename = game.title.normalize('NFKD').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'sudoku-puzzle'
-  const url = URL.createObjectURL(new Blob([puzzleExportText(game)], { type: 'application/json' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${filename}.sudoku.json`
-  link.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 async function solveSingleValues({ grid, variant, algebraic, sized, position }: Pick<Game, 'grid' | 'variant' | 'algebraic' | 'sized'> & Partial<Pick<Game, 'position'>>, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine, variantRules?: AdvancedModes['solveSinglesVariants']) {
@@ -195,7 +184,7 @@ function withRatingHints(game: Game, keys: readonly string[], applied = false, r
 
 export function Worktable({
   game: savedGame, games, placeholder, storageAvailable = true, preferredDifficulty, modalOpen, pauseShortcutsEnabled = true, advancedModes, appearance, highlighting, errorMode, multi, actionsRef, inputSize, panelHeight, setPanelHeight,
-  beginResize, toggleMulti, onShare, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle, onMobilePuzzleTopSpaceChange,
+  beginResize, toggleMulti, onShare, onExport, onPublish, onCancelDraft, onNewPuzzle, onImportPuzzle, onEditCages, onEditSizedRules, onEditRegions, onEditChainColors, onStopPlaying, onSelectPuzzle = roomStore.select, sharedOnOtherDevice, catchUpPuzzle, onMobilePuzzleTopSpaceChange,
   pausedOnLaunch = false, onResumeLaunch, loadingPuzzle = false, cellReferenceStyle, workspaceMode, showLeftPanel, showRightPanel, showBottomPanel, onOpenHintPanel, onOpenRightPanel, puzzleBrowserView, setPuzzleBrowserView,
 }: {
   game: Game
@@ -219,6 +208,7 @@ export function Worktable({
   beginResize: () => void
   toggleMulti: () => void
   onShare: () => void
+  onExport?: () => void
   onPublish: () => void
   onCancelDraft: () => void
   onStopPlaying: () => void
@@ -2528,8 +2518,8 @@ export function Worktable({
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
     </button>
-    {!draft && <button onClick={() => { setPuzzleMenuOpen(false); downloadPuzzleCopy(game) }}>
-      <Download size={17} aria-hidden="true" /> Export puzzle
+    {!draft && <button onClick={() => { setPuzzleMenuOpen(false); onExport?.() }}>
+      <Clipboard size={17} aria-hidden="true" /> Export puzzle
     </button>}
     {showPuzzleSync && <>
       <button type="button" disabled={!storageAvailable || syncStatus === 'saving' || syncStatus === 'offline' || syncStatus === 'offline-clean'}
