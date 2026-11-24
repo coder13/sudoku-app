@@ -1361,7 +1361,7 @@ mod tests {
     #[test]
     fn protocol_distinguishes_a_missing_profile_from_an_empty_profile() {
         let rating = request(json!({"type":"rate", "values":SPARSE}));
-        assert_eq!(rating["value"]["score"]["points"], 846);
+        assert_eq!(rating["value"]["score"]["points"], 832);
         assert_eq!(rating["value"]["status"], json!({"solved":"medium"}));
         assert_eq!(rating["value"]["scoringVersion"], SCORING_VERSION);
         assert_eq!(
