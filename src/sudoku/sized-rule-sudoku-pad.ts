@@ -15,7 +15,7 @@ function boardCell(value: unknown, size: number, offset = 0) {
   return (value[0] - offset) * size + value[1] - offset
 }
 
-function readPath(value: unknown, size: number, maxPoints = size) {
+export function readPath(value: unknown, size: number, maxPoints = size) {
   if (!Array.isArray(value) || value.length < 2 || value.length > maxPoints) {
     throw new Error('This SudokuPad export has an invalid line path.')
   }
@@ -131,7 +131,7 @@ function readXvAndSandwichOverlays(overlays: unknown, size: number, authoredXv: 
   }
 }
 
-function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
+export function readKropkiDots(overlays: unknown, size: number): SizedConstraintRule {
   if (!Array.isArray(overlays) || !overlays.length || overlays.length > 4 * size * (size - 1)) {
     throw new Error('This SudokuPad export has invalid Kropki dots.')
   }
