@@ -9,7 +9,7 @@ import {
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
-  coreModeLimit, coreSudokuModes, customModeDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
+  CUSTOM_MODES_KEY, coreSudokuModes, customModeDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
   selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
 import { techniqueLabel } from '../sudoku/hints'
@@ -182,7 +182,7 @@ function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </li>)}
-      {modes.filter(mode => mode.pinned).map(mode => <li key={mode.id}>
+      {modes.map(mode => <li key={mode.id}>
         <Link to="/puzzles/new/difficulty" search={{ mode: mode.id }} state={{ fromPuzzleVariantPicker: true }}>
           <Grid3X3 size={20} aria-hidden="true" /><span>{mode.name}</span><ChevronRight size={18} aria-hidden="true" />
         </Link>
@@ -220,8 +220,6 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<CustomDifficulty>('medium')
   const modeId = useRef(mode?.id)
-  const canPin = modes.filter(saved => saved.pinned && saved.id !== modeId.current).length < coreModeLimit - coreSudokuModes.length
-  const [pinned, setPinned] = useState(mode?.pinned ?? canPin)
   const [savedMessage, setSavedMessage] = useState('')
   const [saveError, setSaveError] = useState('')
   const query = filter.trim().toLowerCase()
@@ -244,8 +242,8 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
     if (!name.trim() || !rules.length) return
     try {
       modeId.current ??= createGameId()
-      const saved = onSave({ id: modeId.current, ...definition, pinned: pinned && canPin })
-      setSavedMessage(saved.pinned ? 'Mode saved to core modes.' : 'Mode saved.')
+      onSave({ id: modeId.current, ...definition })
+      setSavedMessage('Mode saved.')
       setSaveError('')
     } catch {
       setSaveError('Could not save this mode on this device.')
@@ -290,14 +288,8 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
           {markerOptions[marker].label}
         </label>)}
       </fieldset>}
-      <label className="sudoku-pin-mode">
-        <input type="checkbox" checked={pinned && canPin} disabled={busy || !canPin}
-          onChange={event => { setPinned(event.currentTarget.checked); setSavedMessage('') }} />
-        Show in core modes
-      </label>
-      {!canPin && <p className="sudoku-mode-note">Core modes are full. Unpin a saved mode to make room.</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      {savedMessage && <p role="status">{savedMessage}</p>}
+      {savedMessage && <p role="status">{savedMessage} It appears in the main mode list on this device and linked devices after sync.</p>}
       <Button type="submit" disabled={busy || !name.trim() || !rules.length}>Save mode</Button>
       <CustomDifficultyField levels={levels} value={difficulty} disabled={busy} onChange={setLevel} />
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -528,7 +520,15 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const [savedModes, setSavedModes] = useState<readonly SudokuMode[] | null>(null)
-  useEffect(() => { setSavedModes(readSudokuModes()) }, [])
+  useEffect(() => {
+    const refreshModes = (event: StorageEvent) => {
+      if (event.key && event.key !== CUSTOM_MODES_KEY) return
+      setSavedModes(readSudokuModes())
+    }
+    setSavedModes(readSudokuModes())
+    window.addEventListener('storage', refreshModes)
+    return () => window.removeEventListener('storage', refreshModes)
+  }, [])
   const modes = savedModes ?? []
   const mode = modes.find(item => item.id === newPuzzleSearch?.mode)
   const openRemembered = section === 'new' && !difficultyScreen && !customScreen && !newPuzzleSearch?.mode
@@ -536,12 +536,10 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const screen = section === 'new' ? difficultyScreen || openRemembered ? 'difficulty' : customScreen ? 'custom' : 'variant' : undefined
   function saveMode(saved: SudokuMode) {
     const current = readSudokuModes()
-    const pinCount = current.filter(item => item.pinned && item.id !== saved.id).length
-    const mode = { ...saved, pinned: saved.pinned && pinCount < coreModeLimit - coreSudokuModes.length }
-    const next = current.some(item => item.id === mode.id) ? current.map(item => item.id === mode.id ? mode : item) : [...current, mode]
+    const next = current.some(item => item.id === saved.id) ? current.map(item => item.id === saved.id ? saved : item) : [...current, saved]
     writeSudokuModes(next)
     setSavedModes(next)
-    return mode
+    return saved
   }
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const rememberedVariant = variant === newPuzzlePreference.variant ? newPuzzlePreference : undefined
@@ -584,7 +582,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
       if ((customScreen || difficultyScreen) && newPuzzleSearch?.mode) {
         if (savedModes === null) return <p className="main-menu-empty" role="status">Loading saved mode…</p>
         if (!mode) return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
-          <p>This mode isn’t saved on this device.</p>
+          <p>This mode is not available on this device yet. If it was saved on another linked device, wait for sync to finish.</p>
           <Link to="/puzzles/new/custom" className={buttonClassName('primary')}>Generate a custom puzzle</Link>
         </section>
         if (difficultyScreen) return <CustomModeDifficulty key={mode.id} mode={mode} />

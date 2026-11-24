@@ -8,6 +8,7 @@ import { DISABLED_HINTS_KEY, readDisabledHintTechniques } from './hint-preferenc
 import { readSolverProfile, SOLVER_PROFILE_KEY } from './solver-profile.ts'
 import { PLAY_PREFERENCES_KEY, readPinnedActions } from './play-preferences.ts'
 import { parsePinnedActions } from './pinned-actions.ts'
+import { CUSTOM_MODES_KEY, readSudokuModes, type SudokuMode } from './custom-modes.ts'
 import type { SyncRequest } from './sync-engine.ts'
 
 export type SettingsValues = Record<string, string>
@@ -28,6 +29,7 @@ function groups(storage: Pick<Storage, 'getItem'>): Group[] {
     single(SHORTCUTS_KEY, storedShortcutPreferences(readShortcuts(storage)), 'json'),
     single(DISABLED_HINTS_KEY, readDisabledHintTechniques(storage), 'json'),
     single(SOLVER_PROFILE_KEY, readSolverProfile(storage) ?? null, 'json'),
+    single(CUSTOM_MODES_KEY, readSudokuModes(storage), 'json'),
   ]
 }
 
@@ -46,6 +48,7 @@ const defaults = snapshot(groups({ getItem: () => null }))
 function normalizeSettings(values: SettingsValues): SettingsValues {
   const shortcuts = fieldId(SHORTCUTS_KEY, '')
   const pinned = fieldId(PLAY_PREFERENCES_KEY, 'pinnedActions')
+  const customModes = fieldId(CUSTOM_MODES_KEY, '')
   return {
     ...values,
     ...(values[shortcuts] === undefined ? {} : {
@@ -54,7 +57,39 @@ function normalizeSettings(values: SettingsValues): SettingsValues {
     ...(values[pinned] === undefined ? {} : {
       [pinned]: JSON.stringify(parsePinnedActions(JSON.parse(values[pinned]))),
     }),
+    ...(values[customModes] === undefined ? {} : {
+      [customModes]: JSON.stringify(readSudokuModes({ getItem: () => values[customModes] ?? null })),
+    }),
   }
+}
+
+function modeList(value: string | undefined) {
+  return value === undefined ? [] : readSudokuModes({ getItem: () => value })
+}
+
+function mergeCustomModes(baseValue: string | undefined, localValue: string | undefined, remoteValue: string | undefined) {
+  const base = new Map(modeList(baseValue).map(mode => [mode.id, mode]))
+  const local = new Map(modeList(localValue).map(mode => [mode.id, mode]))
+  const remote = new Map(modeList(remoteValue).map(mode => [mode.id, mode]))
+  const orderedIds = [...new Set([...local.keys(), ...remote.keys()])]
+  const merged: SudokuMode[] = []
+  // Merge additions from offline devices. If both devices edit one mode, keep the local edit.
+  for (const id of orderedIds) {
+    const localMode = local.get(id)
+    const remoteMode = remote.get(id)
+    if (!localMode) {
+      if (remoteMode) merged.push(remoteMode)
+      continue
+    }
+    if (!remoteMode) {
+      merged.push(localMode)
+      continue
+    }
+    const original = base.get(id)
+    const localIsUnchanged = original && JSON.stringify(localMode) === JSON.stringify(original)
+    merged.push(localIsUnchanged ? remoteMode : localMode)
+  }
+  return JSON.stringify(merged)
 }
 
 export async function syncSettings(storage: Storage, checkpoint: string, request: SyncRequest, remote: SettingsValues) {
@@ -71,6 +106,13 @@ export async function syncSettings(storage: Storage, checkpoint: string, request
     } else if (value !== defaults[id] && !Object.hasOwn(remote, id)) {
       seeds[id] = value
     }
+  }
+  const customModesId = fieldId(CUSTOM_MODES_KEY, '')
+  const mergedModes = mergeCustomModes(previous[customModesId], before[customModesId], remote[customModesId])
+  const remoteModes = remote[customModesId] ?? defaults[customModesId]
+  if (mergedModes !== remoteModes) {
+    if (Object.hasOwn(seeds, customModesId)) seeds[customModesId] = mergedModes
+    else edits[customModesId] = mergedModes
   }
   if (Object.keys(seeds).length || Object.keys(edits).length) {
     remote = normalizeSettings(await request<SettingsValues>('settings', 'PATCH', { seeds, edits }))

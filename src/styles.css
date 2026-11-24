@@ -2255,7 +2255,7 @@ svg { flex-shrink: 0; }
 .sudoku-selected-rules, .sudoku-mode-note { color: var(--muted); }
 .sudoku-custom-rule-list { display: grid; margin: 0; padding: 0; border: 0; }
 .sudoku-custom-rule-list legend { font-weight: 700; margin-bottom: var(--space-6); }
-.sudoku-custom-rule-list label, .sudoku-pin-mode {
+.sudoku-custom-rule-list label {
   display: flex;
   align-items: flex-start;
   gap: var(--space-10);
@@ -2263,7 +2263,7 @@ svg { flex-shrink: 0; }
   cursor: pointer;
 }
 .sudoku-custom-rule-list label { border-bottom: 1px solid var(--border); }
-.sudoku-custom-rule-list input, .sudoku-pin-mode input { flex: none; margin-top: .3em; }
+.sudoku-custom-rule-list input { flex: none; margin-top: .3em; }
 .sudoku-custom-rule-list span { display: grid; gap: var(--space-4); }
 .sudoku-custom-rule-list small { color: var(--muted); }
 .new-puzzle-variant-picker {
