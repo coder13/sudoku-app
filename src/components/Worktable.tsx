@@ -2857,7 +2857,11 @@ export function Worktable({
           style={{ '--board-font-scale': appearance.gridTextScale, '--candidate-font-scale': appearance.candidateTextSize / 100 } as CSSProperties}>
           {puzzleControlsBelow
             ? [puzzleTopActions, puzzleStage, puzzleMetadata, puzzleActions]
-            : [puzzleMetadata, puzzleActions, puzzleStage]}
+            : mobile ? [
+                <div key="toolbar" className="mobile-puzzle-toolbar" data-no-panel-hold>
+                  {puzzleMetadata}{puzzleActions}
+                </div>, puzzleStage,
+              ] : [puzzleMetadata, puzzleActions, puzzleStage]}
         {game.practiceTechnique
           ? <div className="puzzle-caption">{techniqueLabel(game.practiceTechnique)}</div>
           : <PuzzleCollectionCredit game={game} />}

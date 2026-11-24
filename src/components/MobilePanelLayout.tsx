@@ -47,6 +47,7 @@ type Drag = {
 }
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
+const PUZZLE_DRAG_THRESHOLD = 6
 const PUZZLE_GESTURE_LOCK_FALLBACK_MS = 450
 type PuzzleGesture = {
   pointerId: number
@@ -151,7 +152,7 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
 
   function updatePreview(current: PuzzleGesture, y: number) {
     const position = positionAtDelta(current, y - current.startY)
-    current.moved ||= Math.abs(position.delta) > 6
+    current.moved ||= Math.abs(position.delta) > PUZZLE_DRAG_THRESHOLD
     current.space = position.space
     current.shrink = position.shrink
     setPreview(current)
@@ -346,7 +347,7 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       const gestureZone = zone.current
       const puzzlePanel = gestureZone?.closest<HTMLElement>('[data-mobile-panel="puzzle"]')
       const target = event.target instanceof Element ? event.target : null
-      if (!event.isPrimary || !gestureZone || !puzzlePanel || !target) return
+      if (!event.isPrimary || event.button !== 0 || !gestureZone || !puzzlePanel || !target) return
       const layout = gestureZone.closest<HTMLElement>('.mobile-panel-layout')
       const page = layout?.closest<HTMLElement>('.standard-workspace-page')
       const pageBounds = page?.getBoundingClientRect()
@@ -370,7 +371,8 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       const isGestureZone = isWorkspaceNegativeSpace
         || Boolean(target.closest('.mobile-puzzle-gesture-zone[data-edge="top"]'))
       if (!isGestureZone && target.closest('input, textarea, select, [role="checkbox"], [role="gridcell"], [data-cell], .candidate-button')) return
-      if (!isGestureZone && target.closest('button, a, [role="button"]')) {
+      // Leave taps on the toolbar intact until the pointer moves vertically.
+      if (!isGestureZone && target.closest('.mobile-puzzle-toolbar, button, a, [role="button"]')) {
         pendingPointer.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY }
         return
       }
@@ -385,11 +387,11 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       if (!pending || pending.pointerId !== event.pointerId) return
       const deltaX = event.clientX - pending.startX
       const deltaY = event.clientY - pending.startY
-      if (Math.abs(deltaX) > MOVE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (Math.abs(deltaX) > PUZZLE_DRAG_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
         pendingPointer.current = null
         return
       }
-      if (Math.abs(deltaY) <= MOVE_THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return
+      if (Math.abs(deltaY) <= PUZZLE_DRAG_THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return
       pendingPointer.current = null
       gestureHandlers.current?.start(event, true, pending.startY)
       if (drag.current) gestureHandlers.current?.move(event, true)
