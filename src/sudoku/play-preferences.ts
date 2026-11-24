@@ -27,7 +27,6 @@ export type PlayPreferences = {
   chainColorPairs: readonly ChainColorPair[]
   highlightCandidatePairs: boolean
   showKillerCombinations: boolean
-  experimentalMode: boolean | null
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
@@ -52,7 +51,6 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   chainColorPairs: CHAIN_COLOR_PAIRS,
   highlightCandidatePairs: false,
   showKillerCombinations: true,
-  experimentalMode: null,
   multi: false,
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
@@ -118,7 +116,6 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     chainColorPairs: parseChainColorPairs(saved.chainColorPairs),
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
     showKillerCombinations: saved.showKillerCombinations !== false,
-    experimentalMode: typeof saved.experimentalMode === 'boolean' ? saved.experimentalMode : null,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',

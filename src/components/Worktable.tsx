@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, ScanSearch, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -52,8 +52,6 @@ import { Board, gridCellAtPoint } from './Board'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
 import { ChainColorsDialog, ChainsPanel } from './ChainsPanel'
-import { SubsetsPanel } from './SubsetsPanel'
-import { useSubsets } from './useSubsets'
 import { useStrongLinkOverlay } from './useStrongLinkOverlay'
 import { CompletedPuzzle } from './CompletedPuzzle'
 import { KillerCombos } from './KillerCombos'
@@ -74,7 +72,7 @@ import { PuzzleAnalysisContents } from './PuzzleAnalysis'
 import { SolutionPath, solutionEndIndex, solutionEndSummary, solutionStatus, verifiedSolutionSummary, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
-import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
+import { usePlayPreference } from './usePlayPreference'
 import { usePuzzleSelection } from './usePuzzleSelection'
 import { usePuzzleTimer } from './usePuzzleTimer'
 import { usePuzzleZoom } from './usePuzzleZoom'
@@ -83,7 +81,6 @@ import { useTouchHold } from './useTouchHold'
 const puzzleToolDetails = {
   colors: { label: 'Colors', Icon: Palette },
   chains: { label: 'Chains', Icon: Link2 },
-  subsets: { label: 'Subsets', Icon: ScanSearch },
 }
 const puzzleTools = PUZZLE_TOOL_ORDER.map(id => ({ id, ...puzzleToolDetails[id] }))
 
@@ -273,10 +270,8 @@ export function Worktable({
   const [desktopColorsVisible, setDesktopColorsVisible] = useState(false)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
   const [desktopInputVisible, setDesktopInputVisible] = useState(false)
-  const [desktopSubsetsVisible, setDesktopSubsetsVisible] = useState(false)
   const showStrongLinks = savedPlayState?.showStrongLinks ?? false
   const setShowStrongLinks = (value: SetStateAction<boolean>) => playSession.set(game.id, 'showStrongLinks', value)
-  const [experimentalMode] = useExperimentalMode()
   const [startDrawingOnOpen, setStartDrawingOnOpen] = useState(false)
   const drawingReturn = useRef<{ gameId: string; tab: ToolPanelTab; highlight: boolean } | null>(null)
   const [failedChainActions, setFailedChainActions] = useState<readonly DeductionAction[] | null>(null)
@@ -450,7 +445,7 @@ export function Worktable({
   const ratingPending = !draft && needsRating && !ratingFailed
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
   const panelSupported = (panel: PuzzleTool) => !placeholder && !draft &&
-    (panel !== 'chains' || !grid) && (panel !== 'subsets' || experimentalMode) && (panel !== 'rules' || mixedVariant)
+    (panel !== 'chains' || !grid) && (panel !== 'rules' || mixedVariant)
   const panelAvailable = (panel: PuzzleTool) => panelSupported(panel) &&
     (!solved || panel === 'solution' || panel === 'techniques' || panel === 'rules')
   const openPuzzlePanels = toolPanels.open.filter(desktop ? panelSupported : panelAvailable)
@@ -475,8 +470,6 @@ export function Worktable({
   const floatingPuzzleMenu = mobile || puzzleControlsBelow
   const chainsVisible = !grid && (mobile ? activeToolPanel === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
-  const subsetsVisible = experimentalMode && (mobile ? activeToolPanel === 'subsets'
-    : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets')
   const colorsPanelOpen = openPuzzlePanels.includes('colors')
   const colorsVisible = mobile ? activeToolPanel === 'colors'
     : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
@@ -506,10 +499,8 @@ export function Worktable({
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === variantEliminations ? puzzleNotes : undefined
   const masks = currentNotes?.masks
-  const completeSubsetMasks = useMemo(() => candidateToolMasks(masks, values, null, eliminations), [masks, values, eliminations])
-  const subsetMasks = useMemo(() => completeSubsetMasks && displayedCandidates
-    ? completeSubsetMasks.map((mask, cell) => mask & (displayedCandidates[cell] ?? mask)) : completeSubsetMasks,
-  [completeSubsetMasks, displayedCandidates])
+  const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations),
+    [masks, values, displayedCandidates, eliminations])
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(() => !draft && !solved && Boolean(masks &&
     singleFromCandidates(values, displayedCandidates ?? masks, eliminations, puzzle, grid, sized?.rules)),
@@ -521,8 +512,8 @@ export function Worktable({
   const showChainSketches = chainsActive || !grid && Boolean(game.chainSketch)
   const chainMasks = useMemo(() => {
     if (!showChainSketches || draft || solved) return null
-    return currentNotes ? subsetMasks : candidateToolMasks(puzzleNotes?.masks, values, displayedCandidates, eliminations)
-  }, [showChainSketches, draft, solved, currentNotes, subsetMasks, puzzleNotes, values, displayedCandidates, eliminations])
+    return currentNotes ? toolMasks : candidateToolMasks(puzzleNotes?.masks, values, displayedCandidates, eliminations)
+  }, [showChainSketches, draft, solved, currentNotes, toolMasks, puzzleNotes, values, displayedCandidates, eliminations])
   const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
   const chainGraph = useMemo(() => chainMasks ? makeChainGraph(chainMasks, puzzle) : null, [chainMasks, puzzle])
   const canAnalyzeChains = Boolean(masks && !missingChainCandidates && !disabled)
@@ -543,13 +534,11 @@ export function Worktable({
   const strongLinks = useStrongLinkOverlay(strongLinksVisible ? chainGraph : null, strongLinkMask, sketch.annotations,
     sketch.colorPairs, sketch.usedColorPairs, sketch.assignedColors)
   const browsingStrongLinks = strongLinksVisible && !sketch.drawing
-  const inspectSubset = !savedHighlightMode && brush === null && subsetsVisible && !hintVisualsActive && !disabled && !draft && !solved && !sketch.drawing && !browsingStrongLinks
-  const subset = useSubsets(inspectSubset ? subsetMasks : null, completeSubsetMasks, selected, values, grid ?? CLASSIC_GRID, puzzle)
   const candidateBrush = colorTarget === 'candidate' && !cellColorsDisabled && !sketch.drawing && !hintAnnotations && !mobileHintPreview
     ? colorMode ? selectedColor : brush : null
   const paintingCandidates = candidateBrush !== null
-  const colorLinkMasks = displayedCandidates && subsetMasks &&
-    !subsetMasks.some((mask, cell) => values[cell] === '0' && !mask) ? subsetMasks : null
+  const colorLinkMasks = displayedCandidates && toolMasks &&
+    !toolMasks.some((mask, cell) => values[cell] === '0' && !mask) ? toolMasks : null
   const paintedStart = lastColoredCandidate?.gameId === id && lastColoredCandidate.candidate.cell === active
     ? lastColoredCandidate.candidate : null
   const colorStartCell = selected.length > 1 ? null : selected[0] ?? active
@@ -591,7 +580,7 @@ export function Worktable({
   const cellDrivenHighlight = givenHighlightSelection || (penOrPencil && !selectedDigit && !highlightedDigitMask &&
     selected.length === 1 && values[selected[0]] !== '0')
   const canEditPencil = !disabled && !draft && pencilActive && !highlightMode &&
-    !paintingCandidates && !sketch.drawing && !browsingStrongLinks && !hintAnnotations && !inspectSubset
+    !paintingCandidates && !sketch.drawing && !browsingStrongLinks && !hintAnnotations
   const pencilGroup = canEditPencil ? highlightedDigitMask & ((1 << gridSize) - 1) : 0
   const canDragCandidates = canEditPencil && !pencilGroup && !multi && selectedDigit !== null && selectedDigit > 0
   const canSelectCellsByDrag = canStartCellSelectionDrag({
@@ -834,7 +823,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel, .subsets-panel')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel')
       || target.closest('.puzzle-menu-wrap, .desktop-dock .dv-tab')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu, .puzzle-quick-actions')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
@@ -1488,8 +1477,7 @@ export function Worktable({
   }
 
   function togglePenPencilMode() {
-    if (mobile && (colorsVisible || subsetsVisible)) selectToolPanel('digits')
-    else if (subsetsVisible) closeToolPanel('subsets', true)
+    if (mobile && colorsVisible) selectToolPanel('digits')
     switchPenPencil(togglePencilMode(pencil))
   }
 
@@ -1765,7 +1753,7 @@ export function Worktable({
       const shortcutDigit = shortcut && !event.shiftKey && !event.isComposing
         ? Number(/^[1-9]$/.test(key) ? key : /^Digit([1-9])$/.exec(event.code)?.[1]) || null : null
       const shiftDigit = event.isComposing ? null : highlightedDigitShortcut(event)
-      const solvingDigitShortcuts = !draft && !disabled && !solved && !colorMode && !eraseMode && brush === null && !inspectSubset
+      const solvingDigitShortcuts = !draft && !disabled && !solved && !colorMode && !eraseMode && brush === null
       const digitShortcut = shortcutDigit ?? shiftDigit
       const drawLinksShortcut = !event.isComposing && shortcutMatches(event, shortcuts, 'chainDrawing')
       const applyEditsShortcut = !event.isComposing && shortcutMatches(event, shortcuts, 'applyEdits')
@@ -1878,10 +1866,7 @@ export function Worktable({
         }
         return
       }
-      if (inspectSubset && !shortcut && (/^[0-9]$/.test(key) || ['backspace', 'delete', 'escape'].includes(key))) {
-        event.preventDefault()
-        if (key === 'escape') setSelected([])
-      } else if (cancelTool && !cellColorsDisabled && (brush !== null || colorMode || mobile && colorsVisible)) {
+      if (cancelTool && !cellColorsDisabled && (brush !== null || colorMode || mobile && colorsVisible)) {
         event.preventDefault()
         if (event.repeat) return
         const cell = target instanceof HTMLElement ? target.closest<HTMLElement>('.paint-candidate')?.closest<HTMLElement>('[data-cell]') : null
@@ -1932,10 +1917,6 @@ export function Worktable({
         const col = Math.min(gridSize - 1, Math.max(0, active % gridSize + dx))
         const next = row * gridSize + col
         setActive(next)
-        if (inspectSubset) {
-          boardRef.current?.querySelector<HTMLElement>(`[data-cell="${next}"]`)?.focus({ preventScroll: true })
-          return
-        }
         const givenDigit = givenDigitAt(visibleGivens, next)
         if (!highlightedDigitMask) {
           if (givenDigit) setSelectedDigit(givenDigit)
@@ -2361,12 +2342,6 @@ export function Worktable({
         }
         setShowStrongLinks((shown) => !shown)
       } }} />
-  const subsetsUnavailable = disabled || solved || draft ? 'Subsets are available while solving.'
-    : currentNotes?.failed ? 'The candidates did not load.'
-    : currentNotes?.masks === null ? 'Resolve grid conflicts to inspect subsets.'
-    : subsetMasks ? undefined : 'Loading candidates…'
-  const subsetsPanel = <SubsetsPanel count={inspectSubset ? subset.cells.length : 0} digits={subset.digits} removalCount={subset.removalCount}
-    onClear={() => setSelected([])} unavailable={subsetsUnavailable} />
   const completionPanel = showResults || (mobile && showSolvedGrid) ? (
     <CompletedPuzzle game={savedGame} games={games} catchUpPuzzle={catchUpPuzzle} preferredDifficulty={preferredDifficulty}
       ratingPending={ratingPending} shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
@@ -2572,7 +2547,7 @@ export function Worktable({
   // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
   // Paused/preview/finished puzzles retain their mode without showing editable controls.
   const gridInputMode = puzzleInputMode({
-    drawingLinks: sketch.drawing, browsingStrongLinks, inspectingSubsets: inspectSubset,
+    drawingLinks: sketch.drawing, browsingStrongLinks,
     erasing: eraseMode, coloring: colorMode || brush !== null,
     highlighting: highlightMode, penciling: pencilActive,
   })
@@ -2585,10 +2560,6 @@ export function Worktable({
               return
             }
             leaveChainInput()
-            if (inspectSubset) {
-              setSelected([])
-              selectToolPanel('digits')
-            }
             if (colorsVisible) setColorBrush(null)
             setEraseMode(false)
             setColorMode(false)
@@ -2628,36 +2599,31 @@ export function Worktable({
   ) : (
     <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
       givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
-      candidates={inspectSubset ? subsetMasks ?? undefined : hintAnnotations && hintDiagram ? hintCandidates : undefined}
-      annotations={hintAnnotations ?? (inspectSubset ? subset.annotations : visibleChainAnnotations)}
-      showAnnotatedCandidates={!inspectSubset && Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
-      candidateGroupPreview={!hintVisualsActive && !inspectSubset && canPreviewCandidates && candidatePreviewCell !== null
+      candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined}
+      annotations={hintAnnotations ?? visibleChainAnnotations}
+      showAnnotatedCandidates={Boolean(visibleChainAnnotations)} showPlayerColors={showPlayerColors} showImportedAnnotations={!hintVisualsActive}
+      candidateGroupPreview={!hintVisualsActive && canPreviewCandidates && candidatePreviewCell !== null
         ? { cell: candidatePreviewCell, mask: pencilPreviewMask, mode: candidateMode } : undefined}
       descriptionId={badgeMode ? modeBadgeId : undefined}
       modeBorder={badgeMode} modeBoundaryRef={puzzleGridBorderRef}
       modeBadge={modeBadge}
       label={cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined}
       showGuides={appearance.showGuides}
-      highlighting={hintVisualsActive || inspectSubset ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
+      highlighting={hintVisualsActive ? { ...highlighting, relatedCells: false, matchingDigits: false, matchingCandidates: false } : highlighting}
       overlay={mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined}
-      highlightedDigit={hintVisualsActive || inspectSubset ? null : selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)}
-      highlightedDigitMask={hintVisualsActive || inspectSubset ? 0 : playerHighlightMask}
+      highlightedDigit={hintVisualsActive ? null : selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null)}
+      highlightedDigitMask={hintVisualsActive ? 0 : playerHighlightMask}
       highlightedDigitMatch={digitHighlight.match}
       highlightCandidateCells={!eraseMode}
-      selected={inspectSubset ? subset.cells : selected} active={active}
+      selected={selected} active={active}
       pointerFocusedCell={pointerFocusedCell}
-      highlightCandidateCount={!hintVisualsActive && !inspectSubset && highlightCandidatePairs ? 2 : null}
-      boardRef={boardRef} onCell={inspectSubset ? (cell) => {
-        setActive(cell)
-        if (values[cell] !== '0') return
-        setAnchor(cell)
-        setSelected((current) => current.includes(cell) ? current.filter((item) => item !== cell) : [...current, cell])
-      } : canSelectCell && !paintingCandidates ? clickCell : undefined}
-      onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations && !inspectSubset ? doubleClickCell : undefined}
-      onPaintCandidate={paintingCandidates && !inspectSubset ? colorCandidate : undefined}
-      dragSelect={canSelectCell && !inspectSubset && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates)}
-      onCellPointerDown={canSelectCell && !paintingCandidates && !inspectSubset ? startCellDrag : undefined}
-      onCellPointerMove={canSelectCell && !paintingCandidates && !inspectSubset ? continueCellDrag : undefined}
+      highlightCandidateCount={!hintVisualsActive && highlightCandidatePairs ? 2 : null}
+      boardRef={boardRef} onCell={canSelectCell && !paintingCandidates ? clickCell : undefined}
+      onCellDoubleClick={canSelectCell && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined}
+      onPaintCandidate={paintingCandidates ? colorCandidate : undefined}
+      dragSelect={canSelectCell && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates)}
+      onCellPointerDown={canSelectCell && !paintingCandidates ? startCellDrag : undefined}
+      onCellPointerMove={canSelectCell && !paintingCandidates ? continueCellDrag : undefined}
       onGridPointerLeave={() => {
         hoveredCell.current = null
         setCandidatePreviewCell(null)
@@ -2993,7 +2959,7 @@ export function Worktable({
     <>
       <PlayLayout desktop={desktop} puzzle={puzzlePanel} hint={hintPanel}
         input={desktop ? inputPanel : <MobileInputTabs active={activeToolPanel} open={openPuzzlePanels}
-          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, subsets: subsetsPanel, rules: rulesPanel,
+          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, rules: rulesPanel,
             solution: solutionPathPanel, techniques: techniquesPanel,
           }} activeTabRef={activeMobileInputTabRef}
           toolsDisabled={rearranging} toolToggles={panelToggles.length ? panelToggles : undefined}
@@ -3004,7 +2970,7 @@ export function Worktable({
           onClose: () => closeToolPanel(activeDesktopTab.id),
           content: activeDesktopTab.id === 'colors' ? cellColorsPanel : activeDesktopTab.id === 'techniques'
             ? techniquesPanel
-            : activeDesktopTab.id === 'chains' ? chainsPanel : activeDesktopTab.id === 'subsets' ? subsetsPanel
+            : activeDesktopTab.id === 'chains' ? chainsPanel
               : activeDesktopTab.id === 'rules' ? rulesPanel : solutionPathPanel,
         } : undefined}
         mobile={{
@@ -3038,14 +3004,13 @@ export function Worktable({
         }}
         advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel}
           chains={advancedPanelOpen('chains') ? chainsPanel : undefined}
-          subsets={advancedPanelOpen('subsets') ? subsetsPanel : undefined}
           cellColors={advancedPanelOpen('colors') ? cellColorsPanel : undefined} rules={rulesPanel || undefined}
           hint={advancedHintPanel} solutionPath={advancedPanelOpen('solution') ? solutionPathPanel : undefined}
           techniques={advancedPanelOpen('techniques') ? techniquesPanel : undefined}
           details={detailsPanel} browser={browserPanel} showLeft={showLeftPanel} showRight={showRightPanel} showBottom={showBottomPanel}
           activeToolPanel={activeToolPanel} onSelectToolPanel={selectToolPanel}
           focusHintRequest={focusHintRequest} focusChainsRequest={focusChainsRequest}
-          onSubsetsVisibleChange={setDesktopSubsetsVisible} onColorsVisibleChange={setDesktopColorsVisible}
+          onColorsVisibleChange={setDesktopColorsVisible}
           onChainsVisibleChange={setDesktopChainsVisible} onInputVisibleChange={setDesktopInputVisible}
           onSolutionVisibleChange={setDesktopSolutionVisible} /> : undefined} />
       <Modal title="Actions" className="puzzle-actions-sheet" open={mobile && actionsOpen} motionSpeed="overlay"

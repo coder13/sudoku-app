@@ -150,11 +150,6 @@ export const DesktopModeBadge: Story = {
 }
 export const MobileInputTools: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  beforeEach: () => {
-    const saved = playPreferenceStore.getSnapshot().experimentalMode
-    playPreferenceStore.set('experimentalMode', true)
-    return () => playPreferenceStore.set('experimentalMode', saved)
-  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
     const trigger = canvas.getByRole('button', { name: 'Input tools' })
@@ -166,8 +161,8 @@ export const MobileInputTools: Story = {
     const menu = within(inputTools)
     expect(menu.queryByRole('button', { name: 'Generate candidates' })).not.toBeInTheDocument()
     expect(menu.getAllByRole('button', { pressed: false }).map(button => button.textContent?.trim()))
-      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains', 'Subsets'])
-    for (const name of ['Solution', 'Techniques', 'Subsets']) {
+      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains'])
+    for (const name of ['Solution', 'Techniques']) {
       const toggle = menu.getByRole('button', { name })
       toggle.focus()
       await userEvent.keyboard('{Enter}')
@@ -210,19 +205,14 @@ export const MobileInputTools: Story = {
 export const PuzzlePanelToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  beforeEach: () => {
-    const saved = playPreferenceStore.getSnapshot().experimentalMode
-    playPreferenceStore.set('experimentalMode', true)
-    return () => playPreferenceStore.set('experimentalMode', saved)
-  },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
     const options = canvas.getByRole('button', { name: 'Open puzzle options' })
     await userEvent.click(options)
     const toolButtons = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!).getAllByRole('button', {
-      name: /^(Colors|Chains|Subsets)$/,
+      name: /^(Colors|Chains)$/,
     })
-    expect(toolButtons.map(button => button.textContent?.trim())).toEqual(['Colors', 'Chains', 'Subsets'])
+    expect(toolButtons.map(button => button.textContent?.trim())).toEqual(['Colors', 'Chains'])
     const chains = canvas.getByRole('button', { name: 'Chains', pressed: false })
     await userEvent.click(chains)
     const colors = canvas.getByRole('button', { name: 'Colors', pressed: false })
@@ -231,14 +221,12 @@ export const PuzzlePanelToggles: Story = {
     await expect(colors).toHaveAttribute('aria-pressed', 'true')
     await expect(colors).toHaveFocus()
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
-    const subsets = canvas.getByRole('button', { name: 'Subsets', pressed: false })
-    await userEvent.click(subsets)
-    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(canvas.getByRole('tab', { name: 'Chains' }))
     const tabs = within(canvas.getByRole('tablist', { name: 'Sudoku input' })).getAllByRole('tab')
-    expect(tabs.map(tab => tab.textContent)).toEqual(['Digits', 'Colors', 'Chains', 'Subsets'])
+    expect(tabs.map(tab => tab.textContent)).toEqual(['Digits', 'Colors', 'Chains'])
     await userEvent.click(canvas.getByRole('button', { name: 'Colors', pressed: true }))
     await expect(canvas.queryByRole('tab', { name: 'Colors' })).not.toBeInTheDocument()
-    await expect(canvas.getByRole('tab', { name: 'Subsets' })).toHaveAttribute('aria-selected', 'true')
+    await expect(canvas.getByRole('tab', { name: 'Chains' })).toHaveAttribute('aria-selected', 'true')
     await expect(options).toHaveAttribute('aria-expanded', 'true')
     await userEvent.keyboard('{Escape}')
     await expect(options).toHaveAttribute('aria-expanded', 'false')
@@ -758,6 +746,36 @@ export const PenDigitToggle: Story = {
 const rapidTapMasks = Array<number>(81).fill(0)
 rapidTapMasks[2] = (1 << 3) | (1 << 4)
 rapidTapMasks[40] = 1 << 4
+
+const highlightMasks = [...rapidTapMasks]
+highlightMasks[3] = rapidTapMasks[2] | (1 << 5)
+const highlightGame = { ...replaceCandidates(starter, highlightMasks, { recordHistory: false }), id: 'story-candidate-highlights' }
+export const CandidateHighlightModes: Story = {
+  args: { game: highlightGame, games: [highlightGame] },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    const keypad = within(canvas.getByRole('group', { name: 'Digit pad' }))
+    await userEvent.keyboard('{Shift>}')
+    await userEvent.click(keypad.getByRole('button', { name: 'Select 4' }))
+    await userEvent.click(keypad.getByRole('button', { name: 'Select 5' }))
+    await userEvent.keyboard('{/Shift}')
+
+    const exact = canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
+    const mixed = canvas.getByRole('gridcell', { name: /^Row 1, column 4,/ })
+    const subset = canvas.getByRole('gridcell', { name: /^Row 5, column 5,/ })
+    await expect(exact).toHaveClass('candidate-highlight-cell')
+    await expect(subset).toHaveClass('candidate-highlight-cell')
+    await expect(mixed).not.toHaveClass('candidate-highlight-cell')
+    await expect(mixed).toHaveAccessibleName(/candidates 4, 5 highlighted/)
+    const any = canvas.getByRole('button', { name: /Switch to all/i })
+    any.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(mixed).toHaveClass('candidate-highlight-cell')
+    await expect(subset).not.toHaveClass('candidate-highlight-cell')
+    await userEvent.click(canvas.getByRole('button', { name: /Switch to any/i }))
+  },
+}
+
 export const PencilCandidatePreview: Story = {
   args: { game: replaceCandidates(starter, rapidTapMasks, { recordHistory: false }) },
   play: async ({ canvas, userEvent }) => {
@@ -1381,16 +1399,13 @@ function hintViewportStory(viewport: keyof typeof hintViewports): Story {
     parameters: { viewport: { options: hintViewports } },
     globals: { viewport: { value: viewport, isRotated: false } },
     beforeEach: () => {
-      const saved = playPreferenceStore.getSnapshot().experimentalMode
       const rootStyle = document.documentElement.style
       const durations = ['--motion-standard-duration', '--motion-panel-duration']
         .map(property => [property, rootStyle.getPropertyValue(property)] as const)
       durations.forEach(([property]) => rootStyle.setProperty(property, '0ms'))
-      playPreferenceStore.set('experimentalMode', true)
       playSession.set(hintLayoutGame.id, 'toolPanels', defaultToolPanels)
       return () => {
         playSession.activate(null)
-        playPreferenceStore.set('experimentalMode', saved)
         durations.forEach(([property, previous]) => {
           if (previous) rootStyle.setProperty(property, previous)
           else rootStyle.removeProperty(property)

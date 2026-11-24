@@ -4,7 +4,6 @@ export type PuzzleInputMode = 'pen' | 'pencil' | 'highlight' | 'erase' | 'color'
 type InputState = {
   drawingLinks: boolean
   browsingStrongLinks: boolean
-  inspectingSubsets: boolean
   erasing: boolean
   coloring: boolean
   highlighting: boolean
@@ -14,7 +13,6 @@ type InputState = {
 /** Always return one active mode, even while browsing tools instead of entering digits. */
 export function puzzleInputMode(state: InputState): PuzzleInputMode {
   if (state.drawingLinks || state.browsingStrongLinks) return 'chain'
-  if (state.inspectingSubsets) return 'highlight'
   if (state.erasing) return 'erase'
   if (state.coloring) return 'color'
   if (state.highlighting) return 'highlight'

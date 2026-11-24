@@ -6,7 +6,6 @@ import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, createGameId, makeGame, peer } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
-import { selectedNakedSubset } from '../src/sudoku/subsets.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
@@ -34,7 +33,6 @@ test('unmarked Bento cells have row and column peers while marked regions also s
   const graph = makeChainGraph(masks, puzzle)
   assert.equal(graph.strength(node(0), node(10)), 'strong')
   assert.equal(graph.strength(node(30), node(40)), undefined)
-  assert.equal(selectedNakedSubset([30, 40], masks, undefined, puzzle), null)
 })
 
 test('Bento shared links retain the authored dividers and partial regions', async () => {

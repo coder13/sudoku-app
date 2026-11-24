@@ -150,10 +150,11 @@ test('a saved mobile selection takes priority over legacy desktop preferences', 
 
 test('saved mobile tools restore in display order and keep the selected tab', () => {
   const storage = new MemoryStorage()
-  createPlaySession(storage).set('puzzle-a', 'toolPanels', {
-    open: ['subsets', 'techniques', 'chains', 'solution', 'colors'], active: 'techniques',
-  })
+  storage.setItem('sudoku-app:v1:play-session', JSON.stringify({
+    puzzleId: 'puzzle-a',
+    toolPanels: { open: ['subsets', 'techniques', 'chains', 'solution', 'colors'], active: 'techniques' },
+  }))
   assert.deepEqual(createPlaySession(storage).getSnapshot().toolPanels, {
-    open: ['solution', 'techniques', 'colors', 'chains', 'subsets'], active: 'techniques',
+    open: ['solution', 'techniques', 'colors', 'chains'], active: 'techniques',
   })
 })

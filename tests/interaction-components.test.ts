@@ -376,10 +376,39 @@ test('candidate tools highlight individual candidates and preserve their annotat
   const tree = boardTree({ highlightedDigitMask: 1, highlightedDigitMatch: 'any',
     annotations: { candidates: new Map([[0, new Map([[1, { color: 'red', mark: 'strike', label: 'can be removed' }]])]]) },
   })
-  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-highlight-light')))
+  assert.ok(!tree.some(({ props }) => String(props.className).includes('candidate-highlight-mixed')))
   const matches = tree.filter(({ props }) => String(props.className).includes('candidate-match'))
   assert.deepEqual(matches.map(({ props }) => props.children), [1, 1])
   assert.equal(matches[0].props['data-mark'], 'strike')
+})
+
+test('Any tints individual matches in mixed cells while All fills cells with every selected candidate', () => {
+  const highlight = (highlightedDigitMatch: 'any' | 'all', fullCandidateCellHighlight = false) => {
+    const tree = boardTree({
+      candidates: [1, 3, 7, 5, 4, ...Array(76).fill(0)], highlightedDigitMask: 3,
+      highlightedDigitMatch, highlightCandidateCells: true, fullCandidateCellHighlight,
+    })
+    return {
+      cells: tree.filter(({ props }) => props.role === 'gridcell').slice(0, 5).map(({ props }) => props),
+      digits: tree.filter(({ props }) => String(props.className).split(' ').includes('candidate-match'))
+        .map(({ props }) => props.children),
+    }
+  }
+  const fills = (cells: ReturnType<typeof highlight>['cells']) => cells.map(({ className }) =>
+    String(className).split(' ').includes('candidate-highlight-cell'))
+
+  const any = highlight('any')
+  assert.deepEqual(fills(any.cells), [true, true, false, false, false])
+  assert.deepEqual(any.digits, [1, 2, 1])
+  assert.match(String(any.cells[2]['aria-label']), /candidates 1, 2 highlighted/)
+
+  const all = highlight('all')
+  assert.deepEqual(fills(all.cells), [false, true, true, false, false])
+  assert.deepEqual(all.digits, [])
+
+  const links = highlight('any', true)
+  assert.deepEqual(fills(links.cells), [true, true, true, true, false])
+  assert.deepEqual(links.digits, [])
 })
 
 test('the play grid can fill cells that contain a candidate matching the selected digit', () => {
