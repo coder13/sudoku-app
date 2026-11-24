@@ -254,6 +254,21 @@ fn transpose_hint(hint: &Hint) -> Hint {
     let evidence = match &hint.evidence {
         HintEvidence::Cell(cell) => HintEvidence::Cell(transpose(*cell)),
         HintEvidence::House(house) => HintEvidence::House(transpose_house(*house)),
+        HintEvidence::DirectPlacement { house, premise, removed } => {
+            let mut removed: Vec<_> = removed.iter().copied().map(transpose).collect();
+            removed.sort_unstable();
+            let premise = transpose_hint(&Hint {
+                technique: hint.technique.direct_premise().unwrap(),
+                evidence: *premise.clone(),
+                actions: Vec::new(),
+            })
+            .evidence;
+            HintEvidence::DirectPlacement {
+                house: transpose_house(*house),
+                premise: Box::new(premise),
+                removed,
+            }
+        }
         HintEvidence::Intersection {
             source,
             target,

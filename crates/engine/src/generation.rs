@@ -997,7 +997,7 @@ mod tests {
         for clues in 17..=20 {
             let constraints = GenerationConstraints {
                 clues,
-                score: Some(1001..=1600),
+                score: Some(600..=900),
                 technique_order: &order,
             };
             let board = generate_constrained(0, &constraints, &[template], 32).unwrap();
@@ -1007,15 +1007,20 @@ mod tests {
                 rating.status,
                 SolveStatus::Solved(crate::Difficulty::Medium)
             );
-            assert!((1001..=1600).contains(&rating.score.points));
+            assert!((600..=900).contains(&rating.score.points));
         }
+        // Use a template that still passes the Medium quality checks with direct moves enabled.
+        let medium_template = parse_givens(
+            "163700000002030409080000070098300000000040000015000040007001000200070398000080001",
+        )
+        .unwrap();
         let criteria = GenerationCriteria {
-            clues: 17..=20,
+            clues: 25..=36,
             rating: Some(GenerationRating::Difficulty(Difficulty::Medium)),
             technique: Some(Technique::HiddenSingle),
             technique_order: Technique::default_order(),
         };
-        let board = generate_matching(0, &criteria, &[template], 64).unwrap();
+        let board = generate_matching(0, &criteria, &[medium_template], 64).unwrap();
         assert!(
             criteria
                 .clues

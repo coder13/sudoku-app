@@ -461,6 +461,7 @@ type Evidence =
     } }
   | { cell: number }
   | { house: House }
+  | { 'direct-placement': { house: House; premise: Evidence; removed: number[] } }
   | { intersection: { source: House; target: House; cells: number[] } }
   | { pair: { house: House; cells: [number, number]; digits: [number, number] } }
   | { subset: { house: House; cells: number[]; digits: number[]; lockedIn: House | null } }

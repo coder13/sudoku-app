@@ -85,7 +85,8 @@ macro_rules! catalog {
 
             /// Look up a supported technique by its case-sensitive ID.
             pub fn from_id(id: &str) -> Option<Self> {
-                match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id).map(Self::Classic) }
+                match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id)
+                    .filter(|technique| technique.direct_premise().is_none()).map(Self::Classic) }
             }
 
             /// Reference point cost; a deduction's evidence can adjust the applied cost.
@@ -258,6 +259,7 @@ impl VariantTechnique {
             .chain(
                 Technique::ALL
                     .into_iter()
+                    .filter(|technique| technique.direct_premise().is_none())
                     .filter_map(|technique| match technique {
                         Technique::FullHouse | Technique::NakedSingle | Technique::HiddenSingle => {
                             None

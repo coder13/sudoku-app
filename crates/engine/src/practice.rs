@@ -6,6 +6,8 @@ use super::{
 
 #[path = "practice/examples.rs"]
 mod examples;
+#[path = "practice/direct.rs"]
+mod direct;
 #[path = "practice/pattern_overlay.rs"]
 mod pattern_overlay;
 #[path = "practice/rectangle_chains.rs"]
@@ -1179,6 +1181,9 @@ const KRAKEN_FISH_2: PracticeExample = PracticeExample {
 impl Technique {
     /// Three independently selected practice grids with expected proofs.
     pub const fn practice_examples(self) -> [PracticeExample; 3] {
+        if self.direct_premise().is_some() {
+            return direct::examples(self);
+        }
         let [second, third] = examples::supplemental(self);
         [self.practice_example(), second, third]
     }
@@ -1190,6 +1195,7 @@ impl Technique {
             Self::HiddenSingleBox => const { &[place(76, 3)] },
             Self::NakedSingle => const { &[place(12, 3)] },
             Self::HiddenSingle => const { &[place(5, 9)] },
+            Self::DirectPointing | Self::DirectClaiming | Self::DirectHiddenPair | Self::DirectHiddenTriple => return direct::examples(self)[0],
             Self::Pointing | Self::Claiming => const { &[remove(24, 2), remove(25, 2)] },
             Self::NakedPair => const { &[remove(63, 4), remove(63, 6)] },
             Self::HiddenPair => {

@@ -30,7 +30,8 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
 
   const capabilities = request('capabilities')
   const examples = capabilities.teaching ? request('lesson-examples') : {}
-  const { techniques } = request('techniques', { variant: capabilities.variants })
+  const { techniques: classicTechniques } = request('techniques')
+  const techniques = capabilities.variants ? request('techniques', { variant: true }).techniques : classicTechniques
   if (capabilities.teaching && capabilities.variants) {
     for (const { id } of techniques) {
       if (examples[id]) continue
@@ -39,8 +40,9 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
       examples[id] = { ...diagram, practice }
     }
   }
-  const difficulties = Object.fromEntries(techniques.map(({ id, difficulty }) => [id, difficulty]))
-  const aliases = Object.fromEntries([...request('techniques').techniques, ...techniques]
+  const lessonTechniques = capabilities.variants ? [...classicTechniques, ...techniques] : classicTechniques
+  const difficulties = Object.fromEntries(lessonTechniques.map(({ id, difficulty }) => [id, difficulty]))
+  const aliases = Object.fromEntries(lessonTechniques
     .filter(({ aliases }) => aliases.length)
     .map(({ id, aliases }) => [id, aliases]))
 

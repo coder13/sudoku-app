@@ -35,6 +35,8 @@ export function jigsawLayout(regionMap: string): Extract<NonNullable<VariantPuzz
 
 const omitted = new Set([
   'forcing-net', 'multi-sector-locked-sets', 'sk-loop', 'grouped-discontinuous-nice-loop', 'grouped-continuous-nice-loop',
+  // Direct placements are currently part of classic play only.
+  'direct-pointing', 'direct-claiming', 'direct-hidden-pair', 'direct-hidden-triple',
 ])
 
 export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[], difficulties: Partial<Record<string, Difficulty>>) {

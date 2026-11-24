@@ -7,7 +7,7 @@ Difficulty describes the knowledge used to solve a puzzle. A long sequence of ea
 | Level | Name | New skill |
 | --- | --- | --- |
 | 1 | Beginner | Full House and Hidden Singles in boxes, found by scanning |
-| 2 | Easy | Naked Singles and Hidden Singles in rows and columns |
+| 2 | Easy | Naked Singles, Hidden Singles in rows and columns, and direct placements from basic patterns |
 | 3 | Medium | Locked Candidates, pairs, and triples |
 | 4 | Tricky | Single-digit patterns: X-Wing, Swordfish, Skyscraper, Two-String Kite, Empty Rectangle |
 | 5 | Hard | XY-Wing, XYZ-Wing, W-Wing, plus larger fixed patterns |
@@ -23,7 +23,7 @@ Impossible puzzles still have exactly one solution. Some can be solved by a skil
 
 ## Grading and generation
 
-Classic scoring version 15 and variant scoring version 24 (25 for group-order elimination) remove promotion based on total points. Version 15 also experiments with a lower reference cost for Unique Rectangle 1. Candidate-density weighting is being measured separately and is not part of the engine score yet. Point totals remain trace diagnostics and do not choose the level. Re-rating under a newer scoring version may produce a different point total.
+Classic scoring version 16 tries direct placements after singles and before ordinary eliminations. Direct Pointing, Direct Claiming, Direct Hidden Pair, and Direct Hidden Triple count as Easy. Each costs the same as the corresponding ordinary pattern and places one digit when the proof leaves a single spot in a house. Variant scoring uses version 24, or 25 for Group Order Elimination. The hardest technique sets the tier. Re-rating under a newer scoring version can change both the path and the rating.
 
 The Rust technique catalog is the source of truth. The browser's technique metadata is produced by `scripts/build-wasm.mjs`. The ten selectable names and order live in `src/sudoku/difficulty.ts`.
 
