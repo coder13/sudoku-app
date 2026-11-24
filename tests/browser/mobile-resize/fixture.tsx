@@ -74,7 +74,7 @@ function Fixture() {
           </div> },
           input: { title: 'Input', content: <MobileInputTabs active="digits" open={[]} activeTabRef={null}
             toolsDisabled={false} toolToggles={<button className="button">Settings</button>} onSelect={noop} onClose={noop}
-            panels={{ digits: controls, solution: null, techniques: null, colors: null, chains: null, subsets: null }} /> },
+            panels={{ digits: controls, solution: null, techniques: null, colors: null, chains: null }} /> },
           ...(withHint ? { hint: { title: 'Hint', content: <div className="mobile-hint-panel" style={{ height: 130 }}>Hint panel</div> } } : {}),
         }} /></div>
     </main>

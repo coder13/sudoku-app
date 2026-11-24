@@ -160,7 +160,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   related: boolean
   matching: boolean
   ruleHighlighted: boolean
-  cellHighlight: '' | 'candidate-highlight-cell' | 'candidate-highlight-light'
+  cellHighlight: '' | 'candidate-highlight-cell' | 'candidate-highlight-mixed'
   countHighlighted: boolean
   candidateHighlightMask: number
   highlightLabel: string
@@ -597,10 +597,12 @@ export function Board({
         const highlightedLinkDigit = canSelectLinkCandidate && highlightsFocusDigit ? focusDigit : null
         const highlightsCell = highlightCandidateCells && (matchesFilter || highlightsFocusDigit)
         const highlightsLinkTargetCell = highlightCandidateCells && Boolean(linkTargetMask)
+        const highlightsMixedCandidates = highlightsCell && matchesWithExtras && !fullCandidateCellHighlight && !highlightsLinkTargetCell
         const candidateCountMatches = !value && !filterCandidates && highlightCandidateCount != null && candidateCount(candidateMask) === highlightCandidateCount
-        const candidateHighlightMask = !highlightCandidateCells ? (candidateCountMatches ? visibleCandidateMask
+        const candidateHighlightMask = !highlightCandidateCells || highlightsMixedCandidates ? (candidateCountMatches ? visibleCandidateMask
           : matchesFilter ? matchingMask : highlightsFocusDigit ? 1 << (focusDigit! - 1) : 0) & visibleCandidateMask : 0
-        const highlightLabel = matchesFilter ? matchAnyDigit
+        const highlightLabel = highlightsMixedCandidates && candidateHighlightMask
+          ? `candidates ${marksOf(candidateHighlightMask).join(', ')} highlighted` : matchesFilter ? matchAnyDigit
           ? matchesWithExtras ? 'cell has selected candidates and other candidates' : 'cell has only selected candidates'
           : highlightsCell ? `cell highlighted for candidates ${highlightedDigits.join(', ')}`
             : `candidates ${highlightedDigits.join(', ')} highlighted`
@@ -620,8 +622,8 @@ export function Board({
           selected={selectedCells.has(index)} selectionEdges={exposedSelectionEdges.get(index)?.join(' ')} active={active === index} pointerFocused={pointerFocusedCell === index}
           error={Boolean(errors?.has(index))} related={!fogged && relatedCells.has(index)} matching={highlighting.matchingDigits && value === focusDigit}
           ruleHighlighted={highlightedDiagonals.some(diagonal => diagonal === 'main' ? row === col : row + col === gridSize + 1)}
-          cellHighlight={highlightsLinkTargetCell || (highlightsCell && (fullCandidateCellHighlight || !matchesWithExtras)) ? 'candidate-highlight-cell'
-            : highlightsCell ? 'candidate-highlight-light' : ''}
+          cellHighlight={highlightsMixedCandidates ? 'candidate-highlight-mixed'
+            : highlightsCell || highlightsLinkTargetCell ? 'candidate-highlight-cell' : ''}
           countHighlighted={highlightCandidateCells && candidateCountMatches} candidateHighlightMask={candidateHighlightMask}
           highlightLabel={highlightLabel} countLabel={countLabel} linkTargetMask={linkTargetMask} highlightsLinkTargetCell={highlightsLinkTargetCell}
           canSelectLinkCandidate={canSelectLinkCandidate} highlightedLinkDigit={highlightedLinkDigit}
@@ -639,7 +641,7 @@ export function Board({
     rows, columns, rectangularBoxes, boxRows, gridSize, geometry, values, givens, fog, givenCellColors, layout, annotationSlots,
     position?.center, position?.corner, position?.candidateColors, position?.importedCandidateColors, position?.colors, position?.importedCellColors, candidates, candidatePreview, candidateGroupPreview,
     isLinkTarget, focusDigit, filterCandidates, highlightedDigitMask, highlightedDiagonals, matchAnyDigit, highlighting.matchingCandidates,
-    highlighting.matchingDigits, highlightCandidateCells, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
+    highlighting.matchingDigits, highlightCandidateCells, fullCandidateCellHighlight, highlightCandidateCount, highlightedDigits, showPlayerColors, showImportedAnnotations,
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidateMasks, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
     setCandidateFocus, boardEvents, Boolean(onCell), Boolean(onCellDoubleClick), Boolean(onCellPointerDown),

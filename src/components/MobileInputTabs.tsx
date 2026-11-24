@@ -7,7 +7,7 @@ import { motionDuration } from './Presence'
 import { TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 
-const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', subsets: 'Subsets', bookmarks: 'Bookmarks', rules: 'Rules' }
+const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', bookmarks: 'Bookmarks', rules: 'Rules' }
 const TAB_SWIPE_SLOP = 10
 const TAB_SWIPE_DISTANCE = 48
 const TAB_SWIPE_AXIS_RATIO = 1.25

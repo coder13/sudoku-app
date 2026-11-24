@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Board as BaselineBoard } from '../baseline/Board'
 import baselineManifest from '../baseline/manifest.json'
 import { Board as OptimizedBoard } from '../../../src/components/Board'
+import { marksOf } from '../../../src/sudoku/game'
 import { CLASSIC_GRID, jigsawMembership, jigsawRegionColors } from '../../../src/sudoku/grid'
 import { applyTheme } from '../../../src/sudoku/themes'
 import { regionMembership, variantHouseFillCells } from '../../../src/sudoku/variants'
@@ -75,10 +76,44 @@ function replacedHouseClues(): Set<Element> {
   }))
 }
 
+function checkedCandidateTints() {
+  const selected = props.highlightedDigitMask ?? 0
+  if (props.highlightedDigitMatch !== 'any' || !selected || !props.highlightCandidateCells || props.fullCandidateCellHighlight) return
+
+  const labels = new Map<Element, string>()
+  const marks = new Set<Element>()
+  for (const cell of root.querySelectorAll('[data-cell]')) {
+    const index = Number(cell.getAttribute('data-cell'))
+    if (props.values[index] !== '0') continue
+    const mask = props.candidates?.[index] ?? ((props.position?.center[index] ?? 0) | (props.position?.corner[index] ?? 0))
+    const matching = mask & selected
+    if (!matching || matching === mask) continue
+
+    const digits = marksOf(matching)
+    const highlights = [...cell.querySelectorAll('.candidate-match')]
+    const actual = highlights.map(mark => Number(mark.textContent)).sort((a, b) => a - b)
+    const label = `, candidates ${digits.join(', ')} highlighted`
+    if (!cell.classList.contains('candidate-highlight-mixed') || cell.classList.contains('candidate-highlight-cell')
+      || !cell.getAttribute('aria-label')?.includes(label) || actual.join(',') !== digits.join(',')) {
+      throw new Error(`Any candidate highlights: unexpected tint or accessible label at cell ${index}.`)
+    }
+    for (const mark of highlights) {
+      const { backgroundColor, borderTopLeftRadius, outlineStyle } = getComputedStyle(mark)
+      if (backgroundColor === 'rgba(0, 0, 0, 0)' || borderTopLeftRadius === '50%' || outlineStyle !== 'none') {
+        throw new Error(`Any candidate highlights: missing background or unexpected outline at cell ${index}.`)
+      }
+      marks.add(mark)
+    }
+    labels.set(cell, label)
+  }
+  return { labels, marks }
+}
+
 function snapshot(includeFades = false): NormalNode[] {
   const ids = new Map([...root.querySelectorAll('[id]')].map((element, index) => [element.id, `local-id-${index}`]))
   const replaced = implementation === 'baseline' ? replacedHouseClues() : new Set<Element>()
   const groups = implementation === 'optimized' ? checkedGroupAdditions(root, props) : undefined
+  const candidateTints = implementation === 'optimized' ? checkedCandidateTints() : undefined
   function normalize(node: Node): NormalNode | null {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || null
     if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return null
@@ -102,6 +137,10 @@ function snapshot(includeFades = false): NormalNode[] {
         if (!value) continue
       }
       if (attr.name === 'aria-pressed' && groups?.pressed.has(node)) value = groups.pressed.get(node)!
+      const tintLabel = candidateTints?.labels.get(node)
+      if (tintLabel && attr.name === 'aria-label') value = value.replace(tintLabel, ', cell has selected candidates and other candidates')
+      if (tintLabel && attr.name === 'class') value = value.replace('candidate-highlight-mixed', 'candidate-highlight-light').split(' ').sort().join(' ')
+      if (attr.name === 'class' && candidateTints?.marks.has(node)) value = value.split(' ').filter(name => name !== 'candidate-match').join(' ')
       if ((attr.name === 'class' || attr.name === 'style') && !value) continue
       if (attr.name === 'id' && ids.has(value)) value = ids.get(value)!
       else for (const [id, replacement] of ids) value = value.split(`url(#${id})`).join(`url(#${replacement})`)

@@ -1458,9 +1458,6 @@ svg { flex-shrink: 0; }
 .cell:is(.candidate-highlight-cell, .candidate-count-match) {
   --cell-fill: color-mix(in srgb, var(--matching-bg) 65%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
 }
-.cell.candidate-highlight-light {
-  --cell-fill: color-mix(in srgb, var(--matching-bg) 45%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
-}
 .cell.colored { --cell-fill: var(--tone); }
 .cell.imported-colors:not(.conflict) {
   --board-ink: #201a23;
@@ -1477,7 +1474,7 @@ svg { flex-shrink: 0; }
   --candidate-ink: #3b3242;
   --candidate-match-surface: #fff;
 }
-.board-body[data-input-mode="color"] .cell.colored:is(.matching, .candidate-highlight-cell, .candidate-highlight-light) {
+.board-body[data-input-mode="color"] .cell.colored:is(.matching, .candidate-highlight-cell) {
   box-shadow: inset 0 0 0 2px var(--entry-ink);
 }
 .cell.conflict { --cell-fill: var(--danger-bg); color: var(--danger-ink); }
@@ -1643,6 +1640,10 @@ svg { flex-shrink: 0; }
 }
 :is(.board-candidate:not(.candidate-button), .candidate-glyph).candidate-match:where(:not(.candidate-color, [data-mark])) {
   background: var(--candidate-match-fill, var(--matching-bg));
+}
+.cell.candidate-highlight-mixed .candidate-match:where(:not(.candidate-color, [data-mark])) {
+  background: color-mix(in srgb, var(--entry-ink) 14%, var(--candidate-match-surface, var(--cell-fill)));
+  border-radius: .2em;
 }
 .cell.candidate-highlight-cell .chain-candidate[data-link-target] {
   --candidate-match-fill: color-mix(in srgb, var(--cell-fill) 25%, var(--candidate-match-surface, var(--board-bg)));
@@ -3002,7 +3003,7 @@ svg { flex-shrink: 0; }
   animation-duration: var(--motion-standard-duration);
   animation-timing-function: var(--motion-move);
 }
-.desktop-insight-body > :is(.puzzle-analysis-content, .chains-panel, .subsets-panel, .solution-path, .advanced-spoiler-panel),
+.desktop-insight-body > :is(.puzzle-analysis-content, .chains-panel, .solution-path, .advanced-spoiler-panel),
 .dock-panel-content > :is(.hint-dock, .solution-path, .advanced-spoiler-panel),
 :is(.advanced-browser-list, .advanced-browser-empty, .import-preview, .hint-card-reason, .hint-card-removals) {
   animation: content-enter var(--motion-standard-duration) var(--motion-enter) both;
@@ -4080,7 +4081,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     border-radius: 0;
     box-shadow: none;
   }
-  .mobile-input-tool :is(.cell-color-palette, .chains-panel, .subsets-panel, .bookmarks-panel) {
+  .mobile-input-tool :is(.cell-color-palette, .chains-panel, .bookmarks-panel) {
     gap: var(--space-4);
     padding: var(--space-8);
     font-size: 0.75rem;
@@ -5024,7 +5025,7 @@ a.game-row { text-decoration: none; color: inherit; }
 .variant-sandwich-preview, .variant-x-sum-preview { display: grid; text-align: center; font-size: 9px; line-height: 1.5; color: var(--board-ink); }
 .variant-sandwich-preview > :first-child, .variant-x-sum-preview > :first-child { font-weight: 750; }
 
-:is(.subsets-panel, .bookmarks-panel) {
+.bookmarks-panel {
   display: grid;
   align-content: start;
   gap: var(--space-10);
@@ -5034,7 +5035,7 @@ a.game-row { text-decoration: none; color: inherit; }
   line-height: 1.45;
 }
 
-:is(.subsets-panel, .bookmarks-panel) p { color: var(--muted); }
+.bookmarks-panel p { color: var(--muted); }
 .bookmark-form {
   display: flex;
   flex-wrap: wrap;
@@ -5061,15 +5062,6 @@ a.game-row { text-decoration: none; color: inherit; }
 }
 .bookmark-list strong { overflow-wrap: anywhere; }
 .bookmarks-panel :is(.button, .icon-button) { min-height: 40px; }
-.subset-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-}
-
-.subsets-panel .button { min-height: 40px; }
 .chain-panel-tools .button[aria-pressed="true"] { border-color: var(--selected-border); }
 .strong-link-tool {
   display: grid;

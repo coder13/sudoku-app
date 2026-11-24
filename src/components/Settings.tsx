@@ -25,7 +25,7 @@ import { KeyboardShortcutSettings } from './KeyboardShortcutSettings'
 import { Modal } from './Modal'
 import { SelectControl } from './SelectControl'
 import { VariantPreview } from './VariantPreview'
-import { useExperimentalMode, usePlayPreference } from './usePlayPreference'
+import { usePlayPreference } from './usePlayPreference'
 
 export type SettingsSection = 'appearance' | 'input' | 'puzzle-buttons' | 'highlighting' | 'chain-colors' | 'solving' | 'hints' | 'shortcuts' | 'device-sync'
 type Section = SettingsSection
@@ -465,7 +465,6 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
 }) {
   const candidateLayoutGroup = useId()
   const cellReferenceGroup = useId()
-  const [experimentalMode, setExperimentalMode] = useExperimentalMode()
   const [showKillerCombinations, setShowKillerCombinations] = usePlayPreference('showKillerCombinations')
   if (section === 'input') {
     return (
@@ -572,11 +571,6 @@ export function GeneralSettings({ section, advancedModes, setAdvancedModes, erro
             <Button onClick={onApplyPaperStyle} disabled={paperStyleApplied}
               aria-label={paperStyleApplied ? 'Paper style applied' : 'Apply Paper style'}>{paperStyleApplied ? 'Applied' : 'Apply'}</Button>
           </div>}
-          <label className="advanced-toggle">
-            <input type="checkbox" checked={experimentalMode}
-              onChange={(event) => setExperimentalMode(event.target.checked)} />
-            <span><strong>Experimental mode</strong><small>Show tools in development, such as Subsets.</small></span>
-          </label>
         </div>
       </div>
     )

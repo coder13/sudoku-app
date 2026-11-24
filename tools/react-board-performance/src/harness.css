@@ -5,3 +5,6 @@ p { font-size: .875rem; }
 #board-root { width: min(100%, 520px); margin-inline: auto; }
 .board-frame { --board-frame-width: 100%; }
 #board-description { color: var(--muted); }
+.cell:where(.candidate-highlight-light) {
+  --cell-fill: color-mix(in srgb, var(--matching-bg) 45%, var(--variant-cell-bg, var(--cell-base-bg, var(--board-bg))));
+}
