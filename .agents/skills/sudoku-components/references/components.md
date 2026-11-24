@@ -105,7 +105,7 @@ Search by component name or browse the sections below.
 | Source | When to use it |
 | --- | --- |
 | [__root](../../../../src/routes/__root.tsx) | `App` composes the app shell and routed content. `RootDocument` supplies the document, head, and scripts. |
-| [decode](../../../../src/routes/decode.tsx) | `DecodePage` displays the decoded JSON or text payload for Sudoku Coach, SudokuPad, F-Puzzles, and standard grid codes. It stays out of app navigation for direct inspection at `/decode`. |
+| [decode](../../../../src/routes/decode.tsx) | `DecodePage` inspects puzzle imports at `/decode`: the left column shows input, extracted details, difficulty, a parsed preview or import errors, and a GitHub issue link; the right column shows the formatted payload. `HighlightedJson` colors JSON keys, strings, numbers, and literals. It stays out of app navigation. |
 | [import](../../../../src/routes/import.tsx) | `ImportPage` mounts the import experience at its route. |
 | [learn.$technique](../../../../src/routes/learn.$technique.tsx) | `LessonPage` resolves the selected lesson for its route. |
 | [learn.index](../../../../src/routes/learn.index.tsx) | `LessonOverview` introduces the learning catalog. |
