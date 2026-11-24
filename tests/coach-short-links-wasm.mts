@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, completeCandidateMasks, enter, hintEliminations, redo, replaceCandidates, restartGame, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { kropkiDigitExclusions } from '../src/sudoku/grid.ts'
+import { jigsawRegionColors, kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -50,6 +50,8 @@ const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.
 }
 const xSumTranscription: Pick<Fixture, 'puzzle' | 'solution'> =
   JSON.parse(readFileSync(new URL('./fixtures/x-sum-coach-transcription.json', import.meta.url), 'utf8'))
+const disconnectedJigsaw = JSON.parse(readFileSync(new URL('./fixtures/disconnected-jigsaw-coach.json', import.meta.url), 'utf8')) as
+  Fixture & { regionColors: string[] }
 const terrain = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')).source
 
 function coachPage(id: string, code: string, name: string, details: Record<string, unknown> = {}) {
@@ -58,6 +60,44 @@ function coachPage(id: string, code: string, name: string, details: Record<strin
   }
   return '<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'
 }
+
+test('XXIV retains its authored region colors through import, save and sharing', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  const { url, code, title, puzzle, solution, regionColors } = disconnectedJigsaw
+  const givenCellColors = Object.fromEntries(puzzle.regions!.type === 'jigsaw'
+    ? puzzle.regions.regions.flatMap((cells, index) => cells.map(cell => [cell, [regionColors[index]]])) : [])
+  mock.method(globalThis, 'fetch', (path: string, init?: RequestInit) => path === url
+    ? Promise.resolve(new Response(coachPage('BCt9', code, title)))
+    : fetcher(path, init))
+  try {
+    const pasted = await detectPuzzle(code)
+    assert.deepEqual(pasted.variant?.puzzle, puzzle)
+    assert.deepEqual(pasted.givenCellColors, givenCellColors)
+    const membership = Array<number>(81)
+    if (puzzle.regions?.type === 'jigsaw') {
+      puzzle.regions.regions.forEach((cells, region) => cells.forEach(cell => { membership[cell] = region }))
+    }
+    assert.equal(new Set(jigsawRegionColors(membership, 9)).size, 9)
+    assertVariantCompletion(puzzle, solution)
+
+    const { game } = await prepareImportedPuzzle(url)
+    assert.equal(game.title, title)
+    assert.deepEqual(game.givenCellColors, givenCellColors)
+    assert.equal(game.variant?.solution, solution)
+    const path = await puzzleSolution(game)
+    assert.equal(path.board, solution)
+    const restored = readGame(game.id, JSON.stringify(game))
+    assert.deepEqual(restored?.givenCellColors, givenCellColors)
+    const id = await publishSharedPuzzle(game)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.deepEqual(shared.game.givenCellColors, givenCellColors)
+    assert.deepEqual(shared.game.variant, game.variant)
+
+    const incorrectLegend = { ...game, givenCellColors: { ...givenCellColors, 0: ['white'] } }
+    assert.equal(readGame(game.id, JSON.stringify(incorrectLegend)), undefined)
+    await assert.rejects(publishSharedPuzzle(incorrectLegend), /Invalid puzzle definition/)
+  } finally { sqlite.close() }
+})
 
 test('a published mixed Coach short link preserves the title, all rules, help, progress and shared starting puzzle', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()

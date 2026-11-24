@@ -59,6 +59,7 @@ const reviewedDrawings = new Map<string, { layer: string; title: string; partial
 
 // These reviews cover the complete authoring data and ordered cell shades.
 const reviewedFills = new Map([
+  ['fc0d8c24d3f5897483883cbb961b9e2738352ab5689f6b58a7a1ded8629aba8c', 'Hallowteeth'],
   ['5a500262913542452647e2a3623d6caeff79a00e949ad5c4f83acea306c1f980', 'Sudoku Spider'],
   ['5b9cb5df490c8ac7e2b55566ef5a0e37c6161f260887484c457baf7e76ad6fc8', 'Pumpkin 2024'],
   ['3f9c2090ae6dab63a274a4c8dc16711e406bad21e077df0103671470d8e42aa0', 'Halloween Candy 1'],

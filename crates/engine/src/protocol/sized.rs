@@ -35,7 +35,7 @@ impl Layout {
             Self::Boxless(_) => None,
         }.ok_or((
             "invalid-layout",
-            "Choose boxes or connected regions with one cell for each digit.",
+            "Choose boxes or a complete region partition with one cell for each digit.",
         ))
     }
 

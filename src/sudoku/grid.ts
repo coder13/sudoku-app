@@ -74,7 +74,7 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 }
 
 export function isSizedGrid(value: unknown): value is SizedGrid {
-  if (isMiniGrid(value) || isJigsawGrid(value)) return true
+  if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if (value === null || typeof value !== 'object') return false
   if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && value.size === 7 && value.noRegions === true
   const grid = value as Partial<RectangularGrid>
@@ -82,7 +82,7 @@ export function isSizedGrid(value: unknown): value is SizedGrid {
     rectangularLayouts(grid.size).some(layout => layout.boxRows === grid.boxRows && layout.boxColumns === grid.boxColumns)
 }
 
-export function isJigsawGrid(value: unknown): value is JigsawGrid {
+export function isJigsawGrid(value: unknown, allowDisconnected = false): value is JigsawGrid {
   if (!value || typeof value !== 'object' || Object.keys(value).length !== 2) return false
   const grid = value as Partial<JigsawGrid>
   if (!isJigsawSize(grid.size) || !Array.isArray(grid.regions) || grid.regions.length !== grid.size) return false
@@ -94,7 +94,7 @@ export function isJigsawGrid(value: unknown): value is JigsawGrid {
       if (!Number.isInteger(cell) || cell < 0 || cell >= size ** 2 || seen.has(cell)) return false
       seen.add(cell)
     }
-    if (!connectedGridCells(part, size)) return false
+    if (!allowDisconnected && !connectedGridCells(part, size)) return false
   }
   return true
 }
