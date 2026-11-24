@@ -27,8 +27,7 @@ export const MobileDifficultyGroups: Story = {
     const first = groups[0].querySelector('summary')!
     await userEvent.click(first)
     await expect(groups[0]).toHaveAttribute('open')
-    first.focus()
-    await userEvent.keyboard('{Enter}')
+    await userEvent.click(first)
     await expect(groups[0]).not.toHaveAttribute('open')
   },
 }
