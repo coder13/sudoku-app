@@ -168,10 +168,9 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const position = game.variant && variantPosition(game.variant, game.position)
   const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
   const positionProblem = variantHintProblem(game, values, eliminationMasks)
-  // These six techniques are normal Sudoku techniques, even on variant boards.
-  // Count them only from row, column, and box rules, independent of variant rules
-  // and player candidate marks.
-  const immediateCounts = useMemo(() => classicBasicTechniqueCounts(values), [values])
+  // These six techniques use normal Sudoku row, column, and box rules on every
+  // 9x9 board, while respecting the player's current candidate removals.
+  const immediateCounts = useMemo(() => classicBasicTechniqueCounts(values, eliminationMasks), [eliminationMasks, values])
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
