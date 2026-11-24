@@ -87,6 +87,8 @@ function checkLesson(lesson, original, examples) {
       case 'diagram':
         requireValue(examples.includes(block.example) && validCrop(block.region) && validDiagramCopy(block.copy),
           `${label} needs a verified example, a crop within the board, and nonempty caption text.`)
+        requireValue(block.interactive === undefined || typeof block.interactive === 'boolean',
+          `${label} must either enable or disable the interactive proof.`)
         if (block.notes !== undefined) {
           const { id, title, paragraphs } = block.notes ?? {}
           requireValue(isTextList(paragraphs) && isOptionalText(title) &&

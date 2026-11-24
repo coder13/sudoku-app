@@ -5400,6 +5400,7 @@
             {
               "type": "diagram",
               "example": "tridagon-forcing-net",
+              "interactive": true,
               "copy": {
                 "description": "Start one branch for each guardian in the twelve cells. Compare the conclusions after all branches are complete."
               }

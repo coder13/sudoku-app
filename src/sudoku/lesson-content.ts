@@ -25,7 +25,7 @@ export type LessonBlock =
   | { type: 'table'; caption: string; columns: string[]; rows: string[][] }
   | { type: 'concept-check'; title: string; questions: ConceptQuestion[] }
   | { type: 'foundation-visual'; visual: FoundationVisualId }
-  | { type: 'diagram'; example: string; region?: BoardRegion; copy?: DiagramCopy; notes?: ExampleNotes }
+  | { type: 'diagram'; example: string; region?: BoardRegion; interactive?: boolean; copy?: DiagramCopy; notes?: ExampleNotes }
   | { type: 'practice'; drills: Drill[]; title?: string; selectLabel?: string; instruction?: string; guide?: PracticeGuide }
 
 export type LessonArticle = {

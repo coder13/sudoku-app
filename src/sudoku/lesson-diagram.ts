@@ -539,12 +539,15 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   }
   if ('forcing' in evidence) {
     const { branches } = evidence.forcing
-    const starting = branches.map(({ assumption }) => assumption.candidate)
-      .filter(({ cell, digit }) => cell !== first.cell || digit !== first.digit)
+    const starting: Candidate[] = []
     const statement = ({ candidate, truth }: { candidate: Candidate; truth: boolean }) =>
       `${candidate.digit} ${truth ? 'goes in' : 'is ruled out in'} ${nameCell(candidate.cell)}`
-    const trace = branches.map(({ assumption, steps, conflict }) => {
-      const effects = [assumption, ...steps.map(({ effect }) => effect)]
+    type Branch = typeof branches[number]
+    function describeBranch({ assumption, steps, conflict }: Branch, inherited: Branch['assumption'][] = []): NonNullable<Pattern['trace']> {
+      const { cell, digit } = assumption.candidate
+      if (cell !== first.cell || digit !== first.digit) starting.push(assumption.candidate)
+      const effects = [assumption, ...inherited, ...steps.map(({ effect }) => effect)]
+      let cases: NonNullable<Pattern['trace']> = []
       let conclusion = `This choice also ${'place' in firstAction ? 'forces' : 'rules out'} ${nameCandidate(first)}.`
       if (conflict && 'opposite' in conflict) {
         conclusion = `This trial both forces and rules out ${nameCandidate(effects[conflict.opposite[0]].candidate)}.`
@@ -554,17 +557,23 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
           if ('cell' in scope) conclusion = `This trial leaves ${nameCell(scope.cell)} without a candidate.`
           if ('house' in scope) conclusion = `There is no place for ${scope.house.digit} in ${houseName(scope.house.house)}.`
         }
+      } else if (conflict && 'cases' in conflict) {
+        const split = conflict.cases[0].branch.assumption.candidate
+        conclusion = `Keep these deductions and test both possibilities for ${nameCandidate(split)}. Both cases below end in a contradiction.`
+        cases = conflict.cases.flatMap(({ branch, premises }) => describeBranch(branch, premises.map((index) => effects[index])))
       }
-      if (conflict && 'cases' in conflict) {
-        const inner = conflict.cases.map(({ branch }) => statement(branch.assumption))
-        conclusion = `The two inner cases are “${inner[0]}” and “${inner[1]}.” Both lead to a conflict, so the starting assumption is impossible.`
+      const causeName = (index: number) => {
+        if (index === 0) return 'the assumption'
+        if (index <= inherited.length) return `the earlier deduction that ${statement(effects[index])}`
+        return `step ${index - inherited.length}`
       }
-      return {
-        assumption: `Suppose ${statement(assumption)}.`,
-        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map((index) => index === 0 ? 'the assumption' : `step ${index}`))}).`),
+      return [{
+        assumption: `${inherited.length ? 'Keep the earlier deductions and assume' : 'Suppose'} ${statement(assumption)}.`,
+        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map(causeName))}).`),
         conclusion,
-      }
-    })
+      }, ...cases]
+    }
+    const trace = branches.flatMap((branch) => describeBranch(branch))
     return {
       candidates: branches.flatMap(({ steps }) => steps.map(({ effect }) => effect.candidate)),
       accent: starting.length ? { candidates: starting, label: 'Starting assumption' } : undefined,
