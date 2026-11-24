@@ -212,6 +212,30 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 .lesson-proof summary { color: var(--dark-purple); font-weight: 700; cursor: pointer; }
 .lesson-proof > div { margin-top: var(--space-8); }
 .lesson-proof ol { margin: 7px 0; padding-inline-start: 1.5em; }
+.lesson-proof-explorer { min-width: 0; }
+.lesson-proof-explorer h3 { font-size: 19px; line-height: 1.25; }
+.lesson-proof-explorer p { font-size: 14px; line-height: 1.5; }
+.lesson-proof-layout { display: grid; align-items: start; gap: 16px; min-width: 0; }
+.lesson-proof-board { --diagram-columns: 9; }
+.lesson-proof-controls { display: grid; align-content: start; justify-items: start; gap: 10px; min-width: 0; }
+.lesson-proof-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lesson-proof-toolbar .button { min-height: 36px; padding: 6px 10px; white-space: normal; }
+.lesson-proof-toolbar [aria-pressed="true"] { border-color: var(--dark-purple); color: var(--dark-purple); }
+.lesson-proof-steps { display: grid; gap: 4px; width: 100%; margin: 0; padding-inline-start: 1.5em; font-size: 14px; }
+.lesson-proof-steps button {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: start;
+}
+.lesson-proof-steps button:is(:hover, [aria-current="step"]) { background: var(--surface-hover); }
+.lesson-proof-controls .cell-color-palette { width: 100%; padding: 0; }
+@container (min-width: 640px) {
+  .lesson-proof-layout { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+}
 .lesson-practice, .lesson-worked-examples {
   display: grid;
   gap: var(--space-16);

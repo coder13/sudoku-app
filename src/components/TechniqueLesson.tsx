@@ -8,6 +8,7 @@ import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useS
 import aliasesJson from '../sudoku/generated/lesson-aliases.json'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
+import { lessonForcingProof } from '../sudoku/lesson-proof'
 import { lessonExample, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
 import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
 import { lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
@@ -18,6 +19,7 @@ import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
 import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
+import { LessonProofExplorer } from './LessonProofExplorer'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
@@ -40,6 +42,8 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
   const weak = annotations.links?.some((link) => link.dashed && !link.arrow)
   const summary = copy?.description ?? description
   const explanation = copy?.reason ?? (reasonSteps ? undefined : reason || fallbackReason)
+  const proof = block?.interactive ? lessonForcingProof(example) : undefined
+  if (proof) return <LessonProofExplorer example={example} proof={proof} crop={view} description={summary} />
   return (
     <figure className="lesson-diagram" data-lesson-block={blockIndex}>
       <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" preview />

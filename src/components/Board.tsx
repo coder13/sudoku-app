@@ -67,6 +67,7 @@ type Props = {
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   linkDrawing?: boolean
   onCandidate?: (candidate: Candidate) => void
+  canSelectCandidate?: (candidate: Candidate) => boolean
   onLinkSelect?: (candidate: Candidate) => void
   onPaintCandidate?: (candidate: Candidate) => void
   onCandidateHover?: (candidate: Candidate | null) => void
@@ -168,6 +169,7 @@ type CellProps = Omit<BoardEvents, 'onLinkSelect'> & {
   linkTargetMask: number
   highlightsLinkTargetCell: boolean
   canSelectLinkCandidate: boolean
+  canSelectCandidate?: (candidate: Candidate) => boolean
   highlightedLinkDigit: number | null
   selectedCandidateMask: number
   tabCandidateDigit?: number
@@ -186,7 +188,7 @@ const BoardCell = memo(function BoardCell({
   geometry, value, fixed, fogged, center, corner, centerMask, gridMask, displayedGridMask, digitSlots, annotatedSlots,
   preview, candidateColors, importedCandidateColors, color, importedColors, cellAnnotation, candidateAnnotations, selected, selectionEdges, active, pointerFocused,
   error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask, highlightLabel, countLabel,
-  linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, highlightedLinkDigit, selectedCandidateMask, tabCandidateDigit, tabCandidateSlotted,
+  linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate, canSelectCandidate, highlightedLinkDigit, selectedCandidateMask, tabCandidateDigit, tabCandidateSlotted,
   onCell, onGiven, onCellDoubleClick, onCellPointerDown, onCandidate, onPaintCandidate, onCandidateHover, onCandidateFocus,
 }: CellProps) {
   const { index, row, column: col, boxColumns, cageTotal, regionAtCell } = geometry
@@ -319,8 +321,8 @@ const BoardCell = memo(function BoardCell({
       '--imported-candidate-tone': imported && !color ? importedColorFill(imported) : undefined,
     } as CSSProperties
     const highlightClass = highlighted ? 'candidate-match' : undefined
-    if (candidateAction) {
-      const candidate = { cell: index, digit }
+    const candidate = { cell: index, digit }
+    if (candidateAction && (!canSelectCandidate || canSelectCandidate(candidate))) {
       const pending = hasCandidate(selectedCandidateMask, digit)
       const linkTarget = hasCandidate(linkTargetMask, digit)
       const candidateLabel = [`${digit} in row ${row}, column ${col}`, annotation?.label, color ? COLORS[color - 1] : imported && importedColorLabel(imported),
@@ -345,7 +347,7 @@ const BoardCell = memo(function BoardCell({
       style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
   }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewEditMask, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
-    candidateAction, index, row, col, selectedCandidateMask, linkTargetMask, onPaintCandidate, onCandidate,
+    candidateAction, canSelectCandidate, index, row, col, selectedCandidateMask, linkTargetMask, onPaintCandidate, onCandidate,
     tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus, selectCandidate])
 
   // Selection and cell fill changes must not restart the candidate/value fades.
@@ -395,7 +397,7 @@ export function Board({
   variantPuzzle: fullPuzzle, fog, whispersGuide, givenCellColors, authoredArtwork, highlightedRule, grid: sizedGrid, algebraicCages, sizedRules, givens: fullGivens, values, position, errors, candidateLayout = 'grid', candidates, candidatePreview, candidateGroupPreview, annotations, region, label = 'Sudoku grid', showGuides, overlay,
   highlightedDigit, highlightedDigitMask = 0, highlightedDigitMatch = 'all', highlightCandidateCells = false, fullCandidateCellHighlight = false,
   highlightCandidateCount, highlighting = DEFAULT_HIGHLIGHT_PREFERENCES,
-  selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGiven, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, selectedCandidates, dragSelect = false,
+  selected = NO_SELECTION, active = 0, pointerFocusedCell, boardRef, onCell, onGiven, onGridKeyDown, onCellDoubleClick, linkDrawing, onCandidate, canSelectCandidate, onLinkSelect, onCandidateHover, isLinkTarget, selectedCandidate, selectedCandidates, dragSelect = false,
   onCellPointerDown, onCellPointerMove, onGridPointerLeave, onPaintCandidate, descriptionId, showAnnotatedCandidates, showPlayerColors = true, showImportedAnnotations = showPlayerColors,
   modeBorder, modeBoundaryRef, modeBadge,
 }: Props) {
@@ -520,14 +522,16 @@ export function Board({
   let tabCandidate: CandidateSlot | undefined
   if (candidateAction) {
     if (candidateFocus && playableCell(candidateFocus.cell) &&
+      (!canSelectCandidate || canSelectCandidate(candidateFocus)) &&
       hasCandidate((candidateFocus.slotted ? gridMask : centerMask)(candidateFocus.cell), candidateFocus.digit)) {
       tabCandidate = candidateFocus
     } else {
-      const hasCandidates = (cell: number) => playableCell(cell) && (gridMask(cell) || centerMask(cell))
+      const available = (cell: number, mask: number) => marksOf(mask).find((digit) => !canSelectCandidate || canSelectCandidate({ cell, digit }))
+      const hasCandidates = (cell: number) => playableCell(cell) && (available(cell, gridMask(cell)) || available(cell, centerMask(cell)))
       const cell = hasCandidates(active) ? active : Array.from(values).findIndex((_, index) => hasCandidates(index))
       if (cell !== -1) {
-        const slotted = Boolean(gridMask(cell))
-        tabCandidate = { cell, digit: marksOf((slotted ? gridMask : centerMask)(cell))[0], slotted }
+        const digit = available(cell, gridMask(cell))
+        tabCandidate = { cell, digit: digit ?? available(cell, centerMask(cell))!, slotted: digit !== undefined }
       }
     }
   }
@@ -624,7 +628,7 @@ export function Board({
             : highlightsCell ? 'candidate-highlight-light' : ''}
           countHighlighted={highlightCandidateCells && candidateCountMatches} candidateHighlightMask={candidateHighlightMask}
           highlightLabel={highlightLabel} countLabel={countLabel} linkTargetMask={linkTargetMask} highlightsLinkTargetCell={highlightsLinkTargetCell}
-          canSelectLinkCandidate={canSelectLinkCandidate} highlightedLinkDigit={highlightedLinkDigit}
+          canSelectLinkCandidate={canSelectLinkCandidate} canSelectCandidate={canSelectCandidate} highlightedLinkDigit={highlightedLinkDigit}
           selectedCandidateMask={selectedCandidateMasks.get(index) ?? 0}
           tabCandidateDigit={tabCandidate?.cell === index ? tabCandidate.digit : undefined}
           tabCandidateSlotted={tabCandidate?.cell === index ? tabCandidate.slotted : undefined} onCandidateFocus={setCandidateFocus}
@@ -643,7 +647,7 @@ export function Board({
     annotations?.cells, annotations?.candidates, selectedCells, active, pointerFocusedCell, errors, relatedCells,
     selectedCandidateMasks, tabCandidate?.cell, tabCandidate?.digit, tabCandidate?.slotted,
     setCandidateFocus, boardEvents, Boolean(onCell), Boolean(onCellDoubleClick), Boolean(onCellPointerDown),
-    Boolean(onCandidate), Boolean(onPaintCandidate), Boolean(onCandidateHover), linkDrawing,
+    Boolean(onCandidate), Boolean(onPaintCandidate), Boolean(onCandidateHover), canSelectCandidate, linkDrawing,
   ])
 
   function navigateCandidates(event: KeyboardEvent<HTMLDivElement>) {
