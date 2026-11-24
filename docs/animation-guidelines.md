@@ -40,7 +40,7 @@ Use pointer cancellation and lost pointer capture as real cancellation paths. Pr
 The mobile puzzle gesture in `src/components/MobilePanelLayout.tsx` is the reference for a layout-changing snap:
 
 - Dragging down first uses the free gap above the input card, then shrinks the puzzle. Dragging up reverses shrink before moving the puzzle toward the top boundary.
-- Preview movement and scale are derived from one continuous pointer delta. On release, the displacement rounds to the nearest 32 px anchor from the current settled position. The top and minimum-size boundaries clamp to their limits.
+- Preview movement and scale are derived from one continuous pointer delta. On release, the displacement rounds to the nearest 16 px anchor from the current settled position. The top and minimum-size boundaries clamp to their limits.
 - The puzzle card's page spacing is committed before animation. Measure the panel's visible top before that commit and its new layout top afterward. The second measurement includes the live drag transform, so remove that contribution when calculating the corrected start offset:
 
   ```ts
@@ -51,7 +51,7 @@ The mobile puzzle gesture in `src/components/MobilePanelLayout.tsx` is the refer
 - Write the corrected offset while transitions are disabled, then force layout so the browser applies it. Enable the locking transition and force style resolution again. Only then set the translation to zero and the scale to its target. Without the first flush, the browser can coalesce the corrected offset with the destination and animate from the old drag offset, which can make a snap appear to reverse.
 - The panel translation and puzzle scale use the same 320 ms easing. The preview and snap use the same `.puzzle` scale origin and target calculation.
 
-`MobileInputResizeHandle` uses the same 32 px step and `--motion-snap-duration`. Its live content scale is the input height relative to its natural height, applied with CSS `zoom` so text, padding, icons, and button hit areas resize together. The CSS height is divided by that scale so the card still occupies the requested height in the surrounding layout. The minimum content scale is 65%. On release, `animatePanelLayout()` uses the card's live rectangle as the FLIP start and eases the input card to the snapped target rectangle.
+`MobileInputResizeHandle` uses the same 16 px step and `--motion-snap-duration`. The arrow keys and size buttons also change the height in 16 px steps. Its live content scale is the input height relative to its natural height, applied with CSS `zoom` so text, padding, icons, and button hit areas resize together. The CSS height is divided by that scale so the card still occupies the requested height in the surrounding layout. The minimum content scale is 65%. On release, `animatePanelLayout()` uses the card's live rectangle as the FLIP start and eases the input card to the snapped target rectangle.
 
 Nearest-anchor snapping can move opposite the finger for the final few pixels when the finger has passed the selected anchor. That is expected: the animation must still travel from the release position to the selected anchor. If the product requirement is that release motion always continues in the finger's direction, change the anchor selection rule explicitly; do not hide that difference by reversing or offsetting the animation.
 

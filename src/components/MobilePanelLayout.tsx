@@ -4,6 +4,7 @@ import { GripVertical, X } from 'lucide-react'
 import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
 import { MobileInputResizeHandle } from './MobileInputResizeHandle'
 import { animatePanelLayout, MotionSurface, motionDuration, usePresentContent } from './Presence'
+import { MOBILE_RESIZE_STEP } from '../sudoku/mobile-input-sizing'
 import {
   MOBILE_PANEL_HOLD_MS, MOBILE_PANEL_LAYOUT_RESET_EVENT, MOBILE_PANEL_ORDER_KEY, MOBILE_PANEL_IDS, moveMobilePanel, readMobilePanelOrder,
   type MobilePanelId, type PanelDrop,
@@ -46,7 +47,6 @@ type Drag = {
 }
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
-const PUZZLE_GESTURE_ANCHOR_SIZE = 32
 const PUZZLE_GESTURE_LOCK_FALLBACK_MS = 450
 type PuzzleGesture = {
   pointerId: number
@@ -250,10 +250,8 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
     const visualTop = panel.getBoundingClientRect().top
     const rawDelta = (current.space - current.startSpace) + (current.shrink - current.startShrink)
     const rawPosition = positionAtDelta(current, rawDelta)
-    // Each settled position is an anchor. Snap the gesture's displacement
-    // relative to that position so page padding cannot shift the grid and make
-    // a downward gesture settle behind the release point.
-    const anchorDelta = Math.round(rawPosition.delta / PUZZLE_GESTURE_ANCHOR_SIZE) * PUZZLE_GESTURE_ANCHOR_SIZE
+    // Snap relative to the settled position so page padding does not shift the anchors.
+    const anchorDelta = Math.round(rawPosition.delta / MOBILE_RESIZE_STEP) * MOBILE_RESIZE_STEP
     const snappedDelta = rawPosition.delta <= rawPosition.minDelta + 0.001
       ? rawPosition.minDelta
       : rawPosition.delta >= rawPosition.maxDelta - 0.001

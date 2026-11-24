@@ -2,13 +2,13 @@ import { type PointerEvent, useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from './Button'
 import { Modal } from './Modal'
-import { RESIZE_STEP, ResizeStepControls } from './ResizeStepControls'
+import { ResizeStepControls } from './ResizeStepControls'
 import { animatePanelLayout, motionDuration } from './Presence'
+import { MOBILE_RESIZE_STEP } from '../sudoku/mobile-input-sizing'
 
 const MIN_INPUT_CONTENT_SCALE = 0.65
 const MIN_GRID_WIDTH = 220
 const MIN_GRID_WIDTH_WITH_HINT = 130
-const INPUT_RESIZE_SNAP_SIZE = 32
 const DOUBLE_TAP_MS = 350
 const TAP_MOVE_LIMIT = 6
 const DOUBLE_TAP_DISTANCE = 24
@@ -369,7 +369,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
         ? current.split.min
         : rawHeight >= current.split.max - 0.001
           ? current.split.max
-          : clampHeight(current.split, current.split.input + Math.round((rawHeight - current.split.input) / INPUT_RESIZE_SNAP_SIZE) * INPUT_RESIZE_SNAP_SIZE)
+          : clampHeight(current.split, current.split.input + Math.round((rawHeight - current.split.input) / MOBILE_RESIZE_STEP) * MOBILE_RESIZE_STEP)
       : current.split.input
     const inputPanel = layout.querySelector<HTMLElement>('[data-mobile-panel="input"]')
     const before = inputPanel?.getBoundingClientRect()
@@ -431,11 +431,11 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       }
       if (event.key === 'Home') adjustSize('reset')
       else if (event.key === 'End') adjustSize('maximum')
-      else adjustSize(direction * (event.key === 'ArrowUp' ? -RESIZE_STEP : RESIZE_STEP))
+      else adjustSize(direction * (event.key === 'ArrowUp' ? -MOBILE_RESIZE_STEP : MOBILE_RESIZE_STEP))
     }} />
     <Modal title="Resize input panel" className="resize-options-dialog" open={options !== null}
       onClose={() => setOptions(null)} returnFocus={() => handle.current}>
-      <ResizeStepControls axis="height" onStep={adjustSize} atMin={Boolean(options && options.input <= options.min)}
+      <ResizeStepControls axis="height" step={MOBILE_RESIZE_STEP} onStep={adjustSize} atMin={Boolean(options && options.input <= options.min)}
         atMax={Boolean(options && options.input >= options.max)} />
       <Button className="resize-options-reset" onClick={() => adjustSize('reset')}>Reset size</Button>
     </Modal>

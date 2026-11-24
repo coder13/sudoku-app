@@ -1,3 +1,5 @@
+export const MOBILE_RESIZE_STEP = 16
+
 /**
  * The resize budget includes the flexible space above and below the cards.
  * The input panel can use that space before the puzzle needs to shrink.

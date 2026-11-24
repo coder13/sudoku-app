@@ -32,6 +32,7 @@ const sourceFiles = [
   'src/components/MobileInputResizeHandle.tsx', 'src/components/MobilePanelLayout.tsx',
   'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/Controls.tsx', 'src/components/MobileInputTabs.tsx', 'src/components/ModeBadge.tsx',
+  'src/components/ResizeStepControls.tsx',
   'src/components/usePuzzleZoom.ts', 'src/components/Presence.tsx', 'src/styles.css',
   'src/sudoku/mobile-input-sizing.ts', 'tests/browser/mobile-resize/fixture.tsx',
   'tests/browser/mobile-resize/index.html', 'scripts/check-mobile-resize.mjs', 'package-lock.json',
@@ -140,6 +141,7 @@ async function dragPuzzleFromSide(page, distance) {
   }
   await page.mouse.up()
   await frames(page, 3)
+  await page.locator('[data-puzzle-gesture-locking]').first().waitFor({ state: 'detached' })
   return page.evaluate(() => window.puzzleGestureCommits.at(-1))
 }
 
@@ -349,14 +351,29 @@ try {
       try {
         assertGeometry(await snapshot(page), `${variant} initial layout`)
         if (regressionOnly) {
-          const before = await snapshot(page)
-          const start = await startDrag(page, client)
-          await moveDrag(page, client, start, -72)
-          await finishDrag(page, client)
-          const after = await snapshot(page)
-          assert.equal(after.commits, 1, 'a completed drag must save exactly once')
-          assert.ok(Math.abs(parseFloat(after.savedHeight) - before.input.height - 64) < 1,
-            'a 72 px drag must snap to the nearest 32 px anchor')
+          for (const [distance, expected] of [[-76, 80], [21, -16]]) {
+            const before = await snapshot(page)
+            const start = await startDrag(page, client)
+            await moveDrag(page, client, start, distance)
+            await finishDrag(page, client)
+            const after = await snapshot(page)
+            const initialHeight = parseFloat(before.savedHeight) || before.input.height
+            assert.equal(after.commits, before.commits + 1, 'a completed drag must save exactly once')
+            assert.ok(Math.abs(parseFloat(after.savedHeight) - initialHeight - expected) < 1,
+              `a ${distance} px input drag must snap to the nearest 16 px anchor`)
+            await page.locator('[data-mobile-panel="input"]').evaluate(panel =>
+              Promise.allSettled(panel.getAnimations().map(animation => animation.finished)))
+          }
+          const handle = page.locator('.mobile-input-resize')
+          const initialHeight = Number(await handle.getAttribute('aria-valuenow'))
+          await handle.press('ArrowUp')
+          assert.equal(Number(await handle.getAttribute('aria-valuenow')), initialHeight + 16)
+          await handle.press('Shift+Enter')
+          const options = page.getByRole('dialog', { name: 'Resize input panel' })
+          await options.getByRole('button', { name: 'Shorter' }).click()
+          assert.equal(Number(await handle.getAttribute('aria-valuenow')), initialHeight)
+          await options.getByRole('button', { name: 'Close dialog' }).click()
+          await page.locator('.resize-options-dialog').waitFor({ state: 'detached' })
         } else {
           const result = await measure(page, client)
           report.measurements.push({ variant, round: round + 1, ...result })
@@ -385,9 +402,13 @@ try {
     try {
       const smaller = await dragPuzzleFromSide(page, 300)
       assert.ok(smaller?.shrink > 0, 'dragging down beside the puzzle must shrink it')
-      const larger = await dragPuzzleFromSide(page, -96)
+      const larger = await dragPuzzleFromSide(page, -76)
       assert.ok(larger?.shrink < smaller.shrink, 'dragging up from the side after shrinking must restore puzzle size')
-      report.checks.push({ scenario: 'shrink and restore puzzle from side negative space', smaller, larger })
+      const displacement = (from, to) => to.space + to.shrink - from.space - from.shrink
+      assert.ok(Math.abs(displacement(smaller, larger) + 80) < 1, 'an upward puzzle drag must snap to the nearest 16 px anchor')
+      const lowered = await dragPuzzleFromSide(page, 22)
+      assert.ok(Math.abs(displacement(larger, lowered) - 16) < 1, 'a downward puzzle drag must snap to the nearest 16 px anchor')
+      report.checks.push({ scenario: 'shrink and restore puzzle from side negative space', smaller, larger, lowered })
     } finally { await context.close() }
   }
   assert.deepEqual(errors, [], 'resize must not produce browser or ResizeObserver errors')
