@@ -6,7 +6,7 @@
     "difficulty": "easy",
     "points": 568,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2311h1",
@@ -15,7 +15,7 @@
     "difficulty": "medium",
     "points": 724,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2210e",
@@ -24,7 +24,7 @@
     "difficulty": "beginner",
     "points": 584,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2403h3",
@@ -33,7 +33,7 @@
     "difficulty": "tricky",
     "points": 820,
     "hardestTechnique": "swordfish",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2204m",
@@ -42,7 +42,7 @@
     "difficulty": "easy",
     "points": 550,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2206e",
@@ -51,7 +51,7 @@
     "difficulty": "beginner",
     "points": 556,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2009h1",
@@ -60,7 +60,7 @@
     "difficulty": "medium",
     "points": 624,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2403h2",
@@ -69,7 +69,7 @@
     "difficulty": "medium",
     "points": 828,
     "hardestTechnique": "locked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2402m",
@@ -78,7 +78,7 @@
     "difficulty": "easy",
     "points": 500,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2012h2",
@@ -87,7 +87,7 @@
     "difficulty": "medium",
     "points": 1064,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2311h2",
@@ -96,7 +96,7 @@
     "difficulty": "medium",
     "points": 610,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2401h2",
@@ -105,7 +105,7 @@
     "difficulty": "medium",
     "points": 1036,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2208m",
@@ -114,7 +114,7 @@
     "difficulty": "easy",
     "points": 520,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2401h3",
@@ -123,7 +123,7 @@
     "difficulty": "medium",
     "points": 678,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2009h2",
@@ -132,7 +132,7 @@
     "difficulty": "medium",
     "points": 694,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2110h2",
@@ -141,7 +141,7 @@
     "difficulty": "medium",
     "points": 600,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2109h2",
@@ -150,7 +150,7 @@
     "difficulty": "medium",
     "points": 1014,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2209m",
@@ -159,7 +159,7 @@
     "difficulty": "easy",
     "points": 568,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2211h3",
@@ -168,7 +168,7 @@
     "difficulty": "medium",
     "points": 918,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2403m",
@@ -177,7 +177,7 @@
     "difficulty": "easy",
     "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2205m",
@@ -186,7 +186,7 @@
     "difficulty": "easy",
     "points": 538,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2207e",
@@ -195,7 +195,7 @@
     "difficulty": "beginner",
     "points": 570,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2208h1",
@@ -204,7 +204,7 @@
     "difficulty": "medium",
     "points": 714,
     "hardestTechnique": "claiming",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2301m",
@@ -213,7 +213,7 @@
     "difficulty": "easy",
     "points": 504,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2309h2",
@@ -222,7 +222,7 @@
     "difficulty": "medium",
     "points": 640,
     "hardestTechnique": "claiming",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2402h1",
@@ -231,7 +231,7 @@
     "difficulty": "medium",
     "points": 618,
     "hardestTechnique": "claiming",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1907h1",
@@ -240,7 +240,7 @@
     "difficulty": "medium",
     "points": 622,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1902h-2",
@@ -249,7 +249,7 @@
     "difficulty": "medium",
     "points": 654,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2304e",
@@ -258,7 +258,7 @@
     "difficulty": "beginner",
     "points": 528,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2306m",
@@ -267,7 +267,7 @@
     "difficulty": "easy",
     "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2310m",
@@ -276,7 +276,7 @@
     "difficulty": "easy",
     "points": 558,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2202m",
@@ -285,7 +285,7 @@
     "difficulty": "easy",
     "points": 524,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2107m",
@@ -294,7 +294,7 @@
     "difficulty": "easy",
     "points": 560,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "170714_sd_easy",
@@ -303,7 +303,7 @@
     "difficulty": "beginner",
     "points": 434,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2111m",
@@ -312,7 +312,7 @@
     "difficulty": "easy",
     "points": 526,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2309h1",
@@ -321,7 +321,7 @@
     "difficulty": "medium",
     "points": 874,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1907h2",
@@ -330,7 +330,7 @@
     "difficulty": "medium",
     "points": 1030,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1912e",
@@ -339,7 +339,7 @@
     "difficulty": "beginner",
     "points": 556,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2110m",
@@ -348,7 +348,7 @@
     "difficulty": "easy",
     "points": 574,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2106m",
@@ -357,7 +357,7 @@
     "difficulty": "easy",
     "points": 592,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2212h3",
@@ -366,7 +366,7 @@
     "difficulty": "tricky",
     "points": 882,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2203m",
@@ -375,7 +375,7 @@
     "difficulty": "easy",
     "points": 558,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2311m",
@@ -384,7 +384,7 @@
     "difficulty": "easy",
     "points": 558,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2307m",
@@ -393,7 +393,7 @@
     "difficulty": "easy",
     "points": 574,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2209h2",
@@ -402,7 +402,7 @@
     "difficulty": "tricky",
     "points": 914,
     "hardestTechnique": "swordfish",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2104h2",
@@ -411,7 +411,7 @@
     "difficulty": "medium",
     "points": 788,
     "hardestTechnique": "claiming",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2109m",
@@ -420,7 +420,7 @@
     "difficulty": "easy",
     "points": 534,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2301h3",
@@ -429,7 +429,7 @@
     "difficulty": "medium",
     "points": 674,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2002h1",
@@ -438,7 +438,7 @@
     "difficulty": "medium",
     "points": 838,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1908m",
@@ -447,7 +447,7 @@
     "difficulty": "easy",
     "points": 574,
     "hardestTechnique": "naked-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2303h1",
@@ -456,7 +456,7 @@
     "difficulty": "medium",
     "points": 606,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1909h",
@@ -465,7 +465,7 @@
     "difficulty": "medium",
     "points": 674,
     "hardestTechnique": "locked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2308m",
@@ -474,7 +474,7 @@
     "difficulty": "easy",
     "points": 572,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2106h1",
@@ -483,7 +483,7 @@
     "difficulty": "medium",
     "points": 694,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2205h1",
@@ -492,7 +492,7 @@
     "difficulty": "medium",
     "points": 658,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2105m",
@@ -501,7 +501,7 @@
     "difficulty": "easy",
     "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2202e",
@@ -510,7 +510,7 @@
     "difficulty": "beginner",
     "points": 584,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1905h",
@@ -519,7 +519,7 @@
     "difficulty": "medium",
     "points": 614,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2312m",
@@ -528,7 +528,7 @@
     "difficulty": "easy",
     "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2310e",
@@ -537,7 +537,7 @@
     "difficulty": "beginner",
     "points": 552,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2304m",
@@ -546,7 +546,7 @@
     "difficulty": "easy",
     "points": 588,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2006h3",
@@ -555,7 +555,7 @@
     "difficulty": "medium",
     "points": 784,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2305m",
@@ -564,7 +564,7 @@
     "difficulty": "easy",
     "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2307h3",
@@ -573,7 +573,7 @@
     "difficulty": "medium",
     "points": 698,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1910h1",
@@ -582,7 +582,7 @@
     "difficulty": "medium",
     "points": 678,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2203e",
@@ -591,7 +591,7 @@
     "difficulty": "beginner",
     "points": 574,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1912h2",
@@ -600,7 +600,7 @@
     "difficulty": "medium",
     "points": 648,
     "hardestTechnique": "naked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk170929sd",
@@ -609,7 +609,7 @@
     "difficulty": "beginner",
     "points": 434,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2307h2",
@@ -618,7 +618,7 @@
     "difficulty": "medium",
     "points": 704,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2112m",
@@ -627,7 +627,7 @@
     "difficulty": "easy",
     "points": 598,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2309m",
@@ -636,7 +636,7 @@
     "difficulty": "easy",
     "points": 564,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2102h1",
@@ -645,7 +645,7 @@
     "difficulty": "medium",
     "points": 998,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1908h",
@@ -654,7 +654,7 @@
     "difficulty": "medium",
     "points": 604,
     "hardestTechnique": "pointing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2201h2",
@@ -663,7 +663,7 @@
     "difficulty": "medium",
     "points": 924,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2108m",
@@ -672,7 +672,7 @@
     "difficulty": "easy",
     "points": 602,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2305h3",
@@ -681,7 +681,7 @@
     "difficulty": "medium",
     "points": 804,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2204e",
@@ -690,7 +690,7 @@
     "difficulty": "beginner",
     "points": 542,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2206m",
@@ -699,7 +699,7 @@
     "difficulty": "easy",
     "points": 530,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1903h",
@@ -708,7 +708,7 @@
     "difficulty": "tricky",
     "points": 788,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2302m",
@@ -717,7 +717,7 @@
     "difficulty": "easy",
     "points": 584,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2302h3",
@@ -726,7 +726,7 @@
     "difficulty": "tricky",
     "points": 944,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2210m",
@@ -735,7 +735,7 @@
     "difficulty": "easy",
     "points": 608,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2206h1",
@@ -744,7 +744,7 @@
     "difficulty": "medium",
     "points": 1184,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2208e",
@@ -753,7 +753,7 @@
     "difficulty": "beginner",
     "points": 552,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2107h1",
@@ -762,7 +762,7 @@
     "difficulty": "medium",
     "points": 744,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1911h2",
@@ -771,7 +771,7 @@
     "difficulty": "medium",
     "points": 816,
     "hardestTechnique": "hidden-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2209e",
@@ -780,7 +780,7 @@
     "difficulty": "beginner",
     "points": 518,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2304h2",
@@ -789,7 +789,7 @@
     "difficulty": "medium",
     "points": 670,
     "hardestTechnique": "claiming",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2211m",
@@ -798,7 +798,7 @@
     "difficulty": "easy",
     "points": 598,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2103h2",
@@ -807,7 +807,7 @@
     "difficulty": "medium",
     "points": 564,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2303m",
@@ -816,7 +816,7 @@
     "difficulty": "easy",
     "points": 592,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2202h2",
@@ -825,7 +825,7 @@
     "difficulty": "tricky",
     "points": 748,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk1810h",
@@ -834,7 +834,7 @@
     "difficulty": "medium",
     "points": 550,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2205e",
@@ -843,7 +843,7 @@
     "difficulty": "beginner",
     "points": 604,
     "hardestTechnique": "hidden-single-box",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2207m",
@@ -852,7 +852,7 @@
     "difficulty": "easy",
     "points": 554,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2304h1",
@@ -861,7 +861,7 @@
     "difficulty": "medium",
     "points": 708,
     "hardestTechnique": "naked-triple",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2306h2",
@@ -870,7 +870,7 @@
     "difficulty": "medium",
     "points": 600,
     "hardestTechnique": "locked-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2007h2",
@@ -879,7 +879,7 @@
     "difficulty": "tricky",
     "points": 854,
     "hardestTechnique": "x-wing",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2401m",
@@ -888,7 +888,7 @@
     "difficulty": "easy",
     "points": 574,
     "hardestTechnique": "hidden-single",
-    "scoringVersion": 11
+    "scoringVersion": 15
   },
   {
     "id": "nhk2101h1",
@@ -897,6 +897,6 @@
     "difficulty": "medium",
     "points": 920,
     "hardestTechnique": "hidden-pair",
-    "scoringVersion": 11
+    "scoringVersion": 15
   }
 ]

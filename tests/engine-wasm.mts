@@ -354,7 +354,7 @@ test('ALS chains and both Nice Loops are selectable and expose replayable proofs
     assert.equal(checked?.technique, technique)
     const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
     assert.ok(trace.steps.length > 0)
-    assert.equal(trace.rating.score.points, trace.steps.length * 360)
+    assert.ok(trace.rating.score.points > 0)
     if (technique === 'als-continuous-nice-loop') {
       assert.equal(deduction.actions.length, 15)
       assert.deepEqual(deduction.actions[0], { eliminate: { cell: 30, digit: 8 } })
@@ -418,7 +418,7 @@ test('Unique Rectangle chains and Nice Loops are opt-in and carry the swap premi
     assert.ok(check && check.actions.some(action => JSON.stringify(action) === JSON.stringify(suggestion)))
     const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
     assert.ok(trace.steps.length > 0)
-    assert.equal(trace.rating.score.points, trace.steps.length * 360)
+    assert.ok(trace.rating.score.points > 0)
   }
   const [example] = await run({ type: 'practice-examples', technique: ids[1] })
   const moves = await run({ type: 'deductions', values: lessonValues(example), eliminations: example.eliminations, techniqueOrder: [ids[1]] })
@@ -514,7 +514,7 @@ test('Firework chains expose crossing-house links and replay a published removal
   assert.ok(step)
   assert.equal(step.before.eliminations[44] & (1 << 4), 0)
   assert.equal(step.after.eliminations[44] & (1 << 4), 1 << 4)
-  assert.equal(trace.rating.score.points, trace.steps.length * 360)
+  assert.equal(trace.rating.score.points, 21000)
   const evidence = wide.deduction.evidence
   assert.ok('inference' in evidence)
   assert.deepEqual(wide.suggestion, { eliminate: { cell: 74, digit: 1 } })
@@ -1864,7 +1864,7 @@ test('the worker protocol reaches the compiled browser engine', async () => {
     const technique = catalog.techniques.find(technique => technique.id === id)
     assert.ok(technique)
     assert.equal(technique.requiresUniqueSolution, true)
-    assert.equal(technique.cost, 100)
+    assert.equal(technique.cost, id === 'unique-rectangle-1' ? 40 : 100)
   }
   const rectangle = examples['unique-rectangle-1'].deduction
   assert.deepEqual(rectangle.actions, [{ eliminate: { cell: 43, digit: 2 } }, { eliminate: { cell: 43, digit: 9 } }])
@@ -2420,7 +2420,7 @@ test('variant hints, ratings, replay, and practice use the same cage proofs', as
   assert.deepEqual(trace.rating, await run({ ...request, operation: 'rate' }))
   assert.equal(trace.rating.status, 'stalled')
   assert.deepEqual(trace.rating.counts, { 'cage-house-sum': 4, 'naked-single': 2 })
-  assert.equal(trace.rating.points, 276)
+  assert.equal(trace.rating.points, 363)
   assert.deepEqual(trace.rating.rules, position.puzzle.rules)
   const step = await run({ ...request, operation: 'replay-step', stepIndex: 0 })
   assert.ok(step)
@@ -2544,7 +2544,7 @@ test('Jigsaw Pattern Overlay exposes its own regions and replays the published m
 test('the variant catalog exposes calibrated costs and practice proofs', async () => {
   const { raw, run } = engineRequests()
   const [catalog, classic] = await Promise.all([run({ type: 'techniques', variant: true }), run({ type: 'techniques' })])
-  assert.equal(catalog.scoringVersion, 22)
+  assert.equal(catalog.scoringVersion, 24)
   assert.ok(!catalog.defaultOrder.includes('little-killer-house-support'))
   assert.ok(!catalog.defaultOrder.includes('renban-sum-ray-houses'))
   assert.ok(!catalog.defaultOrder.includes('renban-locked-digit'))

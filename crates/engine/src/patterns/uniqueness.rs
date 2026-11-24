@@ -17,6 +17,7 @@ pub(super) mod unique_loop;
 #[derive(Clone, Copy)]
 pub(super) struct Rectangle {
     corners: [usize; 4],
+    candidate_counts: [u8; 4],
     pair: u16,
     roofs: u16,
 }
@@ -48,6 +49,7 @@ pub(super) fn rectangles(masks: &[u16; CELLS], bivalue: u128) -> Vec<Rectangle> 
                 });
             (roofs != 0).then_some(Rectangle {
                 corners,
+                candidate_counts: corners.map(|cell| masks[cell].count_ones() as u8),
                 pair,
                 roofs,
             })
@@ -304,6 +306,7 @@ impl Rectangle {
             technique,
             evidence: HintEvidence::UniqueRectangle {
                 corners: self.corners,
+                candidate_counts: self.candidate_counts,
                 digits: [
                     self.pair.trailing_zeros() as u8 + 1,
                     self.pair.ilog2() as u8 + 1,

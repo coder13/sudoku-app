@@ -7,8 +7,8 @@
     "status": {
       "solved": "impossible"
     },
-    "points": 75986,
-    "traceDigest": "bb9ce0cd4ccf9ba2ef98b4562880b76455e670d0666084621c62779e5c44ea2b"
+    "points": 385401,
+    "traceDigest": "3466ebebdb65244950baabec5415f02856dc9c4115baef504f73c81f8c6563ec"
   },
   {
     "id": "FhZd",
@@ -18,8 +18,8 @@
     "status": {
       "solved": "impossible"
     },
-    "points": 45762,
-    "traceDigest": "47d00d718fcd4a50e1b09ff9c227dc01537bb0a777ba28d8391ba1f6a7df7151"
+    "points": 174100,
+    "traceDigest": "896f4866b2258e08ef505433f6616c1cfab1d2cf89e8e7db57c9fc9fa2137932"
   },
   {
     "id": "J6TH",
@@ -29,8 +29,8 @@
     "status": {
       "solved": "impossible"
     },
-    "points": 9623,
-    "traceDigest": "b894d99d18402e97f24f1d48503b74b1e22f84edd33d72e01f72a2216e40fe93"
+    "points": 10405,
+    "traceDigest": "f55e692e46865b32f31a23f662bf105672e0255bd17e895aabd47eb41d1b7fe2"
   },
   {
     "id": "Lq4f",
@@ -38,7 +38,7 @@
     "code": "SCv7_32_f2e8bkiddb1j0405s2tspuhdlj8spu37rchn8mdi626j10m416p4gqcdttf0amlq5496g8c91uuu38ctioacvbvh5f8390kmv04enirdrlp9losq6uddstkacud5o1uajvrq4q2et7r4381d5jbv0quuofiv5n5hgfpm0vo2rnjj8nq31qktpru7g4vq8fdcgu75a90tci20sbf43mcani4fi096ebe4clqvae07emo2dsl50akse3fg7mu43d7u311hi8ngenbj6j30ekqc06asrms856htl10bbld8im8pkpdhg7qtvciepsfpcsqsiufv7s8daqatom0",
     "solution": "157342986349786152862951437673428591218579643594613728431865279925137864786294315",
     "status": "stalled",
-    "points": 576,
-    "traceDigest": "9f02e2f03940714141065adc78245dc42e5e1fe8006389ed22f30697777a1c8c"
+    "points": 870,
+    "traceDigest": "74ca8f62a0dcfd45ec30454e199752d3f5489f067f2335c2cdc5a5046d54de4b"
   }
 ]

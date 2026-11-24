@@ -35,11 +35,11 @@ for (const [index, source] of sources.entries()) {
     assert.notEqual(solution.rating.status, 'stalled')
     assert.equal(solution.board, source.solution)
     if (index < 2) {
-      assert.equal(solution.rating.score.points, index === 0 ? 2564 : 1886)
+      assert.equal(solution.rating.score.points, index === 0 ? 2624 : 1922)
       assert.equal(solution.steps.length, index === 0 ? 87 : 76)
     } else {
       assert.deepEqual(solution.rating.status, { solved: 'very-hard' })
-      assert.equal(solution.rating.score.points, 5942)
+      assert.equal(solution.rating.score.points, 7378)
       assert.equal(solution.steps.length, 163)
     }
     let play = game

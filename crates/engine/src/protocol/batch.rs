@@ -137,7 +137,7 @@ fn requested_order(input: &Value) -> Value {
         if input["type"] == "generate-variant" {
             json!(VariantTechnique::DEFAULT_ORDER)
         } else {
-            json!(Technique::DEFAULT_ORDER)
+            json!(Technique::default_order())
         }
     } else {
         order.clone()

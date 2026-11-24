@@ -36,7 +36,7 @@ pub const STALLS: &[(usize, &str)] = &[
 
 pub fn profile() -> Vec<Technique> {
     use Technique::*;
-    let mut order = Technique::DEFAULT_ORDER.to_vec();
+    let mut order = Technique::default_order().to_vec();
     let aic = order
         .iter()
         .position(|&technique| technique == Aic)

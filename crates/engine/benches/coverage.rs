@@ -538,7 +538,7 @@ fn main() {
     } else {
         CORPUS
     };
-    let mut order = Technique::DEFAULT_ORDER.to_vec();
+    let mut order = Technique::default_order().to_vec();
     let before_forcing = order
         .iter()
         .position(|&technique| technique == Technique::ForcingChain)

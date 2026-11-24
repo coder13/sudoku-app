@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use super::hints::{Deduction, DeductionSearch, checked_position};
 use super::position::Position;
-use super::{
-    Analysis, Board, Hint, HintError, PositionSnapshot, Technique,
-};
+use super::{Analysis, Board, Hint, HintError, PositionSnapshot, Technique};
 
 #[path = "logical/paths.rs"]
 mod paths;
@@ -12,9 +10,9 @@ pub use paths::{
     AlternatePath, AlternatePathStatus, MoveAvailability, PathComparison, compare_paths,
     search_alternate_path,
 };
-mod rank_fallback;
 #[cfg(any(feature = "generation", test))]
 mod quality;
+mod rank_fallback;
 #[cfg(any(feature = "generation", test))]
 use crate::{GenerationRating, TechniqueTargetMode};
 pub use rank_fallback::{
@@ -23,7 +21,7 @@ pub use rank_fallback::{
 };
 
 /// Version of the scoring rules recorded in ratings and exported traces.
-pub const SCORING_VERSION: u32 = 11;
+pub const SCORING_VERSION: u32 = 15;
 const QUICK_VERIFICATION_NODES: u32 = 4096;
 
 /// Ordered difficulty tiers for techniques and complete solve paths.
@@ -60,8 +58,16 @@ pub enum Difficulty {
 impl Difficulty {
     /// The ten current levels in increasing order. Points never select a level.
     pub const ALL: [Self; 10] = [
-        Self::Beginner, Self::Easy, Self::Medium, Self::Tricky, Self::Hard,
-        Self::VeryHard, Self::Expert, Self::Master, Self::Extreme, Self::Impossible,
+        Self::Beginner,
+        Self::Easy,
+        Self::Medium,
+        Self::Tricky,
+        Self::Hard,
+        Self::VeryHard,
+        Self::Expert,
+        Self::Master,
+        Self::Extreme,
+        Self::Impossible,
     ];
 
     /// Canonical techniques allowed at this level, from easiest to hardest.
@@ -93,8 +99,8 @@ struct Tally {
 }
 
 impl Tally {
-    fn record(&mut self, technique: Technique) {
-        self.points += u32::from(technique.cost());
+    fn record_with_cost(&mut self, technique: Technique, cost: u16) {
+        self.points += u32::from(cost);
         let rank = |technique: Technique| (technique.difficulty(), technique.cost(), technique);
         if self
             .hardest
@@ -105,7 +111,8 @@ impl Tally {
     }
 
     fn difficulty(&self) -> Difficulty {
-        self.hardest.map_or(Difficulty::Beginner, Technique::difficulty)
+        self.hardest
+            .map_or(Difficulty::Beginner, Technique::difficulty)
     }
 }
 
@@ -222,7 +229,7 @@ impl LogicalSolve {
 }
 
 /// Solve and score a puzzle using only the techniques in the specified order.
-/// `Technique::DEFAULT_ORDER` is the default order. An empty slice enables no techniques.
+/// `Technique::default_order()` is the default order. An empty slice enables no techniques.
 /// Errors report the result of the uniqueness check.
 pub fn solve_logically(
     board: &Board,
@@ -282,7 +289,7 @@ pub fn rate_puzzle(board: &Board, technique_order: &[Technique]) -> Result<Puzzl
 }
 
 pub(crate) fn verified_position(board: &Board) -> Result<Position, Analysis> {
-    let order = Technique::DEFAULT_ORDER;
+    let order = Technique::default_order();
     let inexpensive = order
         .iter()
         .position(|technique| {
@@ -318,7 +325,7 @@ fn summarize_path(
 ) -> Result<(Board, PuzzleRating), Analysis> {
     let mut tally = RatingTally::default();
     let position = verified_path(position, technique_order, |step| {
-        tally.record(step.technique);
+        tally.record_deduction(&step);
         record_step(step);
     })?;
     Ok((
@@ -334,9 +341,17 @@ struct RatingTally {
 }
 
 impl RatingTally {
-    fn record(&mut self, technique: Technique) {
-        self.total.record(technique);
+    fn record_deduction(&mut self, step: &Deduction) {
+        self.record_with_cost(step.technique, step.score_cost());
+    }
+
+    pub(crate) fn record_with_cost(&mut self, technique: Technique, cost: u16) {
+        self.total.record_with_cost(technique, cost);
         *self.counts.entry(technique).or_default() += 1;
+    }
+
+    pub(crate) fn record_hint(&mut self, hint: &Hint) {
+        self.record_with_cost(hint.technique, hint.cost());
     }
 
     fn finish(self, solved: bool, technique_order: &[Technique]) -> PuzzleRating {
@@ -397,7 +412,7 @@ pub(crate) fn match_generation_path(
             }
         }
         if rating.is_some() {
-            tally.record(step.technique);
+            tally.record_deduction(&step);
             quality.record(step.technique);
         }
         match rating {
@@ -522,7 +537,7 @@ mod tests {
         assert!(!position.uniqueness_deferred());
         assert_eq!(position.verify_unique(), Err(Analysis::SearchLimit));
         assert!(position.uniqueness_deferred());
-        let solved = verified_path(position, Technique::DEFAULT_ORDER, |step| {
+        let solved = verified_path(position, Technique::default_order(), |step| {
             assert!(!step.technique.requires_unique_solution());
         })
         .unwrap();
@@ -536,7 +551,14 @@ mod tests {
         let normal = solve_logically(&board, &Technique::ALL).unwrap();
         assert_eq!(normal.board, solve(&board).unwrap());
         assert_eq!(normal.steps.len(), 51);
-        assert_eq!(normal.score.points, normal.score.counts.iter().map(|(t, count)| u32::from(t.cost()) * count).sum::<u32>());
+        assert_eq!(
+            normal.score.points,
+            normal
+                .steps
+                .iter()
+                .map(|step| u32::from(step.cost()))
+                .sum::<u32>()
+        );
         assert_eq!(normal.status, SolveStatus::Solved(Difficulty::Beginner));
         assert_eq!(normal.technique_order, Technique::ALL);
         assert_eq!(normal.scoring_version, SCORING_VERSION);
@@ -587,14 +609,25 @@ mod tests {
 
     #[test]
     fn repetition_never_promotes_the_technique_tier() {
-        for technique in [Technique::HiddenSingleBox, Technique::NakedPair, Technique::XYWing, Technique::Aic] {
+        for technique in [
+            Technique::HiddenSingleBox,
+            Technique::NakedPair,
+            Technique::XYWing,
+            Technique::Aic,
+        ] {
             let mut tally = Tally::default();
-            for _ in 0..100 { tally.record(technique); }
+            for _ in 0..100 {
+                tally.record_with_cost(technique, technique.cost());
+            }
             assert!(tally.points > 1800 || technique == Technique::HiddenSingleBox);
             assert_eq!(tally.difficulty(), technique.difficulty());
         }
         assert_eq!(Difficulty::ALL.len(), 10);
-        assert!(Technique::DIFFICULTY_ORDER.windows(2).all(|pair| pair[0].difficulty() <= pair[1].difficulty()));
+        assert!(
+            Technique::DIFFICULTY_ORDER
+                .windows(2)
+                .all(|pair| pair[0].difficulty() <= pair[1].difficulty())
+        );
         let optional: Vec<_> = Technique::ALL
             .into_iter()
             .filter(|technique| !Technique::DIFFICULTY_ORDER.contains(technique))
@@ -604,12 +637,27 @@ mod tests {
 
     #[test]
     fn a_high_point_total_does_not_make_a_wing_puzzle_extreme() {
-        let board = parse_givens("100070890000000010203080000020490000070300050000060000080500900000000103007100060").unwrap();
+        let board = parse_givens(
+            "100070890000000010203080000020490000070300050000060000080500900000000103007100060",
+        )
+        .unwrap();
         let rating = rate_puzzle(&board, &Difficulty::Hard.technique_order()).unwrap();
         assert_eq!(rating.status, SolveStatus::Solved(Difficulty::Hard));
-        assert_eq!(rate_puzzle(&board, &Difficulty::Tricky.technique_order()).unwrap().status, SolveStatus::Stalled);
-        assert!(match_generation_path(&board, &Difficulty::Extreme.technique_order(),
-            Some(&GenerationRating::Difficulty(Difficulty::Extreme)), None).is_none());
+        assert_eq!(
+            rate_puzzle(&board, &Difficulty::Tricky.technique_order())
+                .unwrap()
+                .status,
+            SolveStatus::Stalled
+        );
+        assert!(
+            match_generation_path(
+                &board,
+                &Difficulty::Extreme.technique_order(),
+                Some(&GenerationRating::Difficulty(Difficulty::Extreme)),
+                None
+            )
+            .is_none()
+        );
     }
 
     #[test]

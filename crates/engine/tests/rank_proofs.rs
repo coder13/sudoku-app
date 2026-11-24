@@ -94,7 +94,7 @@ fn a_rank_removal_unlocks_a_grid_that_stalls_with_the_reference_expert_profile()
     let mut counts = std::collections::BTreeMap::new();
     for step in &trace.steps {
         if let RankSolveStep::Technique(hint) = step {
-            subtotal += u32::from(hint.technique.cost());
+            subtotal += u32::from(hint.cost());
             *counts.entry(hint.technique).or_default() += 1;
         }
         for &action in step.actions() {
@@ -208,7 +208,7 @@ fn rank_solve_spends_the_total_budget_across_scans() {
 #[test]
 fn discovers_a_mixed_certificate_for_easter_monster_within_budget() {
     let givens = parse_givens(EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     let snapshot = trace.positions().last().unwrap();
     let too_small = discover_rank_at(&snapshot, TARGET, 1).unwrap();
     assert_eq!(too_small.outcome, RankOutcome::SearchLimit);
@@ -279,7 +279,7 @@ fn discovers_a_mixed_certificate_for_easter_monster_within_budget() {
 #[test]
 fn position_wide_discovery_ranks_distinct_replayable_removals_with_shared_limits() {
     let givens = parse_givens(EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     let snapshot = trace.positions().last().unwrap();
     let solution = solve(&givens).unwrap();
     let partial = discover_rank_deductions_at(&snapshot, 10, 40_000, 200).unwrap();
@@ -340,7 +340,7 @@ fn a_complete_discovery_scan_removes_every_candidate_outside_the_solution() {
 #[test]
 fn barker_rank_zero_finds_the_published_removal_with_overlapping_mixed_constraints() {
     let givens = parse_givens(EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     assert_eq!(trace.steps.len(), 4);
     let snapshot = trace.positions().last().unwrap();
     let pattern = barker_pattern();
@@ -393,7 +393,7 @@ fn barker_rank_zero_finds_the_published_removal_with_overlapping_mixed_constrain
 fn overlapping_bases_can_support_a_removal_with_fewer_covers() {
     use House::{Box, Column, Row};
     let givens = parse_givens(EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     let mut snapshot = trace.positions().last().unwrap();
     let solution = solve(&givens).unwrap();
     let previous = barker_pattern();
@@ -451,7 +451,7 @@ fn overlapping_bases_can_support_a_removal_with_fewer_covers() {
 #[test]
 fn replay_requires_all_cases_and_uses_the_snapshot_candidates() {
     let givens = parse_givens(EASTER_MONSTER).unwrap();
-    let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+    let trace = solve_logically(&givens, Technique::default_order()).unwrap();
     let mut snapshot = trace.positions().last().unwrap();
     let pattern = barker_pattern();
     let RankOutcome::Proven(proof) = prove_rank_at(&snapshot, &pattern, TARGET, 50_000).unwrap()

@@ -166,7 +166,7 @@ test('the published Windoku construction note keeps all 28 encoded clues through
 
     const path = await puzzleSolution(game)
     assert.deepEqual(path.rating.status, { solved: 'hard' })
-    assert.equal(path.rating.score.points, 3149)
+    assert.equal(path.rating.score.points, 3502)
     assert.equal(path.steps.length, 153)
     assert.equal(path.board, puzzle.solution)
 

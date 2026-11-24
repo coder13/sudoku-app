@@ -381,6 +381,7 @@ impl<'a> Pattern<'a> {
                 corners,
                 digits,
                 support,
+                ..
             } => {
                 self.mark(*corners, mask(*digits));
                 self.uniqueness_support(support);

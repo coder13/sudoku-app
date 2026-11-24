@@ -6,12 +6,14 @@ use std::{
 
 use super::{
     CompiledVariant, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
-    VariantPosition, VariantPositionError, cells_in,
+    VariantPosition, VariantPositionError, VariantPuzzle, cells_in,
 };
 use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
     Technique,
-    hints::{Deduction, DeductionSearch, OverlaySearch, RectangleInferenceCache, digit_bit, digits},
+    hints::{
+        Deduction, DeductionSearch, OverlaySearch, RectangleInferenceCache, digit_bit, digits,
+    },
 };
 
 #[cfg(test)]
@@ -19,8 +21,8 @@ use crate::{
 mod tests;
 
 /// Version of the rating behavior for structured puzzles.
-pub const VARIANT_SCORING_VERSION: u32 = 22;
-const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 23;
+pub const VARIANT_SCORING_VERSION: u32 = 24;
+const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 25;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
@@ -32,25 +34,27 @@ pub(super) use rule_proofs::RuleProofIndex;
 mod exclusions;
 mod forcing;
 pub use forcing::VariantTrialFailure;
-mod pruning;
+mod entropy_quadruple;
 mod group_line_houses;
 mod group_order;
+mod group_sum_implications;
+mod kropki_houses;
+mod line_houses;
 mod linked_clues;
 mod matching_digits;
 mod matching_layouts;
-mod scope_checks;
-mod line_houses;
-mod entropy_quadruple;
-mod sum_pairs;
-mod thermometer_houses;
-mod kropki_houses;
-mod group_sum_implications;
+mod pruning;
 mod ray_houses;
 mod region_sums;
 mod renban_group_counts;
 mod renban_house_support;
 mod renban_locks;
 mod renban_sum;
+mod scope_checks;
+#[path = "scoring.rs"]
+mod scoring;
+mod sum_pairs;
+mod thermometer_houses;
 
 macro_rules! catalog {
     (
@@ -84,9 +88,17 @@ macro_rules! catalog {
                 match id { $($id => Some(Self::$name),)+ $($extra_id => Some(Self::$extra),)+ _ => Technique::from_id(id).map(Self::Classic) }
             }
 
-            /// Point cost per move made with this technique.
+            /// Reference point cost; a deduction's evidence can adjust the applied cost.
             pub const fn cost(self) -> u16 {
                 match self { $(Self::$name => $cost,)+ $(Self::$extra => $extra_cost,)+ Self::Classic(technique) => technique.cost() }
+            }
+
+            /// Conservative lower bound for evidence-adjusted point scoring.
+            pub const fn minimum_cost(self) -> u16 {
+                match self {
+                    Self::Classic(technique) => technique.minimum_cost(),
+                    _ => 1,
+                }
             }
 
             /// The minimum difficulty of a path that uses the technique.
@@ -232,6 +244,7 @@ impl serde::Serialize for VariantTechnique {
 impl VariantTechnique {
     /// Optional Classic techniques are available to custom profiles but do not
     /// participate in the default variant difficulty search.
+    #[cfg(any(feature = "generation", test))]
     pub(super) const fn is_optional(self) -> bool {
         matches!(self, Self::Classic(Technique::MultiColoring))
     }
@@ -267,7 +280,11 @@ pub struct VariantClueScope {
 
 /// An exhaustive set of alternatives used to exclude another candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(tag = "type", rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
 pub enum VariantExclusionPremise {
     /// One of the listed candidates must occupy this empty cell.
     Cell {
@@ -511,7 +528,11 @@ pub struct VariantGroupSumLink {
 
 /// The local premise that links two candidate placements.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(tag = "type", rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
 pub enum VariantGroupSumLinkSource {
     /// A same-phase link or a different-phase link with a fixed third group.
     Line {
@@ -684,7 +705,11 @@ pub struct VariantRenbanGroupProof {
 
 /// Replayable support for a Renban and all other cells of its containing house.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRenbanHouseProof {
     /// Index of the Renban in the ordered puzzle rules.
     pub rule: usize,
@@ -744,7 +769,11 @@ pub struct VariantRenbanSumHouseProof {
 
 /// A short contradiction for a candidate removed by a Renban, sum, and house proof.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRenbanSumHouseWitness {
     /// The assumed candidate.
     pub candidate: Candidate,
@@ -760,7 +789,11 @@ pub struct VariantRenbanSumHouseWitness {
 
 /// Group assignments to one line and available digits in a shared house.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantGroupLineHouseProof {
     /// Original Entropic or Modular rule index.
     pub rule: usize,
@@ -849,7 +882,11 @@ pub use VariantConstraintCheck as VariantGroupOrderCheck;
 
 /// Why a candidate cannot fit in an uncovered house under this assumption.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantMatchingDigitBlock {
     /// Candidate cell in the house being checked.
     pub cell: usize,
@@ -863,7 +900,11 @@ pub struct VariantMatchingDigitBlock {
 
 /// Places for the digit in one required house.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantMatchingDigitCheck {
     /// House that needs the digit.
     pub house: VariantHouseKind,
@@ -875,7 +916,11 @@ pub struct VariantMatchingDigitCheck {
 
 /// A placement of one digit that leaves a house without that digit.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantMatchingDigitProof {
     /// Digit being followed.
     pub digit: u8,
@@ -891,7 +936,11 @@ pub struct VariantMatchingDigitProof {
 
 /// One geometrically valid layout of a digit and its consequences.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantMatchingLayoutCase {
     /// Cells containing the digit in this layout.
     pub cells: Vec<usize>,
@@ -903,7 +952,11 @@ pub struct VariantMatchingLayoutCase {
 
 /// Exhaustive layouts of one digit under the matching cells and houses.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantMatchingLayoutProof {
     /// The digit whose layouts were checked.
     pub digit: u8,
@@ -915,7 +968,11 @@ pub struct VariantMatchingLayoutProof {
 
 /// A candidate that leaves a linked clue or house without an assignment.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantLinkedClueProof {
     /// The candidate assumed to be true.
     pub assumption: Candidate,
@@ -997,7 +1054,11 @@ pub struct VariantGroupOrderEliminationProof {
 
 /// The valid distinct-digit totals for each part of a Region Sum line.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRegionSumProof {
     /// Rule index of the Region Sum line.
     pub rule: usize,
@@ -1009,7 +1070,11 @@ pub struct VariantRegionSumProof {
 
 /// One part of a Region Sum line, with all its cells in one region.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRegionSumPart {
     /// Cells in this part.
     pub cells: Vec<usize>,
@@ -1021,7 +1086,11 @@ pub struct VariantRegionSumPart {
 
 /// Matching Region Sum lines using the digits in one common region.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRegionSumHouseProof {
     /// Region shared by the line parts.
     pub house: VariantHouseKind,
@@ -1035,7 +1104,11 @@ pub struct VariantRegionSumHouseProof {
 
 /// One line involved in a shared-region proof.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantRegionSumHouseLine {
     /// Source rule index.
     pub rule: usize,
@@ -1051,7 +1124,11 @@ pub struct VariantRegionSumHouseLine {
 
 /// Candidate support from one Thermometer and a row, column, or other distinct-digit house.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantThermometerHouseProof {
     /// Index of the source Thermometer rule.
     pub rule: usize,
@@ -1073,7 +1150,11 @@ pub struct VariantThermometerHouseProof {
 
 /// Candidate support from a printed Kropki dot and a shared distinct-digit house.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct VariantKropkiHouseProof {
     /// Indices of the rules printing a mark on this edge.
     pub rules: Vec<usize>,
@@ -1232,7 +1313,8 @@ impl VariantPosition {
 
     /// Rate the logical path without retaining its proof trace.
     pub fn rate(&self, order: &[VariantTechnique]) -> Result<VariantRating, VariantLogicalError> {
-        self.logical_run(order, 0, |_| ControlFlow::Continue(())).map(|(_, rating)| rating)
+        self.logical_run(order, 0, |_| ControlFlow::Continue(()))
+            .map(|(_, rating)| rating)
     }
 
     fn logical_run(
@@ -1304,7 +1386,7 @@ impl VariantPosition {
                 rating.scoring_version = GROUP_ORDER_ELIMINATION_SCORING_VERSION;
             }
             *rating.counts.entry(technique).or_default() += 1;
-            rating.points += u32::from(technique.cost());
+            rating.points += u32::from(scoring::deduction_cost(&step, &self.puzzle));
             let rank =
                 |technique: VariantTechnique| (technique.difficulty(), technique.cost(), technique);
             if rating
@@ -1332,7 +1414,9 @@ impl VariantPosition {
             if let Some(mut overlay) = overlay
                 && overlay.get_mut().has_cached_support()
             {
-                overlay.get_mut().update_position(&position.board, &position.masks);
+                overlay
+                    .get_mut()
+                    .update_position(&position.board, &position.masks);
                 position.overlay = OnceCell::from(overlay);
             }
         }
@@ -1341,6 +1425,11 @@ impl VariantPosition {
 }
 
 impl VariantDeduction {
+    /// Estimated points for this deduction using its proof and puzzle rules.
+    pub fn cost(&self, puzzle: &VariantPuzzle) -> u16 {
+        scoring::deduction_cost(self, puzzle)
+    }
+
     fn rank(&self) -> (Difficulty, u16, usize, usize, VariantTechnique, HintAction) {
         let checks = match &self.evidence {
             VariantEvidence::GroupOrder(proof) => proof
@@ -1387,12 +1476,30 @@ impl VariantDeduction {
             VariantEvidence::GroupOrderElimination(proof) => proof.cells.len(),
             VariantEvidence::LinkedClue(proof) => proof.checks.len() + 1,
             VariantEvidence::MatchingDigit(proof) => proof.checks.len() + 1,
-            VariantEvidence::MatchingLayout(proof) => proof.cases.len() + proof.cases.iter().map(|case| case.checks.len()).sum::<usize>(),
-            VariantEvidence::RegionSumDistinct(proof) => proof.parts.iter().map(|part| part.cells.len()).sum(),
-            VariantEvidence::RegionSumHouse(proof) => proof.lines.iter()
-                .flat_map(|line| &line.parts).map(|part| part.cells.len()).sum::<usize>() + proof.remainder.len(),
+            VariantEvidence::MatchingLayout(proof) => {
+                proof.cases.len()
+                    + proof
+                        .cases
+                        .iter()
+                        .map(|case| case.checks.len())
+                        .sum::<usize>()
+            }
+            VariantEvidence::RegionSumDistinct(proof) => {
+                proof.parts.iter().map(|part| part.cells.len()).sum()
+            }
+            VariantEvidence::RegionSumHouse(proof) => {
+                proof
+                    .lines
+                    .iter()
+                    .flat_map(|line| &line.parts)
+                    .map(|part| part.cells.len())
+                    .sum::<usize>()
+                    + proof.remainder.len()
+            }
             VariantEvidence::LockedDigit { clue, .. } => clue.cells.len(),
-            VariantEvidence::QuadrupleLock { clues, .. } => clues[0].cells.len() + clues[1].cells.len(),
+            VariantEvidence::QuadrupleLock { clues, .. } => {
+                clues[0].cells.len() + clues[1].cells.len()
+            }
             VariantEvidence::Exclusion { premise, .. } => {
                 let mut cells = match premise {
                     VariantExclusionPremise::Cell { cell, .. } => vec![*cell],
@@ -1770,7 +1877,11 @@ impl CompiledVariant {
                     }
                     None
                 })
-                .or_else(|| self.group_sum_implications(position, technique, 1).into_iter().next())
+                .or_else(|| {
+                    self.group_sum_implications(position, technique, 1)
+                        .into_iter()
+                        .next()
+                })
                 .or_else(|| {
                     (technique == VariantTechnique::GlobalEntropy)
                         .then(|| self.entropy_proofs(position, technique, 1).pop())
@@ -1867,7 +1978,9 @@ impl CompiledVariant {
                 for (rule, cells) in self.entropy_windows() {
                     let domains = cells.map(|cell| position.domain(cell));
                     if let Some(proof) = position.explain_constraint(
-                        technique, &[rule], &cells,
+                        technique,
+                        &[rule],
+                        &cells,
                         super::global_entropy::support(domains).into_iter(),
                     ) {
                         proofs.push(proof);
@@ -1896,7 +2009,10 @@ impl CompiledVariant {
                         for cell in cells {
                             local[cell] = supported[cell];
                             if let Some(proof) = position.explain_constraint(
-                                technique, &[clue.rule], &cells, local.into_iter(),
+                                technique,
+                                &[clue.rule],
+                                &cells,
+                                local.into_iter(),
                             ) {
                                 proofs.push(proof);
                             }
@@ -1912,8 +2028,10 @@ impl CompiledVariant {
                 self.locked_candidates(position, &mut proofs);
                 self.quadruple_locks(position, &mut proofs);
             }
-            NonConsecutiveLockedPair | NonConsecutiveLockedTriple
-            | NonConsecutiveBivalue | NonConsecutiveTrivalue => {
+            NonConsecutiveLockedPair
+            | NonConsecutiveLockedTriple
+            | NonConsecutiveBivalue
+            | NonConsecutiveTrivalue => {
                 self.nonconsecutive_exclusions(position, technique, &mut proofs);
             }
             Classic(classic) => self.classic_proofs(position, classic, &mut proofs),
@@ -1938,7 +2056,9 @@ impl CompiledVariant {
                 }));
             }
             AntiKing | AntiKnight | Clone | Inequality | Kropki | NonConsecutive | Palindrome
-            | Thermometer | Whispers | Xv | AdjacentTotal => self.direct_pair_proofs(position, technique, &mut proofs),
+            | Thermometer | Whispers | Xv | AdjacentTotal => {
+                self.direct_pair_proofs(position, technique, &mut proofs)
+            }
             WhispersHouseSupport => self.whispers_house_proofs(position, &mut proofs),
             RenbanLockedDigit => self.renban_locks(position, &mut proofs),
             RenbanGroupCounts => self.renban_group_counts(position, &mut proofs),
@@ -1959,7 +2079,8 @@ impl CompiledVariant {
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells
-            | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers | XSum => {
+            | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers
+            | XSum => {
                 self.direct_line_proofs(position, technique, &mut proofs);
             }
         }
@@ -2007,20 +2128,28 @@ impl CompiledVariant {
         let solution = (technique == Technique::NestedForcingNet)
             .then(|| {
                 let eliminations = std::array::from_fn(|cell| {
-                    if position.board[cell] == 0 { DIGITS & !position.masks[cell] } else { 0 }
+                    if position.board[cell] == 0 {
+                        DIGITS & !position.masks[cell]
+                    } else {
+                        0
+                    }
                 });
-                self.solve_for_proof(&position.board, &eliminations, COMPLETION_PROBE_NODES).ok()
+                self.solve_for_proof(&position.board, &eliminations, COMPLETION_PROBE_NODES)
+                    .ok()
             })
             .flatten();
         let completion_support = (technique == Technique::NestedForcingNet)
             .then(|| {
-                position.overlay.get().and_then(|overlay| {
-                    overlay.borrow().known_completion_support().copied()
-                })
+                position
+                    .overlay
+                    .get()
+                    .and_then(|overlay| overlay.borrow().known_completion_support().copied())
             })
             .flatten();
         let search = DeductionSearch::with_verified_solution(
-            &position.board, &position.masks, solution.as_ref(),
+            &position.board,
+            &position.masks,
+            solution.as_ref(),
         )
         .with_completion_probes(ALTERNATIVE_WITNESS_NODES)
         .with_completion_support(completion_support.as_ref())

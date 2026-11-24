@@ -35,7 +35,7 @@ let givens = parse_givens(
 ).unwrap();
 assert_eq!(analyze(&givens), Analysis::Unique);
 
-let trace = solve_logically(&givens, Technique::DEFAULT_ORDER).unwrap();
+let trace = solve_logically(&givens, Technique::default_order()).unwrap();
 assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Beginner));
 assert_eq!(trace.score.points, 504);
 assert_eq!(trace.positions().count(), trace.steps.len() + 1);
@@ -56,7 +56,7 @@ The exact search tracks used digits in rows, columns, and boxes with bit masks. 
 
 [`solve_logically`] starts from the givens. [`solve_position`] continues from a snapshot with placements and removals. At each position the solver takes the first productive deduction in the supplied technique order, applies all its actions, and starts again at the top of the order. A valid puzzle can return [`SolveStatus::Stalled`] when the selected techniques run out of moves. That trace still contains the positions it reached and a partial point total.
 
-Use [`Technique::ALL`] for the detector inventory and [`Technique::DEFAULT_ORDER`] for the default profile. [`SolverProfile::from_ids`] accepts stable IDs in priority order, validates unknown and duplicate IDs, and allows an empty list. Omit a technique to disable it. [`Technique::aliases`] supplies alternate names for display. Use the stable ID when saving a profile.
+Use [`Technique::ALL`] for the detector inventory and [`Technique::default_order()`] for the default profile. [`SolverProfile::from_ids`] accepts stable IDs in priority order, validates unknown and duplicate IDs, and allows an empty list. Omit a technique to disable it. [`Technique::aliases`] supplies alternate names for display. Use the stable ID when saving a profile.
 
 | Family | Detectors |
 | --- | --- |
@@ -290,7 +290,7 @@ let criteria = GenerationCriteria {
     clues: 17..=17,
     rating: Some(GenerationRating::Score(1_001..=1_600)),
     technique: None,
-    technique_order: Technique::DEFAULT_ORDER,
+    technique_order: Technique::default_order(),
 };
 let puzzle = generate_from_pool(
     42, &criteria, TechniqueTargetMode::Anywhere, builtin_templates(), 208,

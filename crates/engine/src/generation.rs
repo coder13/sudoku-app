@@ -8,8 +8,8 @@ use super::{
 mod canonical;
 mod search;
 mod templates;
-pub use canonical::canonical_puzzle;
 use crate::permutation::puzzle_permutation;
+pub use canonical::canonical_puzzle;
 pub use search::{GenerationSearch, GenerationStep};
 pub use templates::{VerifiedTemplate, builtin_templates, impossible_templates};
 
@@ -19,8 +19,12 @@ const MIN_CLUES: usize = 17;
 /// This does not prove that no unimplemented or alternate human route exists.
 pub fn accepts_difficulty(board: &Board, level: Difficulty) -> bool {
     logical::match_generation_path(
-        board, &level.technique_order(), Some(&GenerationRating::Difficulty(level)), None,
-    ).is_some()
+        board,
+        &level.technique_order(),
+        Some(&GenerationRating::Difficulty(level)),
+        None,
+    )
+    .is_some()
 }
 
 /// Criteria for an exact clue count and optional point range.
@@ -116,7 +120,9 @@ impl GenerationCriteria<'_> {
                 return Err(IncompatibleTargets(DisabledTechnique(technique)));
             }
             let rating_too_low = match &self.rating {
-                Some(GenerationRating::Score(range)) => *range.end() < u32::from(technique.cost()),
+                Some(GenerationRating::Score(range)) => {
+                    *range.end() < u32::from(technique.minimum_cost())
+                }
                 Some(GenerationRating::Difficulty(level)) => *level < technique.difficulty(),
                 None => false,
             };
@@ -147,7 +153,11 @@ impl MatchedPath {
 }
 
 fn difficulty_order(level: Difficulty, enabled: &[Technique]) -> Vec<Technique> {
-    level.technique_order().into_iter().filter(|technique| enabled.contains(technique)).collect()
+    level
+        .technique_order()
+        .into_iter()
+        .filter(|technique| enabled.contains(technique))
+        .collect()
 }
 
 struct MatchingPlan {
@@ -168,7 +178,9 @@ impl MatchingPlan {
             rating: criteria.rating.clone(),
             technique: criteria.technique.map(|technique| (technique, mode)),
             technique_order: match &criteria.rating {
-                Some(GenerationRating::Difficulty(level)) => difficulty_order(*level, criteria.technique_order),
+                Some(GenerationRating::Difficulty(level)) => {
+                    difficulty_order(*level, criteria.technique_order)
+                }
                 _ => criteria.technique_order.to_vec(),
             },
         })
@@ -281,7 +293,9 @@ pub(crate) fn start_matching_path<'a>(
     Ok(GenerationSearch::new(random, max_attempts, move |random| {
         let (&min, &max) = (plan.clues.start(), plan.clues.end());
         let mut board = filled_board(random);
-        if max == CELLS && let Some(path) = plan.match_path(&board) {
+        if max == CELLS
+            && let Some(path) = plan.match_path(&board)
+        {
             return Some((board, path));
         }
         if min == CELLS {
@@ -344,7 +358,10 @@ pub(crate) fn start_targeted_path(
     }
 }
 
-fn targeted_attempt(random: &mut Random, target: GenerationTarget<'_>) -> Option<(Board, MatchedPath)> {
+fn targeted_attempt(
+    random: &mut Random,
+    target: GenerationTarget<'_>,
+) -> Option<(Board, MatchedPath)> {
     let mut board = filled_board(random);
     let mut denser_puzzles = Vec::new();
     let mut matched = None;
@@ -403,7 +420,8 @@ pub fn start_from_pool<'a>(
 }
 
 #[cfg(all(
-    feature = "generation", feature = "wasm-api",
+    feature = "generation",
+    feature = "wasm-api",
     any(target_arch = "wasm32", test, feature = "cli")
 ))]
 pub(crate) fn start_builtin_pool(
@@ -548,7 +566,6 @@ fn permute(board: &Board, random: &mut Random) -> Board {
     cells.map(|cell| digits[usize::from(board[cell])])
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -612,7 +629,7 @@ mod tests {
             clues: 20..=20,
             rating: Some(GenerationRating::Difficulty(Difficulty::Extreme)),
             technique: Some(Technique::MultiSectorLockedSets),
-            technique_order: Technique::DEFAULT_ORDER,
+            technique_order: Technique::default_order(),
         };
         let mode = TechniqueTargetMode::Anywhere;
         let pool = builtin_templates();
@@ -659,7 +676,7 @@ mod tests {
                     .zip(template.solution())
                     .all(|(&given, &digit)| given == 0 || given == digit)
             );
-            let rating = rate_puzzle(template.givens(), Technique::DEFAULT_ORDER).unwrap();
+            let rating = rate_puzzle(template.givens(), Technique::default_order()).unwrap();
             assert!(matches!(rating.status, SolveStatus::Solved(_)));
             sparse += usize::from(
                 template
@@ -739,7 +756,10 @@ mod tests {
 
     #[test]
     fn fresh_generation_can_match_an_exact_clue_count_and_score() {
-        let order: Vec<_> = Technique::ALL.into_iter().filter(|t| *t != Technique::HiddenSingleBox).collect();
+        let order: Vec<_> = Technique::ALL
+            .into_iter()
+            .filter(|t| *t != Technique::HiddenSingleBox)
+            .collect();
         let constraints = GenerationConstraints {
             clues: 34,
             score: Some(188..=188),
@@ -747,13 +767,7 @@ mod tests {
         };
         let board = generate_constrained(42, &constraints, &[], 1).unwrap();
         assert_eq!(board.iter().filter(|&&digit| digit != 0).count(), 34);
-        assert_eq!(
-            solve_logically(&board, &order)
-                .unwrap()
-                .score
-                .points,
-            188
-        );
+        assert_eq!(solve_logically(&board, &order).unwrap().score.points, 188);
     }
 
     #[test]
@@ -976,7 +990,10 @@ mod tests {
             "050040000000010040009000300100000080002005000000300000000700502480000000600000000",
         )
         .unwrap();
-        let order: Vec<_> = Technique::ALL.into_iter().filter(|t| *t != Technique::HiddenSingleBox).collect();
+        let order: Vec<_> = Technique::ALL
+            .into_iter()
+            .filter(|t| *t != Technique::HiddenSingleBox)
+            .collect();
         for clues in 17..=20 {
             let constraints = GenerationConstraints {
                 clues,
@@ -986,14 +1003,17 @@ mod tests {
             let board = generate_constrained(0, &constraints, &[template], 32).unwrap();
             assert_eq!(board.iter().filter(|&&digit| digit != 0).count(), clues);
             let rating = solve_logically(&board, &order).unwrap();
-            assert_eq!(rating.status, SolveStatus::Solved(crate::Difficulty::Medium));
+            assert_eq!(
+                rating.status,
+                SolveStatus::Solved(crate::Difficulty::Medium)
+            );
             assert!((1001..=1600).contains(&rating.score.points));
         }
         let criteria = GenerationCriteria {
             clues: 17..=20,
             rating: Some(GenerationRating::Difficulty(Difficulty::Medium)),
             technique: Some(Technique::HiddenSingle),
-            technique_order: Technique::DEFAULT_ORDER,
+            technique_order: Technique::default_order(),
         };
         let board = generate_matching(0, &criteria, &[template], 64).unwrap();
         assert!(

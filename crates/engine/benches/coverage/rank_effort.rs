@@ -164,7 +164,7 @@ fn compare_expert_stalls() {
     let mut timing = [0.0; 2];
     let mut named_finished = 0;
     let mut named_time = 0.0;
-    let mut named_order = Technique::DEFAULT_ORDER.to_vec();
+    let mut named_order = Technique::default_order().to_vec();
     let before_forcing = named_order
         .iter()
         .position(|technique| *technique == Technique::ForcingChain)
@@ -201,7 +201,7 @@ fn compare_expert_stalls() {
             let (solved, rank_moves) = solve_with_fallback(
                 snapshot.clone(),
                 &solution,
-                Technique::DEFAULT_ORDER,
+                Technique::default_order(),
                 branch_first,
                 true,
             );

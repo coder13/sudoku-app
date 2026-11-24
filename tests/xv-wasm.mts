@@ -24,7 +24,7 @@ test('published XV puzzles import and replay complete app-order paths to their i
   const nativeOrder = (await runEngine({ type: 'techniques', variant: true })).defaultOrder
   const appOrder = await getVariantPlayOrder()
   for (const [name, nativePoints, nativeSteps, appPoints, appSteps] of [
-    ['xv-clover', 1156, 59, 2358, 140], ['xv-quadruple-clover', 1540, 123, 1870, 123],
+    ['xv-clover', 1259, 59, 2488, 140], ['xv-quadruple-clover', 1648, 123, 1978, 123],
   ] as const) {
     const { puzzle, solution } = load(name)
     const { game } = await prepareImportedPuzzle(share(puzzle, name === 'xv-clover' ? 'xv' : 'mixed'))
@@ -35,7 +35,7 @@ test('published XV puzzles import and replay complete app-order paths to their i
     for (const [techniqueOrder, points, count] of [[nativeOrder, nativePoints, nativeSteps], [appOrder, appPoints, appSteps]] as const) {
       const position = variantPosition(game.variant!)
       const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-      assert.equal(trace.rating.scoringVersion, 22); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
+      assert.equal(trace.rating.scoringVersion, 24); assert.equal(trace.rating.points, points); assert.equal(trace.steps.length, count)
       let played = game
       for (const step of trace.steps) {
         for (const action of step.actions) {
@@ -72,7 +72,7 @@ test('all preserved Coach combinations keep every constraint and their complete 
     assert.equal(puzzle.rules!.length, [2, 6, 3, 12][index])
     assertVariantCompletion(puzzle, source.solution)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder })
-    assert.equal(trace.steps.length, [27, 170, 199, 6][index]); assert.equal(trace.rating.points, [940, 3186, 27358, 160][index])
+    assert.equal(trace.steps.length, [27, 170, 199, 6][index]); assert.equal(trace.rating.points, [1059, 3597, 92756, 206][index])
     let played = game
     for (const step of trace.steps) {
       for (const action of step.actions) {

@@ -20,11 +20,11 @@ const cauldron = JSON.parse(readFileSync(new URL('./fixtures/coach-clue-styles.j
 test('Cauldron imports, rates and replays to its published grid using checked dot deductions', async () => {
   const { game, grade } = await prepareImportedPuzzle(cauldron.code)
   assert.ok(game.variant)
-  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2653, 22])
+  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['medium', 2933, 24])
   const oldGrade = { ...game, variantRatingVersion: 15, difficulty: null, score: null }
   assert.ok(puzzleGradeIsStale(oldGrade))
   const refreshed = applyPuzzleGrade(oldGrade, await ratePuzzle(game.givens, game.variant))
-  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2653, 17])
+  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2933, 17])
 
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)

@@ -23,12 +23,12 @@ const clover = load('clover') as { puzzle: VariantPuzzle; solution: string }
 const share = (puzzle: VariantPuzzle) =>
   '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
 const expected = [
-  ['clover', 680, 75, 1090, 75, true, true],
-  ['EoGB', 452, 69, 982, 69, true, true],
-  ['BSEJ', 116, 6, 1600, 93, false, true],
-  ['Hyk5', 180, 9, 3604, 153, false, true],
-  ['Hafj', 444, 18, 5062, 193, false, true],
-  ['Ksy3', 2390, 162, 2730, 162, true, true],
+  ['clover', 742, 75, 1152, 75, true, true],
+  ['EoGB', 841, 69, 1371, 69, true, true],
+  ['BSEJ', 314, 6, 1869, 93, false, true],
+  ['Hyk5', 232, 9, 4276, 153, false, true],
+  ['Hafj', 470, 18, 5638, 193, false, true],
+  ['Ksy3', 3531, 162, 3871, 162, true, true],
 ] as const
 for (const [
   id,
@@ -88,7 +88,7 @@ for (const [
       assert.equal(trace.rating.points, points)
       assert.equal(trace.steps.length, steps)
       assert.equal(trace.rating.scoringVersion,
-        trace.steps.some(step => step.technique === 'group-order-elimination') ? 23 : 22)
+        trace.steps.some(step => step.technique === 'group-order-elimination') ? 25 : 24)
       if (complete) assert.deepEqual(trace.rating.status, { solved: id === 'Hyk5' ? 'hard' : id === 'Hafj' ? 'tricky' : 'medium' })
       else assert.equal(trace.rating.status, 'stalled')
       let played = game
@@ -144,7 +144,7 @@ test('the two published Entropic row-four proofs match the app replay, hint page
     })
     assert.equal(legacy.steps.length, index === 0 ? 28 : 18)
     assert.equal(legacy.rating.status, 'stalled')
-    assert.equal(legacy.rating.scoringVersion, 22)
+    assert.equal(legacy.rating.scoringVersion, 24)
     const techniqueOrder = await getVariantPlayOrder(puzzle)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
     const stepIndex = index === 0 ? 29 : 18
@@ -193,7 +193,7 @@ test('the two published Entropic row-four proofs match the app replay, hint page
     const path = await puzzleSolution(game)
     assert.deepEqual(path.rating.status, { solved: index === 0 ? 'hard' : 'tricky' })
     assert.equal(path.rating.scoringVersion,
-      path.steps.some(step => step.technique === 'group-order-elimination') ? 23 : 22)
+      path.steps.some(step => step.technique === 'group-order-elimination') ? 25 : 24)
     const replay = await runEngine({ type: 'variant', operation: 'replay-step', position, techniqueOrder: await getVariantPlayOrder(puzzle), stepIndex })
     assert.deepEqual(replay?.deduction.actions, path.steps[stepIndex].actions)
   }

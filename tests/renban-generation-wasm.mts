@@ -34,7 +34,7 @@ function verify(value: GeneratedVariant) {
   assert.ok(value.puzzle.rules!.every(rule => rule.type === 'renban'))
   const lines = value.puzzle.rules!.flatMap(rule => rule.type === 'renban' ? [rule.cells] : [])
   assert.ok(fixture.sources.some(source => JSON.stringify(source.lines) === JSON.stringify(lines)))
-  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 22)
+  assert.deepEqual(value.rating.status, { solved: 'medium' }); assert.equal(value.rating.scoringVersion, 24)
   assert.ok(value.rating.counts.renban); assert.ok(value.givens >= 14 && value.givens <= 20)
   const truth = countLineSolutions(value.puzzle)
   assert.equal(truth.count, 1); assert.equal(truth.solution, value.solution)

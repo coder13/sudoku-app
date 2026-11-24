@@ -198,7 +198,7 @@ pub fn solve_position_with_rank(
     let mut terminal_rank_search = None;
     let status = loop {
         position = follow_path(position, technique_order, |step| {
-            tally.record(step.technique);
+            tally.record_deduction(&step);
             steps.push(RankSolveStep::Technique(step.into()));
             true
         })
