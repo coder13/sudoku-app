@@ -573,14 +573,17 @@ export function SudokuShell({ children }: { children: ReactNode }) {
                   onClick={() => setPanelVisibility('bottom')}><PanelBottom size={17} /></IconButton>
               </>}
             </div>}
+            <IconButton ref={menuButtonRef} className="app-menu-trigger" aria-label="Open options menu" title="Options"
+              aria-expanded={menuOpen} aria-controls="app-menu" onClick={() => setMenuOpen((open) => !open)}>
+              <Menu size={20} />
+            </IconButton>
+            <IconButton className="desktop-import-trigger" aria-label="Import puzzle" title="Import puzzle" onClick={openImport}>
+              <ArrowDownToLine size={19} />
+            </IconButton>
             <IconButton className="desktop-color-mode-toggle" onClick={cycleColorMode}
               aria-label={`Color mode: ${COLOR_MODE_LABELS[appearance.colorMode]}. Switch to ${COLOR_MODE_LABELS[nextColorMode]} mode.`}
               title={`${COLOR_MODE_LABELS[appearance.colorMode]} color mode`}>
               <ColorModeIcon size={19} />
-            </IconButton>
-            <IconButton ref={menuButtonRef} className="app-menu-trigger" aria-label="Open options menu" title="Options"
-              aria-expanded={menuOpen} aria-controls="app-menu" onClick={() => setMenuOpen((open) => !open)}>
-              <Menu size={20} />
             </IconButton>
             <Presence open={menuOpen}>{(presence) => <div className="app-menu" id="app-menu" data-presence={presence}
               aria-hidden={presence === 'exit' || undefined} inert={presence === 'exit' || undefined}>
