@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { CalcudokuPlay } from '../components/Calcudoku'
 import { calcudokuCatalog, generatedCalcudokuEntry } from '../calcudoku/catalog'
+import { readImportedCalcudoku } from '../calcudoku/imported'
 import { generatedNumberToken } from '../number-puzzles/generated'
 
 export const Route = createFileRoute('/puzzles/calcudoku_/$puzzle')({
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/puzzles/calcudoku_/$puzzle')({
   ssr: ({ params }) => params.status === 'success' && params.value.puzzle === 'generated' ? 'data-only' : true,
   loader: ({ params }) => {
     if (params.puzzle === 'generated') return 'generated'
+    if (readImportedCalcudoku(params.puzzle)) return params.puzzle
     const entry = calcudokuCatalog.find(candidate => candidate.id === params.puzzle)
     if (!entry) throw redirect({ to: '/puzzles/calcudoku', replace: true })
     return entry.id
@@ -24,7 +26,7 @@ function CalcudokuPlayRoute() {
   const { board } = Route.useSearch()
   const entry = useMemo(() => entryId === 'generated'
     ? board && generatedCalcudokuEntry(board, 1)
-    : calcudokuCatalog.find(candidate => candidate.id === entryId), [board, entryId])
+    : readImportedCalcudoku(entryId) ?? calcudokuCatalog.find(candidate => candidate.id === entryId), [board, entryId])
   if (!entry) return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
     <div className="puzzles-layout">
       <h1>Calcudoku puzzle unavailable</h1>

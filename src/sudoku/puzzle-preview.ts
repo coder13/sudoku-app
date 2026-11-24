@@ -3,7 +3,7 @@ import { sameCandidateColors, sameImportedCellColors } from './imported-colors.t
 import { sameImportedDrawings } from './imported-drawings.ts'
 import { sameAuthoredArtwork } from './authored-artwork.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
-import { createGameId, hasUniquenessProof, makeGame, markSolveUntimed, puzzleIdentity, uniquenessKey, type Game } from './game.ts'
+import { createGameId, EMPTY, hasUniquenessProof, makeGame, markSolveUntimed, puzzleIdentity, uniquenessKey, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
@@ -12,6 +12,9 @@ import { applyPuzzleGrade, needsPuzzleGrade, puzzleGradeIsStale, ratePuzzle, typ
 import { validation } from './puzzle-validation.ts'
 import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
+import { solveLatin } from '../latin/engine.ts'
+import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
+import type { CalcudokuEntry } from '../calcudoku/catalog.ts'
 
 // Imports can be much sparser than generated puzzles. Give the worker one
 // bounded uniqueness attempt so it can finish without restarting the search.
@@ -20,6 +23,8 @@ const IMPORT_VARIANT_SEARCH_NODES = 2_000_000
 export type PuzzlePreview = {
   game: Game
   format: ImportedPuzzle['format'] | 'Photo or screenshot'
+  futoshiki?: FutoshikiEntry
+  calcudoku?: CalcudokuEntry
   grade?: PuzzleGrade | null
   ratingPending?: true
   hasProgress?: true
@@ -35,7 +40,9 @@ export function findImportedPuzzle(games: readonly Game[], imported: Pick<Import
     sameAuthoredArtwork(game.authoredArtwork, imported.authoredArtwork))
 }
 
-export function findImportAttempt(games: readonly Game[], { game, hasProgress, startFresh }: PuzzlePreview): Game | undefined {
+export function findImportAttempt(games: readonly Game[], preview: PuzzlePreview): Game | undefined {
+  if (preview.futoshiki || preview.calcudoku) return
+  const { game, hasProgress, startFresh } = preview
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
   const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
   if (!hasProgress && !startFresh) return findImportedPuzzle(attempts, game)
@@ -69,7 +76,7 @@ export async function prepareImportedPuzzle(input: string, games: readonly Game[
     }
   }
   // The 9 × 9 board can show its complete layout before it receives a proof.
-  if (!imported.grid) onDecoded?.(imported)
+  if (!imported.grid && !imported.futoshiki && !imported.calcudoku) onDecoded?.(imported)
   return verifyPreview(imported, games, signal, deferRating)
 }
 
@@ -105,6 +112,22 @@ export class PuzzleVerificationError extends Error {
 }
 
 async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Game[], deferRating: boolean, run: EngineRunner = runEngine): Promise<PuzzlePreview> {
+  if (imported.futoshiki || imported.calcudoku) {
+    const futoshiki = imported.futoshiki
+    const calcudoku = imported.calcudoku
+    const puzzle = futoshiki?.puzzle ?? calcudoku!.puzzle
+    const result = solveLatin(puzzle)
+    if (result.status !== 'unique') {
+      const status = result.status === 'multiple' ? 'multiple' : result.status === 'unsolvable' ? 'unsolvable' : 'search-limit'
+      throw new PuzzleVerificationError(status)
+    }
+    return {
+      game: makeGame(createGameId(), 'Imported number puzzle', EMPTY, 'imported'),
+      format: imported.format,
+      ...(futoshiki && { futoshiki }), ...(calcudoku && { calcudoku }),
+      ...((futoshiki?.initialPosition || calcudoku?.initialPosition) && { hasProgress: true }),
+    }
+  }
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
     authoredSolution, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
   const existing = findImportedPuzzle(games, imported)

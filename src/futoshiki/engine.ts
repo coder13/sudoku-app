@@ -1,9 +1,10 @@
 import { cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
+import { latinParityRules, type LatinParity } from '../latin/parity.ts'
 
 export type Inequality = { less: number; greater: number }
-export type FutoshikiPuzzle = LatinPuzzle & { inequalities: readonly Inequality[] }
+export type FutoshikiPuzzle = LatinPuzzle & { inequalities: readonly Inequality[]; parity: readonly LatinParity[] }
 
-export function createFutoshiki(size: number, givens: readonly number[], inequalities: readonly Inequality[]): FutoshikiPuzzle {
+export function createFutoshiki(size: number, givens: readonly number[], inequalities: readonly Inequality[], parity: readonly LatinParity[] = []): FutoshikiPuzzle {
   const edges = new Set<string>()
   const extra = inequalities.map(({ less, greater }) => {
     const valid = (cell: number) => Number.isInteger(cell) && cell >= 0 && cell < size * size
@@ -29,5 +30,5 @@ export function createFutoshiki(size: number, givens: readonly number[], inequal
       },
     }
   })
-  return { ...createLatinPuzzle(size, givens, extra), inequalities }
+  return { ...createLatinPuzzle(size, givens, [...extra, ...latinParityRules(size, parity)]), inequalities, parity }
 }

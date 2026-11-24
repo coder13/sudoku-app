@@ -1,17 +1,18 @@
 import { calcudokuCatalog, generatedCalcudokuEntry, type CalcudokuEntry } from '../calcudoku/catalog'
 import { operatorSymbol } from '../calcudoku/engine'
 import { cellLabel, checkLatin, findLatinHints, solveLatin } from '../latin/engine'
-import { NumberGameDifficulty, NumberGamePlay, type NumberGameConfig } from './NumberPuzzle'
+import { NumberGameDifficulty, NumberGamePlay, NumberPuzzlePreview, type NumberGameConfig } from './NumberPuzzle'
 
 const calcudoku: NumberGameConfig<CalcudokuEntry> = {
   game: 'calcudoku',
   name: 'Calcudoku',
   rules: 'Use every number from 1 to the grid size once in each row and column. Each cage’s numbers must match its target and operation.',
-  techniques: ['Row and column', 'Cage arithmetic'],
+  techniques: ['Row and column', 'Cage arithmetic', 'Odd/Even'],
   entries: calcudokuCatalog,
   generatedEntry: generatedCalcudokuEntry,
   board: ({ puzzle }) => {
-    const { size, cages, givens } = puzzle
+    const { size, cages, givens, parity } = puzzle
+    const parityAt = new Map(parity.map(clue => [clue.cell, clue.parity]))
     const cageAt = new Map(cages.flatMap(cage => cage.cells.map(cell => [cell, cage] as const)))
     const cells = givens.map((given, cell) => {
       const cage = cageAt.get(cell)!
@@ -24,12 +25,21 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
         cell % size === 0 || cageAt.get(cell - 1) !== cage ? 'l' : '',
       ].join('')
       const operation = { add: 'plus', subtract: 'minus', multiply: 'times', divide: 'divided by', equal: '' }[cage.operator]
+      const mark = parityAt.get(cell)
+      const decorations = [
+        ...(cell === anchor && !given ? [<span key="cage" className="number-puzzle-cell-label" aria-hidden="true">{cage.target}{symbol}</span>] : []),
+        ...(mark ? [<svg key="parity" className="number-puzzle-parity" viewBox="0 0 1 1" aria-hidden="true">
+          <g className={`variant-parity variant-parity-${mark}`}>{mark === 'odd'
+            ? <circle cx=".5" cy=".5" r=".36" />
+            : <rect x=".14" y=".14" width=".72" height=".72" />}</g>
+        </svg>] : []),
+      ]
       return {
         given,
         edges,
-        label: given ? undefined : `${cage.target} ${operation} cage at ${cellLabel(anchor, size)}`,
-        decoration: cell === anchor && !given
-          ? <span className="number-puzzle-cell-label" aria-hidden="true">{cage.target}{symbol}</span> : undefined,
+        label: [...(!given ? [`${cage.target}${operation ? ` ${operation}` : ''} cage at ${cellLabel(anchor, size)}`] : []),
+          ...(mark ? [`${mark === 'odd' ? 'Odd circle' : 'Even square'} requires an ${mark} digit`] : [])].join(', ') || undefined,
+        decoration: decorations.length ? decorations : undefined,
       }
     })
 
@@ -49,7 +59,8 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
       hints: (values, limit) => findLatinHints(puzzle, values, limit).map(hint => ({
         cell: hint.cell,
         value: hint.value,
-        technique: hint.rules[0].kind === 'line' ? 'Row and column' : 'Cage arithmetic',
+        technique: hint.rules.some(rule => rule.kind === 'parity') ? 'Odd/Even'
+          : hint.rules.every(rule => rule.kind === 'line') ? 'Row and column' : 'Cage arithmetic',
         marked: hint.rules.flatMap(rule => rule.cells),
         reasons: hint.rules.map(rule => rule.label),
       })),
@@ -59,6 +70,10 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
 
 export function CalcudokuDifficultyPage() {
   return <NumberGameDifficulty config={calcudoku} />
+}
+
+export function CalcudokuImportPreview({ entry }: { entry: CalcudokuEntry }) {
+  return <NumberPuzzlePreview board={calcudoku.board(entry)} label="Calcudoku puzzle preview" position={entry.initialPosition} />
 }
 
 export function CalcudokuPlay({ entry }: { entry: CalcudokuEntry }) {

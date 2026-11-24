@@ -9,6 +9,11 @@ import { EMPTY } from '../game.ts'
 import { gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, type SizedGrid } from '../grid.ts'
 import { isHexColor, isImportedColor, validGivenCellColors, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../imported-colors.ts'
 import { readCoachQuickDraw } from '../imported-drawings.ts'
+import { createImportedFutoshiki } from '../../futoshiki/imported.ts'
+import { createImportedCalcudoku } from '../../calcudoku/imported.ts'
+import type { CageOperator } from '../../calcudoku/engine.ts'
+import type { LatinParity } from '../../latin/parity.ts'
+import { emptyNumberPosition, type NumberPosition } from '../../number-puzzles/progress.ts'
 import { insideGridColumns, validInsideGridRows } from '../inside-grid.ts'
 import { validLetteredQuadruples } from '../lettered-quadruples.ts'
 import { decodeLegacyCoach, type LegacyCoachVersion } from '../legacy-coach.ts'
@@ -169,10 +174,11 @@ function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
 
-function readCoachCandidateMasks(value: unknown): number[] {
-  if (value === undefined || value === '') return Array(81).fill(0)
+function readCoachCandidateMasks(value: unknown, size = 9): number[] {
+  if (value === undefined || value === '') return Array(size ** 2).fill(0)
   const masks = typeof value === 'string' ? value.split('-') : []
-  if (masks.length !== 81 || masks.some(mask => !/^\d{1,4}$/.test(mask) || Number(mask) > 1022 || Number(mask) % 2)) {
+  const maxMask = (1 << (size + 1)) - 2
+  if (masks.length !== size ** 2 || masks.some(mask => !/^\d{1,4}$/.test(mask) || Number(mask) > maxMask || Number(mask) % 2)) {
     throw new Error('This Sudoku Coach progress has invalid candidate marks.')
   }
   // Coach stores digit d at bit d. Play stores digit d at bit d - 1.
@@ -236,6 +242,128 @@ function readCoachProgress(data: Record<string, unknown>, givens: string): Impor
     return { entries, center, corner, ...(importedCellColors && { importedCellColors }),
       ...(importedCandidateColors && { importedCandidateColors }), ...(importedDrawings && { importedDrawings }) }
   }
+}
+
+function readCoachNumberPosition(data: Record<string, unknown>, givens: string, size: number): NumberPosition | undefined {
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
+  const digits = data.userDigits === undefined || data.userDigits === '' ? '0'.repeat(givens.length) : data.userDigits
+  if (typeof digits !== 'string' || digits.length !== givens.length || !/^\d+$/.test(digits) ||
+    [...digits].some(digit => Number(digit) > size)) {
+    throw new Error('This Sudoku Coach progress has invalid placed digits.')
+  }
+  if ([...digits].some((digit, cell) => digit !== '0' && givens[cell] !== '0' && digit !== givens[cell])) {
+    throw new Error('The Sudoku Coach progress has a placed digit that replaces a given.')
+  }
+  const position = emptyNumberPosition(size ** 2)
+  position.values = [...digits].map((digit, cell) => givens[cell] === '0' ? Number(digit) : 0)
+  const center = readCoachCandidateMasks(data.userCellCandidates, size)
+  const corner = readCoachCandidateMasks(data.userBoxCandidates, size)
+  position.notes = center.map((mask, cell) => givens[cell] === '0' ? mask | corner[cell] : 0)
+  return position.values.some(Boolean) || position.notes.some(Boolean) ? position : undefined
+}
+
+function readCoachParity(layers: readonly unknown[], size: number): LatinParity[] {
+  const clues: LatinParity[] = []
+  for (const layer of layers) {
+    if (!record(layer) || layer.type !== 'odd' && layer.type !== 'even') continue
+    if (unsupportedClueStyling(layer.settings) || !Array.isArray(layer.segments)) {
+      throw new Error('This Sudoku Coach Odd/Even clue uses unsupported settings.')
+    }
+    for (const segment of layer.segments) {
+      if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 || hasData(segment.parameters) ||
+        !Number.isInteger(segment.cells[0]) || segment.cells[0] < 0 || segment.cells[0] >= size ** 2) {
+        throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even cell.')
+      }
+      clues.push({ cell: segment.cells[0], parity: layer.type })
+    }
+  }
+  return clues
+}
+
+function readCoachInequalities(layers: readonly unknown[]): { less: number; greater: number }[] {
+  const inequalities: { less: number; greater: number }[] = []
+  for (const layer of layers) {
+    if (!record(layer) || layer.type !== 'greaterLess') continue
+    if (hasData(layer.settings) || !Array.isArray(layer.segments)) throw new Error('This Sudoku Coach puzzle has an invalid inequality layer.')
+    for (const segment of layer.segments) {
+      if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 ||
+        !segment.cells.every(Number.isInteger) || hasData(segment.parameters)) {
+        throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
+      }
+      inequalities.push({ less: segment.cells[0], greater: segment.cells[1] })
+    }
+  }
+  return inequalities
+}
+
+const calcudokuSigns = new Map<string, CageOperator>([
+  ['+', 'add'], ['x', 'multiply'], ['X', 'multiply'], ['×', 'multiply'], ['*', 'multiply'],
+  ['-', 'subtract'], ['−', 'subtract'], ['÷', 'divide'], ['/', 'divide'],
+])
+
+function readCoachCalcudokuCages(layers: readonly unknown[], size: number) {
+  const cages: { target: number; operator: CageOperator; cells: number[]; distinct?: true }[] = []
+  for (const layer of layers) {
+    if (!record(layer) || layer.type !== 'cage' && layer.type !== 'cosmeticCage') continue
+    if (hasData(layer.settings) || !Array.isArray(layer.segments)) throw new Error('This Sudoku Coach cage layer uses unsupported settings.')
+    for (const segment of layer.segments) {
+      if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length ||
+        !segment.cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2) ||
+        !record(segment.parameters) || Object.keys(segment.parameters).length !== 1 || !('sum' in segment.parameters)) {
+        throw new Error('This Sudoku Coach puzzle has an invalid Calcudoku cage.')
+      }
+      const cells = segment.cells as number[]
+      if (layer.type === 'cage') {
+        const target = segment.parameters.sum
+        if (!Number.isSafeInteger(target) || Number(target) <= 0) throw new Error('This Sudoku Coach puzzle has an invalid Calcudoku target.')
+        cages.push({ target: Number(target), operator: cells.length === 1 ? 'equal' : 'add', cells, ...(cells.length > 1 && { distinct: true as const }) })
+        continue
+      }
+      const label = String(segment.parameters.sum)
+      const match = /^([1-9][0-9]{0,4})([+xX×*−÷/-])?$/.exec(label)
+      if (!match) throw new Error('This Sudoku Coach puzzle has an unsupported Calcudoku cage label.')
+      const target = Number(match[1])
+      const operator = cells.length === 1 ? 'equal' : match[2] ? calcudokuSigns.get(match[2]) : 'add'
+      if (!operator || cells.length === 1 && match[2]) throw new Error('This Sudoku Coach puzzle has an invalid Calcudoku cage operation.')
+      cages.push({ target, operator, cells })
+    }
+  }
+  return cages
+}
+
+function readCoachStandalone(data: Record<string, unknown>): ImportResult | undefined {
+  if (!Array.isArray(data.regions) || data.regions.length !== 0) return
+  const size = data.gridSize
+  if (!Number.isInteger(size) || Number(size) < 3 || Number(size) > 9) return
+  const rawLayers = data.givenConstraints ?? []
+  if (!Array.isArray(rawLayers)) throw new Error('This Sudoku Coach puzzle has invalid rules.')
+  if (rawLayers.some(layer => !record(layer) || typeof layer.type !== 'string' || !Array.isArray(layer.segments))) {
+    throw new Error('This Sudoku Coach puzzle has invalid rules.')
+  }
+  const types = rawLayers.flatMap(layer => record(layer) && typeof layer.type === 'string' ? [layer.type] : [])
+  const isFutoshiki = types.includes('greaterLess')
+  const isCalcudoku = types.includes('cage') || types.includes('cosmeticCage')
+  if (!isFutoshiki && !isCalcudoku) return
+  const supported = isFutoshiki ? new Set(['greaterLess', 'odd', 'even']) : new Set(['cage', 'cosmeticCage', 'odd', 'even'])
+  if (types.some(type => !supported.has(type))) {
+    // A boxless 7 × 7 grid with other supported rules remains a sized Sudoku.
+    if (size === 7) return
+    throw new Error('This Sudoku Coach boxless puzzle combines unsupported rules.')
+  }
+  if (isFutoshiki && isCalcudoku) throw new Error('This Sudoku Coach puzzle mixes Futoshiki signs and Calcudoku cages.')
+  const givens = data.givenDigits === undefined ? '0'.repeat(Number(size) ** 2) : data.givenDigits
+  if (typeof givens !== 'string' || givens.length !== Number(size) ** 2 || !/^\d+$/.test(givens) ||
+    [...givens].some(digit => Number(digit) > Number(size))) throw new Error('This Sudoku Coach puzzle has invalid givens.')
+  const position = readCoachNumberPosition(data, givens, Number(size))
+  const parity = readCoachParity(rawLayers, Number(size))
+  if (isFutoshiki) {
+    const futoshiki = createImportedFutoshiki(Number(size), givens, readCoachInequalities(rawLayers), parity, position)
+    return { givens, futoshiki }
+  }
+  const cages = readCoachCalcudokuCages(rawLayers, Number(size))
+  if (!cages.length) throw new Error('This Sudoku Coach puzzle has no Calcudoku cages.')
+  const calcudoku = createImportedCalcudoku(Number(size), givens, cages, parity, position)
+  return { givens, calcudoku }
 }
 
 function readCoachColourCells(colours: unknown, value: unknown, size = 9): string[] | undefined {
@@ -431,6 +559,8 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
+  const standalone = publication !== null && !publication?.hasAuthorInstructions ? readCoachStandalone(data) : undefined
+  if (standalone) return standalone
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     if (fromCollection && (!publication || publication.hasAuthorInstructions)) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
