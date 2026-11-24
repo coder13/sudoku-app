@@ -9,8 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DecodeRouteImport } from './routes/decode'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DecodeRouteImport } from './routes/decode'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as PuzzlesRouteImport } from './routes/puzzles'
