@@ -4,11 +4,14 @@ import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { exportPuzzle, parsePuzzle, STARTER, type ShareFormat } from '../src/sudoku/formats.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { recordAction } from '../src/sudoku/action-history.ts'
+import { initialChainSketch, pruneChainsAfterMove } from '../src/sudoku/chain-sketch.ts'
 import { jigsawLayout, reflectVariant, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { WINDOKU_REGIONS, isPlayablePuzzle, validVariantSave, variantDigitExclusions, variantHouseCells, variantHouseMasks, variantHouseName } from '../src/sudoku/variants.ts'
 import {
   applyDeduction, candidateCount, clearCandidateColors, completeCandidateMasks, conflictsOf, enter, fillEntries, hasCandidate, isPuzzleSaved, makeGame, marksOf, onlyCandidate, paintCandidate, redo,
-  needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, STARTER_GAME, toggleCandidateGroup, undo, valuesOf,
+  createPuzzleBookmark, needsInitialCandidates, paintCandidateStroke, replaceCandidates, restartGame, restorePuzzleBookmark, setGamePaused, singleFromCandidates, STARTER_GAME, toggleCandidateGroup, undo, valuesOf,
 } from '../src/sudoku/game.ts'
 
 test('Pencil groups remove a partial match or add the whole group as one move', () => {
@@ -59,6 +62,29 @@ test('saved puzzle state is independent from its source and survives a reset', (
   const reset = restartGame({ ...STARTER_GAME, saved: true, archived: true })
   assert.equal(reset.saved, true)
   assert.equal(reset.archived, true)
+})
+
+test('bookmarks survive saving and reset and restore the grid and sketch as one undo step', () => {
+  const entered = enter(enter(STARTER_GAME, [2], 'value', 4), [3], 'center', 6)
+  const position = { ...entered.position, eliminations: entered.position.corner.map((_, cell) => cell === 3 ? 2 : 0) }
+  const chainSketch = initialChainSketch
+  const bookmark = createPuzzleBookmark({ ...entered, position, chainSketch }, '  Before the guess  ')
+  const saved = readGame(entered.id, JSON.stringify({ ...entered, bookmarks: [bookmark], elapsed: 210 }))!
+  assert.equal(saved.bookmarks?.[0]?.name, 'Before the guess')
+  assert.equal(restartGame(saved).bookmarks, saved.bookmarks)
+
+  const before = enter(saved, [3], 'value', 6)
+  const restored = restorePuzzleBookmark(before, saved.bookmarks![0])
+  const next = pruneChainsAfterMove(before, recordAction(before, restored, 'bookmark'))
+  assert.deepEqual(next.position, position)
+  assert.deepEqual(next.chainSketch, chainSketch)
+  assert.equal(next.elapsed, 210)
+  assert.equal(next.past.length, before.past.length + 1)
+  assert.equal(undo(next).chainSketch, undefined)
+  assert.deepEqual(undo(next).position, before.position)
+  assert.deepEqual(redo(undo(next)).position, position)
+  assert.deepEqual(redo(undo(next)).chainSketch, chainSketch)
+  assert.equal(readGame(next.id, JSON.stringify(next))?.actionHistory?.at(-1)?.kind, 'bookmark')
 })
 
 test('a puzzle can be paused on open before its first move', () => {

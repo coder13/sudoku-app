@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { test } from 'node:test'
 import { IDBFactory } from 'fake-indexeddb'
-import { makeGame, EMPTY, enter, isSolved, setGamePaused, undo, type Game } from '../src/sudoku/game.ts'
+import { createPuzzleBookmark, makeGame, EMPTY, enter, isSolved, setGamePaused, undo, type Game } from '../src/sudoku/game.ts'
 import { createIndexedPuzzleSaves, GAME_PREFIX } from '../src/sudoku/puzzle-saves.ts'
 import { recordAction } from '../src/sudoku/action-history.ts'
 import { ratingAttemptFor } from '../src/sudoku/player-rating.ts'
@@ -225,7 +225,9 @@ test('linked devices sync IndexedDB saves, including simultaneous offline moves'
     }
     const first = indexedClient(creator, phone)
     const secondDevice = indexedClient(second, computer)
-    const game = makeGame('indexed-sync', 'Indexed sync', EMPTY, 'imported')
+    const original = makeGame('indexed-sync', 'Indexed sync', EMPTY, 'imported')
+    const bookmark = createPuzzleBookmark(enter(original, [3], 'center', 2), 'Candidate check')
+    const game = { ...original, bookmarks: [bookmark] }
     const { record } = await first.saves.change(game.id, undefined, game)
     assert.deepEqual(await first.pendingIds(), new Set([game.id]))
     await first.run()

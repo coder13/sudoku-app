@@ -3,7 +3,7 @@ import { Button, IconButton } from './Button'
 import {
   type CSSProperties, type ReactNode, type Dispatch, type MouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react'
-import { ArrowRight, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, Share2, Undo2, X, ZoomOut } from 'lucide-react'
+import { ArrowRight, Bookmark, Braces, Check, CheckCheck, Clipboard, CloudUpload, Eraser, Eye, Info, Lightbulb, Link2, ListFilter, ListOrdered, LoaderCircle, LogOut, MonitorSmartphone, MoreHorizontal, Palette, Pause, PencilLine, Pin, PinOff, Play, Redo2, RotateCcw, Share2, Undo2, X, ZoomOut } from 'lucide-react'
 import { explainCandidateRecovery, findCandidateRecovery, restoreCandidate, type CandidateRecovery } from '../sudoku/candidate-recovery'
 import { recordAction, type ActionKind } from '../sudoku/action-history'
 import { PINNABLE_ACTIONS, type PinnedAction } from '../sudoku/pinned-actions'
@@ -13,8 +13,8 @@ import { deviceSync } from '../sudoku/device-sync'
 import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from '../sudoku/difficulty'
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
-  COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, enter, fillEntries,
-  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, marksOf, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, setGamePaused, singleFromCandidates, toggleCandidateGroup, undo, valuesOf, withCellColors,
+  COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, createPuzzleBookmark, enter, fillEntries,
+  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, marksOf, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, restorePuzzleBookmark, setGamePaused, singleFromCandidates, toggleCandidateGroup, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -49,6 +49,7 @@ import { matchesHintPosition, puzzleHintPage, puzzleHints, puzzleSolution, type 
 import { playCandidates } from '../sudoku/variant-play'
 import { puzzleForVariantTools, variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
+import { BookmarksPanel } from './BookmarksPanel'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
 import { ChainColorsDialog, ChainsPanel } from './ChainsPanel'
@@ -60,6 +61,7 @@ import { DesktopDockLayout } from './DesktopDockLayout'
 import { ModeBadge } from './ModeBadge'
 import { PuzzleCollectionCredit } from './PuzzleCollections'
 import { HintCard } from './HintCard'
+import { InputToolsMenu } from './InputToolsMenu'
 import { MobileInputTabs } from './MobileInputTabs'
 import { VariantRules } from './VariantRules'
 import { PlayHint, PlayLayout } from './PlayLayout'
@@ -81,6 +83,7 @@ import { useTouchHold } from './useTouchHold'
 const puzzleToolDetails = {
   colors: { label: 'Colors', Icon: Palette },
   chains: { label: 'Chains', Icon: Link2 },
+  bookmarks: { label: 'Bookmarks', Icon: Bookmark },
 }
 const puzzleTools = PUZZLE_TOOL_ORDER.map(id => ({ id, ...puzzleToolDetails[id] }))
 
@@ -336,6 +339,7 @@ export function Worktable({
   const activeMobileInputTabRef = useRef<HTMLButtonElement>(null)
   const focusMobileInput = useRef(false)
   const mobileToolsOpener = useRef<HTMLButtonElement | null>(null)
+  const desktopToolsOpener = useRef<HTMLButtonElement | null>(null)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
@@ -447,7 +451,7 @@ export function Worktable({
   const panelSupported = (panel: PuzzleTool) => !placeholder && !draft &&
     (panel !== 'chains' || !grid) && (panel !== 'rules' || mixedVariant)
   const panelAvailable = (panel: PuzzleTool) => panelSupported(panel) &&
-    (!solved || panel === 'solution' || panel === 'techniques' || panel === 'rules')
+    (!solved || panel === 'solution' || panel === 'techniques' || panel === 'rules' || panel === 'bookmarks')
   const openPuzzlePanels = toolPanels.open.filter(desktop ? panelSupported : panelAvailable)
   const activeToolPanel = toolPanels.active !== 'digits' && openPuzzlePanels.includes(toolPanels.active) ? toolPanels.active : 'digits'
   const advancedPanelOpen = (panel: PuzzleTool) => openPuzzlePanels.includes(panel)
@@ -823,7 +827,7 @@ export function Worktable({
   }, [game.id, game.source])
 
   useGridClickAway(boardRef, () => { if (!rearranging) setSelected([]) }, (target) => Boolean(
-    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel')
+    target.closest('[data-panel-editor], .desktop-layout-edge, .desktop-layout-divider, .puzzle-mode-tab, .desktop-insight-panel, .mobile-input-toolbar, .mobile-input-resize, .input-tools, .chains-panel, .bookmarks-panel')
       || target.closest('.puzzle-menu-wrap, .desktop-dock .dv-tab')
       || target.closest('.controls, .cell-color-palette, .hint-card, .solution-path, .puzzle-actions-sheet, .desktop-actions-menu, .puzzle-quick-actions')
       && target.closest('button, input, select, textarea, a, [role="separator"]'),
@@ -1225,6 +1229,39 @@ export function Worktable({
     }
     if (disabled) return
     updateWorkingGame((current) => recordAction(current, transform(current), kind, options))
+  }
+
+  function saveBookmark(name: string) {
+    const bookmark = createPuzzleBookmark({ ...game, bookmarks: savedGame.bookmarks }, name)
+    const identity = puzzleIdentity(game)
+    roomStore.update(id, current => current.source !== 'draft' && puzzleIdentity(current) === identity &&
+      !current.bookmarks?.some(item => item.id === bookmark.id)
+      ? { ...current, bookmarks: [bookmark, ...(current.bookmarks ?? [])] } : current)
+  }
+
+  function deleteBookmark(bookmarkId: string) {
+    roomStore.update(id, current => {
+      if (!current.bookmarks) return current
+      const bookmarks = current.bookmarks.filter(bookmark => bookmark.id !== bookmarkId)
+      return bookmarks.length === current.bookmarks.length ? current
+        : { ...current, bookmarks: bookmarks.length ? bookmarks : undefined }
+    })
+  }
+
+  function restoreBookmark(bookmarkId: string) {
+    if (session || showResults) {
+      const bookmark = savedGame.bookmarks?.find(item => item.id === bookmarkId)
+      if (!bookmark) return
+      if (session) edit(current => restorePuzzleBookmark(current, bookmark), 'bookmark')
+      else {
+        const next = restorePuzzleBookmark(savedGame, bookmark)
+        focusGridAfterHistory.current = true
+        openSolvedGrid(recordAction(savedGame, next, 'bookmark'))
+      }
+    } else edit(current => {
+      const bookmark = current.bookmarks?.find(item => item.id === bookmarkId)
+      return bookmark && !current.paused ? restorePuzzleBookmark(current, bookmark) : current
+    }, 'bookmark')
   }
 
   function enterFromInput(cells: number[], digit: number, inputMode: Mode, options?: EnterOptions) {
@@ -2379,7 +2416,9 @@ export function Worktable({
     if (mobile || fromMenu) return
     const remaining = openInsightTabs.filter(({ id }) => id !== tool)
     const next = remaining.find(({ id }) => id === activeDesktopTab?.id) ?? remaining.find(({ id }) => id === 'techniques') ?? remaining[0]
-    const focus = next ? insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`) : (tool === 'rules' ? rulesButtonRef : puzzleMenuButtonRef).current
+    const opener = tool === 'rules' ? rulesButtonRef.current : desktopToolsOpener.current
+    const focus = next ? insightTabsRef.current?.querySelector<HTMLButtonElement>(`[data-insight-tab="${next.id}"]`)
+      : opener?.isConnected ? opener : puzzleMenuButtonRef.current
     focus?.focus({ preventScroll: true })
   }
 
@@ -2484,11 +2523,6 @@ export function Worktable({
       setActionsOpen(false)
       setPuzzleDetailsOpen(true)
     }}><Info size={17} aria-hidden="true" /> Puzzle details</button>}
-    {panelToggles.length > 0 && <>
-      <div className="app-menu-separator" role="separator" />
-      {panelToggles}
-      <div className="app-menu-separator" role="separator" />
-    </>}
     {advancedWorkspace && generatedWithAuto && offerSingles && solveSinglesAction}
     <button onClick={() => { setPuzzleMenuOpen(false); onShare() }}>
       <Share2 size={17} /> Share puzzle
@@ -2536,10 +2570,7 @@ export function Worktable({
     <div ref={puzzleMenuPopupRef} className={`app-menu puzzle-menu${floatingPuzzleMenu ? ' floating-puzzle-menu' : ''}`} id="puzzle-menu"
       popover={floatingPuzzleMenu ? 'manual' : undefined} data-presence={puzzleMenuExiting ? 'exit' : 'open'}
       aria-hidden={puzzleMenuExiting || undefined} inert={puzzleMenuExiting || undefined}
-      onClickCapture={event => {
-        if (event.target instanceof Element && event.target.closest('button[aria-pressed]')) return
-        puzzleMenuButtonRef.current?.focus({ preventScroll: true })
-      }}>
+      onClickCapture={() => puzzleMenuButtonRef.current?.focus({ preventScroll: true })}>
       {puzzleOptionItems}
     </div>
   )
@@ -2787,7 +2818,6 @@ export function Worktable({
           <IconButton ref={puzzleMenuButtonRef} variant="quiet" className="puzzle-menu-trigger" aria-label="Open puzzle options"
             title="Puzzle options" disabled={Boolean(placeholder)} aria-expanded={puzzleMenuOpen} aria-controls={puzzleMenuOpen ? 'puzzle-menu' : undefined}
             onClick={(event) => {
-              if (mobile && !puzzleMenuOpen) mobileToolsOpener.current = event.currentTarget
               if (mobile) event.currentTarget.focus({ preventScroll: true })
               setActionsOpen(false)
               setPuzzleMenuOpen((open) => !open)
@@ -2872,6 +2902,11 @@ export function Worktable({
           compact={mobile} actionsButtonRef={actionsMenuButtonRef} actionsOpen={actionsOpen}
           reserveSolvingSlots={desktop && !advancedWorkspace && solved && !previewing}
           actionsMenu={!mobile && !advancedWorkspace ? desktopActionsMenu : undefined}
+          inputTools={desktop && panelToggles.length > 0 ? <InputToolsMenu disabled={game.paused} preferBelow onShow={opener => {
+            desktopToolsOpener.current = opener
+            setPuzzleMenuOpen(false)
+            setActionsOpen(false)
+          }}>{panelToggles}</InputToolsMenu> : undefined}
           onActions={!presentationDraft && !solved && (mobile || !advancedWorkspace) ? () => {
             setPuzzleMenuOpen(false)
             setActionsOpen((open) => !open)
@@ -2954,24 +2989,25 @@ export function Worktable({
     </div>}
     <VariantRules key={id} sections={ruleSections} active={!mobile || activeToolPanel === 'rules'} onHighlight={setPinnedRule} />
   </section>
+  const bookmarksPanel = <BookmarksPanel key={id} bookmarks={savedGame.bookmarks} disabled={historyDisabled}
+    onSave={saveBookmark} onRestore={restoreBookmark} onDelete={deleteBookmark} />
+  const toolPanelContents = {
+    colors: cellColorsPanel, chains: chainsPanel, bookmarks: bookmarksPanel, rules: rulesPanel,
+    solution: solutionPathPanel, techniques: techniquesPanel,
+  }
 
   return (
     <>
       <PlayLayout desktop={desktop} puzzle={puzzlePanel} hint={hintPanel}
         input={desktop ? inputPanel : <MobileInputTabs active={activeToolPanel} open={openPuzzlePanels}
-          panels={{ digits: inputPanel, colors: cellColorsPanel, chains: chainsPanel, rules: rulesPanel,
-            solution: solutionPathPanel, techniques: techniquesPanel,
-          }} activeTabRef={activeMobileInputTabRef}
+          panels={{ digits: inputPanel, ...toolPanelContents }} activeTabRef={activeMobileInputTabRef}
           toolsDisabled={rearranging} toolToggles={panelToggles.length ? panelToggles : undefined}
           onShowTools={opener => { mobileToolsOpener.current = opener }}
           onSelect={selectToolPanel} onClose={closeToolPanel} />}
         insights={activeDesktopTab ? {
           active: activeDesktopTab.id, tabs: openInsightTabs, tabListRef: insightTabsRef, onSelect: selectToolPanel,
           onClose: () => closeToolPanel(activeDesktopTab.id),
-          content: activeDesktopTab.id === 'colors' ? cellColorsPanel : activeDesktopTab.id === 'techniques'
-            ? techniquesPanel
-            : activeDesktopTab.id === 'chains' ? chainsPanel
-              : activeDesktopTab.id === 'rules' ? rulesPanel : solutionPathPanel,
+          content: toolPanelContents[activeDesktopTab.id],
         } : undefined}
         mobile={{
           puzzleId: game.id, rearranging, withHint: mobileHintOpen || Boolean(solutionHintPanel) || rearranging,
@@ -3004,6 +3040,7 @@ export function Worktable({
         }}
         advanced={advancedWorkspace ? <DesktopDockLayout puzzle={puzzlePanel} input={inputPanel}
           chains={advancedPanelOpen('chains') ? chainsPanel : undefined}
+          bookmarks={advancedPanelOpen('bookmarks') ? bookmarksPanel : undefined}
           cellColors={advancedPanelOpen('colors') ? cellColorsPanel : undefined} rules={rulesPanel || undefined}
           hint={advancedHintPanel} solutionPath={advancedPanelOpen('solution') ? solutionPathPanel : undefined}
           techniques={advancedPanelOpen('techniques') ? techniquesPanel : undefined}

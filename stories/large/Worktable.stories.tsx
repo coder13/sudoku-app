@@ -161,7 +161,7 @@ export const MobileInputTools: Story = {
     const menu = within(inputTools)
     expect(menu.queryByRole('button', { name: 'Generate candidates' })).not.toBeInTheDocument()
     expect(menu.getAllByRole('button', { pressed: false }).map(button => button.textContent?.trim()))
-      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains'])
+      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains', 'Bookmarks'])
     for (const name of ['Solution', 'Techniques']) {
       const toggle = menu.getByRole('button', { name })
       toggle.focus()
@@ -209,35 +209,40 @@ export const PuzzlePanelToggles: Story = {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
     const options = canvas.getByRole('button', { name: 'Open puzzle options' })
     await userEvent.click(options)
-    const toolButtons = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!).getAllByRole('button', {
-      name: /^(Colors|Chains)$/,
-    })
-    expect(toolButtons.map(button => button.textContent?.trim())).toEqual(['Colors', 'Chains'])
-    const colors = canvas.getByRole('button', { name: 'Colors', pressed: false })
+    const puzzleMenu = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!)
+    expect(puzzleMenu.queryAllByRole('button', { name: /^(Solution|Techniques|Colors|Chains|Subsets|Bookmarks)$/ })).toHaveLength(0)
+    await userEvent.keyboard('{Escape}')
+    const trigger = canvas.getByRole('button', { name: 'Input tools' })
+    await userEvent.click(trigger)
+    const menu = within(await canvas.findByRole('group', { name: 'Input tools' }))
+    const chains = menu.getByRole('button', { name: 'Chains', pressed: false })
+    await userEvent.click(chains)
+    const colors = menu.getByRole('button', { name: 'Colors', pressed: false })
     colors.focus()
     await userEvent.keyboard('{Enter}')
     await expect(colors).toHaveAttribute('aria-pressed', 'true')
     await expect(colors).toHaveFocus()
     await expect(canvas.getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
-    await userEvent.click(canvas.getByRole('button', { name: 'Chains', pressed: false }))
+    await userEvent.click(menu.getByRole('button', { name: 'Bookmarks', pressed: false }))
+    await expect(canvas.getByRole('tab', { name: 'Bookmarks' })).toHaveAttribute('aria-selected', 'true')
     const tabs = within(canvas.getByRole('tablist', { name: 'Sudoku input' })).getAllByRole('tab')
-    expect(tabs.map(tab => tab.textContent)).toEqual(['Digits', 'Colors', 'Chains'])
-    await userEvent.click(canvas.getByRole('button', { name: 'Colors', pressed: true }))
+    expect(tabs.map(tab => tab.textContent)).toEqual(['Digits', 'Colors', 'Chains', 'Bookmarks'])
+    await userEvent.click(menu.getByRole('button', { name: 'Colors', pressed: true }))
     await expect(canvas.queryByRole('tab', { name: 'Colors' })).not.toBeInTheDocument()
-    await expect(canvas.getByRole('tab', { name: 'Chains' })).toHaveAttribute('aria-selected', 'true')
-    await expect(options).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByRole('tab', { name: 'Bookmarks' })).toHaveAttribute('aria-selected', 'true')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await userEvent.keyboard('{Escape}')
-    await expect(options).toHaveAttribute('aria-expanded', 'false')
-    await expect(options).toHaveFocus()
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(trigger).toHaveFocus()
   },
 }
 export const DesktopInsightToggles: Story = {
   args: { game: inProgress, games: [inProgress] },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (canvasElement.querySelector('.mobile-panel-layout')) return
-    const options = canvas.getByRole('button', { name: 'Open puzzle options' })
-    await userEvent.click(options)
-    const menu = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!)
+    const trigger = canvas.getByRole('button', { name: 'Input tools' })
+    await userEvent.click(trigger)
+    const menu = within(await canvas.findByRole('group', { name: 'Input tools' }))
     const solution = menu.getByRole('button', { name: 'Solution' })
     const techniques = menu.getByRole('button', { name: 'Techniques' })
     solution.focus()
@@ -253,7 +258,7 @@ export const DesktopInsightToggles: Story = {
     await expect(canvas.getByRole('tab', { name: 'Techniques' })).toHaveAttribute('aria-selected', 'true')
     await userEvent.click(techniques)
     await expect(canvas.queryByRole('tablist', { name: 'Puzzle insight tabs' })).not.toBeInTheDocument()
-    await expect(options).toHaveAttribute('aria-expanded', 'true')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   },
 }
 export const MobileInsightTabs: Story = {
@@ -261,8 +266,8 @@ export const MobileInsightTabs: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     if (!canvasElement.querySelector('.mobile-panel-layout')) return
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
-    const menu = within(canvasElement.querySelector<HTMLElement>('#puzzle-menu')!)
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const menu = within(await canvas.findByRole('group', { name: 'Input tools' }))
     await userEvent.click(menu.getByRole('button', { name: 'Solution' }))
     await expect(canvas.getByRole('tab', { name: 'Solution' })).toHaveAttribute('aria-selected', 'true')
     await expect(canvas.getByRole('button', { name: 'Reveal solution' })).toBeInTheDocument()
@@ -658,8 +663,9 @@ export const RemoveBranchTip: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Chains', pressed: false }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const menu = within(await canvas.findByRole('group', { name: 'Input tools' }))
+    await userEvent.click(menu.getByRole('button', { name: 'Chains', pressed: false }))
     await userEvent.keyboard('{Escape}')
     const grid = within(await canvas.findByRole('grid', { name: 'Sudoku grid for drawing links' }))
     const chain = canvas.getByRole('button', { name: /^Chain 1$/ })
@@ -1139,8 +1145,10 @@ export const CandidateShortcut: Story = {
 export const HintWithGrid: Story = {
   args: { game: paintCells(starter, [{ cell: 2, color: 1 }]) },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open puzzle options' }))
-    await userEvent.click(await canvas.findByRole('button', { name: /^Colors$/ }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Input tools' }))
+    const menu = within(await canvas.findByRole('group', { name: 'Input tools' }))
+    await userEvent.click(menu.getByRole('button', { name: /^Colors$/ }))
+    await userEvent.keyboard('{Escape}')
     await userEvent.click(canvas.getByRole('button', { name: 'Actions' }))
     const viewHint = await canvas.findByRole('button', { name: 'View hint' })
     await waitFor(() => {

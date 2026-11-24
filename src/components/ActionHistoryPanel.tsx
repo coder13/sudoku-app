@@ -9,7 +9,7 @@ function actionTitle(entry: ActionHistoryEntry) {
     return `Filled ${count} single${count === 1 ? '' : 's'}`
   }
   if (entry.technique) return techniqueLabel(entry.technique)
-  const labels = { undo: 'Undo', redo: 'Redo', candidates: 'Filled candidates', hint: 'Applied hint', recovery: 'Restored candidate' }
+  const labels = { undo: 'Undo', redo: 'Redo', candidates: 'Filled candidates', hint: 'Applied hint', recovery: 'Restored candidate', bookmark: 'Restored bookmark' }
   if (entry.kind !== 'edit') return labels[entry.kind]
   const placements = entry.changes.filter((change) => change.kind === 'entry')
   if (placements.length) {

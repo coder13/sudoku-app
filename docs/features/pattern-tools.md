@@ -1,6 +1,6 @@
 # Pattern tools in Play
 
-In **Puzzle options**, select a panel to open or close its tab. On mobile, the three-dot **Input tools** menu has the same toggles. Both menus stay open while you toggle panels. Scroll the tab row horizontally when the tabs extend beyond the panel. On mobile, drag the divider to resize the input card. Double-tap it or focus it and press Enter to expand the active panel as far as its content and the available space allow. The card keeps its height when you switch tabs. Close all tool tabs to return to the normal keypad height.
+Open **Input tools** to show or hide a solving tab. The menu stays open while you toggle panels. Scroll the tab row horizontally when the tabs extend beyond the panel. On mobile, drag the divider to resize the input card. Double-tap it or focus it and press Enter to expand the active panel as far as its content and the available space allow. The card keeps its height when you switch tabs. Close all tool tabs to return to the normal keypad height.
 
 Open tools and the selected tab follow you when you switch between mobile and desktop widths. Reloading Sudoku restores them, along with the input card height you chose on mobile. A revealed **Solution** returns to the selected step, and **Techniques** keeps its filter.
 

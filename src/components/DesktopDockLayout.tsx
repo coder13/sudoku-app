@@ -34,6 +34,7 @@ type DockContent = {
   puzzle: ReactNode
   input: ReactNode
   chains?: ReactNode
+  bookmarks?: ReactNode
   cellColors: ReactNode
   rules?: ReactNode
   hint: ReactNode
@@ -55,6 +56,7 @@ type DockContent = {
 }
 type PanelVisibility = Pick<DockContent, 'showLeft' | 'showRight' | 'showBottom'> & {
   showChains: boolean
+  showBookmarks: boolean
   showColors: boolean
   showSolution: boolean
   showTechniques: boolean
@@ -95,6 +97,10 @@ function ChainsDockPanel({ api }: IDockviewPanelProps) {
     }
   }, [api, onChainsVisibleChange])
   return <div className="dock-panel-content">{chains}</div>
+}
+
+function BookmarksDockPanel() {
+  return <div className="dock-panel-content">{useContext(DockContentContext).bookmarks}</div>
 }
 
 function CellColorsPanel({ api }: IDockviewPanelProps) {
@@ -219,6 +225,7 @@ function DockResizeOptions({ api, group, containerApi, activePanel }: IDockviewH
 
 const components = {
   puzzle: PuzzlePanel, input: InputPanel, chains: ChainsDockPanel, cellColors: CellColorsPanel, hint: HintPanel,
+  bookmarks: BookmarksDockPanel,
   solutionPath: SolutionPathPanel, techniques: TechniquesDockPanel, rules: RulesDockPanel, details: DetailsPanel, browser: BrowserPanel,
   // Restore saved layouts before removing their retired panel.
   subsets: () => null,
@@ -226,10 +233,11 @@ const components = {
 const dockTools = {
   colors: { id: 'cell-colors', component: 'cellColors', title: 'Colors' },
   chains: { id: 'chains', component: 'chains', title: 'Chains' },
+  bookmarks: { id: 'bookmarks', component: 'bookmarks', title: 'Bookmarks' },
 } as const
 const dockToolIds: Record<ToolPanelTab, string> = {
   digits: 'input', solution: 'solution-path', techniques: 'techniques', rules: 'rules',
-  colors: dockTools.colors.id, chains: dockTools.chains.id,
+  colors: dockTools.colors.id, chains: dockTools.chains.id, bookmarks: dockTools.bookmarks.id,
 }
 
 function addBrowserPanel(api: DockviewApi) {
@@ -286,10 +294,10 @@ function orderToolTabs(api: DockviewApi) {
   }
 }
 
-function syncRightPanels(api: DockviewApi, { showChains, showColors, showSolution, showTechniques, showRules }: PanelVisibility) {
+function syncRightPanels(api: DockviewApi, { showChains, showBookmarks, showColors, showSolution, showTechniques, showRules }: PanelVisibility) {
   const input = api.getPanel('input')
   if (!input) return
-  const visible = { colors: showColors, chains: showChains }
+  const visible = { colors: showColors, chains: showChains, bookmarks: showBookmarks }
   for (const tool of PUZZLE_TOOL_ORDER) {
     const options = dockTools[tool]
     const panel = api.getPanel(options.id)
@@ -352,7 +360,7 @@ function syncPanelRegions(api: DockviewApi, visibility: PanelVisibility) {
   if (showRight) {
     addInputPanel(api)
     syncRightPanels(api, visibility)
-  } else removePanels(api, ['rules', 'techniques', 'solution-path', 'cell-colors', 'details', 'chains', 'input'])
+  } else removePanels(api, ['rules', 'techniques', 'solution-path', 'details', ...Object.values(dockTools).map(tool => tool.id), 'input'])
   if (showBottom) addHintPanel(api)
   else removePanels(api, ['hint'])
 }
@@ -382,7 +390,7 @@ function restoreLayout(api: DockviewApi) {
       api.fromJSON(JSON.parse(saved))
       removePanels(api, ['subsets'])
       const panelIds = new Set(api.panels.map(({ id }) => id))
-      const allowed = new Set(['puzzle', 'input', 'chains', 'cell-colors', 'details', 'hint', 'solution-path', 'techniques', 'rules', 'browser'])
+      const allowed = new Set(['puzzle', 'input', 'details', 'hint', 'solution-path', 'techniques', 'rules', 'browser', ...Object.values(dockTools).map(tool => tool.id)])
       if (panelIds.has('puzzle') && [...panelIds].every((id) => allowed.has(id))) return
     }
   } catch { /* Fall back to the default layout. */ }
@@ -400,7 +408,7 @@ export function resetDesktopPanelLayout() {
 }
 
 export function DesktopDockLayout({
-  puzzle, input, chains, cellColors, rules, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
+  puzzle, input, chains, bookmarks, cellColors, rules, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
   activeToolPanel, onSelectToolPanel, focusHintRequest, focusChainsRequest,
   onChainsVisibleChange, onInputVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
 }: DockContent) {
@@ -410,12 +418,13 @@ export function DesktopDockLayout({
   const saveSubscription = useRef<{ dispose: () => void } | null>(null)
   const saveFrame = useRef<number | null>(null)
   const showChains = chains != null
+  const showBookmarks = bookmarks != null
   const showColors = cellColors != null
   const showSolution = solutionPath != null
   const showTechniques = techniques != null
   const showRules = rules != null
-  const visibility = useRef<PanelVisibility>({ showLeft, showRight, showBottom, showChains, showColors, showSolution, showTechniques, showRules })
-  visibility.current = { showLeft, showRight, showBottom, showChains, showColors, showSolution, showTechniques, showRules }
+  const visibility = useRef<PanelVisibility>({ showLeft, showRight, showBottom, showChains, showBookmarks, showColors, showSolution, showTechniques, showRules })
+  visibility.current = { showLeft, showRight, showBottom, showChains, showBookmarks, showColors, showSolution, showTechniques, showRules }
 
   useEffect(() => {
     let dockInteraction = false
@@ -476,6 +485,7 @@ export function DesktopDockLayout({
     const addingTab = showRight && (
       (showColors && !api.getPanel(dockTools.colors.id)) ||
       (showChains && !api.getPanel(dockTools.chains.id)) ||
+      (showBookmarks && !api.getPanel(dockTools.bookmarks.id)) ||
       (showSolution && !api.getPanel('solution-path')) ||
       (showTechniques && !api.getPanel('techniques')) ||
       (showRules && !api.getPanel('rules'))
@@ -489,7 +499,7 @@ export function DesktopDockLayout({
       return animation ? [animation] : []
     })
     return () => animations.forEach(animation => animation.cancel())
-  }, [showLeft, showRight, showBottom, showChains, showColors, showSolution, showTechniques, showRules])
+  }, [showLeft, showRight, showBottom, showChains, showBookmarks, showColors, showSolution, showTechniques, showRules])
 
   useEffect(() => {
     if (!focusHintRequest || !showBottom) return
@@ -531,7 +541,7 @@ export function DesktopDockLayout({
 
   return (
     <DockContentContext.Provider value={{
-      puzzle, input, chains, cellColors, rules, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
+      puzzle, input, chains, bookmarks, cellColors, rules, hint, solutionPath, techniques, details, browser, showLeft, showRight, showBottom,
       activeToolPanel, onSelectToolPanel, focusHintRequest, focusChainsRequest,
       onChainsVisibleChange, onInputVisibleChange, onColorsVisibleChange, onSolutionVisibleChange,
     }}>
