@@ -355,7 +355,7 @@ export function Worktable({
   const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
-  const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto } = game
+  const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto, nonUnique } = game
   const puzzle = fog?.puzzle ?? variant?.puzzle
   const hintPosition = useMemo<HintPosition>(() => ({
     gameId: id, givens, values, puzzle: variant?.puzzle, grid, algebraic, sized, center, corner, eliminations,
@@ -945,14 +945,14 @@ export function Worktable({
     if (draft || game.paused || !needsRating && !needsAttempt) return
     let current = true
     const engine = createEngineSession()
-    void ratePuzzle(givens, variant, engine.run).then((grade) => {
+    void ratePuzzle(givens, variant, engine.run, nonUnique).then((grade) => {
       if (!current) return
       roomStore.update(id, (latest) => latest.givens === givens && latest.variant === variant ? applyPuzzleGrade(latest, grade) : latest, { derived: true })
     }).catch(() => {
       if (current) setRatingFailed(true)
     }).finally(() => engine.close())
     return () => { current = false; engine.close() }
-  }, [id, givens, draft, game.paused, needsAttempt, needsRating, variant])
+  }, [id, givens, draft, game.paused, needsAttempt, needsRating, nonUnique, variant])
 
   useEffect(() => {
     if (draft || solved || game.paused || !needsSinglesCheck) return
@@ -1200,13 +1200,13 @@ export function Worktable({
     if (errorMode === 'none' || draft) return result
     if (errorMode === 'conflicts') return conflicts
     if (errorMode === 'all') conflicts.forEach((index) => result.add(index))
-    if (showSolutionErrors && solution) {
+    if (showSolutionErrors && solution && !nonUnique) {
       for (let index = 0; index < game.position.entries.length; index++) {
         if (game.position.entries[index] !== '0' && values[index] !== solution[index]) result.add(index)
       }
     }
     return result
-  }, [conflicts, draft, errorMode, game.position.entries, showSolutionErrors, solution, values])
+  }, [conflicts, draft, errorMode, game.position.entries, nonUnique, showSolutionErrors, solution, values])
 
   const nakedSinglesRequest = useRef(0)
   const nakedSinglesAbort = useRef<AbortController | null>(null)
@@ -2765,6 +2765,7 @@ export function Worktable({
       aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
       <ZoomOut size={18} aria-hidden="true" />
     </IconButton>}
+    {nonUnique && <span className="non-unique-chip">Multiple Solutions</span>}
     {mixedVariant ? <IconButton ref={rulesButtonRef} variant="quiet" className="variant-rules-button"
       aria-label="Puzzle rules" title="Puzzle rules" aria-haspopup={openPuzzlePanels.includes('rules') ? undefined : 'dialog'}
       onClick={() => openPuzzlePanels.includes('rules') ? showRulesTab() : setVariantRulesOpen(true)}>
@@ -2941,7 +2942,7 @@ export function Worktable({
         <div><dt>Status</dt><dd>{placeholder ? 'Waiting for puzzle' : solved ? 'Solved' : game.paused ? 'Paused' : game.started ? 'In progress' : 'Not started'}</dd></div>
         <div><dt>Difficulty</dt><dd>{difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated'}</dd></div>
         {!grid && !draft && !placeholder && <div><dt>Original puzzle</dt>
-          <dd>{originalSolutionStatus[verifiedOriginal ? 'unique' : 'unverified']}</dd></div>}
+          <dd>{originalSolutionStatus[nonUnique ? 'multiple' : verifiedOriginal ? 'unique' : 'unverified']}</dd></div>}
         {showElapsedTime && <div><dt>Elapsed time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
         <div><dt>Givens</dt><dd>{clueCount}</dd></div>
         <div><dt>Placed digits</dt><dd>{placedDigitCount}</dd></div>
