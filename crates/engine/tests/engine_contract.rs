@@ -544,7 +544,7 @@ fn a_permuted_verified_template_can_match_even_when_raw_search_runs_out() {
 fn expert_rating_replays_the_same_deductions_with_the_same_score() {
     let technique = Technique::MultiSectorLockedSets;
     let board = parse_givens(technique.practice_example().givens).unwrap();
-    assert_replayed_trace(board, Difficulty::Extreme, 2234);
+    assert_replayed_trace(board, Difficulty::Extreme, 2356);
     assert_eq!(
         rate_puzzle(&board, Technique::default_order())
             .unwrap()

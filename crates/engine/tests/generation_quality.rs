@@ -40,8 +40,8 @@ fn rejected_lower_tier_solutions_from_quality_audit() {
 
 #[test]
 fn medium_requires_repeated_varied_elimination_work() {
-    // good, baseline sample index 2.
-    assert_eq!(accepts_difficulty(&parse_givens("090300000000000056500069003207000490040700001100290007003102080900000000810930605").unwrap(), Difficulty::Medium), true);
+    // The second calibration puzzle still needs varied eliminations with direct moves enabled.
+    assert!(accepts_difficulty(&parse_givens("163700000002030409080000070098300000000040000015000040007001000200070398000080001").unwrap(), Difficulty::Medium));
     // few, baseline sample index 3.
     assert_eq!(accepts_difficulty(&parse_givens("043000006000009231009000000028400000030612050050000100000850000080000009004300000").unwrap(), Difficulty::Medium), false);
     // one_stretch, baseline sample index 5.
