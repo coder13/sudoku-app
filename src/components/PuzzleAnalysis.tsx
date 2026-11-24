@@ -168,8 +168,10 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   const position = game.variant && variantPosition(game.variant, game.position)
   const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
   const positionProblem = variantHintProblem(game, values, eliminationMasks)
-  const immediateCounts = useMemo(() => !variant && !positionProblem
-    ? classicBasicTechniqueCounts(values, eliminationMasks) : {}, [eliminationMasks, positionProblem, values, variant])
+  // These six techniques are normal Sudoku techniques, even on variant boards.
+  // Count them only from row, column, and box rules, independent of variant rules
+  // and player candidate marks.
+  const immediateCounts = useMemo(() => classicBasicTechniqueCounts(values), [values])
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -194,7 +196,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     .sort((left, right) => left.cost - right.cost).map(({ id }) => id), [catalog])
 
   useEffect(() => {
-    if (!active || solved || !catalog || positionProblem) return
+    if (!active || solved || !catalog) return
     const cached = { ...cachedTechniqueCounts(snapshotKey), ...immediateCounts }
     const missing = techniques.filter((technique) => !cached[technique])
     setScan({ key: snapshotKey, results: cached })
@@ -218,7 +220,8 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     }
 
     if (missing.length < techniques.length) recordAssistance()
-    if (missing.length === 0) return
+    // Variant errors block variant-aware scans, but not the classic results above.
+    if (positionProblem || missing.length === 0) return
 
     let scan: ReturnType<typeof watchTechniqueScan> | null = null
 
