@@ -90,9 +90,12 @@ impl XSum {
         let all = u16::MAX >> (u16::BITS as usize - self.size);
         let maximum = self.size * (self.size + 1) / 2;
         let first_digit_stride = self.size + 1;
+        let total_slots = only_total
+            .map(|_| first_digit_stride)
+            .unwrap_or((maximum + 1) * first_digit_stride);
         // Keep each first digit separate: a dot may relate the derived sum to
         // that digit, so supports for different prefix lengths cannot merge.
-        let mut totals = vec![None::<[u16; MAX_SIZE]>; (maximum + 1) * first_digit_stride];
+        let mut totals = vec![None::<[u16; MAX_SIZE]>; total_slots];
         for length in 1..=self.size {
             let first = 1u16 << (length - 1);
             if domains[self.cells[0]] & first == 0 {
@@ -134,8 +137,12 @@ impl XSum {
                     ) {
                         continue;
                     }
-                    let support =
-                        totals[sum * first_digit_stride + length].get_or_insert([0; MAX_SIZE]);
+                    let slot = if only_total.is_some() {
+                        length
+                    } else {
+                        sum * first_digit_stride + length
+                    };
+                    let support = totals[slot].get_or_insert([0; MAX_SIZE]);
                     support[0] |= first;
                     for (offset, mask) in prefix_support[..length - 1].iter().enumerate() {
                         support[offset + 1] |= mask;
@@ -151,7 +158,7 @@ impl XSum {
             .enumerate()
             .filter_map(|(index, support)| {
                 support.map(|support| XSumOutcome {
-                    total: index / first_digit_stride,
+                    total: only_total.unwrap_or(index / first_digit_stride),
                     support,
                 })
             })
