@@ -166,12 +166,13 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     [values, game.position.center, game.position.corner, game.position.eliminations])
   const variant = Boolean(game.variant)
   const position = game.variant && variantPosition(game.variant, game.position)
-  const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle)
-  const positionProblem = variantHintProblem(game, values, eliminationMasks)
-  // These six techniques use normal Sudoku row, column, and box rules on every
-  // 9x9 board, while respecting the player's current candidate removals.
-  const immediateCounts = useMemo(() => classicBasicTechniqueCounts(values, eliminationMasks), [eliminationMasks, values])
   const [catalog, setCatalog] = useState<TechniqueCatalog | null>(null)
+  const techniqueOrder = catalog?.difficultyOrder ?? []
+  const snapshotKey = techniqueScanKey(values, eliminationMasks, position?.puzzle, undefined, techniqueOrder)
+  const positionProblem = variantHintProblem(game, values, eliminationMasks)
+  // Singles are quick to count on the main thread. Other techniques use the worker.
+  const immediateCounts = useMemo(() => variant ? {} : classicBasicTechniqueCounts(values, eliminationMasks),
+    [eliminationMasks, values, variant])
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [scan, setScan] = useState<ScanProgress | null>(null)
   const [retry, setRetry] = useState(0)
@@ -191,8 +192,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
   }, [active, variant, retry])
 
   const groups = useMemo(() => analysisGroupsForCatalog(catalog?.techniques ?? []), [catalog])
-  const techniques = useMemo(() => [...(catalog?.techniques ?? [])]
-    .sort((left, right) => left.cost - right.cost).map(({ id }) => id), [catalog])
+  const techniques = techniqueOrder
 
   useEffect(() => {
     if (!active || solved || !catalog) return
@@ -210,7 +210,8 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
         const latestValues = valuesOf(latest)
         if (latestValues !== values) return latest
         const masks = hintEliminations(latestValues, completeCandidateMasks(latest), latest.position.eliminations)
-        if (techniqueScanKey(latestValues, masks, latest.variant && variantPosition(latest.variant, latest.position).puzzle) !== snapshotKey) return latest
+        if (techniqueScanKey(latestValues, masks,
+          latest.variant && variantPosition(latest.variant, latest.position).puzzle, undefined, techniqueOrder) !== snapshotKey) return latest
         const attempt = latest.ratingAttempt
         const ratingAttempt = attempt && addAnalysisAssistance(attempt)
         return latest.analysisUsed && ratingAttempt === attempt ? latest
@@ -231,7 +232,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     }
 
     const timer = window.setTimeout(() => {
-      scan = watchTechniqueScan(values, eliminationMasks, position)
+      scan = watchTechniqueScan(values, eliminationMasks, position, undefined, techniqueOrder)
       void (async () => {
         for (const technique of missing) {
           if (!current) return
@@ -249,7 +250,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
       })()
     }, SCAN_DEBOUNCE_MS)
     return () => { current = false; window.clearTimeout(timer); scan?.close() }
-  }, [active, solved, catalog, techniques, snapshotKey, values, game.id, retry, positionProblem, immediateCounts])
+  }, [active, solved, catalog, techniques, techniqueOrder, snapshotKey, values, game.id, retry, positionProblem, immediateCounts])
 
   const workerResults = scan?.key === snapshotKey ? scan.results : cachedTechniqueCounts(snapshotKey)
   const results = { ...workerResults, ...immediateCounts }
