@@ -1390,11 +1390,14 @@ export function Worktable({
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected, placeInSelection = false) {
     if (inputMode !== 'color' && digit > gridSize) return
     if (brush !== null && (inputMode === 'value' || colorTarget === 'candidate')) {
-      const paintHighlightedGroup = colorTarget === 'candidate' && !mobile && candidateCount(highlightedDigitMask) > 1
-      if (colorTarget === 'candidate' && digit > 0) {
-        paintCandidateDigits(paintHighlightedGroup ? digitsInMask(highlightedDigitMask) : [digit], brush)
+      if (colorTarget === 'candidate') {
+        if (digit > 0) {
+          const paintHighlightedGroup = candidateCount(highlightedDigitMask) > 1
+          paintCandidateDigits(paintHighlightedGroup ? digitsInMask(highlightedDigitMask) : [digit], brush)
+        }
+        return
       }
-      if (!paintHighlightedGroup) highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
+      highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
     }
     if (colorBrush !== null) setColorBrush(null)
