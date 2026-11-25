@@ -487,6 +487,28 @@ mod tests {
     }
 
     #[test]
+    fn requested_total_outcomes_match_the_same_bucket_from_all_derived_totals() {
+        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 1).unwrap();
+        let mut domains = [0; MAX_SIZE * MAX_SIZE];
+        domains[..4].copy_from_slice(&[0b1111, 0b1011, 0b1110, 0b1101]);
+
+        let all = x_sum.outcomes_for(&domains, None);
+        for total in 1..=10 {
+            let derived = all
+                .iter()
+                .filter(|outcome| outcome.total == total)
+                .map(|outcome| (outcome.total, outcome.support))
+                .collect::<Vec<_>>();
+            let requested = x_sum
+                .outcomes_for(&domains, Some(total))
+                .into_iter()
+                .map(|outcome| (outcome.total, outcome.support))
+                .collect::<Vec<_>>();
+            assert_eq!(requested, derived, "total {total}");
+        }
+    }
+
+    #[test]
     fn rejects_a_ray_that_does_not_start_at_the_declared_edge() {
         assert!(XSum::compile(4, ClueDirection::East, &[1, 2, 3, 4], 10).is_none());
     }
