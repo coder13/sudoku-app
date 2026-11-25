@@ -495,6 +495,12 @@ test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed
     { type: 'thermometer', cells: [12, 13] },
   ])
   assert.equal(conflictsOf(solution, undefined, imported.grid, imported.sizedRules).size, 0)
+  const game = { ...makeGame('coach-combo', 'Coach combination', solution, 'imported', 0, imported.grid),
+    sized: { rules: imported.sizedRules!, solution } }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.sized, game.sized)
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.grid, imported.grid)
+  assert.deepEqual(shared.sixRules, imported.sizedRules)
 })
 
 test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {

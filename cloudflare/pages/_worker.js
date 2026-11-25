@@ -438,6 +438,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
+    (fields(rule, { type: oneOf('non-consecutive') }, { except: list(pair, 0, 2 * size * (size - 1)) }) &&
+      (rule.except === undefined || new Set(rule.except.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.except.length)) ||
     (fields(rule, { type: oneOf('quadruple'), topLeft: integer(0, size * (size - 1) - 1), digits: list(integer(1, size), 1, 4) }) &&
       rule.topLeft % size < size - 1) ||
     numberedDotRule(rule, size) ||
