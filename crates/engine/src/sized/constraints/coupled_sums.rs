@@ -3,6 +3,11 @@ use std::collections::BTreeMap;
 use super::equal_sums::EqualSums;
 use super::{MAX_CELLS, MAX_SIZE};
 
+// Joint support is exact while it stays cheap, then falls back to the sound
+// intersection of each rule's individual supports. This keeps broad 16×16
+// domains from making ordinary candidate queries spend seconds in DFS.
+const MAX_JOINT_SEARCH_NODES: usize = 50_000;
+
 #[derive(Debug)]
 pub(super) struct CoupledSums {
     pub rules: [usize; 2],
@@ -17,6 +22,7 @@ pub(super) struct CoupledSums {
 
 pub(super) struct Support {
     pub masks: [u16; MAX_CELLS],
+    pub exact: bool,
 }
 
 impl CoupledSums {
@@ -104,16 +110,28 @@ impl CoupledSums {
         let left_totals = left.totals(&narrowed);
         let right_totals = right.totals(&narrowed);
         let mut masks = [0; MAX_CELLS];
+        let mut search_nodes = 0;
         for &[a, b] in &self.compatible {
             if contains(left_totals, a) && contains(right_totals, b) {
                 if self.cells.len() <= MAX_SIZE {
                     let mut support = [0; MAX_CELLS];
-                    self.support_for_totals(
+                    let remaining_nodes = MAX_JOINT_SEARCH_NODES - search_nodes;
+                    let (exhausted, used_nodes) = self.support_for_totals(
                         &narrowed,
                         usize::from(a),
                         usize::from(b),
                         &mut support,
+                        remaining_nodes,
                     );
+                    search_nodes += used_nodes;
+                    if exhausted {
+                        return self
+                            .independent_support(left, right, &narrowed, left_totals, right_totals)
+                            .map(|mut support| {
+                                support.exact = false;
+                                support
+                            });
+                    }
                     if self.cells.iter().all(|&cell| support[cell] != 0) {
                         if let Some(totals) = compatible_totals.as_deref_mut() {
                             totals.push([a, b]);
@@ -142,7 +160,7 @@ impl CoupledSums {
         self.cells
             .iter()
             .all(|&cell| masks[cell] != 0)
-            .then_some(Support { masks })
+            .then_some(Support { masks, exact: true })
     }
 
     fn independent_support(
@@ -181,7 +199,10 @@ impl CoupledSums {
         self.cells
             .iter()
             .all(|&cell| masks[cell] != 0)
-            .then_some(Support { masks })
+            .then_some(Support {
+                masks,
+                exact: false,
+            })
     }
 
     fn support_for_totals(
@@ -190,7 +211,8 @@ impl CoupledSums {
         left_target: usize,
         right_target: usize,
         supported: &mut [u16; MAX_CELLS],
-    ) {
+        node_budget: usize,
+    ) -> (bool, usize) {
         let mut order = [0; MAX_SIZE];
         for (index, item) in order[..self.cells.len()].iter_mut().enumerate() {
             *item = index;
@@ -236,8 +258,12 @@ impl CoupledSums {
             left_max: &mut left_max,
             right_max: &mut right_max,
             supported,
+            nodes: 0,
+            exhausted: false,
+            node_budget,
         };
         search.visit(0);
+        (search.exhausted, search.nodes)
     }
 }
 
@@ -257,10 +283,18 @@ struct JointSearch<'a> {
     left_max: &'a mut [usize; MAX_CELLS],
     right_max: &'a mut [usize; MAX_CELLS],
     supported: &'a mut [u16; MAX_CELLS],
+    nodes: usize,
+    exhausted: bool,
+    node_budget: usize,
 }
 
 impl JointSearch<'_> {
     fn visit(&mut self, depth: usize) -> bool {
+        if self.nodes >= self.node_budget {
+            self.exhausted = true;
+            return false;
+        }
+        self.nodes += 1;
         if depth == self.order.len() {
             for (index, &cell) in self.cells.iter().enumerate() {
                 self.supported[cell] |= 1 << (self.digits[index] - 1);
@@ -547,5 +581,30 @@ mod tests {
                 .map(|support| line.map(|cell| support.masks[cell]));
             assert_eq!(result, (expected != [0; 10]).then_some(expected));
         }
+    }
+
+    #[test]
+    fn broad_sixteen_cell_joint_search_uses_conservative_support() {
+        let layout = SizedGrid::new(GridSpec {
+            size: 16,
+            box_rows: 4,
+            box_columns: 4,
+        })
+        .unwrap();
+        let line: Vec<_> = (0..16).collect();
+        let sums = [
+            Some(EqualSums::zipper(&layout, &line).unwrap()),
+            Some(EqualSums::region_sum(&layout, &line, true).unwrap()),
+        ];
+        let pairs = CoupledSums::compile(&sums);
+        assert_eq!(pairs.len(), 1);
+        let mut domains = [0; 256];
+        for &cell in &line {
+            domains[cell] = u16::MAX;
+        }
+
+        let support = pairs[0].support(&sums, &domains).unwrap();
+        assert!(!support.exact);
+        assert!(line.iter().all(|&cell| support.masks[cell] == u16::MAX));
     }
 }

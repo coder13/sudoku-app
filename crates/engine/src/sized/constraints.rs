@@ -1646,6 +1646,12 @@ impl SizedConstraintGrid {
             for pair in &self.coupled_sums {
                 let mut totals = Vec::new();
                 let support = pair.support_with_totals(&self.equal_sums, &domains, &mut totals)?;
+                if !support.exact {
+                    // The candidate propagator used a conservative fallback
+                    // after its joint-search budget. Do not present partial
+                    // totals as a complete deduction to the player.
+                    continue;
+                }
                 let mut actions = Vec::new();
                 for &cell in &pair.cells {
                     eliminations_for(cell, candidates[cell] & !support.masks[cell], &mut actions);
