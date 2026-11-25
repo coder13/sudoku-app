@@ -3016,8 +3016,7 @@ export function Worktable({
           colorsActive={colorsActive} onSwitchShade={switchColorShade}
           paintCandidateGroupAvailable={colorTarget === 'candidate' && candidateBrush !== null && candidateCount(highlightedDigitMask) > 1}
           onPaintCandidateGroup={() => { if (candidateBrush !== null) paintSelectedCandidateDigits(candidateBrush) }}
-          clearDigitHighlightsAvailable={!sketch.drawing && !browsingStrongLinks && !eraseMode &&
-            (highlightedDigitMask > 0 || (!colorMode && selectedDigit !== null))}
+          clearDigitHighlightsAvailable={!sketch.drawing && !browsingStrongLinks && !eraseMode && candidateCount(highlightedDigitMask) > 1}
           onClearDigitHighlights={clearDigitSelection}
           highlightMode={highlightMode} toggleHighlightMode={toggleHighlightMode}
           eraseMode={eraseMode} toggleEraseMode={() => {

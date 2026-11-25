@@ -269,7 +269,7 @@ export function Controls(props: Props) {
                 </IconButton>
               )}
               {!props.draft && (
-                <div className="highlight-controls" data-match-control={Boolean(!props.compact && (changeDigitHighlightMatch || props.reserveSolvingSlots)) || undefined}>
+                <div className="highlight-controls">
                   <IconButton className="highlight-mode-button"
                     title={`Highlight mode (${shortcutLabel(shortcuts.highlightMode)}) · edits selected cells`}
                     aria-label="Highlight mode"
@@ -277,7 +277,6 @@ export function Controls(props: Props) {
                     onClick={props.toggleHighlightMode} disabled={props.disabled}>
                     <Highlighter size={18} aria-hidden="true" />
                   </IconButton>
-                  {!props.compact && candidateMatchButton}
                 </div>
               )}
               {!props.draft && (props.showMultiSelectButton || props.compact || mobile || props.advancedModes.multiSelectButton) && (
@@ -291,7 +290,7 @@ export function Controls(props: Props) {
                 aria-keyshortcuts={shortcutLabel(shortcuts.eraseMode)} aria-pressed={props.eraseMode}><Delete size={18} /></IconButton>
             </div>
             <div className="right-actions-secondary">
-              {props.clearDigitHighlightsAvailable && props.onClearDigitHighlights && (
+              {props.clearDigitHighlightsAvailable && candidateCount(highlightedDigitMask) > 1 && props.onClearDigitHighlights && (
                 <IconButton className="clear-digit-highlights-button" title="Clear digit highlights"
                   aria-label="Clear digit highlights" onClick={props.onClearDigitHighlights} disabled={editsDisabled}>
                   <ListX size={18} />
@@ -311,7 +310,7 @@ export function Controls(props: Props) {
                   <Palette size={18} />
                 </IconButton>
               )}
-              {props.compact && candidateMatchButton}
+              {candidateMatchButton}
             </div>
           </div>
       </div>

@@ -1966,13 +1966,10 @@ svg { flex-shrink: 0; }
 .controls-content { --mode-button-size: 48px; width: 100%; display: grid; grid-template-columns: var(--mode-button-size) minmax(0, max-content) max-content; align-items: center; justify-content: center; gap: var(--space-10); }
 .keypad-stack { width: min(var(--input-size, 210px), calc(100cqw - 128px)); max-width: 100%; display: grid; gap: var(--space-6); }
 .desktop-play-resizable .standard-input-stack .controls-content {
-  --keypad-side-width: calc(2 * 48px + 2 * var(--space-10));
+  --keypad-side-width: calc(3 * 48px + 2 * var(--space-10) + var(--space-6));
   --keypad-scale: min(1, var(--play-input-scale));
   --mode-button-size: calc(48px * var(--keypad-scale));
   gap: calc(var(--space-10) * var(--keypad-scale));
-}
-.desktop-play-resizable .standard-input-stack .controls-content:has(.highlight-controls[data-match-control]) {
-  --keypad-side-width: calc(3 * 48px + 2 * var(--space-10) + var(--space-6));
 }
 @supports (opacity: calc(1px / 1px)) {
   .desktop-play-resizable .standard-input-stack .controls-content {
@@ -1995,18 +1992,24 @@ svg { flex-shrink: 0; }
 }
 .side-actions { display: grid; gap: var(--space-6); align-content: center; }
 .right-actions-primary, .right-actions-secondary { display: contents; }
+.controls .right-actions {
+  grid-template-columns: repeat(2, var(--mode-button-size));
+  grid-template-rows: repeat(4, var(--mode-button-size));
+  grid-auto-flow: column;
+}
 .side-actions .icon-button { width: var(--mode-button-size); min-height: var(--mode-button-size); }
 .highlight-controls { display: flex; gap: var(--space-6); }
-.highlight-controls[data-match-control], .compact-controls .highlight-controls {
-  display: grid;
-  grid-template-columns: repeat(2, var(--mode-button-size, 44px));
-}
-.highlight-controls .candidate-match-button {
+.controls .highlight-controls { display: contents; }
+.controls .candidate-match-button {
   width: var(--mode-button-size, 44px);
   min-height: var(--mode-button-size, 44px);
   padding-inline: 0;
   font-size: 0.75rem;
 }
+.controls .color-mode-button { grid-column: 2; grid-row: 1; }
+.controls .clear-digit-highlights-button { grid-column: 2; grid-row: 2; }
+.controls .candidate-group-paint-button { grid-column: 2; grid-row: 3; }
+.controls .candidate-match-button { grid-column: 2; grid-row: 4; }
 .side-actions .puzzle-check-button { display: none; }
 .controls-actions-wrap { position: relative; display: grid; }
 .controls-actions-space { block-size: var(--mode-button-size); }
@@ -4504,7 +4507,6 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
       --compact-keypad-width: min(var(--input-size, 210px), max(120px, min(100dvh - 450px, 100cqw - 152px)));
     }
     .standard-workspace-page .compact-controls .controls-content { column-gap: var(--space-6); }
-    .standard-workspace-page .compact-controls .highlight-controls { grid-template-columns: var(--mode-button-size); }
     @media (min-width: 360px) {
       .standard-workspace-page .compact-controls .right-actions { grid-template-columns: repeat(2, var(--mode-button-size)); }
       .standard-workspace-page .compact-controls .highlight-controls { display: contents; }

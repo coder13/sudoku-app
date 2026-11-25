@@ -30,6 +30,9 @@ export const DesktopCandidateMatching: Story = {
     clearDigitHighlightsAvailable: true, onClearDigitHighlights: fn(),
   },
 }
+export const SingleDigitHighlight: Story = {
+  args: { highlightMode: true, highlightedDigitMask: 1, clearDigitHighlightsAvailable: true, onClearDigitHighlights: fn() },
+}
 export const MobileCandidateMatching: Story = {
   args: { ...DesktopCandidateMatching.args, compact: true },
 }
