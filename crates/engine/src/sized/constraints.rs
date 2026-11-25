@@ -994,12 +994,13 @@ impl SizedConstraintGrid {
                 }
             }
             for line in self.zippers.iter().flatten() {
-                let Some(support) = line.support(candidates) else {
+                let mut support = [0; MAX_CELLS];
+                if !line.support(candidates, &mut support) {
                     return false;
-                };
-                for (&cell, mask) in line.cells.iter().zip(support) {
-                    changed |= candidates[cell] != mask;
-                    candidates[cell] = mask;
+                }
+                for &cell in &line.cells {
+                    changed |= candidates[cell] != support[cell];
+                    candidates[cell] = support[cell];
                 }
             }
             for link in self.pair_links.iter().flatten() {
@@ -1428,9 +1429,12 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::Zipper { .. } => {
                     let line = self.zippers[rule].as_ref()?;
-                    let support = line.support(&domains)?;
-                    for (&cell, mask) in line.cells.iter().zip(support) {
-                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    let mut support = [0; MAX_CELLS];
+                    if !line.support(&domains, &mut support) {
+                        return None;
+                    }
+                    for &cell in &line.cells {
+                        eliminations_for(cell, candidates[cell] & !support[cell], &mut actions);
                     }
                 }
                 SizedConstraint::RowColumnSum { .. } => {
@@ -1867,9 +1871,9 @@ impl SizedConstraintGrid {
                     .as_ref()?
                     .support(&domains)
                     .is_none(),
-                SizedConstraint::Zipper { .. } => {
-                    self.zippers[rule].as_ref()?.support(&domains).is_none()
-                }
+                SizedConstraint::Zipper { .. } => !self.zippers[rule]
+                    .as_ref()?
+                    .support(&domains, &mut [0; MAX_CELLS]),
                 SizedConstraint::RowColumnSum { .. } => {
                     let layer = self.row_column_sums[rule].as_ref()?;
                     if let Some(link) = layer.marked.iter().find(|link| {
