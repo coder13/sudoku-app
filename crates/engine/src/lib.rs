@@ -73,7 +73,7 @@ pub use sized::{
     CrustClue, EquationOperator, RunAxis, SizedConstraint, SizedConstraintFailure,
     SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep, SizedConstraintTracePosition,
     SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot,
-    SizedParity, SizedSumEnd, XSumDotRelation,
+    SizedLineType, SizedParity, SizedSumEnd, XSumDotRelation,
 };
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use sized::{GeneratedAlgebraic, generate_algebraic};

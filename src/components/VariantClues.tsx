@@ -300,6 +300,7 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
       </g>)}
     </g>)}
     {rules.map((rule, index) => rule.type === 'parity' && <ParityClue key={index} {...rule} size={size} />)}
+    {rules.map((rule, index) => rule.type === 'digit-restriction' && <DigitRestrictionClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => (rule.type === 'thermometer' || rule.type === 'slow-thermometer') &&
       <ThermometerClue key={index} cells={rule.cells} size={size} slow={rule.type === 'slow-thermometer'} />)}
     {rules.map((rule, index) => rule.type === 'between' &&
@@ -317,6 +318,14 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
       ? [...(rule.five?.pairs ?? []).map(pair => [pair, 5] as const), ...(rule.ten?.pairs ?? []).map(pair => [pair, 10] as const)] : [])
       .map(([[a, b], sum]) => <SumClue key={pairKey(a, b, size)} a={a} b={b}
         sums={[[sum, 'xv']]} dots={dots.get(pairKey(a, b, size)) ?? 0} size={size} />)}
+    {rules.map((rule, index) => {
+      if (rule.type !== 'zipper') return null
+      const middle = rule.cells.length / 2
+      const [cx, cy] = Number.isInteger(middle)
+        ? pairCenter(rule.cells[middle - 1], rule.cells[middle], 0, size)
+        : center(rule.cells[Math.floor(middle)], size)
+      return <polyline key={index} className="variant-zipper" data-zipper-line points={points(rule.cells, size)} />
+    })}
     {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
       ? <RenbanClue key={index} {...rule} number={number} size={size} />
       : <RegionSumClue key={index} rule={rule} color={color} number={number} size={size} />)}
@@ -328,6 +337,14 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
         data-region-sum={rule.type === 'region-sum' ? number : undefined}>
         {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={color} dashed={dashed} />)}
       </g>
+    })}
+    {rules.map((rule, index) => {
+      if (rule.type !== 'zipper') return null
+      const middle = rule.cells.length / 2
+      const [cx, cy] = Number.isInteger(middle)
+        ? pairCenter(rule.cells[middle - 1], rule.cells[middle], 0, size)
+        : center(rule.cells[Math.floor(middle)], size)
+      return <circle key={index} className="variant-zipper-center" data-zipper-center cx={cx} cy={cy} r=".12" />
     })}
     {rules.map((rule, index) => rule.type === 'arrow' && <ArrowClue key={index} {...rule} size={size} marker={marker} />)}
     {doubleArrows.map(({ ends: [start, finish], cells }, index) =>
@@ -421,6 +438,18 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
       const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(digits)
       for (const cell of rule.cells) labels[cell].add(`${odd ? 'odd circle' : 'even square'}, digit must be ${allowed}`)
+    } else if (rule.type === 'digit-restriction') {
+      const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(rule.digits.map(String))
+      for (const cell of rule.cells) labels[cell].add(`${rule.shape} digit restriction, allowed ${allowed}`)
+    } else if (rule.type === 'zipper') {
+      const centerCell = rule.cells.length % 2 ? rule.cells[Math.floor(rule.cells.length / 2)] : undefined
+      const total = centerCell === undefined ? 'has the same total as the other pairs' : `adds up to ${at(centerCell)}`
+      if (centerCell !== undefined) labels[centerCell].add('Zipper center, gives the total for every pair')
+      for (let index = 0; index < Math.floor(rule.cells.length / 2); index++) {
+        const left = rule.cells[index], right = rule.cells[rule.cells.length - index - 1]
+        labels[left].add(`Zipper pair with ${at(right)}, ${total}`)
+        labels[right].add(`Zipper pair with ${at(left)}, ${total}`)
+      }
     } else if (rule.type === 'renban') {
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1

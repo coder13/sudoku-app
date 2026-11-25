@@ -396,6 +396,21 @@ test('SudokuPad Region Sum keeps box visits and authored line geometry beside ot
   await assert.rejects(detectPuzzle(encode({ ...source, lines: [{ ...blue, color: '#bada55' }, pink] })), /markings without supported rules/)
 })
 
+test('SudokuPad imports the Zipper and Region Sum layered source with its square digit key', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/zipper-region-sum.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string
+  }
+  const imported = await detectPuzzle(fixture.code)
+  assert.equal(imported.authoredSolution, fixture.solution)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'zipper', cells: [2, 7, 13, 12] },
+    { type: 'region-sum', cells: [2, 7, 13, 12] },
+    { type: 'zipper', cells: [9, 3, 4, 11, 16, 22, 21, 26, 31, 24] },
+    { type: 'region-sum', cells: [9, 3, 4, 11, 16, 22, 21, 26, 31, 24] },
+    { type: 'digit-restriction', cells: [0], digits: [1, 4], shape: 'square' },
+  ])
+})
+
 test('SudokuPad imports classic 9 × 9 Nonconsecutive, Quadruple, and Killer clues', async () => {
   const regions = Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, cell) => [
     Math.floor(box / 3) * 3 + Math.floor(cell / 3), box % 3 * 3 + cell % 3,

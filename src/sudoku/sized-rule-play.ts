@@ -61,6 +61,27 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
         candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
     }
   }
+  if (step.type === 'coupled-sums') {
+    const [first, second] = step.rules.map(index => rules[index])
+    if (!first || !second || !('cells' in first) || !('cells' in second)) throw new Error('Invalid shared path totals hint.')
+    const describe = (rule: typeof first) => rule.type === 'zipper' ? 'the Zipper line'
+      : rule.type === 'region-sum' ? 'the Region Sum line' : 'the equal-total line'
+    const cells = [...new Set([...first.cells, ...second.cells])]
+    const at = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
+    const list = new Intl.ListFormat('en')
+    const compatibleTotals = step.totals.map(([left, right]) =>
+      `${describe(first)} total ${left} with ${describe(second)} total ${right}`)
+    return {
+      actions: step.actions, technique: 'sized-coupled-sums',
+      evidence: { variant: {
+        description: `${describe(first)} and ${describe(second)} cover the same cells ${list.format(cells.map(at))}, so their totals must agree across the shared path.`,
+        reason: compatibleTotals.length
+          ? `The compatible totals are ${list.format(compatibleTotals)}. Remove candidates that cannot fit any of these pairs.`
+          : 'Compare the totals allowed by both rules and remove candidates that cannot fit a compatible pair of totals.',
+      } },
+      pattern: { houses: [], cells, candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
+    }
+  }
   const { actions, rule: index } = step
   const rule = rules[index]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
@@ -95,6 +116,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'parity') {
     description = rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.'
     reason = `Remove the ${rule.parity === 'odd' ? 'even' : 'odd'} candidates from each marked cell.`
+  } else if (rule.type === 'digit-restriction') {
+    description = `A ${rule.shape} mark allows only ${new Intl.ListFormat('en').format(rule.digits.map(String))} in each marked cell.`
+    reason = 'Remove the candidates that are not allowed by the marked digit set.'
   } else if (rule.type === 'renban') {
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
@@ -217,6 +241,10 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else {
       conflict = 'No unmarked edge can reach its row or column sum.'
     }
+  } else if (failure.type === 'coupled-sums') {
+    const [first, second] = failure.rules.map(index => rules[index])
+    for (const rule of [first, second]) if (rule && 'cells' in rule) locations.push(...rule.cells)
+    conflict = 'The equal-total rules on these shared cells cannot use compatible totals.'
   } else if (failure.type === 'anti-sum') {
     const rule = rules[failure.rule]
     locations.push(...failure.cells)

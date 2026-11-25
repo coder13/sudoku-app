@@ -4927,6 +4927,8 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 }
 .variant-region-sum .variant-region-sum-jump { stroke-dasharray: .1 .08; }
 .variant-region-sum-node { fill: currentColor; opacity: .8; }
+.variant-zipper { fill: none; stroke: light-dark(#875bb0, #c49be5); stroke-width: .11; stroke-linecap: round; stroke-linejoin: round; }
+.variant-zipper-center { fill: var(--board-bg); stroke: light-dark(#875bb0, #c49be5); stroke-width: .055; }
 .variant-between-endpoints circle, .variant-lockout-endpoints path {
   fill: var(--board-bg);
   stroke: var(--board-ink);

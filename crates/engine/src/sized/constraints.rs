@@ -1,8 +1,11 @@
+mod coupled_sums;
 mod crust;
 mod double_arrow;
+mod equal_sums;
 mod fractional_regions;
 mod grouped_line;
 mod killer;
+mod line_assignments;
 mod linked_double_arrow;
 mod little_killer;
 mod nonogram;
@@ -20,12 +23,16 @@ use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 use crate::{Analysis, Candidate, ClueDirection, HintAction, House};
 
+use self::coupled_sums::CoupledSums;
 use self::crust::Crust;
 pub use self::crust::CrustClue;
 use self::double_arrow::DoubleArrow;
+use self::equal_sums::EqualSums;
 use self::fractional_regions::FractionalRegions;
 use self::grouped_line::EntropicLine;
 use self::killer::Cage;
+use self::line_assignments::LineAssignments;
+pub use self::line_assignments::SizedLineType;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
 use self::little_killer::LittleKiller;
@@ -86,6 +93,10 @@ pub enum SizedConstraint {
     Parity {
         cells: Vec<usize>,
         parity: SizedParity,
+    },
+    DigitRestriction {
+        cells: Vec<usize>,
+        digits: Vec<u8>,
     },
     Thermometer {
         cells: Vec<usize>,
@@ -154,6 +165,10 @@ pub enum SizedConstraint {
     RegionSum {
         cells: Vec<usize>,
         group_by_region: bool,
+    },
+    LineAssignments {
+        paths: Vec<Vec<usize>>,
+        types: Vec<SizedLineType>,
     },
     Renban {
         cells: Vec<usize>,
@@ -306,6 +321,11 @@ pub enum SizedConstraintStep {
         unmarked: bool,
         actions: Vec<HintAction>,
     },
+    CoupledSums {
+        rules: [usize; 2],
+        totals: Vec<[u16; 2]>,
+        actions: Vec<HintAction>,
+    },
     Contradiction {
         assumption: Candidate,
         placements: Vec<Candidate>,
@@ -349,6 +369,9 @@ pub enum SizedConstraintFailure {
     RowColumnSum {
         rule: usize,
         cells: Option<[usize; 2]>,
+    },
+    CoupledSums {
+        rules: [usize; 2],
     },
 }
 
@@ -399,6 +422,9 @@ pub struct SizedConstraintGrid {
     global_entropy: Vec<Option<([u16; 3], Vec<[usize; 4]>)>>,
     entropic_lines: Vec<Option<EntropicLine>>,
     zippers: Vec<Option<ZipperLine>>,
+    equal_sums: Vec<Option<EqualSums>>,
+    line_assignments: Vec<Option<LineAssignments>>,
+    coupled_sums: Vec<CoupledSums>,
 }
 
 impl SizedConstraintGrid {
@@ -433,6 +459,8 @@ impl SizedConstraintGrid {
         let mut global_entropy = Vec::new();
         let mut entropic_lines = Vec::new();
         let mut zippers = Vec::new();
+        let mut equal_sums = Vec::new();
+        let mut line_assignments = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -466,6 +494,25 @@ impl SizedConstraintGrid {
                         SizedParity::Even => 0xaaaa,
                     };
                     for &cell in cells {
+                        *parity.get_mut(cell)? &= mask;
+                    }
+                }
+                SizedConstraint::DigitRestriction { cells, digits } => {
+                    if cells.is_empty() || digits.is_empty() {
+                        return None;
+                    }
+                    let mut mask = 0;
+                    for &digit in digits {
+                        if digit == 0 || usize::from(digit) > size {
+                            return None;
+                        }
+                        mask |= 1 << (digit - 1);
+                    }
+                    let mut seen = [false; MAX_CELLS];
+                    for &cell in cells {
+                        if std::mem::replace(seen.get_mut(cell)?, true) {
+                            return None;
+                        }
                         *parity.get_mut(cell)? &= mask;
                     }
                 }
@@ -558,6 +605,14 @@ impl SizedConstraintGrid {
                     region_sums.resize_with(index + 1, || None);
                     region_sums[index] =
                         Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                    equal_sums.resize_with(index + 1, || None);
+                    equal_sums[index] =
+                        Some(EqualSums::region_sum(&layout, cells, *group_by_region)?);
+                }
+                SizedConstraint::LineAssignments { paths, types } => {
+                    line_assignments.resize_with(index + 1, || None);
+                    line_assignments[index] =
+                        Some(LineAssignments::compile(&layout, paths, types)?);
                 }
                 SizedConstraint::Nonogram {
                     axis,
@@ -651,6 +706,8 @@ impl SizedConstraintGrid {
                     let line = ZipperLine::compile(cells, layout.cell_count())?;
                     zippers.resize_with(index + 1, || None);
                     zippers[index] = Some(line);
+                    equal_sums.resize_with(index + 1, || None);
+                    equal_sums[index] = Some(EqualSums::zipper(&layout, cells)?);
                 }
                 SizedConstraint::Kropki { .. }
                 | SizedConstraint::NonConsecutive { .. }
@@ -714,6 +771,7 @@ impl SizedConstraintGrid {
             .filter(|(_, mask)| *mask != layout.full_mask)
             .collect();
         let pair_links = compile_pairs(size, rules)?;
+        let coupled_sums = CoupledSums::compile(&equal_sums);
         Some(Self {
             layout,
             rules: rules.to_vec(),
@@ -743,6 +801,9 @@ impl SizedConstraintGrid {
             global_entropy,
             entropic_lines,
             zippers,
+            equal_sums,
+            line_assignments,
+            coupled_sums,
         })
     }
 
@@ -936,6 +997,18 @@ impl SizedConstraintGrid {
                     candidates[cell] = supported[cell];
                 }
             }
+            for constraint in self.line_assignments.iter().flatten() {
+                let Some(support) = constraint.support(candidates) else {
+                    return false;
+                };
+                if support.surviving == 0 {
+                    return false;
+                }
+                for &cell in &constraint.cells {
+                    changed |= candidates[cell] != support.masks[cell];
+                    candidates[cell] = support.masks[cell];
+                }
+            }
             for equation in self.row_equations.iter().flatten() {
                 let Some(support) = equation.support(candidates) else {
                     return false;
@@ -1001,6 +1074,15 @@ impl SizedConstraintGrid {
                 for &cell in &line.cells {
                     changed |= candidates[cell] != support[cell];
                     candidates[cell] = support[cell];
+                }
+            }
+            for pair in &self.coupled_sums {
+                let Some(support) = pair.support(&self.equal_sums, candidates) else {
+                    return false;
+                };
+                for &cell in &pair.cells {
+                    changed |= candidates[cell] != support.masks[cell];
+                    candidates[cell] = support.masks[cell];
                 }
             }
             for link in self.pair_links.iter().flatten() {
@@ -1254,6 +1336,14 @@ impl SizedConstraintGrid {
                     actions.sort_unstable();
                     actions.dedup();
                 }
+                SizedConstraint::DigitRestriction { cells, digits } => {
+                    let allowed = digits
+                        .iter()
+                        .fold(0u16, |mask, digit| mask | (1 << (digit - 1)));
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !allowed, &mut actions);
+                    }
+                }
                 SizedConstraint::Thermometer { cells }
                 | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
@@ -1353,6 +1443,17 @@ impl SizedConstraintGrid {
                     }
                     for &cell in cells {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::LineAssignments { .. } => {
+                    let constraint = self.line_assignments[rule].as_ref()?;
+                    let support = constraint.support(&domains)?;
+                    for &cell in &constraint.cells {
+                        eliminations_for(
+                            cell,
+                            candidates[cell] & !support.masks[cell],
+                            &mut actions,
+                        );
                     }
                 }
                 SizedConstraint::Nonogram { .. } => {
@@ -1579,6 +1680,32 @@ impl SizedConstraintGrid {
                 choices.push(SizedConstraintStep::Rule { rule, actions });
             }
         }
+        if choices.len() < limit {
+            for pair in &self.coupled_sums {
+                let mut totals = Vec::new();
+                let support = pair.support_with_totals(&self.equal_sums, &domains, &mut totals)?;
+                if !support.exact {
+                    // The candidate propagator used a conservative fallback
+                    // after its joint-search budget. Do not present partial
+                    // totals as a complete deduction to the player.
+                    continue;
+                }
+                let mut actions = Vec::new();
+                for &cell in &pair.cells {
+                    eliminations_for(cell, candidates[cell] & !support.masks[cell], &mut actions);
+                }
+                if !actions.is_empty() {
+                    choices.push(SizedConstraintStep::CoupledSums {
+                        rules: pair.rules,
+                        totals,
+                        actions,
+                    });
+                    if choices.len() == limit {
+                        break;
+                    }
+                }
+            }
+        }
         let remaining = limit - choices.len();
         if remaining != 0 {
             choices.extend(
@@ -1628,7 +1755,8 @@ impl SizedConstraintGrid {
                 | SizedConstraintStep::Kropki { actions, .. }
                 | SizedConstraintStep::QuadrupleOverlap { actions, .. }
                 | SizedConstraintStep::AntiSum { actions, .. }
-                | SizedConstraintStep::RowColumnSum { actions, .. } => {
+                | SizedConstraintStep::RowColumnSum { actions, .. }
+                | SizedConstraintStep::CoupledSums { actions, .. } => {
                     advance(actions, &mut digits, &mut eliminations)
                 }
             }
@@ -1683,7 +1811,8 @@ impl SizedConstraintGrid {
                         Some(SizedConstraintStep::Rule { actions, .. })
                         | Some(SizedConstraintStep::Kropki { actions, .. })
                         | Some(SizedConstraintStep::AntiSum { actions, .. })
-                        | Some(SizedConstraintStep::RowColumnSum { actions, .. }) => actions,
+                        | Some(SizedConstraintStep::RowColumnSum { actions, .. })
+                        | Some(SizedConstraintStep::CoupledSums { actions, .. }) => actions,
                         _ => break,
                     };
                     placements.extend(actions.iter().filter_map(|action| match action {
@@ -1767,6 +1896,12 @@ impl SizedConstraintGrid {
                     };
                     cells.iter().any(|&cell| domains[cell] & allowed == 0)
                 }
+                SizedConstraint::DigitRestriction { cells, digits } => {
+                    let allowed = digits
+                        .iter()
+                        .fold(0u16, |mask, digit| mask | (1 << (digit - 1)));
+                    cells.iter().any(|&cell| domains[cell] & allowed == 0)
+                }
                 SizedConstraint::Thermometer { cells }
                 | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
@@ -1833,6 +1968,10 @@ impl SizedConstraintGrid {
                 SizedConstraint::RegionSum { .. } => self.region_sums[rule]
                     .as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
+                SizedConstraint::LineAssignments { .. } => self.line_assignments[rule]
+                    .as_ref()?
+                    .support(&domains)
+                    .is_none(),
                 SizedConstraint::Nonogram { .. } => {
                     self.nonograms[rule].as_ref()?.support(&domains).is_none()
                 }
@@ -1918,6 +2057,11 @@ impl SizedConstraintGrid {
             };
             if fails {
                 return Some(SizedConstraintFailure::Rule { rule });
+            }
+        }
+        for pair in &self.coupled_sums {
+            if pair.support(&self.equal_sums, &domains).is_none() {
+                return Some(SizedConstraintFailure::CoupledSums { rules: pair.rules });
             }
         }
         None
@@ -2105,6 +2249,19 @@ impl SizedConstraintGrid {
                 .iter()
                 .flatten()
                 .all(|line| line.permits(digits))
+            && self.line_assignments.iter().flatten().all(|group| {
+                let domains = digits
+                    .iter()
+                    .map(|&digit| {
+                        if digit == 0 {
+                            self.layout.full_mask
+                        } else {
+                            1 << (digit - 1)
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                group.support(&domains).is_some()
+            })
             && self
                 .global_entropy
                 .iter()
@@ -2255,11 +2412,52 @@ fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; M
 
 #[cfg(test)]
 mod tests {
-    use super::{GridSpec, MAX_SIZE, SizedConstraint, SizedConstraintGrid, arrow_masks};
+    use super::{
+        GridSpec, MAX_SIZE, SizedConstraint, SizedConstraintGrid, SizedConstraintStep, arrow_masks,
+    };
     use crate::{Analysis, ClueDirection, variant::MarkedPairs};
 
     fn digits(solution: &str) -> Vec<u8> {
         solution.bytes().map(|digit| digit - b'0').collect()
+    }
+
+    #[test]
+    fn crossed_zipper_and_region_sum_produce_a_joint_hint() {
+        let grid = SizedConstraintGrid::new(
+            GridSpec {
+                size: 4,
+                box_rows: 2,
+                box_columns: 2,
+            },
+            &[
+                SizedConstraint::Zipper {
+                    cells: vec![0, 5, 6, 3],
+                },
+                SizedConstraint::RegionSum {
+                    cells: vec![0, 5, 6, 3],
+                    group_by_region: false,
+                },
+            ],
+        )
+        .unwrap();
+        let found = (1..256u16).any(|seed| {
+            let mut eliminations = vec![0; 16];
+            for (index, cell) in [0, 5, 6, 3].into_iter().enumerate() {
+                let allowed = ((seed.rotate_left((index * 3) as u32)) & 15) | 1;
+                eliminations[cell] = 15 & !allowed;
+            }
+            grid.hints(&[0; 16], &eliminations, 64)
+                .is_some_and(|hints| {
+                    hints
+                        .choices
+                        .iter()
+                        .any(|step| matches!(step, SizedConstraintStep::CoupledSums { .. }))
+                })
+        });
+        assert!(
+            found,
+            "expected a deduction that requires comparing both total rules"
+        );
     }
 
     #[test]

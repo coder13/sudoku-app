@@ -1,6 +1,6 @@
 import { closedRegionSumCells } from './region-sum.ts'
 import { readCornerKropki } from './corner-kropki.ts'
-import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd } from './engine.ts'
+import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedLineType, SizedSumEnd } from './engine.ts'
 import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isMiniGrid, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
@@ -41,6 +41,59 @@ export function readPath(value: unknown, size: number, maxPoints = size) {
     for (let step = 1; step <= distance; step++) path.push(from + stride * step)
   }
   return path
+}
+
+function readLayeredZipper(lines: unknown, overlays: unknown, underlays: unknown, size: number, letter: string) {
+  const fail = (): never => { throw new Error('The Zipper paths need matching strokes and center markers.') }
+  if (!Array.isArray(lines) || !lines.length || lines.length > 128 ||
+    !Array.isArray(overlays) || overlays.length !== lines.length ||
+    !Array.isArray(underlays) || underlays.length !== 2) return fail()
+  const strokes = lines.map(line => {
+    if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
+      typeof line.color !== 'string' || !/^#[\da-f]{3,8}$/i.test(line.color) ||
+      typeof line.thickness !== 'number' || line.thickness <= 0) return fail()
+    return { cells: readPath(line.wayPoints, size, size ** 2), color: line.color, width: line.thickness }
+  })
+  const widths = [...new Set(strokes.map(stroke => stroke.width))].sort((a, b) => a - b)
+  if (widths.length !== 2) return fail()
+  const outlines = strokes.filter(stroke => stroke.width === widths[1])
+  const interiors = strokes.filter(stroke => stroke.width === widths[0])
+  if (outlines.length !== interiors.length) return fail()
+
+  const textKeys = ['center', 'width', 'height', 'stroke', 'text', 'fontSize', 'color', 'angle', 'rounded', 'font-weight']
+  const letterAt = (mark: unknown, row: number, col: number) => record(mark) && mark.text === letter &&
+    mark.width === 0 && mark.angle === 0 && mark.rounded === true && Array.isArray(mark.center) &&
+    mark.center[0] === row && mark.center[1] === col && typeof mark.color === 'string' &&
+    Object.keys(mark).every(key => textKeys.includes(key))
+  const paletteFrame = (mark: unknown) => record(mark) && Array.isArray(mark.center) && mark.center.length === 2 &&
+    mark.center.every(coord => coord === size / 2) && typeof mark.width === 'number' &&
+    mark.width === mark.height && mark.width >= size && mark.width <= size + .05 && mark.angle === 0 &&
+    typeof mark.backgroundColor === 'string' && Object.keys(mark).every(key =>
+      ['center', 'width', 'height', 'thickness', 'angle', 'backgroundColor', 'borderColor'].includes(key))
+  if (underlays.filter(paletteFrame).length !== 1 || underlays.filter(mark => letterAt(mark, .5, .5)).length !== 1) return fail()
+
+  const usedOverlays = new Set<number>(), usedInteriors = new Set<number>()
+  return outlines.map(({ cells, color }) => {
+    if (cells.length < 3 || new Set(cells).size !== cells.length) return fail()
+    const interior = interiors.findIndex((stroke, index) => !usedInteriors.has(index) && stroke.cells.length === cells.length &&
+      (cells.every((cell, at) => cell === stroke.cells[at]) || cells.every((cell, at) => cell === stroke.cells[cells.length - 1 - at])))
+    if (interior < 0) return fail()
+    usedInteriors.add(interior)
+    const a = cells[Math.floor((cells.length - 1) / 2)], b = cells[Math.floor(cells.length / 2)]
+    const row = (Math.floor(a / size) + Math.floor(b / size) + 1) / 2
+    const col = (a % size + b % size + 1) / 2
+    const ring = overlays.findIndex((mark, index) => !usedOverlays.has(index) && record(mark) &&
+      Array.isArray(mark.center) && mark.center[0] === row && mark.center[1] === col &&
+      mark.rounded === true && mark.angle === 0 && typeof mark.width === 'number' && mark.width > 0 &&
+      mark.width <= .5 && mark.width === mark.height && mark.borderColor === color &&
+      mark.backgroundColor === interiors[interior].color && Object.keys(mark).every(key =>
+        ['center', 'width', 'height', 'thickness', 'angle', 'rounded', 'backgroundColor', 'borderColor'].includes(key)))
+    const text = overlays.findIndex((mark, index) => !usedOverlays.has(index) && letterAt(mark, row, col))
+    if (ring < 0 || text < 0) return fail()
+    usedOverlays.add(ring)
+    usedOverlays.add(text)
+    return { type: 'zipper', cells } as const
+  })
 }
 
 function sudokuPadRuleClauses(text: string) {
@@ -465,7 +518,23 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause)) || authoredThermometers || authoredSlowThermometers
   const authoredRenban = clauses.some(isRenban)
   const regionSum = /^Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums\.$/i
-  const authoredRegionSum = clauses.some(clause => regionSum.test(clause))
+  const evenZipper = /^Zipper(?: Lines)?: Digits an equal distance to the circled center of a line sum to the same total\.$/i
+  const squareDigitRule = /^S: The top-left corner contains a square digit \(1 or 4\)\.$/i
+  const regionSumCompanion = /^Region Sum Lines: Box borders divide lines into segments with equal sums\.$/i
+  const ambiguityClauses = [
+    /^\?: The top left corner contains any digit \(1,\s*2,\s*3,\s*4,\s*5 or 6\)\.$/i,
+    /^Ambiguity: Assign each line a different line type from Entropic, Region Sum and Renban\. Lines are their assigned type \(and zipper lines\)\.$/i,
+    /^==== LINE CONSTRAINTS ===$/i,
+    /^Entropic Line: Each run of 3 cells along the assigned line contains a digit from 12, 34 and 56\.$/i,
+    /^Region Sum Line: Box borders divide the assigned line into segments with equal sums\.$/i,
+    /^Renban Line: Digits don't repeat on the assigned line and form a single consecutive run when sorted\.$/i,
+  ]
+  const ambiguityZipper = size === 6 && clauses.some(clause => evenZipper.test(clause)) &&
+    ambiguityClauses.every(pattern => clauses.some(clause => pattern.test(clause)))
+  const authoredRegionSum = !ambiguityZipper && clauses.some(clause => regionSum.test(clause) || regionSumCompanion.test(clause))
+  const dualZipper = size === 6 && clauses.some(clause => evenZipper.test(clause)) &&
+    clauses.some(clause => squareDigitRule.test(clause)) && clauses.some(clause => regionSumCompanion.test(clause))
+  const authoredZipper = ambiguityZipper || dualZipper || clauses.some(clause => evenZipper.test(clause))
   const whisperStatement = (clause: string) => {
     const german = /^(?:German whisper lines: )?Two cells connected by a German whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
     const dutch = /^(?:Dutch whisper lines: )?Two cells connected by a Dutch whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
@@ -521,11 +590,28 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&
       !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause) &&
       !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) &&
-      !parseEntropicGroups(clause) && whisperDifference(clause) === undefined) || metadata.antiking === false && printedAntiKing) {
+      !parseEntropicGroups(clause) && whisperDifference(clause) === undefined &&
+      !(dualZipper && (evenZipper.test(clause) || squareDigitRule.test(clause) || regionSumCompanion.test(clause))) &&
+      !(ambiguityZipper && (evenZipper.test(clause) || ambiguityClauses.some(pattern => pattern.test(clause))))) || metadata.antiking === false && printedAntiKing) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
   if (authoredAntiKing) rules.push({ type: 'anti-king' })
+  if (ambiguityZipper) {
+    const zipperLines = readLayeredZipper(lines, overlays, underlays, size, '?')
+    const types: SizedLineType[] = [
+      { type: 'entropic', groups: [[1, 2], [3, 4], [5, 6]] },
+      { type: 'region-sum' },
+      { type: 'renban' },
+    ]
+    rules.push(...zipperLines, { type: 'line-assignments', paths: zipperLines.map(line => line.cells), types })
+  }
+  if (dualZipper) {
+    for (const zipper of readLayeredZipper(lines, overlays, underlays, size, 'S')) {
+      rules.push(zipper, { type: 'region-sum', cells: zipper.cells })
+    }
+    rules.push({ type: 'digit-restriction', cells: [0], digits: [1, 4], shape: 'square' })
+  }
   if (authoredKiller) {
     if (!Array.isArray(cages) || !cages.length || cages.length > size ** 2) throw new Error('The SudokuPad Killer cages are missing.')
     rules.push({ type: 'killer-cages', cages: cages.map(cage => {
@@ -540,10 +626,10 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     throw new Error('This SudokuPad export has unsupported lines.')
   }
   if (underlays !== undefined && (!Array.isArray(underlays) || underlays.length > 128 ||
-    (!authoredAnyThermometers && underlays.length > 0))) {
+    (!authoredAnyThermometers && !dualZipper && !ambiguityZipper && underlays.length > 0))) {
     throw new Error('This SudokuPad export has unsupported underlays.')
   }
-  const bulbs = (underlays ?? []).map(bulb => {
+  const bulbs = (dualZipper || ambiguityZipper ? [] : underlays ?? []).map(bulb => {
     if (!record(bulb) || Object.keys(bulb).some(key => !['center', 'width', 'height', 'rounded', 'backgroundColor', 'stroke'].includes(key)) ||
       (bulb.stroke !== undefined && (!compactBulbs || bulb.stroke !== 'none')) || bulb.rounded !== true || typeof bulb.width !== 'number' || bulb.width !== bulb.height || bulb.width <= 0 || bulb.width > 1 ||
       typeof bulb.backgroundColor !== 'string') {
@@ -551,7 +637,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     }
     return { cell: boardCell(bulb.center, size, 0.5), color: bulb.backgroundColor }
   })
-  let remainingOverlays = overlays
+  let remainingOverlays = dualZipper || ambiguityZipper ? undefined : overlays
   let singleArrows: SizedConstraintRule[] = []
   if (authoredArrows) {
     if (!Array.isArray(overlays) || overlays.length > 256) throw new Error('This SudokuPad export has invalid arrow bulbs.')
@@ -571,7 +657,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   }
   const betweenCircles = authoredBetween && Array.isArray(remainingOverlays) ? readArrowCircles(remainingOverlays) : []
   const usedBetweenCircles = new Set<number>()
-  for (const line of lines ?? []) {
+  for (const line of dualZipper || ambiguityZipper ? [] : lines ?? []) {
     if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
       typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0) {
       throw new Error('This SudokuPad export has an unsupported line.')
@@ -705,7 +791,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     authoredAntiKing !== rules.some(rule => rule.type === 'anti-king') ||
     authoredEntropic !== rules.some(rule => rule.type === 'entropic') ||
     clauses.some(clause => namedEntropicRule.test(clause)) && rules.filter(rule => rule.type === 'entropic').length !== 2 ||
-    authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') || !isSizedRuleList(rules, grid) ||
+    authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') ||
+    authoredZipper !== rules.some(rule => rule.type === 'zipper') || !isSizedRuleList(rules, grid) ||
     (isMiniGrid(grid) && !rules.length)) {
     throw new Error('This SudokuPad export has incomplete or invalid lines.')
   }
