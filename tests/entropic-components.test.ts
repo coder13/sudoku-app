@@ -78,7 +78,8 @@ test('a closed source loop keeps all thirty-seven references and labels each phy
     readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')
   ).examples.find((s: { url: string }) => s.url.endsWith('Hyk5'))
   const html = renderToStaticMarkup(board(source.puzzle))
-  const path = html.match(/class="variant-entropic"><polyline points="([^"]+)"/)![1].split(' ')
+  const line = html.match(/<g class="variant-entropic">([\s\S]*?)<\/g>/)![1]
+  const path = [...line.matchAll(/<polyline[^>]*points="([^"]+)"/g)].at(-1)![1].split(' ')
   assert.equal(path.length, 37)
   assert.equal(path[0], path.at(-1))
   assert.equal([...html.matchAll(/Entropic line 1, every three successive positions/g)].length, 36)
@@ -248,7 +249,8 @@ test('New Puzzle offers Medium Entropic Lines with complete published preview pa
   assert.ok(isVariantId('entropic'))
   assert.deepEqual(variantDifficulties('entropic'), ['medium'])
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'entropic' }))
-  const paths = [...preview.matchAll(/class="variant-entropic"><polyline points="([^"]+)"/g)].map(match => match[1])
+  const paths = [...preview.matchAll(/<g class="variant-entropic">([\s\S]*?)<\/g>/g)].map(([, line]) =>
+    [...line.matchAll(/<polyline[^>]*points="([^"]+)"/g)].at(-1)![1])
   const expected = [fixture.puzzle.rules[0].cells, fixture.puzzle.rules[6].cells]
     .map((cells: number[]) => cells.map(cell => `${cell % 9 + .5},${Math.floor(cell / 9) + .5}`).join(' '))
   assert.deepEqual(paths, expected)

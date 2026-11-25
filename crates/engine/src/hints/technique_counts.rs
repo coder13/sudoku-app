@@ -23,9 +23,11 @@ impl TechniqueCountScan {
         eliminations: Option<[u16; CELLS]>,
         technique: Technique,
     ) -> Result<u32, HintError> {
-        if self.snapshot.as_ref().is_none_or(|snapshot| {
-            snapshot.board != board || snapshot.eliminations != eliminations
-        }) {
+        if self
+            .snapshot
+            .as_ref()
+            .is_none_or(|snapshot| snapshot.board != board || snapshot.eliminations != eliminations)
+        {
             let checked = checked_position(&board, eliminations.as_ref());
             if let (Some(overlay), Ok(position)) = (&mut self.overlay, &checked) {
                 overlay.update_position(position.board(), position.masks());
@@ -63,7 +65,9 @@ impl TechniqueCountScan {
                 .then(|| position.verified_solution())
                 .flatten();
             let search = DeductionSearch::with_verified_solution(
-                position.board(), position.masks(), solution.as_ref(),
+                position.board(),
+                position.masks(),
+                solution.as_ref(),
             );
             let _ = visit_technique(&search, technique, collect);
         }

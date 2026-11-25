@@ -135,7 +135,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     }
   }
   const { givens, variant, format, title, collection, sharedPuzzleId, grid, algebraic, sizedRules, sizedAuthor,
-    authoredSolution, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
+    authoredSolution, authoredSolutionOnly, progress, whispersGuide, givenCellColors, authoredArtwork } = imported
   const existing = findImportedPuzzle(games, imported)
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' && !variant.fog ? 'Imported mixed-rule puzzle'
@@ -143,10 +143,16 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
       : grid ? `Imported ${sizedGridName(grid)}` : 'Imported puzzle'
   let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId,
     ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), ...(authoredArtwork && { authoredArtwork }) }
-  if (grid && (grid.size !== 4 || sizedRules?.length)) {
+  if (grid && ('regions' in grid || grid.size !== 4 || sizedRules?.length)) {
     if (!sizedRules) throw new Error('This puzzle is missing its rule list.')
-    game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution })
-    return { game: applyPuzzleGrade(game, null), format, grade: null }
+    game.sized = await verifySizedRulePuzzle({ grid, givens, rules: sizedRules, author: sizedAuthor, authoredSolution, authoredSolutionOnly })
+    if (progress) {
+      game = markSolveUntimed({
+        ...game, position: { ...game.position, ...progress },
+        started: true, candidatesInitialized: true,
+      })
+    }
+    return { game: applyPuzzleGrade(game, null), format, grade: null, ...(progress && { hasProgress: true as const }) }
   }
   if (algebraic && grid) {
     game.algebraic = await verifyAlgebraicPuzzle({ givens, ...algebraic })
@@ -157,6 +163,22 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     const position = { puzzle: variant.puzzle }
     if (existing?.variant && hasUniquenessProof(existing)) {
       game.variant = { ...variant, solution: existing.variant.solution }
+    } else if (authoredSolutionOnly && authoredSolution !== undefined) {
+      if (!/^[1-9]{81}$/.test(authoredSolution) ||
+        Array.from(givens).some((digit, cell) => digit !== '0' && digit !== authoredSolution[cell])) {
+        throw new Error('The authored solution conflicts with the puzzle’s rules.')
+      }
+      const verification = await run({ type: 'variant', operation: 'analyze', position: {
+        ...position, entries: authoredSolution,
+      } })
+      if (verification !== 'unique') throw new Error('The authored solution conflicts with the puzzle’s rules.')
+      game.variant = { ...variant, solution: authoredSolution }
+    } else if (variant.puzzle.rules?.some(rule => rule.type === 'aqre')) {
+      // Aqre is a joint digit-and-shading puzzle. Its digit grid may have
+      // multiple Latin-square completions until the player solves the shade
+      // layer, so keep one valid digit completion for the Solution panel and
+      // validate completion against the full live position instead.
+      game.variant = { ...variant, solution: await run({ type: 'variant', operation: 'solve', position }) }
     } else {
       const result = await run({ type: 'variant', operation: 'solve-unique', position, maxNodes: IMPORT_VARIANT_SEARCH_NODES })
       if (result.status === 'unique') game.variant = { ...variant, solution: result.solution }
@@ -170,14 +192,14 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     if (status === 'multiple') game.nonUnique = true
     else if (status !== 'unique') throw new PuzzleVerificationError(status)
   }
-  if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null }
-  if (!game.nonUnique) game.uniquenessProof = uniquenessKey(game)
   if (progress) {
     game = markSolveUntimed({
       ...game, position: { ...game.position, ...progress },
       started: true, candidatesInitialized: true,
     })
   }
+  if (grid) return { game: applyPuzzleGrade(game, null), format, grade: null, ...(progress && { hasProgress: true as const }) }
+  if (!game.nonUnique && !authoredSolutionOnly) game.uniquenessProof = uniquenessKey(game)
   const preview = { format, ...(progress && { hasProgress: true as const }) }
   game.difficulty = existing?.difficulty
   game.score = existing?.score

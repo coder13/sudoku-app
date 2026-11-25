@@ -18,8 +18,8 @@ pub(super) struct Family<'a> {
 }
 
 // Equal domains permit any witness layout to be assigned to either digit.
-fn layout_equivalences(families: &[Family<'_>]) -> [u8; indexed::WIDTH] {
-    let mut equivalent = [0; indexed::WIDTH];
+fn layout_equivalences<const GROUP: usize>(families: &[Family<'_>]) -> [u8; GROUP] {
+    let mut equivalent = [0; GROUP];
     if families.len() == equivalent.len() {
         for (index, family) in families.iter().enumerate() {
             for (other, candidate) in families[..index].iter().enumerate() {
@@ -33,9 +33,9 @@ fn layout_equivalences(families: &[Family<'_>]) -> [u8; indexed::WIDTH] {
     equivalent
 }
 
-fn share_support(
+fn share_support<const GROUP: usize>(
     families: &[Family<'_>],
-    equivalent: [u8; indexed::WIDTH],
+    equivalent: [u8; GROUP],
     support: &mut [u128; 9],
 ) {
     for (index, family) in families.iter().enumerate() {
@@ -69,6 +69,44 @@ pub(super) fn compatible_support(
         ALTERNATE_CHECKS,
         projection::Search::new(families, geometry),
     )
+}
+
+/// Exact support for a wider scope, when the indexed search finishes in budget.
+pub(super) fn bounded_support(
+    families: &[Family<'_>],
+    remaining_choices: &mut Option<u32>,
+) -> Option<[u128; 9]> {
+    match families.len() {
+        5 => indexed_support::<5>(families, remaining_choices),
+        6 => indexed_support::<6>(families, remaining_choices),
+        7 => indexed_support::<7>(families, remaining_choices),
+        _ => unreachable!("indexed wider overlays have five to seven digits"),
+    }
+}
+
+fn indexed_support<const GROUP: usize>(
+    families: &[Family<'_>],
+    remaining_choices: &mut Option<u32>,
+) -> Option<[u128; 9]> {
+    let equivalent = layout_equivalences::<GROUP>(families);
+    // A wide scan may check many five-digit subgroups as well. Use at most
+    // 512 layouts per digit and share the same branching budget across them.
+    let packing = indexed::Packing::<GROUP, 8>::new(families, equivalent)?;
+    let mut support = [0; 9];
+    let mut witness = [0; 9];
+    for (index, family) in families.iter().enumerate() {
+        for cell in cells(family.allowed) {
+            if support[family.digit] & cell_bit(cell) == 0
+                && packing.find_with_budget(index, cell, &mut witness, remaining_choices)?
+            {
+                for member in families {
+                    support[member.digit] |= witness[member.digit];
+                }
+                share_support(families, equivalent, &mut support);
+            }
+        }
+    }
+    Some(support)
 }
 
 fn support_with_probes(
@@ -112,14 +150,16 @@ fn support_with_probes(
                     )
                 });
             let probed = probed.or_else(|| {
-                projected.as_mut()?.find(index, cell, families, &mut witness)
+                projected
+                    .as_mut()?
+                    .find(index, cell, families, &mut witness)
             });
             let found = if let Some(found) = probed {
                 found
             } else if let Some(complete) = interchangeable::support(families, support) {
                 return complete;
             } else if let Some(packing) =
-                indexed.get_or_init(|| indexed::Packing::new(families, equivalent))
+                indexed.get_or_init(|| indexed::Packing::<WIDTH>::new(families, equivalent))
             {
                 packing.find(index, cell, &mut witness)
             } else {
@@ -297,6 +337,24 @@ mod tests {
         let mut support = [0; 9];
         visit(families, 0, &mut [0; 9], &mut support);
         support
+    }
+
+    #[test]
+    fn bounded_wider_search_certifies_support_only_after_finishing() {
+        let layouts: [[u128; 2]; 7] = std::array::from_fn(|digit| [cell_bit(digit), cell_bit(7)]);
+        let families = std::array::from_fn::<_, 7, _>(|digit| Family {
+            digit,
+            allowed: layouts[digit][0] | layouts[digit][1],
+            layouts: &layouts[digit],
+        });
+        for width in 5..=7 {
+            let group = &families[..width];
+            assert_eq!(bounded_support(group, &mut Some(1)), None);
+            assert_eq!(
+                bounded_support(group, &mut Some(1_000)),
+                Some(direct(group))
+            );
+        }
     }
 
     #[test]

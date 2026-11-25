@@ -22,7 +22,10 @@ impl SizedQuadruple {
         {
             return None;
         }
-        if digits.iter().any(|&digit| digit == 0 || usize::from(digit) > size) {
+        if digits
+            .iter()
+            .any(|&digit| digit == 0 || usize::from(digit) > size)
+        {
             return None;
         }
         let cells = [top_left, top_left + 1, top_left + size, top_left + size + 1];

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "BKR7",
+    "title": "Crust of Void",
+    "url": "https://sudoku.coach/en/s/BKR7",
+    "code": "SCv7_32_f2e9bkqh1u120400s3vn5juk08qs7lru8auji7ssrkc5mqi3qoleevvfljahkcd80srv9u1osi71356hguers88kia0k39frdq0a5b0o51uscriblvbd9eljufbh3t011b71jm7bh4439vegkbasq7hf2oc0pa2qfh6mrs3ojh3uaollpgc3q59dfal4qj821l2kdc1j5d068c2dth1n00kbk3g8su7490185ppui63c9mh7ma8dhu243o9d44c2g3u6ekr91gi0ti1282s1ip743u2f106g644neipiaa4qvvkgm5hfn00806rpvsj80vtcsd98nol93vkkkedav5dln99uvk7jnqn5e54strsvmbla",
+    "solution": "583967241264781395672195438891534672715342986936428517148259763427613859359876124",
+    "description": "Custom Rules: Puzzle contains nine 9-cell regions that contain the digits 1-9. Region edges need to be determined. Numbers outside of the grid show the sum of the values on its row/column starting from the cell adjacent to it, until the sum's last digit hits the region edge."
+  },
+  {
+    "id": "ABjn",
+    "title": "Crust of Edge-Count [7x7]",
+    "url": "https://sudoku.coach/en/s/ABjn",
+    "code": "SCv7_32_f2e9b521dq1j0425tsp6m9u20picldi791rh22q45j5l4gh2m2l3d25reu6dkbm6ehe2v400vtjsuv7um209rn75sif0cmhdc0pddne737d769u0n9rj7fn2kefnkdvqu1r02ts1apb05v770c8hhrnjpls3ff4p1s7g4pj3dvj4eekotcqtp78fomohcu3ln3kq77rq4j688aobv20ba80rb1bk22e9272ht8bi13e5s76ol8ka2kk4aa2d1a9md3hjlockk8quih6rlbe02ile4g5097rkpo4ka0l8h6v4ovk8rlsb0jeg6cra5intege20nogt11e9fbnkfulrukuklhdmrcriot6umlmij4jvjsdg8ntj12hf7oa3udnbapelfd462al71orvqfh1adp6pkii39r2iopk3ajtgsfn8s9sksnr5lsh6oiqn28les1cjiefl0jipscs8ja1ajhe7ug4vj00lf0",
+    "description": "Seven connected 7-cell regions contain digits 1–7. Large outside clues give the sum to a targeted region edge; small clues count earlier region edges crossed."
+  },
+  {
+    "id": "DZEy",
+    "title": "Mini Random Crust #1",
+    "url": "https://sudoku.coach/en/s/DZEy",
+    "code": "SCv7_32_f2e9b561dq220446rtisst1353d7ln87t2gjqtf3o6s8945cn90tld1lnpto39i96cgk7e59vifspjvspg7dl6nbhfsldk3n1imd4pit6rk2u0o3dkvd8snmlv78spjhs7lgtpga7nrkltrlus44pqpm5djqclvlt60c39nkljva94tqrn1d799t97r517f4s1vnk7vdt04mbvea1on60fbg073s3vgh693jo8d0p40hq0na3jo8g04h6n0h3gbj0hr5rpc0380pq1u8iaoem03g0a80jf98qjbl8g89fl9h53009016g4vqmrg48gqk7el21f41pg0aj84mt3loo7jn83i0od49ih900disimf50i1kr41hpkg8a16sc5h2832igm8ij59hpl28a0rk3o548q1bkqu9kap06pg88fb3jcv8n0aadturnb7cvrquo5cp9vieefcnhsfh0dbsfm91",
+    "description": "A 7×7 Latin square with seven connected 7-cell regions. Outside totals stop at the first region wall; this export has no edge-count layer."
+  },
+  {
+    "id": "9Z8C",
+    "title": "Crust of Edge-Count [9x9]",
+    "url": "https://sudoku.coach/en/s/9Z8C",
+    "code": "SCv7_32_f2e9aliddvhi047t5vm9alk0tksctdennkqreag7lv1nlk9qeq26jlbeijvrt0tbfo6nga4a2gij0rv6nlgnhtk5unb1prud7v6nc3b7arrmc6j7mptjgs6mjcjjrnm1btjlmcpqntt63pm8ep973piupo063n9kjuq37nau7stsdmdcve9ns2vdugofgnofjfdokdtnqk0n57irrc140muon0oeek9raoqeoun5js011j1n0ig1822g4klcg382f153f0i2dg8s4hvji8haa8ha500edp739551hc2dl1b340h0amli5kion97lbb2fcg6npmj5m833srmv554paa33kgk89h542q2ck6aqi6953o2m6m4h42nbbp41aect2akon081el94a3219ogpta9644h1h425ep2n3gknml4g10me2p4ti250a802ogh6tsf003mu8aej6ovvnrpuljdlb2p2rrirsisqvfu2aa86bc9j2bgvgpi984t7ab7rhle1uhrsua9bdn4g1gaotcq371qi0u26mpq6f8j6ncn3btg8pc48fjn4e0nr7cqjdq4s78chkisodm99rf1qeanico3ch4563a9a3j18cqk1igqgqfe3369q5stkg9cv0pgjgpcai5hi4j9ncqgtu7philsqlqfclfj5ivcokuldtjfjulenfj9m9f2mn1db0kqrkqco3omi9uuh17vm27s56q0knvpkkdf7aqe9jc1ofrrd40oigei0jruhvkvt3nqgo2t0t3bm93uqfpd865vksmunsr6fvfkgtaip1mlrvmr1qpfnc9hr5p2poveka3jvk7olev9qe",
+    "solution": "524318679865297413731952846912463785476589321298675134143726958359841267687134592",
+    "description": "Nine 9-cell regions contain the digits 1–9; one region has two separated pieces. Outside totals stop at a target region edge, while the small clue counts earlier region edges crossed. One region edge is given beside the bottom-left cell."
+  }
+]

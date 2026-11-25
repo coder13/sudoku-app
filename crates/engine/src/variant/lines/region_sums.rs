@@ -35,8 +35,15 @@ impl PartSums {
         }
         let length = domains.len();
         let start = if length == 0 { 0 } else { ends[length - 1] };
-        let totals = sets[start..].iter().fold(0, |mask, &set| mask | 1 << digit_sum(set));
-        Self { sets, ends, length, totals }
+        let totals = sets[start..]
+            .iter()
+            .fold(0, |mask, &set| mask | 1 << digit_sum(set));
+        Self {
+            sets,
+            ends,
+            length,
+            totals,
+        }
     }
 
     fn prefix(&self, depth: usize) -> &[u16] {
@@ -48,7 +55,12 @@ impl PartSums {
         self.prefix(self.length)
     }
 
-    pub(crate) fn support(&self, domains: &[u16], allows: impl Fn(u16) -> bool, support: &mut [u16]) {
+    pub(crate) fn support(
+        &self,
+        domains: &[u16],
+        allows: impl Fn(u16) -> bool,
+        support: &mut [u16],
+    ) {
         let mut viable = [false; DIGIT_SETS];
         for &set in self.complete_sets() {
             viable[set as usize] = allows(set);
@@ -102,7 +114,9 @@ pub(super) fn distinct_support(parts: &[Range<usize>], domains: &[u16], support:
         let domain = &domains[part.clone()];
         let totals = if domain.len() <= 3 {
             let mut totals = 0;
-            short_prefixes(domain, |sum, _, last| totals |= u64::from(last) << (sum + 1));
+            short_prefixes(domain, |sum, _, last| {
+                totals |= u64::from(last) << (sum + 1)
+            });
             totals
         } else {
             let sums = PartSums::new(domain);
@@ -178,7 +192,10 @@ mod tests {
         for groups in [
             &[&[9][..], &[3, 6], &[1, 3, 5]][..],
             &[&[1, 2, 3, 9][..], &[4, 5, 6]],
-            &[&[1, 2, 3, 4, 5, 6, 7, 8, 9][..], &[9, 8, 7, 6, 5, 4, 3, 2, 1]],
+            &[
+                &[1, 2, 3, 4, 5, 6, 7, 8, 9][..],
+                &[9, 8, 7, 6, 5, 4, 3, 2, 1],
+            ],
         ] {
             for trial in 0..24 {
                 let mut domains = Vec::new();
@@ -187,7 +204,11 @@ mod tests {
                     let start = domains.len();
                     for &digit in *group {
                         let extra = (0..3).fold(0, |mask, _| mask | 1 << random.index(9));
-                        domains.push(if trial % 2 == 0 { extra | digit_bit(digit) } else { extra });
+                        domains.push(if trial % 2 == 0 {
+                            extra | digit_bit(digit)
+                        } else {
+                            extra
+                        });
                     }
                     parts.push(start..domains.len());
                 }
@@ -199,7 +220,9 @@ mod tests {
                 for total in 1..=45 {
                     if assignments.iter().all(|support| support[total][0] != 0) {
                         for (part, support) in parts.iter().zip(&assignments) {
-                            for (mask, digit_support) in expected[part.clone()].iter_mut().zip(support[total]) {
+                            for (mask, digit_support) in
+                                expected[part.clone()].iter_mut().zip(support[total])
+                            {
                                 *mask |= digit_support;
                             }
                         }

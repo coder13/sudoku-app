@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import lzString from 'lz-string'
 import { exportPuzzle, STARTER } from '../src/sudoku/formats.ts'
@@ -6,7 +7,7 @@ import { WINDOKU_REGIONS, isPlayablePuzzle, variantName, variantRuleDescriptions
 import { countMixedSolutions } from './helpers/mixed-oracle.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { coachCode as coach } from './helpers/coach-code.ts'
-import { MINI_GRID } from '../src/sudoku/grid.ts'
+import { jigsawMembership, MINI_GRID } from '../src/sudoku/grid.ts'
 import { EMPTY } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
@@ -16,6 +17,9 @@ const killerCode = 'SCv7_32_f2ear5619r1j0424vv2ueeb4dmnhrtoafv013t8gml8m9a8dak99
 const jigsawCode = 'SCv7_32_f2e6rjmd1b130360u5rsjec7tihmncvjrpg4fsb656skp67287crmbq9lc7b8vp8pm7l5uk2njp6bpj7ga8hpb19udqrjgbod9eajd9ql7vinvhjfl2mrc2k6hnha2uirfk20kaik4lb2him72ccjma1sp3lk9mefibhu0uqt8u65l23bdj15gg6e4k67lcv8mtfbejp19p5qni1r1r21nhsn4'
 const shortGrid = STARTER.replace(/\d0{0,5}/g, (run) =>
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'[Number(run[0]) + 10 * (run.length - 1)])
+const wrappedJigsawSource = JSON.parse(readFileSync(new URL('./fixtures/coach-mini-wrapped-jigsaw.json', import.meta.url), 'utf8')) as {
+  code: string; title: string
+}
 
 test('detects existing formats and compact Classic links', async () => {
   const inputs = [
@@ -30,7 +34,6 @@ test('detects existing formats and compact Classic links', async () => {
   ]
   for (const [input, format] of inputs) assert.deepEqual(await detectPuzzle(input), { givens: STARTER, format }, input)
 })
-
 test('imports embedded puzzles with no browser location and resolves shares only on the app origin', async t => {
   const priorWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   const origin = 'https://sudoku.example'
@@ -65,7 +68,10 @@ test('Mini Sudoku imports text and versioned links and rejects unsupported autho
   assert.deepEqual((await detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'diagonalNegative', segments: [] }] }))).sizedRules,
     [{ type: 'diagonal', diagonal: 'main' }])
   await assert.rejects(detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'antiKnight', segments: [] }] })), /unsupported active rule/)
-  await assert.rejects(detectPuzzle(coach({ ...data, regions: [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] })), /four 2 × 2 boxes/)
+  const rowRegions = await detectPuzzle(coach({ ...data, regions: [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] }))
+  assert.equal(rowRegions.grid?.size, 4)
+  assert.deepEqual(jigsawMembership(rowRegions.grid as NonNullable<typeof rowRegions.grid>), [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3])
+  await assert.rejects(detectPuzzle(coach({ ...data, regions: [0,0,0,0,1,1,1,1,2,2,2,3,3,3,3,3] })), /four connected regions/)
   const puzzle = { size: 4, ruleset: 'Normal 4×4 Sudoku rules apply.', grid: [
     [{}, {}, {}, {}], [{ given: true, value: 3 }, {}, {}, { given: true, value: 2 }],
     [{}, { given: true, value: 1 }, { given: true, value: 4 }, {}], [{}, {}, {}, {}],
@@ -77,6 +83,85 @@ test('Mini Sudoku imports text and versioned links and rejects unsupported autho
   const rules = [{ type: 'diagonal', diagonal: 'main' }]
   const invalidShare = '#sized=' + encodeURIComponent(JSON.stringify({ version: 2, grid, givens, rules }))
   await assert.rejects(detectPuzzle(invalidShare), /unsupported rules or invalid algebraic cages/)
+})
+
+test('imports fixed 4 × 4 Jigsaw regions from Coach and f-puzzles while retaining Mini Sudoku', async () => {
+  const membership = [0, 0, 0, 1, 2, 2, 0, 1, 2, 3, 3, 1, 2, 3, 3, 1]
+  const givens = '0000000000000000'
+  const coachPuzzle = await detectPuzzle(coach({ gridSize: 4, givenDigits: givens, regions: membership }))
+  assert.equal(coachPuzzle.grid?.size, 4)
+  assert.deepEqual(jigsawMembership(coachPuzzle.grid as NonNullable<typeof coachPuzzle.grid>), membership)
+
+  const fpuzzles = {
+    size: 4,
+    ruleset: 'Normal irregular 4x4 Sudoku rules apply.',
+    grid: Array.from({ length: 4 }, (_, row) => Array.from({ length: 4 }, (_, column) => {
+      const cell = row * 4 + column
+      const region = membership[cell]
+      return region === row ? {} : { region }
+    })),
+  }
+  const fPuzzle = await detectPuzzle(JSON.stringify(fpuzzles))
+  assert.equal(fPuzzle.format, 'f-puzzles')
+  assert.equal(fPuzzle.grid?.size, 4)
+  assert.deepEqual(jigsawMembership(fPuzzle.grid as NonNullable<typeof fPuzzle.grid>), membership)
+
+  const ordinaryMini = await detectPuzzle(JSON.stringify({
+    size: 4,
+    ruleset: 'Normal 4×4 Sudoku rules apply.',
+    grid: Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => ({}))),
+  }))
+  assert.deepEqual(ordinaryMini.grid, MINI_GRID)
+})
+
+test('imports six-by-six f-puzzles Jigsaw regions with a companion line rule', async () => {
+  const labels = [1, 1, 1, 1, 2, 2, 1, 5, 5, 1, 5, 2, 4, 4, 5, 5, 5, 2,
+    4, 6, 6, 6, 2, 2, 4, 6, 3, 6, 6, 3, 4, 4, 3, 3, 3, 3]
+  const puzzle = {
+    size: 6,
+    ruleset: 'Normal irregular 6x6 Sudoku rules apply.',
+    grid: Array.from({ length: 6 }, (_, row) => Array.from({ length: 6 }, (_, column) => {
+      const cell = row * 6 + column
+      return { region: labels[cell] - 1, ...(cell === 7 ? { given: true, value: 4 } : {}) }
+    })),
+    thermometer: [{ lines: [['R1C1', 'R1C2', 'R2C2']] }],
+  }
+  const imported = await detectPuzzle(JSON.stringify(puzzle))
+  assert.equal(imported.format, 'f-puzzles')
+  assert.equal(imported.givens[7], '4')
+  assert.ok(imported.grid && 'regions' in imported.grid)
+  assert.deepEqual(jigsawMembership(imported.grid as NonNullable<typeof imported.grid>), labels.map(label => label - 1))
+  assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [0, 1, 7] }])
+})
+
+test('the published Mini Jigsaw 3 short link retains its wrapped regions and companion rules', async t => {
+  const fetch = t.mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudoku-coach/DMnw')
+    return Response.json({ code: wrappedJigsawSource.code, coach: {
+      hasAuthorInstructions: true, authoredRule: 'wrapped-regions', title: wrappedJigsawSource.title,
+    } })
+  })
+
+  const linked = await detectPuzzle('https://sudoku.coach/en/s/DMnw')
+  const copied = await detectPuzzle(wrappedJigsawSource.code)
+
+  assert.equal(fetch.mock.callCount(), 1)
+  assert.equal(linked.format, 'Sudoku Coach')
+  assert.equal(linked.title, wrappedJigsawSource.title)
+  assert.deepEqual(linked, { ...copied, title: wrappedJigsawSource.title })
+  assert.deepEqual(linked.sizedRules?.map(rule => rule.type), ['whispers', 'region-sum'])
+  assert.equal(linked.givens, '0'.repeat(16))
+  assert.equal(linked.grid?.size, 4)
+  assert.ok(linked.grid && 'regions' in linked.grid)
+})
+
+test('an unrelated 4 × 4 Jigsaw with regions crossing the flat edges does not gain wraparound rules', async () => {
+  const regions = [0, 1, 1, 0, 0, 1, 1, 0, 2, 3, 3, 2, 2, 3, 3, 2]
+  const imported = await detectPuzzle(coach({ gridSize: 4, givenDigits: '0'.repeat(16), regions }))
+  assert.deepEqual(imported.grid && 'regions' in imported.grid ? imported.grid.regions : undefined,
+    [[0, 3, 4, 7], [1, 2, 5, 6], [8, 11, 12, 15], [9, 10, 13, 14]])
+  assert.ok(imported.grid && 'regions' in imported.grid)
+  assert.equal(imported.grid.wrapAround, undefined)
 })
 
 test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
@@ -314,6 +399,14 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   await assert.rejects(detectPuzzle('SCv6_32_0000'), /unsupported format/)
   await assert.rejects(detectPuzzle('SCv7_32_zzzz'), /invalid character/)
   await assert.rejects(detectPuzzle('SCv7_32_0000'), /could not be opened/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: null })), /invalid rules/)
+  await assert.rejects(detectPuzzle(coach({ colours: null })), /invalid color palette/)
+  await assert.rejects(detectPuzzle(coach({ colours: 'not-a-palette' })), /invalid color palette/)
+  await assert.rejects(detectPuzzle(coach({ givenColours: null })), /invalid authored colors/)
+  for (const field of ['userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours']) {
+    await assert.rejects(detectPuzzle(coach({ [field]: null })), new RegExp(`invalid ${field} value`))
+  }
+  await assert.rejects(detectPuzzle(coach({ userFutureProgress: { selectedDigit: 4 } })), /unsupported field \(userFutureProgress\)/)
   mock.method(globalThis, 'fetch', async (path: string) => {
     assert.ok(['/api/v1/import/sudokupad/example-share-id', '/api/v1/import/sudokupad/endless/p8eox828os', '/api/v1/import/sudoku-coach/DMnw'].includes(path))
     return Response.json({ error: 'The published puzzle could not be found.' }, { status: 404 })

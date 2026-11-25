@@ -194,7 +194,7 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
         // Read the shared set and check each inside row and column.
         InsideGrid => 20 + 4 * (cells.len() as u16).isqrt(),
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Lockout | Whispers | Entropic
-        | Modular | GlobalEntropy | Quadruple => 14 + span + choices,
+        | Modular | DigitOrder | GlobalEntropy | Quadruple => 14 + span + choices,
         CageCombinations | Arrow | PillArrow | LittleKiller => 24 + span + 2 * choices,
         Renban | RegionSum => 28 + span + 2 * choices,
         RenbanLockedDigit => 24 + span + choices,

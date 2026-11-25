@@ -6,6 +6,7 @@ import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
+import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantPosition } from '../src/sudoku/variant-play.ts'
@@ -21,6 +22,146 @@ type Source = { sudoku_id: string; sudoku: string; name: string; description: st
 const sources = JSON.parse(readFileSync(new URL('./fixtures/coach-artwork-traffic.json', import.meta.url), 'utf8')) as Source[]
 const [windoku, khachkar, traffic, spider] = sources
 const base = 'https://sudoku.coach/en/s/'
+
+test('#542 imports and solves the exact Global Entropy shape export with its authored label', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const source = examples.examples.find(example => example.issue === 542)
+  assert.ok(source)
+  const direct = await detectPuzzle(source.code)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.equal(game.title, 'Sunny with a chance of Entropy')
+    assert.ok(game.variant && direct.variant)
+    assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
+    assert.equal(game.variant.solution.length, 81)
+    assertVariantCompletion(game.variant.puzzle, game.variant.solution)
+    assert.deepEqual(game.variant.puzzle.rules?.reduce<Record<string, number>>((counts, rule) => {
+      counts[rule.type] = (counts[rule.type] ?? 0) + 1
+      return counts
+    }, {}), { 'global-entropy': 1, entropic: 8, 'entropy-window-group': 14 })
+    assert.deepEqual(game.authoredArtwork, direct.authoredArtwork)
+    assert.deepEqual(game.authoredArtwork?.[0], { type: 'text', text: 'RP', center: [4.5, 4.5], size: .455,
+      color: '#ffa852', opacity: 188, outlineColor: '#f77c00', outlineThickness: .01, offsetY: .07 })
+
+    const saved = readGame(game.id, JSON.stringify(game))
+    assert.deepEqual(saved?.variant, game.variant)
+    assert.deepEqual(saved?.authoredArtwork, game.authoredArtwork)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+    const shared = await api<{ variant: { puzzle: typeof game.variant.puzzle }; authoredArtwork: typeof game.authoredArtwork }>(`shares/${id}`)
+    assert.deepEqual(shared.variant.puzzle, game.variant.puzzle)
+    assert.deepEqual(shared.authoredArtwork, game.authoredArtwork)
+  } finally { sqlite.close() }
+})
+
+test('#547 imports the complete CS1G rule set without treating shape artwork as digit restrictions', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const source = examples.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const direct = await detectPuzzle(source.code)
+  const { game } = await prepareImportedPuzzle(source.code)
+
+  assert.ok(game.variant && direct.variant)
+  assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
+  assert.deepEqual(game.variant.puzzle.rules?.reduce<Record<string, number>>((counts, rule) => {
+    counts[rule.type] = (counts[rule.type] ?? 0) + 1
+    return counts
+  }, {}), { palindrome: 5, entropic: 10, kropki: 2 })
+  assert.equal(game.authoredArtwork?.length, 405)
+  assert.deepEqual(game.authoredArtwork, direct.authoredArtwork)
+  assert.equal(game.variant.solution.length, 81)
+  assertVariantCompletion(game.variant.puzzle, game.variant.solution)
+})
+
+test('#544 verifies the XV Entropy puzzle with its empty cosmetic cage omitted', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const source = examples.examples.find(example => example.issue === 544)
+  assert.ok(source)
+  const direct = await detectPuzzle(source.code)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.ok(game.variant && direct.variant)
+    assert.equal(game.variant.solution.length, 81)
+    assertVariantCompletion(game.variant.puzzle, game.variant.solution)
+    assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
+    assert.deepEqual(game.variant.puzzle.rules?.map(rule => rule.type), ['global-entropy', 'xv', 'kropki'])
+    const saved = readGame(game.id, JSON.stringify(game))
+    assert.deepEqual(saved?.variant, game.variant)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+    const shared = await api<{ variant: { puzzle: typeof game.variant.puzzle } }>(`shares/${id}`)
+    assert.deepEqual(shared.variant.puzzle, game.variant.puzzle)
+  } finally { sqlite.close() }
+})
+
+test('#545 imports and solves every authored neighbor-match clue through the app engine', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const source = examples.examples.find(example => example.issue === 545)
+  assert.ok(source)
+  const direct = await detectPuzzle(source.code)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.ok(game.variant && direct.variant)
+    assert.equal(game.title, 'Raumploximentroplaner')
+    assert.equal(game.variant.solution.length, 81)
+    assertVariantCompletion(game.variant.puzzle, game.variant.solution)
+    assert.deepEqual(game.variant.puzzle.rules?.filter(rule => rule.type === 'neighbor-match'),
+      direct.variant.puzzle.rules?.filter(rule => rule.type === 'neighbor-match'))
+    assert.equal(game.variant.puzzle.rules?.find(rule => rule.type === 'neighbor-match')?.type, 'neighbor-match')
+    assert.equal(game.authoredArtwork?.length, 17)
+    assert.equal(game.authoredArtwork?.[0].type, 'text')
+    const saved = readGame(game.id, JSON.stringify(game))
+    assert.deepEqual(saved?.variant, game.variant)
+    assert.deepEqual(saved?.authoredArtwork, game.authoredArtwork)
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+    const shared = await api<{ variant: { puzzle: typeof game.variant.puzzle }; authoredArtwork: typeof game.authoredArtwork }>(`shares/${id}`)
+    assert.deepEqual(shared.variant.puzzle, game.variant.puzzle)
+    assert.deepEqual(shared.authoredArtwork, game.authoredArtwork)
+  } finally { sqlite.close() }
+})
+
+test('#543 and #546 solve and preserve the complete Aqre imports through save and sharing', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    for (const [issue, kind] of [[543, 'snake'], [546, 'plus']] as const) {
+      const source = examples.examples.find(example => example.issue === issue)
+      assert.ok(source, `Missing source fixture for #${issue}`)
+      const direct = await detectPuzzle(source.code)
+      const { game } = await prepareImportedPuzzle(source.code)
+      assert.ok(game.variant && direct.variant)
+      assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
+      assert.equal(game.variant.solution.length, 81)
+      assertVariantCompletion({ ...game.variant.puzzle,
+        rules: game.variant.puzzle.rules?.filter(rule => rule.type !== 'aqre') }, game.variant.solution)
+      const aqre = game.variant.puzzle.rules?.find(rule => rule.type === 'aqre')
+      assert.ok(aqre?.type === 'aqre' && aqre.kind === kind)
+      assert.equal(aqre?.type === 'aqre' ? aqre.givenShades.length : -1, issue === 543 ? 16 : 0)
+      if (issue === 546) assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'renban').length, 6)
+
+      const saved = readGame(game.id, JSON.stringify(game))
+      assert.deepEqual(saved?.variant, game.variant)
+      const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+      const shared = await api<{ variant: { puzzle: typeof game.variant.puzzle } }>(`shares/${id}`)
+      assert.deepEqual(shared.variant.puzzle, game.variant.puzzle)
+    }
+  } finally { sqlite.close() }
+})
 
 test('both reviewed originals preserve all rules and artwork through import, play, storage and sharing', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()

@@ -1,0 +1,8 @@
+{
+  "sudoku_id": "8kgS",
+  "sudoku": "SCv7_32_f2e9r5m9dr130446rtissbniiaisr5euf8lrq88e55c9399cp0otq8munk9o48g1m71u0kosvvfvpoop5dogf19lneavjksg4k6aobicaerp1b9n1g5f79fbat9hh1pf81o1o28f1k0meq4966ecqjetiflgtj0e6b0hje6v7nt40qcs5fqpmaabdk8mitaht50rlqb7pqcrlg2pesub4corhmmdbtb7bpfl47bcelcvcjpac8lcc87rrjj9atmqhpgkd1b49a2hb71925a705iu8u5u0um4o8skljn4gi1que69b0effn9c673ekk7p18i5u9ga0gmg4mfcet44f1rdqch6ddgvvb3vif6m9tu22oom5vhcr3cjtcsjoj3gm7gpsi58h2g3k23k205pbuh13shui24581015p6ku37ui0o9e5d6rgu0dnlohoajbbue2d0h7ljdlphpm8i49474l1iqff588h14bh6tua49pkspn2tnjka3158rcf7k7ahfeek4p14h6590qjq8f04uao4bijkbiftsfpobfhmi4pqd7g2ab2sadiheg9nhof44onknfvdd69fcbmrkqubgf3vo5b5vtug7he4n8kefbhrv5eagh4o",
+  "name": "Nonogram sudoku 6x6",
+  "host_name": "Arne1405",
+  "description": "Fill the 6×6 grid with numbers 1 to 6 so that:\nEach number appears exactly once per row and once per column (Latin square rule).\nNumbers outside the grid indicate groups of consecutive even numbers (2, 4, 6) in that row or column. (For example, a clue \"2 1\" means a group of 2 even numbers followed later by a single even number.)\nGroups of even numbers are separated by at least one odd number (1, 3, 5).",
+  "solution": "123456254163641235315642562314436521"
+}

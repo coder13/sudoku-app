@@ -44,6 +44,7 @@ export const ANALYSIS_GROUPS = [
     'tridagon', 'exocet', 'senior-exocet', 'double-exocet', 'sk-loop',
     'pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay',
     'quadruple-pattern-overlay', 'quintuple-pattern-overlay',
+    'sextuple-pattern-overlay', 'septuple-pattern-overlay',
   ] },
   { title: 'Forcing techniques', techniques: [
     'tridagon-forcing-net', 'forcing-chain', 'forcing-net',

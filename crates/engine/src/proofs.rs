@@ -197,7 +197,11 @@ impl<'a> Pattern<'a> {
                 self.houses.insert(*house);
                 self.candidate(result);
             }
-            HintEvidence::DirectPlacement { house, premise, removed } => {
+            HintEvidence::DirectPlacement {
+                house,
+                premise,
+                removed,
+            } => {
                 self.add_evidence(premise, result);
                 self.houses.insert(*house);
                 self.mark(removed.iter().copied(), digit_bit(result.digit));

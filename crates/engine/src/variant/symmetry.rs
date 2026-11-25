@@ -138,7 +138,9 @@ impl SquareTransform {
 
     fn puzzle(self, puzzle: &mut VariantPuzzle) {
         puzzle.givens = self.grid(puzzle.givens);
-        if let RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } = &mut puzzle.regions {
+        if let RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } =
+            &mut puzzle.regions
+        {
             for region in &mut *regions {
                 self.unordered(region);
             }
@@ -191,12 +193,43 @@ impl SquareTransform {
                     super::Diagonal::Anti
                 };
             }
-            ExtraHouse { cells } | Parity { cells, .. } | DigitRestriction { cells, .. } => self.unordered(cells),
+            ExtraHouse { cells } | Parity { cells, .. } | DigitRestriction { cells, .. } => {
+                self.unordered(cells)
+            }
             DistinctCells { cells, color } => {
                 self.unordered(cells);
                 *color = None;
             }
-            ConsecutiveRun { cells, color, from_bulb } => {
+            Aqre {
+                regions,
+                given_shades,
+                ..
+            } => {
+                for region in regions.iter_mut() {
+                    self.unordered(&mut region.cells);
+                    if let Some(super::AqreCount::DigitCell { cell }) = &mut region.count {
+                        *cell = self.cell(*cell);
+                    }
+                }
+                regions.sort_by(|left, right| left.cells.cmp(&right.cells));
+                for given in given_shades.iter_mut() {
+                    given.cell = self.cell(given.cell);
+                }
+                given_shades.sort_by_key(|given| given.cell);
+            }
+            NeighborMatch { clues } => {
+                for clue in clues.iter_mut() {
+                    clue.cell = self.cell(clue.cell);
+                }
+                clues.sort_by_key(|clue| clue.cell);
+            }
+            MagicSquare { cells } => self.unordered(cells),
+            DistantNeighbors { marked_cells } => self.unordered(marked_cells),
+            ConsecutiveRun {
+                cells,
+                color,
+                from_bulb,
+            } => {
                 self.path(cells);
                 if !*from_bulb && cells[0] > cells[cells.len() - 1] {
                     cells.reverse();
@@ -233,9 +266,35 @@ impl SquareTransform {
                 }
                 cages.sort_unstable();
             }
+            UnknownCageSums {
+                cages,
+                consecutive_pairs,
+            } => {
+                let mut order: Vec<_> = (0..cages.len()).collect();
+                for cage in cages.iter_mut() {
+                    self.unordered(cage);
+                }
+                order.sort_by_key(|&index| cages[index].clone());
+                let mut old_to_new = vec![0; cages.len()];
+                for (new, &old) in order.iter().enumerate() {
+                    old_to_new[old] = new;
+                }
+                let reordered = order
+                    .into_iter()
+                    .map(|index| cages[index].clone())
+                    .collect();
+                *cages = reordered;
+                for pair in consecutive_pairs.iter_mut() {
+                    pair[0] = old_to_new[pair[0]];
+                    pair[1] = old_to_new[pair[1]];
+                    pair.sort_unstable();
+                }
+                consecutive_pairs.sort_unstable();
+            }
             LetteredQuadruples { clues } => {
                 for clue in clues.iter_mut() {
-                    let mut cells = super::quadruple::cells(clue.top_left).expect("validated circle");
+                    let mut cells =
+                        super::quadruple::cells(clue.top_left).expect("validated circle");
                     self.unordered(&mut cells);
                     clue.top_left = cells[0];
                     let mut letters: Vec<_> = clue.letters.bytes().collect();
@@ -256,7 +315,13 @@ impl SquareTransform {
                 }
                 groups.sort_unstable();
             }
-            AntiKnight {} | AntiKing {} | GlobalEntropy {} => {}
+            AntiKnight {} | AntiKing {} => {}
+            GlobalEntropy { groups } => {
+                for group in &mut *groups {
+                    group.sort_unstable();
+                }
+                groups.sort_unstable();
+            }
             EntropyWindowGroup { cells, .. } => self.unordered(cells),
             NonConsecutive { except } => {
                 for cells in &mut *except {
@@ -312,8 +377,10 @@ impl SquareTransform {
             | Entropic { cells }
             | Modular { cells }
             | Whispers { cells, .. }
+            | DigitOrder { cells, .. }
             | Lockout { cells }
             | Between { cells } => self.path(cells),
+            ForbiddenEntropicConnection { cells } => self.path(cells),
             Sandwich {
                 cells, direction, ..
             }

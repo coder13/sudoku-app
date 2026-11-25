@@ -1,5 +1,79 @@
 import type { VariantPuzzle } from './engine.ts'
 
+function betweenOrientation(domains: readonly number[], lowDomain: number, highDomain: number) {
+  const lowestEnd = lowDomain & -lowDomain
+  const highestEnd = 1 << (31 - Math.clz32(highDomain))
+  const interval = (highestEnd - 1) & ~(2 * lowestEnd - 1)
+  if (!interval) return
+  let lowestInteriorMaximum = highestEnd
+  let highestInteriorMinimum = lowestEnd
+  for (let index = 1; index < domains.length - 1; index++) {
+    const inside = domains[index] & interval
+    if (!inside) return
+    lowestInteriorMaximum = Math.min(lowestInteriorMaximum, 1 << (31 - Math.clz32(inside)))
+    highestInteriorMinimum = Math.max(highestInteriorMinimum, inside & -inside)
+  }
+  return {
+    low: lowDomain & (lowestInteriorMaximum - 1),
+    high: highDomain & ~(2 * highestInteriorMinimum - 1),
+    interval,
+  }
+}
+
+/** Exact digit support for a Between path with one or more interior cells. */
+export function betweenSupport(domains: readonly number[]): number[] | null {
+  const last = domains.length - 1
+  const first = domains[0], end = domains[last]
+  if (!first || !end) return null
+  const ascending = betweenOrientation(domains, first, end)
+  const descending = betweenOrientation(domains, end, first)
+  if (!ascending && !descending) return null
+  const inside = (ascending?.interval ?? 0) | (descending?.interval ?? 0)
+  const support = domains.map(domain => domain & inside)
+  support[0] = (ascending?.low ?? 0) | (descending?.high ?? 0)
+  support[last] = (ascending?.high ?? 0) | (descending?.low ?? 0)
+  return support
+}
+
+/** Exact digit support for a Lockout path using the source rule's four-digit gap. */
+export function lockoutSupport(domains: readonly number[], size: number, minDifference = 4): number[] | null {
+  const last = domains.length - 1
+  const firstDomain = domains[0], lastDomain = domains[last]
+  if (!firstDomain || !lastDomain) return null
+  const full = (1 << size) - 1
+  const endpoints = firstDomain | lastDomain
+  const caps = Array<number>(size).fill(full)
+  caps[0] = full >>> 1
+  for (let index = 1; index < last; index++) {
+    const domain = domains[index]
+    if (domain === full) continue
+    if (!domain) return null
+    const lowest = 31 - Math.clz32(domain & -domain)
+    caps[lowest] &= (1 << (31 - Math.clz32(domain))) - 1
+  }
+  let firstSupport = 0, lastSupport = 0, insideSupport = 0
+  let cap = full
+  for (let index = size - 1; index >= 0; index--) {
+    cap &= caps[index]
+    const low = 1 << index
+    if (!(low & endpoints)) continue
+    const below = low - 1
+    const higher = endpoints & cap & ~((low << minDifference) - 1)
+    const ascending = low & firstDomain ? higher & lastDomain : 0
+    const descending = low & lastDomain ? higher & firstDomain : 0
+    if (!(ascending | descending)) continue
+    firstSupport |= (ascending ? low : 0) | descending
+    lastSupport |= (descending ? low : 0) | ascending
+    const smallestHigh = (ascending | descending) & -(ascending | descending)
+    insideSupport |= below | (full & ~(2 * smallestHigh - 1))
+  }
+  if (!firstSupport) return null
+  const support = domains.map(domain => domain & insideSupport)
+  support[0] = firstSupport
+  support[last] = lastSupport
+  return support
+}
+
 /** Local Between and Lockout restrictions from placed digits. Houses and other rules are
  * checked separately. Interior cells may repeat when those rules permit it. */
 export function endpointLineState(puzzle: VariantPuzzle | undefined, values: string) {

@@ -28,7 +28,7 @@ Every original Coach export remains unchanged in `entropic-coach.json`. Independ
 
 Hyk5 retains seven black dots and four white dots. Hafj retains ten V/X marks and three white dots. Ksy3 retains seven Renban sets, four Palindromes, nineteen general sums and a black dot. Its Entropic clue is redundant for uniqueness. Structural equality preserves that clue even though completion equality cannot expose its loss. The earlier Renban corpus keeps its historical release boundary and now points to the full Entropic import.
 
-LEjN, Entropic Spiral, still needs Global Entropy. 7nms, Entropic Order, needs Global Entropy and additional source content. Both complete exports remain preserved and reject explicitly. The port does not remove unsupported companions to manufacture an importable source.
+LEjN, Entropic Spiral, now imports the sixteen forbidden connections at orthogonally adjacent spiral breaks from its exact reviewed SCv7_32 export and public short link. The native solver rejects a join when both crossing Entropic triples are valid; the published completion remains unique. The reviewed 7nms pasted code and public short link import seven outside group-order clues as typed rules, and its published completion passes the unique-solution check. Their outside-grid clue presentation remains open. No unsupported companion is dropped to make either source importable.
 
 ## Native and app design
 

@@ -1,3 +1,8 @@
+import { entropicGroups } from './line-groups.ts'
+
+// Sudoku Coach compares floor((digit - 1) / 3) on every grid size.
+export const coachEntropicGroups = (size: number) => entropicGroups(size, 3)
+
 /** Coach compiles connected Palindrome and Renban components in insertion order.
  * Shared cells are deduplicated before applying the mathematical rule.
  * Keep the original paths as drawing geometry when that order differs.

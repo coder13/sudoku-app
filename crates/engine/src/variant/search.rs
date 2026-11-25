@@ -122,9 +122,16 @@ impl CompiledVariant {
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
         };
-        let count = self.search(position, 2, &mut max_nodes, &mut |board| {
-            solution.get_or_insert(board);
-        }, mode, &mut digits);
+        let count = self.search(
+            position,
+            2,
+            &mut max_nodes,
+            &mut |board| {
+                solution.get_or_insert(board);
+            },
+            mode,
+            &mut digits,
+        );
         Ok(match count {
             None => Analysis::SearchLimit,
             Some(0) => Analysis::Unsolvable,
@@ -143,10 +150,18 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
-        if self.quadruples.is_empty() && !self.lines.iter().any(|line| line.supports_distinct_sums()) {
+        if self.quadruples.is_empty()
+            && !self.lines.iter().any(|line| line.supports_distinct_sums())
+        {
             return self.solve_for_proof(entries, eliminations, max_nodes);
         }
-        self.complete(entries, eliminations, max_nodes, SearchMode::Verify(&[]), digits)
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::Verify(&[]),
+            digits,
+        )
     }
 
     pub(super) fn solve_for_proof(
@@ -155,7 +170,13 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         max_nodes: u32,
     ) -> Result<Board, VariantPositionError> {
-        self.complete(entries, eliminations, max_nodes, SearchMode::PropagateHouses, digits)
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PropagateHouses,
+            digits,
+        )
     }
 
     /// Find one rule-compliant completion by trying candidate digits in seeded order.
@@ -200,7 +221,16 @@ impl CompiledVariant {
     ) -> Result<Board, VariantPositionError> {
         let position = self.prepare_search(entries, eliminations, max_nodes, mode)?;
         let mut solution = None;
-        match self.search(position, 1, &mut max_nodes, &mut |board| { solution = Some(board); }, mode, &mut order) {
+        match self.search(
+            position,
+            1,
+            &mut max_nodes,
+            &mut |board| {
+                solution = Some(board);
+            },
+            mode,
+            &mut order,
+        ) {
             None => Err(VariantPositionError::Puzzle(Analysis::SearchLimit)),
             Some(_) => solution.ok_or(VariantPositionError::Puzzle(Analysis::Unsolvable)),
         }
@@ -209,9 +239,18 @@ impl CompiledVariant {
     /// Visit every completion within the bounds. No partial list is returned.
     pub(super) fn complete_bounded(&self, limit: u8, mut nodes: u32) -> Option<Vec<Board>> {
         let mode = SearchMode::Verify(&[]);
-        let position = self.prepare_search(&[0; CELLS], &[0; CELLS], nodes, mode).ok()?;
+        let position = self
+            .prepare_search(&[0; CELLS], &[0; CELLS], nodes, mode)
+            .ok()?;
         let mut layouts = Vec::new();
-        let count = self.search(position, limit, &mut nodes, &mut |board| layouts.push(board), mode, &mut digits)?;
+        let count = self.search(
+            position,
+            limit,
+            &mut nodes,
+            &mut |board| layouts.push(board),
+            mode,
+            &mut digits,
+        )?;
         (count < limit).then_some(layouts)
     }
 
@@ -223,7 +262,9 @@ impl CompiledVariant {
         mode: SearchMode<'_>,
     ) -> Result<SearchPosition, VariantPositionError> {
         let mut position = self.prepare(entries, eliminations)?;
-        if max_nodes > 0 && matches!(mode, SearchMode::Verify(_)) && !self.quadruples.is_empty()
+        if max_nodes > 0
+            && matches!(mode, SearchMode::Verify(_))
+            && !self.quadruples.is_empty()
             && position.masks.iter().any(|mask| mask.count_ones() > 1)
         {
             if !self.restrict_quadruple_layouts(&mut position) {
@@ -312,7 +353,8 @@ impl CompiledVariant {
                 0 => DIGITS,
                 digit => digit_bit(digit),
             });
-            if super::global_entropy::support(domains)[0] == 0 {
+            if super::global_entropy::support_in_groups(domains, self.global_entropy_groups)[0] == 0
+            {
                 return Err(VariantPositionError::Puzzle(Analysis::Conflict));
             }
         }
@@ -361,7 +403,32 @@ impl CompiledVariant {
             .filter(|&(_, &digit)| digit == 0)
             .min_by_key(|&(cell, _)| position.masks[cell].count_ones());
         let Some((cell, _)) = next else {
-            if self.lettered_quadruples.as_ref().is_some_and(|clue| !clue.permits(&position.board.map(digit_bit))) {
+            if self
+                .neighbor_matches
+                .iter()
+                .any(|clue| !clue.permits(&position.board))
+            {
+                return Some(0);
+            }
+            if self
+                .magic_squares
+                .iter()
+                .any(|square| !square.permits(&position.board))
+            {
+                return Some(0);
+            }
+            if self
+                .unknown_cage_sums
+                .iter()
+                .any(|rule| !rule.permits(&position.board))
+            {
+                return Some(0);
+            }
+            if self
+                .lettered_quadruples
+                .as_ref()
+                .is_some_and(|clue| !clue.permits(&position.board.map(digit_bit)))
+            {
                 return Some(0);
             }
             record(position.board);
@@ -562,7 +629,10 @@ impl CompiledVariant {
                 });
                 for (cell, mask) in cells
                     .into_iter()
-                    .zip(super::global_entropy::support(domains))
+                    .zip(super::global_entropy::support_in_groups(
+                        domains,
+                        self.global_entropy_groups,
+                    ))
                 {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
@@ -575,12 +645,43 @@ impl CompiledVariant {
                     0 => position.masks[cell],
                     digit => digit_bit(digit),
                 });
-                for (cell, mask) in cells.into_iter().zip(
-                    super::global_entropy::support_repeated_group(domains, group),
-                ) {
+                for (cell, mask) in
+                    cells
+                        .into_iter()
+                        .zip(super::global_entropy::support_repeated_group(
+                            domains, group,
+                        ))
+                {
                     if position.board[cell] == 0 && position.masks[cell] != mask {
                         position.masks[cell] = mask;
                         changed = true;
+                    }
+                }
+            }
+            for clue in &self.neighbor_matches {
+                match clue.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for square in &self.magic_squares {
+                match square.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for cage_sums in &self.unknown_cage_sums {
+                match cage_sums.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
                     }
                 }
             }

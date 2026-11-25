@@ -201,6 +201,20 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       case 'skyscrapers':
         // The fog covers the grid. Outside labels and their directions are public.
         return [rule]
+      case 'aqre':
+        // Shading regions and their indicators cross ordinary cell visibility boundaries.
+        return rule.regions.every(region => allVisible(region.cells)) ? [rule] : []
+      case 'neighbor-match':
+        return rule.clues.every(({ cell }) => {
+          const neighbors = [cell - 9, cell + 9, cell - 1, cell + 1].filter(neighbor =>
+            neighbor >= 0 && neighbor < 81 &&
+            (Math.floor(neighbor / 9) === Math.floor(cell / 9) || neighbor % 9 === cell % 9))
+          return visible.has(cell) && allVisible(neighbors)
+        }) ? [rule] : []
+      case 'unknown-cage-sums':
+        return rule.cages.every(allVisible) ? [rule] : []
+      case 'distant-neighbors':
+        return allVisible(rule.markedCells) ? [rule] : []
       default:
         return allVisible(rule.cells) ? [rule] : []
     }

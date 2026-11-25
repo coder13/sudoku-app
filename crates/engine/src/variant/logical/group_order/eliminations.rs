@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use super::{Domains, Scope, ScopeResult};
 use crate::{
-    CELLS, Candidate, HintAction, VariantDeduction, VariantEvidence,
-    VariantGroupOrderBranch, VariantGroupOrderEliminationProof, VariantTechnique,
+    CELLS, Candidate, HintAction, VariantDeduction, VariantEvidence, VariantGroupOrderBranch,
+    VariantGroupOrderEliminationProof, VariantTechnique,
     hints::{digit_bit, digits},
     variant::{CompiledVariant, logical::ProofPosition},
 };
@@ -232,5 +232,4 @@ impl CompiledVariant {
         }
         domains[target.cell] & mask == 0
     }
-
 }

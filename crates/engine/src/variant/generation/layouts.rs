@@ -212,7 +212,8 @@ pub(super) fn validate(
                 }
             }
             AdjacentTotal { cells: [a, b] } => {
-                if *a >= CELLS || *b >= CELLS
+                if *a >= CELLS
+                    || *b >= CELLS
                     || a.abs_diff(*b) != 9 && !(a / 9 == b / 9 && a.abs_diff(*b) == 1)
                 {
                     return Err(invalid);

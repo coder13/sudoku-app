@@ -59,6 +59,10 @@ function classicFourByFourSolutions() {
 const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
 const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo-6x6.scl', import.meta.url), 'utf8').trim()
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
+const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
+const entropyLineExamples = JSON.parse(readFileSync(new URL('./fixtures/sudokupad-entropy-lines.json', import.meta.url), 'utf8')) as {
+  examples: { id: string; title: string; code: string }[]
+}
 
 test('sized SudokuPad definitions retain cage order, labels, offsets, and authored metadata', () => {
   const code = encode(input)
@@ -72,6 +76,23 @@ test('sized SudokuPad definitions retain cage order, labels, offsets, and author
   assert.equal(decoded.source.code, code)
   assert.equal(decoded.source.rulesText, metadata.rules)
   assert.equal(decoded.source.author, metadata.author)
+})
+
+test('#400 imports the original Between Lines export with rectangular box notation and translucent circles', async () => {
+  const imported = await detectPuzzle(betweenLinesCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, 'Choose Your Fighter: Between Lines')
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.equal(imported.givens, '030000000000000000000002000000000000')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'between', cells: [16, 22, 28, 34, 33, 27, 21] },
+    { type: 'between', cells: [21, 26, 19, 24] },
+    { type: 'between', cells: [24, 18, 12, 7] },
+    { type: 'between', cells: [7, 8, 9, 4, 5] },
+    { type: 'between', cells: [5, 11, 17, 16] },
+  ])
+  assert.equal(imported.authoredSolution, '634125512364246513351642465231123456')
+  assert.equal(imported.authoredSolutionOnly, true)
 })
 
 test('sized SudokuPad rejects unrepresented rules and geometry', () => {
@@ -116,6 +137,25 @@ test('published 6 × 6 SudokuPad imports keep their combined rules and authored 
   assert.throws(() => readSizedRuleSudokuPad({ ...source, metadata: { ...source.metadata,
     rules: `${source.metadata.rules}\n-----German whisper lines:\nTwo cells connected by a German whisper line must have a difference of at least 2.`,
   } }), /authored rules this importer cannot verify/)
+})
+
+test('published 6 × 6 Entropic Line imports preserve Anti-King, paths, and authored solutions', async () => {
+  const paths = [
+    [[32, 25, 19, 12, 6, 1]],
+    [[13, 19, 25, 31], [23, 17, 11, 5]],
+  ]
+  for (const [index, example] of entropyLineExamples.examples.entries()) {
+    const imported = await detectPuzzle(example.code)
+    assert.equal(imported.format, 'SudokuPad', example.id)
+    assert.equal(imported.title, example.title)
+    assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+    if (example.id === 'ua0shvo1dt') assert.ok(imported.sizedRules?.some(rule => rule.type === 'anti-king'), `${example.id} has Anti-King`)
+    const entropic = imported.sizedRules?.filter(rule => rule.type === 'entropic') ?? []
+    assert.equal(entropic.length, example.id === '590b62qlwt' ? 2 : 1, `${example.id} line count`)
+    assert.deepEqual(entropic.map(rule => rule.cells), paths[index])
+    assert.ok(entropic.every(rule => rule.type === 'entropic' && rule.groups.flat().length === 6))
+    assert.ok(imported.authoredSolution)
+  }
 })
 
 function thermoExport(boxRows: 2 | 3) {
@@ -234,6 +274,46 @@ test('6 × 6 SudokuPad lines combine Renban with a thermometer and expand skippe
   const pure = await detectPuzzle(encode({ ...source, lines: [pink], underlays: [],
     metadata: { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] + '\n\n' + clause } }))
   assert.deepEqual(pure.sizedRules, [{ type: 'renban', cells: [6, 7, 8] }])
+})
+
+test('6 × 6 SudokuPad splits a closed Between stroke at marked endpoint circles', async () => {
+  const source = thermoExport(2)
+  const path = [0, 1, 2, 3, 4, 5, 11, 17, 23, 29, 35, 34, 33, 32, 31, 30, 24, 18, 12, 6, 0]
+  const toPoint = (cell: number) => [Math.floor(cell / 6) + .5, cell % 6 + .5]
+  const circles = [0, 4, 23, 33, 24].map(cell => ({
+    center: toPoint(cell), width: .4, height: .4, rounded: true,
+    backgroundColor: '#fff', borderColor: '#ccc',
+  }))
+  const imported = await detectPuzzle(encode({
+    ...source,
+    metadata: { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] +
+      ' Between Lines: Digits along a grey line must be strictly between the digits in two connected circles.' },
+    lines: [{ wayPoints: [toPoint(path[0]), toPoint(path[5]), toPoint(path[10]), toPoint(path[15]), toPoint(path[20])], color: '#ccc', thickness: 4 }],
+    underlays: [], overlays: circles,
+  }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'between', cells: [0, 1, 2, 3, 4] },
+    { type: 'between', cells: [4, 5, 11, 17, 23] },
+    { type: 'between', cells: [23, 29, 35, 34, 33] },
+    { type: 'between', cells: [33, 32, 31, 30, 24] },
+    { type: 'between', cells: [24, 18, 12, 6, 0] },
+  ])
+})
+
+test('6 × 6 SudokuPad splits open Between paths and rejects unmatched endpoint circles', async () => {
+  const source = thermoExport(2)
+  const metadataWithBetween = { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] +
+    ' Between Lines: Digits along a grey line must be strictly between the digits in two connected circles.' }
+  const circle = (cell: number) => ({ center: [Math.floor(cell / 6) + .5, cell % 6 + .5],
+    width: .4, height: .4, rounded: true, backgroundColor: '#fff', borderColor: '#ccc' })
+  const line = { wayPoints: [[.5, .5], [.5, 4.5]], color: '#ccc', thickness: 4 }
+  const valid = await detectPuzzle(encode({ ...source, metadata: metadataWithBetween, lines: [line], underlays: [],
+    overlays: [circle(0), circle(2), circle(4)] }))
+  assert.deepEqual(valid.sizedRules, [
+    { type: 'between', cells: [0, 1, 2] }, { type: 'between', cells: [2, 3, 4] },
+  ])
+  await assert.rejects(detectPuzzle(encode({ ...source, metadata: metadataWithBetween, lines: [line], underlays: [],
+    overlays: [circle(0), circle(2), circle(4), circle(5)] })), /circle|marked/)
 })
 
 test('compact SudokuPad retains empty cells, escaped metadata, and drawing layers', () => {

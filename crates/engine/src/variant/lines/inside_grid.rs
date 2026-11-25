@@ -38,7 +38,9 @@ impl InsideGrid {
             let row = std::array::from_fn(|j| i * size + j);
             let col = std::array::from_fn(|j| j * size + i);
             for house in [row, col] {
-                let peers = house[..size].iter().fold(0, |mask, &index| mask | (1 << cells[index]));
+                let peers = house[..size]
+                    .iter()
+                    .fold(0, |mask, &index| mask | (1 << cells[index]));
                 puzzle.add_peers(peers);
                 houses.push(house);
             }
@@ -51,9 +53,15 @@ impl InsideGrid {
             supported.fill(DIGITS);
             return;
         }
-        let required = domains.iter().filter(|mask| mask.is_power_of_two()).fold(0, |mask, &digit| mask | digit);
+        let required = domains
+            .iter()
+            .filter(|mask| mask.is_power_of_two())
+            .fold(0, |mask, &digit| mask | digit);
         let allowed = self.houses.iter().fold(DIGITS, |allowed, house| {
-            allowed & house[..self.size].iter().fold(0, |mask, &cell| mask | domains[cell])
+            allowed
+                & house[..self.size]
+                    .iter()
+                    .fold(0, |mask, &cell| mask | domains[cell])
         });
         if required & !allowed != 0 {
             return;
@@ -62,7 +70,8 @@ impl InsideGrid {
         let mut extra = optional;
         loop {
             let set = required | extra;
-            if set.count_ones() as usize == self.size && self.collect_set(set, domains, supported)
+            if set.count_ones() as usize == self.size
+                && self.collect_set(set, domains, supported)
                 && supported == domains
             {
                 return;

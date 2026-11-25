@@ -26,8 +26,8 @@ A complete encoded rule list can still omit instructions on the author's publish
 
 | Preserved source | Remaining gap |
 | --- | --- |
-| [LEjN, Entropic Spiral](https://sudoku.coach/en/s/LEjN) | The export encodes Global Entropy and eighteen positive paths. Its author also forbids connections at spiral breaks. [Issue 168](https://github.com/coder13/sudoku-app/issues/168) tracks that mathematical rule. Decoding the positive payload does not establish complete authored support. |
-| [7nms, Entropic Order](https://sudoku.coach/en/s/7nms) | Seven outside L/M/H letters order the specified group's digits from the clue direction. They are stored as cosmetic text and remain an explicit import error. [Issue 169](https://github.com/coder13/sudoku-app/issues/169) tracks the rule. |
+| [LEjN, Entropic Spiral](https://sudoku.coach/en/s/LEjN) | Its exact reviewed pasted export and public short link import Global Entropy, eighteen positive paths, and sixteen forbidden connections at adjacent spiral breaks. The native solver verifies the published unique completion and a counterexample for invalid cross-gap joins. Visible gap-clue presentation remains open. [Issue 168](https://github.com/coder13/sudoku-app/issues/168) |
+| [7nms, Entropic Order](https://sudoku.coach/en/s/7nms) | The reviewed pasted code and public short link import all seven L/M/H clues as typed digit-order rules and verify the published unique completion. Rendering the outside labels remains open under [issue 169](https://github.com/coder13/sudoku-app/issues/169). |
 | [FLAb, AJT’s Bento: Entropy](https://sudoku.coach/en/s/FLAb) | Region geometry, Pill Arrows and cosmetic geometry remain unsupported. |
 | [Hu9m, Entropy 7/13](https://sudoku.coach/en/s/Hu9m) | Modular Lines remain unsupported. Retain the global rule, every sum, thermometer and ratio marker. |
 

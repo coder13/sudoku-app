@@ -125,7 +125,11 @@ export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
         : mark.type === 'tile'
           ? <rect key={index} x={mark.center[0] - mark.size / 2} y={mark.center[1] - mark.size / 2}
             width={mark.size} height={mark.size} fill={mark.color} fillOpacity={mark.opacity / 255}
-            transform={`rotate(${mark.rotation} ${mark.center[0]} ${mark.center[1]})`} /> : null)}
+            transform={`rotate(${mark.rotation} ${mark.center[0]} ${mark.center[1]})`} />
+          : <text key={index} x={mark.center[0]} y={mark.center[1] + mark.offsetY} textAnchor="middle"
+            dominantBaseline="central" fontSize={mark.size} fontWeight="700" fill={mark.color}
+            fillOpacity={mark.opacity / 255} stroke={mark.outlineColor} strokeWidth={mark.outlineThickness}
+            paintOrder="stroke" strokeLinejoin="round">{mark.text}</text>)}
   </svg>
 })
 

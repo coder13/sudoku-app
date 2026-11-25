@@ -30,8 +30,19 @@ const sources = ['newman', 'murphy', 'clover', 'coach-transcription', 'mixed'].m
       solution: string
     },
 )
+const authoredCoach = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string; name: string }
+}
 const share = (puzzle: VariantPuzzle) =>
   '#variant=' + encodeURIComponent(JSON.stringify({ id: variantIdForPuzzle(puzzle), puzzle }))
+
+test('the reviewed original Coach AsnF export imports and verifies through the app engine', async () => {
+  const { game } = await prepareImportedPuzzle(authoredCoach.metadata.sudoku)
+  assert.equal(game.title, authoredCoach.metadata.name)
+  assert.equal(game.variant?.solution, authoredCoach.metadata.solution)
+  assert.equal(game.variant?.puzzle.rules?.length, 16)
+  assertVariantCompletion(game.variant!.puzzle, authoredCoach.metadata.solution)
+})
 
 for (const [index, source] of sources.entries()) {
   test(source.title + ' imports all rules with multiple valid hints and a complete checked human path', async () => {

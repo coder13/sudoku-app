@@ -1,7 +1,7 @@
 use super::{ExampleSeed, seed};
 use crate::{
-    ClueDirection, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs, Parity as CellParity, PuzzleRule,
-    VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
+    ClueDirection, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs, Parity as CellParity,
+    PuzzleRule, VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
 };
 
 // Published SudokuWiki Pattern Overlay Jigsaw example, shape 14. The packed
@@ -57,6 +57,7 @@ pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
         puzzle,
         entries,
         eliminations,
+        shades: [0; 81],
     }
 }
 
@@ -65,45 +66,88 @@ pub(super) fn pattern_overlay_jigsaw() -> VariantPosition {
 fn matching_digit_seed(givens: &'static str, cell: usize, digit: u8, clone: bool) -> ExampleSeed {
     let paths: [&[usize]; 3] = [
         &[
-            35, 34, 44, 53, 43, 52, 60, 61, 62, 71, 79, 80, 70, 69, 68, 59,
-            58, 49, 48, 39, 30, 40, 41, 42, 33, 32, 31, 22, 23, 24, 15, 6,
-            7, 17, 16,
+            35, 34, 44, 53, 43, 52, 60, 61, 62, 71, 79, 80, 70, 69, 68, 59, 58, 49, 48, 39, 30, 40,
+            41, 42, 33, 32, 31, 22, 23, 24, 15, 6, 7, 17, 16,
         ],
         &[
-            72, 63, 73, 74, 75, 76, 77, 67, 57, 56, 47, 55, 46, 36, 27, 37,
-            38,
+            72, 63, 73, 74, 75, 76, 77, 67, 57, 56, 47, 55, 46, 36, 27, 37, 38,
         ],
-        &[
-            21, 12, 4, 3, 11, 19, 20, 28, 29,
-        ],
+        &[21, 12, 4, 3, 11, 19, 20, 28, 29],
     ];
     let matching = paths.map(|cells| {
         if clone {
-            let groups = cells.iter().zip(cells.iter().rev()).take(cells.len() / 2)
-                .map(|(&left, &right)| vec![left, right]).collect();
+            let groups = cells
+                .iter()
+                .zip(cells.iter().rev())
+                .take(cells.len() / 2)
+                .map(|(&left, &right)| vec![left, right])
+                .collect();
             PuzzleRule::Clone { groups }
         } else {
-            PuzzleRule::Palindrome { cells: cells.to_vec(), segments: None }
+            PuzzleRule::Palindrome {
+                cells: cells.to_vec(),
+                segments: None,
+            }
         }
     });
     let mut example = seed(givens, cell, digit, matching);
     example.rules.extend([
-        PuzzleRule::Inequality { less: 50, greater: 49 },
-        PuzzleRule::Inequality { less: 52, greater: 51 },
-        PuzzleRule::Inequality { less: 34, greater: 25 },
-        PuzzleRule::Inequality { less: 13, greater: 4 },
-        PuzzleRule::Inequality { less: 30, greater: 31 },
-        PuzzleRule::Inequality { less: 11, greater: 2 },
-        PuzzleRule::Inequality { less: 19, greater: 18 },
+        PuzzleRule::Inequality {
+            less: 50,
+            greater: 49,
+        },
+        PuzzleRule::Inequality {
+            less: 52,
+            greater: 51,
+        },
+        PuzzleRule::Inequality {
+            less: 34,
+            greater: 25,
+        },
+        PuzzleRule::Inequality {
+            less: 13,
+            greater: 4,
+        },
+        PuzzleRule::Inequality {
+            less: 30,
+            greater: 31,
+        },
+        PuzzleRule::Inequality {
+            less: 11,
+            greater: 2,
+        },
+        PuzzleRule::Inequality {
+            less: 19,
+            greater: 18,
+        },
         PuzzleRule::Kropki {
             consecutive: positive_pairs([[23, 14], [80, 71], [38, 29], [64, 55], [43, 34]]),
             ratio_two: MarkedPairs::default(),
         },
     ]);
     example.removals = &[
-        (2, 1), (3, 256), (4, 1), (11, 256), (13, 256), (15, 256), (17, 256), (18, 1),
-        (19, 256), (20, 1), (24, 256), (25, 3), (30, 256), (31, 1), (34, 256), (43, 256),
-        (49, 1), (50, 256), (51, 1), (52, 256), (62, 1), (68, 256),
+        (2, 1),
+        (3, 256),
+        (4, 1),
+        (11, 256),
+        (13, 256),
+        (15, 256),
+        (17, 256),
+        (18, 1),
+        (19, 256),
+        (20, 1),
+        (24, 256),
+        (25, 3),
+        (30, 256),
+        (31, 1),
+        (34, 256),
+        (43, 256),
+        (49, 1),
+        (50, 256),
+        (51, 1),
+        (52, 256),
+        (62, 1),
+        (68, 256),
     ];
     example
 }
@@ -142,12 +186,29 @@ fn linked_clue_seed(
         &[13, 12, 11, 2],
         &[1, 0, 9, 18],
     ];
-    let mut example = seed(givens, cell, digit, lines.map(|cells| PuzzleRule::Between {
-        cells: cells.to_vec(),
-    }));
+    let mut example = seed(
+        givens,
+        cell,
+        digit,
+        lines.map(|cells| PuzzleRule::Between {
+            cells: cells.to_vec(),
+        }),
+    );
     example.rules.push(PuzzleRule::Kropki {
         consecutive: MarkedPairs::default(),
-        ratio_two: positive_pairs([[53, 62], [42, 41], [36, 37], [46, 47], [56, 65], [58, 49], [31, 22], [21, 12], [14, 5], [8, 17], [57, 66]]),
+        ratio_two: positive_pairs([
+            [53, 62],
+            [42, 41],
+            [36, 37],
+            [46, 47],
+            [56, 65],
+            [58, 49],
+            [31, 22],
+            [21, 12],
+            [14, 5],
+            [8, 17],
+            [57, 66],
+        ]),
     });
     example.removals = removals;
     example
@@ -156,13 +217,25 @@ fn linked_clue_seed(
 // The three positions retain the source geometry from Coach puzzle BSms.
 fn renban_group_seed(givens: &'static str, cell: usize, digit: u8) -> ExampleSeed {
     let lines: [&[usize]; 9] = [
-        &[42, 52, 62, 70], &[15, 23, 33, 43], &[16, 6, 14, 22],
-        &[11, 21, 31, 39], &[30, 38, 48, 58], &[67, 57, 47, 55],
-        &[79, 69, 59, 51], &[54, 46, 36], &[74, 66, 76],
+        &[42, 52, 62, 70],
+        &[15, 23, 33, 43],
+        &[16, 6, 14, 22],
+        &[11, 21, 31, 39],
+        &[30, 38, 48, 58],
+        &[67, 57, 47, 55],
+        &[79, 69, 59, 51],
+        &[54, 46, 36],
+        &[74, 66, 76],
     ];
-    seed(givens, cell, digit, lines.map(|cells| PuzzleRule::Renban {
-        cells: cells.to_vec(), segments: None,
-    }))
+    seed(
+        givens,
+        cell,
+        digit,
+        lines.map(|cells| PuzzleRule::Renban {
+            cells: cells.to_vec(),
+            segments: None,
+        }),
+    )
 }
 
 fn cage(sum: u16, cells: &[usize]) -> KillerCage {
@@ -172,12 +245,16 @@ fn cage(sum: u16, cells: &[usize]) -> KillerCage {
     }
 }
 
-
 fn white_dot_seed(givens: &'static str, pair: [usize; 2], cell: usize, digit: u8) -> ExampleSeed {
-    seed(givens, cell, digit, [PuzzleRule::Kropki {
-        consecutive: positive_pairs([pair]),
-        ratio_two: MarkedPairs::default(),
-    }])
+    seed(
+        givens,
+        cell,
+        digit,
+        [PuzzleRule::Kropki {
+            consecutive: positive_pairs([pair]),
+            ratio_two: MarkedPairs::default(),
+        }],
+    )
 }
 
 fn positive_pairs<const N: usize>(pairs: [[usize; 2]; N]) -> MarkedPairs {
@@ -189,15 +266,36 @@ fn positive_pairs<const N: usize>(pairs: [[usize; 2]; N]) -> MarkedPairs {
 
 fn entropic_order_practice(givens: &'static str, cell: usize, digit: u8) -> ExampleSeed {
     seed(
-        givens, cell, digit,
+        givens,
+        cell,
+        digit,
         [
-            PuzzleRule::Entropic { cells: vec![59,51,52,44,35,26,17,25,24,23,31,21,20,19,9,18,27,36,46,47,57] },
-            PuzzleRule::Entropic { cells: vec![34,33,41] },
-            PuzzleRule::Entropic { cells: vec![28,29,39] },
-            PuzzleRule::Entropic { cells: vec![45,55,56,66,76,68,60,61,53] },
+            PuzzleRule::Entropic {
+                cells: vec![
+                    59, 51, 52, 44, 35, 26, 17, 25, 24, 23, 31, 21, 20, 19, 9, 18, 27, 36, 46, 47,
+                    57,
+                ],
+            },
+            PuzzleRule::Entropic {
+                cells: vec![34, 33, 41],
+            },
+            PuzzleRule::Entropic {
+                cells: vec![28, 29, 39],
+            },
+            PuzzleRule::Entropic {
+                cells: vec![45, 55, 56, 66, 76, 68, 60, 61, 53],
+            },
             PuzzleRule::Xv {
                 five: positive_pairs([[67, 58], [38, 29], [42, 33]]),
-                ten: positive_pairs([[49, 40], [24, 15], [20, 11], [65, 64], [70, 69], [8, 7], [1, 0]]),
+                ten: positive_pairs([
+                    [49, 40],
+                    [24, 15],
+                    [20, 11],
+                    [65, 64],
+                    [70, 69],
+                    [8, 7],
+                    [1, 0],
+                ]),
             },
             PuzzleRule::Kropki {
                 ratio_two: MarkedPairs::default(),
@@ -208,15 +306,27 @@ fn entropic_order_practice(givens: &'static str, cell: usize, digit: u8) -> Exam
 }
 
 // The paths come from the three lines crossing box 9 of Coach puzzle FaxQ.
-fn region_sum_house_seed(givens: &'static str, cell: usize, digit: u8, include_first: bool) -> ExampleSeed {
+fn region_sum_house_seed(
+    givens: &'static str,
+    cell: usize,
+    digit: u8,
+    include_first: bool,
+) -> ExampleSeed {
     let lines: [&[usize]; 3] = [
         &[20, 30, 40, 50, 60, 70, 80],
         &[78, 79, 69, 59, 58],
         &[62, 71, 61, 51, 42, 43],
     ];
-    let mut example = seed(givens, cell, digit, lines.map(|cells| PuzzleRule::RegionSum {
-        cells: cells.to_vec(), group_by_region: false, segments: None,
-    }));
+    let mut example = seed(
+        givens,
+        cell,
+        digit,
+        lines.map(|cells| PuzzleRule::RegionSum {
+            cells: cells.to_vec(),
+            group_by_region: false,
+            segments: None,
+        }),
+    );
     if !include_first {
         example.rules.remove(0);
     }
@@ -231,15 +341,33 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         ConsecutiveRun => [
             seed(
                 "209105307003068050805320609914530876307006025026780431732604090650291003490073560",
-                10, 4, [PuzzleRule::ConsecutiveRun { cells: vec![10, 18, 27], color: None, from_bulb: false }],
+                10,
+                4,
+                [PuzzleRule::ConsecutiveRun {
+                    cells: vec![10, 18, 27],
+                    color: None,
+                    from_bulb: false,
+                }],
             ),
             seed(
                 "209140087170960204845327619914032800007400925506789401732654198650291743491870560",
-                14, 5, [PuzzleRule::ConsecutiveRun { cells: vec![13, 23, 14], color: None, from_bulb: false }],
+                14,
+                5,
+                [PuzzleRule::ConsecutiveRun {
+                    cells: vec![13, 23, 14],
+                    color: None,
+                    from_bulb: false,
+                }],
             ),
             seed(
                 "209045387173068200005327600900532876387406925500789031732050100608091743490803562",
-                29, 1, [PuzzleRule::ConsecutiveRun { cells: vec![21, 29, 20], color: None, from_bulb: false }],
+                29,
+                1,
+                [PuzzleRule::ConsecutiveRun {
+                    cells: vec![21, 29, 20],
+                    color: None,
+                    from_bulb: false,
+                }],
             ),
         ],
         InsideGrid => {
@@ -249,227 +377,711 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             [
                 seed(
                     "794608205518902764236745981823176549459823176167459328981367452345281697672594813",
-                    4, 3, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                    4,
+                    3,
+                    [PuzzleRule::InsideGrid { rows: rows.clone() }],
                 ),
                 seed(
                     "794618235018930764236740981823176549459823176167459328981367452345281697672594813",
-                    14, 5, [PuzzleRule::InsideGrid { rows: rows.clone() }],
+                    14,
+                    5,
+                    [PuzzleRule::InsideGrid { rows: rows.clone() }],
                 ),
                 seed(
                     "794618235518932764236745981823176549459023176167059320981367452345281697672594813",
-                    48, 8, [PuzzleRule::InsideGrid { rows }],
+                    48,
+                    8,
+                    [PuzzleRule::InsideGrid { rows }],
                 ),
             ]
-        },
+        }
         DistinctCells => [
             seed(
                 "534678912002195348198342567859761423426853791713924856901537284287419635345286179",
-                10, 6, [PuzzleRule::DistinctCells { cells: vec![3, 10], color: None }],
+                10,
+                6,
+                [PuzzleRule::DistinctCells {
+                    cells: vec![3, 10],
+                    color: None,
+                }],
             ),
             seed(
                 "534678912672195348198342567809761403426853791713924806961537284287419635345286179",
-                34, 5, [PuzzleRule::DistinctCells { cells: vec![0, 34, 1], color: None }],
+                34,
+                5,
+                [PuzzleRule::DistinctCells {
+                    cells: vec![0, 34, 1],
+                    color: None,
+                }],
             ),
             seed(
                 "534678912672195348198342567859761423426853791713924856961537284280419630340286179",
-                65, 5, [PuzzleRule::DistinctCells { cells: vec![0, 65, 1, 2], color: None }],
+                65,
+                5,
+                [PuzzleRule::DistinctCells {
+                    cells: vec![0, 65, 1, 2],
+                    color: None,
+                }],
+            ),
+        ],
+        DigitOrder => [
+            seed(
+                "060042003830106050520837009380064192072018536190250704607089425948620370250471068",
+                3,
+                9,
+                [PuzzleRule::DigitOrder {
+                    cells: (0..9).rev().collect(),
+                    digits: vec![4, 5, 6],
+                }],
+            ),
+            seed(
+                "004006257521837649769042803385064192470918536096253704617009025948625370050071008",
+                21,
+                1,
+                [PuzzleRule::DigitOrder {
+                    cells: (18..27).rev().collect(),
+                    digits: vec![4, 5, 6],
+                }],
+            ),
+            seed(
+                "804106050700540803520807640380764102002018006090053784010009425948025301203070008",
+                11,
+                6,
+                [PuzzleRule::DigitOrder {
+                    cells: (9..18).rev().collect(),
+                    digits: vec![4, 5, 6],
+                }],
             ),
         ],
         LetteredQuadruples => {
             let rules = || {
-                let clues = [(9, "AOUG"), (12, "IVGE"), (15, "NEO"), (16, "EVO"), (27, "EVO"),
-                    (31, "AEOR"), (39, "NAI"), (43, "IUN"), (54, "AGE"), (57, "NRU"), (61, "VEUR")]
-                    .into_iter().map(|(top_left, letters)| LetteredQuadruple { top_left, letters: letters.into() }).collect();
+                let clues = [
+                    (9, "AOUG"),
+                    (12, "IVGE"),
+                    (15, "NEO"),
+                    (16, "EVO"),
+                    (27, "EVO"),
+                    (31, "AEOR"),
+                    (39, "NAI"),
+                    (43, "IUN"),
+                    (54, "AGE"),
+                    (57, "NRU"),
+                    (61, "VEUR"),
+                ]
+                .into_iter()
+                .map(|(top_left, letters)| LetteredQuadruple {
+                    top_left,
+                    letters: letters.into(),
+                })
+                .collect();
                 [
                     PuzzleRule::LetteredQuadruples { clues },
-                    PuzzleRule::ExtraHouse { cells: vec![1, 14, 28, 40, 49, 48, 50, 43, 2] },
-                    PuzzleRule::Palindrome { cells: vec![19, 29, 39, 48], segments: None },
-                    PuzzleRule::Palindrome { cells: vec![2, 12, 22], segments: None },
+                    PuzzleRule::ExtraHouse {
+                        cells: vec![1, 14, 28, 40, 49, 48, 50, 43, 2],
+                    },
+                    PuzzleRule::Palindrome {
+                        cells: vec![19, 29, 39, 48],
+                        segments: None,
+                    },
+                    PuzzleRule::Palindrome {
+                        cells: vec![2, 12, 22],
+                        segments: None,
+                    },
                 ]
             };
             [
-                seed("015468370687239154430751862761895243523146987894372516356917428142683795078524631", 0, 9, rules()),
-                seed("215468379687239150439751862761895200523146987894372516356917428142683795978524631", 35, 4, rules()),
-                seed("215468379687239154439751862761895243523146987894372506356907408142683795978524630", 61, 1, rules()),
+                seed(
+                    "015468370687239154430751862761895243523146987894372516356917428142683795078524631",
+                    0,
+                    9,
+                    rules(),
+                ),
+                seed(
+                    "215468379687239150439751862761895200523146987894372516356917428142683795978524631",
+                    35,
+                    4,
+                    rules(),
+                ),
+                seed(
+                    "215468379687239154439751862761895243523146987894372506356907408142683795978524630",
+                    61,
+                    1,
+                    rules(),
+                ),
             ]
-        },
+        }
         MatchingLayoutForcing => [
             matching_layout_seed(
                 "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                50, 1, false, &[
-                    (0, 257), (2, 1), (3, 384), (4, 1), (7, 257), (8, 3), (11, 256), (12, 257),
-                    (13, 256), (14, 1), (15, 257), (17, 256), (18, 257), (19, 384), (20, 1),
-                    (22, 256), (23, 1), (24, 257), (25, 3), (27, 257), (28, 257), (30, 256),
-                    (31, 1), (32, 257), (34, 256), (40, 256), (42, 259), (43, 257), (44, 257),
-                    (46, 257), (47, 384), (49, 1), (50, 256), (51, 3), (52, 257), (54, 256),
-                    (56, 257), (57, 1), (60, 1), (61, 256), (62, 1), (64, 1), (65, 256), (67, 257), (68, 256), (69, 256), (71, 257), (73, 257), (75, 257), (77, 384), (80, 259),
+                50,
+                1,
+                false,
+                &[
+                    (0, 257),
+                    (2, 1),
+                    (3, 384),
+                    (4, 1),
+                    (7, 257),
+                    (8, 3),
+                    (11, 256),
+                    (12, 257),
+                    (13, 256),
+                    (14, 1),
+                    (15, 257),
+                    (17, 256),
+                    (18, 257),
+                    (19, 384),
+                    (20, 1),
+                    (22, 256),
+                    (23, 1),
+                    (24, 257),
+                    (25, 3),
+                    (27, 257),
+                    (28, 257),
+                    (30, 256),
+                    (31, 1),
+                    (32, 257),
+                    (34, 256),
+                    (40, 256),
+                    (42, 259),
+                    (43, 257),
+                    (44, 257),
+                    (46, 257),
+                    (47, 384),
+                    (49, 1),
+                    (50, 256),
+                    (51, 3),
+                    (52, 257),
+                    (54, 256),
+                    (56, 257),
+                    (57, 1),
+                    (60, 1),
+                    (61, 256),
+                    (62, 1),
+                    (64, 1),
+                    (65, 256),
+                    (67, 257),
+                    (68, 256),
+                    (69, 256),
+                    (71, 257),
+                    (73, 257),
+                    (75, 257),
+                    (77, 384),
+                    (80, 259),
                 ],
             ),
             matching_layout_seed(
                 "400000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                1, 9, false, &[
-                    (0, 387), (2, 3), (3, 448), (4, 1), (5, 128), (6, 256), (7, 257), (8, 263),
-                    (9, 259), (11, 256), (12, 385), (13, 384), (14, 3), (15, 387), (17, 257),
-                    (18, 385), (19, 448), (20, 1), (21, 259), (22, 256), (23, 259), (24, 259),
-                    (25, 7), (27, 259), (28, 385), (29, 259), (30, 256), (31, 3), (32, 387),
-                    (34, 257), (38, 3), (40, 384), (41, 259), (42, 391), (43, 387), (44, 257),
-                    (46, 387), (47, 448), (48, 128), (49, 259), (50, 385), (51, 7), (52, 259),
-                    (53, 256), (54, 384), (55, 259), (56, 385), (57, 257), (58, 128), (60, 259),
-                    (61, 256), (62, 3), (64, 3), (65, 384), (66, 3), (67, 385), (68, 256), (69, 384), (70, 259), (71, 387), (72, 3), (73, 259), (75, 387), (76, 259), (77, 448), (78, 1), (80, 391),
+                1,
+                9,
+                false,
+                &[
+                    (0, 387),
+                    (2, 3),
+                    (3, 448),
+                    (4, 1),
+                    (5, 128),
+                    (6, 256),
+                    (7, 257),
+                    (8, 263),
+                    (9, 259),
+                    (11, 256),
+                    (12, 385),
+                    (13, 384),
+                    (14, 3),
+                    (15, 387),
+                    (17, 257),
+                    (18, 385),
+                    (19, 448),
+                    (20, 1),
+                    (21, 259),
+                    (22, 256),
+                    (23, 259),
+                    (24, 259),
+                    (25, 7),
+                    (27, 259),
+                    (28, 385),
+                    (29, 259),
+                    (30, 256),
+                    (31, 3),
+                    (32, 387),
+                    (34, 257),
+                    (38, 3),
+                    (40, 384),
+                    (41, 259),
+                    (42, 391),
+                    (43, 387),
+                    (44, 257),
+                    (46, 387),
+                    (47, 448),
+                    (48, 128),
+                    (49, 259),
+                    (50, 385),
+                    (51, 7),
+                    (52, 259),
+                    (53, 256),
+                    (54, 384),
+                    (55, 259),
+                    (56, 385),
+                    (57, 257),
+                    (58, 128),
+                    (60, 259),
+                    (61, 256),
+                    (62, 3),
+                    (64, 3),
+                    (65, 384),
+                    (66, 3),
+                    (67, 385),
+                    (68, 256),
+                    (69, 384),
+                    (70, 259),
+                    (71, 387),
+                    (72, 3),
+                    (73, 259),
+                    (75, 387),
+                    (76, 259),
+                    (77, 448),
+                    (78, 1),
+                    (80, 391),
                 ],
             ),
             matching_layout_seed(
                 "050000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                25, 8, true, &[
-                    (0, 387), (1, 256), (2, 3), (3, 448), (4, 1), (5, 128), (6, 256), (7, 257),
-                    (8, 263), (9, 259), (11, 256), (12, 385), (13, 384), (14, 3), (15, 387),
-                    (17, 257), (18, 385), (19, 448), (20, 1), (21, 259), (22, 256), (23, 259),
-                    (24, 259), (25, 7), (27, 259), (28, 385), (29, 259), (30, 256), (31, 3),
-                    (32, 387), (34, 257), (38, 3), (40, 384), (41, 259), (42, 391), (43, 387),
-                    (44, 257), (46, 387), (47, 448), (48, 128), (49, 259), (50, 385), (51, 7),
-                    (52, 259), (53, 256), (54, 384), (55, 259), (56, 385), (57, 257), (58, 128),
-                    (60, 259), (61, 256), (62, 3), (64, 3), (65, 384), (66, 3), (67, 385), (68, 256), (69, 384), (70, 259), (71, 387), (72, 3), (73, 259), (75, 387), (76, 259), (77, 448), (78, 1), (80, 391),
+                25,
+                8,
+                true,
+                &[
+                    (0, 387),
+                    (1, 256),
+                    (2, 3),
+                    (3, 448),
+                    (4, 1),
+                    (5, 128),
+                    (6, 256),
+                    (7, 257),
+                    (8, 263),
+                    (9, 259),
+                    (11, 256),
+                    (12, 385),
+                    (13, 384),
+                    (14, 3),
+                    (15, 387),
+                    (17, 257),
+                    (18, 385),
+                    (19, 448),
+                    (20, 1),
+                    (21, 259),
+                    (22, 256),
+                    (23, 259),
+                    (24, 259),
+                    (25, 7),
+                    (27, 259),
+                    (28, 385),
+                    (29, 259),
+                    (30, 256),
+                    (31, 3),
+                    (32, 387),
+                    (34, 257),
+                    (38, 3),
+                    (40, 384),
+                    (41, 259),
+                    (42, 391),
+                    (43, 387),
+                    (44, 257),
+                    (46, 387),
+                    (47, 448),
+                    (48, 128),
+                    (49, 259),
+                    (50, 385),
+                    (51, 7),
+                    (52, 259),
+                    (53, 256),
+                    (54, 384),
+                    (55, 259),
+                    (56, 385),
+                    (57, 257),
+                    (58, 128),
+                    (60, 259),
+                    (61, 256),
+                    (62, 3),
+                    (64, 3),
+                    (65, 384),
+                    (66, 3),
+                    (67, 385),
+                    (68, 256),
+                    (69, 384),
+                    (70, 259),
+                    (71, 387),
+                    (72, 3),
+                    (73, 259),
+                    (75, 387),
+                    (76, 259),
+                    (77, 448),
+                    (78, 1),
+                    (80, 391),
                 ],
             ),
         ],
         MatchingDigitContradiction => [
             matching_digit_seed(
                 "400070100010400070000000009006100000000000000000004000000000003000040000000000000",
-                7, 6, false,
+                7,
+                6,
+                false,
             ),
             matching_digit_seed(
                 "000070006010409000307010000000000020005720400000004000200000000000000000000000000",
-                3, 5, true,
+                3,
+                5,
+                true,
             ),
             matching_digit_seed(
                 "400000006610009000007018009006000020090000000730000050004500000003000000000000000",
-                7, 3, false,
+                7,
+                3,
+                false,
             ),
         ],
         LinkedClueContradiction => [
             linked_clue_seed(
                 "090100080080090100001000090109000000000010009000900001000001902900000018010009000",
-                78, 6,
+                78,
+                6,
                 &[
-                    (0, 258), (2, 480), (4, 431), (5, 465), (6, 421), (8, 344), (9, 3),
-                    (11, 3), (12, 339), (14, 336), (16, 293), (17, 345), (18, 64), (19, 385),
-                    (21, 345), (22, 345), (23, 431), (24, 293), (26, 293), (28, 385), (30, 393),
-                    (31, 467), (32, 257), (33, 257), (35, 293), (36, 337), (37, 465), (38, 257),
-                    (39, 393), (41, 337), (42, 337), (43, 323), (45, 257), (46, 465), (47, 337),
-                    (49, 465), (50, 257), (51, 257), (52, 323), (54, 257), (55, 385), (56, 337),
-                    (57, 337), (58, 337), (61, 256), (64, 385), (65, 465), (66, 465), (67, 393),
-                    (68, 385), (69, 385), (74, 257), (75, 265), (76, 265), (78, 64), (79, 261),
+                    (0, 258),
+                    (2, 480),
+                    (4, 431),
+                    (5, 465),
+                    (6, 421),
+                    (8, 344),
+                    (9, 3),
+                    (11, 3),
+                    (12, 339),
+                    (14, 336),
+                    (16, 293),
+                    (17, 345),
+                    (18, 64),
+                    (19, 385),
+                    (21, 345),
+                    (22, 345),
+                    (23, 431),
+                    (24, 293),
+                    (26, 293),
+                    (28, 385),
+                    (30, 393),
+                    (31, 467),
+                    (32, 257),
+                    (33, 257),
+                    (35, 293),
+                    (36, 337),
+                    (37, 465),
+                    (38, 257),
+                    (39, 393),
+                    (41, 337),
+                    (42, 337),
+                    (43, 323),
+                    (45, 257),
+                    (46, 465),
+                    (47, 337),
+                    (49, 465),
+                    (50, 257),
+                    (51, 257),
+                    (52, 323),
+                    (54, 257),
+                    (55, 385),
+                    (56, 337),
+                    (57, 337),
+                    (58, 337),
+                    (61, 256),
+                    (64, 385),
+                    (65, 465),
+                    (66, 465),
+                    (67, 393),
+                    (68, 385),
+                    (69, 385),
+                    (74, 257),
+                    (75, 265),
+                    (76, 265),
+                    (78, 64),
+                    (79, 261),
                     (80, 293),
                 ],
             ),
             linked_clue_seed(
                 "090100080085090100001000090109000000000010059000900001000001902900000018010009000",
-                9, 6,
+                9,
+                6,
                 &[
-                    (0, 274), (2, 496), (4, 431), (5, 465), (6, 421), (8, 344), (9, 3),
-                    (12, 339), (14, 336), (16, 293), (17, 345), (18, 80), (19, 401), (21, 345),
-                    (22, 345), (23, 431), (24, 293), (26, 293), (28, 385), (30, 393), (31, 467),
-                    (32, 257), (33, 257), (35, 293), (36, 337), (37, 465), (38, 257), (39, 393),
-                    (41, 337), (42, 337), (45, 265), (46, 465), (47, 337), (49, 473), (50, 265),
-                    (51, 265), (52, 323), (54, 257), (55, 385), (56, 337), (57, 337), (58, 465),
-                    (61, 256), (64, 401), (65, 465), (66, 465), (67, 393), (68, 393), (69, 385),
-                    (72, 80), (74, 273), (75, 265), (76, 281), (78, 96), (79, 261), (80, 293),
+                    (0, 274),
+                    (2, 496),
+                    (4, 431),
+                    (5, 465),
+                    (6, 421),
+                    (8, 344),
+                    (9, 3),
+                    (12, 339),
+                    (14, 336),
+                    (16, 293),
+                    (17, 345),
+                    (18, 80),
+                    (19, 401),
+                    (21, 345),
+                    (22, 345),
+                    (23, 431),
+                    (24, 293),
+                    (26, 293),
+                    (28, 385),
+                    (30, 393),
+                    (31, 467),
+                    (32, 257),
+                    (33, 257),
+                    (35, 293),
+                    (36, 337),
+                    (37, 465),
+                    (38, 257),
+                    (39, 393),
+                    (41, 337),
+                    (42, 337),
+                    (45, 265),
+                    (46, 465),
+                    (47, 337),
+                    (49, 473),
+                    (50, 265),
+                    (51, 265),
+                    (52, 323),
+                    (54, 257),
+                    (55, 385),
+                    (56, 337),
+                    (57, 337),
+                    (58, 465),
+                    (61, 256),
+                    (64, 401),
+                    (65, 465),
+                    (66, 465),
+                    (67, 393),
+                    (68, 393),
+                    (69, 385),
+                    (72, 80),
+                    (74, 273),
+                    (75, 265),
+                    (76, 281),
+                    (78, 96),
+                    (79, 261),
+                    (80, 293),
                 ],
             ),
             linked_clue_seed(
                 "090100080085090100001000090109000800000010059000900001000001902900000018010009000",
-                39, 3,
+                39,
+                3,
                 &[
-                    (0, 274), (2, 496), (4, 431), (5, 465), (6, 421), (8, 344), (9, 35),
-                    (12, 339), (14, 336), (16, 293), (17, 345), (18, 112), (19, 401), (21, 345),
-                    (22, 345), (23, 431), (24, 293), (26, 293), (28, 385), (30, 393), (31, 467),
-                    (32, 257), (35, 293), (36, 337), (37, 465), (38, 257), (39, 393), (41, 337),
-                    (42, 337), (45, 265), (46, 465), (47, 337), (49, 473), (50, 265), (51, 265),
-                    (52, 323), (54, 257), (55, 385), (56, 337), (57, 337), (58, 465), (61, 264),
-                    (64, 401), (65, 465), (66, 465), (67, 393), (68, 393), (69, 385), (72, 80),
-                    (74, 273), (75, 265), (76, 281), (78, 96), (79, 261), (80, 293),
+                    (0, 274),
+                    (2, 496),
+                    (4, 431),
+                    (5, 465),
+                    (6, 421),
+                    (8, 344),
+                    (9, 35),
+                    (12, 339),
+                    (14, 336),
+                    (16, 293),
+                    (17, 345),
+                    (18, 112),
+                    (19, 401),
+                    (21, 345),
+                    (22, 345),
+                    (23, 431),
+                    (24, 293),
+                    (26, 293),
+                    (28, 385),
+                    (30, 393),
+                    (31, 467),
+                    (32, 257),
+                    (35, 293),
+                    (36, 337),
+                    (37, 465),
+                    (38, 257),
+                    (39, 393),
+                    (41, 337),
+                    (42, 337),
+                    (45, 265),
+                    (46, 465),
+                    (47, 337),
+                    (49, 473),
+                    (50, 265),
+                    (51, 265),
+                    (52, 323),
+                    (54, 257),
+                    (55, 385),
+                    (56, 337),
+                    (57, 337),
+                    (58, 465),
+                    (61, 264),
+                    (64, 401),
+                    (65, 465),
+                    (66, 465),
+                    (67, 393),
+                    (68, 393),
+                    (69, 385),
+                    (72, 80),
+                    (74, 273),
+                    (75, 265),
+                    (76, 281),
+                    (78, 96),
+                    (79, 261),
+                    (80, 293),
                 ],
             ),
         ],
         GroupOrderElimination => [
             seed(
                 "307010048410000000000704000000048600630071050000000380903000007000507830070103200",
-                19, 6,
+                19,
+                6,
                 [
-                    PuzzleRule::AdjacentTotal { cells: [46, 37], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [22, 31], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [2, 3], sum: 13 },
-                    PuzzleRule::Modular { cells: vec![1, 10, 19, 28, 27] },
-                    PuzzleRule::Modular { cells: vec![14, 15, 16, 25, 34, 43] },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [46, 37],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [22, 31],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [2, 3],
+                        sum: 13,
+                    },
+                    PuzzleRule::Modular {
+                        cells: vec![1, 10, 19, 28, 27],
+                    },
+                    PuzzleRule::Modular {
+                        cells: vec![14, 15, 16, 25, 34, 43],
+                    },
                 ],
             ),
             seed(
                 "350600000010000723000000060020008079030901000009200080003000500000000804000003290",
-                22, 2,
+                22,
+                2,
                 [
-                    PuzzleRule::AdjacentTotal { cells: [27, 36], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [22, 31], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [23, 22], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [72, 63], sum: 7 },
-                    PuzzleRule::AdjacentTotal { cells: [62, 71], sum: 11 },
-                    PuzzleRule::Modular { cells: vec![37, 46, 55, 56, 57, 48] },
-                    PuzzleRule::Modular { cells: vec![29, 30, 31, 32] },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [27, 36],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [22, 31],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [23, 22],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [72, 63],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [62, 71],
+                        sum: 11,
+                    },
+                    PuzzleRule::Modular {
+                        cells: vec![37, 46, 55, 56, 57, 48],
+                    },
+                    PuzzleRule::Modular {
+                        cells: vec![29, 30, 31, 32],
+                    },
                 ],
             ),
             seed(
                 "000090507050006000000050000500060204000000000000000605000040000000900806000027000",
-                17, 1,
+                17,
+                1,
                 [
-                    PuzzleRule::Entropic { cells: vec![59, 51, 52, 44, 35, 26, 17, 25, 24, 23, 31, 21, 20, 19, 9, 18, 27, 36, 46, 47, 57] },
-                    PuzzleRule::Kropki { consecutive: positive_pairs([[52, 43]]), ratio_two: MarkedPairs::default() },
-                    PuzzleRule::Xv { five: positive_pairs([[38, 29]]), ten: positive_pairs([[24, 15], [8, 7]]) },
+                    PuzzleRule::Entropic {
+                        cells: vec![
+                            59, 51, 52, 44, 35, 26, 17, 25, 24, 23, 31, 21, 20, 19, 9, 18, 27, 36,
+                            46, 47, 57,
+                        ],
+                    },
+                    PuzzleRule::Kropki {
+                        consecutive: positive_pairs([[52, 43]]),
+                        ratio_two: MarkedPairs::default(),
+                    },
+                    PuzzleRule::Xv {
+                        five: positive_pairs([[38, 29]]),
+                        ten: positive_pairs([[24, 15], [8, 7]]),
+                    },
                 ],
             ),
         ],
         GroupOrderContradiction => [
             seed(
                 "003007041000400056000106000000604500600000004004009068000045007006000400400061000",
-                10, 7,
+                10,
+                7,
                 [
                     PuzzleRule::Entropic {
-                        cells: vec![40,39,38,37,46,55,64,65,66,57,58,67,68,69,70,61,52,43,42,33,34,
-                            25,16,15,14,23,22,13,12,11,10,19,28,29,30,31,40],
+                        cells: vec![
+                            40, 39, 38, 37, 46, 55, 64, 65, 66, 57, 58, 67, 68, 69, 70, 61, 52, 43,
+                            42, 33, 34, 25, 16, 15, 14, 23, 22, 13, 12, 11, 10, 19, 28, 29, 30, 31,
+                            40,
+                        ],
                     },
                     PuzzleRule::Kropki {
-                        ratio_two: positive_pairs([[32, 41], [48, 49], [27, 36], [35, 44], [21, 20], [47, 56], [51, 60]]),
+                        ratio_two: positive_pairs([
+                            [32, 41],
+                            [48, 49],
+                            [27, 36],
+                            [35, 44],
+                            [21, 20],
+                            [47, 56],
+                            [51, 60],
+                        ]),
                         consecutive: positive_pairs([[24, 23], [41, 50], [45, 36], [80, 79]]),
                     },
                 ],
             ),
             entropic_order_practice(
                 "086000500000006042301000000003108200002004001810009005600000009037005020090627003",
-                28, 4,
+                28,
+                4,
             ),
             entropic_order_practice(
                 "080001530059300040000000900000100200960070000000000075000800710430000000000607000",
-                29, 4,
+                29,
+                4,
             ),
         ],
         GroupLineHouseSupport => [
             seed(
                 "000950040010003000002100709301004002000030000004019300000300007130002005475001023",
-                28, 5,
+                28,
+                5,
                 [PuzzleRule::Entropic {
-                    cells: vec![40,39,38,37,46,55,64,65,66,57,58,67,68,69,70,61,52,43,42,33,34,
-                        25,16,15,14,23,22,13,12,11,10,19,28,29,30,31,40],
+                    cells: vec![
+                        40, 39, 38, 37, 46, 55, 64, 65, 66, 57, 58, 67, 68, 69, 70, 61, 52, 43, 42,
+                        33, 34, 25, 16, 15, 14, 23, 22, 13, 12, 11, 10, 19, 28, 29, 30, 31, 40,
+                    ],
                 }],
             ),
             seed(
                 "086400537059306102000000000003000200000504380810209005625003010407915800008020400",
-                28, 4,
+                28,
+                4,
                 [PuzzleRule::Entropic {
-                    cells: vec![59,51,52,44,35,26,17,25,24,23,31,21,20,19,9,18,27,36,46,47,57],
+                    cells: vec![
+                        59, 51, 52, 44, 35, 26, 17, 25, 24, 23, 31, 21, 20, 19, 9, 18, 27, 36, 46,
+                        47, 57,
+                    ],
                 }],
             ),
             seed(
                 "357002008406000000090000065125040070008001002040065000000000007001500000500103000",
-                60, 1,
-                [PuzzleRule::Modular { cells: vec![52,61,70,69,68,67,66] }],
+                60,
+                1,
+                [PuzzleRule::Modular {
+                    cells: vec![52, 61, 70, 69, 68, 67, 66],
+                }],
             ),
         ],
         Quadruple => [
@@ -533,24 +1145,51 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         DigitRestriction => [
             seed(
                 "041000700000104200587062100078603000023057609900281004300700025792000000005029060",
-                0, 6,
-                [PuzzleRule::DigitRestriction {
-                    cells: vec![0], digits: vec![1, 2, 3], shape: super::super::DigitRestrictionShape::Circle,
-                }, PuzzleRule::Parity { cells: vec![80], parity: CellParity::Odd }],
+                0,
+                6,
+                [
+                    PuzzleRule::DigitRestriction {
+                        cells: vec![0],
+                        digits: vec![1, 2, 3],
+                        shape: super::super::DigitRestrictionShape::Circle,
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![80],
+                        parity: CellParity::Odd,
+                    },
+                ],
             ),
             seed(
                 "000370000002000005805400639000080026000000007010200080027008001406090003001000860",
-                0, 1,
-                [PuzzleRule::DigitRestriction {
-                    cells: vec![0], digits: vec![4, 5, 6, 7], shape: super::super::DigitRestrictionShape::Cross,
-                }, PuzzleRule::Parity { cells: vec![16], parity: CellParity::Even }],
+                0,
+                1,
+                [
+                    PuzzleRule::DigitRestriction {
+                        cells: vec![0],
+                        digits: vec![4, 5, 6, 7],
+                        shape: super::super::DigitRestrictionShape::Cross,
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![16],
+                        parity: CellParity::Even,
+                    },
+                ],
             ),
             seed(
                 "890104072020800014000005900100050030080603149000000007210009700057280000340000000",
-                13, 3,
-                [PuzzleRule::DigitRestriction {
-                    cells: vec![13], digits: vec![8, 9], shape: super::super::DigitRestrictionShape::Square,
-                }, PuzzleRule::Parity { cells: vec![61], parity: CellParity::Even }],
+                13,
+                3,
+                [
+                    PuzzleRule::DigitRestriction {
+                        cells: vec![13],
+                        digits: vec![8, 9],
+                        shape: super::super::DigitRestrictionShape::Square,
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![61],
+                        parity: CellParity::Even,
+                    },
+                ],
             ),
         ],
         AntiKing => [
@@ -935,19 +1574,36 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         AdjacentTotal => [
             seed(
                 "974000820286930400030002009060100238390600000000003690040200017002090586653800000",
-                63, 1,
-                [PuzzleRule::AdjacentTotal { cells: [54, 63], sum: 15 }],
+                63,
+                1,
+                [PuzzleRule::AdjacentTotal {
+                    cells: [54, 63],
+                    sum: 15,
+                }],
             ),
             seed(
                 "100006700590027416006080000000234901300005060014000530002803109037500000800040000",
-                18, 2,
-                [PuzzleRule::AdjacentTotal { cells: [18, 9], sum: 12 }],
+                18,
+                2,
+                [PuzzleRule::AdjacentTotal {
+                    cells: [18, 9],
+                    sum: 12,
+                }],
             ),
             seed(
                 "080700030000030501031006704050064200006028400000509608000000007000093860002007309",
-                2, 4,
-                [PuzzleRule::AdjacentTotal { cells: [48, 57], sum: 7 },
-                 PuzzleRule::AdjacentTotal { cells: [3, 2], sum: 12 }],
+                2,
+                4,
+                [
+                    PuzzleRule::AdjacentTotal {
+                        cells: [48, 57],
+                        sum: 7,
+                    },
+                    PuzzleRule::AdjacentTotal {
+                        cells: [3, 2],
+                        sum: 12,
+                    },
+                ],
             ),
         ],
         WhispersHouseSupport => [
@@ -956,25 +1612,33 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 4,
                 8,
                 [
-                    PuzzleRule::Whispers { cells: vec![12, 4, 13], min_difference: 5 },
-                    PuzzleRule::Whispers { cells: vec![57, 49], min_difference: 5 },
+                    PuzzleRule::Whispers {
+                        cells: vec![12, 4, 13],
+                        min_difference: 5,
+                    },
+                    PuzzleRule::Whispers {
+                        cells: vec![57, 49],
+                        min_difference: 5,
+                    },
                 ],
             ),
             seed(
                 "431598762976432185258761090302157600795620010164983527617349250529876431843215976",
                 35,
                 8,
-                [
-                    PuzzleRule::Whispers { cells: vec![26, 35, 44], min_difference: 5 },
-                ],
+                [PuzzleRule::Whispers {
+                    cells: vec![26, 35, 44],
+                    min_difference: 5,
+                }],
             ),
             seed(
                 "031598762976432185258761394002157609705624013160980527617349258529876431840215976",
                 37,
                 8,
-                [
-                    PuzzleRule::Whispers { cells: vec![27, 37, 47], min_difference: 5 },
-                ],
+                [PuzzleRule::Whispers {
+                    cells: vec![27, 37, 47],
+                    min_difference: 5,
+                }],
             ),
         ],
         Whispers => [
@@ -1066,19 +1730,31 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "534678912672195008198342567859761423426853791713924856961537284287419605345286179",
                 16,
                 3,
-                [PuzzleRule::PillArrow { pill: [7, 8], cells: vec![16, 17], from_tens: false }],
+                [PuzzleRule::PillArrow {
+                    pill: [7, 8],
+                    cells: vec![16, 17],
+                    from_tens: false,
+                }],
             ),
             seed(
                 "534678910672195348198340507859761403426853791713924856961537284287419635345286179",
                 25,
                 2,
-                [PuzzleRule::PillArrow { pill: [32, 33], cells: vec![25, 17], from_tens: false }],
+                [PuzzleRule::PillArrow {
+                    pill: [32, 33],
+                    cells: vec![25, 17],
+                    from_tens: false,
+                }],
             ),
             seed(
                 "534678912670195348198342567859761423400853791713924856961537284287419635345286179",
                 38,
                 2,
-                [PuzzleRule::PillArrow { pill: [46, 47], cells: vec![38, 30], from_tens: false }],
+                [PuzzleRule::PillArrow {
+                    pill: [46, 47],
+                    cells: vec![38, 30],
+                    from_tens: false,
+                }],
             ),
         ],
         Lockout => [
@@ -1086,19 +1762,25 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "034678902672195348198342067859761423426853791713924806961537284287419635345286179",
                 7,
                 5,
-                [PuzzleRule::Lockout { cells: vec![6, 7, 8] }],
+                [PuzzleRule::Lockout {
+                    cells: vec![6, 7, 8],
+                }],
             ),
             seed(
                 "534678912672105048198042567859761423426853791713924856961507284287419635345286179",
                 13,
                 3,
-                [PuzzleRule::Lockout { cells: vec![3, 13, 12] }],
+                [PuzzleRule::Lockout {
+                    cells: vec![3, 13, 12],
+                }],
             ),
             seed(
                 "534078912672195348198042507859761423426853791713924856961537284287419635345286179",
                 21,
                 6,
-                [PuzzleRule::Lockout { cells: vec![13, 21, 22] }],
+                [PuzzleRule::Lockout {
+                    cells: vec![13, 21, 22],
+                }],
             ),
         ],
         Arrow => [
@@ -1137,25 +1819,61 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
         ],
         GlobalEntropy => [
-            seed("000018290081900507000006800000800410060000000030005002200009074710000003090000000", 16, 4, [PuzzleRule::GlobalEntropy {}]),
-            seed("020000004059002000400006002200590008580004961000000200040003000705040000000015000", 4, 3, [PuzzleRule::GlobalEntropy {}]),
-            seed("304010000000020000050030400020046000000000000000350070005060040000070000000080506", 57, 1, [PuzzleRule::GlobalEntropy {}]),
+            seed(
+                "000018290081900507000006800000800410060000000030005002200009074710000003090000000",
+                16,
+                4,
+                [PuzzleRule::GlobalEntropy { groups: Vec::new() }],
+            ),
+            seed(
+                "020000004059002000400006002200590008580004961000000200040003000705040000000015000",
+                4,
+                3,
+                [PuzzleRule::GlobalEntropy { groups: Vec::new() }],
+            ),
+            seed(
+                "304010000000020000050030400020046000000000000000350070005060040000070000000080506",
+                57,
+                1,
+                [PuzzleRule::GlobalEntropy { groups: Vec::new() }],
+            ),
         ],
         EntropyQuadruple => [
             seed(
                 "364519720091020060258607401000740100000091004410358672185960240642000903007482016",
-                25, 3,
-                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 16, digits: vec![5, 6] }],
+                25,
+                3,
+                [
+                    PuzzleRule::GlobalEntropy { groups: Vec::new() },
+                    PuzzleRule::Quadruple {
+                        top_left: 16,
+                        digits: vec![5, 6],
+                    },
+                ],
             ),
             seed(
                 "186005040000067800030801025600270483000103276273006051067538190392710500850090704",
-                11, 5,
-                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 11, digits: vec![4, 8] }],
+                11,
+                5,
+                [
+                    PuzzleRule::GlobalEntropy { groups: Vec::new() },
+                    PuzzleRule::Quadruple {
+                        top_left: 11,
+                        digits: vec![4, 8],
+                    },
+                ],
             ),
             seed(
                 "060007200908320004700500608007200000600070002029008500300000006251639007890714000",
-                48, 4,
-                [PuzzleRule::GlobalEntropy {}, PuzzleRule::Quadruple { top_left: 38, digits: vec![9, 9] }],
+                48,
+                4,
+                [
+                    PuzzleRule::GlobalEntropy { groups: Vec::new() },
+                    PuzzleRule::Quadruple {
+                        top_left: 38,
+                        digits: vec![9, 9],
+                    },
+                ],
             ),
         ],
         Entropic => [
@@ -1193,19 +1911,33 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         Modular => [
             seed(
                 "500670912602000040090300500800001003020803790003004000001030000087000005045280000",
-                33, 6,
-                [PuzzleRule::Modular { cells: vec![33, 41] }],
+                33,
+                6,
+                [PuzzleRule::Modular {
+                    cells: vec![33, 41],
+                }],
             ),
             seed(
                 "530000900000105008008000007859700400406800000703000806960507000007009630300206009",
-                23, 4,
-                [PuzzleRule::Modular { cells: vec![33, 23, 31, 32] }],
+                23,
+                4,
+                [PuzzleRule::Modular {
+                    cells: vec![33, 23, 31, 32],
+                }],
             ),
             seed(
                 "004608012670100000090302507050060003000000790000000850901007204000009000005280179",
-                13, 4,
-                [PuzzleRule::Modular { cells: vec![14, 13, 22, 23, 31] },
-                 PuzzleRule::Parity { cells: vec![31], parity: CellParity::Even }],
+                13,
+                4,
+                [
+                    PuzzleRule::Modular {
+                        cells: vec![14, 13, 22, 23, 31],
+                    },
+                    PuzzleRule::Parity {
+                        cells: vec![31],
+                        parity: CellParity::Even,
+                    },
+                ],
             ),
         ],
         Renban => [
@@ -1213,20 +1945,29 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "004027860000510070720040910583170609270009038906050100095000700000090406000000300",
                 23,
                 8,
-                [PuzzleRule::Renban { cells: vec![23, 22, 12], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![23, 22, 12],
+                    segments: None,
+                }],
             ),
             seed(
                 "761090002025008000008100540000803004500020000010400200090081400052049008806205300",
                 56,
                 3,
-                [PuzzleRule::Renban { cells: vec![57, 56, 64, 72], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![57, 56, 64, 72],
+                    segments: None,
+                }],
             ),
             seed(
                 "000501020000002050020746100100093075050400000009005630680000001310000962090000300",
                 13,
                 3,
                 [
-                    PuzzleRule::Renban { cells: vec![23, 31, 21, 13, 3], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![23, 31, 21, 13, 3],
+                        segments: None,
+                    },
                     PuzzleRule::Parity {
                         cells: vec![3],
                         parity: CellParity::Odd,
@@ -1271,37 +2012,31 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "910003506804100370700469000503006801100500700200001003009050124000000030000602007",
                 76,
                 8,
-                [
-                    PuzzleRule::LittleKiller {
-                        cells: vec![36, 46, 56, 66, 76],
-                        direction: ClueDirection::SouthEast,
-                        sum: 30,
-                    },
-                ],
+                [PuzzleRule::LittleKiller {
+                    cells: vec![36, 46, 56, 66, 76],
+                    direction: ClueDirection::SouthEast,
+                    sum: 30,
+                }],
             ),
             seed(
                 "040000301072000940900630200730000400085000600000920073100000890500406100824010760",
                 14,
                 8,
-                [
-                    PuzzleRule::LittleKiller {
-                        cells: vec![44, 34, 24, 14, 4],
-                        direction: ClueDirection::NorthWest,
-                        sum: 23,
-                    },
-                ],
+                [PuzzleRule::LittleKiller {
+                    cells: vec![44, 34, 24, 14, 4],
+                    direction: ClueDirection::NorthWest,
+                    sum: 23,
+                }],
             ),
             seed(
                 "601020000938000000002943100000680043083450700000097508060039001070000090009065070",
                 68,
                 2,
-                [
-                    PuzzleRule::LittleKiller {
-                        cells: vec![76, 68, 60, 52, 44],
-                        direction: ClueDirection::NorthEast,
-                        sum: 28,
-                    },
-                ],
+                [PuzzleRule::LittleKiller {
+                    cells: vec![76, 68, 60, 52, 44],
+                    direction: ClueDirection::NorthEast,
+                    sum: 28,
+                }],
             ),
         ],
         RenbanSumRayHouses => [
@@ -1315,7 +2050,10 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         direction: ClueDirection::NorthWest,
                         sum: 28,
                     },
-                    PuzzleRule::Renban { cells: vec![14, 4], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![14, 4],
+                        segments: None,
+                    },
                 ],
             ),
             seed(
@@ -1328,7 +2066,10 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         direction: ClueDirection::SouthWest,
                         sum: 16,
                     },
-                    PuzzleRule::Renban { cells: vec![28, 36], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![28, 36],
+                        segments: None,
+                    },
                 ],
             ),
             seed(
@@ -1341,7 +2082,10 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         direction: ClueDirection::SouthEast,
                         sum: 26,
                     },
-                    PuzzleRule::Renban { cells: vec![14, 24], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![14, 24],
+                        segments: None,
+                    },
                 ],
             ),
         ],
@@ -1350,19 +2094,28 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "080009030000007051539614000008421000274003510000000000010000004300040279040370085",
                 45,
                 6,
-                [PuzzleRule::Renban { cells: vec![48, 49, 50, 51], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![48, 49, 50, 51],
+                    segments: None,
+                }],
             ),
             seed(
                 "000201809809050002020048000508002093040000000010067000000029406000600731056374020",
                 2,
                 3,
-                [PuzzleRule::Renban { cells: vec![27, 36, 37, 38, 47], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![27, 36, 37, 38, 47],
+                    segments: None,
+                }],
             ),
             seed(
                 "008205000000836001320410080450000600000001040196000832563000020001040703004600090",
                 30,
                 7,
-                [PuzzleRule::Renban { cells: vec![32, 40, 48], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![32, 40, 48],
+                    segments: None,
+                }],
             ),
         ],
         RenbanGroupCounts => [
@@ -1387,19 +2140,28 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 "000800106001070040000401870098000657140760390005080020060298704410000500027510060",
                 18,
                 3,
-                [PuzzleRule::Renban { cells: vec![20, 21, 22], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![20, 21, 22],
+                    segments: None,
+                }],
             ),
             seed(
                 "408100700000050008039000502003005001000000007800307604070509806000600329940032075",
                 9,
                 1,
-                [PuzzleRule::Renban { cells: vec![18, 27, 36, 45], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![18, 27, 36, 45],
+                    segments: None,
+                }],
             ),
             seed(
                 "008205000000836001320410080450000600000001040196000832563000020001040703004600090",
                 31,
                 9,
-                [PuzzleRule::Renban { cells: vec![40, 49, 58, 67, 76], segments: None }],
+                [PuzzleRule::Renban {
+                    cells: vec![40, 49, 58, 67, 76],
+                    segments: None,
+                }],
             ),
         ],
         RenbanSum => [
@@ -1458,13 +2220,19 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 76,
                 3,
                 [
-                    PuzzleRule::Renban { cells: vec![66, 56, 46], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![66, 56, 46],
+                        segments: None,
+                    },
                     PuzzleRule::LittleKiller {
                         cells: vec![76, 66, 56, 46, 36],
                         direction: ClueDirection::NorthWest,
                         sum: 19,
                     },
-                    PuzzleRule::Renban { cells: vec![76, 67, 77], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![76, 67, 77],
+                        segments: None,
+                    },
                 ],
             ),
             seed(
@@ -1472,13 +2240,19 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 25,
                 4,
                 [
-                    PuzzleRule::Renban { cells: vec![25, 35], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![25, 35],
+                        segments: None,
+                    },
                     PuzzleRule::LittleKiller {
                         cells: vec![5, 15, 25, 35],
                         direction: ClueDirection::SouthEast,
                         sum: 18,
                     },
-                    PuzzleRule::Renban { cells: vec![15, 16, 24], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![15, 16, 24],
+                        segments: None,
+                    },
                 ],
             ),
             seed(
@@ -1486,65 +2260,93 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 44,
                 4,
                 [
-                    PuzzleRule::Renban { cells: vec![60, 52, 44], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![60, 52, 44],
+                        segments: None,
+                    },
                     PuzzleRule::LittleKiller {
                         cells: vec![76, 68, 60, 52, 44],
                         direction: ClueDirection::NorthEast,
                         sum: 24,
                     },
-                    PuzzleRule::Renban { cells: vec![52, 43], segments: None },
+                    PuzzleRule::Renban {
+                        cells: vec![52, 43],
+                        segments: None,
+                    },
                 ],
             ),
         ],
         KropkiHouseSupport => [
             white_dot_seed(
                 "000170000106400092287900040608300905009208030003590016090604000800053260060000100",
-                [23, 24], 22, 6,
+                [23, 24],
+                22,
+                6,
             ),
             white_dot_seed(
                 "050002080006085092200006040008040925509060007003590010092010308040003009065020004",
-                [30, 39], 30, 7,
+                [30, 39],
+                30,
+                7,
             ),
             white_dot_seed(
                 "900002000006400792287930041008340920010260400000090810000610008040003009005029070",
-                [14, 23], 3, 8,
+                [14, 23],
+                3,
+                8,
             ),
         ],
         ThermometerHouseSupport => [
             seed(
                 "926085300070910000518060907084006790200807000705001048000070509000030002007000403",
-                48, 2,
-                [PuzzleRule::Thermometer { cells: vec![48, 47, 46, 45, 54] }],
+                48,
+                2,
+                [PuzzleRule::Thermometer {
+                    cells: vec![48, 47, 46, 45, 54],
+                }],
             ),
             seed(
                 "926085014473900056508400907084200091291047600000391008800000069000000100100000083",
-                55, 4,
-                [PuzzleRule::Thermometer { cells: vec![57, 56, 55, 64, 73] }],
+                55,
+                4,
+                [PuzzleRule::Thermometer {
+                    cells: vec![57, 56, 55, 64, 73],
+                }],
             ),
             seed(
                 "006085004073002056018060927084000790091007605060300040802070000000030000150620003",
-                60, 4,
-                [PuzzleRule::Thermometer { cells: vec![59, 60, 61, 70, 79] }],
+                60,
+                4,
+                [PuzzleRule::Thermometer {
+                    cells: vec![59, 60, 61, 70, 79],
+                }],
             ),
         ],
         RegionSumHouse => [
             region_sum_house_seed(
                 "840700560306000901070156430508000200900210050127060803012000080400000620705630000",
-                79, 4, true,
+                79,
+                4,
+                true,
             ),
             region_sum_house_seed(
                 "840000000356020901009006030508340209000218000007000000012079305493000000780030100",
-                61, 4, true,
+                61,
+                4,
+                true,
             ),
             region_sum_house_seed(
                 "000790502306020071000106030568000009004208756127960000610479000003501000000002104",
-                60, 2, false,
+                60,
+                2,
+                false,
             ),
         ],
         RegionSumDistinct => [
             seed(
                 "307500942192704050408029007020905030709630425043070860904017000080090070001000004",
-                78, 3,
+                78,
+                3,
                 [PuzzleRule::RegionSum {
                     cells: vec![76, 77, 78, 69, 60, 51],
                     group_by_region: false,
@@ -1553,7 +2355,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "840700560000800070279000408000300019900010750007000043600009305093581607085032104",
-                49, 5,
+                49,
+                5,
                 [PuzzleRule::RegionSum {
                     cells: vec![49, 48, 47, 37, 27, 18, 9, 10, 1, 2, 3, 13, 23, 32, 41],
                     group_by_region: false,
@@ -1562,7 +2365,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
             ),
             seed(
                 "001004708080703090009005403068341050503600104010250639807000900030400801002000000",
-                62, 6,
+                62,
+                6,
                 [PuzzleRule::RegionSum {
                     cells: vec![16, 26, 34, 44, 52, 62, 70],
                     group_by_region: false,

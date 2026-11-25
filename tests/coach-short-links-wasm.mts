@@ -43,7 +43,7 @@ const entropySums = entropySources.find(({ url }) => url.endsWith('HqJ9'))!
 const negativeBlackDots = entropySources.find(({ url }) => url.endsWith('K95q'))!
 const legacyEntropy = entropySources.find(({ url }) => url.endsWith('2j53'))!
 
-const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8')) as {
+const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8')) as {
   source: string
   metadata: { sudoku_id: string; sudoku: string; name: string; description: string; custom_constraints: boolean }
   decoded: { givenConstraints: { segments: { cells: number[][]; parameters: { text: string } }[] }[] }
@@ -217,7 +217,9 @@ test('published X-Sums import from the author declaration and preserve typed com
     assert.deepEqual(imported.variant.puzzle.rules, [
       ...xSumTranscription.puzzle.rules!, { type: 'parity', cells: [0], parity: 'even' },
     ])
-    await assert.rejects(detectPuzzle(metadata.sudoku), /unsupported settings.*cosmeticText/)
+    const pasted = await detectPuzzle(metadata.sudoku)
+    assert.equal(pasted.variant?.id, 'x-sum')
+    assert.deepEqual(pasted.variant?.puzzle, xSumTranscription.puzzle)
   } finally { sqlite.close() }
 })
 
@@ -253,7 +255,7 @@ test('an X-Sums declaration rejects ambiguous totals, markings and unsupported c
       ['Extra', /has author instructions/], [terrain.sudoku_id, /has author instructions/],
       ['Empty', /has no outside totals/], ['Corner', /beside a row or column/], ['Interior', /beside a row or column/],
       ['Fraction', /beside a row or column/], ['BadTotal', /1 through 45/], ['Duplicate', /multiple X-Sums/],
-      ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings/],
+      ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings|invalid authored colors/],
       ['Unknown', /not supported yet.*globalModularity/],
     ] as const) {
       await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), error, id)
@@ -522,7 +524,8 @@ test('220V imports its complete published rules and centered paths through the s
     assert.deepEqual(shared.game.variant, game.variant)
     assert.equal(shared.game.title, title)
 
-    await assert.rejects(detectPuzzle(code), /unsupported settings for cosmeticLine/)
+    const pasted = await detectPuzzle(code)
+    assert.deepEqual(pasted.variant?.puzzle, publishedPuzzle)
     sourceDescription += '\nOther blue cells may repeat digits.'
     await assert.rejects(detectPuzzle(url), /has author instructions/)
     sourceDescription = description
@@ -809,7 +812,7 @@ test('short links reject unknown and authored rules even when the numeric grid w
   try {
     for (const id of ['Blank', 'Wrong']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /use Copy → Puzzle/)
     for (const id of ['Custom', 'Text']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /has author instructions/)
-    for (const id of ['Markings', 'Drawing']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /unsupported authored markings/)
+    for (const id of ['Markings', 'Drawing']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /unsupported authored markings|invalid authored colors/)
     await assert.rejects(detectPuzzle('sudoku.coach/s/Unknown'), /not supported yet.*globalModularity/)
   } finally { sqlite.close() }
 })

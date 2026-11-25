@@ -1,8 +1,7 @@
 use super::{
-    CompiledVariant, ProofPosition, VariantDeduction, VariantEvidence,
-    VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope, VariantTechnique,
-    scope_checks::Scope,
-    group_line_houses::count_conflict,
+    CompiledVariant, ProofPosition, VariantDeduction, VariantEvidence, VariantGroupOrderProof,
+    VariantGroupOrderRefutation, VariantGroupOrderScope, VariantTechnique,
+    group_line_houses::count_conflict, scope_checks::Scope,
 };
 use crate::{CELLS, DIGITS};
 
@@ -41,13 +40,17 @@ impl CompiledVariant {
                 if before.iter().all(|&mask| mask == DIGITS) {
                     return ScopeResult::Unchanged;
                 }
-                let before_house: &[u16; 9] = (&*before).try_into().expect("a house has nine cells");
+                let before_house: &[u16; 9] =
+                    (&*before).try_into().expect("a house has nine cells");
                 if let Some(supported) = houses.get(before_house) {
                     after.copy_from_slice(supported);
                 } else {
                     self.scope_support(scope, before, after);
                     if houses.len() < 2048 {
-                        houses.insert(*before_house, after.try_into().expect("nine supported masks"));
+                        houses.insert(
+                            *before_house,
+                            after.try_into().expect("nine supported masks"),
+                        );
                     }
                 }
             }

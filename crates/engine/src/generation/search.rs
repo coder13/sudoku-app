@@ -116,7 +116,10 @@ impl<'a, T> GenerationSearch<'a, T> {
         self.filter_map(move |value| Some(convert(value)))
     }
 
-    pub(crate) fn filter_map<U>(self, mut convert: impl FnMut(T) -> Option<U> + 'a) -> GenerationSearch<'a, U>
+    pub(crate) fn filter_map<U>(
+        self,
+        mut convert: impl FnMut(T) -> Option<U> + 'a,
+    ) -> GenerationSearch<'a, U>
     where
         T: 'a,
     {

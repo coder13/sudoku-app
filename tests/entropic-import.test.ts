@@ -23,7 +23,7 @@ const load = (name: string) =>
 test('published Clover and five complete Coach sources preserve every rule and their independent unique completion', async () => {
   for (const source of [
     load('clover'),
-    ...load('coach').examples.filter((s: { deferred?: string }) => !s.deferred),
+    ...load('coach').examples.filter((s: { deferred?: string; puzzle?: object }) => !s.deferred && s.puzzle),
   ]) {
     assertVariantCompletion(source.puzzle, source.solution)
     const independent = countLineSolutions(source.puzzle)

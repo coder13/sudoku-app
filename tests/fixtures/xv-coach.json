@@ -1,5 +1,5 @@
 {
-  "description": "Original XV integration corpus. The deferred field records that release boundary. The sum-15 case now imports through the adjacent-total family and has complete source coverage in adjacent-sum-coach.json; XV-specific comparisons retain the four ordinary XV sources.",
+  "description": "Original XV integration corpus. The sum-15 case imports through the adjacent-total family and has complete source coverage in adjacent-sum-coach.json; XV-specific comparisons retain the four ordinary XV sources.",
   "examples": [
     {
       "url": "https://sudoku.coach/en/s/7v7n",
@@ -48,9 +48,8 @@
       "published": "2025-08-30 21:05:41",
       "code": "SCv7_32_f2e8r3hv1u130465nv5sq78g6g52mrkehi3a30d6bo18bd478qdnsttf9947148eivf9vnrrpu1rdm2mv1951p026jf9aed38pp50g5iulipv6nunm1tj88shghinka4jelger51r2ig5q1pe87911ngc98dv201ktqavfk7enm8hk38tpu0goh6utlp5turn1me3j303b7a96k973fjdulgq3q1gimlenat9bq91s6ovovfii467ji2keqb4lt4dia05ho0te2f0qqhgsrpmubtho",
       "solution": "639285741174639285528174639963528174417963528852417963396852417741396852285741396",
-      "deferred": [
-        "general-two-cell-sum"
-      ]
+      "deferred": [],
+      "requiresAdjacentTotal": true
     }
   ]
 }

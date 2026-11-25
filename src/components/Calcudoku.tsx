@@ -24,7 +24,7 @@ const calcudoku: NumberGameConfig<CalcudokuEntry> = {
         cell >= size * (size - 1) || cageAt.get(cell + size) !== cage ? 'b' : '',
         cell % size === 0 || cageAt.get(cell - 1) !== cage ? 'l' : '',
       ].join('')
-      const operation = { add: 'plus', subtract: 'minus', multiply: 'times', divide: 'divided by', equal: '' }[cage.operator]
+      const operation = { add: 'plus', subtract: 'minus', multiply: 'times', divide: 'divided by', equal: '', hidden: '' }[cage.operator]
       const mark = parityAt.get(cell)
       const decorations = [
         ...(cell === anchor && !given ? [<span key="cage" className="number-puzzle-cell-label" aria-hidden="true">{cage.target}{symbol}</span>] : []),

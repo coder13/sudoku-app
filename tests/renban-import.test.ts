@@ -38,11 +38,23 @@ test('three unmodified modern Coach sources import while unsupported complete ex
         assert.deepEqual((await detectPuzzle(source.code)).variant!.puzzle, current.puzzle)
         continue
       }
-      const expected = source.url.endsWith('5NW') ? /legacy rule is not supported yet \(Consecutive Line\)/ : /format|version/i
-      await assert.rejects(detectPuzzle(source.code), expected)
+        await assert.rejects(detectPuzzle(source.code), /format|version/i)
       continue
     }
-    const imported = (await detectPuzzle(source.code)).variant!
+    const detected = await detectPuzzle(source.code)
+    const imported = detected.variant!
+    if (source.url.endsWith('5NW')) {
+      assert.equal(detected.title, 'Romeo and Juliet')
+      assert.equal(imported.puzzle.rules?.filter(rule => rule.type === 'renban').length, 6)
+      assert.equal(imported.puzzle.rules?.filter(rule => rule.type === 'consecutive-run').length, 1)
+      assert.equal(imported.puzzle.rules?.filter(rule => rule.type === 'kropki').length, 7)
+      assert.equal(imported.puzzle.rules?.filter(rule => rule.type === 'xv').length, 7)
+      assert.equal(Object.keys(detected.givenCellColors ?? {}).length, 30)
+      assertVariantCompletion(imported.puzzle, source.solution)
+      const result = countLineSolutions(imported.puzzle)
+      assert.equal(result.count, 1); assert.equal(result.solution, source.solution)
+      continue
+    }
     assert.equal(imported.id, 'renban'); assert.deepEqual(imported.puzzle, source.puzzle)
     assertVariantCompletion(imported.puzzle, source.solution)
     const result = countLineSolutions(imported.puzzle)

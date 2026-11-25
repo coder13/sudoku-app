@@ -14,7 +14,7 @@ import { formatPuzzleRating, SINGLE_TECHNIQUES, type DifficultyPreference } from
 import { createEngineSession, EngineError, replayStep, runEngine, type Candidate, type Deduction, type DeductionAction, type EngineRunner, type EngineSession, type HintChoice } from '../sudoku/engine'
 import {
   COLORS, EMPTY, alternateColorShade, applyDeduction, candidateCount, clearCandidateColors, clearImportedDrawings, completeCandidateMasks, conflictsOf, createPuzzleBookmark, enter, fillEntries,
-  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, marksOf, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, restorePuzzleBookmark, setGamePaused, singleFromCandidates, toggleCandidateGroup, undo, valuesOf, withCellColors,
+  formatTime, hasCandidate, hasCandidates, hasUniquenessProof, hintEliminations, isSolved, marksOf, markSolveUntimed, needsInitialCandidates, onlyCandidate, paintCandidate, paintCandidates, paintCandidateStroke, paintCells, puzzleIdentity, redo, replaceCandidates, restartGame, restorePuzzleBookmark, setAqreShade, setGamePaused, singleFromCandidates, toggleCandidateGroup, undo, valuesOf, withCellColors,
   type ColorTarget, type EnterOptions, type ErrorMode, type Game, type Mode, type Position,
 } from '../sudoku/game'
 import { miniSingles, solveMini } from '../sudoku/mini-play'
@@ -46,7 +46,7 @@ import { markTechniqueSolution, observeTechniqueActions } from '../sudoku/techni
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
 import { matchesHintPosition, puzzleHintPage, puzzleHints, puzzleSolution, type HintPosition } from '../sudoku/puzzle-help'
-import { playCandidates } from '../sudoku/variant-play'
+import { playCandidates, variantPosition } from '../sudoku/variant-play'
 import { puzzleForVariantTools, variantName, variantRuleSections, type VariantRuleSectionId } from '../sudoku/variants'
 import { Board, gridCellAtPoint } from './Board'
 import { BookmarksPanel } from './BookmarksPanel'
@@ -71,7 +71,7 @@ import { Modal } from './Modal'
 import { MotionSurface, usePresence } from './Presence'
 import { PuzzleCheckResult, validation, type DialogResult } from './PuzzleCheckResult'
 import { PuzzleAnalysisContents } from './PuzzleAnalysis'
-import { SolutionPath, solutionEndIndex, solutionEndSummary, solutionStatus, verifiedSolutionSummary, type SolutionPathState } from './SolutionPath'
+import { SolutionPath, solutionCompletionSummary, solutionEndIndex, solutionEndSummary, solutionStatus, type SolutionPathState } from './SolutionPath'
 import { useChainSketch } from './useChainSketch'
 import { useActionHistory } from './useActionHistory'
 import { usePlayPreference } from './usePlayPreference'
@@ -118,8 +118,9 @@ async function solveSingleValues({ grid, variant, algebraic, sized, position }: 
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
   const filteredPuzzle = puzzleForVariantTools(puzzle, variantRules)
   const entries = [...classicValues].map((digit, cell) => filteredPuzzle.givens[cell] === '0' ? digit : '0').join('')
+  const shades = variantPosition(variant, position).shades
   return run({ type: 'variant', operation: 'solve-singles',
-    position: { puzzle: filteredPuzzle, entries, eliminations } })
+    position: { puzzle: filteredPuzzle, entries, eliminations, ...(shades && { shades }) } })
 }
 
 export type WorktableActions = { check: () => void }
@@ -362,6 +363,8 @@ export function Worktable({
   const { center, corner, eliminations } = game.position
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
   const { id, givens, difficulty, score, variant, algebraic, sized, generatedWithAuto, nonUnique } = game
+  const aqreShades = useMemo(() => variant ? variantPosition(variant, game.position).shades : undefined,
+    [variant, game.position.entries, game.position.shades])
   const puzzle = fog?.puzzle ?? variant?.puzzle
   const hintPosition = useMemo<HintPosition>(() => ({
     gameId: id, givens, values, puzzle: variant?.puzzle, grid, algebraic, sized, center, corner, eliminations,
@@ -629,9 +632,9 @@ export function Worktable({
     ? describeHint(replayedSolutionStep.deduction, {
       difficulty: solutionStepDifficulty, cellReferenceStyle, gridSize,
     })
-    : exactPosition ? verifiedSolutionSummary
+    : exactPosition && trace ? solutionCompletionSummary(trace)
       : trace && solutionStep === trace.steps.length
-        ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined)
+        ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined, Boolean('completionProof' in trace && trace.completionProof))
         : null
 
   const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
@@ -2021,7 +2024,7 @@ export function Worktable({
         ? await run({ type: 'sized-variant', position: sizedRulePosition(grid, { rules: sizedRules }, values), operation: 'analyze' })
         : cages ? await analyzeAlgebraic({ rules: cages }, values, run) : grid
         ? await run({ type: 'sized-classic', position: sizedClassicPosition(grid, values), operation: 'analyze' }) : variant
-        ? await run({ type: 'variant', operation: 'analyze', position: { puzzle: variant.puzzle, entries: game.position.entries } })
+        ? await run({ type: 'variant', operation: 'analyze', position: variantPosition(variant, game.position) })
         : await run({ type: 'analyze', values })
       if (!currentTaskGame(task)) return
       if (!draft && status === 'multiple') {
@@ -2628,7 +2631,8 @@ export function Worktable({
       isLinkTarget={sketch.isLinkTarget}
       selectedCandidates={selectedChainCandidates} />
   ) : (
-    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} errors={errors} candidateLayout={advancedModes.candidateLayout}
+    <Board highlightedRule={highlightedRule} grid={grid} variantPuzzle={variant?.puzzle} fog={fog} whispersGuide={game.whispersGuide} algebraicCages={cages} sizedRules={sizedRules} givens={game.givens} values={values} position={hintAnnotations ? hintBoardPosition : boardPosition} aqreShades={aqreShades} onAqreShade={canSelectCell && !paintingCandidates && !hintAnnotations
+      ? (cell, shade) => edit(current => setAqreShade(current, cell, shade)) : undefined} errors={errors} candidateLayout={advancedModes.candidateLayout}
       givenCellColors={game.givenCellColors} authoredArtwork={game.authoredArtwork}
       candidates={hintAnnotations && hintDiagram ? hintCandidates : undefined}
       annotations={hintAnnotations ?? visibleChainAnnotations}

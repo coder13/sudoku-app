@@ -442,3 +442,83 @@ pub(super) const QUINTUPLE: [PracticeExample; 3] = [
         expected_actions: &[remove(16, 2)],
     },
 ];
+
+pub(super) const SEXTUPLE: [PracticeExample; 3] = [
+    // ph2010 source line 12 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000000012000003004004020500001060005070008000300900000006010020080006000900700600",
+        entries: None,
+        eliminations: Some(&elimination_masks(&[(34, 4), (43, 6)])),
+        expected_actions: &[remove(19, 1)],
+    },
+    // ph2010 source line 57 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000001002000030040005600700006000008080000020500800900050700000700002001900040030",
+        entries: Some(
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+        ),
+        eliminations: None,
+        expected_actions: &[remove(28, 1), remove(38, 1), remove(40, 1)],
+    },
+    // ph2010 source line 75 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000000001000002340004000520001005003060070000800900000005001002070600000900050080",
+        entries: None,
+        eliminations: Some(&elimination_masks(&[(21, 8), (23, 3), (65, 3)])),
+        expected_actions: &[remove(52, 6)],
+    },
+];
+
+pub(super) const SEPTUPLE: [PracticeExample; 3] = [
+    // ph2010 source line 1 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000000012000003004004010500006020001070006000800900600002060050090007000300800000",
+        entries: None,
+        eliminations: Some(&elimination_masks(&[
+            (9, 6),
+            (9, 7),
+            (25, 7),
+            (34, 4),
+            (42, 3),
+            (49, 5),
+            (66, 3),
+            (70, 6),
+            (78, 7),
+        ])),
+        expected_actions: &[remove(46, 3), remove(52, 3)],
+    },
+    // ph2010 source line 137 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000000001000023000004500020002005060070000100800400009003050010010600007900000800",
+        entries: None,
+        eliminations: Some(&elimination_masks(&[
+            (0, 6),
+            (0, 7),
+            (1, 6),
+            (1, 9),
+            (2, 6),
+            (4, 7),
+            (5, 8),
+            (5, 9),
+            (6, 4),
+            (7, 4),
+            (11, 5),
+            (11, 6),
+            (31, 3),
+            (54, 2),
+            (59, 2),
+            (59, 4),
+            (63, 4),
+        ])),
+        expected_actions: &[remove(16, 4)],
+    },
+    // ph2010 source line 57 in the classic hardest-puzzle audit.
+    PracticeExample {
+        givens: "000001002000030040005600700006000008080000020500800900050700000700002001900040030",
+        entries: Some(
+            "000000000000000000000000000000000000000000000000000000000000000000000000000000007",
+        ),
+        eliminations: None,
+        expected_actions: &[remove(9, 2)],
+    },
+];

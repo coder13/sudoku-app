@@ -59,6 +59,41 @@ test('both Modular group orders rule out a candidate with a replayable hint proo
   assert.match(choice.evidence.variant.reason, /row 1|column|box/)
 })
 
+test('published Modular Curtain and Modular Colouring imports keep every difference and line rule in Wasm', async () => {
+  const examples = load('coach').examples
+  for (const [id, modularLines, consecutiveRuns, differenceMarks, hasEleven] of [
+    ['9ZMr', 9, 0, 36, false], ['GYTv', 6, 8, 7, true],
+  ] as const) {
+    const source = examples.find(({ url }: { url: string }) => url.endsWith(id))
+    assert.ok(source)
+    const { game } = await prepareImportedPuzzle(source.code)
+    const puzzle = game.variant!.puzzle
+    const rules = puzzle.rules!
+    assert.equal(rules.filter(rule => rule.type === 'modular').length, modularLines, id)
+    assert.equal(rules.filter(rule => rule.type === 'consecutive-run').length, consecutiveRuns, id)
+    const differences = rules.filter(rule => rule.type === 'labeled-dots' && rule.relation === 'difference')
+    assert.equal(differences.length, 1, id)
+    assert.equal(differences[0].marks.length, differenceMarks, id)
+    assert.ok(differences[0].marks.every(mark => mark.value === 3), id)
+    assert.equal(rules.some(rule => rule.type === 'adjacent-total' && rule.sum === 11), hasEleven, id)
+    assert.equal(game.variant!.solution, source.solution, id)
+    assertVariantCompletion(puzzle, source.solution)
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle } }), 'unique', id)
+  }
+})
+
+test('the reviewed 220V raw export reaches Import Preview with its authored line legend', async () => {
+  const source = load('coach').examples.find(({ url }: { url: string }) => url.endsWith('/7rs9'))
+  assert.ok(source)
+  const { game } = await prepareImportedPuzzle(source.code)
+  assert.deepEqual(game.variant?.puzzle, source.publishedPuzzle)
+  assert.equal(game.variant?.solution, source.solution)
+  assertVariantCompletion(game.variant!.puzzle, source.solution)
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: game.variant!.puzzle,
+  } }), 'unique')
+})
+
 for (const [
   id,
   nativePoints,

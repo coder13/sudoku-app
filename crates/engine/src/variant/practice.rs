@@ -1,15 +1,31 @@
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 use super::DEFAULT_VARIANT_SEARCH_NODES;
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
-use crate::{Analysis, Board};
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 use super::symmetry::SquareTransform;
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
-use crate::Random;
 use super::{
-    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence,
-    VariantHouseKind, VariantPosition, VariantPuzzle, VariantTechnique,
+    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence, VariantHouseKind,
+    VariantPosition, VariantPuzzle, VariantTechnique,
 };
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+use crate::Random;
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+use crate::{Analysis, Board};
 use crate::{CELLS, Candidate, HintAction, Technique, parse_givens};
 
 mod examples;
@@ -78,6 +94,7 @@ pub fn variant_practice_examples(
                     puzzle: VariantPuzzle::classic(snapshot.givens),
                     entries: snapshot.entries,
                     eliminations: snapshot.eliminations,
+                    shades: [0; crate::CELLS],
                 };
                 exercise(index, position, technique, example.expected_actions[0])
             })
@@ -102,7 +119,11 @@ pub fn variant_practice_examples(
 }
 
 /// Build a seeded variant drill by changing clues around a verified teaching move.
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 pub(crate) fn generate_practice_example(
     technique: VariantTechnique,
     seed: u32,
@@ -122,7 +143,13 @@ pub(crate) fn generate_practice_example(
             HintAction::Eliminate(_) => HintAction::Eliminate(candidate),
         };
         let mut compiled = position.puzzle.compile().ok()?;
-        let solution = compiled.solve(&position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES).ok()?;
+        let solution = compiled
+            .solve(
+                &position.entries,
+                &position.eliminations,
+                DEFAULT_VARIANT_SEARCH_NODES,
+            )
+            .ok()?;
         let mut order: [usize; CELLS] = std::array::from_fn(|cell| cell);
         random.shuffle(&mut order);
         let wanted = 2 + random.index(6);
@@ -137,12 +164,19 @@ pub(crate) fn generate_practice_example(
             let after = if before == 0 { solution[cell] } else { 0 };
             position.puzzle.givens[cell] = after;
             compiled.givens[cell] = after;
-            let unique = after != 0 || compiled.analyze(
-                &position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES,
-            ) == Ok(Analysis::Unique);
-            if unique && let Ok(example) = exercise_with(&compiled, 0, &position, technique, suggestion) {
+            let unique = after != 0
+                || compiled.analyze(
+                    &position.entries,
+                    &position.eliminations,
+                    DEFAULT_VARIANT_SEARCH_NODES,
+                ) == Ok(Analysis::Unique);
+            if unique
+                && let Ok(example) = exercise_with(&compiled, 0, &position, technique, suggestion)
+            {
                 edits += 1;
-                let values = std::array::from_fn(|cell| position.puzzle.givens[cell].max(position.entries[cell]));
+                let values = std::array::from_fn(|cell| {
+                    position.puzzle.givens[cell].max(position.entries[cell])
+                });
                 if values != exclude {
                     generated = Some(example);
                 }
@@ -186,10 +220,18 @@ fn exercise_with(
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
     let mut proofs = compiled.explain(&snapshot, technique);
     if technique == VariantTechnique::LockedCandidates {
-        proofs.retain(|proof| matches!(proof.evidence,
-            VariantEvidence::Intersection { source: VariantHouseKind::Diagonal(_), .. } |
-            VariantEvidence::Intersection { target: VariantHouseKind::Diagonal(_), .. }
-        ));
+        proofs.retain(|proof| {
+            matches!(
+                proof.evidence,
+                VariantEvidence::Intersection {
+                    source: VariantHouseKind::Diagonal(_),
+                    ..
+                } | VariantEvidence::Intersection {
+                    target: VariantHouseKind::Diagonal(_),
+                    ..
+                }
+            )
+        });
     }
     let mut answers: Vec<_> = proofs
         .iter()

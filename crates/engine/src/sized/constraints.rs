@@ -1,30 +1,80 @@
+mod crust;
 mod double_arrow;
+mod fractional_regions;
+mod grouped_line;
 mod killer;
 mod linked_double_arrow;
+mod little_killer;
+mod nonogram;
 mod pairs;
 mod quadruple;
 mod quadruple_overlap;
 mod region_sum;
+mod row_equation;
 mod sandwich;
+mod skyscrapers;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
-use crate::{Analysis, Candidate, HintAction, House};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
+use crate::{Analysis, Candidate, ClueDirection, HintAction, House};
 
+use self::crust::Crust;
+pub use self::crust::CrustClue;
 use self::double_arrow::DoubleArrow;
+use self::fractional_regions::FractionalRegions;
+use self::grouped_line::EntropicLine;
 use self::killer::Cage;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
+use self::little_killer::LittleKiller;
+use self::nonogram::NonogramLine;
+pub use self::nonogram::RunAxis;
 use self::pairs::{RowColumnSum, SizedPairLink, UnmarkedSumSupport, compile_pairs};
 use self::quadruple::SizedQuadruple;
 use self::region_sum::RegionSum;
+pub use self::row_equation::EquationOperator;
+use self::row_equation::{RowEquation, RowEquationTables};
 use self::sandwich::Sandwich;
+use self::skyscrapers::SkyscrapersLine;
+
+const MAX_CELLS: usize = MAX_SIZE * MAX_SIZE;
+
+fn entropy_group_masks(size: usize, authored: &[Vec<u8>]) -> Option<[u16; 3]> {
+    if authored.is_empty() {
+        return (size == 9).then_some([0b000000111, 0b000111000, 0b111000000]);
+    }
+    if authored.len() != 3 {
+        return None;
+    }
+    let mut groups = [0u16; 3];
+    let mut seen = 0u16;
+    for (group, digits) in authored.iter().enumerate() {
+        if digits.is_empty() {
+            return None;
+        }
+        for &digit in digits {
+            if digit == 0 || usize::from(digit) > size {
+                return None;
+            }
+            let bit = 1 << (digit - 1);
+            if seen & bit != 0 {
+                return None;
+            }
+            seen |= bit;
+            groups[group] |= bit;
+        }
+    }
+    (seen == (1 << size) - 1).then_some(groups)
+}
 
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SizedConstraint {
+    AntiKing,
     Diagonal(SizedDiagonal),
-    ExtraHouse { cells: Vec<usize> },
+    ExtraHouse {
+        cells: Vec<usize>,
+    },
     Parity {
         cells: Vec<usize>,
         parity: SizedParity,
@@ -35,9 +85,29 @@ pub enum SizedConstraint {
     SlowThermometer {
         cells: Vec<usize>,
     },
+    Between {
+        cells: Vec<usize>,
+    },
     Whispers {
         cells: Vec<usize>,
         min_difference: u8,
+    },
+    NonConsecutive {
+        except: Vec<[usize; 2]>,
+    },
+    Inequality {
+        less: usize,
+        greater: usize,
+    },
+    Modular {
+        cells: Vec<usize>,
+    },
+    Entropic {
+        cells: Vec<usize>,
+        groups: Vec<Vec<u8>>,
+    },
+    GlobalEntropy {
+        groups: Vec<Vec<u8>>,
     },
     Xv {
         five: MarkedPairs,
@@ -56,7 +126,10 @@ pub enum SizedConstraint {
         ends: [usize; 2],
         cells: Vec<usize>,
     },
-    LinkedDoubleArrow { ends: [SizedSumEnd; 2], cells: Vec<usize> },
+    LinkedDoubleArrow {
+        ends: [SizedSumEnd; 2],
+        cells: Vec<usize>,
+    },
     KillerCages {
         cages: Vec<crate::variant::KillerCage>,
         cover_grid: bool,
@@ -72,36 +145,88 @@ pub enum SizedConstraint {
         consecutive: MarkedPairs,
         ratio_two: MarkedPairs,
     },
-    Quadruple { top_left: usize, digits: Vec<u8> },
+    CornerKropki {
+        consecutive: Vec<usize>,
+        ratio_two: Vec<usize>,
+    },
+    Quadruple {
+        top_left: usize,
+        digits: Vec<u8>,
+    },
     LabeledDots {
         relation: SizedDotRelation,
         marks: Vec<SizedLabeledDot>,
         negative: bool,
     },
-    AntiSum { sum: u8 },
-    RowColumnSum { pairs: Vec<[usize; 2]>, require_unmarked: bool },
+    Nonogram {
+        axis: RunAxis,
+        index: usize,
+        digits: Vec<u8>,
+        runs: Vec<u8>,
+    },
+    Skyscrapers {
+        direction: ClueDirection,
+        index: usize,
+        count: u8,
+    },
+    AntiSum {
+        sum: u8,
+    },
+    RowColumnSum {
+        pairs: Vec<[usize; 2]>,
+        require_unmarked: bool,
+    },
+    RowEquation {
+        cells: Vec<usize>,
+        operators: Vec<EquationOperator>,
+    },
+    FractionalRegions {
+        pieces: Vec<Vec<usize>>,
+    },
+    LittleKiller {
+        direction: crate::variant::ClueDirection,
+        cells: Vec<usize>,
+        sum: u16,
+    },
     Difference {
         cells: [usize; 2],
         difference: u8,
     },
+    Crust {
+        clues: Vec<CrustClue>,
+        shared_region: Option<[usize; 2]>,
+        fixed_edges: Vec<[usize; 2]>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
 pub enum SizedDotRelation {
     Difference,
     Ratio,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(deny_unknown_fields))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(deny_unknown_fields)
+)]
 pub struct SizedLabeledDot {
     pub cells: [usize; 2],
     pub value: u8,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize), serde(rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
 pub enum SizedKropkiRelation {
     Consecutive,
     RatioTwo,
@@ -167,14 +292,36 @@ pub enum SizedConstraintStep {
     serde(tag = "type", rename_all = "kebab-case")
 )]
 pub enum SizedConstraintFailure {
-    Cell { cell: usize },
-    MissingDigit { house: House, digit: u8 },
-    RepeatedDigit { house: House, digit: u8 },
-    Rule { rule: usize },
-    KillerCage { rule: usize, cage: usize },
-    Kropki { rule: usize, pair: SizedKropkiPair },
-    AntiSum { rule: usize, cells: [usize; 2] },
-    RowColumnSum { rule: usize, cells: Option<[usize; 2]> },
+    Cell {
+        cell: usize,
+    },
+    MissingDigit {
+        house: House,
+        digit: u8,
+    },
+    RepeatedDigit {
+        house: House,
+        digit: u8,
+    },
+    Rule {
+        rule: usize,
+    },
+    KillerCage {
+        rule: usize,
+        cage: usize,
+    },
+    Kropki {
+        rule: usize,
+        pair: SizedKropkiPair,
+    },
+    AntiSum {
+        rule: usize,
+        cells: [usize; 2],
+    },
+    RowColumnSum {
+        rule: usize,
+        cells: Option<[usize; 2]>,
+    },
 }
 
 #[derive(Debug)]
@@ -202,16 +349,25 @@ pub struct SizedConstraintGrid {
     diagonals: Vec<Vec<usize>>,
     extra_houses: Vec<Vec<usize>>,
     thermometers: Vec<(Vec<usize>, bool)>,
+    between_lines: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
     arrows: Vec<(usize, Vec<usize>)>,
     double_arrows: Vec<Option<DoubleArrow>>,
     region_sums: Vec<Option<RegionSum>>,
+    nonograms: Vec<Option<NonogramLine>>,
+    skyscrapers: Vec<Option<SkyscrapersLine>>,
+    row_equations: Vec<Option<RowEquation>>,
+    fractional_regions: Vec<Option<FractionalRegions>>,
+    little_killers: Vec<Option<LittleKiller>>,
     quadruples: Vec<Option<SizedQuadruple>>,
     cages: Vec<Vec<Cage>>,
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
     row_column_sums: Vec<Option<RowColumnSum>>,
     sandwiches: Vec<Option<Sandwich>>,
+    crust: Option<Crust>,
+    global_entropy: Vec<Option<([u16; 3], Vec<[usize; 4]>)>>,
+    entropic_lines: Vec<Option<EntropicLine>>,
 }
 
 impl SizedConstraintGrid {
@@ -226,13 +382,23 @@ impl SizedConstraintGrid {
         let mut diagonals = Vec::new();
         let mut extra_houses = Vec::new();
         let mut thermometers = Vec::new();
+        let mut between_lines = Vec::new();
         let mut renbans = Vec::new();
         let mut arrows = Vec::new();
         let mut double_arrows = Vec::new();
         let mut linked_double_arrows = Vec::new();
         let mut region_sums = Vec::new();
+        let mut nonograms = Vec::new();
+        let mut skyscrapers = Vec::new();
+        let mut row_equations = Vec::new();
+        let mut fractional_regions = Vec::new();
+        let mut little_killers = Vec::new();
+        let mut row_equation_tables = RowEquationTables::default();
         let mut row_column_sums = Vec::new();
         let mut sandwiches = Vec::new();
+        let mut crust = None;
+        let mut global_entropy = Vec::new();
+        let mut entropic_lines = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -245,9 +411,11 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::ExtraHouse { cells } => {
                     let mut seen = [false; MAX_SIZE * MAX_SIZE];
-                    if cells.len() != size || cells.iter().any(|&cell| {
-                        cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
-                    }) {
+                    if cells.len() != size
+                        || cells.iter().any(|&cell| {
+                            cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
+                        })
+                    {
                         return None;
                     }
                     extra_houses.push(cells.clone());
@@ -287,9 +455,27 @@ impl SizedConstraintGrid {
                     }
                     thermometers.push((cells.clone(), true));
                 }
-                SizedConstraint::Whispers { cells, min_difference } => {
-                    if cells.len() < 2 || cells.len() > size * size || *min_difference == 0 || *min_difference as usize >= size ||
-                        cells.iter().any(|&cell| cell >= layout.cell_count()) || cells.windows(2).any(|pair| pair[0] == pair[1]) {
+                SizedConstraint::Between { cells } => {
+                    if !(3..=size * size).contains(&cells.len())
+                        || cells.iter().enumerate().any(|(index, &cell)| {
+                            cell >= layout.cell_count() || cells[..index].contains(&cell)
+                        })
+                    {
+                        return None;
+                    }
+                    between_lines.push(cells.clone());
+                }
+                SizedConstraint::Whispers {
+                    cells,
+                    min_difference,
+                } => {
+                    if cells.len() < 2
+                        || cells.len() > size * size
+                        || *min_difference == 0
+                        || *min_difference as usize >= size
+                        || cells.iter().any(|&cell| cell >= layout.cell_count())
+                        || cells.windows(2).any(|pair| pair[0] == pair[1])
+                    {
                         return None;
                     }
                 }
@@ -297,7 +483,9 @@ impl SizedConstraintGrid {
                     if *circle >= layout.cell_count()
                         || !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
-                            cell >= layout.cell_count() || cell == *circle || cells[..index].contains(&cell)
+                            cell >= layout.cell_count()
+                                || cell == *circle
+                                || cells[..index].contains(&cell)
                         })
                     {
                         return None;
@@ -310,20 +498,75 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::LinkedDoubleArrow { ends, cells } => {
                     linked_double_arrows.resize_with(index + 1, || None);
-                    linked_double_arrows[index] = Some(LinkedDoubleArrow::compile(&layout, *ends, cells)?);
+                    linked_double_arrows[index] =
+                        Some(LinkedDoubleArrow::compile(&layout, *ends, cells)?);
                 }
-                SizedConstraint::KillerCages { cages: authored, cover_grid } => {
+                SizedConstraint::KillerCages {
+                    cages: authored,
+                    cover_grid,
+                } => {
                     cages.resize_with(index + 1, Vec::new);
                     for cage in authored {
                         cages[index].push(Cage::compile(&layout, cage, &mut occupied)?);
                     }
-                    if authored.is_empty() || *cover_grid && authored.iter().map(|cage| cage.cells.len()).sum::<usize>() != layout.cell_count() {
+                    if authored.is_empty()
+                        || *cover_grid
+                            && authored.iter().map(|cage| cage.cells.len()).sum::<usize>()
+                                != layout.cell_count()
+                    {
                         return None;
                     }
                 }
-                SizedConstraint::RegionSum { cells, group_by_region } => {
+                SizedConstraint::RegionSum {
+                    cells,
+                    group_by_region,
+                } => {
                     region_sums.resize_with(index + 1, || None);
-                    region_sums[index] = Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                    region_sums[index] =
+                        Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                }
+                SizedConstraint::Nonogram {
+                    axis,
+                    index: house,
+                    digits,
+                    runs,
+                } => {
+                    nonograms.resize_with(index + 1, || None);
+                    nonograms[index] =
+                        Some(NonogramLine::compile(size, *axis, *house, digits, runs)?);
+                }
+                SizedConstraint::Skyscrapers {
+                    direction,
+                    index: line,
+                    count,
+                } => {
+                    skyscrapers.resize_with(index + 1, || None);
+                    skyscrapers[index] =
+                        Some(SkyscrapersLine::compile(size, *direction, *line, *count)?);
+                }
+                SizedConstraint::RowEquation { cells, operators } => {
+                    row_equations.resize_with(index + 1, || None);
+                    row_equations[index] = Some(RowEquation::compile(
+                        &layout,
+                        cells,
+                        operators,
+                        0,
+                        &mut row_equation_tables,
+                    )?);
+                }
+                SizedConstraint::FractionalRegions { pieces } => {
+                    fractional_regions.resize_with(index + 1, || None);
+                    fractional_regions[index] =
+                        Some(FractionalRegions::compile(&layout, pieces, 0)?);
+                }
+                SizedConstraint::LittleKiller {
+                    direction,
+                    cells,
+                    sum,
+                } => {
+                    little_killers.resize_with(index + 1, || None);
+                    little_killers[index] =
+                        Some(LittleKiller::compile(size, *direction, cells, *sum, 0)?);
                 }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())
@@ -335,16 +578,69 @@ impl SizedConstraintGrid {
                     }
                     renbans.push(cells.clone());
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
-                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. }
-                | SizedConstraint::Quadruple { .. } | SizedConstraint::Xv { .. } => {}
-                SizedConstraint::RowColumnSum { pairs, require_unmarked } => {
-                    row_column_sums.resize_with(index + 1, || None);
-                    row_column_sums[index] = Some(RowColumnSum::compile(size, pairs, *require_unmarked, rules)?);
+                SizedConstraint::GlobalEntropy { groups } => {
+                    let groups = entropy_group_masks(size, groups)?;
+                    let mut windows = Vec::new();
+                    for row in 0..size - 1 {
+                        for column in 0..size - 1 {
+                            let top_left = row * size + column;
+                            windows.push([
+                                top_left,
+                                top_left + 1,
+                                top_left + size,
+                                top_left + size + 1,
+                            ]);
+                        }
+                    }
+                    global_entropy.resize_with(index + 1, || None);
+                    global_entropy[index] = Some((groups, windows));
                 }
-                SizedConstraint::Sandwich { cells, direction, sum } => {
+                SizedConstraint::Entropic { cells, groups } => {
+                    let groups = entropy_group_masks(size, groups)?;
+                    let line = EntropicLine::compile(cells, groups, layout.cell_count())?;
+                    entropic_lines.resize_with(index + 1, || None);
+                    entropic_lines[index] = Some(line);
+                }
+                SizedConstraint::Kropki { .. }
+                | SizedConstraint::NonConsecutive { .. }
+                | SizedConstraint::Inequality { .. }
+                | SizedConstraint::CornerKropki { .. }
+                | SizedConstraint::Difference { .. }
+                | SizedConstraint::LabeledDots { .. }
+                | SizedConstraint::AntiSum { .. }
+                | SizedConstraint::AntiKing
+                | SizedConstraint::Modular { .. }
+                | SizedConstraint::Quadruple { .. }
+                | SizedConstraint::Xv { .. } => {}
+                SizedConstraint::RowColumnSum {
+                    pairs,
+                    require_unmarked,
+                } => {
+                    row_column_sums.resize_with(index + 1, || None);
+                    row_column_sums[index] = Some(RowColumnSum::compile(
+                        size,
+                        pairs,
+                        *require_unmarked,
+                        rules,
+                    )?);
+                }
+                SizedConstraint::Sandwich {
+                    cells,
+                    direction,
+                    sum,
+                } => {
                     sandwiches.resize_with(index + 1, || None);
                     sandwiches[index] = Some(Sandwich::compile(size, cells, *direction, *sum)?);
+                }
+                SizedConstraint::Crust {
+                    clues,
+                    shared_region,
+                    fixed_edges,
+                } => {
+                    if crust.is_some() || layout.has_regions() {
+                        return None;
+                    }
+                    crust = Some(Crust::compile(&layout, clues, *shared_region, fixed_edges)?);
                 }
             }
         }
@@ -352,7 +648,13 @@ impl SizedConstraintGrid {
         for (index, rule) in rules.iter().enumerate() {
             if let SizedConstraint::Quadruple { top_left, digits } = rule {
                 quadruples.resize_with(index + 1, || None);
-                quadruples[index] = Some(SizedQuadruple::compile(&layout, *top_left, digits, &diagonals, &extra_houses)?);
+                quadruples[index] = Some(SizedQuadruple::compile(
+                    &layout,
+                    *top_left,
+                    digits,
+                    &diagonals,
+                    &extra_houses,
+                )?);
             }
         }
         let parity = parity
@@ -368,16 +670,25 @@ impl SizedConstraintGrid {
             diagonals,
             extra_houses,
             thermometers,
+            between_lines,
             renbans,
             arrows,
             double_arrows,
             region_sums,
+            nonograms,
+            skyscrapers,
+            row_equations,
+            fractional_regions,
+            little_killers,
             quadruples,
             cages,
             linked_double_arrows,
             pair_links,
             row_column_sums,
             sandwiches,
+            crust,
+            global_entropy,
+            entropic_lines,
         })
     }
 
@@ -401,11 +712,49 @@ impl SizedConstraintGrid {
         self.search(digits, budget, 1).1
     }
 
+    /// Recover the connected inferred region partition for a complete Crust grid.
+    pub fn inferred_regions(
+        &self,
+        digits: &[u8],
+        budget: u32,
+    ) -> Result<Vec<Vec<usize>>, Analysis> {
+        let crust = self.crust.as_ref().ok_or(Analysis::Conflict)?;
+        if digits.contains(&0) || self.layout.used_digits(digits).is_none() || !self.permits(digits)
+        {
+            return Err(Analysis::Conflict);
+        }
+        let mut remaining = budget;
+        crust
+            .partition(digits, &mut remaining)?
+            .ok_or(Analysis::Conflict)
+    }
+
     /// Apply the placed digits and propagate support through overlapping rules.
-    pub fn candidates(&self, digits: &[u8]) -> Option<Vec<u16>> {
-        let mut candidates = self.layout.candidates(digits)?;
+    pub fn candidates(&self, digits: &[u8]) -> Result<Option<Vec<u16>>, Analysis> {
+        self.candidates_with_budget(digits, crate::SEARCH_LIMIT)
+    }
+
+    /// Compute candidates without treating an exhausted Crust partition
+    /// search as a contradiction.
+    pub fn candidates_with_budget(
+        &self,
+        digits: &[u8],
+        budget: u32,
+    ) -> Result<Option<Vec<u16>>, Analysis> {
+        let Some(mut candidates) = self.layout.candidates(digits) else {
+            return Ok(None);
+        };
         if !self.permits(digits) {
-            return None;
+            return Ok(None);
+        }
+        if let Some(crust) = &self.crust
+            && !digits.contains(&0)
+        {
+            let mut crust_budget = budget;
+            match crust.partition(digits, &mut crust_budget)? {
+                Some(_) => {}
+                None => return Ok(None),
+            }
         }
         for (cell, &digit) in digits.iter().enumerate() {
             if digit != 0 {
@@ -413,14 +762,14 @@ impl SizedConstraintGrid {
             }
         }
         if !self.apply_rules(digits, &mut candidates) {
-            return None;
+            return Ok(None);
         }
         for (cell, &digit) in digits.iter().enumerate() {
             if digit != 0 {
                 candidates[cell] = 0;
             }
         }
-        Some(candidates)
+        Ok(Some(candidates))
     }
 
     fn apply_rules(&self, digits: &[u8], candidates: &mut [u16]) -> bool {
@@ -450,10 +799,34 @@ impl SizedConstraintGrid {
             for (cells, allow_equal) in &self.thermometers {
                 changed |= self.restrict_thermometer(cells, candidates, *allow_equal);
             }
+            for cells in &self.between_lines {
+                let Some(support) = self.between_support(cells, candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
             for cells in &self.renbans {
                 for (&cell, &mask) in cells.iter().zip(&self.renban_masks(cells, candidates)) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
+                }
+            }
+            for (groups, windows) in self.global_entropy.iter().flatten() {
+                for cells in windows {
+                    let support = crate::variant::global_entropy::support_in_groups(
+                        cells.map(|cell| candidates[cell]),
+                        *groups,
+                    );
+                    if support.contains(&0) {
+                        return false;
+                    }
+                    for (&cell, mask) in cells.iter().zip(support) {
+                        changed |= candidates[cell] != mask;
+                        candidates[cell] = mask;
+                    }
                 }
             }
             for (circle, cells) in &self.arrows {
@@ -467,7 +840,12 @@ impl SizedConstraintGrid {
             }
             for arrow in self.double_arrows.iter().flatten() {
                 let (end_masks, line_masks) = arrow.support(candidates);
-                for (&cell, mask) in arrow.ends.iter().zip(end_masks).chain(arrow.cells.iter().zip(line_masks)) {
+                for (&cell, mask) in arrow
+                    .ends
+                    .iter()
+                    .zip(end_masks)
+                    .chain(arrow.cells.iter().zip(line_masks))
+                {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -481,7 +859,9 @@ impl SizedConstraintGrid {
                 }
             }
             for clue in self.quadruples.iter().flatten() {
-                let Some(support) = clue.support(candidates) else { return false };
+                let Some(support) = clue.support(candidates) else {
+                    return false;
+                };
                 for (cell, mask) in clue.cells.into_iter().zip(support) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
@@ -500,6 +880,63 @@ impl SizedConstraintGrid {
                 for cell in line.cells() {
                     changed |= candidates[cell] != supported[cell];
                     candidates[cell] = supported[cell];
+                }
+            }
+            for equation in self.row_equations.iter().flatten() {
+                let Some(support) = equation.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in equation.cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for partition in self.fractional_regions.iter().flatten() {
+                for piece in &partition.pieces {
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !partition.support(piece, candidates, &mut supported) {
+                        return false;
+                    }
+                    for cell in piece.cells() {
+                        changed |= candidates[cell] != supported[cell];
+                        candidates[cell] = supported[cell];
+                    }
+                }
+            }
+            for clue in self.little_killers.iter().flatten() {
+                let Some(supported) = clue.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in clue.cells.iter().zip(supported) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for line in self.nonograms.iter().flatten() {
+                let Some(support) = line.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in line.cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for line in self.skyscrapers.iter().flatten() {
+                let Some(support) = line.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in line.cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for line in self.entropic_lines.iter().flatten() {
+                let Some(support) = line.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in line.cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
                 }
             }
             for link in self.pair_links.iter().flatten() {
@@ -540,20 +977,33 @@ impl SizedConstraintGrid {
                     candidates[cell] = supported[cell];
                 }
             }
+            if let Some(crust) = &self.crust {
+                let Some(narrowed) = crust.restrict(candidates) else {
+                    return false;
+                };
+                changed |= narrowed;
+            }
             if !changed {
                 return true;
             }
         }
     }
 
-    fn restrict_thermometer(&self, cells: &[usize], candidates: &mut [u16], allow_equal: bool) -> bool {
+    fn restrict_thermometer(
+        &self,
+        cells: &[usize],
+        candidates: &mut [u16],
+        allow_equal: bool,
+    ) -> bool {
         let mut changed = false;
         let mut lower = self.layout.full_mask;
         for &cell in cells {
             let mask = candidates[cell] & lower;
             changed |= mask != candidates[cell];
             candidates[cell] = mask;
-            lower = u16::MAX.checked_shl(mask.trailing_zeros() + u32::from(!allow_equal)).unwrap_or(0);
+            lower = u16::MAX
+                .checked_shl(mask.trailing_zeros() + u32::from(!allow_equal))
+                .unwrap_or(0);
         }
         let mut upper = self.layout.full_mask;
         for &cell in cells.iter().rev() {
@@ -564,10 +1014,59 @@ impl SizedConstraintGrid {
                 0
             } else {
                 let highest = 1u16 << (u16::BITS - 1 - mask.leading_zeros());
-                if allow_equal { highest | (highest - 1) } else { highest - 1 }
+                if allow_equal {
+                    highest | (highest - 1)
+                } else {
+                    highest - 1
+                }
             };
         }
         changed
+    }
+
+    fn between_support(&self, cells: &[usize], candidates: &[u16]) -> Option<[u16; MAX_SIZE]> {
+        let size = self.layout.size();
+        let mut support = [0; MAX_SIZE];
+        for low in 1..=size {
+            let low_bit = 1u16 << (low - 1);
+            if candidates[cells[0]] & low_bit == 0 && candidates[*cells.last()?] & low_bit == 0 {
+                continue;
+            }
+            for high in low + 2..=size {
+                let high_bit = 1u16 << (high - 1);
+                if candidates[*cells.last()?] & high_bit != 0 {
+                    let inside = ((1u16 << (high - 1)) - 1) & !((1u16 << low) - 1);
+                    if cells[1..cells.len() - 1]
+                        .iter()
+                        .all(|&cell| candidates[cell] & inside != 0)
+                    {
+                        support[0] |= low_bit;
+                        support[cells.len() - 1] |= high_bit;
+                        for (index, &cell) in cells[1..cells.len() - 1].iter().enumerate() {
+                            support[index + 1] |= candidates[cell] & inside;
+                        }
+                    }
+                }
+                if candidates[cells[0]] & high_bit != 0 && candidates[*cells.last()?] & low_bit != 0
+                {
+                    let inside = ((1u16 << (high - 1)) - 1) & !((1u16 << low) - 1);
+                    if cells[1..cells.len() - 1]
+                        .iter()
+                        .all(|&cell| candidates[cell] & inside != 0)
+                    {
+                        support[cells.len() - 1] |= low_bit;
+                        support[0] |= high_bit;
+                        for (index, &cell) in cells[1..cells.len() - 1].iter().enumerate() {
+                            support[index + 1] |= candidates[cell] & inside;
+                        }
+                    }
+                }
+            }
+        }
+        support[..cells.len()]
+            .iter()
+            .all(|&mask| mask != 0)
+            .then_some(support)
     }
 
     fn renban_masks(&self, cells: &[usize], candidates: &[u16]) -> [u16; MAX_SIZE] {
@@ -671,26 +1170,38 @@ impl SizedConstraintGrid {
                     actions.sort_unstable();
                     actions.dedup();
                 }
-                SizedConstraint::Thermometer { cells } | SizedConstraint::SlowThermometer { cells } => {
+                SizedConstraint::Thermometer { cells }
+                | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
-                    self.restrict_thermometer(cells, &mut support, matches!(constraint, SizedConstraint::SlowThermometer { .. }));
+                    self.restrict_thermometer(
+                        cells,
+                        &mut support,
+                        matches!(constraint, SizedConstraint::SlowThermometer { .. }),
+                    );
                     if support.contains(&0) {
                         return None;
                     }
                     for &cell in cells {
-                        eliminations_for(
-                            cell,
-                            candidates[cell] & !support[cell],
-                            &mut actions,
-                        );
+                        eliminations_for(cell, candidates[cell] & !support[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::Between { cells } => {
+                    let support = self.between_support(cells, &domains)?;
+                    for (&cell, mask) in cells.iter().zip(support) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
                 SizedConstraint::DoubleArrow { ends, cells } => {
-                    let (end_masks, line_masks) = self.double_arrows[rule].as_ref()?.hint_support(&domains);
+                    let (end_masks, line_masks) =
+                        self.double_arrows[rule].as_ref()?.hint_support(&domains);
                     if end_masks.contains(&0) {
                         return None;
                     }
-                    for (&cell, mask) in ends.iter().zip(end_masks).chain(cells.iter().zip(line_masks)) {
+                    for (&cell, mask) in ends
+                        .iter()
+                        .zip(end_masks)
+                        .chain(cells.iter().zip(line_masks))
+                    {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
@@ -740,7 +1251,10 @@ impl SizedConstraintGrid {
                             eliminations_for(cell, candidates[cell] & !mask, &mut cage_actions);
                         }
                         if !cage_actions.is_empty() {
-                            choices.push(SizedConstraintStep::Rule { rule, actions: cage_actions });
+                            choices.push(SizedConstraintStep::Rule {
+                                rule,
+                                actions: cage_actions,
+                            });
                             if choices.len() == limit {
                                 break;
                             }
@@ -757,12 +1271,75 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
+                SizedConstraint::Nonogram { .. } => {
+                    let line = self.nonograms[rule].as_ref()?;
+                    for (&cell, mask) in line.cells.iter().zip(line.support(&domains)?) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::Skyscrapers { .. } => {
+                    let line = self.skyscrapers[rule].as_ref()?;
+                    for (&cell, mask) in line.cells.iter().zip(line.support(&domains)?) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::RowEquation { cells, .. } => {
+                    let support = self.row_equations[rule].as_ref()?.support(&domains)?;
+                    for (&cell, mask) in cells.iter().zip(support) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::FractionalRegions { .. } => {
+                    let partition = self.fractional_regions[rule].as_ref()?;
+                    for piece in &partition.pieces {
+                        let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                        if !partition.support(piece, &domains, &mut supported) {
+                            return None;
+                        }
+                        for cell in piece.cells() {
+                            eliminations_for(
+                                cell,
+                                candidates[cell] & !supported[cell],
+                                &mut actions,
+                            );
+                        }
+                    }
+                }
+                SizedConstraint::LittleKiller { .. } => {
+                    let clue = self.little_killers[rule].as_ref()?;
+                    let supported = clue.support(&domains)?;
+                    for (&cell, mask) in clue.cells.iter().zip(supported) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
                 SizedConstraint::Renban { cells } => {
                     let support = self.renban_masks(cells, &domains);
                     for (&cell, &mask) in cells.iter().zip(&support) {
                         if mask == 0 {
                             return None;
                         }
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::GlobalEntropy { .. } => {
+                    let (groups, windows) = self.global_entropy[rule].as_ref()?;
+                    for cells in windows {
+                        let support = crate::variant::global_entropy::support_in_groups(
+                            cells.map(|cell| domains[cell]),
+                            *groups,
+                        );
+                        if support.contains(&0) {
+                            return None;
+                        }
+                        for (&cell, mask) in cells.iter().zip(support) {
+                            eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                        }
+                    }
+                }
+                SizedConstraint::Entropic { .. } => {
+                    let line = self.entropic_lines[rule].as_ref()?;
+                    let support = line.support(&domains)?;
+                    for (&cell, mask) in line.cells.iter().zip(support) {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
@@ -774,7 +1351,11 @@ impl SizedConstraintGrid {
                         UnmarkedSumSupport::Unrestricted => None,
                     };
                     let marked = layer.marked.iter().map(|link| {
-                        (link.cells, link.restrict(link.cells.map(|cell| domains[cell])), false)
+                        (
+                            link.cells,
+                            link.restrict(link.cells.map(|cell| domains[cell])),
+                            false,
+                        )
                     });
                     for (cells, masks, unmarked) in marked.chain(witness) {
                         if masks.contains(&0) {
@@ -785,7 +1366,12 @@ impl SizedConstraintGrid {
                             eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                         }
                         if !actions.is_empty() {
-                            choices.push(SizedConstraintStep::RowColumnSum { rule, cells, unmarked, actions });
+                            choices.push(SizedConstraintStep::RowColumnSum {
+                                rule,
+                                cells,
+                                unmarked,
+                                actions,
+                            });
                             if choices.len() == limit {
                                 break;
                             }
@@ -795,7 +1381,9 @@ impl SizedConstraintGrid {
                 SizedConstraint::Sandwich { .. } => {
                     let sandwich = self.sandwiches[rule].as_ref()?;
                     let mut supported = [0; MAX_SIZE * MAX_SIZE];
-                    if !sandwich.support(&domains, &mut supported) { return None; }
+                    if !sandwich.support(&domains, &mut supported) {
+                        return None;
+                    }
                     for cell in sandwich.cells() {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
@@ -810,7 +1398,10 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
-                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {
+                SizedConstraint::Kropki { .. }
+                | SizedConstraint::CornerKropki { .. }
+                | SizedConstraint::LabeledDots { .. }
+                | SizedConstraint::AntiSum { .. } => {
                     for link in &self.pair_links[rule] {
                         let support = link.supports(&domains);
                         if support.contains(&0) {
@@ -822,9 +1413,17 @@ impl SizedConstraintGrid {
                         }
                         if !actions.is_empty() {
                             let step = if let Some(pair) = link.kropki_proof() {
-                                SizedConstraintStep::Kropki { rule, pair, actions }
+                                SizedConstraintStep::Kropki {
+                                    rule,
+                                    pair,
+                                    actions,
+                                }
                             } else {
-                                SizedConstraintStep::AntiSum { rule, cells: link.constraint.cells, actions }
+                                SizedConstraintStep::AntiSum {
+                                    rule,
+                                    cells: link.constraint.cells,
+                                    actions,
+                                }
                             };
                             choices.push(step);
                             if choices.len() == limit {
@@ -833,16 +1432,33 @@ impl SizedConstraintGrid {
                         }
                     }
                 }
-                SizedConstraint::Xv { .. } | SizedConstraint::Whispers { .. } => {
+                SizedConstraint::Xv { .. }
+                | SizedConstraint::Whispers { .. }
+                | SizedConstraint::NonConsecutive { .. }
+                | SizedConstraint::Inequality { .. }
+                | SizedConstraint::AntiKing
+                | SizedConstraint::Modular { .. } => {
                     for link in &self.pair_links[rule] {
                         let support = link.supports(&domains);
-                        if support.contains(&0) { return None; }
+                        if support.contains(&0) {
+                            return None;
+                        }
                         for (cell, mask) in link.constraint.cells.into_iter().zip(support) {
                             eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                         }
                     }
                     actions.sort_unstable();
                     actions.dedup();
+                }
+                SizedConstraint::Crust { .. } => {
+                    let crust = self.crust.as_ref()?;
+                    let mut support = domains.clone();
+                    crust.restrict(&mut support)?;
+                    for (cell, (&candidate, &supported)) in
+                        candidates.iter().zip(&support).enumerate()
+                    {
+                        eliminations_for(cell, candidate & !supported, &mut actions);
+                    }
                 }
             }
             if !actions.is_empty() {
@@ -858,7 +1474,10 @@ impl SizedConstraintGrid {
                     .map(|proof| SizedConstraintStep::House { proof }),
             );
         }
-        Some(SizedConstraintHints { candidates, choices })
+        Some(SizedConstraintHints {
+            candidates,
+            choices,
+        })
     }
 
     pub fn trace(
@@ -1034,67 +1653,141 @@ impl SizedConstraintGrid {
                     };
                     cells.iter().any(|&cell| domains[cell] & allowed == 0)
                 }
-                SizedConstraint::Thermometer { cells } | SizedConstraint::SlowThermometer { cells } => {
+                SizedConstraint::Thermometer { cells }
+                | SizedConstraint::SlowThermometer { cells } => {
                     let mut support = domains.clone();
-                    self.restrict_thermometer(cells, &mut support, matches!(constraint, SizedConstraint::SlowThermometer { .. }));
+                    self.restrict_thermometer(
+                        cells,
+                        &mut support,
+                        matches!(constraint, SizedConstraint::SlowThermometer { .. }),
+                    );
                     support.contains(&0)
                 }
-                SizedConstraint::Whispers { .. } | SizedConstraint::Xv { .. } => {
-                    self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
+                SizedConstraint::Between { cells } => {
+                    self.between_support(cells, &domains).is_none()
                 }
+                SizedConstraint::Whispers { .. }
+                | SizedConstraint::NonConsecutive { .. }
+                | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Xv { .. }
+                | SizedConstraint::AntiKing
+                | SizedConstraint::Modular { .. } => self.pair_links[rule]
+                    .iter()
+                    .any(|link| link.supports(&domains).contains(&0)),
                 SizedConstraint::Sandwich { .. } => {
                     let sandwich = self.sandwiches[rule].as_ref()?;
                     !sandwich.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])
                 }
+                SizedConstraint::Crust { .. } => {
+                    let crust = self.crust.as_ref()?;
+                    let mut support = domains.clone();
+                    crust.restrict(&mut support).is_none()
+                }
                 SizedConstraint::Arrow { circle, cells } => {
                     arrow_masks(*circle, cells, &domains).0 == 0
                 }
-                SizedConstraint::DoubleArrow { .. } => {
-                    self.double_arrows[rule].as_ref()?.hint_support(&domains).0.contains(&0)
-                }
+                SizedConstraint::DoubleArrow { .. } => self.double_arrows[rule]
+                    .as_ref()?
+                    .hint_support(&domains)
+                    .0
+                    .contains(&0),
                 SizedConstraint::ExtraHouse { cells } => {
-                    extra_house_support(cells, &domains, self.layout.full_mask)[..cells.len()].contains(&0)
+                    extra_house_support(cells, &domains, self.layout.full_mask)[..cells.len()]
+                        .contains(&0)
                 }
-                SizedConstraint::LinkedDoubleArrow { .. } => {
-                    !self.linked_double_arrows[rule].as_ref()?.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])
-                }
+                SizedConstraint::LinkedDoubleArrow { .. } => !self.linked_double_arrows[rule]
+                    .as_ref()?
+                    .support(&domains, &mut [0; MAX_SIZE * MAX_SIZE]),
                 SizedConstraint::KillerCages { .. } => {
-                    if let Some(cage) = self.cages[rule].iter().position(|cage| {
-                        cage.support(&domains)[..cage.cells.len()].contains(&0)
-                    }) {
+                    if let Some(cage) = self.cages[rule]
+                        .iter()
+                        .position(|cage| cage.support(&domains)[..cage.cells.len()].contains(&0))
+                    {
                         return Some(SizedConstraintFailure::KillerCage { rule, cage });
                     }
                     false
                 }
-                SizedConstraint::Quadruple { .. } => self.quadruples[rule].as_ref()?.support(&domains).is_none(),
-                SizedConstraint::RegionSum { .. } => self.region_sums[rule].as_ref()
+                SizedConstraint::Quadruple { .. } => {
+                    self.quadruples[rule].as_ref()?.support(&domains).is_none()
+                }
+                SizedConstraint::RegionSum { .. } => self.region_sums[rule]
+                    .as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
+                SizedConstraint::Nonogram { .. } => {
+                    self.nonograms[rule].as_ref()?.support(&domains).is_none()
+                }
+                SizedConstraint::Skyscrapers { .. } => {
+                    self.skyscrapers[rule].as_ref()?.support(&domains).is_none()
+                }
+                SizedConstraint::RowEquation { .. } => self.row_equations[rule]
+                    .as_ref()?
+                    .support(&domains)
+                    .is_none(),
+                SizedConstraint::FractionalRegions { .. } => {
+                    let partition = self.fractional_regions[rule].as_ref()?;
+                    partition.pieces.iter().any(|piece| {
+                        let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                        !partition.support(piece, &domains, &mut supported)
+                    })
+                }
+                SizedConstraint::LittleKiller { .. } => self.little_killers[rule]
+                    .as_ref()?
+                    .support(&domains)
+                    .is_none(),
                 SizedConstraint::Renban { cells } => {
                     self.renban_masks(cells, &domains)[..cells.len()].contains(&0)
                 }
+                SizedConstraint::GlobalEntropy { .. } => {
+                    let (groups, windows) = self.global_entropy[rule].as_ref()?;
+                    windows.iter().any(|cells| {
+                        crate::variant::global_entropy::support_in_groups(
+                            cells.map(|cell| domains[cell]),
+                            *groups,
+                        )
+                        .contains(&0)
+                    })
+                }
+                SizedConstraint::Entropic { .. } => self.entropic_lines[rule]
+                    .as_ref()?
+                    .support(&domains)
+                    .is_none(),
                 SizedConstraint::RowColumnSum { .. } => {
                     let layer = self.row_column_sums[rule].as_ref()?;
                     if let Some(link) = layer.marked.iter().find(|link| {
-                        link.restrict(link.cells.map(|cell| domains[cell])).contains(&0)
+                        link.restrict(link.cells.map(|cell| domains[cell]))
+                            .contains(&0)
                     }) {
-                        return Some(SizedConstraintFailure::RowColumnSum { rule, cells: Some(link.cells) });
+                        return Some(SizedConstraintFailure::RowColumnSum {
+                            rule,
+                            cells: Some(link.cells),
+                        });
                     }
-                    if matches!(layer.unmarked_support(&domains), UnmarkedSumSupport::Impossible) {
+                    if matches!(
+                        layer.unmarked_support(&domains),
+                        UnmarkedSumSupport::Impossible
+                    ) {
                         return Some(SizedConstraintFailure::RowColumnSum { rule, cells: None });
                     }
                     false
                 }
-                SizedConstraint::Difference { .. } => {
-                    self.pair_links[rule].iter().any(|link| link.supports(&domains).contains(&0))
-                }
-                SizedConstraint::Kropki { .. } | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. } => {
-                    if let Some(link) = self.pair_links[rule].iter().find(|link| {
-                        link.supports(&domains).contains(&0)
-                    }) {
+                SizedConstraint::Difference { .. } => self.pair_links[rule]
+                    .iter()
+                    .any(|link| link.supports(&domains).contains(&0)),
+                SizedConstraint::Kropki { .. }
+                | SizedConstraint::CornerKropki { .. }
+                | SizedConstraint::LabeledDots { .. }
+                | SizedConstraint::AntiSum { .. } => {
+                    if let Some(link) = self.pair_links[rule]
+                        .iter()
+                        .find(|link| link.supports(&domains).contains(&0))
+                    {
                         return Some(if let Some(pair) = link.kropki_proof() {
                             SizedConstraintFailure::Kropki { rule, pair }
                         } else {
-                            SizedConstraintFailure::AntiSum { rule, cells: link.constraint.cells }
+                            SizedConstraintFailure::AntiSum {
+                                rule,
+                                cells: link.constraint.cells,
+                            }
                         });
                     }
                     false
@@ -1114,51 +1807,78 @@ impl SizedConstraintGrid {
         // Fast puzzles often finish with local rule propagation alone.
         // Scan every house once the search has expanded several gridfuls of nodes.
         let mut local_nodes_left = (4 * digits.len()).max(256);
-        self.layout
-            .search_filtered::<true>(digits, budget, limit, |digits, used, domains| {
-                for (cell, &digit) in digits.iter().enumerate() {
-                    domains[cell] = if digit == 0 {
-                        self.layout.available(cell, used)
-                    } else {
-                        1 << (digit - 1)
-                    };
-                }
-                if local_nodes_left > 0 {
-                    local_nodes_left -= 1;
-                    return self.apply_rules(digits, domains) && !domains.contains(&0);
-                }
-                loop {
-                    if !self.apply_rules(digits, domains) || domains.contains(&0) {
+        let mut crust_budget = budget.saturating_mul(64);
+        let mut crust_search_exhausted = false;
+        let result =
+            self.layout
+                .search_filtered::<true>(digits, budget, limit, |digits, used, domains| {
+                    if crust_search_exhausted {
                         return false;
                     }
-                    match self.layout.restrict_search_houses(domains) {
-                        Some(true) => {}
-                        Some(false) => return true,
-                        None => return false,
+                    if let Some(crust) = &self.crust
+                        && !digits.contains(&0)
+                    {
+                        match crust.partition(digits, &mut crust_budget) {
+                            Ok(None) => return false,
+                            Err(_) => {
+                                crust_search_exhausted = true;
+                                return false;
+                            }
+                            Ok(Some(_)) => {}
+                        }
                     }
-                }
-            })
+                    for (cell, &digit) in digits.iter().enumerate() {
+                        domains[cell] = if digit == 0 {
+                            self.layout.available(cell, used)
+                        } else {
+                            1 << (digit - 1)
+                        };
+                    }
+                    if local_nodes_left > 0 {
+                        local_nodes_left = local_nodes_left.saturating_sub(1);
+                        return self.apply_rules(digits, domains) && !domains.contains(&0);
+                    }
+                    loop {
+                        if !self.apply_rules(digits, domains) || domains.contains(&0) {
+                            return false;
+                        }
+                        match self.layout.restrict_search_houses(domains) {
+                            Some(true) => {}
+                            Some(false) => return true,
+                            None => return false,
+                        }
+                    }
+                });
+        if crust_search_exhausted && result.0 != Analysis::Multiple {
+            (Analysis::SearchLimit, None)
+        } else {
+            result
+        }
     }
 
     fn permits(&self, digits: &[u8]) -> bool {
         self.parity
             .iter()
             .all(|&(cell, mask)| digits[cell] == 0 || mask & (1 << (digits[cell] - 1)) != 0)
-            && self.diagonals.iter().chain(&self.extra_houses).all(|cells| {
-                let mut used = 0u16;
-                for &cell in cells {
-                    let digit = digits[cell];
-                    if digit == 0 {
-                        continue;
+            && self
+                .diagonals
+                .iter()
+                .chain(&self.extra_houses)
+                .all(|cells| {
+                    let mut used = 0u16;
+                    for &cell in cells {
+                        let digit = digits[cell];
+                        if digit == 0 {
+                            continue;
+                        }
+                        let bit = 1 << (digit - 1);
+                        if used & bit != 0 {
+                            return false;
+                        }
+                        used |= bit;
                     }
-                    let bit = 1 << (digit - 1);
-                    if used & bit != 0 {
-                        return false;
-                    }
-                    used |= bit;
-                }
-                true
-            })
+                    true
+                })
             && self.thermometers.iter().all(|(cells, allow_equal)| {
                 let mut low = 1;
                 for (index, &cell) in cells.iter().enumerate() {
@@ -1172,13 +1892,28 @@ impl SizedConstraintGrid {
                     if !allow_equal && low + cells.len() - index - 1 > self.layout.size() {
                         return false;
                     }
-                    if !allow_equal { low += 1; }
+                    if !allow_equal {
+                        low += 1;
+                    }
                 }
                 true
             })
-            && self.sandwiches.iter().flatten().all(|sandwich| {
-                sandwich.permits(digits)
+            && self.between_lines.iter().all(|cells| {
+                if cells.iter().any(|&cell| digits[cell] == 0) {
+                    return true;
+                }
+                let first = digits[cells[0]];
+                let last = digits[*cells.last().unwrap()];
+                cells[1..cells.len() - 1].iter().all(|&cell| {
+                    let digit = digits[cell];
+                    digit > first.min(last) && digit < first.max(last)
+                })
             })
+            && self
+                .sandwiches
+                .iter()
+                .flatten()
+                .all(|sandwich| sandwich.permits(digits))
             && self.renbans.iter().all(|cells| {
                 let mut used = 0u16;
                 for &cell in cells {
@@ -1197,7 +1932,10 @@ impl SizedConstraintGrid {
             })
             && self.arrows.iter().all(|(circle, cells)| {
                 let (total, empty) = cells.iter().fold((0, 0), |(total, empty), &cell| {
-                    (total + usize::from(digits[cell]), empty + usize::from(digits[cell] == 0))
+                    (
+                        total + usize::from(digits[cell]),
+                        empty + usize::from(digits[cell] == 0),
+                    )
                 });
                 let bulb = usize::from(digits[*circle]);
                 let max = if bulb == 0 { self.layout.size() } else { bulb };
@@ -1209,11 +1947,74 @@ impl SizedConstraintGrid {
                 let (line_min, line_max) = sum_bounds(&arrow.cells, digits, size);
                 ends_min <= line_max && line_min <= ends_max
             })
-            && self.linked_double_arrows.iter().flatten().all(|arrow| arrow.permits(digits))
-            && self.quadruples.iter().flatten().all(|clue| clue.permits(digits, self.layout.full_mask))
+            && self
+                .linked_double_arrows
+                .iter()
+                .flatten()
+                .all(|arrow| arrow.permits(digits))
+            && self
+                .quadruples
+                .iter()
+                .flatten()
+                .all(|clue| clue.permits(digits, self.layout.full_mask))
             && self.cages.iter().flatten().all(|cage| cage.permits(digits))
-            && self.region_sums.iter().flatten().all(|line| line.permits(digits))
-            && self.row_column_sums.iter().flatten().all(|layer| layer.permits(digits))
+            && self
+                .row_equations
+                .iter()
+                .flatten()
+                .all(|equation| equation.permits(digits))
+            && self
+                .fractional_regions
+                .iter()
+                .flatten()
+                .all(|partition| partition.permits(digits))
+            && self
+                .little_killers
+                .iter()
+                .flatten()
+                .all(|clue| clue.permits(digits, self.layout.size()))
+            && self
+                .region_sums
+                .iter()
+                .flatten()
+                .all(|line| line.permits(digits))
+            && self
+                .global_entropy
+                .iter()
+                .flatten()
+                .all(|(groups, windows)| {
+                    windows.iter().all(|cells| {
+                        let domains = cells.map(|cell| {
+                            if digits[cell] == 0 {
+                                self.layout.full_mask
+                            } else {
+                                1 << (digits[cell] - 1)
+                            }
+                        });
+                        !crate::variant::global_entropy::support_in_groups(domains, *groups)
+                            .contains(&0)
+                    })
+                })
+            && self
+                .entropic_lines
+                .iter()
+                .flatten()
+                .all(|line| line.permits(digits, self.layout.full_mask))
+            && self
+                .nonograms
+                .iter()
+                .flatten()
+                .all(|line| line.permits(digits))
+            && self
+                .skyscrapers
+                .iter()
+                .flatten()
+                .all(|line| line.permits(digits))
+            && self
+                .row_column_sums
+                .iter()
+                .flatten()
+                .all(|layer| layer.permits(digits))
             && self.pair_links.iter().flatten().all(|link| {
                 let [left, right] = link.constraint.cells.map(|cell| digits[cell]);
                 left == 0 || right == 0 || link.constraint.permits(left, right)
@@ -1272,7 +2073,11 @@ fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16
 fn sum_bounds(cells: &[usize], digits: &[u8], size: usize) -> (usize, usize) {
     cells.iter().fold((0, 0), |(min, max), &cell| {
         let digit = usize::from(digits[cell]);
-        if digit == 0 { (min + 1, max + size) } else { (min + digit, max + digit) }
+        if digit == 0 {
+            (min + 1, max + size)
+        } else {
+            (min + digit, max + digit)
+        }
     })
 }
 
@@ -1305,7 +2110,6 @@ fn advance(actions: &[HintAction], digits: &mut [u8], eliminations: &mut [u16]) 
     }
 }
 
-
 fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; MAX_SIZE] {
     let mut input = [0; MAX_SIZE];
     for (&cell, mask) in cells.iter().zip(&mut input) {
@@ -1328,41 +2132,205 @@ mod tests {
 
     #[test]
     fn six_by_six_slow_thermometers_allow_equal_digits_with_xv_and_sandwich() {
-        let spec = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+        let spec = GridSpec {
+            size: 6,
+            box_rows: 2,
+            box_columns: 3,
+        };
         let slow = vec![
-            SizedConstraint::SlowThermometer { cells: vec![33, 26, 21, 14, 9, 2] },
-            SizedConstraint::SlowThermometer { cells: vec![32, 27, 20, 15, 8, 3] },
-            SizedConstraint::Xv {
-                five: MarkedPairs { pairs: vec![[7, 8], [21, 22], [19, 20], [21, 27], [33, 34]], negative: false },
-                ten: MarkedPairs { pairs: vec![[2, 8]], negative: false },
+            SizedConstraint::SlowThermometer {
+                cells: vec![33, 26, 21, 14, 9, 2],
             },
-            SizedConstraint::Sandwich { cells: vec![3, 9, 15, 21, 27, 33], direction: ClueDirection::South, sum: 6 },
+            SizedConstraint::SlowThermometer {
+                cells: vec![32, 27, 20, 15, 8, 3],
+            },
+            SizedConstraint::Xv {
+                five: MarkedPairs {
+                    pairs: vec![[7, 8], [21, 22], [19, 20], [21, 27], [33, 34]],
+                    negative: false,
+                },
+                ten: MarkedPairs {
+                    pairs: vec![[2, 8]],
+                    negative: false,
+                },
+            },
+            SizedConstraint::Sandwich {
+                cells: vec![3, 9, 15, 21, 27, 33],
+                direction: ClueDirection::South,
+                sum: 6,
+            },
         ];
         let solution = digits("326541514632145263632415263154451326");
         let grid = SizedConstraintGrid::new(spec, &slow).unwrap();
         assert_eq!(grid.solve_unique(&solution, 100), Ok(solution.clone()));
 
-        let strict: Vec<_> = slow.iter().map(|rule| match rule {
-            SizedConstraint::SlowThermometer { cells } => SizedConstraint::Thermometer { cells: cells.clone() },
-            other => other.clone(),
-        }).collect();
+        let strict: Vec<_> = slow
+            .iter()
+            .map(|rule| match rule {
+                SizedConstraint::SlowThermometer { cells } => SizedConstraint::Thermometer {
+                    cells: cells.clone(),
+                },
+                other => other.clone(),
+            })
+            .collect();
         let strict_grid = SizedConstraintGrid::new(spec, &strict).unwrap();
         assert_eq!(strict_grid.analyze(&solution, 100), Analysis::Conflict);
     }
 
     #[test]
     fn six_by_six_whispers_keep_separate_minimums_with_thermometer_and_sandwich() {
-        let spec = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+        let spec = GridSpec {
+            size: 6,
+            box_rows: 2,
+            box_columns: 3,
+        };
         let rules = vec![
-            SizedConstraint::Thermometer { cells: vec![24, 31, 32, 33, 34, 29] },
-            SizedConstraint::Whispers { cells: vec![26, 20, 14, 8, 2, 7, 12, 13], min_difference: 2 },
-            SizedConstraint::Whispers { cells: vec![27, 21, 15, 16], min_difference: 3 },
-            SizedConstraint::Whispers { cells: vec![15, 9, 3, 10, 17], min_difference: 3 },
-            SizedConstraint::Sandwich { cells: vec![5, 4, 3, 2, 1, 0], direction: ClueDirection::West, sum: 2 },
+            SizedConstraint::Thermometer {
+                cells: vec![24, 31, 32, 33, 34, 29],
+            },
+            SizedConstraint::Whispers {
+                cells: vec![26, 20, 14, 8, 2, 7, 12, 13],
+                min_difference: 2,
+            },
+            SizedConstraint::Whispers {
+                cells: vec![27, 21, 15, 16],
+                min_difference: 3,
+            },
+            SizedConstraint::Whispers {
+                cells: vec![15, 9, 3, 10, 17],
+                min_difference: 3,
+            },
+            SizedConstraint::Sandwich {
+                cells: vec![5, 4, 3, 2, 1, 0],
+                direction: ClueDirection::West,
+                sum: 2,
+            },
         ];
         let solution = digits("536214412563365142241635154326623451");
         let grid = SizedConstraintGrid::new(spec, &rules).unwrap();
         assert_eq!(grid.solve_unique(&solution, 100), Ok(solution));
+    }
+
+    #[test]
+    fn between_line_support_keeps_only_digits_strictly_inside_feasible_endpoints() {
+        let grid = SizedConstraintGrid::new(
+            GridSpec {
+                size: 6,
+                box_rows: 2,
+                box_columns: 3,
+            },
+            &[SizedConstraint::Between {
+                cells: vec![0, 1, 2],
+            }],
+        )
+        .unwrap();
+        let mut candidates = vec![0b11_1111; 36];
+        candidates[0] = 0b00_0001; // 1
+        candidates[1] = 0b00_1111; // 1 through 4
+        candidates[2] = 0b01_0000; // 5
+        assert!(grid.apply_rules(&[0; 36], &mut candidates));
+        assert_eq!(candidates[0], 0b00_0001);
+        assert_eq!(candidates[1], 0b00_1110); // 2, 3, or 4
+        assert_eq!(candidates[2], 0b01_0000);
+
+        candidates[1] = 0b00_0001;
+        assert!(!grid.apply_rules(&[0; 36], &mut candidates));
+    }
+
+    #[test]
+    fn six_by_six_between_lines_accept_the_published_complete_grid() {
+        let solution = digits("164523532641216435345216623154451362");
+        let domains: Vec<_> = solution.iter().map(|&digit| 1 << (digit - 1)).collect();
+        let rule = SizedConstraint::Between {
+            cells: vec![20, 15, 16, 10, 4],
+        };
+        let grid = SizedConstraintGrid::new(
+            GridSpec {
+                size: 6,
+                box_rows: 2,
+                box_columns: 3,
+            },
+            &[rule],
+        )
+        .unwrap();
+        let support = grid
+            .between_support(&[20, 15, 16, 10, 4], &domains)
+            .unwrap();
+        assert_eq!(&support[..5], &[16, 8, 4, 8, 2]);
+        assert_eq!(grid.analyze(&solution, 100), Analysis::Unique);
+        for cells in [vec![0, 6, 7, 14]] {
+            let grid = SizedConstraintGrid::new(
+                GridSpec {
+                    size: 6,
+                    box_rows: 2,
+                    box_columns: 3,
+                },
+                &[SizedConstraint::Between {
+                    cells: cells.clone(),
+                }],
+            )
+            .unwrap();
+            assert_eq!(
+                grid.analyze(&solution, 100),
+                Analysis::Unique,
+                "cells: {cells:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn published_little_killer_between_import_accepts_the_published_completion() {
+        let rules = [
+            SizedConstraint::LittleKiller {
+                direction: ClueDirection::SouthWest,
+                cells: vec![17, 22, 27, 32],
+                sum: 8,
+            },
+            SizedConstraint::LittleKiller {
+                direction: ClueDirection::SouthWest,
+                cells: vec![29, 34],
+                sum: 10,
+            },
+            SizedConstraint::LittleKiller {
+                direction: ClueDirection::NorthEast,
+                cells: vec![18, 13, 8, 3],
+                sum: 11,
+            },
+            SizedConstraint::Between {
+                cells: vec![20, 15, 16, 10, 4],
+            },
+            SizedConstraint::Between {
+                cells: vec![0, 6, 7, 14],
+            },
+        ];
+        let grid = SizedConstraintGrid::new(
+            GridSpec {
+                size: 6,
+                box_rows: 2,
+                box_columns: 3,
+            },
+            &rules,
+        )
+        .unwrap();
+        let solution = digits("164523532641216435345216623154451362");
+        assert!(grid.permits(&solution));
+        for (index, rule) in rules.iter().enumerate() {
+            let single = SizedConstraintGrid::new(
+                GridSpec {
+                    size: 6,
+                    box_rows: 2,
+                    box_columns: 3,
+                },
+                std::slice::from_ref(rule),
+            )
+            .unwrap();
+            assert_eq!(
+                single.analyze(&solution, 100),
+                Analysis::Unique,
+                "rule {index}: {rule:?}"
+            );
+        }
+        assert_eq!(grid.analyze(&solution, 100), Analysis::Unique);
     }
 
     #[test]
@@ -1377,7 +2345,10 @@ mod tests {
                 &mut support[..shaft.len()],
                 &mut [[0]; MAX_SIZE + 1],
             );
-            assert_eq!(arrow_masks(0, shaft, candidates), ((matched >> 1) as u16, support));
+            assert_eq!(
+                arrow_masks(0, shaft, candidates),
+                ((matched >> 1) as u16, support)
+            );
         }
 
         for bulb in 0..16 {

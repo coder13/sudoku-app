@@ -60,7 +60,9 @@ impl Choices {
             #[cfg(feature = "variants")]
             Self::Variant(hints) => HintPage::Variant(Page {
                 offset,
-                available, choices: hints[offset..end].to_vec(), candidates: None,
+                available,
+                choices: hints[offset..end].to_vec(),
+                candidates: None,
             }),
         })
     }
@@ -74,8 +76,10 @@ pub(super) fn start(id: u32, hints: Choices) -> ResultValue<HintPage> {
 
 pub(super) fn read(id: u32, index: usize) -> ResultValue<HintPage> {
     SESSION.with_borrow(|slot| {
-        let (_, hints) = slot.as_ref().filter(|(current, _)| *current == id)
-            .ok_or(("expired-hints", "Analyze the moves again to load this hint."))?;
+        let (_, hints) = slot.as_ref().filter(|(current, _)| *current == id).ok_or((
+            "expired-hints",
+            "Analyze the moves again to load this hint.",
+        ))?;
         hints.page(index, false)
     })
 }

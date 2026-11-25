@@ -253,6 +253,22 @@ test('an exact fallback identifies the logical gap and keeps the exact endpoint'
   }
 })
 
+test('a classic overlay completion appears after the last named position', () => {
+  const state = { status: 'ready', trace: { steps: [], rating: { status: 'stalled' },
+    exactPosition: { givens: STARTER, entries: '0'.repeat(81), eliminations: [] },
+    completionProof: { omittedDigit: 9, layouts: [] },
+  } }
+  const props = { state, index: 1, onSelect() {}, onRetry() {}, onClose() {} }
+  for (const Component of [SolutionPath, SolutionDialog]) {
+    const html = renderToStaticMarkup(createElement(Component, { ...props, grid: null, explanation: null }))
+    assert.match(html, /<h2[^>]*>Solution<\/h2>/)
+    assert.match(html, /Last named position/)
+    assert.match(html, /role="status">Eight-digit Pattern Overlay/)
+    assert.match(html, /one cell in every row, column, and box for 9/)
+    assert.doesNotMatch(html, /Partial solution|ends with an incomplete grid/)
+  }
+})
+
 function worktableTree(id: Exclude<PuzzleVariantId, 'mixed'>, workspaceMode: 'standard' | 'advanced', solved = false) {
   const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const game = { ...makeGame('help-controls', 'Puzzle', STARTER, 'generated'), difficulty: 'medium' as const, score: 100 }

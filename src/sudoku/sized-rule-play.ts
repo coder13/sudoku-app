@@ -131,6 +131,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'slow-thermometer') {
     description = 'Digits stay the same or increase from the bulb to the tip of this slow thermometer.'
     reason = 'Remove each candidate that cannot fit in a non-decreasing sequence along the line.'
+  } else if (rule.type === 'between') {
+    description = 'Each interior digit on this Between line lies strictly between its two endpoint digits.'
+    reason = 'Remove each candidate that cannot fit between the endpoint digits while every interior cell remains possible.'
   } else if (rule.type === 'whispers') {
     description = `Neighboring digits on this Whispers line differ by at least ${rule.minDifference}.`
     reason = 'Remove each candidate that cannot pair with a digit in the next cell at the required difference.'

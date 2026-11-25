@@ -55,6 +55,7 @@ test('the complete published mixed puzzle imports, offers multiple hints and rep
     puzzle: trace.start.puzzle,
     entries: played.position.entries,
     eliminations: played.position.eliminations ?? trace.start.eliminations,
+    shades: played.position.shades ?? '0'.repeat(81),
   })
   for (const [stepIndex, step] of trace.steps.entries()) {
     for (const action of step.actions) {

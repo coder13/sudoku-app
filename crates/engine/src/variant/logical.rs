@@ -159,6 +159,8 @@ catalog! {
     NonConsecutiveTrivalue: "non-consecutive-trivalue", 24, Easy;
     /// Fit low, middle and high digits into a 2 × 2 area.
     GlobalEntropy: "global-entropy", 24, Easy;
+    /// Order an explicit digit subset along a directed row or column.
+    DigitOrder: "digit-order", 35, Medium;
     /// Find increasing assignments along a thermometer.
     Thermometer: "thermometer", 26, Easy;
     /// Require every printed digit occurrence in the four cells touching a circle.
@@ -1983,7 +1985,11 @@ impl CompiledVariant {
                         technique,
                         &[rule],
                         &cells,
-                        super::global_entropy::support(domains).into_iter(),
+                        super::global_entropy::support_in_groups(
+                            domains,
+                            self.global_entropy_groups,
+                        )
+                        .into_iter(),
                     ) {
                         proofs.push(proof);
                     }
@@ -1991,7 +1997,9 @@ impl CompiledVariant {
                 for (rule, cells, group) in self.entropy_group_windows() {
                     let domains = cells.map(|cell| position.domain(cell));
                     if let Some(proof) = position.explain_constraint(
-                        technique, &[rule], &cells,
+                        technique,
+                        &[rule],
+                        &cells,
                         super::global_entropy::support_repeated_group(domains, group).into_iter(),
                     ) {
                         proofs.push(proof);
@@ -2081,8 +2089,8 @@ impl CompiledVariant {
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells
-            | Entropic | Modular | LittleKiller | RegionSum | Renban | Sandwich | Skyscrapers
-            | XSum => {
+            | Entropic | Modular | DigitOrder | LittleKiller | RegionSum | Renban | Sandwich
+            | Skyscrapers | XSum => {
                 self.direct_line_proofs(position, technique, &mut proofs);
             }
         }

@@ -11,7 +11,9 @@ const SOLUTION: &str =
 
 fn puzzle() -> VariantPuzzle {
     let mut puzzle = VariantPuzzle::classic(parse_givens(GIVEN).unwrap());
-    puzzle.rules.push(PuzzleRule::GlobalEntropy {});
+    puzzle
+        .rules
+        .push(PuzzleRule::GlobalEntropy { groups: Vec::new() });
     puzzle
 }
 
@@ -76,7 +78,9 @@ fn published_twenty_given_puzzle_has_its_printed_completion_and_requires_entropy
 fn completed_grids_still_enforce_entropy_with_all_logical_techniques_disabled() {
     let solution = parse_givens(SOLUTION).unwrap();
     let mut definition = VariantPuzzle::classic([0; 81]);
-    definition.rules.push(PuzzleRule::GlobalEntropy {});
+    definition
+        .rules
+        .push(PuzzleRule::GlobalEntropy { groups: Vec::new() });
     let compiled = definition.compile().unwrap();
     assert_eq!(
         compiled.analyze(&solution, &[0; 81], 1),
@@ -110,7 +114,9 @@ fn completed_grids_still_enforce_entropy_with_all_logical_techniques_disabled() 
 #[test]
 fn diagonal_repeats_across_four_boxes_are_valid_but_missing_groups_are_not() {
     let mut definition = VariantPuzzle::classic([0; 81]);
-    definition.rules.push(PuzzleRule::GlobalEntropy {});
+    definition
+        .rules
+        .push(PuzzleRule::GlobalEntropy { groups: Vec::new() });
     let compiled = definition.compile().unwrap();
     let mut entries = [0; 81];
     for (cell, digit) in [(20, 7), (21, 1), (29, 6), (30, 7)] {

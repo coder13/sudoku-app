@@ -1,10 +1,17 @@
 import { closedRegionSumCells } from './region-sum.ts'
+import { readCornerKropki } from './corner-kropki.ts'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow } from './engine.ts'
-import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
+import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isMiniGrid, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+const JIGSAW_BASE = /^Place the digits (1)[-–](\d+) once each into every row, column,? and region\.$/i
+
+export function hasDeclaredSudokuPadJigsaw(rules: unknown) {
+  return typeof rules === 'string' && JIGSAW_BASE.test(rules.trim().split(/\r?\n/)[0])
 }
 
 function boardCell(value: unknown, size: number, offset = 0) {
@@ -38,11 +45,9 @@ export function readPath(value: unknown, size: number, maxPoints = size) {
 
 function sudokuPadRuleClauses(text: string) {
   const lines = text.trim().split(/\r?\n/)
-  if (lines.length && lines.every(line => /^\s*\*\s+/.test(line))) {
-    return lines.map(line => line.replace(/^\s*\*\s+/, '').replace(/\s+/g, ' ').trim())
-  }
   if (!lines.some(line => /^-{3,}/.test(line))) {
-    return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i)
+    return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki(?: pairs)?|Anti-King|Entropic lines|Both lines are Entropic lines|Between Lines|Cells separated by):)/i)
+      .flatMap(part => part.startsWith('Normal ') ? part.split(/(?<=\.)\s+(?=There are black and white dots in the grid\.)/i) : [part])
       .map(part => part.replace(/\s+/g, ' '))
   }
   const clauses: string[] = []
@@ -175,12 +180,17 @@ function sudokuPadWhispersMinimum(color: string) {
 
 function readArrowCircles(overlays: unknown[]) {
   return overlays.flatMap((overlay, index) => {
+    const backgroundColor = record(overlay) && typeof overlay.backgroundColor === 'string'
+      ? overlay.backgroundColor.toLowerCase() : ''
+    const isVisibleWhite = /^#(?:fff|ffffff|ffffffff)$/.test(backgroundColor) ||
+      /^#fff[0-9a-f]$/.test(backgroundColor) && !backgroundColor.endsWith('0') ||
+      /^#ffffff[0-9a-f]{2}$/.test(backgroundColor) && !backgroundColor.endsWith('00')
     if (!record(overlay) || Object.keys(overlay).some(key =>
       !['center', 'width', 'height', 'thickness', 'angle', 'rounded', 'backgroundColor', 'borderColor'].includes(key)) ||
       !isPoint(overlay.center) || !overlay.center.every(coordinate => Number.isInteger(coordinate - .5)) ||
       overlay.rounded !== true || typeof overlay.width !== 'number' || overlay.width !== overlay.height ||
       overlay.width <= 0 || overlay.width > 1 || typeof overlay.borderColor !== 'string' ||
-      typeof overlay.backgroundColor !== 'string' || !/^#(?:fff|ffffff|ffffffff)$/i.test(overlay.backgroundColor)) return []
+      !isVisibleWhite) return []
     return [{ center: overlay.center, radius: overlay.width / 2, color: overlay.borderColor.toLowerCase(), index }]
   })
 }
@@ -220,14 +230,16 @@ function readArrows(arrows: unknown, overlays: unknown[], size: number) {
 }
 
 export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
-  const fields = ['id', 'metadata', 'cages', 'cells', 'regions', 'lines', 'underlays', 'overlays', 'arrows']
+  const fields = ['id', 'metadata', 'cages', 'cellSize', 'cells', 'regions', 'lines', 'underlays', 'overlays', 'arrows']
   const { cells, metadata, regions, cages, lines, underlays, overlays, arrows } = data
   if (Object.keys(data).some(key => !fields.includes(key)) ||
+    data.cellSize !== undefined && (typeof data.cellSize !== 'number' || !Number.isFinite(data.cellSize) || data.cellSize <= 0) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
-    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect'].includes(key))) {
+    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking'].includes(key)) ||
+    metadata.antiking !== undefined && typeof metadata.antiking !== 'boolean') {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
-  if (!Array.isArray(cells) || (cells.length !== 4 && !isRectangularSize(cells.length) && !isJigsawSize(cells.length)) ||
+  if (!Array.isArray(cells) || (cells.length !== 4 && cells.length !== 5 && !isRectangularSize(cells.length)) ||
     cells.some(row => !Array.isArray(row) || row.length !== cells.length)) {
     throw new Error('This SudokuPad export has an invalid grid.')
   }
@@ -250,22 +262,23 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       labels[cell] = index
     }
   }
-  const completeRegions = labels.every(label => label >= 0)
-  const jigsaw = isJigsawSize(size) && completeRegions ? { size, regions: regionsFromMembership(labels, size) } : undefined
+  const rulesText = sudokuPadRuleClauses(metadata.rules)
+  const jigsawBase = JIGSAW_BASE.exec(rulesText[0])
+  const jigsaw = jigsawBase && isJigsawSize(size) && Number(jigsawBase[2]) === size && labels.every(label => label >= 0)
+    ? { size, regions: regionsFromMembership(labels, size) } : undefined
   const rowRegions = size === 5 && new Set(labels).size === size &&
     labels.every((region, cell) => region === labels[Math.floor(cell / size) * size])
-  const grid = isRectangularSize(size) ? rectangularGridFromRegions(size, labels)
+  const grid = jigsaw && isJigsawGrid(jigsaw) ? jigsaw
     : rowRegions ? FIVE_BOXLESS_GRID
-      : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID
-        : isJigsawGrid(jigsaw, true) ? jigsaw : undefined
-  if (!grid) throw new Error('This SudokuPad puzzle needs a supported region layout.')
+      : isRectangularSize(size) ? rectangularGridFromRegions(size, labels) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
+  if (!grid) throw new Error('This SudokuPad puzzle needs rectangular boxes.')
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
   // text identifies what they mean, and the bulb determines direction.
-  const rulesText = sudokuPadRuleClauses(metadata.rules)
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
   const rowColumnBase = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1\s*[–-]\s*(\d+)(?: once each)? in every row and column\.?$/i.exec(rulesText[0])
   const shortBase = /^(?:Normal|Standard) (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
+  const boxFirstBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: every row, column and (\d+)[x×](\d+) box contains the digits 1[-–](\d+) exactly once each\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const authoredSizedBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: In every row, column and (?:in )?(?:(\d+)[x×](\d+) )?every box the digits from 1 to (\d+) have to appear at ?least once\.$/i.exec(rulesText[0])
   const clauses = rulesText.slice(1)
@@ -276,17 +289,34 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
   const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
-  const ratioPairs = /^Ratio Pairs: Digits separated by a black dot are in a 1:2 ratio \(i\.e\. one digit is double the other\)\. No negative constraint\s*[-–]\s*adjacent digits may be in a 1:2 ratio without a dot being present\.$/i
   const kropki = /^(?:Digits separated by a white dot are consecutive\. Digits separated by a black dot have a 1:2 ratio\. Not all dots are given|Kropki: digits separated by a black dot are in an 1:2 ratio \(i\.e\. one digit is double the other\); digits separated by a white dot are consecutive)\.$/i
+  const whiteKropki = /^(?:Kropki pairs: digits separated by a white dot are consecutive\.|Cells separated by a white Kropki Dot are consecutive\. May be read in either order\. Eg: \d+-\d+)$/i
+  const blackKropki = /^Cells separated by a black Kropki Dot have a ratio of 1:2\. May be read in either order\. Eg: \d+-\d+$/i
   const compactKropki = /^PARTIAL KROPKI - A white dot between two cells requires that the value in one cell is exactly 1 greater than the value of the other cell\. - A black dot between two cells requires that the value in one cell is exactly double the value of the other cell\.$/i
-  const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause) || ratioPairs.test(clause)
+  const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause) || whiteKropki.test(clause) || blackKropki.test(clause)
+  const cornerKropki = /^There are black and white dots in the grid\. For each dot, consider each pair of diagonally opposite digits surrounding that dot\. For black dots, each diagonal pair have a 1:2 ratio, meaning one is exactly double the other\. For white dots, each diagonal pair is consecutive\.$/i
   const arrow = /^(?:Digits along an arrow sum to the digit in a bulb\. Digits may repeat if allowed by other rules|Arrows: the digits along the arrow must sum to the number in the circled cells)\.$/i
-  const killer = /^(?:Killer cages: digits in a killer cage must sum to the number in the top left corner and cannot repeat|Killer Cages: Digits in a dotted cage must not repeat, and must sum to the total in the top-left corner of the cage)\.$/i
+  const killer = /^Killer cages: digits in (?:a )?(?:killer )?cage (?:must )?sum to the (?:number|total) (?:in|given in) the top left corner(?: and cannot repeat)?\.$/i
   const authoredKiller = clauses.some(clause => killer.test(clause))
   const doubleArrow = /^Double Arrows: (?:Digits along a grey line have the same sum as the sum of the two connected circles|the sum of the digits along a line (?:is|are) equal to the sum of the digits in the circles at either end of that line)\.?$/i
   const authoredArrows = clauses.some(clause => arrow.test(clause))
   const authoredDoubleArrows = clauses.some(clause => doubleArrow.test(clause))
+  const antiKing = /^Anti[- ]King:?\s+(?:No two identical digits can be orthogonally or diagonally adjacent to each other|Cells separated by a chess king['’]s move cannot contain the same digit)\.?$/i
+  const printedAntiKing = clauses.some(clause => antiKing.test(clause))
+  const authoredAntiKing = metadata.antiking === true || printedAntiKing
+  const entropicLineRule = /^Entropic lines: every 3 consecutive digits along a peach line must contain a low digit \(([\d, ]+)\), a middle digit \(([\d, ]+)\) and a high digit \(([\d, ]+)\)\.$/i
+  const namedEntropicRule = /^Both lines are Entropic lines\. Along the lines, they must contain a low \(([\d, ]+)\) middle \(([\d, ]+)\) and high \(([\d, ]+)\) digit in any 3 consecutive cells\. Eg: \d+(?:-\d+)+$/i
+  const parseEntropicGroups = (clause: string) => {
+    const match = entropicLineRule.exec(clause) ?? namedEntropicRule.exec(clause)
+    return match?.slice(1).map(group => group.split(',').map(digit => Number(digit.trim())))
+  }
+  const entropicClauses = clauses.filter(clause => parseEntropicGroups(clause))
+  const entropicGroups = entropicClauses.length === 1 ? parseEntropicGroups(entropicClauses[0]) : undefined
+  const authoredEntropic = !!entropicGroups && entropicGroups.length === 3 && entropicGroups.every(group => group.length > 0 && group.every(digit => digit >= 1 && digit <= size)) &&
+    entropicGroups.flat().length === size && new Set(entropicGroups.flat()).size === size
+  if (entropicClauses.length && !authoredEntropic) throw new Error('This SudokuPad export has invalid Entropic digit groups.')
   const authoredKropki = clauses.some(isKropki)
+  const authoredCornerKropki = clauses.some(clause => cornerKropki.test(clause))
   const authoredThermometers = clauses.some(isThermometer)
   const authoredSlowThermometers = clauses.some(clause => slowThermometer.test(clause))
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause)) || authoredThermometers || authoredSlowThermometers
@@ -320,28 +350,39 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     const match = sandwich.exec(clause)
     return !!match && Number(match[1] ?? match[2]) === size
   })
+  const betweenLine = /^Between Lines: Digits along a grey line must be strictly between the digits in two connected circles\.?$/i
+  const authoredBetween = clauses.some(clause => betweenLine.test(clause))
   const isSandwich = (clause: string) => {
     const match = sandwich.exec(clause)
     return !!match && Number(match[1] ?? match[2]) === size
   }
   const authoredAnyThermometers = authoredThermometers || authoredSlowThermometers
-  const rectangularGrid = grid && !('regions' in grid) && !('noRegions' in grid) ? grid : undefined
-  const validBase = rowColumnBase ? !!grid && 'noRegions' in grid && rowColumnBase.slice(1, 4).every(part => Number(part) === size)
-    : base ? !!rectangularGrid && base.slice(1, 4).every(part => Number(part) === size) &&
-    (Number(base[4]) === rectangularGrid.boxRows && Number(base[5]) === rectangularGrid.boxColumns ||
-      authoredDoubleArrows && Number(base[4]) === rectangularGrid.boxColumns && Number(base[5]) === rectangularGrid.boxRows)
+  const boxRows = 'boxRows' in grid ? grid.boxRows : undefined
+  const boxColumns = 'boxColumns' in grid ? grid.boxColumns : undefined
+  const matchesBoxDimensions = (width: string, height: string) =>
+    Number(width) === boxColumns && Number(height) === boxRows ||
+    Number(width) === boxRows && Number(height) === boxColumns
+  const validBase = jigsawBase ? Number(jigsawBase[2]) === size : rowColumnBase
+    ? rowColumnBase.slice(1, 4).every(part => Number(part) === size)
+    : boxFirstBase
+    ? [boxFirstBase[1], boxFirstBase[2], boxFirstBase[5]].every(value => Number(value) === size) &&
+      matchesBoxDimensions(boxFirstBase[3], boxFirstBase[4])
+    : base
+    ? base.slice(1, 4).every(part => Number(part) === size) &&
+      matchesBoxDimensions(base[4], base[5])
     : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size ||
-      !!rectangularGrid && Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
-      (!authoredSizedBase?.[3] || Number(authoredSizedBase[3]) === rectangularGrid.boxRows && Number(authoredSizedBase[4]) === rectangularGrid.boxColumns ||
-        Number(authoredSizedBase[3]) === rectangularGrid.boxColumns && Number(authoredSizedBase[4]) === rectangularGrid.boxRows)
+      Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
+      (!authoredSizedBase?.[3] || matchesBoxDimensions(authoredSizedBase[3], authoredSizedBase[4]))
   if (!validBase || authoredThermometers && authoredSlowThermometers ||
     conflictingWhisperMinimums || whispersClauses.some(difference => difference < 1 || difference >= size) ||
     clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&
       !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause) &&
-      !xv.test(clause) && !isSandwich(clause) && whisperDifference(clause) === undefined)) {
+      !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) &&
+      !parseEntropicGroups(clause) && whisperDifference(clause) === undefined) || metadata.antiking === false && printedAntiKing) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
+  if (authoredAntiKing) rules.push({ type: 'anti-king' })
   if (authoredKiller) {
     if (!Array.isArray(cages) || !cages.length || cages.length > size ** 2) throw new Error('The SudokuPad Killer cages are missing.')
     rules.push({ type: 'killer-cages', cages: cages.map(cage => {
@@ -385,6 +426,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       doubleCircles.set(key, index)
     }
   }
+  const betweenCircles = authoredBetween && Array.isArray(remainingOverlays) ? readArrowCircles(remainingOverlays) : []
+  const usedBetweenCircles = new Set<number>()
   for (const line of lines ?? []) {
     if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
       typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0) {
@@ -396,7 +439,53 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       ((!authoredAnyThermometers && !authoredRegionSum && !authoredDoubleArrows && !authoredWhispers) || /^#f067f0(?:ff)?$/i.test(line.color))
     const whisperMin = sudokuPadWhispersMinimum(line.color)
     const mayBeWhispers = authoredWhispers && whisperMin !== undefined && whispersClauses.includes(whisperMin)
-    const path = readPath(line.wayPoints, size, mayBeRegionSum || authoredDoubleArrows ? size ** 2 + 1 : size)
+    const path = readPath(line.wayPoints, size, mayBeRegionSum || authoredDoubleArrows || authoredEntropic || authoredBetween ? size ** 2 + 1 : size)
+    if (authoredBetween) {
+      const color = line.color.toLowerCase()
+      const circleByCell = new Map<number, number>()
+      for (const circle of betweenCircles) {
+        if (circle.color !== color) continue
+        const cell = boardCell(circle.center, size, .5)
+        if (circleByCell.has(cell)) throw new Error('Two Between line circles share a cell and color.')
+        circleByCell.set(cell, circle.index)
+      }
+      const closed = path.length > 2 && path[0] === path.at(-1)
+      const cells = closed ? path.slice(0, -1) : path
+      if (new Set(cells).size !== cells.length) throw new Error('A Between line path repeats a cell.')
+      const markers = cells.flatMap((cell, index) => {
+        const circle = circleByCell.get(cell)
+        return circle === undefined ? [] : [{ index, circle }]
+      })
+      if (!markers.length) {
+        // Other authored line families may share the same export with Between.
+        // Only paths that actually meet a matching circle use this rule.
+      } else {
+        if (markers.length < (closed ? 3 : 2) || !closed && (markers[0].index !== 0 || markers.at(-1)!.index !== cells.length - 1)) {
+          throw new Error('Every Between line segment must connect two marked circles.')
+        }
+        for (let index = 0; index < markers.length - (closed ? 0 : 1); index++) {
+          const start = markers[index].index
+          const end = markers[(index + 1) % markers.length].index
+          const segment = [cells[start]]
+          let cursor = start
+          while (cursor !== end) {
+            cursor = (cursor + 1) % cells.length
+            segment.push(cells[cursor])
+            if (segment.length > cells.length) throw new Error('A Between line path has invalid circle order.')
+          }
+          if (segment.length < 3) throw new Error('Each Between line segment needs an interior cell.')
+          rules.push({ type: 'between', cells: segment })
+          usedBetweenCircles.add(markers[index].circle)
+          usedBetweenCircles.add(markers[(index + 1) % markers.length].circle)
+        }
+        continue
+      }
+    }
+    if (authoredEntropic && /^#(?:fcaf|fcafff?)$/i.test(line.color)) {
+      if (path.length < 3) throw new Error('An Entropic Line must contain at least three cells.')
+      rules.push({ type: 'entropic', cells: path, groups: entropicGroups! })
+      continue
+    }
     if (doubleCircles.size) {
       const color = line.color.toLowerCase()
       const circle = (cell: number) => doubleCircles.get(`${color}:${cell}`)
@@ -437,6 +526,14 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     }
   }
   rules.push(...singleArrows)
+  if (authoredBetween) {
+    const unused = betweenCircles.filter(circle => !usedBetweenCircles.has(circle.index))
+    if (unused.length) throw new Error('A Between line circle is not connected to a line.')
+    const unusedOverlays = Array.isArray(remainingOverlays)
+      ? remainingOverlays.filter((_: unknown, index: number) => !usedBetweenCircles.has(index)) : []
+    remainingOverlays = unusedOverlays.length ? unusedOverlays : undefined
+    if (!rules.some(rule => rule.type === 'between')) throw new Error('The SudokuPad Between lines are missing.')
+  }
   if (usedDoubleCircles.size && Array.isArray(remainingOverlays)) {
     const unused = remainingOverlays.filter((_, index) => !usedDoubleCircles.has(index))
     remainingOverlays = unused.length ? unused : undefined
@@ -446,27 +543,41 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     rules.push(...parsed.rules)
     remainingOverlays = parsed.unused
   }
+  if (authoredCornerKropki) {
+    if (!Array.isArray(remainingOverlays)) throw new Error('The SudokuPad Quadruple Kropki dots are missing.')
+    const parsed = readCornerKropki(remainingOverlays, size)
+    rules.push(parsed.rule)
+    remainingOverlays = parsed.unused.length ? parsed.unused : undefined
+  }
   if (authoredKropki) rules.push(readKropkiDots(remainingOverlays, size))
   else if (remainingOverlays !== undefined) throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   if (bulbs.length || authoredThermometers !== rules.some(rule => rule.type === 'thermometer') ||
     authoredSlowThermometers !== rules.some(rule => rule.type === 'slow-thermometer') ||
     authoredWhispers !== rules.some(rule => rule.type === 'whispers') ||
     authoredXv !== rules.some(rule => rule.type === 'xv') || authoredSandwich !== rules.some(rule => rule.type === 'sandwich') ||
+    authoredCornerKropki !== rules.some(rule => rule.type === 'corner-kropki') ||
     authoredRenban !== rules.some(rule => rule.type === 'renban') ||
     authoredDoubleArrows !== rules.some(rule => rule.type === 'double-arrow') ||
+    authoredBetween !== rules.some(rule => rule.type === 'between') ||
+    authoredAntiKing !== rules.some(rule => rule.type === 'anti-king') ||
+    authoredEntropic !== rules.some(rule => rule.type === 'entropic') ||
+    clauses.some(clause => namedEntropicRule.test(clause)) && rules.filter(rule => rule.type === 'entropic').length !== 2 ||
     authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') || !isSizedRuleList(rules, grid) ||
-    (size === 4 && !rules.length)) {
+    (isMiniGrid(grid) && !rules.length)) {
     throw new Error('This SudokuPad export has incomplete or invalid lines.')
   }
   const { title, author, solution } = metadata
   if (solution !== undefined && (!isGridText(solution, grid) || solution.includes('0'))) {
     throw new Error('This SudokuPad export has an invalid authored solution.')
   }
+  // Validate the published completion against every imported rule; avoid an
+  // expensive uniqueness search when a sparse authored puzzle includes it.
   return {
     grid, givens, sizedRules: rules,
     title: typeof title === 'string' ? title.trim().slice(0, 72) || undefined : undefined,
     sizedAuthor: typeof author === 'string' ? author.trim().slice(0, 72) || undefined : undefined,
     authoredSolution: solution,
+    ...(solution !== undefined && { authoredSolutionOnly: true as const }),
   }
 }
 

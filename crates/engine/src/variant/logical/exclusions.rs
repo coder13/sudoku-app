@@ -20,7 +20,11 @@ impl CompiledVariant {
         proofs: &mut Vec<VariantDeduction>,
     ) {
         use VariantTechnique::*;
-        if !self.pair_clues.iter().any(|clue| clue.source.technique == NonConsecutive) {
+        if !self
+            .pair_clues
+            .iter()
+            .any(|clue| clue.source.technique == NonConsecutive)
+        {
             return;
         }
         match technique {

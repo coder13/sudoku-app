@@ -209,6 +209,8 @@ catalog! {
     QuintuplePatternOverlay: "quintuple-pattern-overlay", 1100, Impossible, false, ["Five-Digit Pattern Overlay"];
     KrakenFish1: "kraken-fish-1", 900, Extreme, false, ["Kraken Fish Type 1"];
     KrakenFish2: "kraken-fish-2", 950, Extreme, false, ["Kraken Fish Type 2"];
+    SextuplePatternOverlay: "sextuple-pattern-overlay", 1250, Impossible, false, ["Six-Digit Pattern Overlay"];
+    SeptuplePatternOverlay: "septuple-pattern-overlay", 1400, Impossible, false, ["Seven-Digit Pattern Overlay"];
 }
 
 impl Technique {
@@ -219,6 +221,8 @@ impl Technique {
             Self::TriplePatternOverlay => Some(3),
             Self::QuadruplePatternOverlay => Some(4),
             Self::QuintuplePatternOverlay => Some(5),
+            Self::SextuplePatternOverlay => Some(6),
+            Self::SeptuplePatternOverlay => Some(7),
             _ => None,
         }
     }
@@ -320,6 +324,8 @@ impl Technique {
         Self::TriplePatternOverlay,
         Self::QuadruplePatternOverlay,
         Self::QuintuplePatternOverlay,
+        Self::SextuplePatternOverlay,
+        Self::SeptuplePatternOverlay,
     ];
 
     pub(crate) const fn direct_premise(self) -> Option<Self> {
@@ -380,6 +386,8 @@ impl Technique {
                 | Self::TriplePatternOverlay
                 | Self::QuadruplePatternOverlay
                 | Self::QuintuplePatternOverlay
+                | Self::SextuplePatternOverlay
+                | Self::SeptuplePatternOverlay
         )
     }
 }

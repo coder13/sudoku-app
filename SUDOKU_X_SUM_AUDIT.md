@@ -11,11 +11,11 @@ An outside total adds the first X digits in its direction. The first digit is X 
 | Philip Newman, [Double Digits](https://www.gmpuzzles.com/images/puzzles2026/260518-XSumsSudoku-DoubleDigits.pdf), 2026-05-18 | 12 / 10 | Unique, printed solution | Complete Hard, 3,036 points |
 | Bill Murphy, [All Futures](https://www.gmpuzzles.com/images/puzzles2025/251030-XSumsSudoku-AllFutures.pdf), 2025-10-30 | 16 / 10 | Unique, printed solution | Complete Hard, 2,710 points |
 | clover!, [The Scariest Thing](https://www.gmpuzzles.com/blog/2026/10/x-sums-sudoku-by-clover-3/), 2026-10-31 | 22 / 12 | Unique, printed solution | Complete Hard, 1,916 points |
-| GenevieveArchbaker, [X sums #3, AsnF](https://sudoku.coach/en/s/AsnF), manually verified native transcription | 0 / 16 | Unique, source completion | Complete Hard, 5,514 points |
+| GenevieveArchbaker, [X sums #3, AsnF](https://sudoku.coach/en/s/AsnF), reviewed Coach export | 0 / 16 | Unique, source completion | Complete Hard, 5,514 points |
 
 The first three fixtures preserve every printed given and total, ordered cell paths, directions, original grid/solution PDF URLs and SHA-256 hashes. All six PDFs were rendered and checked. Independent digit-set/permutation search verifies each complete source in one search node and matches its published completion. Native solving and all eight square transforms match those completions. No companion clue is removed to simplify import or solving.
 
-The original AsnF SCv7 code stores the totals as text. The local short-link importer recognizes the complete X-Sums declaration in the matching publication and validates each label’s position and total. All sixteen imported clues match the independently checked transcription. The raw SCv7 code still needs the publication to supply its rules. Both source forms are archived in the test fixtures. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
+The original AsnF SCv7 code stores the totals as text. The short-link importer uses the complete X-Sums declaration in the matching publication. The exact reviewed raw export is also recognized by its digest; both paths validate every label’s position and total. All sixteen clues match the independently checked manual transcription. Both source forms are archived in the test fixtures. [Coach interchange](https://github.com/coder13/sudoku-app/issues/7)
 
 Two regression companions are explicitly authored: the complete Newman control plus matching Sandwich, Little Killer and Renban clues, and the repository Jigsaw/Killer benchmark with its existing outside clues plus four X-Sums. Their added clues are not attributed to the publishers. Both complete combinations have independently checked unique completions and complete app walkthroughs.
 

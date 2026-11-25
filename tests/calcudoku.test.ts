@@ -7,6 +7,11 @@ import { checkLatin, findLatinHint, findLatinHints, solveLatin } from '../src/la
 function matchesCage(cage: Cage, values: readonly number[]) {
   const digits = cage.cells.map(cell => values[cell])
   if (digits.includes(0)) return true
+  if (cage.operator === 'hidden') return [
+    digits.reduce((sum, digit) => sum + digit, 0),
+    digits.reduce((product, digit) => product * digit, 1),
+    ...(digits.length === 2 ? [Math.abs(digits[0] - digits[1]), Math.max(...digits) / Math.min(...digits)] : []),
+  ].includes(cage.target)
   const [a, b] = digits
   const observed = {
     equal: a,
@@ -117,6 +122,26 @@ test('division and subtraction accept either operand order and reject non-intege
   masks[3] = 2
   masks[7] = 4
   assert.deepEqual(subtract.support(masks), [2, 4])
+})
+
+test('a hidden two-cell operation accepts every arithmetic interpretation that matches its target', () => {
+  const cages: Cage[] = [
+    { cells: [0, 1], operator: 'hidden', target: 3 },
+    ...Array.from({ length: 16 }, (_, cell) => cell).filter(cell => cell > 1)
+      .map(cell => ({ cells: [cell], operator: 'equal' as const, target: 1 })),
+  ]
+  const puzzle = createCalcudoku(4, cages)
+  const rule = puzzle.rules.find(rule => rule.label.includes('hidden operation'))!
+  const domains = Array(16).fill(15)
+  domains[0] = 8 // 4 - 1 = 3
+  domains[1] = 1
+  assert.deepEqual(rule.support(domains), [8, 1])
+  domains[0] = 4 // 3 × 1 = 3
+  assert.deepEqual(rule.support(domains), [4, 1])
+  domains[0] = 2 // 2 + 1 = 3
+  assert.deepEqual(rule.support(domains), [2, 1])
+  domains[1] = 2
+  assert.equal(rule.support(domains), null)
 })
 
 test('invalid cage definitions fail before play and exact search enforces its budget', () => {
