@@ -167,6 +167,9 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
+            Rule::Variant(PuzzleRule::DigitRestriction { cells, digits, .. }) => {
+                Self::DigitRestriction { cells, digits }
+            }
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Sized(SizedRule::SlowThermometer { cells }) => Self::SlowThermometer { cells },
             Rule::Variant(PuzzleRule::Between { cells }) => Self::Between { cells },

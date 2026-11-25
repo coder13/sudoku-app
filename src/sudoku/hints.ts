@@ -69,6 +69,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-arrow': 'Arrow',
   'sized-double-arrow': 'Double Arrow',
   'sized-region-sum': 'Region Sum',
+  'sized-coupled-sums': 'Shared Path Totals',
   'group-line-house-support': 'Repeating groups and houses',
   'group-order-contradiction': 'Group order contradiction',
   'group-order-elimination': 'Eliminations in both group orders',

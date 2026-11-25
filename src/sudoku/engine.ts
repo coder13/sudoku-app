@@ -208,6 +208,7 @@ export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirecti
 export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+  | Extract<VariantRule, { type: 'digit-restriction' }>
   | { type: 'anti-king' }
   | { type: 'zipper'; cells: readonly number[] }
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
@@ -234,6 +235,7 @@ export type SizedConstraintStep = { type: 'house'; proof: SizedClassicDeduction 
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair; actions: DeductionAction[] }
   | { type: 'anti-sum'; rule: number; cells: [number, number]; actions: DeductionAction[] }
   | { type: 'row-column-sum'; rule: number; cells: [number, number]; unmarked: boolean; actions: DeductionAction[] }
+  | { type: 'coupled-sums'; rules: [number, number]; totals: [number, number][]; actions: DeductionAction[] }
   | { type: 'contradiction'; assumption: Candidate; placements: Candidate[]; failure: SizedConstraintFailure }
 
 type SizedConstraintFailure = { type: 'cell'; cell: number }
@@ -243,6 +245,7 @@ type SizedConstraintFailure = { type: 'cell'; cell: number }
   | { type: 'kropki'; rule: number; pair: SizedKropkiPair }
   | { type: 'anti-sum'; rule: number; cells: [number, number] }
   | { type: 'row-column-sum'; rule: number; cells: [number, number] | null }
+  | { type: 'coupled-sums'; rules: [number, number] }
 
 type SizedConstraintTracePosition = Omit<SizedClassicTracePosition, 'deduction'> & { deduction: SizedConstraintStep | null }
 

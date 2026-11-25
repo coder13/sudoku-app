@@ -108,6 +108,12 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       })
     }
     if (rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'digit-restriction') return Object.keys(rule).every(key =>
+      ['type', 'cells', 'digits', 'shape'].includes(key)) && Array.isArray(rule.cells) && rule.cells.length > 0 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && Array.isArray(rule.digits) && rule.digits.length > 0 &&
+      rule.digits.every((digit: unknown) => Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size) &&
+      new Set(rule.digits).size === rule.digits.length && ['circle', 'cross', 'square'].includes(rule.shape)
     if (rule.type === 'zipper') return Object.keys(rule).length === 2 &&
       Array.isArray(rule.cells) && rule.cells.length >= 3 && rule.cells.length <= size ** 2 &&
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
@@ -322,6 +328,13 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       if (new Set(rule.cells.map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'parity') {
       if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+    } else if (rule.type === 'digit-restriction') {
+      if (rule.cells.some(cell => !rule.digits.includes(Number(solution[cell])))) return
+    } else if (rule.type === 'zipper') {
+      const pairTotals = Array.from({ length: Math.floor(rule.cells.length / 2) }, (_, index) =>
+        Number(solution[rule.cells[index]]) + Number(solution[rule.cells[rule.cells.length - index - 1]]))
+      if (new Set(pairTotals).size > 1 || rule.cells.length % 2 &&
+        pairTotals.some(total => total !== Number(solution[rule.cells[Math.floor(rule.cells.length / 2)]]))) return
     } else if (rule.type === 'renban') {
       const digits = rule.cells.map(cell => Number(solution[cell]))
       if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
@@ -423,6 +436,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'killer-cages') clues.add('Digits in a cage add to its printed total and cannot repeat.')
     else if (rule.type === 'quadruple') clues.add(PUZZLE_VARIANTS.quadruple.rule)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
+    else if (rule.type === 'digit-restriction') clues.add(`Marked ${rule.shape} cells can contain only ${new Intl.ListFormat('en').format(rule.digits.map(String))}.`)
+    else if (rule.type === 'zipper') clues.add(rule.cells.length % 2
+      ? 'Each pair of cells equally far from the Zipper center has a total equal to the center digit.'
+      : 'Each pair of cells equally far from the Zipper center has the same total as every other pair.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
       ? `The digits on a Region Sum line have the same total in each ${group}. All cells in the same ${group} count together.`

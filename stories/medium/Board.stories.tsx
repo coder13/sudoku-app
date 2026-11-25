@@ -23,6 +23,7 @@ import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-nei
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
+import zipperRegionSum from '../../tests/fixtures/zipper-region-sum.json'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
 
@@ -181,6 +182,24 @@ function CoachWrappedJigsawBoard({ finished = false }: { finished?: boolean }) {
 
 export const CoachWrappedJigsawUnfinished: Story = { render: () => <CoachWrappedJigsawBoard /> }
 export const CoachWrappedJigsawFinished: Story = { render: () => <CoachWrappedJigsawBoard finished /> }
+
+function ZipperRegionSumBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(zipperRegionSum.code).then(imported => {
+      if (imported.grid && imported.sizedRules) setPuzzle({ givens: imported.givens, grid: imported.grid, rules: imported.sizedRules })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the Zipper and Region Sum puzzle…</p>
+  return <div>
+    <p>{sizedRuleDescriptions(puzzle.grid, puzzle.rules).join(' ')}</p>
+    <Board grid={puzzle.grid} givens={puzzle.givens} values={finished ? zipperRegionSum.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides selected={finished ? [] : [7]} />
+  </div>
+}
+
+export const ZipperRegionSumUnfinished: Story = { render: () => <ZipperRegionSumBoard /> }
+export const ZipperRegionSumFinished: Story = { render: () => <ZipperRegionSumBoard finished /> }
 
 const coachCrustEdgeCount = coachCrust.find(source => source.id === '9Z8C')!
 function CoachCrustBoard({ finished = false }: { finished?: boolean }) {
