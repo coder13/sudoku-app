@@ -537,6 +537,7 @@ mod tests {
             open_domains[cell] = 63;
         }
         let unrestricted = pairs[0].support(&sums, &open_domains).unwrap();
+        assert!(unrestricted.exact);
         assert_ne!(unrestricted.masks[line[0]] & (1 << 5), 0);
         assert_eq!(unrestricted.masks[line[3]] & (1 << 5), 0);
 
