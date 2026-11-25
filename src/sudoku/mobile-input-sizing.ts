@@ -1,4 +1,4 @@
-export const MOBILE_RESIZE_STEP = 16
+export const MOBILE_RESIZE_STEP = 8
 
 /**
  * The resize budget includes the flexible space above and below the cards.

@@ -32,6 +32,8 @@ Object.assign(window, { resizeCommits: [], puzzleGestureCommits: [] })
 
 function Fixture() {
   const [withHint, setWithHint] = useState(startWithHint)
+  const [paused, setPaused] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [savedHeight, setSavedHeight] = useState<number>()
   const [puzzlePosition, setPuzzlePosition] = useState({ space: 0, shrink: 0 })
   const boundary = useRef<HTMLDivElement>(null)
@@ -45,7 +47,9 @@ function Fixture() {
     inputSize={210} panelHeight={280} setPanelHeight={noop} beginResize={noop} multi={false} toggleMulti={noop} />
   </div>
   return <div className="app-shell">
-    <div style={{ height: 'var(--topbar-height)' }} />
+    <header className="topbar"><nav className="topbar-inner" aria-label="Primary navigation">
+      <button type="button" className="button">Puzzles</button>
+    </nav></header>
     <main className="page standard-workspace-page" aria-label="Mobile resize fixture">
       <div className="workspace"><PanelLayout puzzleId="resize-regression" rearranging={false}
         onRearrangingChange={noop} blocked={false} withHint={withHint} resizableInput savedInputHeight={savedHeight}
@@ -60,8 +64,15 @@ function Fixture() {
         }} panels={{
           puzzle: { title: 'Puzzle', content: <div className="puzzle-column" data-reserve-badge-space>
             <section className="puzzle puzzle-flat" aria-label="Dense candidate puzzle">
-              <div className="puzzle-metadata"><span className="puzzle-difficulty">Hard</span><span className="duration-counter">12:34</span></div>
-              <div className="puzzle-actions"><button className="puzzle-menu-trigger icon-button" aria-label="Puzzle options">⋯</button></div>
+              <div className="mobile-puzzle-toolbar" data-no-panel-hold>
+                <div className="puzzle-metadata"><span className="puzzle-difficulty">Hard</span><span className="duration-counter">12:34</span></div>
+                <div className="puzzle-actions">
+                  <button className="puzzle-pause-trigger icon-button" aria-label="Pause puzzle" aria-pressed={paused}
+                    onClick={() => setPaused(value => !value)}>Ⅱ</button>
+                  <button className="puzzle-menu-trigger icon-button" aria-label="Puzzle options" aria-expanded={menuOpen}
+                    onClick={() => setMenuOpen(value => !value)}>⋯</button>
+                </div>
+              </div>
               <div className="puzzle-stage"><div className="puzzle-zoom" {...zoom.viewportProps}><div className="puzzle-zoom-content" ref={zoom.content}>
                 <Board givens={empty} values={empty} position={position} variantPuzzle={outsidePuzzle} showGuides onCell={noop}
                   modeBorder="pencil" modeBoundaryRef={boundary}

@@ -146,6 +146,95 @@ async function dragPuzzleFromSide(page, distance) {
   return page.evaluate(() => window.puzzleGestureCommits.at(-1))
 }
 
+async function dragPuzzleByTouch(page, client, x, y, distance, cancel = false) {
+  const point = { x, y, id: 1 }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
+  await moveDrag(page, client, point, distance, 8)
+  await finishDrag(page, client, cancel)
+  await page.locator('[data-puzzle-gesture-locking]').first().waitFor({ state: 'detached' })
+}
+
+function puzzleDisplacement(from, to) {
+  return to.space + to.shrink - from.space - from.shrink
+}
+
+async function checkPuzzleDragAbove(page, client) {
+  const header = await page.locator('.topbar').boundingBox()
+  const puzzle = page.locator('.mobile-panel .puzzle')
+  const panel = page.locator('[data-mobile-panel="puzzle"]')
+  const rightEdge = page.viewportSize().width - 2
+  const before = await snapshot(page)
+  const assertTopTarget = async (x, y) => {
+    assert.ok(await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)
+      ?.matches('.mobile-puzzle-gesture-zone[data-edge="top"]')), { x, y }), `top gap at ${x}, ${y} must receive touch drags`)
+  }
+  const dragFrom = async (x, y, distance) => {
+    await assertTopTarget(x, y)
+    await dragPuzzleByTouch(page, client, x, y, distance)
+  }
+
+  await page.getByRole('button', { name: 'Puzzles' }).tap()
+  assert.equal(await page.evaluate(() => window.puzzleGestureCommits.length), 0, 'the navigation must stay reachable')
+  await dragFrom(2, header.y + header.height + 2, 300)
+  const smaller = await snapshot(page)
+  assert.ok(smaller.grid.width < before.grid.width, 'dragging down from just below the navigation must shrink the puzzle')
+
+  const puzzleBox = await puzzle.boundingBox()
+  const panelBox = await panel.boundingBox()
+  const y = puzzleBox.y - 3
+  assert.ok(y > panelBox.y, 'the return drag must start in the gap created by shrinking the puzzle')
+  await assertTopTarget(puzzleBox.x + puzzleBox.width / 2, y)
+  await dragFrom(rightEdge, y, -96)
+  const larger = await snapshot(page)
+  assert.ok(larger.grid.width > smaller.grid.width, 'dragging up from just above the puzzle must restore its size')
+  assert.equal(await page.evaluate(() => window.puzzleGestureCommits.length), 2, 'each drag must save exactly once')
+  assertGeometry(larger, 'top-gap drag settled')
+}
+
+async function checkPuzzleToolbarDrag(page, client) {
+  const pause = page.getByRole('button', { name: 'Pause puzzle' })
+  const menu = page.getByRole('button', { name: 'Puzzle options' })
+  const commits = () => page.evaluate(() => window.puzzleGestureCommits)
+  const dragFrom = async (x, y, distance, expected) => {
+    const before = await commits()
+    await dragPuzzleByTouch(page, client, x, y, distance)
+    const after = await commits()
+    assert.equal(after.length, before.length + 1, 'a toolbar drag must save exactly once')
+    assert.ok(Math.abs(puzzleDisplacement(before.at(-1) ?? { space: 0, shrink: 0 }, after.at(-1)) - expected) < 1,
+      `a ${distance} px toolbar drag must snap to ${expected} px`)
+  }
+  await pause.tap()
+  assert.equal(await pause.getAttribute('aria-pressed'), 'true', 'tapping Pause must still activate it')
+  await pause.press('Enter')
+  assert.equal(await pause.getAttribute('aria-pressed'), 'false', 'keyboard activation must still work')
+  await menu.tap()
+  assert.equal(await menu.getAttribute('aria-expanded'), 'true', 'tapping Puzzle options must still open it')
+  await menu.tap()
+  assert.equal((await commits()).length, 0, 'toolbar taps must not resize the puzzle')
+
+  const timer = await page.locator('.duration-counter').boundingBox()
+  const pauseBox = await pause.boundingBox()
+  const x = (timer.x + timer.width + pauseBox.x) / 2
+  const y = pauseBox.y + pauseBox.height / 2
+  assert.ok(await page.evaluate(({ x, y }) => {
+    const target = document.elementFromPoint(x, y)
+    return target?.closest('.mobile-puzzle-toolbar') && !target.closest('button, span')
+  }, { x, y }), 'the drag must start in the blank space between the timer and buttons')
+  await dragFrom(x, y, 67, 64)
+
+  const difficulty = await page.locator('.puzzle-difficulty').boundingBox()
+  await dragFrom(difficulty.x + difficulty.width / 2, difficulty.y + difficulty.height / 2, 11, 8)
+  const movedPause = await pause.boundingBox()
+  await dragFrom(movedPause.x + movedPause.width / 2, movedPause.y + movedPause.height / 2, -21, -24)
+  assert.equal(await pause.getAttribute('aria-pressed'), 'false', 'dragging from Pause must not activate it')
+
+  const menuBox = await menu.boundingBox()
+  await dragPuzzleByTouch(page, client, menuBox.x + menuBox.width / 2, menuBox.y + menuBox.height / 2, 22, true)
+  assert.equal((await commits()).length, 3, 'cancelling a toolbar drag must not save a resize')
+  assert.equal(await menu.getAttribute('aria-expanded'), 'false', 'cancelling a drag must leave Puzzle options closed')
+  assertGeometry(await snapshot(page), 'toolbar drag settled')
+}
+
 async function metrics(client) {
   return Object.fromEntries((await client.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]))
 }
@@ -352,7 +441,7 @@ try {
       try {
         assertGeometry(await snapshot(page), `${variant} initial layout`)
         if (regressionOnly) {
-          for (const [distance, expected] of [[-76, 80], [21, -16]]) {
+          for (const [distance, expected] of [[-77, 80], [21, -24]]) {
             const before = await snapshot(page)
             const start = await startDrag(page, client)
             await moveDrag(page, client, start, distance)
@@ -361,14 +450,14 @@ try {
             const initialHeight = parseFloat(before.savedHeight) || before.input.height
             assert.equal(after.commits, before.commits + 1, 'a completed drag must save exactly once')
             assert.ok(Math.abs(parseFloat(after.savedHeight) - initialHeight - expected) < 1,
-              `a ${distance} px input drag must snap to the nearest 16 px anchor`)
+              `a ${distance} px input drag must snap to the nearest 8 px anchor`)
             await page.locator('[data-mobile-panel="input"]').evaluate(panel =>
               Promise.allSettled(panel.getAnimations().map(animation => animation.finished)))
           }
           const handle = page.locator('.mobile-input-resize')
           const initialHeight = Number(await handle.getAttribute('aria-valuenow'))
           await handle.press('ArrowUp')
-          assert.equal(Number(await handle.getAttribute('aria-valuenow')), initialHeight + 16)
+          assert.equal(Number(await handle.getAttribute('aria-valuenow')), initialHeight + 8)
           await handle.press('Shift+Enter')
           const options = page.getByRole('dialog', { name: 'Resize input panel' })
           await options.getByRole('button', { name: 'Shorter' }).click()
@@ -453,13 +542,30 @@ try {
     try {
       const smaller = await dragPuzzleFromSide(page, 300)
       assert.ok(smaller?.shrink > 0, 'dragging down beside the puzzle must shrink it')
-      const larger = await dragPuzzleFromSide(page, -76)
+      const larger = await dragPuzzleFromSide(page, -75)
       assert.ok(larger?.shrink < smaller.shrink, 'dragging up from the side after shrinking must restore puzzle size')
-      const displacement = (from, to) => to.space + to.shrink - from.space - from.shrink
-      assert.ok(Math.abs(displacement(smaller, larger) + 80) < 1, 'an upward puzzle drag must snap to the nearest 16 px anchor')
+      assert.ok(Math.abs(puzzleDisplacement(smaller, larger) + 72) < 1, 'an upward puzzle drag must snap to the nearest 8 px anchor')
       const lowered = await dragPuzzleFromSide(page, 22)
-      assert.ok(Math.abs(displacement(larger, lowered) - 16) < 1, 'a downward puzzle drag must snap to the nearest 16 px anchor')
+      assert.ok(Math.abs(puzzleDisplacement(larger, lowered) - 24) < 1, 'a downward puzzle drag must snap to the nearest 8 px anchor')
       report.checks.push({ scenario: 'shrink and restore puzzle from side negative space', smaller, larger, lowered })
+    } finally { await context.close() }
+  }
+  console.log('Checking puzzle resize between the navigation and puzzle')
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { context, page, client } = await openPage()
+    try {
+      await page.emulateMedia({ reducedMotion })
+      await checkPuzzleDragAbove(page, client)
+      report.checks.push({ scenario: 'shrink and restore puzzle by touch from above', reducedMotion })
+    } finally { await context.close() }
+  }
+  console.log('Checking puzzle resize from the toolbar')
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { context, page, client } = await openPage()
+    try {
+      await page.emulateMedia({ reducedMotion })
+      await checkPuzzleToolbarDrag(page, client)
+      report.checks.push({ scenario: 'resize puzzle by touch from the toolbar', reducedMotion })
     } finally { await context.close() }
   }
   assert.deepEqual(errors, [], 'resize must not produce browser or ResizeObserver errors')

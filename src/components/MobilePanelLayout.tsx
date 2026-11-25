@@ -47,6 +47,7 @@ type Drag = {
 }
 type DragView = { id: MobilePanelId; x: number; y: number; drop: PanelDrop | null }
 const MOVE_THRESHOLD = 10
+const PUZZLE_DRAG_THRESHOLD = 6
 const PUZZLE_GESTURE_LOCK_FALLBACK_MS = 450
 type PuzzleGesture = {
   pointerId: number
@@ -151,7 +152,7 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
 
   function updatePreview(current: PuzzleGesture, y: number) {
     const position = positionAtDelta(current, y - current.startY)
-    current.moved ||= Math.abs(position.delta) > 6
+    current.moved ||= Math.abs(position.delta) > PUZZLE_DRAG_THRESHOLD
     current.space = position.space
     current.shrink = position.shrink
     setPreview(current)
@@ -346,7 +347,7 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       const gestureZone = zone.current
       const puzzlePanel = gestureZone?.closest<HTMLElement>('[data-mobile-panel="puzzle"]')
       const target = event.target instanceof Element ? event.target : null
-      if (!event.isPrimary || !gestureZone || !puzzlePanel || !target) return
+      if (!event.isPrimary || event.button !== 0 || !gestureZone || !puzzlePanel || !target) return
       const layout = gestureZone.closest<HTMLElement>('.mobile-panel-layout')
       const page = layout?.closest<HTMLElement>('.standard-workspace-page')
       const pageBounds = page?.getBoundingClientRect()
@@ -361,19 +362,17 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       // Side hit targets start in React's target phase so board pointer handlers
       // cannot capture the pointer first when a scaled edge overlaps a cell.
       if (target.closest('.mobile-puzzle-gesture-side')) return
-      const isAbovePuzzle = Boolean(page?.contains(target) && !puzzlePanel.contains(target)
-        && isOutsidePanel
-        && event.clientY < puzzlePanel.getBoundingClientRect().top)
       if (!puzzlePanel.contains(target) && !isWorkspaceNegativeSpace) return
       if (target.closest('.puzzle-mode-tab')) {
         pendingPointer.current = null
         return
       }
       if (getComputedStyle(gestureZone).display === 'none') return
-      const isGestureZone = isWorkspaceNegativeSpace || isAbovePuzzle
+      const isGestureZone = isWorkspaceNegativeSpace
         || Boolean(target.closest('.mobile-puzzle-gesture-zone[data-edge="top"]'))
       if (!isGestureZone && target.closest('input, textarea, select, [role="checkbox"], [role="gridcell"], [data-cell], .candidate-button')) return
-      if (!isGestureZone && target.closest('button, a, [role="button"]')) {
+      // Leave taps on the toolbar intact until the pointer moves vertically.
+      if (!isGestureZone && target.closest('.mobile-puzzle-toolbar, button, a, [role="button"]')) {
         pendingPointer.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY }
         return
       }
@@ -388,11 +387,11 @@ function MobilePuzzleTopSpaceGesture({ value, shrink, onChange, disabled, edge }
       if (!pending || pending.pointerId !== event.pointerId) return
       const deltaX = event.clientX - pending.startX
       const deltaY = event.clientY - pending.startY
-      if (Math.abs(deltaX) > MOVE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (Math.abs(deltaX) > PUZZLE_DRAG_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
         pendingPointer.current = null
         return
       }
-      if (Math.abs(deltaY) <= MOVE_THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return
+      if (Math.abs(deltaY) <= PUZZLE_DRAG_THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return
       pendingPointer.current = null
       gestureHandlers.current?.start(event, true, pending.startY)
       if (drag.current) gestureHandlers.current?.move(event, true)
@@ -582,11 +581,6 @@ export function MobilePanelLayout(props: Props) {
           digitControls.style.setProperty('--mobile-digit-fit-scale', nextScale)
         }
       }
-      const aboveHeight = Math.max(0, puzzle.getBoundingClientRect().top - page.getBoundingClientRect().top)
-      const gestureHeight = `${Math.ceil(aboveHeight)}px`
-      if (layout.style.getPropertyValue('--mobile-puzzle-above-height') !== gestureHeight) {
-        layout.style.setProperty('--mobile-puzzle-above-height', gestureHeight)
-      }
       const board = puzzle.querySelector<HTMLElement>('.puzzle-zoom, .puzzle-stage .board-frame')
       const puzzleColumn = board?.closest<HTMLElement>('.puzzle-column')
       const puzzleContent = puzzle.querySelector<HTMLElement>('.puzzle')
@@ -608,12 +602,17 @@ export function MobilePanelLayout(props: Props) {
       const boardBaseWidth = boardRect.width / puzzleScale
       const boardBaseHeight = boardRect.height / puzzleScale
       const boardBaseTop = panelHeight + (boardRect.top - panelRect.top - panelHeight) / puzzleScale
-      const sideGeometry = {
+      // Measure the layout edge independently of the snap transform and page scroll.
+      const aboveHeight = workspace.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop + puzzle.offsetTop
+      const puzzleTop = puzzleColumn.offsetTop + puzzleContent.offsetTop + panelHeight * (1 - puzzleScale)
+      const gestureGeometry = {
+        '--mobile-puzzle-above-height': `${Math.ceil(Math.max(0, aboveHeight))}px`,
+        '--mobile-puzzle-gesture-top': `${puzzleTop}px`,
         '--mobile-puzzle-gesture-side-width': `${Math.max(0, (panelRect.width - boardBaseWidth * puzzleScale) / 2)}px`,
         '--mobile-puzzle-gesture-side-top': `${panelHeight + (boardBaseTop - panelHeight) * puzzleScale}px`,
         '--mobile-puzzle-gesture-side-height': `${boardBaseHeight * puzzleScale}px`,
       }
-      for (const [property, nextValue] of Object.entries(sideGeometry)) {
+      for (const [property, nextValue] of Object.entries(gestureGeometry)) {
         if (puzzle.style.getPropertyValue(property) !== nextValue) puzzle.style.setProperty(property, nextValue)
       }
       // Keep the input card at the bottom edge and fit the board into the

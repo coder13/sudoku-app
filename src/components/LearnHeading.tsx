@@ -9,8 +9,8 @@ export function LessonDifficulty({ label }: { label: string }) {
   return <span className="lesson-chip lesson-difficulty-chip"><span className="sr-only">Difficulty </span>{label}</span>
 }
 
-export function LearnHeading({ title, summary, difficulty, children }: {
-  title?: string; summary?: string; difficulty?: string; children?: ReactNode
+export function LearnHeading({ title, summary, difficulty, action, children }: {
+  title?: string; summary?: string; difficulty?: string; action?: ReactNode; children?: ReactNode
 }) {
   return <>
     <header className="lesson-heading">
@@ -24,9 +24,12 @@ export function LearnHeading({ title, summary, difficulty, children }: {
           <li className="sr-only" aria-current="page">{title ?? learnOverview.title}</li>
         </ol>
       </nav>
-      <div className="lesson-title-row">
-        <h1 className="lesson-title">{title ?? learnOverview.title}</h1>
-        {difficulty && <LessonDifficulty label={difficulty} />}
+      <div className="lesson-heading-main">
+        <div className="lesson-title-row">
+          <h1 className="lesson-title">{title ?? learnOverview.title}</h1>
+          {difficulty && <LessonDifficulty label={difficulty} />}
+        </div>
+        {action}
       </div>
     </header>
     {(summary !== undefined || children) && <div className="lesson-intro">
