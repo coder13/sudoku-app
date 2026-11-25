@@ -14,6 +14,7 @@ const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'c
 const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'antiknight', 'clone', 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
 const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([34567])\s*[×x]\s*\1)? sudoku rules apply(?:[.:]\s*fill each row, column and region with the digits 1[-–]([34567])\.|[.!])$/i
+const FP_JIGSAW_ANTI_KNIGHT_BASE = /^(?:normal|standard) irregular(?: ([34567])\s*[×x]\s*\1)? anti-?knight sudoku rules apply(?:[.:]\s*fill each row, column and region with the digits 1[-–]([34567])\.|[.!])$/i
 const FP_FORTRESS_DESCRIPTION = /^Fortress rules apply: Digits in gr[ae]y cells have to be larger than digits in neighboring white cells\.$/i
 const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
 const FP_ANTI_SUM = /^Anti-Sum(?: \((\d{1,2})\))?: Digits in orthogonally (?:adjacent|connected) cells may not sum to (\d{1,2})\.$/i
@@ -195,13 +196,15 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 3 | 4 | 5 | 6 |
     })
     rules.push({ type: 'labeled-dots', relation, marks })
   }
-  const [, ...clauses] = jigsawRuleClauses(data.ruleset)
+  const [base, ...clauses] = jigsawRuleClauses(data.ruleset)
   if (data.antiknight !== undefined && typeof data.antiknight !== 'boolean') {
     throw new Error('This f-puzzles export has an invalid Anti-Knight flag.')
   }
   const antiKnightClauses = clauses.filter(clause => FP_JIGSAW_ANTI_KNIGHT.test(clause))
   const hasAntiKnight = data.antiknight === true
-  if (hasAntiKnight !== (antiKnightClauses.length === 1)) {
+  const antiKnightInBase = FP_JIGSAW_ANTI_KNIGHT_BASE.test(base)
+  const antiKnightDeclared = antiKnightInBase || antiKnightClauses.length === 1
+  if (antiKnightClauses.length > 1 || antiKnightInBase && antiKnightClauses.length > 0 || hasAntiKnight !== antiKnightDeclared) {
     throw new Error('This f-puzzles export has Anti-Knight metadata that does not match its ruleset.')
   }
   if (hasAntiKnight) rules.push({ type: 'anti-knight' })
@@ -230,7 +233,7 @@ function jigsawRuleClauses(text: unknown) {
 
 function knownJigsawRuleset(text: string, size: number) {
   const [base, ...clauses] = jigsawRuleClauses(text)
-  const match = FP_JIGSAW_BASE.exec(base)
+  const match = FP_JIGSAW_BASE.exec(base) ?? FP_JIGSAW_ANTI_KNIGHT_BASE.exec(base)
   const sizes = match?.slice(1).filter(value => value !== undefined)
   return !!sizes?.length && sizes.every(value => Number(value) === size) && clauses.every(clause =>
     FP_JIGSAW_ANTI_KNIGHT.test(clause) || FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || FP_ROW_COLUMN_SUM.test(clause) ||
