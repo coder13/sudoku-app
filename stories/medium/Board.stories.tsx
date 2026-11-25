@@ -199,6 +199,41 @@ export const CandidatesAndColor: Story = {
     highlightedDigit: 2,
   },
 }
+export const CellColorHoverPreview: Story = {
+  args: { colorPreview: { target: 'cell', color: 4 } },
+}
+export const CandidateColorHoverPreview: Story = {
+  args: {
+    values: valuesOf(inProgress),
+    position: paintCandidates(candidateExample, [{ cell: 5, digit: 2, color: 2 }, { cell: 5, digit: 6, color: 5 }]).position,
+    colorPreview: { target: 'candidate', color: 4 },
+    onPaintCandidate: () => {},
+  },
+}
+export const HintAnnotationsOverPlayerHighlights: Story = {
+  args: {
+    values: valuesOf(inProgress),
+    position: {
+      ...inProgress.position,
+      colors: inProgress.position.colors.map((color, cell) => cell === 40 ? 6 : cell === 41 ? 2 : color),
+    },
+    annotations: { cells: new Map([[40, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' }]]) },
+    annotationsOnTop: true,
+    highlightedDigitMask: (1 << 1) | (1 << 4),
+    highlightCandidateCells: true,
+  },
+}
+export const PlayerMultiCellColors: Story = {
+  args: {
+    values: valuesOf(inProgress),
+    position: {
+      ...inProgress.position,
+      colors: inProgress.position.colors.map((color, cell) => cell === 40 ? 6 : color),
+      cellColors: { 40: [6, 5], 41: [2, 4, 8] },
+    },
+    selected: [40],
+  },
+}
 export const ImportedColors: Story = {
   render: args => <SelectableGrid {...args} />,
   args: {

@@ -1,6 +1,7 @@
 import { Button } from '../../src/components/Button'
 import { useState, type ComponentProps } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
+import { fn } from 'storybook/test'
 import { HintCard } from '../../src/components/HintCard'
 import { SelectControl } from '../../src/components/SelectControl'
 import { DIFFICULTY_LABELS } from '../../src/sudoku/difficulty'
@@ -66,6 +67,18 @@ export const SingleFallback: Story = { args: { hint: defaultFallbackHints[0] } }
 export const NoSupportedMove: Story = { args: { hint: defaultFallbackHints[1] } }
 export const Conflicts: Story = { args: { hint: defaultFallbackHints[2] } }
 export const NoActionsInDeduction: Story = { args: { hint: defaultFallbackHints[3] } }
+export const CompactStagedHint: Story = {
+  args: {
+    compact: true,
+    hint: {
+      title: 'WXYZ-Wing',
+      text: 'A WXYZ-Wing has four cells with four candidate digits between them. If three of those digits can each appear only once, the four cells must include the fourth digit. That can rule it out in nearby cells.',
+    },
+    navigation: { index: 0, count: 10, onMove: fn() },
+    detailNavigation: { first: true, last: false, onMove: fn() },
+    action: { label: 'Apply hint', onClick: fn() },
+  },
+}
 export const Dismissible: Story = {
   args: { hint: defaultFallbackHints[0] },
   render: (args) => <DismissibleCard {...args} />,

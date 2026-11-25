@@ -37,7 +37,8 @@ export function practiceClueAnnotations({ houses = [], cells = [], candidates = 
   return { cells: area, candidates: marks, links, ...(groups?.length ? { groups } : {}) }
 }
 
-export function practiceSearch({ deduction: { technique, evidence, actions }, candidates, pattern }: PracticeExercise, guide?: PracticeGuide): Search {
+export function practiceSearch({ deduction: { technique, evidence, actions }, candidates, pattern }: Pick<PracticeExercise, 'deduction' | 'candidates' | 'pattern'>,
+  guide?: PracticeGuide): Search {
   const marks = (cells: number[], values = DIGITS) => cells.flatMap((cell) =>
     values.filter(digit => candidates[cell] & (1 << (digit - 1))).map(digit => ({ cell, digit })))
   const spots = (house: House, digit: number) => marks(houseCells(house), [digit])

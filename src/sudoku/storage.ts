@@ -75,7 +75,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  const { entries, center, corner, colors, cellColors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
     const layout = { size: grid.size, regions: draftRegions }
     if (!isJigsawGrid(layout)) return false
@@ -83,9 +83,17 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
   } else if (draftRegions !== undefined) return false
   const validDigits = (items: unknown, max: number) => Array.isArray(items) && items.length === grid.size ** 2 &&
     items.every((item) => Number.isInteger(item) && item >= 0 && item <= max)
+  const validCellColors = (value: unknown) => value === undefined || Boolean(value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.entries(value).every(([key, shades]) => {
+      const cell = Number(key)
+      return Number.isInteger(cell) && cell >= 0 && cell < grid.size ** 2 && String(cell) === key &&
+        Array.isArray(shades) && shades.length >= 2 && shades.length <= COLORS.length &&
+        shades.every(shade => Number.isInteger(shade) && shade >= 1 && shade <= COLORS.length) &&
+        new Set(shades).size === shades.length && colors[cell] === shades[0]
+    }))
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
-    validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) &&
+    validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) && validCellColors(cellColors) &&
     (draftSizedRules === undefined ? !(draft && grid.size !== 4 && grid.size !== 9) :
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&
     (cageDraft ? isAlgebraicCageList(draftCages, { draft: true }) : draftCages === undefined) &&
@@ -951,6 +959,8 @@ export const roomStore = {
     const next = { ...room, games, playerRating: playerRatingFor(games), storageAvailable: room.storageAvailable && saved && seenSaved }
     if (game.savedForLater) publish(next)
     else playPuzzle(next, game)
+    // Keep the just-added puzzle recoverable while its IndexedDB write is pending.
+    if (indexedPuzzleSaves) checkpointSaves()
     if (!indexedPuzzleSaves && saved) announceEdit(game.id, handoff)
   },
   update(id: string, update: (game: Game) => Game, { derived = false, chainCandidates }: {

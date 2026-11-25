@@ -25,10 +25,21 @@ type Story = StoryObj<typeof meta>
 export const DigitPad: Story = {}
 export const MiniSudoku: Story = { args: { compact: true, gridSize: 4, values: '0234341221434321' } }
 export const DesktopCandidateMatching: Story = {
-  args: { highlightMode: true, highlightedDigitMask: 3, digitHighlightMatch: 'all', onDigitHighlightMatchChange: fn() },
+  args: {
+    highlightMode: true, highlightedDigitMask: 3, digitHighlightMatch: 'all', onDigitHighlightMatchChange: fn(),
+    clearDigitHighlightsAvailable: true, onClearDigitHighlights: fn(),
+  },
 }
 export const MobileCandidateMatching: Story = {
   args: { ...DesktopCandidateMatching.args, compact: true },
+}
+export const MobileCandidateColorGroup: Story = {
+  args: {
+    compact: true, colorTarget: 'candidate', colorsActive: true, highlightedDigitMask: (1 << 2) | (1 << 4),
+    candidatePaintColor: 4,
+    paintCandidateGroupAvailable: true, onPaintCandidateGroup: fn(),
+    clearDigitHighlightsAvailable: true, onClearDigitHighlights: fn(),
+  },
 }
 export const MobileRemainingDigits: Story = {
   args: { compact: true, advancedModes: { ...meta.args.advancedModes, keypadProgress: 'count' } },

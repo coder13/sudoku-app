@@ -1,5 +1,5 @@
 import { Button, IconButton } from './Button'
-import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ChevronUp, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
@@ -81,19 +81,19 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
             disabled={secondaryAction.reserved}
             onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>}
           {(action || detailNavigation) && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
-            {detailNavigation && <>
-              <IconButton aria-label="Less detail" title="Less detail" aria-disabled={detailNavigation.first || undefined}
-                tabIndex={detailNavigation.first ? -1 : undefined} onClick={detailNavigation.first ? undefined : () => detailNavigation.onMove(-1)}>
-                <ChevronUp size={18} aria-hidden="true" />
-              </IconButton>
-              <IconButton aria-label="More detail" title="More detail" aria-disabled={detailNavigation.last || undefined}
-                tabIndex={detailNavigation.last ? -1 : undefined} onClick={detailNavigation.last ? undefined : () => detailNavigation.onMove(1)}>
-                <ChevronDown size={18} aria-hidden="true" />
-              </IconButton>
-            </>}
             {action && <Button type="button" variant="primary" disabled={reserveAction} data-reserved={reserveAction || undefined}
               onClick={action.onClick} aria-keyshortcuts={action.shortcut}
               title={action.shortcut ? `${action.label} (${action.shortcut})` : undefined}>{action.label}</Button>}
+            {detailNavigation && <>
+              <IconButton aria-label="Less detail" title="Less detail" aria-disabled={detailNavigation.first || undefined}
+                tabIndex={detailNavigation.first ? -1 : undefined} onClick={detailNavigation.first ? undefined : () => detailNavigation.onMove(-1)}>
+                <ArrowLeft size={18} aria-hidden="true" />
+              </IconButton>
+              <IconButton aria-label="More detail" title="More detail" aria-disabled={detailNavigation.last || undefined}
+                tabIndex={detailNavigation.last ? -1 : undefined} onClick={detailNavigation.last ? undefined : () => detailNavigation.onMove(1)}>
+                <ArrowRight size={18} aria-hidden="true" />
+              </IconButton>
+            </>}
           </div>}
         </div>}
       </div>

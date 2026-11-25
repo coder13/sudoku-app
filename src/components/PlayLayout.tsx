@@ -33,6 +33,7 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   const puzzleStack = useRef<HTMLDivElement>(null)
   const hintSlot = useRef<HTMLDivElement>(null)
   const standardDesktop = desktop && !advanced
+  const hintOpen = Boolean(hint)
   useLayoutEffect(() => {
     if (!standardDesktop) return
     const stack = puzzleStack.current
@@ -40,56 +41,74 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
     const slot = hintSlot.current
     const content = slot?.querySelector<HTMLElement>(':scope > .standard-hint-content')
     if (!stack || !column || !slot || !content) return
-
-    let hintRevealHeight = 0
-    const measureHint = () => {
-      const height = content.offsetHeight
-      // The loading card can grow into a taller hint. Keep the initial reveal continuous.
-      hintRevealHeight = Math.min(hintRevealHeight || height, height)
-      slot.style.setProperty('--desktop-hint-height', `${height}px`)
+    if (!hintOpen) {
+      slot.style.removeProperty('--desktop-hint-size')
+      slot.style.removeProperty('--desktop-hint-height')
+      slot.style.removeProperty('--desktop-hint-toolbar-height')
+      stack.style.removeProperty('--desktop-hint-board-width')
+      return
     }
+
+    stack.style.removeProperty('--desktop-hint-board-width')
+    const stage = column.querySelector<HTMLElement>('.puzzle-stage')
+    const frame = stage?.querySelector('.board-frame:not(.completion-frame, [inert] .board-frame)')
+    if (!stage || !frame) return
+    const baseFrameWidth = frame.getBoundingClientRect().width
+    const baseColumnHeight = column.getBoundingClientRect().height
+
+    slot.style.removeProperty('--desktop-hint-height')
+    slot.style.removeProperty('--desktop-hint-size')
+    const gap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-gap')) || 0
+    const bottomGap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-bottom-gap')) || 0
+    const card = slot.querySelector<HTMLElement>('.hint-card')
+    const toolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
+    const toolbarHeight = toolbar
+      ? toolbar.offsetHeight + (Number.parseFloat(getComputedStyle(toolbar).marginBlockEnd) || 0)
+      : 0
+    slot.style.setProperty('--desktop-hint-toolbar-height', `${toolbarHeight}px`)
+    const cardHeight = card?.offsetHeight || content.offsetHeight
+    const maxInitialHeight = Math.max(0, stack.clientHeight - 180 - gap - bottomGap - toolbarHeight)
+    const initialHeight = Math.min(Math.ceil(cardHeight), maxInitialHeight)
+    slot.style.setProperty('--desktop-hint-height', `${initialHeight}px`)
 
     const fitBoard = () => {
       if (stack.closest('[data-layout-resizing]')) return
-      const hintHeight = slot.getBoundingClientRect().height
+      const savedHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-size'))
+      const initialHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-height'))
+      const hintCardHeight = Number.isFinite(savedHintSize) ? savedHintSize : initialHintSize
+      const hintToolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
+      const hintToolbarHeight = hintToolbar
+        ? hintToolbar.offsetHeight + (Number.parseFloat(getComputedStyle(hintToolbar).marginBlockEnd) || 0)
+        : 0
+      slot.style.setProperty('--desktop-hint-toolbar-height', `${hintToolbarHeight}px`)
+      const hintHeight = (Number.isFinite(hintCardHeight) ? hintCardHeight : 0) + hintToolbarHeight + gap + bottomGap
       if (!hintHeight) {
         stack.style.removeProperty('--desktop-hint-board-width')
         return
       }
-      const stage = column.querySelector<HTMLElement>('.puzzle-stage')
-      const frame = stage?.querySelector('.board-frame:not(.completion-frame, [inert] .board-frame)')
-      if (!stage || !frame) return
       const scale = Number(getComputedStyle(stack).getPropertyValue('--desktop-layout-scale')) || 1
       const style = getComputedStyle(frame)
       const dimension = (name: string) => Number(style.getPropertyValue(name))
       const rows = (dimension('--board-rows') || 9) + dimension('--outside-top') + dimension('--outside-bottom')
       const columns = (dimension('--board-columns') || 9) + dimension('--outside-left') + dimension('--outside-right')
       const aspect = columns / rows
-      const room = stack.getBoundingClientRect().height - column.getBoundingClientRect().height
-      const frameWidth = frame.getBoundingClientRect().width
-      // If the full-size puzzle already overflows a short window, ease out that overflow along with the hint height.
-      const remainingWidth = stage.getBoundingClientRect().width - frameWidth
-      const overflow = Math.max(0, remainingWidth / aspect - room)
-      const progress = Math.min(1, hintHeight / (hintRevealHeight * scale))
-      const spareHeight = room - hintHeight + overflow * (1 - progress)
-      const width = Math.max(0, Math.floor((frameWidth + spareHeight * aspect) / scale))
+      const room = stack.getBoundingClientRect().height - baseColumnHeight
+      const spareHeight = room - hintHeight
+      const width = Math.min(baseFrameWidth / scale,
+        Math.max(0, Math.floor((baseFrameWidth + spareHeight * aspect) / scale)))
       const limit = `${width}px`
       if (stack.style.getPropertyValue('--desktop-hint-board-width') !== limit) {
         stack.style.setProperty('--desktop-hint-board-width', limit)
       }
     }
 
-    measureHint()
     fitBoard()
-    const contentObserver = new ResizeObserver(measureHint)
-    contentObserver.observe(content)
     const layoutObserver = new ResizeObserver(fitBoard)
-    for (const element of [stack, slot]) layoutObserver.observe(element, { box: 'border-box' })
+    for (const element of [stack, slot, column]) layoutObserver.observe(element, { box: 'border-box' })
     return () => {
-      contentObserver.disconnect()
       layoutObserver.disconnect()
     }
-  }, [standardDesktop])
+  }, [standardDesktop, hintOpen])
 
   if (advanced) return advanced
   if (!desktop) {
@@ -103,7 +122,7 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
   return <>
     <div ref={puzzleStack} className="standard-puzzle-stack">
       {puzzle}
-      <div ref={hintSlot} className="standard-hint-slot" id="standard-puzzle-hint" data-open={Boolean(hint)}>
+      <div ref={hintSlot} className="standard-hint-slot" id="standard-puzzle-hint" data-open={hintOpen}>
         <div className="standard-hint-content"><MotionSurface>{hint}</MotionSurface></div>
         {hint && <DesktopHintDivider />}
       </div>
@@ -135,13 +154,18 @@ function DesktopHintDivider() {
 
   function measure() {
     const slot = divider.current?.parentElement
+    const stack = slot?.parentElement
     const card = slot?.querySelector<HTMLElement>('.hint-card')
-    if (!slot || !card) return
-    const style = getComputedStyle(card)
-    const max = Math.floor(parseFloat(style.maxBlockSize))
-    if (!Number.isFinite(max)) return
+    if (!slot || !stack || !card) return
     const height = card.offsetHeight
     const body = card.querySelector<HTMLElement>('.hint-card-body')
+    const gap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-gap')) || 0
+    const bottomGap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-bottom-gap')) || 0
+    const toolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
+    const toolbarHeight = toolbar
+      ? toolbar.offsetHeight + (Number.parseFloat(getComputedStyle(toolbar).marginBlockEnd) || 0)
+      : 0
+    const max = Math.max(height, stack.clientHeight - 180 - gap - bottomGap - toolbarHeight)
     const min = Math.min(max, Math.max(96, height - (body?.offsetHeight ?? height) + 24))
     return { slot, height, min, max }
   }
