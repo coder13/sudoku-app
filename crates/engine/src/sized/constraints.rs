@@ -13,6 +13,7 @@ mod region_sum;
 mod row_equation;
 mod sandwich;
 mod skyscrapers;
+mod x_sum;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
@@ -36,6 +37,8 @@ pub use self::row_equation::EquationOperator;
 use self::row_equation::{RowEquation, RowEquationTables};
 use self::sandwich::Sandwich;
 use self::skyscrapers::SkyscrapersLine;
+use self::x_sum::XSum;
+use self::x_sum::XSumDot;
 
 const MAX_CELLS: usize = MAX_SIZE * MAX_SIZE;
 
@@ -117,6 +120,15 @@ pub enum SizedConstraint {
         cells: Vec<usize>,
         direction: crate::ClueDirection,
         sum: u16,
+    },
+    XSum {
+        cells: Vec<usize>,
+        direction: crate::ClueDirection,
+        sum: u16,
+    },
+    XSumDot {
+        ends: [SizedSumEnd; 2],
+        relation: XSumDotRelation,
     },
     Arrow {
         circle: usize,
@@ -207,6 +219,17 @@ pub enum SizedConstraint {
 )]
 pub enum SizedDotRelation {
     Difference,
+    Ratio,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum XSumDotRelation {
+    Consecutive,
     Ratio,
 }
 
@@ -365,6 +388,8 @@ pub struct SizedConstraintGrid {
     pair_links: Vec<Vec<SizedPairLink>>,
     row_column_sums: Vec<Option<RowColumnSum>>,
     sandwiches: Vec<Option<Sandwich>>,
+    x_sums: Vec<Option<XSum>>,
+    x_sum_dots: Vec<Option<XSumDot>>,
     crust: Option<Crust>,
     global_entropy: Vec<Option<([u16; 3], Vec<[usize; 4]>)>>,
     entropic_lines: Vec<Option<EntropicLine>>,
@@ -396,6 +421,8 @@ impl SizedConstraintGrid {
         let mut row_equation_tables = RowEquationTables::default();
         let mut row_column_sums = Vec::new();
         let mut sandwiches = Vec::new();
+        let mut x_sums = Vec::new();
+        let mut x_sum_dots = Vec::new();
         let mut crust = None;
         let mut global_entropy = Vec::new();
         let mut entropic_lines = Vec::new();
@@ -568,6 +595,18 @@ impl SizedConstraintGrid {
                     little_killers[index] =
                         Some(LittleKiller::compile(size, *direction, cells, *sum, 0)?);
                 }
+                SizedConstraint::XSum {
+                    direction,
+                    cells,
+                    sum,
+                } => {
+                    x_sums.resize_with(index + 1, || None);
+                    x_sums[index] = Some(XSum::compile(size, *direction, cells, *sum)?);
+                }
+                SizedConstraint::XSumDot { ends, relation } => {
+                    x_sum_dots.resize_with(index + 1, || None);
+                    x_sum_dots[index] = Some(XSumDot::compile(&layout, *ends, *relation)?);
+                }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())
                         || cells.iter().enumerate().any(|(index, &cell)| {
@@ -686,6 +725,8 @@ impl SizedConstraintGrid {
             pair_links,
             row_column_sums,
             sandwiches,
+            x_sums,
+            x_sum_dots,
             crust,
             global_entropy,
             entropic_lines,
@@ -973,6 +1014,26 @@ impl SizedConstraintGrid {
                     return false;
                 }
                 for cell in sandwich.cells() {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
+                }
+            }
+            for x_sum in self.x_sums.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                if !x_sum.support(candidates, &mut supported) {
+                    return false;
+                }
+                for cell in x_sum.cells() {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
+                }
+            }
+            for x_sum_dot in self.x_sum_dots.iter().flatten() {
+                let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                if !x_sum_dot.support(candidates, &mut supported) {
+                    return false;
+                }
+                for cell in x_sum_dot.cells() {
                     changed |= candidates[cell] != supported[cell];
                     candidates[cell] = supported[cell];
                 }
@@ -1388,6 +1449,26 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
                     }
                 }
+                SizedConstraint::XSum { cells, .. } => {
+                    let x_sum = self.x_sums[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !x_sum.support(&domains, &mut supported) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::XSumDot { .. } => {
+                    let x_sum_dot = self.x_sum_dots[rule].as_ref()?;
+                    let mut supported = [0; MAX_SIZE * MAX_SIZE];
+                    if !x_sum_dot.support(&domains, &mut supported) {
+                        return None;
+                    }
+                    for cell in x_sum_dot.cells() {
+                        eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
                 SizedConstraint::Difference { .. } => {
                     let link = self.pair_links[rule].first()?;
                     let support = link.supports(&domains);
@@ -1678,6 +1759,12 @@ impl SizedConstraintGrid {
                     let sandwich = self.sandwiches[rule].as_ref()?;
                     !sandwich.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])
                 }
+                SizedConstraint::XSum { .. } => !self.x_sums[rule]
+                    .as_ref()?
+                    .support(&domains, &mut [0; MAX_SIZE * MAX_SIZE]),
+                SizedConstraint::XSumDot { .. } => !self.x_sum_dots[rule]
+                    .as_ref()?
+                    .support(&domains, &mut [0; MAX_SIZE * MAX_SIZE]),
                 SizedConstraint::Crust { .. } => {
                     let crust = self.crust.as_ref()?;
                     let mut support = domains.clone();
@@ -1914,6 +2001,16 @@ impl SizedConstraintGrid {
                 .iter()
                 .flatten()
                 .all(|sandwich| sandwich.permits(digits))
+            && self
+                .x_sums
+                .iter()
+                .flatten()
+                .all(|x_sum| x_sum.permits(digits))
+            && self
+                .x_sum_dots
+                .iter()
+                .flatten()
+                .all(|dot| dot.permits(digits))
             && self.renbans.iter().all(|cells| {
                 let mut used = 0u16;
                 for &cell in cells {

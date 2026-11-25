@@ -1,7 +1,7 @@
 import { cornerKropkiAllows, cornerKropkiKinds, cornerPairs, validCornerKropki } from './corner-kropki.ts'
 import { sizedQuadrupleState, validSizedQuadruple } from './sized-quadruple.ts'
 import { PUZZLE_VARIANTS } from './variants.ts'
-import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
+import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndCells, sizedSumEndKey } from './sized-linked-double-arrow.ts'
 import { nonogramState, validNonogramRule } from './sized-nonogram.ts'
 import { skyscrapersState, validSizedSkyscrapersRule } from './sized-skyscrapers.ts'
 import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
@@ -182,6 +182,20 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         cells.every((cell, index) => index === 0 || cell !== cells[index - 1])
     }
     if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size)
+    if (rule.type === 'x-sum') {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) ||
+        Object.keys(rule).length !== 4 || !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
+        !Array.isArray(rule.cells) || rule.cells.length !== size ||
+        rule.cells.some((cell: unknown) => typeof cell !== 'number' || !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
+        !Number.isInteger(rule.sum) || Number(rule.sum) < 1 || Number(rule.sum) > size * (size + 1) / 2) return false
+      const cells = rule.cells as number[]
+      const first = cells[0]
+      const direction = rule.direction
+      return direction === 'north' ? Math.floor(first / size) === size - 1 && cells.every((cell, index) => cell === first - index * size)
+        : direction === 'south' ? Math.floor(first / size) === 0 && cells.every((cell, index) => cell === first + index * size)
+          : direction === 'east' ? first % size === 0 && cells.every((cell, index) => cell === first + index)
+            : first % size === size - 1 && cells.every((cell, index) => cell === first - index)
+    }
     if (rule.type === 'labeled-dots') {
       const ratio = rule.relation === 'ratio'
       return Object.keys(rule).every(key => ['type', 'relation', 'marks', 'negative'].includes(key)) &&
@@ -194,6 +208,24 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
           mark.cells.every((cell: unknown) => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell < size ** 2) &&
           gridCellsShareEdge(mark.cells[0], mark.cells[1], size) &&
           typeof mark.value === 'number' && Number.isInteger(mark.value) && (ratio ? mark.value >= 2 && mark.value <= size : mark.value >= 1 && mark.value < size))
+    }
+    if (rule.type === 'x-sum-dot') {
+      const ends: unknown = rule.ends
+      if (Object.keys(rule).length !== 3 || !['consecutive', 'ratio'].includes(String(rule.relation)) ||
+        !Array.isArray(ends) || ends.length !== 2 || !ends.every(end => isSizedSumEnd(end, size)) ||
+        ends.every(end => typeof end === 'number') || sizedSumEndKey(ends[0]) === sizedSumEndKey(ends[1])) return false
+      const rays = ends.map(end => sizedSumEndCells(end, size))
+      const overlap = rays[0].filter(cell => rays[1].includes(cell))
+      if (overlap.length > 1) return false
+      if (typeof ends[0] === 'number' || typeof ends[1] === 'number') {
+        const digit = typeof ends[0] === 'number' ? ends[0] : ends[1]
+        const xSumRay = typeof ends[0] === 'number' ? rays[1] : rays[0]
+        if (xSumRay[0] !== digit) return false
+      } else {
+        const vertical = (end: { direction: string }) => end.direction === 'north' || end.direction === 'south'
+        if (vertical(ends[0]) !== vertical(ends[1]) || overlap.length) return false
+      }
+      return true
     }
     const cells: unknown = rule.cells
     if (!Array.isArray(cells) || cells.length > size ** 2 ||
@@ -292,6 +324,17 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     } else if (rule.type === 'region-sum') {
       const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
       if (new Set(totals).size !== 1) return
+    } else if (rule.type === 'x-sum') {
+      const first = Number(solution[rule.cells[0]])
+      if (rule.cells.slice(0, first).reduce((total, cell) => total + Number(solution[cell]), 0) !== rule.sum) return
+    } else if (rule.type === 'x-sum-dot') {
+      const total = (end: number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }) => {
+        if (typeof end === 'number') return Number(solution[end])
+        const ray = sizedSumEndCells(end, grid.size)
+        return ray.slice(0, Number(solution[ray[0]])).reduce((sum, cell) => sum + Number(solution[cell]), 0)
+      }
+      const [a, b] = rule.ends.map(total)
+      if (rule.relation === 'consecutive' ? Math.abs(a - b) !== 1 : a !== 2 * b && b !== 2 * a) return
     } else if (rule.type === 'linked-double-arrow') {
       if (linkedDoubleArrowConflicts(rule, solution, grid.size)) return
     } else if (rule.type === 'arrow' || rule.type === 'double-arrow') {
@@ -405,6 +448,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'slow-thermometer') clues.add('Digits increase or stay the same from the bulb to the tip of each slow thermometer.')
     else if (rule.type === 'whispers') clues.add(`Neighboring digits on each Whispers line differ by at least ${rule.minDifference}.`)
     else if (rule.type === 'sandwich') clues.add(`The digits between 1 and ${grid.size} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    else if (rule.type === 'x-sum') clues.add(`The first digit seen from the ${rule.direction} side tells how many digits to add, including that first digit. The total equals the outside clue.`)
+    else if (rule.type === 'x-sum-dot') clues.add(rule.relation === 'consecutive'
+      ? 'The totals shown by the two connected X-Sum clues are consecutive.'
+      : 'The totals shown by the two connected X-Sum clues have a 1:2 ratio.')
     else if (rule.type === 'nonogram') {
       const otherDigits = Array.from({ length: grid.size }, (_, index) => index + 1).filter(digit => !rule.digits.includes(digit))
       clues.add(`The outside clue lists the lengths of consecutive runs of selected digits (${rule.digits.join(', ')}) in its row or column. Separate two runs with at least one digit outside that set (${otherDigits.join(', ')}).`)

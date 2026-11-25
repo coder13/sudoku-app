@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
-import { readSizedRuleSudokuPad } from '../src/sudoku/sized-rule-sudoku-pad.ts'
+import { readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 
 const metadata = {
   title: 'Shared totals',
@@ -60,6 +60,7 @@ const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.
 const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo-6x6.scl', import.meta.url), 'utf8').trim()
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
 const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
+const xSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
 const entropyLineExamples = JSON.parse(readFileSync(new URL('./fixtures/sudokupad-entropy-lines.json', import.meta.url), 'utf8')) as {
   examples: { id: string; title: string; code: string }[]
 }
@@ -93,6 +94,25 @@ test('#400 imports the original Between Lines export with rectangular box notati
   ])
   assert.equal(imported.authoredSolution, '634125512364246513351642465231123456')
   assert.equal(imported.authoredSolutionOnly, true)
+})
+
+test('#404 imports the original 4 × 4 X-Sum Twins Penpa export and verifies both white dots', async () => {
+  const imported = await detectPuzzle(xSumDotCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '4x4 X-Sum Twins: White Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.grid, { size: 4, boxRows: 2, boxColumns: 2 })
+  assert.equal(imported.givens, '0'.repeat(16))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum-dot', ends: [{ direction: 'south', index: 1 }, { direction: 'south', index: 2 }], relation: 'consecutive' },
+    { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'consecutive' },
+  ])
+  const decoded = decodeSudokuPadEnvelope(xSumDotCode) as Record<string, unknown>
+  assert.deepEqual(readSudokuPadXSumDots(decoded), {
+    givens: '0'.repeat(16), grid: { size: 4, boxRows: 2, boxColumns: 2 }, sizedRules: imported.sizedRules,
+    title: '4x4 X-Sum Twins: White Dots', sizedAuthor: 'Cale Schoon', authoredSolution: '4321213412433412',
+    authoredSolutionOnly: true,
+  })
 })
 
 test('sized SudokuPad rejects unrepresented rules and geometry', () => {

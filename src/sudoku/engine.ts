@@ -202,15 +202,16 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
 export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
+export type SizedXSumDot = { type: 'x-sum-dot'; ends: readonly [SizedSumEnd, SizedSumEnd]; relation: 'consecutive' | 'ratio' }
 export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; index: number; digits: readonly number[]; runs: readonly number[] }
 export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
 export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
   | { type: 'anti-king' }
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }
-  | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule
+  | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedXSumDot | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
   | { type: 'row-equation'; cells: readonly number[]; operators: readonly EquationOperator[] }
