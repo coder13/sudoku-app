@@ -1080,7 +1080,8 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
   const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
   const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= size - 0.5 && Number.isInteger(coordinate - 0.5)
   for (const segment of segments) {
-    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+    if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
       !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
       !segment.cells[0].every(Number.isFinite) || !record(segment.parameters) ||
       Object.keys(segment.parameters).length !== 1 || typeof segment.parameters.text !== 'string') {
