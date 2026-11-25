@@ -90,7 +90,7 @@ export function usePuzzleZoom(enabled: boolean, puzzleId: string, cancelGridPres
 
   function onPointerDownCapture(event: PointerEvent<HTMLDivElement>) {
     // The floating mode button has its own drag gesture, even over a zoomed grid.
-    if (!enabled || (event.target instanceof Element && event.target.closest('.puzzle-mode-tab'))) return
+    if (!enabled || (event.target instanceof Element && event.target.closest('[data-puzzle-mode-tab]'))) return
     const points = touches.current
     if (!points.size) consumed.current = false
     if (event.pointerType !== 'touch') return
@@ -141,7 +141,7 @@ export function usePuzzleZoom(enabled: boolean, puzzleId: string, cancelGridPres
   }
 
   function onFocusCapture(event: FocusEvent<HTMLDivElement>) {
-    if (view.current.scale === 1 || !event.target.matches('.cell:focus-visible, .candidate-button:focus-visible') ||
+    if (view.current.scale === 1 || !event.target.matches('[role="gridcell"]:focus-visible, [data-candidate-button]:focus-visible') ||
       event.target.closest('[data-pointer-input]')) return
     const visible = event.currentTarget.getBoundingClientRect()
     const target = event.target.getBoundingClientRect()
@@ -151,7 +151,7 @@ export function usePuzzleZoom(enabled: boolean, puzzleId: string, cancelGridPres
   }
 
   return {
-    zoomed, reset, content,
+    zoomed, reset, content, viewport,
     viewportProps: {
       ref: viewport, onPointerDownCapture, onPointerMoveCapture, onClickCapture, onDoubleClickCapture: onClickCapture, onFocusCapture,
       onPointerUpCapture: finish, onPointerCancelCapture: finish,

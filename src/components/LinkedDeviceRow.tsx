@@ -1,30 +1,31 @@
 import { Button, IconButton } from './Button'
 import { Link2Off, MoreHorizontal, PencilLine, X } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useActionMenuKeyboard } from './useActionMenuKeyboard'
 
-function DeviceActionMenu({ label, disabled, trigger, rename, unlink }: {
+function DeviceActionMenu({ label, disabled, trigger, menuBoundaryRef, rename, unlink }: {
   label: string
   disabled: boolean
   trigger: RefObject<HTMLButtonElement | null>
+  menuBoundaryRef: RefObject<HTMLElement | null>
   rename: () => void
   unlink: () => void
 }) {
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const container = useRef<HTMLDivElement>(null)
-  const first = useRef<HTMLButtonElement>(null)
-  const last = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
   const focusLast = useRef(false)
+  const [openAbove, setOpenAbove] = useState(false)
   useLayoutEffect(() => {
     if (!open) return
-    const menu = first.current?.parentElement
-    const panel = container.current?.closest('.settings-panel')
-    if (menu && menu.getBoundingClientRect().bottom > Math.min(innerHeight, panel?.getBoundingClientRect().bottom ?? innerHeight)) {
-      menu.dataset.above = ''
-    }
-    const initial = focusLast.current ? last : first
-    initial.current?.focus({ preventScroll: true })
+    const boundary = menuBoundaryRef.current
+    const shouldOpenAbove = Boolean(menu.current && menu.current.getBoundingClientRect().bottom >
+      Math.min(innerHeight, boundary?.getBoundingClientRect().bottom ?? innerHeight))
+    setOpenAbove(shouldOpenAbove)
   }, [open])
+  const onMenuKeyDown = useActionMenuKeyboard({ open, menuRef: menu, triggerRef: trigger,
+    close: () => setOpen(false), initialFocus: focusLast.current ? 'last' : 'first' })
   useEffect(() => {
     if (!open) return
     function dismiss(event: PointerEvent) {
@@ -39,38 +40,28 @@ function DeviceActionMenu({ label, disabled, trigger, rename, unlink }: {
     <IconButton ref={trigger} variant="quiet" disabled={disabled}
       aria-label={'Options for ' + label} title={'Options for ' + label}
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined}
-      onClick={() => { focusLast.current = false; setOpen(!open) }}
+      onClick={() => { focusLast.current = false; setOpenAbove(false); setOpen(!open) }}
       onKeyDown={event => {
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
         event.preventDefault()
         focusLast.current = event.key === 'ArrowUp'
+        setOpenAbove(false)
         setOpen(true)
       }}><MoreHorizontal size={20} aria-hidden="true" /></IconButton>
-    {open && <div id={menuId} className="app-menu sync-device-menu" role="menu" aria-label={'Options for ' + label}
-      onKeyDown={event => {
-        if (event.key === 'Escape' || event.key === 'Tab') {
-          if (event.key === 'Escape') event.preventDefault()
-          trigger.current?.focus()
-          setOpen(false)
-          return
-        }
-        let next
-        if (event.key === 'Home') next = first
-        else if (event.key === 'End') next = last
-        else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') next = document.activeElement === first.current ? last : first
-        if (next) { event.preventDefault(); next.current?.focus() }
-      }}>
-      <button ref={first} role="menuitem" tabIndex={-1} disabled={disabled} onClick={rename}><PencilLine size={16} />Rename</button>
-      <button ref={last} role="menuitem" tabIndex={-1} disabled={disabled} onClick={unlink}><Link2Off size={16} />Unlink</button>
+    {open && <div ref={menu} id={menuId} className="app-menu sync-device-menu" data-above={openAbove || undefined} role="menu" aria-label={'Options for ' + label}
+      onKeyDown={onMenuKeyDown}>
+      <button role="menuitem" tabIndex={-1} disabled={disabled} onClick={rename}><PencilLine size={16} />Rename</button>
+      <button role="menuitem" tabIndex={-1} disabled={disabled} onClick={unlink}><Link2Off size={16} />Unlink</button>
     </div>}
   </div>
 }
 
-export function LinkedDeviceRow({ device, current, mobile, working, rename, unlink }: {
+export function LinkedDeviceRow({ device, current, mobile, working, menuBoundaryRef, rename, unlink }: {
   device: { id: string; name: string }
   current: boolean
   mobile: boolean
   working: boolean
+  menuBoundaryRef: RefObject<HTMLElement | null>
   rename: (name: string) => Promise<boolean>
   unlink: () => void
 }) {
@@ -101,7 +92,7 @@ export function LinkedDeviceRow({ device, current, mobile, working, rename, unli
     {mode === 'unlink' ? <>
       <Button variant="danger" disabled={working} onClick={unlink}>Confirm unlink</Button>
       <IconButton autoFocus={mobile} variant="quiet" aria-label="Cancel unlink" title="Cancel" disabled={working} onClick={close}><X size={18} /></IconButton>
-    </> : mobile ? <DeviceActionMenu label={label} disabled={working} trigger={optionsButton}
+    </> : mobile ? <DeviceActionMenu label={label} disabled={working} trigger={optionsButton} menuBoundaryRef={menuBoundaryRef}
       rename={startRename} unlink={() => setMode('unlink')} /> : <>
       <Button variant="quiet" disabled={working} aria-label={'Rename ' + label} ref={renameButton}
         onClick={startRename}>Rename</Button>

@@ -15,6 +15,8 @@ When adding, choosing, or changing UI components, use the [Sudoku components ski
 
 When adding or changing UI motion, follow the [animation guidelines](docs/animation-guidelines.md). For pointer-driven motion, keep previews frame-coalesced, honor reduced motion, and verify both snap directions at a mobile viewport.
 
+When changing UI behavior or content for mobile, make the equivalent change on Standard desktop and Advanced desktop unless the user explicitly approves a mobile-only change. Responsive differences may change placement, sizing, or density, but should preserve the same feature content and behavior.
+
 # Shipping
 
 When asked to ship work in this repository, carry it through the start of the production deployment.

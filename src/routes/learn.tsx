@@ -77,7 +77,7 @@ export function LearnLayout() {
       <TechniqueNavigation />
       <main className="learn-content" id="learn-content-area">
         <div className="advanced-article-tab" aria-hidden="true">Article</div>
-        <div className="learn-content-scroll motion-screen" key={article}><Outlet /></div>
+        <div className="learn-content-scroll motion-screen" data-learn-content-scroll key={article}><Outlet /></div>
         <div className="learn-content-resizer" role="separator" tabIndex={0} aria-orientation="vertical"
           aria-label="Learn content width" aria-controls="learn-content-area"
           aria-valuemin={DEFAULT_LEARN_ARTICLE_WIDTH} aria-valuemax={maxArticleWidth} aria-valuenow={articleWidth}

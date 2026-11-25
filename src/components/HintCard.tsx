@@ -1,6 +1,6 @@
 import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
@@ -16,7 +16,7 @@ type ExplanationProps = {
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 
-export function HintCard({ compact = false, hint, onClose, onShown, visuals, reserveVisuals, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, ...explanation }: {
+export function HintCard({ compact = false, hint, onClose, onShown, visuals, reserveVisuals, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, layoutAnchors, ...explanation }: {
   compact?: boolean
   hint: PuzzleHint
   onClose: () => void
@@ -30,14 +30,20 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
   lesson?: { id: string; title: string }
   detail?: ReactNode
   removals?: readonly HintRemoval[]
+  layoutAnchors?: {
+    card: RefObject<HTMLElement | null>
+    body: RefObject<HTMLDivElement | null>
+    toolbar: RefObject<HTMLDivElement | null>
+  }
 } & ExplanationProps) {
-  const card = useRef<HTMLElement>(null)
+  const internalCard = useRef<HTMLElement>(null)
+  const card = layoutAnchors?.card ?? internalCard
   useLayoutEffect(() => {
     if (card.current?.getClientRects().length) onShown?.()
   }, [onShown])
   const reserveAction = detailNavigation && !detailNavigation.last
 
-  const closeButton = <IconButton type="button" variant="quiet" className="hint-card-close" aria-label="Close hint" onClick={onClose}>
+  const closeButton = <IconButton type="button" variant="quiet" className="hint-card-close" data-hint-card-close aria-label="Close hint" onClick={onClose}>
     <X size={18} aria-hidden="true" />
   </IconButton>
   const hintNavigation = navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
@@ -68,7 +74,7 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
             {!compact && lessonLink}
           </div>
           {compact && lessonLink}
-          {visuals ? <IconButton type="button" variant="quiet" className="hint-card-visuals"
+          {visuals ? <IconButton type="button" variant="quiet" className="hint-card-visuals" data-candidate-paint-focus-keep
             aria-label="Hint visuals" aria-pressed={visuals.visible} title={visuals.visible ? 'Hide hint visuals' : 'Show hint visuals'}
             onClick={visuals.onToggle}>
             {visuals.visible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
@@ -97,7 +103,7 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
           </div>}
         </div>}
       </div>
-      <div className="hint-card-body">
+      <div className="hint-card-body" ref={layoutAnchors?.body}>
         <DeductionExplanation {...explanation} />
         {detail}
         <DeductionOutcome removals={removals} text={hint.text} />
@@ -105,7 +111,7 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
     </aside>
   )
   return compact ? <>
-    <div className="hint-toolbar">{hintNavigation}{closeButton}</div>
+    <div className="hint-toolbar" ref={layoutAnchors?.toolbar}>{hintNavigation}{closeButton}</div>
     {content}
   </> : content
 }

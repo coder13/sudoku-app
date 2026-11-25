@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
-import { HighlightSettings } from '../../src/components/Settings'
+import { HighlightSettings } from '../../src/components/SettingsPanels'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 

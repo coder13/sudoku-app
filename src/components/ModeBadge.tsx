@@ -144,7 +144,7 @@ export function ModeBadge({ mode, descriptionId, cardRef, position, onPosition, 
   }
 
   return <>
-    <button type="button" className="puzzle-mode-tab" data-edge={displayedPosition.edge} data-no-panel-hold
+    <button type="button" className="puzzle-mode-tab" data-puzzle-mode-tab data-grid-click-away-exempt data-edge={displayedPosition.edge} data-no-panel-hold
       aria-label={mode === 'chain' ? 'Stop drawing links' : 'Cycle input mode'}
       aria-description={`Drag or use the left and right arrow keys to move the icon around the ${boundaryLabel}.`}
       style={{ '--mode-offset': `${displayedPosition.offset * 100}%` } as CSSProperties}

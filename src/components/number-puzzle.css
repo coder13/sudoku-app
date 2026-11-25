@@ -122,6 +122,10 @@
   cursor: pointer;
 }
 
+.number-puzzle-cell[role="img"] {
+  cursor: default;
+}
+
 .number-puzzle-grid:not([data-toggle-cells]) .number-puzzle-cell[aria-pressed="true"] {
   background: var(--surface-active);
   box-shadow: inset 0 0 0 2px var(--selected-border);

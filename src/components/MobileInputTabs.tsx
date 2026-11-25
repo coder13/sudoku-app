@@ -1,13 +1,14 @@
-import { type PointerEvent as ReactPointerEvent, type ReactNode, type Ref, useId, useLayoutEffect, useRef } from 'react'
+import { type PointerEvent as ReactPointerEvent, type ReactNode, type Ref, type RefObject, useId, useLayoutEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { IconButton } from './Button'
 import { InputToolsMenu } from './InputToolsMenu'
-import { scrollActiveTabIntoView } from './PlayLayout'
 import { motionDuration } from './Presence'
-import { TOOL_PANEL_ORDER, type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
-import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
+import { type ToolPanelTab, type PuzzleTool } from '../sudoku/play-session'
+import { PLAY_PANEL_LABELS, PLAY_TOOL_TABS } from './PlayToolRegistry'
+import { PanelActivityBoundary, type PanelActivity } from './PanelActivity'
+import { moveRovingTab, scrollActiveTabIntoView } from './tab-navigation'
+import { mergeRefs } from './merge-refs'
 
-const labels = { digits: 'Digits', solution: 'Solution', techniques: TECHNIQUE_FINDER_TITLE, colors: 'Colors', chains: 'Chains', bookmarks: 'Bookmarks', rules: 'Rules' }
 const TAB_SWIPE_SLOP = 10
 const TAB_SWIPE_DISTANCE = 48
 const TAB_SWIPE_AXIS_RATIO = 1.25
@@ -43,11 +44,16 @@ function settleTrack(track: HTMLElement, offset: number) {
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
+export function MobileInputTabs({ active, open, panels, activeTabRef, layoutRefs, toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
   active: ToolPanelTab
   open: PuzzleTool[]
   panels: Record<ToolPanelTab, ReactNode>
   activeTabRef: Ref<HTMLButtonElement>
+  layoutRefs?: {
+    inputTabs: RefObject<HTMLDivElement | null>
+    digitsPanel: RefObject<HTMLDivElement | null>
+    activeInputPanel: RefObject<HTMLDivElement | null>
+  }
   toolsDisabled: boolean
   toolToggles?: ReactNode
   onShowTools?: (opener: HTMLButtonElement) => void
@@ -55,7 +61,7 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
   onClose: (tab: PuzzleTool) => void
 }) {
   const id = useId()
-  const visibleTools = TOOL_PANEL_ORDER.filter(tool => open.includes(tool))
+  const visibleTools = PLAY_TOOL_TABS.filter(({ id: tool }) => open.includes(tool)).map(({ id }) => id)
   const tabs = ['digits', ...visibleTools] as const
   const toolToClose = active === 'digits' ? visibleTools.at(0) : active
   const hasInputCard = Boolean(open.length || toolToggles)
@@ -170,26 +176,21 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
     onSelect(tab)
   }
 
-  return <div className={hasInputCard ? 'surface mobile-input-tabs' : undefined} data-tools-open={open.length > 0 || undefined}>
-    {hasInputCard && <div className={open.length ? 'mobile-input-toolbar' : 'mobile-input-menu-slot'} data-no-panel-hold>
+  return <div ref={layoutRefs?.inputTabs} className={hasInputCard ? 'surface mobile-input-tabs' : undefined} data-tools-open={open.length > 0 || undefined}>
+    {hasInputCard && <div className={open.length ? 'mobile-input-toolbar' : 'mobile-input-menu-slot'} data-grid-click-away-exempt data-no-panel-hold>
       {open.length > 0 && (
         <div ref={tabList} role="tablist" aria-label="Sudoku input" className="mobile-input-tablist" onKeyDown={(event) => {
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-          event.preventDefault()
-          const step = event.key === 'ArrowLeft' ? -1 : 1
-          const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-            : (tabs.indexOf(active) + step + tabs.length) % tabs.length
-          onSelect(tabs[index])
-          event.currentTarget.querySelectorAll('button')[index]?.focus({ preventScroll: true })
+          moveRovingTab(event, tabs, active, onSelect)
         }}>
           {tabs.map((tab) => <button type="button" key={tab} ref={active === tab ? activeTabRef : undefined}
             id={`${id}-tab-${tab}`} role="tab" aria-selected={active === tab} aria-controls={`${id}-panel-${tab}`}
-            tabIndex={active === tab ? 0 : -1} onClick={() => onSelect(tab)}>{labels[tab]}</button>)}
+            data-roving-tab={tab} tabIndex={active === tab ? 0 : -1}
+            onClick={() => onSelect(tab)}>{PLAY_PANEL_LABELS[tab]}</button>)}
         </div>
       )}
       {toolToggles && <InputToolsMenu disabled={toolsDisabled} onShow={onShowTools}>{toolToggles}</InputToolsMenu>}
       {toolToClose && <IconButton variant="quiet" className="mobile-input-close"
-        aria-label={`Close ${labels[toolToClose].toLowerCase()} panel`} onClick={() => onClose(toolToClose)}>
+        aria-label={`Close ${PLAY_PANEL_LABELS[toolToClose].toLowerCase()} panel`} onClick={() => onClose(toolToClose)}>
         <X size={20} aria-hidden="true" />
       </IconButton>}
     </div>}
@@ -213,12 +214,16 @@ export function MobileInputTabs({ active, open, panels, activeTabRef, toolsDisab
           const selected = tab === active
           const slot = selected ? 'current' : tab === nextTab && tab === previousTab ? 'either'
             : tab === previousTab ? 'left' : tab === nextTab ? 'right' : undefined
-          return <div key={tab} id={open.length ? `${id}-panel-${tab}` : undefined}
+          const activity: PanelActivity = selected ? 'active' : slot ? 'preview' : 'inactive'
+          const panelRef = digits
+            ? selected && layoutRefs ? mergeRefs(layoutRefs.digitsPanel, layoutRefs.activeInputPanel) : layoutRefs?.digitsPanel
+            : selected ? layoutRefs?.activeInputPanel : undefined
+          return <div ref={panelRef} key={tab} id={open.length ? `${id}-panel-${tab}` : undefined}
             role={open.length ? 'tabpanel' : undefined} aria-labelledby={open.length ? `${id}-tab-${tab}` : undefined}
             className={digits ? 'mobile-input-digits' : 'mobile-input-tool'} data-swipe-slot={slot} hidden={!digits && !slot}
             inert={!selected} aria-hidden={!selected || undefined}
             tabIndex={!digits && selected ? 0 : undefined} data-no-panel-hold={!digits || undefined}>
-            {(digits || slot) && panels[tab]}
+            {(digits || slot) && <PanelActivityBoundary activity={activity}>{panels[tab]}</PanelActivityBoundary>}
           </div>
         })}
       </div>

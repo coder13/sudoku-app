@@ -1,27 +1,25 @@
 import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
-import { createContext, type CSSProperties, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createContext, type CSSProperties, type ReactNode, type SetStateAction, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
-import { DEFAULT_DIFFICULTY, type DifficultyPreference } from '../sudoku/difficulty'
+import type { DifficultyPreference } from '../sudoku/difficulty'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { isRectangularSize } from '../sudoku/grid'
 import { gameGenerationVariant, newPuzzleDifficulty } from '../sudoku/new-puzzle'
 import { EMPTY, makeGame, shouldOfferPuzzleSave, type ErrorMode } from '../sudoku/game'
-import { DEFAULT_CELL_REFERENCE_STYLE, type CellReferenceStyle } from '../sudoku/hints'
+import type { CellReferenceStyle } from '../sudoku/hints'
 import { inProgress } from '../sudoku/puzzle-activity'
 import { puzzleTiming } from '../sudoku/puzzle-timing'
 import {
-  DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_INPUT_SIZE, INPUT_SIZE_STEP, MAX_INPUT_SIZE,
-  ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY, ERROR_MODE_KEY, HIGHLIGHT_KEY,
-  INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, MIN_INPUT_SIZE, readNewPuzzlePreference, readPanelHeight, readPreferences, saveAdvancedModes, saveAppearance, saveCellReferenceStyle, saveDifficulty, saveErrorMode,
-  saveHighlightPreferences, saveInputSize, savePanelHeight, saveWorkspaceMode, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_WORKSPACE_MODE,
-  saveNewPuzzlePreference, ADVANCED_PANEL_VISIBILITY_KEY, DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY,
-  MOBILE_PANEL_ORDER_KEY, HIDE_ZERO_TECHNIQUES_KEY, PANEL_HEIGHT_KEY, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
+  INPUT_SIZE_STEP, MAX_INPUT_SIZE, MIN_INPUT_SIZE, readPanelHeight, savePanelHeight,
+  ADVANCED_PANEL_VISIBILITY_KEY, PANEL_HEIGHT_KEY, type AdvancedModes, type AppearancePreferences, type ColorMode, type HighlightPreferences, type NewPuzzlePreference, type WorkspaceMode,
 } from '../sudoku/preferences'
+import { useAppPreferences } from './useAppPreferences'
+import { appPreferencesStore } from '../sudoku/preferences-store'
 import { notifySettingsEdit } from '../sudoku/settings-events'
 import { deviceSync } from '../sudoku/device-sync'
 import { DEFAULT_PLAY_PREFERENCES, playPreferenceStore } from '../sudoku/play-preferences'
@@ -71,10 +69,6 @@ function saveAdvancedPanelVisibility(value: AdvancedPanelVisibility) {
   catch { /* Panel visibility remains active for this session. */ }
 }
 
-const shellPreferenceKeys = new Set([ADVANCED_MODE_KEY, APPEARANCE_KEY, CELL_REFERENCE_STYLE_KEY, DIFFICULTY_KEY,
-  ERROR_MODE_KEY, HIGHLIGHT_KEY, INPUT_SIZE_KEY, NEW_PUZZLE_KEY, WORKSPACE_MODE_KEY, ADVANCED_PANEL_VISIBILITY_KEY,
-  DESKTOP_PANEL_LAYOUT_KEY, DESKTOP_PANEL_LAYOUT_VERSION_KEY, MOBILE_PANEL_ORDER_KEY, HIDE_ZERO_TECHNIQUES_KEY])
-
 const PlayContent = createContext<ReactNode>(null)
 
 export function Workspace() {
@@ -111,15 +105,13 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [panel, setPanel] = useState<Panel>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [multi, setMulti] = usePlayPreference('multi')
-  const [advancedModes, setAdvancedModesState] = useState<AdvancedModes>(DEFAULT_ADVANCED_MODES)
-  const [appearance, setAppearance] = useState<AppearancePreferences>(DEFAULT_APPEARANCE)
-  const [highlighting, setHighlightingState] = useState<HighlightPreferences>(DEFAULT_HIGHLIGHT_PREFERENCES)
-  const [errorMode, setErrorModeState] = useState<ErrorMode>(DEFAULT_ERROR_MODE)
-  const [cellReferenceStyle, setCellReferenceStyleState] = useState<CellReferenceStyle>(DEFAULT_CELL_REFERENCE_STYLE)
-  const [inputSize, setInputSizeState] = useState(DEFAULT_INPUT_SIZE)
-  const [difficulty, setDifficultyState] = useState<DifficultyPreference>(DEFAULT_DIFFICULTY)
-  const [newPuzzlePreference, setNewPuzzlePreference] = useState<NewPuzzlePreference | null>(null)
-  const [preferredWorkspaceMode, setPreferredWorkspaceMode] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE)
+  const [appPreferences, setAppPreference] = useAppPreferences()
+  const {
+    advancedModes, appearance, highlighting, errorMode, cellReferenceStyle, inputSize, difficulty,
+    newPuzzlePreference, workspaceMode: preferredWorkspaceMode,
+  } = appPreferences
+  const setAppearance = (update: SetStateAction<AppearancePreferences>) => setAppPreference('appearance', update)
+  const setInputSizeState = (update: SetStateAction<number>) => appPreferencesStore.update('inputSize', update)
   const [advancedPanels, setAdvancedPanels] = useState<AdvancedPanelVisibility>(DEFAULT_ADVANCED_PANEL_VISIBILITY)
   const [puzzleBrowserView, setPuzzleBrowserView] = usePlayPreference('puzzleBrowserView')
   const [panelHeight, setPanelHeight] = useState(280)
@@ -132,7 +124,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const [resizeMode, setResizeMode] = useState(false)
   const [linkError, setLinkError] = useState('')
   const puzzleTopSpace = appearance.mobilePuzzleTopSpace
-  const savedAppearance = useRef(appearance)
+  const playPageRef = useRef<HTMLElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const settingsReturnLocation = useRef<SettingsReturnLocation | null>(null)
@@ -201,7 +193,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   useEffect(() => { deviceSync.showPuzzle(viewedPuzzle, missingPuzzle) }, [viewedPuzzle, missingPuzzle])
 
   function cycleColorMode() {
-    setAppearance({ ...appearance, colorMode: nextColorMode })
+    setAppearance(current => ({ ...current, colorMode: nextColorMode }))
   }
 
   const openSettings = useCallback((section?: SettingsSection) => {
@@ -209,7 +201,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       href: locationHref,
       left: window.scrollX,
       top: window.scrollY,
-      articleTop: document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTop ?? 0,
+      articleTop: document.querySelector<HTMLElement>('[data-learn-content-scroll]')?.scrollTop ?? 0,
     }
     setMenuOpen(false)
     setPanel(null)
@@ -267,29 +259,12 @@ export function SudokuShell({ children }: { children: ReactNode }) {
       disconnectSync = deviceSync.connect()
     }
     const disconnectDownloads = collectionDownloads.connect()
-    function refreshPreferences(key: string | null) {
-      const matches = (setting: string) => key === null || key === setting
-      const preferences = readPreferences()
-      if (matches(ADVANCED_MODE_KEY)) setAdvancedModesState(preferences.advancedModes)
-      if (matches(APPEARANCE_KEY)) {
-        savedAppearance.current = preferences.appearance
-        setAppearance(preferences.appearance)
-      }
-      if (matches(HIGHLIGHT_KEY)) setHighlightingState(preferences.highlighting)
-      if (matches(ERROR_MODE_KEY)) setErrorModeState(preferences.errorMode)
-      if (matches(CELL_REFERENCE_STYLE_KEY)) setCellReferenceStyleState(preferences.cellReferenceStyle)
-      if (matches(INPUT_SIZE_KEY)) setInputSizeState(preferences.inputSize)
-      if (matches(DIFFICULTY_KEY)) setDifficultyState(preferences.difficulty)
-      if (matches(NEW_PUZZLE_KEY)) setNewPuzzlePreference(readNewPuzzlePreference())
-      if (matches(WORKSPACE_MODE_KEY)) setPreferredWorkspaceMode(preferences.workspaceMode)
-      if (matches(ADVANCED_PANEL_VISIBILITY_KEY)) setAdvancedPanels(readAdvancedPanelVisibility())
-      if (matches(PANEL_HEIGHT_KEY)) setPanelHeight(readPanelHeight() ?? 280)
-    }
     function onStorage(event: StorageEvent) {
-      if (event.storageArea === localStorage && (event.key === null || shellPreferenceKeys.has(event.key))) refreshPreferences(event.key)
+      if (event.storageArea !== localStorage) return
+      if (event.key === null || event.key === ADVANCED_PANEL_VISIBILITY_KEY) setAdvancedPanels(readAdvancedPanelVisibility())
+      if (event.key === null || event.key === PANEL_HEIGHT_KEY) setPanelHeight(readPanelHeight() ?? 280)
     }
     window.addEventListener('storage', onStorage)
-    refreshPreferences(null)
     setAdvancedPanels(readAdvancedPanelVisibility())
     const savedPanelHeight = readPanelHeight()
     if (savedPanelHeight !== null) setPanelHeight(savedPanelHeight)
@@ -303,11 +278,6 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     if (workspaceReady && sync.ready && !sync.loadingAccount) setInitialSyncComplete(true)
   }, [workspaceReady, sync.ready, sync.loadingAccount])
-  useEffect(() => {
-    if (!workspaceReady || savedAppearance.current === appearance) return
-    savedAppearance.current = appearance
-    saveAppearance(appearance)
-  }, [appearance, workspaceReady])
   useEffect(() => {
     if (!workspaceReady) return
     function zoomText(event: KeyboardEvent) {
@@ -443,49 +413,24 @@ export function SudokuShell({ children }: { children: ReactNode }) {
         menuButtonRef.current?.focus({ preventScroll: true })
         if (!origin) return
         window.scrollTo(origin.left, origin.top)
-        document.querySelector<HTMLElement>('.learn-content-scroll')?.scrollTo(0, origin.articleTop)
+        document.querySelector<HTMLElement>('[data-learn-content-scroll]')?.scrollTo(0, origin.articleTop)
       })
     })
   }
 
-  function setAdvancedModes(next: AdvancedModes) {
-    setAdvancedModesState(next)
-    saveAdvancedModes(next)
-  }
-
-  function setErrorMode(next: ErrorMode) {
-    setErrorModeState(next)
-    saveErrorMode(next)
-  }
-
-  function setCellReferenceStyle(next: CellReferenceStyle) {
-    setCellReferenceStyleState(next)
-    saveCellReferenceStyle(next)
-  }
-
-  function setHighlighting(next: HighlightPreferences) {
-    setHighlightingState(next)
-    saveHighlightPreferences(next)
-  }
-
-  function setInputSize(next: number) {
-    setInputSizeState(next)
-    saveInputSize(next)
-  }
-
-  function setDifficulty(next: DifficultyPreference) {
-    setDifficultyState(next)
-    saveDifficulty(next)
-  }
+  const setAdvancedModes = (next: AdvancedModes) => setAppPreference('advancedModes', next)
+  const setErrorMode = (next: ErrorMode) => setAppPreference('errorMode', next)
+  const setCellReferenceStyle = (next: CellReferenceStyle) => setAppPreference('cellReferenceStyle', next)
+  const setHighlighting = (next: HighlightPreferences) => setAppPreference('highlighting', next)
+  const setInputSize = (next: number) => setAppPreference('inputSize', next)
+  const setDifficulty = (next: DifficultyPreference) => setAppPreference('difficulty', next)
 
   function rememberNewPuzzle(next: NewPuzzlePreference) {
-    setNewPuzzlePreference(next)
-    saveNewPuzzlePreference(next)
+    setAppPreference('newPuzzlePreference', next)
   }
 
   function setWorkspaceMode(next: WorkspaceMode) {
-    setPreferredWorkspaceMode(next)
-    saveWorkspaceMode(next)
+    setAppPreference('workspaceMode', next)
     setResizeMode(false)
   }
 
@@ -510,7 +455,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
 
   function finishResize() {
     savePanelHeight(panelHeight)
-    saveInputSize(inputSize)
+    appPreferencesStore.save('inputSize', inputSize)
     setResizeMode(false)
   }
 
@@ -558,7 +503,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
   const canResizeDesktopLayout = playing && workspaceReady && !loadingPage && desktopStandard
 
   return (
-    <DesktopPlayLayout className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
+    <DesktopPlayLayout pageRef={playPageRef} className={`app-shell ${advancedShell ? 'advanced-mode' : 'standard-mode'} ${activeLeftPanelOpen ? '' : 'advanced-left-collapsed'} ${advancedPanels.right ? '' : 'advanced-right-collapsed'} ${advancedPanels.bottom ? '' : 'advanced-bottom-collapsed'}`}
       enabled={canResizeDesktopLayout}>
       <header className={`topbar ${advancedShell ? 'advanced-topbar' : ''}`}>
         <div className="topbar-inner">
@@ -653,7 +598,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
           <Link className={buttonClassName()} to="/puzzles/browse">Return to puzzles</Link>
         </main>
       ) : playing ? (
-        <main id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace"
+        <main ref={playPageRef} id="sudoku-workspace" className={`page ${resizeMode ? 'resize-active' : ''} ${workspaceMode === 'advanced' ? 'advanced-workspace-page' : 'standard-workspace-page'}`} aria-label="Sudoku workspace"
           data-puzzle-top-space={game && puzzleTopSpace ? true : undefined}
           style={game && puzzleTopSpace ? { '--puzzle-top-space': puzzleTopSpace + 'px' } as CSSProperties : undefined}>
           {!storageAvailable && <p className="workspace-error" role="alert">Local storage is unavailable. Changes may be lost.</p>}

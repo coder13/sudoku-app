@@ -32,6 +32,7 @@ import { PuzzlesSectionNav, puzzleSections, type PuzzleSection } from './Puzzles
 import { PuzzleCollections } from './PuzzleCollections'
 import { SelectControl } from './SelectControl'
 import { collectionDifficulties, getCollectionPuzzle, getCollection } from '../sudoku/collections'
+import { PuzzleRowContent } from './PuzzleRowContent'
 
 const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
@@ -41,12 +42,6 @@ declare module '@tanstack/history' {
   interface HistoryState {
     fromPuzzleVariantPicker?: boolean
   }
-}
-
-function MiniGrid({ values, size }: { values: string; size?: number }) {
-  return <span className="mini-grid" data-size={size} aria-hidden="true">
-    {[...values].map((digit, index) => <i key={index} data-filled={digit !== '0'} />)}
-  </span>
 }
 
 function puzzleStatus(game: Game) {
@@ -75,9 +70,9 @@ function PuzzleRows({ puzzles, active, manage }: {
           : [variantLabel, rating || 'Unrated', !game.timeUntracked && formatTime(game.elapsed)]).filter(Boolean).join(' · ')
         return <li key={game.id} className={manageable ? 'game-row-with-options' : undefined}>
           <Link className="game-row" aria-current={game.id === active ? 'true' : undefined} to="/" search={{ puzzle: game.id }}>
-            <MiniGrid values={valuesOf(game)} size={game.grid?.size} />
-            <span className="game-row-copy"><strong>{name}</strong><small>{detail}</small></span>
-            {game.id === active ? <span className="current-dot" aria-label="Current puzzle" /> : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />}
+            <PuzzleRowContent values={valuesOf(game)} size={game.grid?.size} title={name} detail={detail}
+              trailing={game.id === active ? <span className="current-dot" aria-label="Current puzzle" />
+                : <ChevronRight className="row-arrow" size={18} aria-hidden="true" />} />
           </Link>
           {manageable && manage && <IconButton type="button" variant="quiet" className="game-row-options" aria-haspopup="dialog"
             aria-label={`Options for ${name}`} onClick={() => manage(game.id)}><MoreHorizontal size={19} aria-hidden="true" /></IconButton>}

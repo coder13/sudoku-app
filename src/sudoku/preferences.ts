@@ -25,6 +25,7 @@ export type AdvancedModes = {
   autoPlaceNakedSingles: boolean
   keypadProgress: 'off' | 'dim' | 'count'
   doubleClickSingles: boolean
+  experimentalAlsHighlighting: boolean
 }
 
 export const CANDIDATE_TEXT_SIZES = [85, 100, 115, 130] as const
@@ -67,6 +68,7 @@ export const DEFAULT_ADVANCED_MODES: AdvancedModes = {
   autoPlaceNakedSingles: false,
   keypadProgress: 'dim',
   doubleClickSingles: true,
+  experimentalAlsHighlighting: false,
 }
 
 export const DEFAULT_ERROR_MODE: ErrorMode = 'conflicts'
@@ -149,6 +151,7 @@ export function readPreferences(storage?: Pick<Storage, 'getItem'>) {
         autoPlaceNakedSingles: savedModes.autoPlaceNakedSingles === true,
         keypadProgress: savedModes.keypadProgress === 'off' || savedModes.keypadProgress === 'count' ? savedModes.keypadProgress : 'dim',
         doubleClickSingles: savedModes.doubleClickSingles !== false,
+        experimentalAlsHighlighting: savedModes.experimentalAlsHighlighting === true,
       }
     }
     const savedInputSizeText = target.getItem(INPUT_SIZE_KEY)

@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { ThemePreview } from '../../src/components/Settings'
+import { ThemePreview } from '../../src/components/SettingsAppearance'
 import { THEME_OPTIONS } from '../../src/sudoku/themes'
 import { Width } from '../support/frames'
 

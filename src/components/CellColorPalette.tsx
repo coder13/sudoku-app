@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
 import { COLOR_GROUP_CONTINUATION_ENABLED } from '../sudoku/feature-flags'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
+import { colorToneStyle } from './color-tone'
 
 type Props = {
   target: ColorTarget
@@ -36,7 +37,7 @@ export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' 
         {COLOR_FAMILIES.map((name, index) => {
           const color = row * COLOR_FAMILIES.length + index + 1
           const label = `${shade} ${name.toLowerCase()}`
-          return <button type="button" className={`cell-color-swatch color-${color}`} key={name}
+          return <button type="button" className="cell-color-swatch" style={colorToneStyle(color)} key={name}
             aria-label={label} title={label} aria-pressed={brush === color} disabled={disabled}
             onClick={() => onColor(color)}>
             {brush === color && <Check size={16} aria-hidden="true" />}
@@ -53,7 +54,7 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   const shadeKey = shortcutLabel(shortcuts.switchColorShade)
   const alternate = brush === null ? null : alternateColorShade(brush)
   return (
-    <section className="cell-color-palette" aria-label="Coloring">
+    <section className="cell-color-palette" aria-label="Coloring" data-grid-click-away-controls>
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <div className="cell-color-actions">

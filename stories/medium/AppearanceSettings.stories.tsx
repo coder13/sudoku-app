@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { AppearanceSettings } from '../../src/components/Settings'
+import { AppearanceSettings } from '../../src/components/SettingsAppearance'
 import { MIN_INPUT_SIZE, MAX_INPUT_SIZE } from '../../src/sudoku/preferences'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'

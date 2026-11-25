@@ -14,7 +14,7 @@ export function BookmarksPanel({ bookmarks = [], disabled, onSave, onRestore, on
   const nameInput = useRef<HTMLInputElement>(null)
   const [announcement, setAnnouncement] = useState('')
 
-  return <section className="bookmarks-panel" aria-label="Puzzle bookmarks">
+  return <section className="bookmarks-panel" aria-label="Puzzle bookmarks" data-grid-click-away-exempt>
     <form className="bookmark-form" onSubmit={event => {
       event.preventDefault()
       onSave(nameInput.current?.value ?? '')

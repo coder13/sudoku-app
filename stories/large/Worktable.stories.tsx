@@ -1501,13 +1501,14 @@ function WorktableExample({ withTopbar, resizable, ...args }: ComponentProps<typ
   const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
   const [height, setHeight] = useState(args.panelHeight)
   const [multi, setMulti] = useState(args.multi)
+  const pageRef = useRef<HTMLElement>(null)
   const actionsRef = useRef<WorktableActions | null>(null)
   const game = room.games.find(({ id }) => id === room.active) ?? args.game
   const mobile = useMobileLayout()
   const desktopResize = Boolean(resizable && !mobile)
-  return <DesktopPlayLayout enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
+  return <DesktopPlayLayout pageRef={pageRef} enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
     {withTopbar && <header className="topbar"><div className="topbar-inner"><span className="wordmark">Sudoku</span></div></header>}
-    <main id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
+    <main ref={pageRef} id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
       <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games}
         actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
         toggleMulti={() => setMulti((value) => !value)} />

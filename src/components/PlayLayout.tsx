@@ -1,9 +1,14 @@
-import { type ComponentProps, type PointerEvent, type ReactNode, type Ref, useLayoutEffect, useRef } from 'react'
-import { ListChecks, X } from 'lucide-react'
+import { type ComponentProps, type PointerEvent, type ReactNode, type Ref, type RefObject, useId, useLayoutEffect, useMemo, useRef } from 'react'
+import { X } from 'lucide-react'
 import { IconButton } from './Button'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { animatePanelLayout, MotionSurface, motionDuration } from './Presence'
 import { RESIZE_STEP } from './ResizeStepControls'
+import { PanelActivityBoundary } from './PanelActivity'
+import { moveRovingTab, scrollActiveTabIntoView } from './tab-navigation'
+import { mergeRefs } from './merge-refs'
+import { isPlayLayoutResizing, usePlayLayoutAnchors } from './play-layout-anchors'
+import { availableDesktopHintHeight, measureDesktopHintSpacing } from './desktop-hint-sizing'
 
 type InsightTab<Id extends string> = { id: Id; label: string }
 type Insights<Id extends string> = {
@@ -19,28 +24,40 @@ type MobilePlay = Omit<ComponentProps<typeof MobilePanelLayout>, 'panels'> & {
   inputTitle: string
   hintPlaceholder?: ReactNode
 }
+/** Host-owned refs for fixed-height desktop hint fitting and resizing. */
+export type PlayLayoutHintLayout = {
+  column: RefObject<HTMLDivElement | null>
+  frame: RefObject<HTMLDivElement | null>
+  card: RefObject<HTMLElement | null>
+  body: RefObject<HTMLDivElement | null>
+  toolbar: RefObject<HTMLDivElement | null>
+}
 
 /** Use the same grid, input, hint, and insight slots for every playable puzzle. */
-export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, insights, mobile, advanced }: {
+export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayout, hint, insights, mobile, advanced }: {
   desktop: boolean
   puzzle: ReactNode
   input: ReactNode
+  hintLayout?: PlayLayoutHintLayout
   hint?: ComponentProps<typeof MotionSurface>['children']
   insights?: Insights<Id>
   mobile: MobilePlay
   advanced?: ReactNode
 }) {
+  const anchors = usePlayLayoutAnchors()
   const puzzleStack = useRef<HTMLDivElement>(null)
   const hintSlot = useRef<HTMLDivElement>(null)
+  const inputStack = useRef<HTMLDivElement>(null)
+  const puzzleStackRef = useMemo(() => mergeRefs(puzzleStack, anchors?.puzzleStack), [anchors])
+  const hintSlotRef = useMemo(() => mergeRefs(hintSlot, anchors?.hintSlot), [anchors])
+  const inputStackRef = useMemo(() => mergeRefs(inputStack, anchors?.inputStack), [anchors])
   const standardDesktop = desktop && !advanced
   const hintOpen = Boolean(hint)
   useLayoutEffect(() => {
     if (!standardDesktop) return
     const stack = puzzleStack.current
-    const column = stack?.querySelector<HTMLElement>(':scope > .puzzle-column')
     const slot = hintSlot.current
-    const content = slot?.querySelector<HTMLElement>(':scope > .standard-hint-content')
-    if (!stack || !column || !slot || !content) return
+    if (!stack || !slot) return
     if (!hintOpen) {
       slot.style.removeProperty('--desktop-hint-size')
       slot.style.removeProperty('--desktop-hint-height')
@@ -49,39 +66,35 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
       return
     }
 
+    const column = hintLayout?.column.current
+    const frame = hintLayout?.frame.current
+    const card = hintLayout?.card.current
+    const toolbar = hintLayout?.toolbar.current
+    if (!column || !frame || !card) return
+
     stack.style.removeProperty('--desktop-hint-board-width')
-    const stage = column.querySelector<HTMLElement>('.puzzle-stage')
-    const frame = stage?.querySelector('.board-frame:not(.completion-frame, [inert] .board-frame)')
-    if (!stage || !frame) return
     const baseFrameWidth = frame.getBoundingClientRect().width
     const baseColumnHeight = column.getBoundingClientRect().height
 
     slot.style.removeProperty('--desktop-hint-height')
     slot.style.removeProperty('--desktop-hint-size')
-    const gap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-gap')) || 0
-    const bottomGap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-bottom-gap')) || 0
-    const card = slot.querySelector<HTMLElement>('.hint-card')
-    const toolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
-    const toolbarHeight = toolbar
-      ? toolbar.offsetHeight + (Number.parseFloat(getComputedStyle(toolbar).marginBlockEnd) || 0)
-      : 0
+    const spacing = measureDesktopHintSpacing(slot, toolbar)
+    const { gap, bottomGap, toolbarHeight } = spacing
     slot.style.setProperty('--desktop-hint-toolbar-height', `${toolbarHeight}px`)
-    const cardHeight = card?.offsetHeight || content.offsetHeight
-    const maxInitialHeight = Math.max(0, stack.clientHeight - 180 - gap - bottomGap - toolbarHeight)
+    const cardHeight = card.offsetHeight
+    const maxInitialHeight = availableDesktopHintHeight(stack.clientHeight, spacing)
     const initialHeight = Math.min(Math.ceil(cardHeight), maxInitialHeight)
     slot.style.setProperty('--desktop-hint-height', `${initialHeight}px`)
 
     const fitBoard = () => {
-      if (stack.closest('[data-layout-resizing]')) return
+      if (isPlayLayoutResizing(anchors)) return
       const savedHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-size'))
       const initialHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-height'))
       const hintCardHeight = Number.isFinite(savedHintSize) ? savedHintSize : initialHintSize
-      const hintToolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
-      const hintToolbarHeight = hintToolbar
-        ? hintToolbar.offsetHeight + (Number.parseFloat(getComputedStyle(hintToolbar).marginBlockEnd) || 0)
-        : 0
-      slot.style.setProperty('--desktop-hint-toolbar-height', `${hintToolbarHeight}px`)
-      const hintHeight = (Number.isFinite(hintCardHeight) ? hintCardHeight : 0) + hintToolbarHeight + gap + bottomGap
+      const hintToolbar = hintLayout?.toolbar.current
+      const currentSpacing = measureDesktopHintSpacing(slot, hintToolbar)
+      slot.style.setProperty('--desktop-hint-toolbar-height', `${currentSpacing.toolbarHeight}px`)
+      const hintHeight = (Number.isFinite(hintCardHeight) ? hintCardHeight : 0) + currentSpacing.toolbarHeight + currentSpacing.gap + currentSpacing.bottomGap
       if (!hintHeight) {
         stack.style.removeProperty('--desktop-hint-board-width')
         return
@@ -108,26 +121,26 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hint, in
     return () => {
       layoutObserver.disconnect()
     }
-  }, [standardDesktop, hintOpen])
+  }, [standardDesktop, hintOpen, hintLayout?.column, hintLayout?.frame, hintLayout?.card, hintLayout?.toolbar, anchors])
 
   if (advanced) return advanced
   if (!desktop) {
     const { inputTitle, hintPlaceholder, ...layout } = mobile
-    return <MobilePanelLayout {...layout} panels={{
+    return <MobilePanelLayout {...layout} pageRef={anchors?.page} workspaceRef={anchors?.workspace} panels={{
       puzzle: { title: 'Puzzle', content: puzzle },
       hint: mobile.withHint ? { title: 'Hint', content: hint || hintPlaceholder } : undefined,
       input: { title: inputTitle, content: input },
     }} />
   }
   return <>
-    <div ref={puzzleStack} className="standard-puzzle-stack">
+    <div ref={puzzleStackRef} className="standard-puzzle-stack">
       {puzzle}
-      <div ref={hintSlot} className="standard-hint-slot" id="standard-puzzle-hint" data-open={hintOpen}>
+      <div ref={hintSlotRef} className="standard-hint-slot" id="standard-puzzle-hint" data-open={hintOpen}>
         <div className="standard-hint-content"><MotionSurface>{hint}</MotionSurface></div>
-        {hint && <DesktopHintDivider />}
+        {hint && hintLayout && <DesktopHintDivider stackRef={puzzleStack} slotRef={hintSlot} layout={hintLayout} />}
       </div>
     </div>
-    <div className="standard-input-stack" id="standard-digit-input">
+    <div ref={inputStackRef} className="standard-input-stack" id="standard-digit-input">
       {input}
       <MotionSurface>{insights && <PlayInsights {...insights} />}</MotionSurface>
     </div>
@@ -148,24 +161,25 @@ type HintDrag = {
   frame: number | null
 }
 
-function DesktopHintDivider() {
+function DesktopHintDivider({ stackRef, slotRef, layout }: {
+  stackRef: RefObject<HTMLDivElement | null>
+  slotRef: RefObject<HTMLDivElement | null>
+  layout: PlayLayoutHintLayout
+}) {
+  const anchors = usePlayLayoutAnchors()
   const divider = useRef<HTMLDivElement>(null)
   const drag = useRef<HintDrag | null>(null)
 
   function measure() {
-    const slot = divider.current?.parentElement
-    const stack = slot?.parentElement
-    const card = slot?.querySelector<HTMLElement>('.hint-card')
+    const slot = slotRef.current
+    const stack = stackRef.current
+    const card = layout.card.current
     if (!slot || !stack || !card) return
     const height = card.offsetHeight
-    const body = card.querySelector<HTMLElement>('.hint-card-body')
-    const gap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-gap')) || 0
-    const bottomGap = Number.parseFloat(getComputedStyle(slot).getPropertyValue('--desktop-hint-bottom-gap')) || 0
-    const toolbar = slot.querySelector<HTMLElement>('.hint-toolbar')
-    const toolbarHeight = toolbar
-      ? toolbar.offsetHeight + (Number.parseFloat(getComputedStyle(toolbar).marginBlockEnd) || 0)
-      : 0
-    const max = Math.max(height, stack.clientHeight - 180 - gap - bottomGap - toolbarHeight)
+    const body = layout.body.current
+    const toolbar = layout.toolbar.current
+    const spacing = measureDesktopHintSpacing(slot, toolbar)
+    const max = Math.max(height, availableDesktopHintHeight(stack.clientHeight, spacing))
     const min = Math.min(max, Math.max(96, height - (body?.offsetHeight ?? height) + 24))
     return { slot, height, min, max }
   }
@@ -198,13 +212,16 @@ function DesktopHintDivider() {
   }
 
   useLayoutEffect(() => {
-    const slot = divider.current?.parentElement
+    const slot = slotRef.current
     if (!slot) return
     reportHeight()
     const observer = new ResizeObserver(reportHeight)
-    const content = slot.querySelector('.standard-hint-content')
-    if (content) observer.observe(content)
-    if (slot.parentElement) observer.observe(slot.parentElement)
+    const card = layout.card.current
+    const stack = stackRef.current
+    const toolbar = layout.toolbar.current
+    if (card) observer.observe(card)
+    if (toolbar) observer.observe(toolbar)
+    if (stack) observer.observe(stack)
     const cancel = () => finish()
     window.addEventListener('resize', cancel)
     window.addEventListener('blur', cancel)
@@ -214,7 +231,7 @@ function DesktopHintDivider() {
       window.removeEventListener('resize', cancel)
       window.removeEventListener('blur', cancel)
     }
-  }, [])
+  }, [layout, slotRef, stackRef])
 
   function heightAtPointer(current: HintDrag, y: number) {
     const height = current.height + (current.startY - y) / current.scale
@@ -222,7 +239,7 @@ function DesktopHintDivider() {
   }
 
   function start(event: PointerEvent<HTMLDivElement>) {
-    if (!event.isPrimary || event.button !== 0 || drag.current || event.currentTarget.closest('[data-layout-resizing]')) return
+    if (!event.isPrimary || event.button !== 0 || drag.current || isPlayLayoutResizing(anchors)) return
     const range = measure()
     if (!range) return
     const { slot, height, min, max } = range
@@ -271,18 +288,10 @@ function DesktopHintDivider() {
     }} />
 }
 
-export function scrollActiveTabIntoView(list: HTMLElement | null) {
-  const tab = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-  if (!tab || !list) return
-  const { left, right } = tab.getBoundingClientRect()
-  const viewport = list.getBoundingClientRect()
-  if (left < viewport.left) list.scrollLeft += left - viewport.left
-  else if (right > viewport.right) list.scrollLeft += right - viewport.right
-}
-
 function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onClose, tabListRef, className, ...props }:
   Insights<Id> & Omit<ComponentProps<'section'>, keyof Insights<Id>>) {
   const selected = tabs.find(tab => tab.id === active)
+  const instanceId = useId()
   const classes = ['desktop-insight-panel', className].filter(Boolean).join(' ')
   const panel = useRef<HTMLElement>(null)
   const previousSize = useRef<{ width: number; height: number } | null>(null)
@@ -314,22 +323,12 @@ function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onCl
   useLayoutEffect(() => {
     scrollActiveTabIntoView(panel.current?.querySelector<HTMLElement>('[role="tablist"]') ?? null)
   }, [active, tabs.length])
-  return <section {...props} ref={panel} className={classes} aria-label="Puzzle insights">
+  return <section {...props} ref={panel} className={classes} aria-label="Puzzle insights" data-grid-click-away-exempt>
     <div className="desktop-insight-toolbar">
       <div ref={tabListRef} className="desktop-insight-tabs" role="tablist" aria-label="Puzzle insight tabs"
-        onKeyDown={event => {
-          if (tabs.length < 2 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-          event.preventDefault()
-          const index = tabs.findIndex(tab => tab.id === active)
-          const step = event.key === 'ArrowLeft' ? -1 : 1
-          const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-            : (index + step + tabs.length) % tabs.length
-          const next = tabs[nextIndex].id
-          onSelect(next)
-          event.currentTarget.querySelector<HTMLButtonElement>(`[data-insight-tab="${next}"]`)?.focus()
-        }}>
+        onKeyDown={event => moveRovingTab(event, tabs.map(tab => tab.id), active, onSelect)}>
         {tabs.map(({ id, label }) => <button type="button" key={id} role="tab" data-insight-tab={id}
-          id={`desktop-insight-tab-${id}`} aria-controls="desktop-insight-content"
+          data-roving-tab={id} id={`${instanceId}-tab-${id}`} aria-controls={`${instanceId}-content`}
           aria-selected={active === id} tabIndex={active === id ? 0 : -1}
           onClick={() => onSelect(id)}>{label}</button>)}
       </div>
@@ -338,8 +337,10 @@ function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onCl
         <X size={18} aria-hidden="true" />
       </IconButton>
     </div>
-    <div className="desktop-insight-body" id="desktop-insight-content" role="tabpanel"
-      aria-labelledby={`desktop-insight-tab-${active}`}>{content}</div>
+    <div className="desktop-insight-body" id={`${instanceId}-content`} role="tabpanel"
+      aria-labelledby={`${instanceId}-tab-${active}`}>
+      <PanelActivityBoundary activity="active">{content}</PanelActivityBoundary>
+    </div>
   </section>
 }
 
@@ -347,17 +348,10 @@ function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onCl
 export function PlayHint({ mobile, panelRef, className, ...props }: ComponentProps<'div'> & {
   mobile: boolean; panelRef?: Ref<HTMLDivElement>
 }) {
+  const anchors = usePlayLayoutAnchors()
+  const ref = useMemo(() => mergeRefs(panelRef, anchors?.hint), [panelRef, anchors])
   const classes = ['hint-dock', mobile && 'workspace-controls mobile-hint-panel', className].filter(Boolean).join(' ')
-  return <div {...props} className={classes} ref={panelRef} aria-live="polite" />
+  return <div {...props} className={classes} ref={ref} aria-live="polite" data-grid-click-away-controls />
 }
 
 /** Use for the standard keypad action menu trigger. */
-export function PlayActionsButton({ mobile, open, ...props }: Omit<ComponentProps<typeof IconButton>, 'aria-label'> & {
-  mobile: boolean; open: boolean
-}) {
-  return <IconButton {...props} className="actions-key" aria-label="Actions" aria-expanded={open}
-    aria-controls={open ? (mobile ? 'mobile-actions-menu' : 'input-actions-menu') : undefined}
-    aria-haspopup={mobile ? 'dialog' : undefined}>
-    <ListChecks size={20} aria-hidden="true" />
-  </IconButton>
-}

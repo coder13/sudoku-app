@@ -1,8 +1,7 @@
 import { Button, buttonClassName } from './Button'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Ref } from 'react'
 import { Link } from '@tanstack/react-router'
-import { createPortal } from 'react-dom'
-import { ArrowRight, Check, CircleCheck, CircleHelp, Lightbulb, Search } from 'lucide-react'
+import { ArrowRight, Check, CircleHelp, Lightbulb, Search } from 'lucide-react'
 import { isCustomDifficulty } from '../sudoku/custom-modes'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
@@ -19,6 +18,7 @@ import { openNextCollectionPuzzle } from '../sudoku/collection-play'
 import { collectionDownloads } from '../sudoku/collection-downloads'
 import { useOnlineStatus } from './useOnlineStatus'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
+import { PuzzleCompletionView, type CompletionFact } from './PuzzleCompletionView'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
@@ -60,7 +60,7 @@ function PracticeTechniqueResult({ technique, game, cellReferenceStyle }: {
 }
 
 /** Show solve results and continue a practice playlist, a collection, or ordinary Play. */
-export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
+export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, layoutBoundaryRef, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
   catchUpPuzzle?: Game
@@ -70,6 +70,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   showGuides: boolean
   cellReferenceStyle?: CellReferenceStyle
   actionsTarget?: HTMLElement | null
+  layoutBoundaryRef?: Ref<HTMLDivElement>
   onResumePuzzle: (id: string) => void
   onChooseDifficulty: () => void
   onChooseVariant: () => void
@@ -77,7 +78,6 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const { busy, error, generate, generatePractice, cancelGeneration } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
-  const heading = useRef<HTMLHeadingElement>(null)
   const [collectionError, setCollectionError] = useState('')
   const [loadingNext, setLoadingNext] = useState(false)
   const nextRequest = useRef<AbortController | null>(null)
@@ -156,8 +156,6 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     </Button>
   )
 
-  useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
-
   useEffect(() => {
     if (!shortcutEnabled || !canContinue) return
     function keydown(event: KeyboardEvent) {
@@ -200,43 +198,32 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     </div>
   </div>
 
-  return (
-    <section className={`board-frame completion-frame ${showGuides ? '' : 'guides-hidden'}`}
-      aria-labelledby="completion-title">
-      <div className="completion completion-results" data-practice={Boolean(game.practiceTechnique) || undefined}>
-        <div className="completion-summary" role="region" aria-label="Solve details" tabIndex={0}>
-          <header className="completion-heading">
-            <span className="completion-icon" aria-hidden="true"><CircleCheck size={29} /></span>
-            <h1 id="completion-title" ref={heading} tabIndex={-1}>Puzzle solved</h1>
-            <p>{game.title}</p>
-          </header>
-          {game.practiceTechnique && <PracticeTechniqueResult technique={game.practiceTechnique} game={game}
-            cellReferenceStyle={cellReferenceStyle ?? 'concise'} />}
-          <dl className="completion-result">
-            {!game.timeUntracked && <div><dt>Solve time</dt><dd>{formatTime(game.elapsed)}</dd></div>}
-            <div>
-              <dt>Difficulty</dt>
-              <dd>
-                {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
-                {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
-              </dd>
-            </div>
-          </dl>
-          {result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
-            <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
-            {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}
-            {result.fixedCalibration && <small>Auto will use {DIFFICULTY_LABELS[result.recommended]} when you choose it.</small>}
-          </div> : null}
-          <dl className="completion-stats">
-            <div><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
-            {!game.timeUntracked && game.difficulty && Number.isFinite(bestTime) &&
-              <div><dt>Best {difficultyLabel.toLowerCase()} time</dt><dd>{formatTime(bestTime)}</dd></div>}
-          </dl>
-          <ActionHistoryPanel entries={game.actionHistory} gridSize={game.grid?.size} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
-          {actionsTarget && collectionStatus}
-        </div>
-        {actionsTarget ? createPortal(footer, actionsTarget) : footer}
-      </div>
-    </section>
-  )
+  const resultFacts: CompletionFact[] = [
+    ...(!game.timeUntracked ? [{ label: 'Solve time', value: formatTime(game.elapsed) }] : []),
+    { label: 'Difficulty', value: <>
+      {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
+      {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
+    </> },
+  ]
+  const rating = result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
+    <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
+    {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}
+    {result.fixedCalibration && <small>Auto will use {DIFFICULTY_LABELS[result.recommended]} when you choose it.</small>}
+  </div> : undefined
+  const stats: CompletionFact[] = [
+    { label: 'Puzzles solved', value: solved.length },
+    ...(!game.timeUntracked && game.difficulty && Number.isFinite(bestTime)
+      ? [{ label: `Best ${difficultyLabel.toLowerCase()} time`, value: formatTime(bestTime) }]
+      : []),
+  ]
+  const practice = game.practiceTechnique && <PracticeTechniqueResult technique={game.practiceTechnique} game={game}
+    cellReferenceStyle={cellReferenceStyle ?? 'concise'} />
+  const details = <>
+    <ActionHistoryPanel entries={game.actionHistory} gridSize={game.grid?.size} cellReferenceStyle={cellReferenceStyle} difficulty={game.difficulty} />
+    {actionsTarget && collectionStatus}
+  </>
+
+  return <PuzzleCompletionView subtitle={game.title} showGuides={showGuides}
+    practiceMode={Boolean(game.practiceTechnique)} practice={practice} results={resultFacts} rating={rating} stats={stats} details={details}
+    actions={footer} actionsTarget={actionsTarget} layoutBoundaryRef={layoutBoundaryRef} />
 }
