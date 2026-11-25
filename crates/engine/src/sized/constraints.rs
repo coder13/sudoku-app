@@ -129,6 +129,14 @@ pub enum SizedConstraint {
         less: usize,
         greater: usize,
     },
+    Minimum {
+        cells: Vec<usize>,
+        ignore_marked_neighbors: bool,
+    },
+    Maximum {
+        cells: Vec<usize>,
+        ignore_marked_neighbors: bool,
+    },
     Modular {
         cells: Vec<usize>,
     },
@@ -751,6 +759,8 @@ impl SizedConstraintGrid {
                 SizedConstraint::Kropki { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::CornerKropki { .. }
                 | SizedConstraint::Difference { .. }
                 | SizedConstraint::LabeledDots { .. }
@@ -1695,6 +1705,8 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. } => {
@@ -1966,6 +1978,8 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::Xv { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
