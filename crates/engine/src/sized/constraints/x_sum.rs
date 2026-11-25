@@ -90,9 +90,12 @@ impl XSum {
         let all = u16::MAX >> (u16::BITS as usize - self.size);
         let maximum = self.size * (self.size + 1) / 2;
         let first_digit_stride = self.size + 1;
+        let total_slots = only_total
+            .map(|_| first_digit_stride)
+            .unwrap_or((maximum + 1) * first_digit_stride);
         // Keep each first digit separate: a dot may relate the derived sum to
         // that digit, so supports for different prefix lengths cannot merge.
-        let mut totals = vec![None::<[u16; MAX_SIZE]>; (maximum + 1) * first_digit_stride];
+        let mut totals = vec![None::<[u16; MAX_SIZE]>; total_slots];
         for length in 1..=self.size {
             let first = 1u16 << (length - 1);
             if domains[self.cells[0]] & first == 0 {
@@ -106,14 +109,17 @@ impl XSum {
             for (domain, &cell) in suffix_domains.iter_mut().zip(&self.cells[length..]) {
                 *domain = domains[cell];
             }
-            for (sum, prefixes) in subsets_by_size_sum()[length]
-                .iter()
-                .enumerate()
-                .skip(length)
-            {
-                if only_total.is_some_and(|target| target != sum) {
+            let subsets = &subsets_by_size_sum()[length];
+            let (first_sum, last_sum) = only_total
+                .map(|target| (target, target))
+                .unwrap_or((length, maximum));
+            if first_sum < length || last_sum > maximum {
+                continue;
+            }
+            for sum in first_sum..=last_sum {
+                let Some(prefixes) = subsets.get(sum) else {
                     continue;
-                }
+                };
                 for &prefix_digits in prefixes {
                     if prefix_digits & first == 0 {
                         continue;
@@ -131,8 +137,12 @@ impl XSum {
                     ) {
                         continue;
                     }
-                    let support =
-                        totals[sum * first_digit_stride + length].get_or_insert([0; MAX_SIZE]);
+                    let slot = if only_total.is_some() {
+                        length
+                    } else {
+                        sum * first_digit_stride + length
+                    };
+                    let support = totals[slot].get_or_insert([0; MAX_SIZE]);
                     support[0] |= first;
                     for (offset, mask) in prefix_support[..length - 1].iter().enumerate() {
                         support[offset + 1] |= mask;
@@ -148,7 +158,7 @@ impl XSum {
             .enumerate()
             .filter_map(|(index, support)| {
                 support.map(|support| XSumOutcome {
-                    total: index / first_digit_stride,
+                    total: only_total.unwrap_or(index / first_digit_stride),
                     support,
                 })
             })
@@ -474,6 +484,28 @@ mod tests {
         assert_eq!(supported[0], 0b0100);
         assert_eq!(supported[1] & 0b1000, 0b1000);
         assert_eq!(supported[2] & 0b0010, 0b0010);
+    }
+
+    #[test]
+    fn requested_total_outcomes_match_the_same_bucket_from_all_derived_totals() {
+        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 1).unwrap();
+        let mut domains = [0; MAX_SIZE * MAX_SIZE];
+        domains[..4].copy_from_slice(&[0b1111, 0b1011, 0b1110, 0b1101]);
+
+        let all = x_sum.outcomes_for(&domains, None);
+        for total in 1..=10 {
+            let derived = all
+                .iter()
+                .filter(|outcome| outcome.total == total)
+                .map(|outcome| (outcome.total, outcome.support))
+                .collect::<Vec<_>>();
+            let requested = x_sum
+                .outcomes_for(&domains, Some(total))
+                .into_iter()
+                .map(|outcome| (outcome.total, outcome.support))
+                .collect::<Vec<_>>();
+            assert_eq!(requested, derived, "total {total}");
+        }
     }
 
     #[test]

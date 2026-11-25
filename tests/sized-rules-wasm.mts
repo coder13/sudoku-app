@@ -156,6 +156,60 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
     choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
 })
 
+test('#404 enforces both black-dot ratios from the original X-Sum Twins import', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-black.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  assert.equal(imported.authoredSolution, '4231312424131342')
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  for (let altered = 0; altered < position.rules.length; altered++) {
+    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+      ...position, rules: position.rules.map((rule, index) => index === altered && rule.type === 'x-sum-dot'
+        ? { ...rule, relation: 'consecutive' as const }
+        : rule),
+    } }), 'conflict', `changing black dot ${altered + 1} to a white-dot relation`)
+  }
+})
+
+test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regionLabels = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions: regionLabels, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 2.5]], parameters: { text: '5' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [0, 1, 2], parameters: {} }] },
+  ] })
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code, coach: {
+    hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sum and Thermometer',
+  } }), { headers: { 'content-type': 'application/json' } }))
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 5 },
+    { type: 'thermometer', cells: [0, 1, 2] },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: {
+    ...position, digits: Array(36).fill(0),
+  } })
+  assert.ok(Array.isArray(candidates))
+  assert.ok(candidates.every(mask => mask !== 0))
+  assert.equal(candidates[12], 0b10)
+  assert.equal(candidates[13], 0b100)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'x-sum' ? { ...rule, sum: 6 } : rule),
+  } }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'thermometer'
+      ? { ...rule, cells: [...rule.cells].reverse() }
+      : rule),
+  } }), 'conflict')
+})
+
 test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
   const solution = '123456456123234561561234345612612345'
   const regionLabels = Array.from({ length: 36 }, (_, cell) =>
