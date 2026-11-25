@@ -791,11 +791,12 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       await coachExportHash(code) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
-      publication.authoredRule !== 'sized-skyscrapers' && !reviewedEntropicRunaround) {
+      publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     const { givens, grid, rules, progress, givenCellColors, reviewedTitle } = await readCoachSized(data, code,
-      publication?.authoredRule === 'sized-nonogram', publication?.authoredRule === 'sized-skyscrapers')
+      publication?.authoredRule === 'sized-nonogram', publication?.authoredRule === 'sized-skyscrapers',
+      publication?.authoredRule === 'x-sum')
     if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
@@ -1062,7 +1063,7 @@ function coachOutsideRay(side: OutsideSide, index: number, size = 9) {
   return { direction, cells } as const
 }
 
-function readCoachXSums(constraint: Record<string, unknown>, segments: readonly unknown[]) {
+function readCoachXSums(constraint: Record<string, unknown>, segments: readonly unknown[], size = 9) {
   const { settings } = constraint
   if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key =>
     !['gridZoomOut', 'gridSnapToCorners', 'gridSnapToEdges', 'textSize'].includes(key)) ||
@@ -1073,7 +1074,7 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     throw new Error('This Sudoku Coach X-Sums layer uses unsupported settings.')
   }
   const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
-  const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= 8.5 && Number.isInteger(coordinate - 0.5)
+  const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= size - 0.5 && Number.isInteger(coordinate - 0.5)
   for (const segment of segments) {
     if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
       !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
@@ -1084,13 +1085,14 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     const { text } = segment.parameters
     if (!text) continue
     const [x, y] = segment.cells[0] as [number, number]
-    const side = cellCenter(x) && y === -0.5 ? 'top' : cellCenter(x) && y === 9.5 ? 'bottom'
-      : cellCenter(y) && x === -0.5 ? 'left' : cellCenter(y) && x === 9.5 ? 'right' : undefined
+    const side = cellCenter(x) && y === -0.5 ? 'top' : cellCenter(x) && y === size + 0.5 ? 'bottom'
+      : cellCenter(y) && x === -0.5 ? 'left' : cellCenter(y) && x === size + 0.5 ? 'right' : undefined
     const sum = Number(text)
-    if (!side || !/^[1-9][0-9]?$/.test(text) || sum > 45) {
-      throw new Error('This Sudoku Coach X-Sum needs a total from 1 through 45 beside a row or column.')
+    const maximum = size * (size + 1) / 2
+    if (!side || !/^[1-9][0-9]?$/.test(text) || sum > maximum) {
+      throw new Error(`This Sudoku Coach X-Sum needs a total from 1 through ${maximum} beside a row or column.`)
     }
-    clues.push({ type: 'x-sum', ...coachOutsideRay(side, (side === 'top' || side === 'bottom' ? x : y) - 0.5), sum })
+    clues.push({ type: 'x-sum', ...coachOutsideRay(side, (side === 'top' || side === 'bottom' ? x : y) - 0.5, size), sum })
   }
   return clues
 }
@@ -1125,7 +1127,7 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
       (constraint.settings === undefined || record(constraint.settings) && Object.keys(constraint.settings).length === 0) &&
       Object.keys(constraint).every(key => ['id', 'type', 'segments', 'settings'].includes(key))) continue
     if (constraint.type === 'cosmeticText' && authoredRule === 'x-sum') {
-      rules.push(...readCoachXSums(constraint, constraint.segments))
+      rules.push(...readCoachXSums(constraint, constraint.segments, grid?.size ?? 9))
       continue
     }
     if (constraint.type === 'cosmeticLine' && authoredRule === 'line-colours') {
@@ -1464,7 +1466,8 @@ export async function decodeCoachSix(code: string) {
   return readCoachSized(data)
 }
 
-async function readCoachSized(data: Record<string, unknown>, code?: string, publishedNonogram = false, publishedSkyscrapers = false) {
+async function readCoachSized(data: Record<string, unknown>, code?: string, publishedNonogram = false, publishedSkyscrapers = false,
+  publishedXSums = false) {
   const { gridSize: size, regions } = data
   if (publishedNonogram && (size !== 6 || !Array.isArray(regions) || regions.length !== 0)) {
     throw new Error('The published Sudoku Coach Nonogram export does not match its reviewed 6 × 6 Latin square.')
@@ -1535,12 +1538,16 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
     Object.keys(rule).every(key => ['id', 'type', 'segments', 'settings'].includes(key)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 &&
     (rule.settings === undefined || rule.settings === null || record(rule.settings) && Object.keys(rule.settings).length === 0)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers ? ['cosmeticText'] : [])]
+  const supported = ['diagonalNegative', 'diagonalPositive', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers || publishedXSums ? ['cosmeticText'] : [])]
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
   const ruleLayers = publishedNonogram || publishedSkyscrapers ? active.filter(rule => !record(rule) || rule.type !== 'cosmeticText') : active
   const rules = ruleLayers.flatMap((constraint): (VariantRule | SizedConstraintRule | SizedDifferenceRule | SizedLabeledDotsRule)[] => {
+    if (publishedXSums && record(constraint) && constraint.type === 'cosmeticText') {
+      if (!Array.isArray(constraint.segments)) throw new Error('This Sudoku Coach X-Sums layer has invalid labels.')
+      return readCoachXSums(constraint, constraint.segments, Number(size))
+    }
     if (record(constraint) && constraint.type === 'globalEntropy') {
       if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
         !Array.isArray(constraint.segments) || constraint.segments.length !== 0) {
@@ -1606,6 +1613,9 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   if (rowEquations) rules.push(...rowEquations)
   rules.push(...nonogramRules, ...skyscrapersRules)
   if (fractionalRegions) rules.push(fractionalRegions.rule)
+  if (publishedXSums && !rules.some(rule => rule.type === 'x-sum')) {
+    throw new Error('This Sudoku Coach X-Sums puzzle has no outside totals.')
+  }
   if (!isSizedRuleList(rules, grid)) throw new Error('This Sudoku Coach export contains invalid rules.')
   return { version: 2 as const, grid, givens, rules, ...(progress && { progress }),
     ...(givenCellColors && { givenCellColors }), ...(reviewedTitle && { reviewedTitle }) }

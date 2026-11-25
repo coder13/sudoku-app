@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { sizedRuleHintChoices } from '../src/sudoku/sized-rule-play.ts'
@@ -26,6 +27,51 @@ test('#407 validates sized Sandwich totals, including zero, alongside a Thermome
     ],
   }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
+test('#404 enforces sized X-Sums with distinct prefix digits and directional rays', async () => {
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    digits: Array(16).fill(0),
+    rules: [{ type: 'x-sum', direction: 'east', cells: [0, 1, 2, 3], sum: 10 }],
+  }
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 10 })
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(candidates?.[0], 0b1000)
+  assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 0 && action.eliminate.digit === 1) &&
+    choice.actions.some(action => action.eliminate?.cell === 1 && action.eliminate.digit === 4)))
+  const solution = Array.from('4321213412433412', Number)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, digits: solution } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: solution, rules: [{ type: 'x-sum', direction: 'east', cells: [0, 1, 2, 3], sum: 9 }],
+  } }), 'conflict')
+  const wide = {
+    version: 2 as const,
+    grid: { size: 16, boxRows: 4, boxColumns: 4 },
+    digits: Array(256).fill(0),
+    rules: [{ type: 'x-sum' as const, direction: 'east' as const, cells: Array.from({ length: 16 }, (_, index) => index), sum: 136 }],
+  }
+  const wideCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: wide })
+  assert.equal(wideCandidates?.[0], 0x8000)
+})
+
+test('#404 enforces both white-dot relationships from the original X-Sum Twins import', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  const solution = imported.authoredSolution!
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, solution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+
+  const incompatible = {
+    ...position,
+    rules: position.rules.map((rule, index) => index === 0
+      ? { ...rule, relation: 'ratio' as const }
+      : rule),
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: incompatible }), 'conflict')
 })
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {

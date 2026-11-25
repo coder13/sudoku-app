@@ -1,6 +1,6 @@
 import { closedRegionSumCells } from './region-sum.ts'
 import { readCornerKropki } from './corner-kropki.ts'
-import type { SizedConstraintRule, SizedLinkedDoubleArrow } from './engine.ts'
+import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd } from './engine.ts'
 import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isMiniGrid, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
@@ -227,6 +227,149 @@ function readArrows(arrows: unknown, overlays: unknown[], size: number) {
     return { type: 'arrow', circle, cells }
   })
   return { rules, unused: overlays.filter((_, index) => !used.has(index)) }
+}
+
+/** Import the reviewed padded Penpa export for the 4×4 X-Sum Twins puzzle. */
+export function readSudokuPadXSumDots(data: Record<string, unknown>) {
+  const fields = ['id', 'settings', 'cellSize', 'cells', 'regions', 'lines', 'underlays', 'overlays', 'metadata', 'cages']
+  const { id, settings, cellSize, cells, regions, lines, underlays, overlays, metadata, cages } = data
+  if (Object.keys(data).some(key => !fields.includes(key)) || typeof id !== 'string' || !id ||
+    !record(settings) || Object.keys(settings).length !== 0 ||
+    cellSize !== undefined && (typeof cellSize !== 'number' || !Number.isFinite(cellSize) || cellSize <= 0) ||
+    !record(metadata) || Object.keys(metadata).some(key => !['title', 'author', 'rules', 'solution'].includes(key)) ||
+    !Array.isArray(cages)) {
+    throw new Error('This SudokuPad X-Sum export contains unsupported fields.')
+  }
+  const sourceMetadata: Record<string, unknown> = { ...metadata }
+  for (const cage of cages) {
+    if (!record(cage) || Object.keys(cage).some(key => key !== 'value') || typeof cage.value !== 'string') {
+      throw new Error('This SudokuPad X-Sum export contains an unsupported cage.')
+    }
+    const match = /^(title|author|rules|solution): ([\s\S]*)$/.exec(cage.value)
+    if (!match || sourceMetadata[match[1]] !== undefined && sourceMetadata[match[1]] !== match[2]) {
+      throw new Error('This SudokuPad X-Sum export contains unsupported metadata.')
+    }
+    sourceMetadata[match[1]] = match[2]
+  }
+  const rulesText = typeof sourceMetadata.rules === 'string'
+    ? sourceMetadata.rules.trim().split(/\n\s*\n/).map(clause => clause.replace(/\s+/g, ' ')) : []
+  if (rulesText.length !== 3 ||
+    !/^Normal 4\s*[x×]\s*4 sudoku rules apply: in the 4\s*[x×]\s*4 grid, place the digits 1-4 once each in every row, column, and box\.$/i.test(rulesText[0]) ||
+    !/^X-Sums: numbers outside the grid indicate the sum of the first N digits in that row or column seen from the direction of the clue, where N is the first digit seen by the clue\.$/i.test(rulesText[1]) ||
+    !/^Numbers separated by a white dot are consecutive\. Not all possible dots are necessarily given\.$/i.test(rulesText[2])) {
+    throw new Error('This SudokuPad X-Sum export has unsupported or incomplete rules.')
+  }
+  if (!Array.isArray(cells) || cells.length !== 5 || cells.some(row => !Array.isArray(row) || row.length !== 5)) {
+    throw new Error('This SudokuPad X-Sum export needs its blank padded 5 × 5 grid.')
+  }
+  const givens: string[] = []
+  for (let row = 0; row < 5; row++) for (let column = 0; column < 5; column++) {
+    const cell = cells[row][column]
+    if (!record(cell) || Object.keys(cell).some(key => key !== 'value') ||
+      cell.value !== undefined && (!Number.isInteger(cell.value) || Number(cell.value) < 1 || Number(cell.value) > 4) ||
+      (row === 0 || column === 0) && cell.value !== undefined) {
+      throw new Error('This SudokuPad X-Sum export must keep its outside cells blank.')
+    }
+    if (row > 0 && column > 0) givens.push(String(cell.value ?? 0))
+  }
+  if (!Array.isArray(regions) || regions.length !== 4 || regions.some(region => !Array.isArray(region) || region.length !== 4)) {
+    throw new Error('This SudokuPad X-Sum export needs four 2 × 2 boxes inside its padded grid.')
+  }
+  const boxes = (regions as unknown[][]).map(region => region.map((coordinates: unknown) => boardCell(coordinates, 4, 1)))
+  const expectedBoxes: number[][] = Array.from({ length: 4 }, (_, box) => {
+    const row = Math.floor(box / 2) * 2 + 1, column = box % 2 * 2 + 1
+    return [row * 4 + column - 5, row * 4 + column - 4, (row + 1) * 4 + column - 5, (row + 1) * 4 + column - 4]
+  })
+  if (boxes.some((box, index) => box.slice().sort((a, b) => a - b).join(',') !== expectedBoxes[index].sort((a, b) => a - b).join(','))) {
+    throw new Error('This SudokuPad X-Sum export has unsupported 2 × 2 box geometry.')
+  }
+
+  const point = (value: unknown): value is [number, number] =>
+    Array.isArray(value) && value.length === 2 && value.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
+  const samePoint = (a: readonly number[], b: readonly number[]) => a[0] === b[0] && a[1] === b[1]
+  const midpoint = (a: readonly number[], b: readonly number[]) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+  const clueMarkers: { end: Exclude<SizedSumEnd, number>; center: [number, number]; firstCell: number; firstCenter: [number, number] }[] = []
+  const decorative: { target: string; color: string; thickness: number; wayPoints: [number, number][] }[] = []
+  if (!Array.isArray(lines) || lines.length !== 11) throw new Error('This SudokuPad X-Sum export has incomplete clue lines.')
+  for (const line of lines) {
+    if (!record(line) || Object.keys(line).some(key => !['target', 'wayPoints', 'color', 'thickness'].includes(key)) ||
+      !Array.isArray(line.wayPoints) || !line.wayPoints.every(point) || typeof line.target !== 'string' ||
+      typeof line.color !== 'string' || typeof line.thickness !== 'number' || !Number.isFinite(line.thickness) || line.thickness <= 0) {
+      throw new Error('This SudokuPad X-Sum export has an unsupported line marking.')
+    }
+    const points = line.wayPoints as [number, number][]
+    if (line.target === 'overlay' && line.color.toLowerCase() === '#000000' && line.thickness === 1.7 && points.length === 2) {
+      const [[r0, c0], [r1, c1]] = points
+      if (r0 === 0 && r1 === 1 && c0 === c1 && c0 >= 2 && c0 <= 4) {
+        const index = c0 - 1
+        clueMarkers.push({ end: { direction: 'south', index }, center: [0.5, c0 + 0.5],
+          firstCell: index, firstCenter: [1.5, c0 + 0.5] })
+        continue
+      }
+      if (c0 === 0 && c1 === 1 && r0 === r1 && r0 >= 2 && r0 <= 4) {
+        const index = r0 - 1
+        clueMarkers.push({ end: { direction: 'east', index }, center: [r0 + 0.5, 0.5],
+          firstCell: index * 4, firstCenter: [r0 + 0.5, 1.5] })
+        continue
+      }
+    }
+    decorative.push({ target: line.target, color: line.color, thickness: line.thickness, wayPoints: points })
+  }
+  const markerKeys = clueMarkers.map(({ end }) => `${end.direction}:${end.index}`)
+  const expectedMarkers = ['south:1', 'south:2', 'south:3', 'east:1', 'east:2', 'east:3']
+  if (markerKeys.length !== 6 || markerKeys.slice().sort().join(',') !== expectedMarkers.sort().join(',')) {
+    throw new Error('This SudokuPad X-Sum export has missing or duplicated outside clues.')
+  }
+  // Only recognize the five non-rule lines present in this published drawing.
+  if (decorative.length !== 5 || decorative.filter(line => line.target === 'overlay' && line.color.toLowerCase() === '#000000' &&
+    line.thickness === 1.7 && line.wayPoints.length === 7).length !== 1 ||
+    decorative.filter(line => line.target === 'cell-grids' && line.color.toLowerCase() === '#ffffff' && line.thickness === 4).length !== 1 ||
+    decorative.filter(line => line.target === 'cell-grids' && line.color.toLowerCase() === '#000000' && line.thickness === 7.2).length !== 3) {
+    throw new Error('This SudokuPad X-Sum export has unsupported line artwork.')
+  }
+  if (!Array.isArray(underlays) || underlays.length !== 1 || !record(underlays[0]) ||
+    Object.keys(underlays[0]).some(key => !['class', 'backgroundColor', 'center', 'width', 'height'].includes(key)) ||
+    underlays[0].class !== 'board-position' || underlays[0].backgroundColor !== '#FFFFFF00' ||
+    !samePoint(underlays[0].center as number[], [2.5, 2.5]) || underlays[0].width !== 5 || underlays[0].height !== 5) {
+    throw new Error('This SudokuPad X-Sum export has unsupported board artwork.')
+  }
+  if (!Array.isArray(overlays) || overlays.length !== 2) throw new Error('This SudokuPad X-Sum export needs both white dots.')
+  const dots = overlays.map(overlay => {
+    if (!record(overlay) || Object.keys(overlay).some(key => !['borderSize', 'borderColor', 'backgroundColor', 'rounded', 'center', 'width', 'height'].includes(key)) ||
+      overlay.borderSize !== 1.7 || overlay.borderColor !== '#000000' || overlay.backgroundColor !== '#FFFFFF' || overlay.rounded !== 1 ||
+      overlay.width !== 0.286 || overlay.height !== 0.286 || !point(overlay.center)) {
+      throw new Error('This SudokuPad X-Sum export has an unsupported dot.')
+    }
+    return overlay.center
+  })
+  const rules: SizedConstraintRule[] = []
+  for (const dot of dots) {
+    const possibilities: [SizedSumEnd, SizedSumEnd][] = []
+    for (let left = 0; left < clueMarkers.length; left++) for (let right = left + 1; right < clueMarkers.length; right++) {
+      const a = clueMarkers[left], b = clueMarkers[right]
+      if (a.end.direction === b.end.direction && Math.abs(a.end.index - b.end.index) === 1 &&
+        samePoint(midpoint(a.center, b.center), dot)) possibilities.push([a.end, b.end])
+    }
+    for (const clue of clueMarkers) if (samePoint(midpoint(clue.center, clue.firstCenter), dot)) {
+      possibilities.push([clue.end, clue.firstCell])
+    }
+    if (possibilities.length !== 1) throw new Error('A SudokuPad white dot does not identify exactly one X-Sum relation.')
+    rules.push({ type: 'x-sum-dot', ends: possibilities[0], relation: 'consecutive' })
+  }
+  const solutionText = sourceMetadata.solution
+  if (typeof sourceMetadata.title !== 'string' || typeof sourceMetadata.author !== 'string' || typeof solutionText !== 'string' || solutionText.length !== 25) {
+    throw new Error('This SudokuPad X-Sum export has invalid source metadata.')
+  }
+  const solution = Array.from({ length: 4 }, (_, row) => Array.from({ length: 4 }, (_, column) => solutionText[(row + 1) * 5 + column + 1]).join('')).join('')
+  if (!isGridText(solution, MINI_GRID) || solution.includes('0') ||
+    Array.from({ length: 5 }, (_, row) => Array.from({ length: 5 }, (_, column) => solutionText[row * 5 + column]))
+      .some((line, row) => line.some((digit, column) => (row === 0 || column === 0) && digit !== '.'))) {
+    throw new Error('This SudokuPad X-Sum export has an invalid padded solution.')
+  }
+  if (!isSizedRuleList(rules, MINI_GRID)) throw new Error('This SudokuPad X-Sum export has invalid dot constraints.')
+  return { givens: givens.join(''), grid: MINI_GRID, sizedRules: rules,
+    title: sourceMetadata.title.trim().slice(0, 72), sizedAuthor: sourceMetadata.author.trim().slice(0, 72),
+    authoredSolution: solution, authoredSolutionOnly: true as const }
 }
 
 export function readSizedRuleSudokuPad(data: Record<string, unknown>) {

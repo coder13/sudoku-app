@@ -1,5 +1,5 @@
 import { quadrupleCells } from './variants.ts'
-import { linkedDoubleArrowCells } from './sized-linked-double-arrow.ts'
+import { linkedDoubleArrowCells, sizedSumEndCells } from './sized-linked-double-arrow.ts'
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
@@ -70,6 +70,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
+          : rule.type === 'x-sum-dot' ? [...new Set(rule.ends.flatMap(end => sizedSumEndCells(end, size)))]
           : rule.type === 'xv' ? [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].flat()
         : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
@@ -109,6 +110,11 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'linked-double-arrow') {
     description = 'The Double Arrow line and its two end circles have the same total. Each X-Sum adds the first X digits from its end.'
     reason = 'Remove candidates that cannot fit both totals with the correct X-Sum lengths.'
+  } else if (rule.type === 'x-sum-dot') {
+    description = rule.relation === 'consecutive'
+      ? 'The totals at the two connected X-Sum endpoints are consecutive.'
+      : 'The totals at the two connected X-Sum endpoints have a 1:2 ratio.'
+    reason = 'Remove candidates that cannot support related totals at both endpoints.'
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
     reason = 'Remove candidates that cannot contribute to a shared total while keeping different digits in cells that share a house.'

@@ -63,6 +63,45 @@ test('six-by-six Coach decoding imports Sandwich clues with other typed rules', 
     givenConstraints: [sandwich('top', 6, 0)] })), /invalid Sandwich clue/)
 })
 
+test('published sized Coach X-Sums parse outside labels against the grid size', async ({ mock }) => {
+  const code = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[0.5, -0.5]], parameters: { text: '21' } },
+      { cells: [[6.5, 2.5]], parameters: { text: '14' } },
+      { cells: [[0.5, 6.5]], parameters: { text: '1' } },
+      { cells: [[-0.5, 5.5]], parameters: { text: '20' } },
+    ],
+  }, { type: 'thermometer', settings: {}, segments: [{ cells: [0, 1, 2], parameters: {} }] }] })
+  let responseCode = code
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code: responseCode, coach: {
+    hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sums',
+  } }), { headers: { 'content-type': 'application/json' } }))
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.equal(imported.title, 'Six by six X-Sums')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 21 },
+    { type: 'x-sum', direction: 'west', cells: [17, 16, 15, 14, 13, 12], sum: 14 },
+    { type: 'x-sum', direction: 'north', cells: [30, 24, 18, 12, 6, 0], sum: 1 },
+    { type: 'x-sum', direction: 'east', cells: [30, 31, 32, 33, 34, 35], sum: 20 },
+    { type: 'thermometer', cells: [0, 1, 2] },
+  ])
+
+  responseCode = coachCode({ gridSize: 4, givenDigits: '0'.repeat(16), givenConstraints: [{
+    type: 'cosmeticText', settings: {}, segments: [{ cells: [[2.5, -0.5]], parameters: { text: '10' } }],
+  }] })
+  const mini = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.deepEqual(mini.sizedRules, [
+    { type: 'x-sum', direction: 'south', cells: [2, 6, 10, 14], sum: 10 },
+  ])
+
+  const impossible = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'cosmeticText', settings: {}, segments: [{ cells: [[0.5, -0.5]], parameters: { text: '22' } }],
+  }] })
+  responseCode = impossible
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /total from 1 through 21/)
+})
+
 test('six-by-six Coach decoding reports unsupported rules instead of importing a partial puzzle', async () => {
   const puzzle = { ...six, regions: rectangularRegions(2, 3) }
   await assert.rejects(decodeCoachSix(coachCode({ ...puzzle, givenDigits: null })), /invalid givens/)

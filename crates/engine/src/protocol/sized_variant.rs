@@ -60,6 +60,10 @@ enum SizedRule {
         ends: [crate::SizedSumEnd; 2],
         cells: Vec<usize>,
     },
+    XSumDot {
+        ends: [crate::SizedSumEnd; 2],
+        relation: crate::XSumDotRelation,
+    },
     Difference {
         cells: [usize; 2],
         difference: u8,
@@ -183,6 +187,15 @@ impl TryFrom<Rule> for SizedConstraint {
                 direction,
                 sum,
             },
+            Rule::Variant(PuzzleRule::XSum {
+                cells,
+                direction,
+                sum,
+            }) => Self::XSum {
+                cells,
+                direction,
+                sum,
+            },
             Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
             Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => {
                 Self::DoubleArrow { ends, cells }
@@ -190,6 +203,7 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => {
                 Self::LinkedDoubleArrow { ends, cells }
             }
+            Rule::Sized(SizedRule::XSumDot { ends, relation }) => Self::XSumDot { ends, relation },
             Rule::Variant(PuzzleRule::Quadruple { top_left, digits }) => {
                 Self::Quadruple { top_left, digits }
             }
