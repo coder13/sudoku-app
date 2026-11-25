@@ -547,6 +547,17 @@ test('sized share worker accepts engine-backed Coach rules missing from its allo
     ['Skyscrapers', { type: 'skyscrapers' as const, direction: 'east' as const, index: 0, count: 1 }],
     ['Little Killer', { type: 'little-killer' as const, direction: 'north-east' as const, cells: [30, 25, 20, 15, 10, 5], sum: 29 }],
     ['Palindrome', { type: 'palindrome' as const, cells: [0, 6] }],
+    ['Parity Line', { type: 'parity-line' as const, cells: [0, 1] }],
+    ['Digit Restriction', { type: 'digit-restriction' as const, cells: [0], digits: [1], shape: 'circle' as const }],
+    ['Zipper', { type: 'zipper' as const, cells: [0, 1, 2] }],
+    ['Entropic', { type: 'entropic' as const, cells: [0, 1, 2], groups: [[1, 2], [3, 4], [5, 6]] }],
+    ['Slow Thermometer', { type: 'slow-thermometer' as const, cells: [0, 1] }],
+    ['Corner Kropki', { type: 'corner-kropki' as const, consecutive: [0] }],
+    ['Nonogram', { type: 'nonogram' as const, axis: 'row' as const, index: 0, digits: [1], runs: [1] }],
+    ['Row Equation', { type: 'row-equation' as const, cells: [0, 1, 2], operators: ['add', 'equals'] as const }],
+    ['X-Sum Dot', { type: 'x-sum-dot' as const, ends: [30, { direction: 'north' as const, index: 0 }] as const, relation: 'consecutive' as const }],
+    ['Line Assignments', { type: 'line-assignments' as const, paths: [[0, 1, 2], [6, 7, 8]],
+      types: [{ type: 'renban' as const }, { type: 'entropic' as const, groups: [[1, 2], [3, 4], [5, 6]] }] }],
   ] as const
   for (const [title, rule] of cases) {
     assert.ok(isSizedRuleList([rule], grid), `${title} should be a valid sized rule`)
@@ -554,6 +565,34 @@ test('sized share worker accepts engine-backed Coach rules missing from its allo
       sized: { rules: [rule], solution } }
     const shared = await publishFixture(game)
     assert.deepEqual(shared.sixRules, [rule], `${title} should survive sharing`)
+  }
+})
+
+test('5 × 5 Coach Fractional Regions preserve their boxless grid and pieces through sharing', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/coach-fractional-regions.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string; title: string
+  }
+  const imported = await detectPuzzle(fixture.code)
+  assert.ok(imported.grid && imported.sizedRules)
+  const game = { ...makeGame('coach-fractional-share', fixture.title, imported.givens, 'imported', 0, imported.grid),
+    sized: { rules: imported.sizedRules, solution: fixture.solution } }
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.grid, game.grid)
+  assert.deepEqual(shared.sizedRules, game.sized?.rules)
+})
+
+test('published Coach Crust puzzles preserve outside clues and inferred-region rules through sharing', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-crust.json', import.meta.url), 'utf8')) as {
+    id: string; title: string; code: string; solution?: string
+  }[]
+  for (const source of sources) {
+    const imported = await detectPuzzle(source.code)
+    assert.ok(imported.grid && imported.sizedRules?.some(rule => rule.type === 'crust'), source.id)
+    const game = { ...makeGame(`coach-crust-${source.id}`, source.title, imported.givens, 'imported', 0, imported.grid),
+      sized: { rules: imported.sizedRules, solution: source.solution ?? imported.givens } }
+    const shared = await publishFixture(game)
+    assert.deepEqual(shared.grid, imported.grid, source.id)
+    assert.deepEqual(shared.sizedRules, imported.sizedRules, source.id)
   }
 })
 
