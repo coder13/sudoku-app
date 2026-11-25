@@ -108,6 +108,10 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       })
     }
     if (rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'zipper') return Object.keys(rule).length === 2 &&
+      Array.isArray(rule.cells) && rule.cells.length >= 3 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length
     if (rule.type === 'entropic') {
       if (Object.keys(rule).some(key => !['type', 'cells', 'groups'].includes(key)) ||
         !Array.isArray(rule.cells) || rule.cells.length < 3 || rule.cells.length > size ** 2 + 1 ||

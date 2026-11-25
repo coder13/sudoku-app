@@ -14,6 +14,7 @@ mod row_equation;
 mod sandwich;
 mod skyscrapers;
 mod x_sum;
+mod zipper;
 
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
@@ -39,6 +40,7 @@ use self::sandwich::Sandwich;
 use self::skyscrapers::SkyscrapersLine;
 use self::x_sum::XSum;
 use self::x_sum::XSumDot;
+use self::zipper::ZipperLine;
 
 const MAX_CELLS: usize = MAX_SIZE * MAX_SIZE;
 
@@ -74,6 +76,9 @@ fn entropy_group_masks(size: usize, authored: &[Vec<u8>]) -> Option<[u16; 3]> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SizedConstraint {
     AntiKing,
+    Zipper {
+        cells: Vec<usize>,
+    },
     Diagonal(SizedDiagonal),
     ExtraHouse {
         cells: Vec<usize>,
@@ -393,6 +398,7 @@ pub struct SizedConstraintGrid {
     crust: Option<Crust>,
     global_entropy: Vec<Option<([u16; 3], Vec<[usize; 4]>)>>,
     entropic_lines: Vec<Option<EntropicLine>>,
+    zippers: Vec<Option<ZipperLine>>,
 }
 
 impl SizedConstraintGrid {
@@ -426,6 +432,7 @@ impl SizedConstraintGrid {
         let mut crust = None;
         let mut global_entropy = Vec::new();
         let mut entropic_lines = Vec::new();
+        let mut zippers = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -640,6 +647,11 @@ impl SizedConstraintGrid {
                     entropic_lines.resize_with(index + 1, || None);
                     entropic_lines[index] = Some(line);
                 }
+                SizedConstraint::Zipper { cells } => {
+                    let line = ZipperLine::compile(cells, layout.cell_count())?;
+                    zippers.resize_with(index + 1, || None);
+                    zippers[index] = Some(line);
+                }
                 SizedConstraint::Kropki { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
@@ -730,6 +742,7 @@ impl SizedConstraintGrid {
             crust,
             global_entropy,
             entropic_lines,
+            zippers,
         })
     }
 
@@ -972,6 +985,15 @@ impl SizedConstraintGrid {
                 }
             }
             for line in self.entropic_lines.iter().flatten() {
+                let Some(support) = line.support(candidates) else {
+                    return false;
+                };
+                for (&cell, mask) in line.cells.iter().zip(support) {
+                    changed |= candidates[cell] != mask;
+                    candidates[cell] = mask;
+                }
+            }
+            for line in self.zippers.iter().flatten() {
                 let Some(support) = line.support(candidates) else {
                     return false;
                 };
@@ -1399,6 +1421,13 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::Entropic { .. } => {
                     let line = self.entropic_lines[rule].as_ref()?;
+                    let support = line.support(&domains)?;
+                    for (&cell, mask) in line.cells.iter().zip(support) {
+                        eliminations_for(cell, candidates[cell] & !mask, &mut actions);
+                    }
+                }
+                SizedConstraint::Zipper { .. } => {
+                    let line = self.zippers[rule].as_ref()?;
                     let support = line.support(&domains)?;
                     for (&cell, mask) in line.cells.iter().zip(support) {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
@@ -1838,6 +1867,9 @@ impl SizedConstraintGrid {
                     .as_ref()?
                     .support(&domains)
                     .is_none(),
+                SizedConstraint::Zipper { .. } => {
+                    self.zippers[rule].as_ref()?.support(&domains).is_none()
+                }
                 SizedConstraint::RowColumnSum { .. } => {
                     let layer = self.row_column_sums[rule].as_ref()?;
                     if let Some(link) = layer.marked.iter().find(|link| {
@@ -2091,6 +2123,11 @@ impl SizedConstraintGrid {
                 .iter()
                 .flatten()
                 .all(|line| line.permits(digits, self.layout.full_mask))
+            && self
+                .zippers
+                .iter()
+                .flatten()
+                .all(|line| line.permits(digits, self.layout.size()))
             && self
                 .nonograms
                 .iter()

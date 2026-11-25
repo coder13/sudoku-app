@@ -209,6 +209,7 @@ export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: reado
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
   | { type: 'anti-king' }
+  | { type: 'zipper'; cells: readonly number[] }
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedXSumDot | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule

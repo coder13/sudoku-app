@@ -37,6 +37,9 @@ struct FractionalPiece {
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum SizedRule {
+    Zipper {
+        cells: Vec<usize>,
+    },
     Entropic {
         cells: Vec<usize>,
         groups: Vec<Vec<u8>>,
@@ -159,6 +162,7 @@ impl TryFrom<Rule> for SizedConstraint {
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
             Rule::Variant(PuzzleRule::AntiKing {}) => Self::AntiKing,
+            Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
