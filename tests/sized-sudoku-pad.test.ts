@@ -265,6 +265,28 @@ test('#394 imports the published 6 × 6 f-puzzles Anti-Knight and Arrow combinat
   assert.equal(fetch.mock.callCount(), 1)
 })
 
+test('#87 imports an f-puzzles Jigsaw and Anti-Knight combination without dropping either rule', async () => {
+  const decoded = lzString.decompressFromBase64(pointingKnightsCode.slice(4))
+  assert.ok(decoded)
+  const source = JSON.parse(decoded)
+  delete source.arrow
+  source.ruleset = 'Normal irregular 6x6 Sudoku rules apply.\n\n- Anti-knight Sudoku rules apply.'
+  source.solution = Array.from('456321321654612543543216234165165432', Number)
+  for (const row of source.grid) for (const [column, cell] of row.entries()) cell.region = column
+
+  const code = 'fpuz' + lzString.compressToBase64(JSON.stringify(source))
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.grid, {
+    size: 6,
+    regions: Array.from({ length: 6 }, (_, column) => Array.from({ length: 6 }, (_, row) => row * 6 + column)),
+  })
+  assert.deepEqual(imported.sizedRules, [{ type: 'anti-knight' }])
+  assert.equal(imported.authoredSolution, '456321321654612543543216234165165432')
+
+  source.antiknight = false
+  await assert.rejects(detectPuzzle('fpuz' + lzString.compressToBase64(JSON.stringify(source))), /Anti-Knight metadata/)
+})
+
 test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {
   const imported = await detectPuzzle(easyThermoCode)
   assert.equal(imported.format, 'SudokuPad')

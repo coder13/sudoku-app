@@ -71,3 +71,21 @@ test('the sized engine validates shaded Maximum rule data and skips marked neigh
     ...base, rules: [{ type: 'maximum', cells: [0, 0], ignoreMarkedNeighbors: true, shaded: true }],
   } }))
 })
+
+test('the sized engine verifies Anti-Knight together with authored Jigsaw regions', async () => {
+  const code = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
+  const source = JSON.parse(lzString.decompressFromBase64(code.slice(4))!)
+  delete source.arrow
+  source.ruleset = 'Normal irregular 6x6 Sudoku rules apply.\n\n- Anti-knight Sudoku rules apply.'
+  source.solution = Array.from('456321321654612543543216234165165432', Number)
+  for (const row of source.grid) for (const [column, cell] of row.entries()) cell.region = column
+
+  const imported = await detectPuzzle('fpuz' + lzString.compressToBase64(JSON.stringify(source)))
+  assert.ok(imported.grid && 'regions' in imported.grid && imported.sizedRules)
+  assert.deepEqual(imported.sizedRules, [{ type: 'anti-knight' }])
+  const verified = await verifySizedRulePuzzle({
+    grid: imported.grid, givens: imported.givens, rules: imported.sizedRules,
+    authoredSolution: imported.authoredSolution, authoredSolutionOnly: true,
+  })
+  assert.equal(verified.solution, '456321321654612543543216234165165432')
+})
