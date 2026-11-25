@@ -9,6 +9,7 @@ import type { ImportResult, PuzzleImporter } from './types.ts'
 export const FP_CODE = /^fpuz(?:zles)?/i
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
+const FPUZZLES_SIX_FIELDS = new Set([...FPUZZLES_FIELDS, 'antiknight', 'arrow'])
 const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'diagonal+', 'diagonal-'])
 const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
@@ -65,6 +66,54 @@ function fpRowColumnSum(data: Record<string, unknown>, clauses: readonly string[
     return [fpCellIndex(mark.cells[0], size), fpCellIndex(mark.cells[1], size)] as const
   })
   return { type: 'row-column-sum', pairs, ...(statements[0][1] && { requireUnmarked: true }) }
+}
+
+function fromFPuzzlesSixBySix(data: Record<string, unknown>, givens: string): ImportResult | undefined {
+  const ruleset = typeof data.ruleset === 'string' ? /^Normal 6x6(?: (.*?))? Sudoku rules apply\.$/i.exec(data.ruleset.trim()) : null
+  if (!ruleset || !Array.isArray(data.grid) || data.grid.flat().some(cell => record(cell) && cell.region !== undefined)) return
+
+  const declarations = (ruleset[1] ?? '').toLowerCase().split(/ and /).filter(Boolean)
+  if (declarations.some((rule, index) => !['arrows', 'anti-knight'].includes(rule) || declarations.indexOf(rule) !== index)) {
+    throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
+  }
+  if (data.antiknight !== undefined && typeof data.antiknight !== 'boolean') throw new Error('This f-puzzles export has an invalid Anti-Knight flag.')
+  const hasAntiKnight = data.antiknight === true
+  const hasArrows = hasData(data.arrow)
+  if (hasAntiKnight !== declarations.includes('anti-knight') || hasArrows !== declarations.includes('arrows')) {
+    throw new Error('This f-puzzles export has rule metadata that does not match its ruleset.')
+  }
+
+  const rules: SizedConstraintRule[] = []
+  if (hasAntiKnight) rules.push({ type: 'anti-knight' })
+  if (hasArrows) {
+    if (!Array.isArray(data.arrow) || data.arrow.length > 128) throw new Error('This f-puzzles export has invalid Arrows.')
+    for (const arrow of data.arrow) {
+      if (!record(arrow) || Object.keys(arrow).some(key => key !== 'lines' && key !== 'cells') ||
+        !Array.isArray(arrow.cells) || arrow.cells.length !== 1 || !Array.isArray(arrow.lines) || arrow.lines.length !== 1 ||
+        !Array.isArray(arrow.lines[0]) || arrow.lines[0].length < 2 || arrow.lines[0].length > 36) {
+        throw new Error('This f-puzzles export has an invalid Arrow.')
+      }
+      const circle = fpCellIndex(arrow.cells[0], 6)
+      const path = arrow.lines[0].map(cell => fpCellIndex(cell, 6))
+      const directedPath = path[0] === circle ? path : path[path.length - 1] === circle ? path.slice().reverse() : undefined
+      if (!directedPath || directedPath.slice(1).includes(circle) || new Set(directedPath).size !== directedPath.length ||
+        directedPath.some((cell, index) => index > 0 &&
+          Math.max(Math.abs(Math.floor(cell / 6) - Math.floor(directedPath[index - 1] / 6)), Math.abs(cell % 6 - directedPath[index - 1] % 6)) !== 1)) {
+        throw new Error('This f-puzzles export has an invalid Arrow path.')
+      }
+      rules.push({ type: 'arrow', circle, cells: directedPath.slice(1) })
+    }
+  }
+
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 } as const
+  if (!isSizedRuleList(rules, grid)) throw new Error('This f-puzzles export has invalid sized rules.')
+  const solution = Array.isArray(data.solution) && data.solution.length === 36 &&
+    data.solution.every(digit => /^(?:[1-6])$/.test(String(digit)))
+    ? data.solution.map(String).join('') : undefined
+  return { givens, grid, sizedRules: rules,
+    ...(typeof data.title === 'string' && data.title.trim() && { title: data.title.trim().slice(0, 72) }),
+    ...(typeof data.author === 'string' && data.author.trim() && { sizedAuthor: data.author.trim().slice(0, 72) }),
+    ...(solution && { authoredSolution: solution }) }
 }
 
 function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 4 | 5 | 6 | 7, labels: readonly unknown[], givens: string): ImportResult {
@@ -156,15 +205,18 @@ function fromFPuzzlesData(data: unknown): ImportResult {
   const mini = size === MINI_GRID.size
   const miniLabels = mini ? data.grid.flatMap((row, rowIndex) => Array.isArray(row) ? row.map((cell, columnIndex) =>
     record(cell) && cell.region !== undefined ? cell.region : Math.floor(rowIndex / 2) * 2 + Math.floor(columnIndex / 2)) : []) : []
-  const jigsaw = isJigsawSize(size) && (size !== 4 || !hasMiniBoxes(miniLabels))
+  const regularSix = size === 6 && typeof data.ruleset === 'string' &&
+    /^Normal 6x6(?: [\s\S]+)? Sudoku rules apply\.$/i.test(data.ruleset.trim()) &&
+    !data.grid.flat().some(cell => record(cell) && cell.region !== undefined)
+  const jigsaw = isJigsawSize(size) && (size !== 4 || !hasMiniBoxes(miniLabels)) && !regularSix
   const eight = size === 8
-  const fields = jigsaw ? FPUZZLES_JIGSAW_FIELDS : eight ? FPUZZLES_EIGHT_FIELDS : FPUZZLES_FIELDS
+  const fields = regularSix ? FPUZZLES_SIX_FIELDS : jigsaw ? FPUZZLES_JIGSAW_FIELDS : eight ? FPUZZLES_EIGHT_FIELDS : FPUZZLES_FIELDS
   for (const [key, value] of Object.entries(data)) {
     if (!fields.has(key) && hasData(value)) throw new Error(`This f-puzzles rule is not supported yet (${key}).`)
   }
   const coloredClone = size === 9 && hasColoredCloneRuleset(data.ruleset)
   if (!coloredClone && hasData(data.ruleset) && (typeof data.ruleset !== 'string' ||
-    !PLAIN_RULES.test(data.ruleset) && !(mini && PLAIN_MINI_RULES.test(data.ruleset)) &&
+    !PLAIN_RULES.test(data.ruleset) && !regularSix && !(mini && PLAIN_MINI_RULES.test(data.ruleset)) &&
     !(eight && PLAIN_EIGHT_RULES.test(data.ruleset)) && !(jigsaw && knownJigsawRuleset(data.ruleset, size)))) {
     throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
   }
@@ -194,6 +246,10 @@ function fromFPuzzlesData(data: unknown): ImportResult {
       labels.push(cell.region === undefined ? region : cell.region)
       digits.push(cell.given ? String(cell.value) : '0')
     }
+  }
+  if (size === 6) {
+    const regular = fromFPuzzlesSixBySix(data, digits.join(''))
+    if (regular) return regular
   }
   if (jigsaw) return fromFPuzzlesJigsaw(data, size, labels, digits.join(''))
   if (mini) {

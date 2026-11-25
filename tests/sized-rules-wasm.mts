@@ -14,6 +14,29 @@ import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
+test('#396 validates the published Anti-King and Region Sum combination in the sized engine', async () => {
+  const code = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: Array.from('621345435261216453543126162534354613', Number),
+  } }), 'conflict')
+})
+
+test('#394 validates the published six-cell Anti-Knight and three-Arrow f-puzzles source in the sized engine', async () => {
+  const code = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  const alteredArrow = { ...position, rules: position.rules.map((rule, index) => index === 1 && rule.type === 'arrow'
+    ? { ...rule, circle: 0 }
+    : rule) }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: alteredArrow }), 'conflict')
+})
+
 test('#407 validates sized Sandwich totals, including zero, alongside a Thermometer', async () => {
   const solution = Array.from('123456456123234561561234345612612345', Number)
   const position = {

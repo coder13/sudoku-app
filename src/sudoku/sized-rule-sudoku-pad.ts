@@ -9,6 +9,13 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+/** SudokuPad stores authored solutions in a pseudo-cage on some puzzles. */
+export function hasSudokuPadSolutionAnnotation(cages: unknown, solution: unknown): boolean {
+  return Array.isArray(cages) && cages.length === 1 && record(cages[0]) &&
+    Object.keys(cages[0]).length === 1 && Object.hasOwn(cages[0], 'value') &&
+    typeof solution === 'string' && cages[0].value === `solution: ${solution}`
+}
+
 const JIGSAW_BASE = /^Place the digits (1)[-–](\d+) once each into every row, column,? and region\.$/i
 
 export function hasDeclaredSudokuPadJigsaw(rules: unknown) {
@@ -480,6 +487,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
   const rowColumnBase = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1\s*[–-]\s*(\d+)(?: once each)? in every row and column\.?$/i.exec(rulesText[0])
   const shortBase = /^(?:Normal|Standard) (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
+  const semicolonBase = /^Normal (\d+)[x×](\d+) sudoku rules apply;$/i.exec(rulesText[0])
   const boxFirstBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: every row, column and (\d+)[x×](\d+) box contains the digits 1[-–](\d+) exactly once each\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const authoredSizedBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: In every row, column and (?:in )?(?:(\d+)[x×](\d+) )?every box the digits from 1 to (\d+) have to appear at ?least once\.$/i.exec(rulesText[0])
@@ -526,7 +534,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const authoredSlowThermometers = clauses.some(clause => slowThermometer.test(clause))
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause)) || authoredThermometers || authoredSlowThermometers
   const authoredRenban = clauses.some(isRenban)
-  const regionSum = /^(?:Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums|Region sum lines: region borders divide blue lines into segments\. The values on each segment have the same sum, though this sum can be different for different lines)\.$/i
+  const regionSum = /^(?:Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums|Region sum lines: region borders divide blue lines into segments\. The values on each segment have the same sum, though this sum can be different for different lines|Region Sum Lines: The sum of the digits on a line is the same within every region it crosses)\.$/i
   const palindrome = /^Palindromes: digits on a grey line read the same forwards and backwards\.$/i
   const parityLine = /^Parity lines: along a red line, adjacent digits must alternate between odd and even\.$/i
   const evenZipper = /^Zipper(?: Lines)?: Digits an equal distance to the circled center of a line sum to the same total\.$/i
@@ -602,6 +610,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     ? base.slice(1, 4).every(part => Number(part) === size) &&
       matchesBoxDimensions(base[4], base[5])
     : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size ||
+      Number(semicolonBase?.[1]) === size && Number(semicolonBase?.[2]) === size ||
       Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
       (!authoredSizedBase?.[3] || matchesBoxDimensions(authoredSizedBase[3], authoredSizedBase[4]))
   if (!validBase || authoredThermometers && authoredSlowThermometers ||
@@ -640,7 +649,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
         typeof cage.value !== 'number' || cage.unique !== true) throw new Error('This SudokuPad export has an unsupported Killer cage.')
       return { cells: cage.cells.map(cell => boardCell(cell, size)), sum: cage.value }
     }) })
-  } else if (cages !== undefined && (!Array.isArray(cages) || cages.length)) {
+  } else if (cages !== undefined && (!Array.isArray(cages) || cages.length && !hasSudokuPadSolutionAnnotation(cages, metadata.solution))) {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
   if (lines !== undefined && (!Array.isArray(lines) || lines.length > 128)) {

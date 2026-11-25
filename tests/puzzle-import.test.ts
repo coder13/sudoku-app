@@ -67,7 +67,9 @@ test('Mini Sudoku imports text and versioned links and rejects unsupported autho
   assert.deepEqual(await detectPuzzle(coach(data)), { givens, grid, format: 'Sudoku Coach' })
   assert.deepEqual((await detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'diagonalNegative', segments: [] }] }))).sizedRules,
     [{ type: 'diagonal', diagonal: 'main' }])
-  await assert.rejects(detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'antiKnight', segments: [] }] })), /unsupported active rule/)
+  assert.deepEqual((await detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'antiKnight', segments: [] }] }))).sizedRules,
+    [{ type: 'anti-knight' }])
+  await assert.rejects(detectPuzzle(coach({ ...data, givenConstraints: [{ type: 'unsupportedRule', segments: [] }] })), /unsupported active rule/)
   const rowRegions = await detectPuzzle(coach({ ...data, regions: [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3] }))
   assert.equal(rowRegions.grid?.size, 4)
   assert.deepEqual(jigsawMembership(rowRegions.grid as NonNullable<typeof rowRegions.grid>), [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3])
