@@ -465,6 +465,38 @@ test('sized Coach Kropki combines positive dots, independent negative rules and 
   await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
 })
 
+test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed rules', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const digits = [...solution].map(Number)
+  const whiteDots: [number, number][] = []
+  for (let row = 0; row < 6; row++) for (let column = 0; column < 6; column++) {
+    const cell = row * 6 + column
+    for (const [nextRow, nextColumn] of [[row, column + 1], [row + 1, column]]) {
+      if (nextRow < 6 && nextColumn < 6) {
+        const next = nextRow * 6 + nextColumn
+        if (Math.abs(digits[cell] - digits[next]) === 1) whiteDots.push([cell, next])
+      }
+    }
+  }
+  const source = {
+    ...six, givenDigits: solution, regions: rectangularRegions(2, 3), givenConstraints: [
+      { type: 'nonconsecutive', settings: {}, segments: [] },
+      { type: 'difference', settings: {}, segments: whiteDots.map(cells => ({ cells, parameters: { difference: 1 } })) },
+      { type: 'ratio', settings: {}, segments: [{ cells: [5, 11], parameters: { ratio: 2 } }] },
+      { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13], parameters: {} }] },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode(source))
+  assert.deepEqual(imported.sizedRules?.[0], { type: 'non-consecutive', except: whiteDots })
+  assert.deepEqual(imported.sizedRules?.[1],
+    { type: 'kropki', consecutive: { pairs: whiteDots, negative: false } })
+  assert.deepEqual(imported.sizedRules?.slice(2), [
+    { type: 'kropki', ratioTwo: { pairs: [[5, 11]], negative: false } },
+    { type: 'thermometer', cells: [12, 13] },
+  ])
+  assert.equal(conflictsOf(solution, undefined, imported.grid, imported.sizedRules).size, 0)
+})
+
 test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {
   for (const type of ['difference', 'ratio'] as const) {
     const amountKey = type
