@@ -40,7 +40,14 @@ impl ZipperLine {
 
     /// Return candidate support for each path cell, or `None` if the current
     /// domains cannot satisfy the zipper relation.
-    pub(super) fn support(&self, candidates: &[u16]) -> Option<Vec<u16>> {
+    pub(super) fn support(
+        &self,
+        candidates: &[u16],
+        support: &mut [u16; super::MAX_CELLS],
+    ) -> bool {
+        for &cell in &self.cells {
+            support[cell] = 0;
+        }
         let mut feasible_totals = [true; MAX_TOTAL + 1];
         for pair in &self.pairs {
             let left = candidates[pair[0]];
@@ -68,10 +75,9 @@ impl ZipperLine {
             }
         }
         if !feasible_totals.iter().any(|&possible| possible) {
-            return None;
+            return false;
         }
 
-        let mut support = vec![0; self.cells.len()];
         for (pair_index, pair) in self.pairs.iter().enumerate() {
             let left_index = pair_index;
             let right_index = self.cells.len() - pair_index - 1;
@@ -83,14 +89,14 @@ impl ZipperLine {
                     let total = left_digit + right_digit;
                     if feasible_totals[total] && candidates[pair[1]] & (1 << (right_digit - 1)) != 0
                     {
-                        support[left_index] |= 1 << (left_digit - 1);
-                        support[right_index] |= 1 << (right_digit - 1);
+                        support[self.cells[left_index]] |= 1 << (left_digit - 1);
+                        support[self.cells[right_index]] |= 1 << (right_digit - 1);
                     }
                 }
             }
         }
         if let Some(center) = self.center {
-            support[self.cells.len() / 2] = candidates[center]
+            support[center] = candidates[center]
                 & feasible_totals
                     .iter()
                     .enumerate()
@@ -100,7 +106,7 @@ impl ZipperLine {
                         mask | if possible { 1 << (total - 1) } else { 0 }
                     });
         }
-        support.iter().all(|&mask| mask != 0).then_some(support)
+        self.cells.iter().all(|&cell| support[cell] != 0)
     }
 
     pub(super) fn permits(&self, digits: &[u8], size: usize) -> bool {
@@ -139,11 +145,15 @@ mod tests {
     fn odd_zipper_center_matches_every_mirrored_pair_sum() {
         let line = ZipperLine::compile(&[0, 1, 2], 16).unwrap();
         let mut candidates = [0b1111; 16];
-        let support = line.support(&candidates).unwrap();
-        assert_eq!(support, vec![0b0111, 0b1110, 0b0111]);
+        let mut support = [0; 256];
+        assert!(line.support(&candidates, &mut support));
+        assert_eq!(
+            [support[0], support[1], support[2]],
+            [0b0111, 0b1110, 0b0111]
+        );
 
         candidates[0] = 0b1000;
-        assert!(line.support(&candidates).is_none());
+        assert!(!line.support(&candidates, &mut support));
     }
 
     #[test]
@@ -154,11 +164,16 @@ mod tests {
         candidates[3] = 1 << 3;
         candidates[1] = 1 << 0;
         candidates[2] = 1 << 0;
-        assert!(line.support(&candidates).is_none());
+        let mut support = [0; 256];
+        assert!(!line.support(&candidates, &mut support));
 
         candidates[2] = 1 << 3;
         candidates[1] = 1 << 0;
-        assert_eq!(line.support(&candidates), Some(vec![1, 1, 8, 8]));
+        assert!(line.support(&candidates, &mut support));
+        assert_eq!(
+            [support[0], support[1], support[2], support[3]],
+            [1, 1, 8, 8]
+        );
     }
 
     #[test]
