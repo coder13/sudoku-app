@@ -1038,6 +1038,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
   const { settings, segments } = constraint
+  if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+    throw new Error(`This Sudoku Coach ${kind} layer has unsupported fields.`)
+  }
   if (hasData(settings) && (!record(settings) ||
     Object.keys(settings).some(key => key !== 'negativeConstraint') ||
     settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {

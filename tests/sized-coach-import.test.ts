@@ -465,6 +465,22 @@ test('sized Coach Kropki combines positive dots, independent negative rules and 
   await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
 })
 
+test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {
+  for (const type of ['difference', 'ratio'] as const) {
+    const amountKey = type
+    const base = { type, settings: {}, segments: [{ cells: [0, 1], parameters: { [amountKey]: type === 'difference' ? 1 : 2 } }] }
+    const invalid = [
+      { ...base, futureRule: true },
+      { ...base, segments: [{ ...base.segments[0], futureSegment: true }] },
+    ]
+    for (const layer of invalid) {
+      await assert.rejects(detectPuzzle(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [
+        layer, { type: 'thermometer', segments: [{ cells: [6, 7], parameters: {} }] },
+      ] })), /Difference|Ratio|invalid/i)
+    }
+  }
+})
+
 test('a labeled Coach Difference layer keeps the explicit 1 alongside larger labels', async () => {
   const layer = {
     type: 'difference', settings: { negativeConstraint: false }, segments: [
