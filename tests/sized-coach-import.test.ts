@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { conflictsOf, enter, makeGame } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { isSizedRuleList } from '../src/sudoku/sized-rule-game.ts'
 import { checkLatin, solveLatin } from '../src/latin/engine.ts'
 import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { readImportedCalcudoku } from '../src/calcudoku/imported.ts'
@@ -503,6 +504,19 @@ test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed
   assert.deepEqual(shared.sixRules, imported.sizedRules)
 })
 
+test('9uMo Race track round-trips its six-by-six Renban and exact Difference combination', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-race-track.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string; title: string
+  }
+  const imported = await decodeCoachSix(fixture.code)
+  const game = { ...makeGame('coach-racetrack', fixture.title, imported.givens, 'imported', 0, imported.grid),
+    sized: { rules: imported.rules, solution: fixture.solution } }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.sized, game.sized)
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.grid, imported.grid)
+  assert.deepEqual(shared.sixRules, imported.rules)
+})
+
 test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV combinations', async () => {
   const solution = '123456456123231564564231312645645312'
   const grid = { size: 6 as const, boxRows: 2 as const, boxColumns: 3 as const }
@@ -516,6 +530,31 @@ test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV
     sized: { rules, solution } }
   const shared = await publishFixture(game)
   assert.deepEqual(shared.sixRules, rules)
+})
+
+test('sized share worker accepts engine-backed Coach rules missing from its allowlist', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const grid = { size: 6 as const, boxRows: 2 as const, boxColumns: 3 as const }
+  const house = [0, 1, 2, 3, 4, 5]
+  const cases = [
+    ['Anti-King', { type: 'anti-king' as const }],
+    ['Anti-Knight', { type: 'anti-knight' as const }],
+    ['Inequality', { type: 'inequality' as const, less: 0, greater: 1 }],
+    ['Minimum', { type: 'minimum' as const, cells: [0, 1] }],
+    ['Maximum', { type: 'maximum' as const, cells: [0, 1] }],
+    ['Sandwich', { type: 'sandwich' as const, direction: 'east' as const, cells: house, sum: 0 }],
+    ['X-Sum', { type: 'x-sum' as const, direction: 'east' as const, cells: house, sum: 1 }],
+    ['Skyscrapers', { type: 'skyscrapers' as const, direction: 'east' as const, index: 0, count: 1 }],
+    ['Little Killer', { type: 'little-killer' as const, direction: 'north-east' as const, cells: [30, 25, 20, 15, 10, 5], sum: 29 }],
+    ['Palindrome', { type: 'palindrome' as const, cells: [0, 6] }],
+  ] as const
+  for (const [title, rule] of cases) {
+    assert.ok(isSizedRuleList([rule], grid), `${title} should be a valid sized rule`)
+    const game = { ...makeGame(`coach-share-${title}`, `Coach share ${title}`, solution, 'imported', 0, grid),
+      sized: { rules: [rule], solution } }
+    const shared = await publishFixture(game)
+    assert.deepEqual(shared.sixRules, [rule], `${title} should survive sharing`)
+  }
 })
 
 test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {

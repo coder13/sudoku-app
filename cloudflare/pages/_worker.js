@@ -410,6 +410,23 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
+  const outsideHouse = (cells, direction) => {
+    if (!list(cell, size, size)(cells) || new Set(cells).size !== size) return false
+    const first = cells[0]
+    return direction === 'north' ? Math.floor(first / size) === size - 1 && cells.every((index, offset) => index === first - offset * size)
+      : direction === 'south' ? Math.floor(first / size) === 0 && cells.every((index, offset) => index === first + offset * size)
+        : direction === 'east' ? first % size === 0 && cells.every((index, offset) => index === first + offset)
+          : direction === 'west' && first % size === size - 1 && cells.every((index, offset) => index === first - offset)
+  }
+  const littleKillerRay = (cells, direction) => {
+    if (!list(cell, 1, size)(cells) || new Set(cells).size !== cells.length) return false
+    const [dr, dc] = direction === 'north-east' ? [-1, 1] : direction === 'south-east' ? [1, 1]
+      : direction === 'south-west' ? [1, -1] : [-1, -1]
+    const first = cells[0], row = Math.floor(first / size), column = first % size
+    const isOutside = (r, c) => r < 0 || r >= size || c < 0 || c >= size
+    return isOutside(row - dr, column - dc) && cells.every((index, offset) => index === (row + dr * offset) * size + column + dc * offset) &&
+      isOutside(row + dr * cells.length, column + dc * cells.length)
+  }
   const drawing = list(list(cell, 1, 128), 1, 128)
   const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
@@ -431,6 +448,11 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     return true
   }
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+    fields(rule, { type: oneOf('anti-king', 'anti-knight') }) ||
+    (fields(rule, { type: oneOf('inequality'), less: cell, greater: cell }) && rule.less !== rule.greater && sharesGridEdge(rule.less, rule.greater, size)) ||
+    (fields(rule, { type: oneOf('minimum', 'maximum'), cells: list(cell, 1, size * size) },
+      { ignoreMarkedNeighbors: boolean, shaded: boolean }) && new Set(rule.cells).size === rule.cells.length &&
+      (rule.shaded === undefined || rule.type === 'maximum' && rule.shaded === true)) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
     (fields(rule, { type: oneOf('global-entropy') }, { groups: entropyGroups }) &&
       (rule.groups === undefined ? size === 9 : entropyGroups(rule.groups))) ||
@@ -465,7 +487,17 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
       (!rule.ends.every(end => !cell(end)) || rule.ends[0].direction !== rule.ends[1].direction || rule.ends[0].index !== rule.ends[1].index)) ||
     (fields(rule, { type: oneOf('double-arrow'), ends: list(cell, 2, 2), cells: list(cell, 1, 2 * size) }) &&
       new Set([...rule.ends, ...rule.cells]).size === rule.cells.length + 2) ||
+    (fields(rule, { type: oneOf('sandwich'), direction: oneOf('north', 'east', 'south', 'west'),
+      cells: value => outsideHouse(value, rule.direction), sum: integer(0, size * (size + 1) / 2 - size - 1) })) ||
+    (fields(rule, { type: oneOf('x-sum'), direction: oneOf('north', 'east', 'south', 'west'),
+      cells: value => outsideHouse(value, rule.direction), sum: integer(1, size * (size + 1) / 2) })) ||
+    (fields(rule, { type: oneOf('skyscrapers'), direction: oneOf('north', 'east', 'south', 'west'),
+      index: integer(0, size - 1), count: integer(1, size) })) ||
+    (fields(rule, { type: oneOf('little-killer'), direction: diagonalDirection,
+      cells: value => littleKillerRay(value, rule.direction), sum: value => Number.isInteger(value) && value >= rule.cells.length && value <= size * rule.cells.length })) ||
     (fields(rule, { type: oneOf('thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('palindrome'), cells: list(cell, 2, size * size) }) && new Set(rule.cells).size === rule.cells.length &&
+      rule.cells.every((index, offset) => offset === 0 || sharesGridEdge(index, rule.cells[offset - 1], size))) ||
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: drawing }) && coversCells(rule)) ||
     (!noRegions && fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
       coversCells(rule) && new Set(rule.cells.map(region)).size >= 2)
