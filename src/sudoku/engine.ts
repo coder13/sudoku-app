@@ -217,7 +217,7 @@ export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'par
   | { type: 'palindrome'; cells: readonly number[] }
   | { type: 'line-assignments'; paths: readonly (readonly number[])[]; types: readonly SizedLineType[] }
   | Extract<VariantRule, { type: 'digit-restriction' }>
-  | { type: 'anti-king' }
+  | { type: 'anti-knight' | 'anti-king' }
   | { type: 'zipper'; cells: readonly number[] }
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }

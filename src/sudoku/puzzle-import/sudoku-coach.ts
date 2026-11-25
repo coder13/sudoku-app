@@ -1538,7 +1538,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
     Object.keys(rule).every(key => ['id', 'type', 'segments', 'settings'].includes(key)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 &&
     (rule.settings === undefined || rule.settings === null || record(rule.settings) && Object.keys(rule.settings).length === 0)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'antiKing', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers || publishedXSums ? ['cosmeticText'] : [])]
+  const supported = ['diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers || publishedXSums ? ['cosmeticText'] : [])]
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }

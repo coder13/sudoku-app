@@ -108,7 +108,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         return true
       })
     }
-    if (rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'anti-knight' || rule.type === 'anti-king') return Object.keys(rule).length === 1
     if (rule.type === 'parity-line') return Object.keys(rule).length === 2 && Array.isArray(rule.cells) &&
       rule.cells.length >= 2 && rule.cells.length <= size ** 2 &&
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&

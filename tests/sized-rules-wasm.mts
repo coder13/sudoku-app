@@ -87,7 +87,7 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
     choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
 })
 
-test('#396/#404 imports Coach Anti-King and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
+test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
   const solution = '123456456123234561561234345612612345'
   const regionLabels = Array.from({ length: 36 }, (_, cell) =>
     Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
@@ -97,6 +97,7 @@ test('#396/#404 imports Coach Anti-King and X-Sums with companion sized rules in
       { cells: [[1.5, -0.5]], parameters: { text: '7' } },
     ] },
     { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13, 14], parameters: {} }] },
+    { type: 'antiKnight', settings: {}, segments: [] },
     { type: 'antiKing', settings: {}, segments: [] },
   ] })
   mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code, coach: {
@@ -108,14 +109,29 @@ test('#396/#404 imports Coach Anti-King and X-Sums with companion sized rules in
     { type: 'x-sum', direction: 'east', cells: [6, 7, 8, 9, 10, 11], sum: 16 },
     { type: 'x-sum', direction: 'south', cells: [1, 7, 13, 19, 25, 31], sum: 7 },
     { type: 'thermometer', cells: [12, 13, 14] },
+    { type: 'anti-knight' },
     { type: 'anti-king' },
   ])
 
   const blank = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, '0'.repeat(36))
   const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: blank })
-  assert.ok(candidates?.every(mask => mask !== 0))
+  assert.equal(candidates, null, 'the mixed clues have no completion once Anti-Knight is retained')
+  const antiKnightPosition = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 0 ? 1 : 0), rules: [
+    { type: 'anti-knight' as const }, { type: 'thermometer' as const, cells: [6, 7, 8] },
+  ] }
+  const antiKnightCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: antiKnightPosition })
+  const classicKnightCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: antiKnightPosition.digits,
+  } })
+  assert.ok(antiKnightCandidates && classicKnightCandidates)
+  assert.ok(antiKnightCandidates.slice(1).every(mask => mask !== 0), 'Anti-Knight composes with a Thermometer')
+  assert.equal(antiKnightCandidates[13] & 1, 0, 'Anti-Knight removes the given value from a knight-move cell')
+  assert.notEqual(classicKnightCandidates[13] & 1, 0, 'row, column and region alone keep that rank as a candidate')
   const completed = { ...blank, digits: Array.from(solution, Number) }
-  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'unique')
+  const withoutAntiKnight = { ...completed, rules: completed.rules.filter(rule => rule.type !== 'anti-knight') }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: withoutAntiKnight }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'conflict',
+    'the imported Anti-Knight rule rejects the authored grid where equal digits share a knight move')
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     ...completed,
     rules: completed.rules.map(rule => rule.type === 'x-sum' && rule.direction === 'east'
@@ -139,6 +155,9 @@ test('#396/#404 imports Coach Anti-King and X-Sums with companion sized rules in
   await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
     { type: 'antiKing', settings: { distance: 2 }, segments: [] },
   ] })), /unsupported settings for antiKing/)
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKnight', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKnight/)
 })
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {

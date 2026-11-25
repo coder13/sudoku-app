@@ -82,6 +82,7 @@ fn entropy_group_masks(size: usize, authored: &[Vec<u8>]) -> Option<[u16; 3]> {
 /// Rules on a sized grid. Thermometer cells are listed from the bulb to the tip.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SizedConstraint {
+    AntiKnight,
     AntiKing,
     Zipper {
         cells: Vec<usize>,
@@ -750,6 +751,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Difference { .. }
                 | SizedConstraint::LabeledDots { .. }
                 | SizedConstraint::AntiSum { .. }
+                | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
@@ -1687,6 +1689,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Palindrome { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. } => {
                     for link in &self.pair_links[rule] {
@@ -1957,6 +1960,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::Xv { .. }
+                | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. } => self.pair_links[rule]
                     .iter()

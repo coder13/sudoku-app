@@ -70,6 +70,21 @@ fn king_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
     })
 }
 
+fn knight_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
+    (0..size * size).flat_map(move |cell| {
+        let row = cell / size;
+        let column = cell % size;
+        [
+            (row + 2 < size && column + 1 < size).then_some([cell, cell + 2 * size + 1]),
+            (row + 2 < size && column > 0).then_some([cell, cell + 2 * size - 1]),
+            (row + 1 < size && column + 2 < size).then_some([cell, cell + size + 2]),
+            (row + 1 < size && column >= 2).then_some([cell, cell + size - 2]),
+        ]
+        .into_iter()
+        .flatten()
+    })
+}
+
 #[derive(Debug)]
 pub(super) struct RowColumnSum {
     pub marked: Vec<PairConstraint<MAX_SIZE>>,
@@ -184,6 +199,7 @@ pub(super) fn compile_pairs(
                 | SizedConstraint::Palindrome { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. }
                 | SizedConstraint::Xv { .. }
@@ -262,6 +278,13 @@ pub(super) fn compile_pairs(
                 constraint: PairConstraint::from_relation([less, greater], size, |x, y| x < y),
                 kropki: None,
             });
+            continue;
+        }
+        if matches!(rule, SizedConstraint::AntiKnight) {
+            groups[index].extend(knight_edges(size).map(|cells| SizedPairLink {
+                constraint: PairConstraint::from_relation(cells, size, |x, y| x != y),
+                kropki: None,
+            }));
             continue;
         }
         if matches!(rule, SizedConstraint::AntiKing) {

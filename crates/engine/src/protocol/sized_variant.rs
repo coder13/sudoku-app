@@ -174,6 +174,7 @@ impl TryFrom<Rule> for SizedConstraint {
 
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
+            Rule::Variant(PuzzleRule::AntiKnight {}) => Self::AntiKnight,
             Rule::Variant(PuzzleRule::AntiKing {}) => Self::AntiKing,
             Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
