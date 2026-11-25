@@ -397,8 +397,8 @@ function connectedCells(cells, size) {
   }
   return connected.size === cells.length
 }
-const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
+const boxlessGrid = value => fields(value, { size: oneOf(5, 6, 7, 9), noRegions: oneOf(true) })
+const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || boxlessGrid(value)
 function numberedDotRule(rule, size) {
   const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
@@ -431,11 +431,85 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
       segments.every(part => part.every(index => cells.includes(index))))
+  const fractionalPieces = pieces => {
+    const width = size * 2, quarterCount = width ** 2
+    if (!list(piece => fields(piece, { quarters: list(integer(0, quarterCount - 1), 1, quarterCount),
+      color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) &&
+      new Set(piece.quarters).size === piece.quarters.length, 2, quarterCount)(pieces) ||
+      !Number.isInteger(2 * size ** 2 * (size + 1) / pieces.length)) return false
+    const occupied = new Set()
+    for (const piece of pieces) {
+      if (piece.quarters.some(quarter => occupied.has(quarter))) return false
+      for (const quarter of piece.quarters) occupied.add(quarter)
+      const quarters = new Set(piece.quarters), connected = new Set([piece.quarters[0]])
+      for (const quarter of connected) {
+        const x = quarter % width
+        for (const next of [quarter - width, quarter + width, x ? quarter - 1 : -1, x < width - 1 ? quarter + 1 : -1]) {
+          if (quarters.has(next)) connected.add(next)
+        }
+      }
+      if (connected.size !== quarters.size) return false
+    }
+    return occupied.size === quarterCount
+  }
+  const crustRule = rule => {
+    if (!noRegions || !fields(rule, { type: oneOf('crust'), clues: list(clue =>
+      fields(clue, { direction: oneOf('north', 'east', 'south', 'west'),
+        cells: value => outsideHouse(value, clue.direction), sum: integer(1, size * (size + 1) / 2) },
+      { crossed: integer(0, size - 1) }), 1, 4 * size) }, {
+        sharedRegion: value => list(cell, 2, 2)(value) && value[0] !== value[1],
+        fixedEdges: list(pair, 0, 2 * size * (size - 1)),
+      })) return false
+    const seen = new Set()
+    const { fixedEdges, sharedRegion, clues } = rule
+    if (fixedEdges && new Set(fixedEdges.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size !== fixedEdges.length) return false
+    return clues.every(clue => {
+      const first = clue.cells[0], key = `${clue.direction}:${first}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }) && (sharedRegion === undefined || sharedRegion[0] !== sharedRegion[1])
+  }
   const region = cell => regions ? regions.findIndex(part => part.includes(cell)) : Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
   const sumEnd = value => cell(value) || fields(value, { direction: oneOf('north', 'east', 'south', 'west'), index: integer(0, size - 1) })
+  const equationOperator = oneOf('join', 'add', 'subtract', 'multiply', 'divide', 'equals')
+  const sumEndKey = end => typeof end === 'number' ? String(end) : `${end.direction}:${end.index}`
+  const sumEndCells = end => typeof end === 'number' ? [end] : Array.from({ length: size }, (_, offset) =>
+    end.direction === 'south' ? offset * size + end.index : end.direction === 'north' ? (size - 1 - offset) * size + end.index
+      : end.direction === 'east' ? end.index * size + offset : end.index * size + size - 1 - offset)
   const entropyGroups = value => Array.isArray(value) && value.length === 3 &&
     value.every(group => list(integer(1, size), 1, size)(group)) &&
     value.flat().length === size && new Set(value.flat()).size === size
+  const cornerMarks = value => list(corner => integer(0, size * (size - 1) - 1)(corner) && corner % size !== size - 1,
+    0, (size - 1) ** 2)(value) && new Set(value).size === value.length
+  const xSumDot = rule => {
+    const { ends } = rule
+    if (!Array.isArray(ends) || ends.length !== 2 || !ends.every(sumEnd) || ends.every(end => typeof end === 'number') ||
+      sumEndKey(ends[0]) === sumEndKey(ends[1])) return false
+    const rays = ends.map(sumEndCells), overlap = rays[0].filter(index => rays[1].includes(index))
+    if (overlap.length > 1) return false
+    if (typeof ends[0] === 'number' || typeof ends[1] === 'number') {
+      const given = typeof ends[0] === 'number' ? ends[0] : ends[1]
+      const ray = typeof ends[0] === 'number' ? rays[1] : rays[0]
+      if (ray[0] !== given) return false
+    } else {
+      const vertical = end => end.direction === 'north' || end.direction === 'south'
+      if (vertical(ends[0]) !== vertical(ends[1]) || overlap.length) return false
+    }
+    return true
+  }
+  const lineAssignmentType = type => fields(type, { type: oneOf('renban') }) ||
+    (!noRegions && fields(type, { type: oneOf('region-sum') })) ||
+    (fields(type, { type: oneOf('entropic'), groups: entropyGroups }) && new Set(type.groups.flat()).size === size)
+  const lineAssignments = rule => {
+    if (!fields(rule, { type: oneOf('line-assignments'), paths: list(list(cell, 2, size * size), 2, 3),
+      types: list(lineAssignmentType, 2, 3) }) || rule.paths.length !== rule.types.length ||
+      !rule.paths.every(path => new Set(path).size === path.length) ||
+      new Set(rule.types.map(type => type.type)).size !== rule.types.length) return false
+    const samePath = (a, b) => a.length === b.length && a.every((index, offset) => index === b[offset])
+    return rule.paths.every((path, index) => rule.paths.slice(0, index).every(previous =>
+      !samePath(path, previous) && !samePath(path, [...previous].reverse())))
+  }
   const occupiedCages = new Set()
   const validCage = cage => {
     if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
@@ -453,6 +527,29 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('minimum', 'maximum'), cells: list(cell, 1, size * size) },
       { ignoreMarkedNeighbors: boolean, shaded: boolean }) && new Set(rule.cells).size === rule.cells.length &&
       (rule.shaded === undefined || rule.type === 'maximum' && rule.shaded === true)) ||
+    (fields(rule, { type: oneOf('digit-restriction'), cells: list(cell, 1, size * size),
+      digits: list(integer(1, size), 1, size), shape: oneOf('circle', 'cross', 'square') }) &&
+      new Set(rule.cells).size === rule.cells.length && new Set(rule.digits).size === rule.digits.length) ||
+    (fields(rule, { type: oneOf('zipper'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('entropic'), cells: list(cell, 3, size * size + 1), groups: entropyGroups }) && new Set(rule.groups.flat()).size === size) ||
+    (fields(rule, { type: oneOf('parity-line'), cells: list(cell, 2, size * size) }) && new Set(rule.cells).size === rule.cells.length &&
+      rule.cells.every((index, offset) => offset === 0 || sharesGridEdge(index, rule.cells[offset - 1], size))) ||
+    (fields(rule, { type: oneOf('slow-thermometer'), cells: list(cell, 2, size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('corner-kropki') }, { consecutive: cornerMarks, ratioTwo: cornerMarks }) &&
+      ((rule.consecutive?.length ?? 0) > 0 || (rule.ratioTwo?.length ?? 0) > 0)) ||
+    (fields(rule, { type: oneOf('nonogram'), axis: oneOf('row', 'column'), index: integer(0, size - 1),
+      digits: list(integer(1, size), 1, size), runs: list(integer(1, size), 1, size) }) &&
+      new Set(rule.digits).size === rule.digits.length && rule.runs.reduce((total, run) => total + run, 0) === rule.digits.length &&
+      rule.digits.length + rule.runs.length - 1 <= size) ||
+    (noRegions && fields(rule, { type: oneOf('fractional-regions'), pieces: fractionalPieces }) ) ||
+    crustRule(rule) ||
+    (fields(rule, { type: oneOf('row-equation'), cells: list(cell, 3, 5), operators: list(equationOperator, 2, 4) }) &&
+      rule.operators.length === rule.cells.length - 1 && rule.cells.every((index, offset) =>
+        index === rule.cells[0] + offset && Math.floor(index / size) === Math.floor(rule.cells[0] / size)) &&
+      rule.operators.filter(operator => operator === 'equals').length === 1 &&
+      rule.operators.every((operator, index) => operator !== 'join' || rule.operators[index - 1] !== 'join')) ||
+    (fields(rule, { type: oneOf('x-sum-dot'), ends: list(sumEnd, 2, 2), relation: oneOf('consecutive', 'ratio') }) && xSumDot(rule)) ||
+    lineAssignments(rule) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
     (fields(rule, { type: oneOf('global-entropy') }, { groups: entropyGroups }) &&
       (rule.groups === undefined ? size === 9 : entropyGroups(rule.groups))) ||
