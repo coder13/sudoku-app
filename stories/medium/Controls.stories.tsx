@@ -39,10 +39,13 @@ export const MobileCandidateMatching: Story = {
 export const MobileCandidateColorGroup: Story = {
   args: {
     compact: true, colorTarget: 'candidate', colorsActive: true, highlightedDigitMask: (1 << 2) | (1 << 4),
-    candidatePaintColor: 4,
+    digitPaintColor: 4,
     paintCandidateGroupAvailable: true, onPaintCandidateGroup: fn(),
     clearDigitHighlightsAvailable: true, onClearDigitHighlights: fn(),
   },
+}
+export const CellTargetDigitPaintCursor: Story = {
+  args: { colorTarget: 'cell', colorsActive: true, digitPaintColor: 4 },
 }
 export const MobileRemainingDigits: Story = {
   args: { compact: true, advancedModes: { ...meta.args.advancedModes, keypadProgress: 'count' } },

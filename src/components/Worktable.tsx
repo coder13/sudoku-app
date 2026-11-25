@@ -3010,7 +3010,7 @@ export function Worktable({
   const inputPanel = (
       <div ref={inputRef} className="workspace-controls" data-show-completion={showMobileResults || undefined}>
         <Controls gridSize={gridSize} candidateDigitColors={candidateDigitColors}
-          candidatePaintColor={candidateBrush !== null && candidateBrush > 0 ? candidateBrush : undefined}
+          digitPaintColor={brush !== null && brush > 0 ? brush : undefined}
           mode={mode} pencil={pencilActive} togglePencil={() => switchPenPencil(gridInputMode !== 'pencil')}
           candidateKind={candidateKind} setCandidateKind={setCandidateKind} advancedModes={advancedModes}
           colorMode={colorMode} colorTarget={colorTarget} setColorTarget={changeColorTarget} toggleColorMode={mobile ? activateColorsShortcut : undefined}

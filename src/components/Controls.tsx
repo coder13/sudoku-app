@@ -28,7 +28,7 @@ type Props = {
   toggleColorMode?: () => void
   colorsActive?: boolean
   candidateDigitColors?: readonly (number | null)[]
-  candidatePaintColor?: number
+  digitPaintColor?: number
   paintCandidateGroupAvailable?: boolean
   onPaintCandidateGroup?: () => void
   clearDigitHighlightsAvailable?: boolean
@@ -97,7 +97,7 @@ export function Controls(props: Props) {
       onClick={() => changeDigitHighlightMatch(nextMatch)}>{matchLabel}</Button> : null
   const digitHold = useTouchHold(canHighlightDigits)
   const candidateColors = colors && props.colorTarget === 'candidate'
-  const candidatePaintCursor = props.candidatePaintColor ? colorCursor(props.candidatePaintColor) : undefined
+  const digitPaintCursor = props.digitPaintColor ? colorCursor(props.digitPaintColor) : undefined
   const darkColors = props.selectedDigit !== null && props.selectedDigit > COLOR_FAMILIES.length
   const gridSize = props.gridSize ?? 9
   const choices = colors ? COLOR_FAMILIES.map((_, index) => index + 1 + (darkColors ? COLOR_FAMILIES.length : 0)) : DIGITS.slice(0, gridSize)
@@ -232,7 +232,7 @@ export function Controls(props: Props) {
                 return (
                   <button type="button" key={digit}
                     className={`key ${colors ? `tone-key color-${digit}` : candidateColor ? `tone-key candidate-color-key color-${candidateColor}` : ''} ${progress === 'dim' && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
-                    style={!colors && candidatePaintCursor ? { cursor: candidatePaintCursor } : undefined}
+                    style={!colors && digitPaintCursor ? { cursor: digitPaintCursor } : undefined}
                     aria-label={colors ? COLORS[digit - 1] : `${progress === 'count' ? `${digitLabel}, ${remaining} remaining` : digitLabel}${candidateColor ? `, candidates colored ${COLORS[candidateColor - 1].toLowerCase()}` : ''}`}
                     aria-keyshortcuts={colors ? digit <= 9 ? `${digit}` : undefined : [
                       props.chainDrawing && digit, `Shift+${digit}`, `F${digit}`,
