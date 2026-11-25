@@ -1,0 +1,9 @@
+{
+  "sudoku_id": "GEnq",
+  "sudoku": "SCv7_32_f2e8r42fdf1j0365nu5ssem4poflhbmre7md4ou9o7ac44p49pocqo0bv7n97neecgdirt834dgvrt0ubr0gbdg7voheges48276evs6vqk30ib7tnljlau9rbbmqlknmmlge1673vi5vm3hiiul1v9tbmpuul5qs053qisk306fmh0uatg0nfda23hee8jho6p73cpnscdji4r5bqo37ec95rhk7qj2cjnq8mtn1mnroahsh72mupk52e6m7ajk5fu650kp5192g6rujpavbvvpiqgit1nhjn138pv4iqnkotqok6tenbjbqh7lhdqo6u7sfa2bhj2opr3di0gavr0vviqqdk5jmnrp2ofr0od8je2a",
+  "name": "6x6 thermo",
+  "author": "Pdhote",
+  "description": "Try solving under 5  mins",
+  "reportedSolution": "345162261345152436436521",
+  "solutionNote": "The published export reports only 24 digits for a 6×6 grid, so this value is not treated as a completion. The engine independently solves and validates the imported clues."
+}
