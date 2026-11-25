@@ -232,20 +232,25 @@ impl Line {
             }
             Self::Renban => {
                 let mut support = [0; MAX_SIZE];
+                let mut local_domains = [0; MAX_SIZE];
+                for (&cell, mask) in cells.iter().zip(&mut local_domains) {
+                    *mask = domains[cell];
+                }
+                let local_domains = &local_domains[..cells.len()];
                 if size <= 6 {
                     crate::variant::renban_support::<6, 64>(
-                        &cells.iter().map(|&cell| domains[cell]).collect::<Vec<_>>(),
+                        local_domains,
                         &mut support[..cells.len()],
                     );
                 } else if size <= 9 || cells.len() <= 3 {
                     crate::variant::renban_support::<9, 512>(
-                        &cells.iter().map(|&cell| domains[cell]).collect::<Vec<_>>(),
+                        local_domains,
                         &mut support[..cells.len()],
                     );
                 } else {
                     crate::variant::wide_renban_support(
                         size,
-                        &cells.iter().map(|&cell| domains[cell]).collect::<Vec<_>>(),
+                        local_domains,
                         &mut support[..cells.len()],
                     );
                 }
