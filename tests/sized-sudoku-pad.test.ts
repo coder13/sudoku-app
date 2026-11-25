@@ -61,6 +61,7 @@ const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
 const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
 const xSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
+const blackXSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-black.scl', import.meta.url), 'utf8').trim()
 const weightedLibraCode = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
 const pointingKnightsCode = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
 const entropyLineExamples = JSON.parse(readFileSync(new URL('./fixtures/sudokupad-entropy-lines.json', import.meta.url), 'utf8')) as {
@@ -115,6 +116,51 @@ test('#404 imports the original 4 × 4 X-Sum Twins Penpa export and verifies bot
     title: '4x4 X-Sum Twins: White Dots', sizedAuthor: 'Cale Schoon', authoredSolution: '4321213412433412',
     authoredSolutionOnly: true,
   })
+})
+
+test('#404 resolves the published X-Sum Twins short link to the same imported rules', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, '/api/v1/import/sudokupad/6slam9s9ap')
+    return Response.json({ code: xSumDotCode })
+  })
+  const imported = await detectPuzzle('https://sudokupad.app/6slam9s9ap')
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '4x4 X-Sum Twins: White Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum-dot', ends: [{ direction: 'south', index: 1 }, { direction: 'south', index: 2 }], relation: 'consecutive' },
+    { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'consecutive' },
+  ])
+  assert.equal(fetcher.mock.callCount(), 1)
+})
+
+test('#404 imports the original 4 × 4 X-Sum Twins Black Dots export', async () => {
+  const imported = await detectPuzzle(blackXSumDotCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '4x4 X-Sum Twins: Black Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.grid, { size: 4, boxRows: 2, boxColumns: 2 })
+  assert.equal(imported.givens, '0'.repeat(16))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum-dot', ends: [{ direction: 'south', index: 1 }, { direction: 'south', index: 2 }], relation: 'ratio' },
+    { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'ratio' },
+  ])
+  assert.equal(imported.authoredSolution, '4231312424131342')
+})
+
+test('#404 resolves the published black-dot X-Sum Twins short link', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, '/api/v1/import/sudokupad/0n497kpnvt')
+    return Response.json({ code: blackXSumDotCode })
+  })
+  const imported = await detectPuzzle('https://sudokupad.app/0n497kpnvt')
+  assert.equal(imported.title, '4x4 X-Sum Twins: Black Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.sizedRules?.map(rule => rule.type === 'x-sum-dot' ? rule.relation : rule.type), [
+    'ratio', 'ratio',
+  ])
+  assert.equal(imported.authoredSolution, '4231312424131342')
+  assert.equal(fetcher.mock.callCount(), 1)
 })
 
 test('sized SudokuPad rejects unrepresented rules and geometry', () => {
@@ -263,6 +309,28 @@ test('#394 imports the published 6 × 6 f-puzzles Anti-Knight and Arrow combinat
   assert.equal(linked.format, 'SudokuPad')
   assert.deepEqual(linked.sizedRules, imported.sizedRules)
   assert.equal(fetch.mock.callCount(), 1)
+})
+
+test('#87 imports an f-puzzles Jigsaw and Anti-Knight combination without dropping either rule', async () => {
+  const decoded = lzString.decompressFromBase64(pointingKnightsCode.slice(4))
+  assert.ok(decoded)
+  const source = JSON.parse(decoded)
+  delete source.arrow
+  source.ruleset = 'Normal irregular 6x6 Antiknight Sudoku rules apply.'
+  source.solution = Array.from('456321321654612543543216234165165432', Number)
+  for (const row of source.grid) for (const [column, cell] of row.entries()) cell.region = column
+
+  const code = 'fpuz' + lzString.compressToBase64(JSON.stringify(source))
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.grid, {
+    size: 6,
+    regions: Array.from({ length: 6 }, (_, column) => Array.from({ length: 6 }, (_, row) => row * 6 + column)),
+  })
+  assert.deepEqual(imported.sizedRules, [{ type: 'anti-knight' }])
+  assert.equal(imported.authoredSolution, '456321321654612543543216234165165432')
+
+  source.antiknight = false
+  await assert.rejects(detectPuzzle('fpuz' + lzString.compressToBase64(JSON.stringify(source))), /Anti-Knight metadata/)
 })
 
 test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {

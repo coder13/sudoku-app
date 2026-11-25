@@ -115,6 +115,9 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  // This source's only author note is a solve-time challenge; its complete
+  // mathematical constraints are encoded in the export.
+  ['GEnq', '8347d04585f2c27fbd5b8c407a744d295a63e1e688b090de436d49b7d9aa6298'],
   ['FLAb', '90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936'],
   // FWUv's Bento description explains region outlines; the rules are encoded.
   ['FWUv', '37628a3e7b9d6537e0647a8eef0a6352ea693e6bde79a9400d44315e37882ed8'],
@@ -435,6 +438,15 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
+    (fields(rule, { type: oneOf('xv') }, { five: marks, ten: marks }) &&
+      [rule.five, rule.ten].some(value => value && ((value.pairs?.length ?? 0) > 0 || value.negative === true)) &&
+      new Set([...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size ===
+        (rule.five?.pairs?.length ?? 0) + (rule.ten?.pairs?.length ?? 0)) ||
+    (fields(rule, { type: oneOf('non-consecutive') }, { except: list(pair, 0, 2 * size * (size - 1)) }) &&
+      (rule.except === undefined || new Set(rule.except.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.except.length)) ||
+    (fields(rule, { type: oneOf('clone'), groups: list(group => list(cell, 2, size * size)(group) && new Set(group).size === group.length, 1, size * size) }) ) ||
+    (fields(rule, { type: oneOf('between'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (size === 6 && fields(rule, { type: oneOf('modular'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('quadruple'), topLeft: integer(0, size * (size - 1) - 1), digits: list(integer(1, size), 1, 4) }) &&
       rule.topLeft % size < size - 1) ||
     numberedDotRule(rule, size) ||

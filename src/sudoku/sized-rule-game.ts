@@ -54,6 +54,16 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
   const occupiedCages = new Set<number>()
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
+    if (rule.type === 'minimum' || rule.type === 'maximum') {
+      const allowedKeys = rule.type === 'maximum'
+        ? ['type', 'cells', 'ignoreMarkedNeighbors', 'shaded'] : ['type', 'cells', 'ignoreMarkedNeighbors']
+      return Object.keys(rule).every(key => allowedKeys.includes(key)) &&
+        (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean') &&
+        (rule.shaded === undefined || rule.type === 'maximum' && rule.shaded === true) &&
+        Array.isArray(rule.cells) && rule.cells.length > 0 && rule.cells.length <= size ** 2 &&
+        rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(rule.cells).size === rule.cells.length
+    }
     if (rule.type === 'fractional-regions') return Object.keys(rule).length === 2 &&
       'noRegions' in grid && validFractionalRegions(rule.pieces, size, 0)
     if (rule.type === 'little-killer') {
@@ -119,6 +129,11 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
       new Set(rule.cells).size === rule.cells.length && rule.cells.every((cell: number, index: number) =>
         index === 0 || gridCellsShareEdge(rule.cells[index - 1], cell, size))
+    if (rule.type === 'clone') return Object.keys(rule).length === 2 && Array.isArray(rule.groups) &&
+      rule.groups.length > 0 && rule.groups.length <= size ** 2 && rule.groups.every((group: unknown) =>
+        Array.isArray(group) && group.length >= 2 && group.length <= size ** 2 &&
+        group.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(group).size === group.length)
     if (rule.type === 'digit-restriction') return Object.keys(rule).every(key =>
       ['type', 'cells', 'digits', 'shape'].includes(key)) && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&

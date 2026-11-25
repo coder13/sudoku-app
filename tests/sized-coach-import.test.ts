@@ -39,6 +39,20 @@ test('six-by-six Coach decoding preserves the box orientation, clue order and bo
   assert.deepEqual(tall.grid, { size: 6, boxRows: 3, boxColumns: 2 })
 })
 
+test('six-by-six Coach inequality imports reject unknown layer, setting and segment fields', async () => {
+  const inequality = { type: 'greaterLess', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] }
+  const invalid = [
+    { ...inequality, futureRule: true },
+    { ...inequality, settings: { futureSetting: true } },
+    { ...inequality, segments: [{ ...inequality.segments[0], futureSegment: true }] },
+    { ...inequality, segments: [{ cells: [0, 1], parameters: { futureParameter: true } }] },
+  ]
+  for (const [index, layer] of invalid.entries()) {
+    await assert.rejects(decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [layer] })),
+      /inequality|settings|invalid/i, `inequality variant ${index + 1}`)
+  }
+})
+
 test('six-by-six Coach decoding imports Sandwich clues with other typed rules', async () => {
   const solution = '123456456123234561561234345612612345'
   const sandwich = (side: string, index: number, value: number) => ({ type: 'sandwich',
@@ -100,6 +114,18 @@ test('published sized Coach X-Sums parse outside labels against the grid size', 
   }] })
   responseCode = impossible
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /total from 1 through 21/)
+
+  responseCode = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'cosmeticText', futureSemantics: true, settings: {},
+    segments: [{ cells: [[0.5, -0.5]], parameters: { text: '5' } }],
+  }] })
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /X-Sums layer has unsupported fields/)
+
+  responseCode = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'cosmeticText', settings: {},
+    segments: [{ cells: [[0.5, -0.5]], parameters: { text: '5' }, futureMeaning: true }],
+  }] })
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /invalid X-Sum label/)
 })
 
 test('six-by-six Coach decoding reports unsupported rules instead of importing a partial puzzle', async () => {
@@ -437,6 +463,75 @@ test('sized Coach Kropki combines positive dots, independent negative rules and 
   ])
   source.givenConstraints[0].segments[0].cells = [5, 6]
   await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
+})
+
+test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed rules', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const digits = [...solution].map(Number)
+  const whiteDots: [number, number][] = []
+  for (let row = 0; row < 6; row++) for (let column = 0; column < 6; column++) {
+    const cell = row * 6 + column
+    for (const [nextRow, nextColumn] of [[row, column + 1], [row + 1, column]]) {
+      if (nextRow < 6 && nextColumn < 6) {
+        const next = nextRow * 6 + nextColumn
+        if (Math.abs(digits[cell] - digits[next]) === 1) whiteDots.push([cell, next])
+      }
+    }
+  }
+  const source = {
+    ...six, givenDigits: solution, regions: rectangularRegions(2, 3), givenConstraints: [
+      { type: 'nonconsecutive', settings: {}, segments: [] },
+      { type: 'difference', settings: {}, segments: whiteDots.map(cells => ({ cells, parameters: { difference: 1 } })) },
+      { type: 'ratio', settings: {}, segments: [{ cells: [5, 11], parameters: { ratio: 2 } }] },
+      { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13], parameters: {} }] },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode(source))
+  assert.deepEqual(imported.sizedRules?.[0], { type: 'non-consecutive', except: whiteDots })
+  assert.deepEqual(imported.sizedRules?.[1],
+    { type: 'kropki', consecutive: { pairs: whiteDots, negative: false } })
+  assert.deepEqual(imported.sizedRules?.slice(2), [
+    { type: 'kropki', ratioTwo: { pairs: [[5, 11]], negative: false } },
+    { type: 'thermometer', cells: [12, 13] },
+  ])
+  assert.equal(conflictsOf(solution, undefined, imported.grid, imported.sizedRules).size, 0)
+  const game = { ...makeGame('coach-combo', 'Coach combination', solution, 'imported', 0, imported.grid),
+    sized: { rules: imported.sizedRules!, solution } }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.sized, game.sized)
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.grid, imported.grid)
+  assert.deepEqual(shared.sixRules, imported.sizedRules)
+})
+
+test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV combinations', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const grid = { size: 6 as const, boxRows: 2 as const, boxColumns: 3 as const }
+  const rules = [
+    { type: 'between' as const, cells: [0, 1, 2] },
+    { type: 'clone' as const, groups: [[0, 1], [6, 7]] },
+    { type: 'modular' as const, cells: [0, 1, 2] },
+    { type: 'xv' as const, five: { negative: true } },
+  ]
+  const game = { ...makeGame('coach-rule-share', 'Coach rule share', solution, 'imported', 0, grid),
+    sized: { rules, solution } }
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.sixRules, rules)
+})
+
+test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {
+  for (const type of ['difference', 'ratio'] as const) {
+    const amountKey = type
+    const base = { type, settings: {}, segments: [{ cells: [0, 1], parameters: { [amountKey]: type === 'difference' ? 1 : 2 } }] }
+    const invalid = [
+      { ...base, futureRule: true },
+      { ...base, segments: [{ ...base.segments[0], futureSegment: true }] },
+    ]
+    for (const layer of invalid) {
+      await assert.rejects(detectPuzzle(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [
+        layer, { type: 'thermometer', segments: [{ cells: [6, 7], parameters: {} }] },
+      ] })), /Difference|Ratio|invalid/i)
+    }
+  }
 })
 
 test('a labeled Coach Difference layer keeps the explicit 1 alongside larger labels', async () => {

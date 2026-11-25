@@ -31,8 +31,8 @@ export function sixGridForBoxRows(boxRows?: 2 | 3) {
 }
 
 export type MiniGrid = typeof MINI_GRID
-export type JigsawSize = 4 | 5 | 6 | 7
-export const isJigsawSize = (size: unknown): size is JigsawSize => size === 4 || size === 5 || size === 6 || size === 7
+export type JigsawSize = 3 | 4 | 5 | 6 | 7
+export const isJigsawSize = (size: unknown): size is JigsawSize => size === 3 || size === 4 || size === 5 || size === 6 || size === 7
 export type JigsawGrid<Size extends JigsawSize = JigsawSize> = {
   size: Size
   regions: readonly (readonly number[])[]

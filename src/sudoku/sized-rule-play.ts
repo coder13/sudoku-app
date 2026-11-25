@@ -7,7 +7,7 @@ import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 import { positionDigit, positionText } from './digit-symbols.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-minimum', 'sized-maximum', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -174,6 +174,13 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'sandwich') {
     description = `The digits between 1 and ${size} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
     reason = 'Remove each candidate that cannot fit a row or column arrangement with the printed sandwich total.'
+  } else if (rule.type === 'minimum' || rule.type === 'maximum') {
+    const lower = rule.type === 'minimum'
+    description = rule.shaded && !lower
+      ? 'Each shaded cell has a higher digit than every unshaded cell that shares an edge with it.'
+      : `Each ${lower ? 'Minimum' : 'Maximum'} cell has a ${lower ? 'lower' : 'higher'} digit than every orthogonally adjacent cell.`
+    if (rule.ignoreMarkedNeighbors) description += ` Adjacent cells with the same ${lower ? 'Minimum' : 'Maximum'} mark skip this comparison.`
+    reason = 'Remove each candidate that cannot satisfy every comparison with the neighboring cells.'
   } else {
     description = 'The digits strictly increase along this thermometer, from the bulb to the tip.'
     reason = 'Each remaining candidate fits in at least one increasing sequence using the candidates along the thermometer. Remove the candidates that fit in none.'

@@ -1038,6 +1038,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
 
 function readCoachPairMarkers(constraint: Record<string, unknown>, kind: 'difference' | 'ratio') {
   const { settings, segments } = constraint
+  if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+    throw new Error(`This Sudoku Coach ${kind} layer has unsupported fields.`)
+  }
   if (hasData(settings) && (!record(settings) ||
     Object.keys(settings).some(key => key !== 'negativeConstraint') ||
     settings.negativeConstraint !== undefined && typeof settings.negativeConstraint !== 'boolean')) {
@@ -1065,6 +1068,10 @@ function coachOutsideRay(side: OutsideSide, index: number, size = 9) {
 
 function readCoachXSums(constraint: Record<string, unknown>, segments: readonly unknown[], size = 9) {
   const { settings } = constraint
+  if (constraint.type !== 'cosmeticText' ||
+    Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+    throw new Error('This Sudoku Coach X-Sums layer has unsupported fields.')
+  }
   if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key =>
     !['gridZoomOut', 'gridSnapToCorners', 'gridSnapToEdges', 'textSize'].includes(key)) ||
     (settings.gridZoomOut !== undefined && settings.gridZoomOut !== 1) ||
@@ -1076,7 +1083,8 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
   const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
   const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= size - 0.5 && Number.isInteger(coordinate - 0.5)
   for (const segment of segments) {
-    if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+    if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
       !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
       !segment.cells[0].every(Number.isFinite) || !record(segment.parameters) ||
       Object.keys(segment.parameters).length !== 1 || typeof segment.parameters.text !== 'string') {
@@ -1566,9 +1574,14 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
       return [{ type: 'global-entropy', ...(groups && { groups }) }]
     }
     if (record(constraint) && constraint.type === 'greaterLess') {
-      if (!Array.isArray(constraint.segments) || constraint.segments.length === 0) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+        hasData(constraint.settings) || !Array.isArray(constraint.segments)) {
+        throw new Error('This Sudoku Coach puzzle has an inequality layer with unsupported fields or settings.')
+      }
+      if (constraint.segments.length === 0) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
       return constraint.segments.map(segment => {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters) ||
+        if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+          !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters) ||
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= grid.size ** 2) || segment.cells[0] === segment.cells[1] ||
           !gridCellsShareEdge(segment.cells[0], segment.cells[1], grid.size)) throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
         return { type: 'inequality', less: segment.cells[0], greater: segment.cells[1] }

@@ -118,12 +118,24 @@ pub enum SizedConstraint {
     Palindrome {
         cells: Vec<usize>,
     },
+    /// Corresponding cells in each group must contain equal digits.
+    Clone {
+        groups: Vec<Vec<usize>>,
+    },
     NonConsecutive {
         except: Vec<[usize; 2]>,
     },
     Inequality {
         less: usize,
         greater: usize,
+    },
+    Minimum {
+        cells: Vec<usize>,
+        ignore_marked_neighbors: bool,
+    },
+    Maximum {
+        cells: Vec<usize>,
+        ignore_marked_neighbors: bool,
     },
     Modular {
         cells: Vec<usize>,
@@ -747,6 +759,8 @@ impl SizedConstraintGrid {
                 SizedConstraint::Kropki { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::CornerKropki { .. }
                 | SizedConstraint::Difference { .. }
                 | SizedConstraint::LabeledDots { .. }
@@ -755,6 +769,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::AntiKing
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::Modular { .. }
                 | SizedConstraint::Quadruple { .. }
                 | SizedConstraint::Xv { .. } => {}
@@ -1687,8 +1702,11 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. } => {
@@ -1957,8 +1975,11 @@ impl SizedConstraintGrid {
                 SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::Xv { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing

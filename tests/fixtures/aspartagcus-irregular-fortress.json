@@ -1,0 +1,273 @@
+{
+  "source": "https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=00085W",
+  "puzzles": [
+    {
+      "size": 3,
+      "regions": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          3,
+          6,
+          7
+        ],
+        [
+          4,
+          5,
+          8
+        ]
+      ],
+      "marked": [
+        8,
+        2
+      ],
+      "solution": "123231312",
+      "url": "https://sudokupad.app/fpuzN4IgzglgXgpiBcBmANCALhNAbO8QEkAnQmAcwFcsBDQgAgDMB7QtEsMWscgE0YGty8WogAeiEKirk0AC2YIQAQUKMAdrQAyEbgEvaACkVgADjTRVSAY3JgAlBJCFKMMDDQKAtLQDK51dxpuWghiMkoaTh5%2BclonHA4qY2MsAE8AOloAMQgsLFoYKksZWMYAd2RaS0YscgBbdSp%2FWLIINVpSzGLZGFpuCFJMDgBGD0Q0gB1VL0zmVhcOOJdaROSUoQARfsHg9VJCKhTKmFyOGSoANx60RloAIx7qQlIYOllG3q20Dgh1VRh%2BmS3Zg%2FUjtGSYHqWY5YMBpBx7bQIADaSNAA0uqgACjBVJYcgBZGh8MAIVSULAAX2QaIgGOxuIJRJJ8DJuSpoEsCgAxIoABx8vnw2k4%2Bl4rCEwjE0nkikAXWQqMcLTUCAATKh0SKcWKJVKWTLqSBNVjtYzJczWZTDcbRWa9Za5QqaXTTeKmdK2dbhSaGW7zR6raASAMVfAhqhOXgefyY0KXb7dRaZbL5SBalQRBBanVkRzoQoAEqIADC4nZIChuULQ1LIEdID6YCotxw3CwjAGkaRFbUrCofUsGDUJNTrHIMEsjT6ATQLkYxiHqmZSNlFKAA%3D%3D%3D"
+    },
+    {
+      "size": 4,
+      "regions": [
+        [
+          0,
+          1,
+          4,
+          8
+        ],
+        [
+          2,
+          3,
+          5,
+          6
+        ],
+        [
+          7,
+          11,
+          14,
+          15
+        ],
+        [
+          9,
+          10,
+          12,
+          13
+        ]
+      ],
+      "marked": [
+        3,
+        11,
+        15
+      ],
+      "solution": "3412234112344123",
+      "url": "https://sudokupad.app/fpuzN4IgzglgXgpiBcAWANCALhNAbO8QEkAnQmAcwFcsBDQgAgDMB7QtEsMWscgE0YGty8WogAeiEKirk0AC2YIQAQUKMAdrQAyEbgEvaACkVgADjTRVSAY3JgAlBJCFKMMDDQKAtLQDK51dxpuWghiMkoaTh5%2BclonHA4qY2MsAE8AOloAMQgsLFoYKksZWMYAd2RaS0YscgBbdSp%2FWLIINVpSzGLZGFpuCFJMDgBGD0Q0gB1VL0zmVhcOOJdaROSUoQARfsHg9VJCKhTKmFyOGSoANx60RloAIx7qQlIYOllG3q20Dgh1VRh%2BmS3Zg%2FUjtGSYHqWY5YMBpBx7bQIADaSNAA0uqgACjBVJYcgBZGh8MAIVSULAAX2QaIgGOxuIJRJJ8DJuSpNLpOLxWEJhGJpPJ7JAlgUAGJFAAOSWS%2BG0nH07m8%2FkswUAXWQqJA6PlXMZfOZrMp1McLTUCCGqG1WN1PKZArZxqtCr1ysNQpIAzN8AAzJa5daGbb9fbKerNR7WqoEAAGP2cwNKg2Cx3%2B51B13J0ARr0AJjjOoTdpVDtAIrw4qlldl8cVRbdYY5BdrweLRsbAebGZLWtTNsTIaFZZAFelEurTZdSbZqvVIFqVBEEFqdWRpehCgASkMAMLiQfrvAb727kD73KbxAnimzvpgKi3HDcLCMAZlpHCtSsKh9SwYNQk2dWHIGBLEaPoAjQFxGGMP9VGZJFVQpIA%3D%3D%3D"
+    },
+    {
+      "size": 5,
+      "regions": [
+        [
+          0,
+          1,
+          2,
+          3,
+          8
+        ],
+        [
+          4,
+          9,
+          14,
+          18,
+          19
+        ],
+        [
+          5,
+          6,
+          10,
+          15,
+          20
+        ],
+        [
+          7,
+          11,
+          12,
+          13,
+          17
+        ],
+        [
+          16,
+          21,
+          22,
+          23,
+          24
+        ]
+      ],
+      "marked": [
+        12,
+        17,
+        7,
+        10,
+        15,
+        0
+      ],
+      "solution": "4315234521523142143515243",
+      "url": "https://sudokupad.app/fpuzN4IgzglgXgpiBcBWANCALhNAbO8QEkAnQmAcwFcsBDQgAgDMB7QtEsMWscgE0YGty8WogAeiEKirk0AC2YIQAQUKMAdrQAyEbgEvaACkVgADjTRVSAY3JgAlBJCFKMMDDQKAtLQDK51dxpuWghiMkoaTh5%2BclonHA4qY2MsAE8AOloAMQgsLFoYKksZWMYAd2RaS0YscgBbdSp%2FWLIINVpSzGLZGFpuCFJMDgBGD0Q0gB1VL0zmVhcOOJdaROSUoQARfsHg9VJCKhTKmFyOGSoANx60RloAIx7qQlIYOllG3q20Dgh1VRh%2BmS3Zg%2FUjtGSYHqWY5YMBpBx7bQIADaSNAlgUAGJFAAOHE4%2BEQS6qAAKMFUlhyAFkaHwwAhVJQsABfZCgAZE0nkqk0unwBm5FlswlkzkUrDUwi0%2BmMwUgdkisliiVSvky1mOFpqBAAFlQ8pJiu5kt5%2FOZAF1kKi5cKDVzxTzpQL1frRUaVabZSQBlr4AAmVDovBY3Ehgkcw3242O5nqr2tVQIAAMeptrsj7rVoDjPt11vDduVJplFqt2YT8CGAcxeNDKfzSodqqdQvrbqLzZAgZAwZrYYVBcbHudqYjhejns15dzLtHg%2BLlqzk4Qlc71ZD%2BLr%2FYbUabMZbW7b49jS79VaDNY3eYP6fbe413qnm9t24zHbLOqfabHu6ZJcXD%2BXT9Zx3Id%2F3jBAAGYgIHEDM3vcD4Cgq9n0PH9jwAxDoJfW8JwwpCZxg19zQtEBaioEQIFqOpkTRaEFAAJQggBhCCQFlKFcgY7UWLY9UOKwBjfR49i6LwRimKGXjaM4sTuMkkSZJAeihgktiSL6MAqFuHBuCwRgBkDJFOzUVgqD6SwMDUOkSNYcgYEsRo%2BgCNAXEYYxLNUXkkTNJkgA%3D"
+    },
+    {
+      "size": 6,
+      "regions": [
+        [
+          0,
+          1,
+          2,
+          3,
+          6,
+          7
+        ],
+        [
+          4,
+          8,
+          9,
+          10,
+          14,
+          15
+        ],
+        [
+          5,
+          11,
+          16,
+          17,
+          22,
+          23
+        ],
+        [
+          12,
+          13,
+          18,
+          19,
+          24,
+          30
+        ],
+        [
+          20,
+          21,
+          25,
+          26,
+          27,
+          31
+        ],
+        [
+          28,
+          29,
+          32,
+          33,
+          34,
+          35
+        ]
+      ],
+      "marked": [
+        24,
+        30,
+        2,
+        3,
+        7,
+        6,
+        12,
+        23,
+        29
+      ],
+      "solution": "145326264153513642326415651234432561",
+      "url": "https://sudokupad.app/fpuzN4IgzglgXgpiBcA2ANCALhNAbO8QEkAnQmAcwFcsBDQgAgDMB7QtEsMWscgE0YGty8WogAeiEKirk0AC2YIQAQUKMAdrQAyEbgEvaACkVgADjTRVSAY3JgAlBJCFKMMDDQKAtLQDK51dxpuWghiMkoaTh5%2BclonHA4qY2MsAE8AOloAMQgsLFoYKksZWMYAd2RaS0YscgBbdSp%2FWLIINVpSzGLZGFpuCFJMDgBGD0Q0gB1VL0zmVhcOOJdaROSUoQARfsHg9VJCKhTKmFyOGSoANx60RloAIx7qQlIYOllG3q20Dgh1VRh%2BmS3Zg%2FUjtGSYHqWY5YMBpBx7bQIADaSNAA0uqgACjBVJYcgBZGh8MAIVSULAAX2QaIgGOxuIJRJJ8DJuSpoEsCgAxIoABx8vnw2k4%2Bl4rCEwjE0nk9mOFpqBAABlQnLwPP5GqFdJxYolUpZMupIHRIp1jMlzNZlKNJAGCvgAGZUCasWbxUzpWyALrIVEgVUgdUC3la00M90Wz3Wjnc4OC53C13hvWWw2gW2tVQIIYJ7XJj0GtlGl2i836q2yktulNR2UZ%2B1O42J0sR8syn1%2BgNBzW5sO6gsV4vN6sDtNyu1Z%2BA5pt5%2FuRwvR8eZ7O9pNzttFmmzsupzczvs72sdrcH1u7xdV%2FPzwfp%2BWTgAsq5bNYXdbvCEf%2B7Xh9fQ%2B3Z9rI0uzjEMnxHa9219W8JwQAAmFVYw1eMv2fUc90vddz0rYcrw3Rd6wfMDcKwv9TxfG9%2FUQ4NQ2%2FADX2PJd7Xgyi1RAmjUIg9CcMwwDoOXeAAFYiJ438T1o8ixwwn8KKkuiKy9H0QFqKgRAgWo6mRDloQUAAlASAGEhhAWUoVyXTEEM4ygO0vAdKGfSHSsrSzNs%2Bz7yc%2F0bJAHTYP02CPNMrBdN8oyTK8nSHUssKXO8%2B99PEaKgtsgyEsUvowCoW4cG4LBGAGVUkX9NRWCoPpLAwNQSUU1hyBgSxGj6AI0BcRhjAq1RmSRL0KSAA"
+    },
+    {
+      "size": 7,
+      "regions": [
+        [
+          0,
+          1,
+          7,
+          8,
+          14,
+          15,
+          16
+        ],
+        [
+          2,
+          3,
+          4,
+          9,
+          10,
+          11,
+          18
+        ],
+        [
+          5,
+          6,
+          12,
+          13,
+          19,
+          20,
+          27
+        ],
+        [
+          17,
+          22,
+          23,
+          24,
+          25,
+          26,
+          31
+        ],
+        [
+          21,
+          28,
+          29,
+          35,
+          36,
+          42,
+          43
+        ],
+        [
+          30,
+          37,
+          38,
+          39,
+          44,
+          45,
+          46
+        ],
+        [
+          32,
+          33,
+          34,
+          40,
+          41,
+          47,
+          48
+        ]
+      ],
+      "marked": [
+        17,
+        24,
+        31,
+        22,
+        15,
+        29,
+        10,
+        12,
+        19,
+        37,
+        44,
+        45,
+        46,
+        35,
+        42,
+        34,
+        13,
+        47
+      ],
+      "solution": "3472651621547317563424537216562413773615242143765",
+      "url": "https://sudokupad.app/fpuzN4IgzglgXgpiBcB2ANCALhNAbO8QEkAnQmAcwFcsBDQgAgDMB7QtEsMWscgE0YGty8WogAeiEKirk0AC2YIQAQUKMAdrQAyEbgEvaACkVgADjTRVSAY3JgAlBJCFKMMDDQKAtLQDK51dxpuWghiMkoaTh5%2BclonHA4qY2MsAE8AOloAMQgsLFoYKksZWMYAd2RaS0YscgBbdSp%2FWLIINVpSzGLZGFpuCFJMDgBGD0Q0gB1VL0zmVhcOOJdaROSUoQARfsHg9VJCKhTKmFyOGSoANx60RloAIx7qQlIYOllG3q20Dgh1VRh%2BmS3Zg%2FUjtGSYHqWY5YMBpBx7bQIADaSNAA0uqgACjBVJYcgBZGh8MAIVSULAAX2QaIgGOxuIJRJJ8DJuSpoBIAzUCCGqHROPpeKwhMIxNJ5PZjha3PgvJA%2FKxOKFIrFLIl1KlXNUPL5tIFSsZouZrMpGs5rW18AATLq6QbhUzxWyzdLLTb5XrFQyHUanZSALrIVGai0IAAMtv13pVxvVHNd4cjXuVjrVzppdujqZNkssCgAxIoABzF4vwz2Cw2qnMahWVn3VuMhmXuvN4QslzvlzMp31p03xrUIVsF0tdpP1mN%2BimB4PmmURj09qux9PNy2LtsgDtj7tR3uNtfzjcT%2B1T%2FuS48IADMqC3O%2FHS%2F3K%2BnLqHstPWb7NdA97HZc%2FA9VwHJ9kxfC9Z0HUN4AAFkA8CfxAP9OwA0DJ2zJs6zPDC12Q3d4IbYDJSwr9DxAkigNfKCWwI88c0gtDsO%2FJs8MfCiEKbK94AAVlonCQK428kNHFCiz3MDCKo9cEAANj45ijwTeA5MY0iiLfaCVNY1D2MkiCg2oy04OE9t%2FzE%2BSyMvJTjN0uiWJE%2FDVMoi9awrJjLNc5c9MQriVNs%2FirPfPy3LU6cGK44ztPMpyOMU98bJC5yfKU3iTO3MzxPQhSBJSu8HLYxLYpy99UqizL3PU398p0wrvMw2q7LZf1AxAWoqBECBajqZFf2hBQACVrwAYRgkBcz6vB%2Bpgkaxo1KFcgG7iZvGhbJumq1Zt61aQEGoaNpWrBFr2zakImnarWWuazv6i6ZJO%2BbDsm4a7oOgaZKG697uuxAPq%2B7b%2Bp%2B0bXsmn7uL%2Bx6dveoZwYGn7oeBnalvEBGbqG5Grv%2Bn6XpavowCoW4cG4LBGAGNskSQtRWCoPpLAwNQSRa1hyBgSxGj6AI0BcRhjDp1RmSRf0KSAA%3D"
+    }
+  ]
+}

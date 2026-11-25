@@ -308,6 +308,25 @@ export function valuesOf(game: Game): string {
   return gridValues(visibleGivensOf(game), game.position.entries)
 }
 
+function cloneState(rules: readonly VariantRule[] | SizedRuleGame['rules'] | undefined, values: string, size: number) {
+  if (!rules?.some(rule => rule.type === 'clone')) return
+  const allowed = Array(values.length).fill((1 << size) - 1) as number[]
+  const conflicts = new Set<number>()
+  for (const rule of rules) if (rule.type === 'clone') for (const group of rule.groups) {
+    const placed = group.filter(cell => values[cell] !== '0')
+    if (!placed.length) continue
+    const first = placed[0]
+    const digit = positionDigit(values[first])
+    const bit = 1 << (digit - 1)
+    for (const cell of group) allowed[cell] &= bit
+    for (const cell of placed.slice(1)) if (values[cell] !== values[first]) {
+      conflicts.add(first)
+      conflicts.add(cell)
+    }
+  }
+  return { allowed, conflicts }
+}
+
 function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid: PlayGrid, sizedRules?: SizedRuleGame['rules']) {
   const rules = puzzle?.rules ?? sizedRules
   const states = [
@@ -318,6 +337,7 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
     sizedQuadrupleState(sizedRules, values, grid.size),
     nonogramState(sizedRules, values, grid.size),
     sizedSkyscrapersState(sizedRules, values, grid.size),
+    cloneState(rules, values, grid.size),
   ]
     .filter(state => state !== undefined)
   const result = states[0]
@@ -367,6 +387,14 @@ export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGr
         if (values[first] !== '0' && values[second] !== '0' && values[first] !== values[second]) {
           conflicts.add(first)
           conflicts.add(second)
+        }
+      }
+    } else if (rule.type === 'clone') {
+      for (const group of rule.groups) {
+        const first = group[0]
+        for (const other of group.slice(1)) if (values[first] !== '0' && values[other] !== '0' && values[first] !== values[other]) {
+          conflicts.add(first)
+          conflicts.add(other)
         }
       }
     }

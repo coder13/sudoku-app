@@ -8,7 +8,7 @@ import { countMixedSolutions } from './helpers/mixed-oracle.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { coachCode as coach } from './helpers/coach-code.ts'
 import { jigsawMembership, MINI_GRID } from '../src/sudoku/grid.ts'
-import { EMPTY } from '../src/sudoku/game.ts'
+import { conflictsOf, EMPTY, enter, makeGame } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
@@ -127,13 +127,54 @@ test('imports six-by-six f-puzzles Jigsaw regions with a companion line rule', a
       return { region: labels[cell] - 1, ...(cell === 7 ? { given: true, value: 4 } : {}) }
     })),
     thermometer: [{ lines: [['R1C1', 'R1C2', 'R2C2']] }],
+    clone: [{ cells: ['R1C1'], cloneCells: ['R3C3'] }],
   }
   const imported = await detectPuzzle(JSON.stringify(puzzle))
   assert.equal(imported.format, 'f-puzzles')
   assert.equal(imported.givens[7], '4')
   assert.ok(imported.grid && 'regions' in imported.grid)
   assert.deepEqual(jigsawMembership(imported.grid as NonNullable<typeof imported.grid>), labels.map(label => label - 1))
-  assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [0, 1, 7] }])
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'clone', groups: [[0, 14]] },
+    { type: 'thermometer', cells: [0, 1, 7] },
+  ])
+})
+
+test('imports structured Clone pairs on sized f-puzzles grids', async () => {
+  const puzzle = {
+    size: 6,
+    ruleset: 'Normal 6x6 Sudoku rules apply.',
+    grid: Array.from({ length: 6 }, () => Array.from({ length: 6 }, () => ({}))),
+    clone: [
+      { cells: ['R1C1', 'R1C2'], cloneCells: ['R2C4', 'R2C5'] },
+      { cells: ['R2C4'], cloneCells: ['R3C6'] },
+    ],
+  }
+  const imported = await detectPuzzle(JSON.stringify(puzzle))
+  assert.equal(imported.grid?.size, 6)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'clone', groups: [[0, 9], [1, 10]] },
+    { type: 'clone', groups: [[9, 17]] },
+  ])
+  const conflicting = Array(36).fill('0')
+  conflicting[0] = '1'
+  conflicting[9] = '2'
+  assert.deepEqual(conflictsOf(conflicting.join(''), undefined, imported.grid!, imported.sizedRules), new Set([0, 9]))
+  const game = { ...makeGame('sized-clone', 'Sized Clone', imported.givens, 'imported', 1, imported.grid!),
+    sized: { rules: imported.sizedRules!, solution: '0'.repeat(36) } }
+  const noted = enter(enter(game, [9], 'candidate', 1), [9], 'candidate', 2)
+  const placed = enter(noted, [0], 'value', 1)
+  assert.equal(placed.position.corner[9], 1)
+  await assert.rejects(detectPuzzle(JSON.stringify({
+    ...puzzle, clone: [{ cells: ['R1C1'], cloneCells: ['R7C5'] }],
+  })), /invalid cell reference/i)
+  const mini = await detectPuzzle(JSON.stringify({
+    size: 4,
+    ruleset: 'Normal 4×4 Sudoku rules apply.',
+    grid: Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => ({}))),
+    clone: [{ cells: ['R1C1'], cloneCells: ['R4C4'] }],
+  }))
+  assert.deepEqual(mini.sizedRules, [{ type: 'clone', groups: [[0, 15]] }])
 })
 
 test('the published Mini Jigsaw 3 short link retains its wrapped regions and companion rules', async t => {
