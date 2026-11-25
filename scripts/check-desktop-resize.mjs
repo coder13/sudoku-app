@@ -41,7 +41,7 @@ const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
   'src/components/DesktopPlayLayout.tsx', 'src/components/desktop-resize-preview.ts', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
   'src/components/HintCard.tsx', 'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
-  'src/components/VariantClues.tsx', 'src/components/VariantClueLabels.tsx',
+  'src/components/VariantClues.tsx', 'src/components/VariantClueLabels.ts',
   'src/components/Controls.tsx', 'src/components/ModeBadge.tsx', 'src/components/Modal.tsx',
   'src/components/ResizeStepControls.tsx', 'src/components/Presence.tsx', 'src/components/usePlayPreference.ts',
   'src/sudoku/play-preferences.ts', 'src/sudoku/themes.ts', 'src/styles.css', 'package-lock.json',
