@@ -1921,20 +1921,14 @@ impl SizedConstraintGrid {
                             1 << (digit - 1)
                         };
                     }
+                    if !self.apply_rules(digits, domains) || domains.contains(&0) {
+                        return false;
+                    }
                     if local_nodes_left > 0 {
                         local_nodes_left = local_nodes_left.saturating_sub(1);
-                        return self.apply_rules(digits, domains) && !domains.contains(&0);
+                        return true;
                     }
-                    loop {
-                        if !self.apply_rules(digits, domains) || domains.contains(&0) {
-                            return false;
-                        }
-                        match self.layout.restrict_search_houses(domains) {
-                            Some(true) => {}
-                            Some(false) => return true,
-                            None => return false,
-                        }
-                    }
+                    self.layout.restrict_search_houses(domains).is_some()
                 });
         if crust_search_exhausted && result.0 != Analysis::Multiple {
             (Analysis::SearchLimit, None)

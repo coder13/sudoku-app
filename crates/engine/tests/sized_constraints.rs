@@ -1,7 +1,8 @@
 #![cfg(feature = "variants")]
 
 use sudoku_app_engine::{
-    Analysis, GridSpec, SizedConstraint as Rule, SizedConstraintGrid, SizedDiagonal, SizedParity,
+    Analysis, ClueDirection, GridSpec, SizedConstraint as Rule, SizedConstraintGrid, SizedDiagonal,
+    SizedParity,
 };
 
 const SIX: GridSpec = GridSpec {
@@ -59,6 +60,41 @@ fn diagonal_parity_and_thermometers_all_matter_to_the_solution() {
             assert_ne!(mask & (1 << (answer[cell] - 1)), 0);
         }
     }
+}
+
+#[test]
+fn published_little_killer_between_gjbz_proves_unique_with_a_small_budget() {
+    // https://sudoku.coach/en/s/GJBz
+    let rules = [
+        Rule::LittleKiller {
+            direction: ClueDirection::SouthWest,
+            cells: vec![17, 22, 27, 32],
+            sum: 8,
+        },
+        Rule::LittleKiller {
+            direction: ClueDirection::SouthWest,
+            cells: vec![29, 34],
+            sum: 10,
+        },
+        Rule::LittleKiller {
+            direction: ClueDirection::NorthEast,
+            cells: vec![18, 13, 8, 3],
+            sum: 11,
+        },
+        Rule::Between {
+            cells: vec![20, 15, 16, 10, 4],
+        },
+        Rule::Between {
+            cells: vec![0, 6, 7, 14],
+        },
+    ];
+    let grid = SizedConstraintGrid::new(SIX, &rules).unwrap();
+    let expected = b"164523532641216435345216623154451362".map(|digit| digit - b'0');
+    assert_eq!(grid.analyze(&[0; 36], 1_000), Analysis::Unique);
+    assert_eq!(
+        grid.solve_unique(&[0; 36], 1_000).as_deref(),
+        Ok(expected.as_slice())
+    );
 }
 
 #[test]
