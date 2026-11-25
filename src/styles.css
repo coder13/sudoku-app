@@ -331,7 +331,7 @@ svg { flex-shrink: 0; }
   --puzzle-column-padding: calc(2 * (var(--puzzle-padding-inline) + var(--puzzle-badge-gutter-inline)) + 2px);
   --play-columns-width: var(--saved-play-columns-width, calc(var(--board-frame-limit) + var(--puzzle-column-padding) + var(--play-input-default-width)));
   position: relative;
-  inline-size: calc(var(--play-columns-width) + var(--space-12));
+  inline-size: calc(var(--play-columns-width) + var(--play-panel-gap));
   max-inline-size: 100%;
   grid-template-columns: minmax(0, 1fr) var(--play-input-width);
 }

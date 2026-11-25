@@ -374,17 +374,23 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const update = (input: number) => {
       // Native track sizing does not change inherited variables on every cell.
       workspace.style.gridTemplateColumns = `minmax(0, 1fr) ${input}px`
+      // Keep the board's width constraint in step with the live input track.
+      // Otherwise the grid grows only after React commits the saved width.
+      workspace.style.setProperty('--play-input-width', `${input}px`)
       inputStack.style.setProperty('--play-input-scale', String(input / DEFAULT_DESKTOP_INPUT_WIDTH))
     }
     return {
       update,
-      clear() {
+      clear(nextInputWidth) {
         clearBoards()
         for (const { restore, restoreHint } of widthPreviews) {
           restore()
           restoreHint?.()
         }
         restoreWorkspace()
+        // The preview temporarily owns this variable. Restore it to the saved
+        // track width on commit, or the original width when the drag cancels.
+        workspace.style.setProperty('--play-input-width', `${nextInputWidth}px`)
         restoreInput()
         workspace.removeAttribute('data-layout-resizing')
       },

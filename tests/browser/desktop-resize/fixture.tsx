@@ -26,7 +26,6 @@ document.documentElement.dataset.colorMode = 'light'
 
 const Layout = query.has('baseline') ? BaselineDesktopPlayLayout : DesktopPlayLayout
 const Workspace = query.has('baseline') ? BaselinePlayWorkspace : PlayWorkspace
-const PuzzleBoard = query.has('baseline') ? BaselineBoard : Board
 const candidateLayout = query.has('center') ? 'center-corner' : 'grid'
 const noop = () => {}
 const empty = '0'.repeat(81)
@@ -97,6 +96,50 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
   const stage = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLDivElement>(null)
   const boundary = useRef<HTMLDivElement>(null)
+  const hintColumn = useRef<HTMLDivElement>(null)
+  const hintFrame = useRef<HTMLDivElement>(null)
+  const hintCard = useRef<HTMLElement>(null)
+  const hintBody = useRef<HTMLDivElement>(null)
+  const hintToolbar = useRef<HTMLDivElement>(null)
+  const hintLayout = { column: hintColumn, frame: hintFrame, card: hintCard, body: hintBody, toolbar: hintToolbar }
+  const modeBadge = !query.has('solved') && (
+    <ModeBadge
+      mode="pencil"
+      descriptionId="desktop-resize-mode"
+      cardRef={boundary}
+      position={badge}
+      onPosition={setBadge}
+      onActivate={noop}
+      boundaryLabel="Sudoku grid"
+    />
+  )
+  const board = query.has('baseline') ? (
+    <BaselineBoard
+      givens={givens}
+      values={givens}
+      position={position}
+      variantPuzzle={outsidePuzzle}
+      candidateLayout={candidateLayout}
+      annotations={annotations}
+      showGuides
+      onCell={noop}
+      modeBorder={query.has('solved') ? undefined : 'pencil'}
+      modeBoundaryRef={boundary}
+      modeBadge={modeBadge}
+    />
+  ) : (
+    <Board
+      content={{ givens, values: givens, position, variantPuzzle: outsidePuzzle }}
+      appearance={{ candidateLayout, annotations, showGuides: true }}
+      interaction={{ onCell: noop }}
+      layout={{
+        frameRef: hintFrame,
+        modeBorder: query.has('solved') ? undefined : 'pencil',
+        modeBoundaryRef: boundary,
+        modeBadge,
+      }}
+    />
+  )
 
   // Match Worktable's desktop input alignment observer. The fixture uses the
   // actual board/play layers and controls, but does not mount Worktable itself.
@@ -126,7 +169,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
   }, [])
 
   const puzzlePanel = (
-    <div className="puzzle-column" data-reserve-badge-space>
+    <div ref={hintColumn} className="puzzle-column" data-reserve-badge-space>
       <section ref={puzzle} className="puzzle puzzle-flat" aria-label="Desktop resize puzzle" data-desktop-solved={query.has('solved') || undefined}>
         <div className="puzzle-metadata">
           <span className="puzzle-difficulty">Hard</span>
@@ -140,31 +183,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
         <div className="puzzle-stage" ref={stage}>
           <div className="puzzle-play-layers">
             <div className="puzzle-play-layer puzzle-live-layer">
-              <PuzzleBoard
-                givens={givens}
-                values={givens}
-                position={position}
-                variantPuzzle={outsidePuzzle}
-                candidateLayout={candidateLayout}
-                annotations={annotations}
-                showGuides
-                onCell={noop}
-                modeBorder={query.has('solved') ? undefined : 'pencil'}
-                modeBoundaryRef={boundary}
-                modeBadge={
-                  !query.has('solved') && (
-                    <ModeBadge
-                      mode="pencil"
-                      descriptionId="desktop-resize-mode"
-                      cardRef={boundary}
-                      position={badge}
-                      onPosition={setBadge}
-                      onActivate={noop}
-                      boundaryLabel="Sudoku grid"
-                    />
-                  )
-                }
-              />
+              {board}
             </div>
           </div>
         </div>
@@ -222,6 +241,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
         detailNavigation={{ first: false, last: true, onMove: noop }}
         action={{ label: 'Apply hint', onClick: noop }}
         explanation={Array(8).fill('The four wing cells have four possible digits between them. Compare their candidates to find the elimination.')}
+        layoutAnchors={{ card: hintCard, body: hintBody, toolbar: hintToolbar }}
         onClose={() => setShowHint(false)}
       />
     </PlayHint>
@@ -238,6 +258,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
       desktop
       puzzle={puzzlePanel}
       input={inputPanel}
+      hintLayout={hintLayout}
       hint={hint}
       mobile={{
         puzzleId: 'desktop-resize',
