@@ -42,9 +42,9 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
   workers[2].reply([])
   await Promise.all([selected, foreground])
   workers[0].reply([
-    { actions: [{ eliminate: { cell: 3, digit: 2 } }, { eliminate: { cell: 4, digit: 2 } }] },
-    { actions: [{ eliminate: { cell: 3, digit: 2 } }] },
-    { actions: [{ place: { cell: 5, digit: 6 } }] },
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }, { eliminate: { cell: 4, digit: 2 } }] },
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'locked-candidates', actions: [{ place: { cell: 5, digit: 6 } }] },
   ])
   assert.equal(await background, 3)
   scan.close()
@@ -70,4 +70,42 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
   assert.equal(workers[1].closed, false, 'Closing a variant scan must preserve selected proofs')
   assert.equal(workers[2].closed, false, 'Closing a variant scan must preserve foreground help')
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, cancelledPuzzle)), {})
+})
+
+test('variant technique counts subtract candidate targets found by earlier techniques', async (t) => {
+  const workers: TestWorker[] = []
+  class TestWorker {
+    onmessage?: (message: { data: EngineResponse }) => void
+    requests: { id: number; request: EngineRequest }[] = []
+    terminate() {}
+    constructor() { workers.push(this) }
+    postMessage(message: { id: number; request: EngineRequest }) { this.requests.push(message) }
+    reply(value: unknown) {
+      const { id } = this.requests.shift()!
+      this.onmessage?.({ data: { id, value } as EngineResponse })
+    }
+  }
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'Worker')
+  Object.defineProperty(globalThis, 'Worker', { value: TestWorker, configurable: true })
+  t.after(() => {
+    if (original) Object.defineProperty(globalThis, 'Worker', original)
+    else Reflect.deleteProperty(globalThis, 'Worker')
+  })
+  const puzzle: VariantPuzzle = { givens: '0'.repeat(81), rules: [{ type: 'diagonal', diagonal: 'main' }] }
+  const entries = `1${'0'.repeat(80)}`
+  const order = ['locked-candidates', 'xy-wing']
+  const scan = watchTechniqueScan(entries, undefined, { puzzle, entries }, undefined, order)
+  const count = scan.count('xy-wing')
+  assert.deepEqual(workers[0].requests[0].request, {
+    type: 'variant', operation: 'hints', position: { puzzle, entries, eliminations: undefined },
+    techniqueOrder: order, limit: 0xffff_ffff,
+  })
+  workers[0].reply([
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'xy-wing', actions: [
+      { eliminate: { cell: 3, digit: 2 } }, { eliminate: { cell: 4, digit: 2 } },
+    ] },
+  ])
+  assert.equal(await count, 1)
+  scan.close()
 })

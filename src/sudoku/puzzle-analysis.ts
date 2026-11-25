@@ -65,8 +65,8 @@ const CLASSIC_HOUSES = [
     (Math.floor(box / 3) * 3 + Math.floor(offset / 3)) * CLASSIC_SIZE + (box % 3) * 3 + offset % 3)),
 ]
 
-/** Count the basic classic techniques directly from one position's candidates.
- * These bounded scans match the engine's distinct cell/digit target counts.
+/** Count singles directly from one position's candidates.
+ * More expensive techniques use the dedicated engine worker.
  */
 export function classicBasicTechniqueCounts(values: string, eliminations?: readonly number[]) {
   if (values.length !== CLASSIC_CELLS) return {}
@@ -100,7 +100,7 @@ export function classicBasicTechniqueCounts(values: string, eliminations?: reado
 
   const targets = new Map<string, Set<number>>([
     ['full-house', new Set()], ['hidden-single-box', new Set()], ['naked-single', new Set()],
-    ['hidden-single', new Set()], ['pointing', new Set()], ['claiming', new Set()],
+    ['hidden-single', new Set()],
   ])
   function record(technique: string, cell: number, digit: number) {
     targets.get(technique)?.add(cell * 9 + digit)
@@ -125,39 +125,18 @@ export function classicBasicTechniqueCounts(values: string, eliminations?: reado
     }
   }
 
-  function recordIntersection(technique: 'pointing' | 'claiming', source: readonly number[], target: readonly number[], digit: number) {
-    const sourceCells = new Set(source)
-    for (const cell of target) if (!sourceCells.has(cell) && masks[cell] & (1 << (digit - 1))) record(technique, cell, digit)
-  }
-
-  for (let boxIndex = 0; boxIndex < 9; boxIndex++) {
-    const box = CLASSIC_HOUSES[18 + boxIndex]
-    for (let digit = 1; digit <= 9; digit++) {
-      const positions = box.filter(cell => masks[cell] & (1 << (digit - 1)))
-      if (positions.length < 2) continue
-      const row = Math.floor(positions[0] / 9)
-      const column = positions[0] % 9
-      if (positions.every(cell => Math.floor(cell / 9) === row)) {
-        recordIntersection('pointing', box, CLASSIC_HOUSES[row], digit)
-      }
-      if (positions.every(cell => cell % 9 === column)) {
-        recordIntersection('pointing', box, CLASSIC_HOUSES[9 + column], digit)
-      }
+  const covered = new Set<number>()
+  const counts: Record<string, { count: number }> = {}
+  for (const technique of ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single']) {
+    let count = 0
+    for (const target of targets.get(technique) ?? []) {
+      if (covered.has(target)) continue
+      covered.add(target)
+      count++
     }
+    counts[technique] = { count }
   }
-  for (let houseIndex = 0; houseIndex < CLASSIC_SIZE * 2; houseIndex++) {
-    const line = CLASSIC_HOUSES[houseIndex]
-    for (let digit = 1; digit <= 9; digit++) {
-      const positions = line.filter(cell => masks[cell] & (1 << (digit - 1)))
-      if (positions.length < 2) continue
-      const boxIndex = Math.floor(Math.floor(positions[0] / 9) / 3) * 3 + Math.floor((positions[0] % 9) / 3)
-      if (positions.every(cell => Math.floor(Math.floor(cell / 9) / 3) * 3 + Math.floor((cell % 9) / 3) === boxIndex)) {
-        recordIntersection('claiming', line, CLASSIC_HOUSES[18 + boxIndex], digit)
-      }
-    }
-  }
-
-  return Object.fromEntries([...targets].map(([technique, found]) => [technique, { count: found.size }]))
+  return counts
 }
 
 /** One hint per distinct proof pattern, with all of its supported actions.

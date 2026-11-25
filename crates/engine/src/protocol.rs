@@ -206,6 +206,7 @@ enum Request {
         values: String,
         eliminations: Option<Vec<u16>>,
         technique: String,
+        technique_order: Option<Vec<String>>,
     },
     ProveRank {
         values: String,
@@ -1111,12 +1112,17 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             values,
             eliminations,
             technique,
+            technique_order,
         } => {
             let board = board(&values)?;
             let eliminations = elimination_masks(eliminations)?;
             let technique = Technique::from_id(&technique).ok_or(INVALID_TECHNIQUE)?;
+            let order = match technique_order {
+                Some(ids) => profile(Some(ids))?.technique_order().to_vec(),
+                None => vec![technique],
+            };
             let count = TECHNIQUE_COUNTS
-                .with_borrow_mut(|scan| scan.count(board, eliminations, technique))
+                .with_borrow_mut(|scan| scan.count(board, eliminations, technique, &order))
                 .map_err(hint_error)?;
             Ok(json!(count))
         }

@@ -25,7 +25,7 @@ use crate::{
 
 pub(super) fn catalog() -> Value {
     let mut difficulty_order = VariantTechnique::all().collect::<Vec<_>>();
-    difficulty_order.sort_by_key(|technique| technique.difficulty());
+    difficulty_order.sort_by_key(|technique| (technique.difficulty(), technique.cost()));
     json!({
         "defaultOrder": VariantTechnique::DEFAULT_ORDER,
         "difficultyOrder": difficulty_order,

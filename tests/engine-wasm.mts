@@ -100,6 +100,14 @@ test('technique counts match full deductions before and after a candidate edit',
   assert.equal(result.code, 'invalid-eliminations')
 })
 
+test('technique count scan assigns an overlapping candidate to its earlier technique', async () => {
+  const { run } = engineRequests()
+  const solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const values = `0${solved.slice(1)}`
+  assert.equal(await run({ type: 'technique-count', values, technique: 'hidden-single', techniqueOrder: ['hidden-single'] }), 1)
+  assert.equal(await run({ type: 'technique-count', values, technique: 'hidden-single', techniqueOrder: ['full-house', 'hidden-single'] }), 0)
+})
+
 test('multi-coloring exports both two-group deductions and drops a broken proof', async () => {
   const { run } = engineRequests()
   const technique = 'multi-coloring'

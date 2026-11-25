@@ -321,7 +321,7 @@ export type EngineRequest =
   | { type: 'release-hints'; collection: number }
   | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
   | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
-  | ({ type: 'technique-count'; technique: string } & CandidatePosition)
+  | ({ type: 'technique-count'; technique: string; techniqueOrder?: readonly string[] } & CandidatePosition)
   | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
   | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
@@ -1010,7 +1010,7 @@ export type EngineSession = ReturnType<typeof createEngineSession>
 let idleCountConnection: EngineConnection | undefined
 
 export function createCountWorker(values: string, eliminations: readonly number[] | undefined,
-  position?: VariantPosition, visibility?: VariantVisibility,
+  position?: VariantPosition, visibility?: VariantVisibility, techniqueOrder?: readonly string[],
 ) {
   let connection: EngineConnection | undefined
   return {
@@ -1019,14 +1019,33 @@ export function createCountWorker(values: string, eliminations: readonly number[
         connection = idleCountConnection ?? { pending: new Map() }
         idleCountConnection = undefined
       }
-      if (!position) return sendRequest(connection, { type: 'technique-count', values, eliminations, technique })
+      if (!position) return sendRequest(connection, {
+        type: 'technique-count', values, eliminations, technique,
+        ...(techniqueOrder && { techniqueOrder }),
+      })
+      const order = [...(techniqueOrder ?? [])]
+      if (!order.includes(technique)) order.push(technique)
+      const end = order.indexOf(technique)
+      const prefix = order.slice(0, end + 1)
       return sendRequest(connection, { type: 'variant', operation: 'hints',
         position: { ...position, eliminations }, ...(visibility && { visibility }),
-        techniqueOrder: [technique], limit: 0xffff_ffff,
-      }).then((hints) => new Set(hints.flatMap(({ actions }) => actions.map((action) => {
-        const { cell, digit } = 'place' in action ? action.place : action.eliminate
-        return `${'place' in action ? 'p' : 'e'}:${cell}:${digit}`
-      }))).size)
+        techniqueOrder: prefix, limit: 0xffff_ffff,
+      }).then((hints) => {
+        const covered = new Set<string>()
+        const targets = new Set<string>()
+        for (const id of prefix) {
+          for (const hint of hints) {
+            if (hint.technique !== id) continue
+            for (const action of hint.actions) {
+              const { cell, digit } = 'place' in action ? action.place : action.eliminate
+              const target = `${cell}:${digit}`
+              if (id === technique && !covered.has(target)) targets.add(target)
+              covered.add(target)
+            }
+          }
+        }
+        return targets.size
+      })
     },
     close() {
       if (!connection) return
