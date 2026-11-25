@@ -461,7 +461,7 @@ export function DesktopDockLayout({
       (showTechniques && !api.getPanel(dockBindings.techniques.panelId)) ||
       (showRules && !api.getPanel(dockBindings.rules.panelId))
     )
-    const duration = addingTab ? motionDuration('panel') : 0
+    const duration = addingTab ? motionDuration('tabs') : 0
     const groups = duration ? api.groups.map(group => group.element) : []
     const before = groups.map(element => ({ element, bounds: element.getBoundingClientRect() }))
     syncPanelRegions(api, visibility.current)

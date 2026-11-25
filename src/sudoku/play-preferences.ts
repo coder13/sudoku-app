@@ -32,6 +32,7 @@ export type PlayPreferences = {
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
   pinnedActions: readonly PinnedAction[]
+  mobileHintPinned: boolean
   desktopLayoutWidth: number
   desktopPanelWidths: DesktopPanelWidths
 }
@@ -56,6 +57,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
   pinnedActions: [],
+  mobileHintPinned: false,
   desktopLayoutWidth: DEFAULT_DESKTOP_LAYOUT_WIDTH,
   desktopPanelWidths: DEFAULT_DESKTOP_PANEL_WIDTHS,
 }
@@ -135,6 +137,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
       ? saved.puzzleBrowserView : 'active',
     cardModeBadgePosition: parseModeBadgePosition(saved.cardModeBadgePosition),
     pinnedActions: parsePinnedActions(saved.pinnedActions),
+    mobileHintPinned: saved.mobileHintPinned === true,
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),

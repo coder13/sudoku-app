@@ -13,7 +13,6 @@ type Options = {
   order: readonly MobilePanelId[]
   puzzleId: string
   puzzleShrink?: number
-  inputTabCount?: number
   inputResizeRefs?: MobileInputResizeRefs
   rearranging: boolean
   withHint: boolean
@@ -23,17 +22,18 @@ type Options = {
 /** Fit the mobile puzzle and keypad to their available page space. */
 export function useMobilePuzzleFit({
   layoutRef, pageRef, workspaceRef, puzzlePanelRef, inputPanelRef, hintPanelRef, gapRef,
-  order, puzzleId, puzzleShrink = 0, inputTabCount, inputResizeRefs, rearranging, withHint, fitContent,
+  order, puzzleId, puzzleShrink = 0, inputResizeRefs, rearranging, withHint, fitContent,
 }: Options) {
   const [inputResizing, setInputResizing] = useState(false)
   const inputResizingRef = useRef(false)
-  const fitBoardNow = useRef<(() => void) | null>(null)
+  const fitBoardNow = useRef<((resizePreview?: boolean) => void) | null>(null)
   const puzzleGestureBase = useRef<{ puzzleId: string; height: number } | null>(null)
   const updateInputResizing = useCallback((resizing: boolean) => {
     inputResizingRef.current = resizing
     setInputResizing(resizing)
   }, [])
   const fitAfterResize = useCallback(() => fitBoardNow.current?.(), [])
+  const previewResize = useCallback(() => fitBoardNow.current?.(true), [])
 
   useLayoutEffect(() => {
     const layout = layoutRef.current
@@ -41,17 +41,19 @@ export function useMobilePuzzleFit({
     const workspace = workspaceRef?.current ?? layout?.parentElement
     const puzzle = puzzlePanelRef.current
     const input = inputPanelRef.current
-    const hintPanel = withHint ? hintPanelRef.current : null
+    // The exiting hint remains in normal layout flow until its collapse ends.
+    // Observe it even after `withHint` switches off so the puzzle is fitted to
+    // the same shrinking height that is visible to the player.
+    const hintPanel = hintPanelRef.current
     const gap = gapRef.current
     if (!layout || !page || !workspace || !puzzle || !input || !gap) return
     if (!pageRef.current) pageRef.current = page
     const blockSize = (element: HTMLElement) => element.getBoundingClientRect().height
-    const fitBoard = () => {
-      // The resize handle drives the card and puzzle preview at pointer cadence.
-      // Avoid layout reads and keypad zoom updates here: zoom changes force a
-      // layout of every digit control on each frame. The observed panel size
-      // triggers this once more after the gesture commits.
-      if (inputResizingRef.current) return
+    const fitBoard = (resizePreview = false) => {
+      // The resize handle explicitly fits live board geometry once per preview
+      // frame, skipping this observer callback while the gesture is active. It
+      // defers keypad zoom recalculation because that lays out every digit key.
+      if (inputResizingRef.current && !resizePreview) return
       // The footer must remain as wide as the input card even after the grid shrinks.
       const inputWidth = input.clientWidth
       if (inputWidth) {
@@ -62,7 +64,7 @@ export function useMobilePuzzleFit({
       }
       const digits = inputResizeRefs?.digitsPanel.current
       const digitControls = inputResizeRefs?.digitControls.current
-      if (digits && digitControls) {
+      if (!resizePreview && digits && digitControls) {
         const visibleHeight = digits.getBoundingClientRect().height
         const currentScale = Number.parseFloat(digitControls.style.getPropertyValue('--mobile-digit-fit-scale')) || 1
         const naturalHeight = digitControls.getBoundingClientRect().height / currentScale
@@ -113,13 +115,14 @@ export function useMobilePuzzleFit({
         const workspaceStyle = getComputedStyle(workspace)
         const gapStyle = getComputedStyle(gap)
         const pixels = (value: string) => Number.parseFloat(value) || 0
-        const margins = [puzzle, input, hintPanel].reduce((sum, card) => (
+        const activeHintPanel = hintPanelRef.current?.isConnected ? hintPanelRef.current : null
+        const margins = [puzzle, input, activeHintPanel].reduce((sum, card) => (
           sum + (card ? pixels(getComputedStyle(card).marginBlockStart) + pixels(getComputedStyle(card).marginBlockEnd) : 0)
         ), 0)
         const available = page.clientHeight - pixels(pageStyle.paddingBlockStart) - pixels(pageStyle.paddingBlockEnd)
           - pixels(workspaceStyle.paddingBlockStart) - pixels(workspaceStyle.paddingBlockEnd)
           - pixels(gapStyle.flexBasis) - margins - input.offsetHeight
-          - (hintPanel ? blockSize(hintPanel) : 0)
+          - (activeHintPanel ? blockSize(activeHintPanel) : 0)
         const puzzleChrome = Math.max(0, puzzle.offsetHeight - board.offsetHeight)
         const boardLimit = `${Math.max(64, Math.floor(available - puzzleChrome))}px`
         if (layout.style.getPropertyValue('--mobile-fit-board-height') !== boardLimit) {
@@ -132,7 +135,7 @@ export function useMobilePuzzleFit({
 
     fitBoardNow.current = fitBoard
     fitBoard()
-    const observer = new ResizeObserver(fitBoard)
+    const observer = new ResizeObserver(() => fitBoard())
     for (const element of [page, puzzle, inputResizeRefs?.puzzleColumn.current,
       inputResizeRefs?.boardViewport.current ?? inputResizeRefs?.boardFrame.current, input, hintPanel]) {
       if (element) observer.observe(element)
@@ -143,7 +146,7 @@ export function useMobilePuzzleFit({
       layout.style.removeProperty('--mobile-input-panel-width')
     }
   }, [layoutRef, pageRef, workspaceRef, puzzlePanelRef, inputPanelRef, hintPanelRef, gapRef,
-    order, puzzleId, puzzleShrink, inputTabCount, inputResizeRefs, rearranging, withHint, fitContent])
+    order, puzzleId, puzzleShrink, inputResizeRefs, rearranging, withHint, fitContent])
 
-  return { inputResizing, updateInputResizing, fitAfterResize }
+  return { inputResizing, updateInputResizing, fitAfterResize, previewResize }
 }

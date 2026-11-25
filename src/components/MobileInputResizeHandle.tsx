@@ -13,14 +13,15 @@ const DOUBLE_TAP_DISTANCE = 24
 
 type Split = { input: number; naturalInput: number; naturalPuzzle: number; min: number; max: number }
 type Tap = { time: number; x: number; y: number; pointerType: string }
-type BoardPreview = { element: HTMLElement; grid: HTMLElement; width: number; limit: number; minimum: number; maximum: number }
+type BoardPreview = { element: HTMLElement; grid: HTMLElement }
 export type MobileInputResizeRefs = {
   puzzle: RefObject<HTMLElement | null>
   puzzleColumn: RefObject<HTMLDivElement | null>
-  puzzleStage: RefObject<HTMLDivElement | null>
   boardViewport: RefObject<HTMLDivElement | null>
   boardFrame: RefObject<HTMLDivElement | null>
   inputTabs: RefObject<HTMLDivElement | null>
+  inputToolbar: RefObject<HTMLDivElement | null>
+  inputPanels: RefObject<HTMLDivElement | null>
   digitsPanel: RefObject<HTMLDivElement | null>
   digitControls: RefObject<HTMLDivElement | null>
   activeInputPanel: RefObject<HTMLDivElement | null>
@@ -43,17 +44,11 @@ function blockSize(element: HTMLElement) {
   return parseFloat(getComputedStyle(element).blockSize)
 }
 
-function measureBoardPreview(layout: HTMLElement, refs: MobileInputResizeRefs, withHint: boolean): BoardPreview | null {
+function measureBoardPreview(refs: MobileInputResizeRefs): BoardPreview | null {
   const element = refs.puzzle.current
-  const stage = refs.puzzleStage.current
   const board = refs.boardViewport.current ?? refs.boardFrame.current
-  const limit = parseFloat(layout.style.getPropertyValue('--mobile-fit-board-height'))
-  if (!element || !stage || !board?.offsetWidth || !Number.isFinite(limit)) return null
-  return {
-    element, grid: board, width: board.offsetWidth, limit,
-    minimum: withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH,
-    maximum: stage.clientWidth,
-  }
+  if (!element || !board?.offsetWidth) return null
+  return { element, grid: board }
 }
 
 function animateBoardSnap({ element, grid }: BoardPreview, before: DOMRect, duration: number) {
@@ -75,7 +70,7 @@ function animateBoardSnap({ element, grid }: BoardPreview, before: DOMRect, dura
 }
 
 function measureSplit(layout: HTMLElement, refs: MobileInputResizeRefs, withHint: boolean): Split | null {
-  const input = refs.inputTabs.current
+  const input = refs.inputPanels.current
   const puzzle = refs.puzzle.current
   const grid = refs.boardViewport.current ?? refs.boardFrame.current
   if (!input || !puzzle || !grid?.offsetWidth) return null
@@ -145,7 +140,7 @@ function inputOverflow(refs: MobileInputResizeRefs) {
   return [panel, ...nested].reduce((pixels, element) => pixels + Math.max(0, element.scrollHeight - element.clientHeight), 0)
 }
 
-export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, refs, edge, disabled, withHint, fitContent = false, hasOpenTabs = false, savedHeight, onHeightChange, onResizingChange, onResizeSettled }: {
+export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, refs, edge, disabled, withHint, fitContent = false, savedHeight, onHeightChange, onResizingChange, onResizePreview, onResizeSettled }: {
   inputId: string
   layoutRef: RefObject<HTMLDivElement | null>
   inputPanelRef: RefObject<HTMLDivElement | null>
@@ -154,10 +149,10 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
   disabled: boolean
   withHint: boolean
   fitContent?: boolean
-  hasOpenTabs?: boolean
   savedHeight?: number
   onHeightChange?: (height: number | undefined) => void
   onResizingChange?: (resizing: boolean) => void
+  onResizePreview?: () => void
   onResizeSettled?: () => void
 }) {
   const handle = useRef<HTMLDivElement>(null)
@@ -238,7 +233,6 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
     drag.current = null
     if (current.frame !== null) cancelAnimationFrame(current.frame)
     const element = handle.current
-    current.board?.element.style.removeProperty('--mobile-input-resize-puzzle-scale')
     onResizingChange?.(false)
     if (element?.hasPointerCapture(current.pointerId)) element.releasePointerCapture(current.pointerId)
   }
@@ -297,7 +291,7 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
       stopResize()
       clearSplit(layout)
     }
-  }, [fitContent, edge, hasOpenTabs, layoutRef, refs])
+  }, [fitContent, edge, layoutRef, refs])
 
   useLayoutEffect(() => {
     const current = drag.current
@@ -349,7 +343,7 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
     const layout = getLayout()
     const split = layout && measureSplit(layout, refs, withHint)
     if (!layout || !split || split.min === split.max) return
-    const board = measureBoardPreview(layout, refs, withHint)
+    const board = measureBoardPreview(refs)
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     onResizingChange?.(true)
@@ -372,14 +366,7 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
     current.frame ??= requestAnimationFrame(() => {
       current.frame = null
       applySplit(current.layout, current.split, current.height)
-      if (current.board) {
-        const { element, width, limit, minimum, maximum } = current.board
-        const target = Math.min(maximum, Math.max(minimum, limit + current.split.input - current.height))
-        const value = String(target / width)
-        if (element.style.getPropertyValue('--mobile-input-resize-puzzle-scale') !== value) {
-          element.style.setProperty('--mobile-input-resize-puzzle-scale', value)
-        }
-      }
+      onResizePreview?.()
     })
   }
 

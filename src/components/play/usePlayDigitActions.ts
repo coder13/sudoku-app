@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { digitsFromMask, paintCandidateGroup, type Game } from '../../sudoku/game'
+import { candidateCount, digitsFromMask, hasCandidate, paintCandidateGroup, type Game } from '../../sudoku/game'
 import { defaultDigitHighlight, type DigitHighlight } from '../../sudoku/play-session'
 import type { DigitHighlightMatch } from '../../sudoku/highlighting'
 
@@ -36,6 +36,11 @@ export function usePlayDigitActions({ puzzle: { gridSize }, selection, capabilit
   function paintSelectedCandidateDigits(color: number) {
     const mask = highlightedDigitMask || (selectedDigit === null ? 0 : 1 << (selectedDigit - 1))
     if (mask) paintCandidateDigits(digitsFromMask(mask, gridSize), color)
+  }
+
+  function paintCandidateDigit(digit: number, color: number) {
+    const paintGroup = candidateCount(highlightedDigitMask) > 1 && hasCandidate(highlightedDigitMask, digit)
+    paintCandidateDigits(paintGroup ? digitsFromMask(highlightedDigitMask, gridSize) : [digit], color)
   }
 
   function clearHighlightedDigits() {
@@ -80,6 +85,7 @@ export function usePlayDigitActions({ puzzle: { gridSize }, selection, capabilit
 
   return {
     paintCandidateDigits,
+    paintCandidateDigit,
     paintSelectedCandidateDigits,
     clearHighlightedDigits,
     clearDigitSelection,

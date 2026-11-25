@@ -136,7 +136,7 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayo
     <div ref={puzzleStackRef} className="standard-puzzle-stack">
       {puzzle}
       <div ref={hintSlotRef} className="standard-hint-slot" id="standard-puzzle-hint" data-open={hintOpen}>
-        <div className="standard-hint-content"><MotionSurface>{hint}</MotionSurface></div>
+        <div className="standard-hint-content"><MotionSurface speed="tabs">{hint}</MotionSurface></div>
         {hint && hintLayout && <DesktopHintDivider stackRef={puzzleStack} slotRef={hintSlot} layout={hintLayout} />}
       </div>
     </div>
@@ -301,7 +301,7 @@ function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onCl
     const size = () => ({ width: element.offsetWidth, height: element.offsetHeight })
     const before = previousSize.current
     const after = size()
-    const duration = motionDuration('panel')
+    const duration = motionDuration('tabs')
     let animation: Animation | undefined
     if (before && duration && before.width && before.height && after.width && after.height &&
       (before.width !== after.width || before.height !== after.height)) {
@@ -346,12 +346,64 @@ function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onCl
 
 /** Put a hint card in the standard desktop or mobile hint slot. */
 export function PlayHint({ mobile, panelRef, className, ...props }: ComponentProps<'div'> & {
-  mobile: boolean; panelRef?: Ref<HTMLDivElement>
+  mobile: boolean; panelRef?: Ref<HTMLDivElement>; collapseOnExit?: boolean; 'data-presence'?: 'open' | 'exit'
 }) {
+  const { collapseOnExit = false, ...elementProps } = props
   const anchors = usePlayLayoutAnchors()
-  const ref = useMemo(() => mergeRefs(panelRef, anchors?.hint), [panelRef, anchors])
-  const classes = ['hint-dock', mobile && 'workspace-controls mobile-hint-panel', className].filter(Boolean).join(' ')
-  return <div {...props} className={classes} ref={ref} aria-live="polite" data-grid-click-away-controls />
+  const element = useRef<HTMLDivElement>(null)
+  const lastBlockSize = useRef(0)
+  const ref = useMemo(() => mergeRefs(panelRef, anchors?.hint, element), [panelRef, anchors])
+  const classes = ['hint-dock', mobile && 'mobile-hint-panel', className].filter(Boolean).join(' ')
+  const presence = elementProps['data-presence']
+  useLayoutEffect(() => {
+    const node = element.current
+    if (!collapseOnExit || !node || presence === 'exit') return
+    const measure = () => { lastBlockSize.current = node.getBoundingClientRect().height }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [collapseOnExit, presence])
+  useLayoutEffect(() => {
+    const node = element.current
+    if (!collapseOnExit || !node) return
+    if (presence !== 'exit') {
+      if (presence === 'open') {
+        node.style.removeProperty('block-size')
+        node.style.removeProperty('overflow')
+      }
+      return
+    }
+
+    const duration = motionDuration('tabs')
+    const height = lastBlockSize.current || node.getBoundingClientRect().height
+    if (!duration || height <= 0) return
+    const previousBlockSize = node.style.blockSize
+    const previousOverflow = node.style.overflow
+    const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+    node.style.overflow = 'clip'
+    const animation = node.animate([
+      { blockSize: `${height}px` },
+      { blockSize: '0px' },
+    ], { duration, easing, fill: 'both' })
+    let finished = false
+    const finish = () => {
+      finished = true
+      node.style.blockSize = '0px'
+      node.style.overflow = 'clip'
+      animation.cancel()
+    }
+    animation.addEventListener('finish', finish, { once: true })
+    return () => {
+      animation.removeEventListener('finish', finish)
+      animation.cancel()
+      if (!finished) {
+        node.style.blockSize = previousBlockSize
+        node.style.overflow = previousOverflow
+      }
+    }
+  }, [collapseOnExit, presence])
+  return <div {...elementProps} className={classes} ref={ref} aria-live="polite" data-grid-click-away-controls />
 }
 
 /** Use for the standard keypad action menu trigger. */

@@ -1,6 +1,6 @@
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useState } from 'react'
 
-type MotionSpeed = 'standard' | 'overlay' | 'panel' | 'snap'
+type MotionSpeed = 'standard' | 'overlay' | 'panel' | 'tabs' | 'snap'
 type PresenceState = 'open' | 'exit'
 const EXIT_PAINT_BUFFER_MS = 34
 
@@ -72,15 +72,15 @@ type Surface = ReactElement<{
   inert?: boolean
 }>
 
-export function usePresentContent<T>(content: T | false | null | undefined) {
-  const { mounted, exiting } = usePresence(Boolean(content))
+export function usePresentContent<T>(content: T | false | null | undefined, speed: MotionSpeed = 'standard') {
+  const { mounted, exiting } = usePresence(Boolean(content), speed)
   const [previous, setPrevious] = useState(content)
   if (content !== previous && (content || !mounted)) setPrevious(content)
   return { content: mounted ? content || previous : null, exiting }
 }
 
-export function MotionSurface({ children }: { children: Surface | false | null | undefined }) {
-  const { content: surface, exiting } = usePresentContent(children)
+export function MotionSurface({ children, speed = 'standard' }: { children: Surface | false | null | undefined; speed?: MotionSpeed }) {
+  const { content: surface, exiting } = usePresentContent(children, speed)
   if (!surface) return null
   return cloneElement(surface, {
     className: `${surface.props.className ?? ''} motion-surface`,

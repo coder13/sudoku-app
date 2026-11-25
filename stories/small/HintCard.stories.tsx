@@ -1,9 +1,11 @@
 import { Button } from '../../src/components/Button'
-import { useState, type ComponentProps } from 'react'
+import { useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
 import { HintCard } from '../../src/components/HintCard'
+import { MobileInputTabs } from '../../src/components/MobileInputTabs'
 import { SelectControl } from '../../src/components/SelectControl'
+import type { ToolPanelTab } from '../../src/sudoku/play-session'
 import { DIFFICULTY_LABELS } from '../../src/sudoku/difficulty'
 import {
   CELL_REFERENCE_LABELS, DEFAULT_CELL_REFERENCE_STYLE, describeHint, isCellReferenceStyle, type CellReferenceStyle,
@@ -67,9 +69,8 @@ export const SingleFallback: Story = { args: { hint: defaultFallbackHints[0] } }
 export const NoSupportedMove: Story = { args: { hint: defaultFallbackHints[1] } }
 export const Conflicts: Story = { args: { hint: defaultFallbackHints[2] } }
 export const NoActionsInDeduction: Story = { args: { hint: defaultFallbackHints[3] } }
-export const CompactStagedHint: Story = {
+export const StagedHint: Story = {
   args: {
-    compact: true,
     hint: {
       title: 'WXYZ-Wing',
       text: 'A WXYZ-Wing has four cells with four candidate digits between them. If three of those digits can each appear only once, the four cells must include the fourth digit. That can rule it out in nearby cells.',
@@ -82,6 +83,32 @@ export const CompactStagedHint: Story = {
 export const Dismissible: Story = {
   args: { hint: defaultFallbackHints[0] },
   render: (args) => <DismissibleCard {...args} />,
+}
+
+export const MobileHintPlacement: Story = {
+  args: { hint: { title: 'Direct hidden pair', text: 'Find the pattern in box 5.' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: (args) => <MobileHintPlacementDemo {...args} />,
+}
+
+function MobileHintPlacementDemo({ hint }: ComponentProps<typeof HintCard>) {
+  const [pinned, setPinned] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const [active, setActive] = useState<ToolPanelTab>('digits')
+  const activeTabRef = useRef<HTMLButtonElement>(null)
+  const panels: Record<ToolPanelTab, ReactNode> = {
+    digits: <div className="compact-controls">Digits input</div>,
+    solution: <p>Solution</p>, techniques: <p>Techniques</p>, colors: <p>Colors</p>,
+    chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
+  }
+  const card = visible && <HintCard hint={hint} onClose={() => setVisible(false)} pinned={pinned}
+    onTogglePinned={() => setPinned(value => !value)} />
+  return <div style={{ display: 'grid', gap: 8, maxWidth: 420, margin: '0 auto' }}>
+    {!pinned && card && <div className="mobile-hint-panel hint-dock">{card}</div>}
+    <MobileInputTabs active={active} open={[]} panels={panels} pinnedHint={pinned ? card : undefined}
+      activeTabRef={activeTabRef} toolsDisabled={false} onSelect={setActive} onClose={fn()} />
+    {!visible && <Button onClick={() => setVisible(true)}>Show hint</Button>}
+  </div>
 }
 
 function DismissibleCard({ hint, onClose }: ComponentProps<typeof HintCard>) {

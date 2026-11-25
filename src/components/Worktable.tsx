@@ -349,6 +349,7 @@ export function Worktable({
   const puzzleStageId = useId()
   const [modeBadgePosition, setModeBadgePosition] = usePlayPreference('cardModeBadgePosition')
   const [pinnedActions] = usePlayPreference('pinnedActions')
+  const [mobileHintPinned, setMobileHintPinned] = usePlayPreference('mobileHintPinned')
   const [showKillerCombinations] = usePlayPreference('showKillerCombinations')
   const [pointerFocusedCell, setPointerFocusedCell] = useState<number | null>(null)
   const [inputModality, setInputModality] = useState<'pointer' | 'keyboard'>('keyboard')
@@ -443,11 +444,15 @@ export function Worktable({
   const gridAlignmentBoundaryRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLDivElement>(null)
   const mobileInputTabsRef = useRef<HTMLDivElement>(null)
+  const mobileInputToolbarRef = useRef<HTMLDivElement>(null)
+  const mobileInputPanelsRef = useRef<HTMLDivElement>(null)
   const mobileDigitsPanelRef = useRef<HTMLDivElement>(null)
   const mobileActiveInputPanelRef = useRef<HTMLDivElement>(null)
   const mobileInputTabsLayoutRefs = useMemo(
     () => ({
       inputTabs: mobileInputTabsRef,
+      inputToolbar: mobileInputToolbarRef,
+      inputPanels: mobileInputPanelsRef,
       digitsPanel: mobileDigitsPanelRef,
       activeInputPanel: mobileActiveInputPanelRef,
     }),
@@ -638,7 +643,7 @@ export function Worktable({
     capturePointer: (pointerId) => boardRef.current?.setPointerCapture(pointerId),
   })
   const colorsActive = brush !== null || colorMode
-  const notes = usePlayCandidateNotes({
+  const { notes, retry: retryCandidateNotes } = usePlayCandidateNotes({
     game,
     values,
     generateCandidateVariants: advancedModes.generateCandidateVariants,
@@ -788,6 +793,7 @@ export function Worktable({
   })
   const {
     paintCandidateDigits,
+    paintCandidateDigit,
     paintSelectedCandidateDigits,
     clearHighlightedDigits,
     clearDigitSelection,
@@ -892,10 +898,11 @@ export function Worktable({
     () => ({
       puzzle: puzzleCardRef,
       puzzleColumn: hintColumnRef,
-      puzzleStage: puzzleStageRef,
       boardViewport: puzzleZoom.viewport,
       boardFrame: hintBoardFrameRef,
       inputTabs: mobileInputTabsRef,
+      inputToolbar: mobileInputToolbarRef,
+      inputPanels: mobileInputPanelsRef,
       digitsPanel: mobileDigitsPanelRef,
       digitControls: inputRef,
       activeInputPanel: mobileActiveInputPanelRef,
@@ -1925,13 +1932,18 @@ export function Worktable({
           }
         : undefined
   const closeHint = () => (solutionHintPanel ? setSolutionHintOpen(false) : setHintRevealed(false))
+  const toggleMobileHintPinned = () => {
+    setMobileHintPinned(current => !current)
+    window.requestAnimationFrame(() => {
+      mobileHintPanelRef.current?.querySelector<HTMLButtonElement>('[data-hint-card-pin]')?.focus({ preventScroll: true })
+    })
+  }
   const explanation = solutionHintPanel ? stepDiagram : hintDiagram
   const revealedDeduction = solutionHintPanel ? replayedSolutionStep?.deduction : fullHint && !recovery ? deduction : undefined
   const recoveryExplanation = !solutionHintPanel && recovery && fullHint ? explainCandidateRecovery(game, recovery, cellReferenceStyle) : undefined
   const hintPanel = (solutionHintPanel || visibleHint || hintLoading || mobileHintOpen) && (
-    <PlayHint mobile={mobile} panelRef={mobile ? mobileHintPanelRef : undefined}>
+    <PlayHint mobile={mobile} collapseOnExit={advancedWorkspace} panelRef={mobile ? mobileHintPanelRef : undefined}>
       <HintCard
-        compact={!mobile}
         hint={solutionHintPanel ? solutionHintCopy : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
         layoutAnchors={desktop ? { card: hintCardRef, body: hintBodyRef, toolbar: hintToolbarRef } : undefined}
         lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
@@ -1945,6 +1957,8 @@ export function Worktable({
             : undefined
         }
         onClose={closeHint}
+        pinned={mobile && mobileHintPinned}
+        onTogglePinned={mobile ? toggleMobileHintPinned : undefined}
         onShown={!solutionHintPanel && deduction ? markHintVisible : undefined}
         visuals={
           availableHintAnnotations && !disabled && !solved
@@ -1954,7 +1968,6 @@ export function Worktable({
               }
             : undefined
         }
-        reserveVisuals={Boolean(applyHintAction && !disabled && !solved)}
         action={applyHintAction}
         detailNavigation={
           applyHintAction
@@ -2044,6 +2057,7 @@ export function Worktable({
       onChooseColors={() => setChainColorsOpen(true)}
       shortcuts={shortcuts}
       unavailable={chainUnavailable}
+      onRetryCandidates={currentNotes?.failed ? retryCandidateNotes : undefined}
       inspection={chainInspection}
       eliminations={{
         shown: sketch.showEliminations,
@@ -2224,7 +2238,7 @@ export function Worktable({
   const syncWarning =
     showPuzzleSync &&
     storageAvailable &&
-    (syncStatus === 'offline' ? 'Offline. Changes saved on this device.' : syncStatus === 'failed' ? 'Couldn’t sync. Changes saved on this device.' : '')
+    (syncStatus === 'offline' ? 'Offline' : syncStatus === 'failed' ? 'Couldn’t sync. Changes saved on this device.' : '')
   const syncMenuStatus = !storageAvailable
     ? 'Local storage is unavailable.'
     : {
@@ -2233,7 +2247,7 @@ export function Worktable({
         pending: 'Cloud save pending.',
         saving: 'Saving to the cloud…',
         saved: '',
-        offline: 'Offline. Changes saved on this device.',
+        offline: 'Offline',
         'offline-clean': 'Offline. Connect to sync this puzzle.',
         failed: 'Couldn’t sync. Changes saved on this device.',
         'check-failed': 'Couldn’t verify the cloud save.',
@@ -2850,12 +2864,14 @@ export function Worktable({
         digits={{
           gridSize: gridSize,
           candidateDigitColors: candidateDigitColors,
-          digitPaintColor: brush !== null && brush > 0 ? brush : undefined,
+          digitPaintColor: !hintAnnotations && !mobileHintPreview
+            ? brush ?? (colorMode ? selectedColor ?? undefined : undefined)
+            : undefined,
           mode: mode,
           pencil: pencilActive,
           candidateKind: candidateKind,
           setCandidateKind: setCandidateKind,
-          selectedDigit: browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : colorMode ? selectedColor : selectedDigit,
+          selectedDigit: browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : selectedDigit,
           hasCellSelection: hasInputSelection,
           highlightedDigitMask: strongLinksVisible ? strongLinkMask : sketch.drawing || eraseMode ? 0 : highlightedDigitMask,
           onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : !sketch.drawing && !draft && !solved && !previewing ? toggleDigitHighlight : undefined,
@@ -2863,6 +2879,15 @@ export function Worktable({
           onDigitHighlightMatchChange: !draft && !solved && !previewing ? changeDigitHighlightMatch : undefined,
           values: values,
           input: sketch.drawing || browsingStrongLinks ? toggleChainHighlight : input,
+          onPaintDigit: digit => {
+            const color = brush ?? (colorMode ? selectedColor : null)
+            if (color !== null && !hintAnnotations && !mobileHintPreview) paintCandidateDigit(digit, color)
+          },
+          onSelectDigit: digit => {
+            clearHighlightedDigits()
+            setHighlightCandidatePairs(false)
+            setSelectedDigit(current => current === digit ? null : digit)
+          },
         }}
         tools={{
           togglePencil: () => switchPenPencil(gridInputMode !== 'pencil'),
@@ -2951,7 +2976,7 @@ export function Worktable({
   )
   const advancedHintPanel = (
     <div className="dock-hint-content">
-      <MotionSurface>{hintPanel}</MotionSurface>
+      <MotionSurface speed="tabs">{hintPanel}</MotionSurface>
       {!hintPanel && (
         <section className="advanced-spoiler-panel motion-surface" data-presence="open" aria-label="Hint">
           <span className="advanced-spoiler-icon" aria-hidden="true">
@@ -3105,6 +3130,7 @@ export function Worktable({
   const advancedToolContents = Object.fromEntries(TOOL_PANEL_ORDER.map((tool) => [tool, advancedPanelOpen(tool) ? toolPanelContents[tool] : undefined])) as Partial<
     Record<PuzzleTool, ReactNode>
   >
+  const pinnedHint = mobile && mobileHintPinned ? hintPanel : undefined
 
   return (
     <>
@@ -3121,6 +3147,7 @@ export function Worktable({
               active={activeToolPanel}
               open={openPuzzlePanels}
               panels={toolPanelContents}
+              pinnedHint={pinnedHint}
               activeTabRef={activeMobileInputTabRef}
               layoutRefs={mobileInputTabsLayoutRefs}
               toolsDisabled={rearranging}
@@ -3148,10 +3175,11 @@ export function Worktable({
         mobile={{
           puzzleId: game.id,
           rearranging,
-          withHint: mobileHintOpen || Boolean(solutionHintPanel) || rearranging,
-          fitContent: pinnedActions.length > 0 && !placeholder && !draft,
+          withHint: !pinnedHint && (mobileHintOpen || Boolean(solutionHintPanel) || rearranging),
+          hintInTabs: Boolean(pinnedHint),
+          fitContent: (pinnedActions.length > 0 && !placeholder && !draft) || Boolean(pinnedHint),
           resizableInput: mobileToolsAvailable || openPuzzlePanels.length > 0,
-          inputTabCount: openPuzzlePanels.length,
+          inputTabCount: openPuzzlePanels.length + Number(Boolean(pinnedHint)),
           inputResizeRefs: mobileInputResizeRefs,
           savedInputHeight: toolPanels.height,
           puzzleTopSpace: appearance.mobilePuzzleTopSpace,
@@ -3162,7 +3190,7 @@ export function Worktable({
               if (height !== undefined) return { ...current, height }
               return { open: current.open, active: current.active }
             }),
-          hintSwipe: mobileHintOpen ? { dismiss: closeHint, apply: applyHintAction } : undefined,
+          hintSwipe: mobileHintOpen && !pinnedHint ? { dismiss: closeHint, apply: applyHintAction } : undefined,
           blocked:
             Boolean(placeholder) ||
             modalOpen ||

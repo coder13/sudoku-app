@@ -28,6 +28,7 @@ type Props = {
   strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
   eliminations?: { shown: boolean; toggle: () => void }
   unavailable?: string
+  onRetryCandidates?: () => void
   inspection?: ChainInspection
   panelRef?: Ref<HTMLElement>
 }
@@ -227,7 +228,7 @@ function ChainActionsMenu({ actions, label = 'Chain actions' }: {
   </>
 }
 
-export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, strongLinks, eliminations, unavailable, inspection, panelRef }: Props) {
+export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, strongLinks, eliminations, unavailable, onRetryCandidates, inspection, panelRef }: Props) {
   const chainLabelId = useId()
   const groupButton = useRef<HTMLButtonElement>(null)
   const groupWasOpen = useRef(false)
@@ -297,7 +298,10 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
     </div>
   </div>
   return <section ref={panelRef} className="chains-panel" aria-label="Chains" data-grid-click-away-exempt>
-    {unavailable ? <p role="status">{unavailable}</p> : <>
+    {unavailable ? <div className="chains-unavailable">
+      <p role="status">{unavailable}</p>
+      {onRetryCandidates && <Button variant="quiet" onClick={onRetryCandidates}>Retry candidates</Button>}
+    </div> : <>
       <div className="chain-panel-tools">
         <div className="chain-panel-primary-actions">
           <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>

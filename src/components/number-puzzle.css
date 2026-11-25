@@ -177,7 +177,7 @@
 
 .number-puzzle-controls .keypad-stack { width: auto; min-width: 0; }
 
-.number-puzzle-controls .keypad:not(.palette) .key {
+.number-puzzle-controls .keypad .key {
   min-height: 44px;
 }
 

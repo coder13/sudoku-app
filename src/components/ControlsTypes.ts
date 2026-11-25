@@ -22,6 +22,8 @@ export type ControlsProps = {
     input: (digit: number) => void
     candidateDigitColors?: readonly CandidateDigitColorSummary[]
     digitPaintColor?: number
+    onPaintDigit?: (digit: number) => void
+    onSelectDigit?: (digit: number) => void
   }
   tools: {
     togglePencil: () => void

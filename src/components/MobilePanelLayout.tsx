@@ -20,6 +20,7 @@ type Props = {
   blocked: boolean
   puzzleId: string
   withHint: boolean
+  hintInTabs?: boolean
   fitContent?: boolean
   resizableInput?: boolean
   inputTabCount?: number
@@ -34,6 +35,9 @@ type Props = {
 type MotionProps = {
   panelContent: RefObject<Partial<Record<MobilePanelId, HTMLDivElement | null>>>
   hintPanel: RefObject<HTMLDivElement | null>
+  inputToolbar: RefObject<HTMLDivElement | null>
+  inputPanels: RefObject<HTMLDivElement | null>
+  onHintLayoutChange: () => void
   withHint: boolean
   tabCount: number
   rearranging: boolean
@@ -42,62 +46,165 @@ type MotionProps = {
 type LayoutSnapshot = {
   duration: number
   cards: { element: HTMLElement; rect: DOMRect; anchorX: 'center' | 'left' }[]
-  hint?: { element: HTMLElement; left: number; top: number; width: number }
+  expandInputToolbar?: boolean
+  inputBodyMinHeight?: number
+  hintEntering?: boolean
+  hint?: { element: HTMLElement; height: number }
 }
 
 class MobilePanelMotion extends Component<MotionProps, Record<string, never>, LayoutSnapshot | null> {
   private animations: Animation[] = []
+  private animationCleanups = new Set<() => void>()
 
   // Measure the currently visible cards before React changes the grid or flex layout.
   getSnapshotBeforeUpdate(previous: MotionProps): LayoutSnapshot | null {
     const { panelContent, hintPanel, withHint, tabCount, rearranging } = this.props
     const hintChanged = previous.withHint !== withHint
     const tabsChanged = previous.tabCount !== tabCount
-    if ((!hintChanged && !tabsChanged) || previous.rearranging || rearranging) return null
-    const duration = motionDuration(tabsChanged ? 'panel' : 'standard')
+    const firstTabOpened = previous.tabCount === 0 && tabCount > 0
+    const lastTabClosed = previous.tabCount > 0 && tabCount === 0
+    const animateTabs = tabsChanged && !firstTabOpened && !lastTabClosed
+
+    if (firstTabOpened && !hintChanged) {
+      if (previous.rearranging || rearranging) return null
+      const duration = motionDuration('tabs')
+      const body = this.props.inputPanels.current
+      const zoom = body ? Number.parseFloat(getComputedStyle(body).zoom) || 1 : 1
+      return {
+        duration,
+        cards: [],
+        expandInputToolbar: duration > 0,
+        inputBodyMinHeight: body ? body.getBoundingClientRect().height / zoom : undefined,
+      }
+    }
+
+    if ((!hintChanged && !animateTabs) || previous.rearranging || rearranging) return null
+    const duration = motionDuration(tabsChanged || hintChanged ? 'tabs' : 'standard')
     if (!duration) return null
 
-    const cards = (['puzzle', 'input'] as const).flatMap((id) => {
+    const hintEntering = hintChanged && withHint
+    const cards = (hintEntering ? [] : ['puzzle', 'input'] as const).flatMap((id) => {
+      if ((firstTabOpened || lastTabClosed) && id === 'input') return []
       const element = panelContent.current[id]
       return element ? [{ element, rect: element.getBoundingClientRect(), anchorX: id === 'puzzle' ? 'center' as const : 'left' as const }] : []
     })
     const hint = hintChanged && !withHint ? hintPanel.current : null
-    return { duration, cards, hint: hint ? {
-      element: hint, left: hint.offsetLeft, top: hint.offsetTop, width: hint.getBoundingClientRect().width,
-    } : undefined }
+    const body = firstTabOpened ? this.props.inputPanels.current : null
+    const zoom = body ? Number.parseFloat(getComputedStyle(body).zoom) || 1 : 1
+    return { duration, cards, hintEntering: hintEntering || undefined, expandInputToolbar: firstTabOpened || undefined,
+      inputBodyMinHeight: body ? body.getBoundingClientRect().height / zoom : undefined,
+      hint: hint ? { element: hint, height: hint.getBoundingClientRect().height } : undefined }
   }
 
   componentDidUpdate(previous: MotionProps, _state: unknown, snapshot?: LayoutSnapshot | null) {
     const { hintPanel, withHint, rearranging } = this.props
-    if (snapshot || previous.rearranging !== rearranging) this.cancelAnimations()
+    if (snapshot || previous.rearranging !== rearranging || previous.tabCount !== this.props.tabCount) this.cancelAnimations()
+
+    const inputPanels = this.props.inputPanels.current
+    if (previous.tabCount === 0 && this.props.tabCount > 0 && inputPanels && snapshot?.inputBodyMinHeight !== undefined) {
+      inputPanels.style.setProperty('--mobile-input-tab-body-min-height', `${snapshot.inputBodyMinHeight}px`)
+    }
 
     const hint = previous.withHint !== withHint ? hintPanel.current : null
     if (withHint && hint) {
-      for (const property of ['--hint-exit-left', '--hint-exit-top', '--hint-exit-width', '--hint-exit-visibility']) {
-        hint.style.removeProperty(property)
-      }
+      hint.style.removeProperty('block-size')
+      hint.style.removeProperty('overflow')
     }
     if (!snapshot) return
 
-    // Let the other cards move immediately while the outgoing hint fades in its old slot.
+    if (snapshot.hintEntering && hint?.isConnected) {
+      const height = hint.getBoundingClientRect().height
+      if (height > 0) {
+        const previousBlockSize = hint.style.blockSize
+        const previousOverflow = hint.style.overflow
+        const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+        hint.style.blockSize = '0px'
+        hint.style.overflow = 'clip'
+        // Commit the collapsed start, then fit the puzzle from that same live
+        // geometry before the browser paints the first expanded frame.
+        void hint.offsetHeight
+        this.props.onHintLayoutChange()
+        const animation = hint.animate([
+          { blockSize: '0px' },
+          { blockSize: `${height}px` },
+        ], { duration: snapshot.duration, easing, fill: 'both' })
+        this.trackAnimation(animation, () => {
+          animation.cancel()
+          hint.style.blockSize = previousBlockSize
+          hint.style.overflow = previousOverflow
+        })
+      }
+    }
+
+    // Keep the outgoing hint in normal flow so the puzzle fitter can follow
+    // the same shrinking box instead of treating the hint as already gone.
     if (snapshot.hint) {
-      const { element, left, top, width } = snapshot.hint
-      element.style.setProperty('--hint-exit-left', `${left}px`)
-      element.style.setProperty('--hint-exit-top', `${top}px`)
-      element.style.setProperty('--hint-exit-width', `${width}px`)
-      element.style.setProperty('--hint-exit-visibility', 'visible')
+      const { element, height } = snapshot.hint
+      const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+      element.style.overflow = 'clip'
+      const animation = element.animate([
+        { blockSize: `${height}px` },
+        { blockSize: '0px' },
+      ], { duration: snapshot.duration, easing, fill: 'both' })
+      this.trackAnimation(animation, () => {
+        animation.cancel()
+        element.style.blockSize = '0px'
+        element.style.overflow = 'clip'
+      })
+    }
+
+    if (snapshot.expandInputToolbar && snapshot.duration > 0) {
+      const element = this.props.inputToolbar.current
+      if (element?.isConnected) {
+        const style = getComputedStyle(element)
+        const height = element.getBoundingClientRect().height
+        const previousOverflow = element.style.overflow
+        const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+        element.style.overflow = 'clip'
+        const animation = element.animate([
+          { height: '0px', minHeight: '0px', paddingBlockStart: '0px', paddingBlockEnd: '0px', borderBottomWidth: '0px' },
+          { height: `${height}px`, minHeight: style.minHeight, paddingBlockStart: style.paddingBlockStart,
+            paddingBlockEnd: style.paddingBlockEnd, borderBottomWidth: style.borderBottomWidth },
+        ], { duration: snapshot.duration, easing, fill: 'both' })
+        this.trackAnimation(animation, () => {
+          animation.cancel()
+          element.style.overflow = previousOverflow
+        })
+      }
     }
 
     for (const { element, rect, anchorX } of snapshot.cards) {
       if (!element.isConnected) continue
       const animation = animatePanelLayout(element, rect, snapshot.duration, anchorX)
-      if (animation) this.animations.push(animation)
+      this.trackAnimation(animation)
     }
+  }
+
+  private trackAnimation(animation: Animation | undefined, cleanup?: () => void) {
+    if (!animation) {
+      cleanup?.()
+      return
+    }
+    this.animations.push(animation)
+
+    let active = true
+    const restore = () => {
+      if (!active) return
+      active = false
+      cleanup?.()
+      this.animations = this.animations.filter((current) => current !== animation)
+      this.animationCleanups.delete(restore)
+    }
+    this.animationCleanups.add(restore)
+    animation.addEventListener('finish', restore, { once: true })
+    animation.addEventListener('cancel', restore, { once: true })
   }
 
   private cancelAnimations() {
     this.animations.forEach((animation) => animation.cancel())
     this.animations = []
+    this.animationCleanups.forEach((cleanup) => cleanup())
+    this.animationCleanups.clear()
   }
 
   componentWillUnmount() { this.cancelAnimations() }
@@ -108,7 +215,7 @@ class MobilePanelMotion extends Component<MotionProps, Record<string, never>, La
 export function MobilePanelLayout(props: Props) {
   const arrangement = useMobilePanelArrangement({ panels: props.panels, rearranging: props.rearranging,
     onRearrangingChange: props.onRearrangingChange, blocked: props.blocked, puzzleId: props.puzzleId })
-  const { order, visibleIds: visible, dragView, announcement, saveFailed } = arrangement
+  const { order, dragView, announcement, saveFailed } = arrangement
   const root = arrangement.rootRef
   const localPageRef = useRef<HTMLElement>(null)
   const pageRef = props.pageRef ?? localPageRef
@@ -118,11 +225,19 @@ export function MobilePanelLayout(props: Props) {
   const puzzlePanelRef = useRef<HTMLDivElement>(null)
   const inputPanelRef = useRef<HTMLDivElement>(null)
   const hintPanelRef = useRef<HTMLDivElement>(null)
+  const noToolbarRef = useRef<HTMLDivElement>(null)
   const gapRef = useRef<HTMLDivElement>(null)
   const inputId = useId()
   const closeButton = arrangement.closeButtonRef
-  const { content: hint, exiting: hintExiting } = usePresentContent(props.panels.hint)
+  const hintPresence = usePresentContent(props.panels.hint, 'tabs')
+  // Pinning moves the hint into the input tab stack. It must not also linger
+  // as an exiting card in the standalone panel.
+  const hint = props.hintInTabs ? null : hintPresence.content
+  const hintExiting = !props.hintInTabs && hintPresence.exiting
+  const hintLayoutActive = props.withHint || hintExiting
   const panels = { ...props.panels, hint: hint || undefined }
+  // Retained exit content still owns its layout position until its collapse ends.
+  const layoutIds = order.filter((id) => panels[id])
   const panelRef = (id: MobilePanelId) => panelRefCallbacks.current[id] ??= element => {
     arrangement.panelRef(id)(element)
     if (id === 'puzzle') puzzlePanelRef.current = element
@@ -130,7 +245,7 @@ export function MobilePanelLayout(props: Props) {
     else if (id === 'hint') hintPanelRef.current = element
   }
   const panelContentRef = (id: MobilePanelId) => panelContentCallbacks.current[id] ??= (element) => { panelContentElements.current[id] = element }
-  const { inputResizing, updateInputResizing, fitAfterResize } = useMobilePuzzleFit({
+  const { inputResizing, updateInputResizing, fitAfterResize, previewResize } = useMobilePuzzleFit({
     layoutRef: root,
     pageRef,
     workspaceRef: props.workspaceRef,
@@ -141,10 +256,9 @@ export function MobilePanelLayout(props: Props) {
     order,
     puzzleId: props.puzzleId,
     puzzleShrink: props.puzzleShrink,
-    inputTabCount: props.inputTabCount,
     inputResizeRefs: props.inputResizeRefs,
     rearranging: props.rearranging,
-    withHint: props.withHint,
+    withHint: hintLayoutActive,
     fitContent: props.fitContent,
   })
   const puzzleGestureAnchors = useMemo(() => props.inputResizeRefs ? ({
@@ -153,11 +267,11 @@ export function MobilePanelLayout(props: Props) {
     boardViewport: props.inputResizeRefs.boardViewport, boardFrame: props.inputResizeRefs.boardFrame,
   }) : undefined, [props.inputResizeRefs])
 
-  const layout = <div ref={root} className={`mobile-panel-layout${props.withHint ? ' with-hint' : ''}`}
-    data-fit-content={(props.withHint || props.fitContent) && !props.rearranging || undefined}
+  const layout = <div ref={root} className={`mobile-panel-layout${hintLayoutActive ? ' with-hint' : ''}`}
+    data-fit-content={(hintLayoutActive || props.fitContent) && !props.rearranging || undefined}
     data-puzzle-shrunk={Boolean(props.puzzleShrink) || undefined}
     data-input-resizing={inputResizing || undefined}
-    data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': visible.length - 1 } as CSSProperties}
+    data-rearranging={props.rearranging || undefined} style={{ '--mobile-secondary-count': layoutIds.length - 1 } as CSSProperties}
     onPointerDownCapture={arrangement.startHold}
     onContextMenuCapture={arrangement.onContextMenuCapture}
     onClickCapture={arrangement.onClickCapture}>
@@ -172,7 +286,7 @@ export function MobilePanelLayout(props: Props) {
     {order.filter((id) => panels[id]).map((id) => {
       const panel = panels[id]!
       const exiting = id === 'hint' && hintExiting
-      const index = visible.indexOf(id)
+      const index = layoutIds.indexOf(id)
       const moving = dragView?.id === id
       const drop = dragView?.drop?.id === id ? dragView.drop.edge : undefined
       const resizeEdge = id === 'input' && props.resizableInput && panels.puzzle
@@ -197,8 +311,9 @@ export function MobilePanelLayout(props: Props) {
               refs={props.inputResizeRefs} edge={resizeEdge}
               disabled={props.blocked || props.rearranging} withHint={props.withHint}
               fitContent={Boolean(props.fitContent)}
-              hasOpenTabs={Boolean(props.inputTabCount)} savedHeight={props.savedInputHeight}
+              savedHeight={props.savedInputHeight}
               onHeightChange={props.onInputHeightChange} onResizingChange={updateInputResizing}
+              onResizePreview={previewResize}
               onResizeSettled={fitAfterResize} />}
             {id === 'hint' ? <MobileHintSwipe exiting={exiting}
               actions={exiting || props.rearranging || props.blocked ? undefined : props.hintSwipe}>
@@ -213,7 +328,7 @@ export function MobilePanelLayout(props: Props) {
             </button>
           </div>}
         </div>
-        {index === 0 && visible.length > 1 && <div ref={gapRef} className="mobile-panel-gap" aria-hidden="true">
+        {index === 0 && layoutIds.length > 1 && <div ref={gapRef} className="mobile-panel-gap" aria-hidden="true">
           {id === 'puzzle' && <MobilePuzzleTopSpaceGesture edge="bottom" value={props.puzzleTopSpace ?? 0} shrink={props.puzzleShrink ?? 0}
             onChange={props.onPuzzleTopSpaceChange} disabled={props.blocked || props.rearranging}
             fitContent={props.withHint || Boolean(props.fitContent)} anchors={puzzleGestureAnchors} />}
@@ -223,6 +338,8 @@ export function MobilePanelLayout(props: Props) {
     <span className="sr-only" role="status">{announcement}</span>
   </div>
 
-  return <MobilePanelMotion panelContent={panelContentElements} hintPanel={hintPanelRef} withHint={props.withHint} tabCount={props.inputTabCount ?? 0}
-    rearranging={props.rearranging}>{layout}</MobilePanelMotion>
+  return <MobilePanelMotion panelContent={panelContentElements} hintPanel={hintPanelRef}
+    inputToolbar={props.inputResizeRefs?.inputToolbar ?? noToolbarRef}
+    inputPanels={props.inputResizeRefs?.inputPanels ?? noToolbarRef} withHint={props.withHint} tabCount={props.inputTabCount ?? 0}
+    onHintLayoutChange={fitAfterResize} rearranging={props.rearranging}>{layout}</MobilePanelMotion>
 }

@@ -3,20 +3,18 @@ import { candidateCount, COLORS, DIGITS, hasCandidate, placedDigitCounts } from 
 import { colorCursor } from './color-cursor'
 import { colorTone, colorToneStyle } from './color-tone'
 import { PuzzleKeypad } from './PuzzleKeypad'
-import { ColorKeypad } from './ColorKeypad'
 import { useTouchHold } from './useTouchHold'
 import type { ControlsProps } from './ControlsTypes'
 
 export type DigitSelectorProps = {
   digits: ControlsProps['digits']
-  tools: Pick<ControlsProps['tools'], 'colorTarget' | 'setColorTarget' | 'onSwitchShade' | 'chainDrawing' | 'eraseMode'>
+  tools: Pick<ControlsProps['tools'], 'chainDrawing' | 'eraseMode'>
   layout: Pick<ControlsProps['layout'], 'advancedModes' | 'disabled' | 'draft' | 'compact'>
 }
 
-/** Select digits and matching groups, or delegate color selection to its focused keypad. */
+/** Keep digit selection available in every mode, including candidate painting. */
 export function DigitSelector(props: DigitSelectorProps) {
-  const colors = !props.tools.chainDrawing && props.digits.mode === 'color'
-  const toggleDigitHighlight = !props.layout.disabled && !colors ? props.digits.onToggleDigitHighlight : undefined
+  const toggleDigitHighlight = !props.layout.disabled && !props.tools.chainDrawing ? props.digits.onToggleDigitHighlight : undefined
   const canHighlightDigits = Boolean(toggleDigitHighlight)
   const highlightedDigitMask = props.digits.highlightedDigitMask ?? 0
   const digitHighlightMatch = props.digits.digitHighlightMatch ?? 'all'
@@ -30,6 +28,10 @@ export function DigitSelector(props: DigitSelectorProps) {
     if (toggleDigitHighlight && (event.shiftKey || event.ctrlKey || event.metaKey)) {
       digitHold.rememberClick(event.currentTarget)
       toggleDigitHighlight(digit, event.shiftKey ? 'any' : 'all')
+    } else if (!props.tools.chainDrawing && props.digits.digitPaintColor !== undefined) {
+      props.digits.onPaintDigit?.(digit)
+    } else if (!props.tools.chainDrawing && props.digits.mode === 'color') {
+      props.digits.onSelectDigit?.(digit)
     } else props.digits.input(digit)
   }
 
@@ -41,20 +43,6 @@ export function DigitSelector(props: DigitSelectorProps) {
       digitHold.rememberClick(event.currentTarget)
       toggleDigitHighlight(digit, event.shiftKey ? 'any' : 'all')
     }
-  }
-
-  if (colors) {
-    return (
-      <ColorKeypad
-        selectedColor={props.digits.selectedDigit}
-        target={props.tools.colorTarget}
-        disabled={props.layout.disabled}
-        onSelectColor={props.digits.input}
-        onSwitchShade={props.tools.onSwitchShade}
-        onTarget={props.tools.setColorTarget}
-        onErase={() => props.digits.input(0)}
-      />
-    )
   }
 
   return (
@@ -95,7 +83,13 @@ export function DigitSelector(props: DigitSelectorProps) {
             : ''
           const digitLabel = props.tools.chainDrawing
             ? `${armed ? 'Clear highlight for' : 'Highlight'} ${digit}`
-            : `${props.digits.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
+            : props.digits.digitPaintColor === 0
+              ? `Erase candidate colors for ${digit}`
+              : props.digits.digitPaintColor !== undefined
+                ? `Paint candidates for ${digit}`
+                : props.digits.mode === 'color'
+                  ? `${armed ? 'Deselect' : 'Select'} ${digit}`
+                  : `${props.digits.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
           return (
             <button
               type="button"
