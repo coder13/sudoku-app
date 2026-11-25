@@ -1572,6 +1572,8 @@ Row run counts use a shared right edge and fixed inset from the grid; column cou
 
 `x-sum-AsnF.json` retains the original Coach code, decoded cosmetic totals, author context and completion. Its exact reviewed export imports the sixteen outside labels as X-Sums, matching the published rule text. `x-sum-coach-transcription.json` remains a separately labelled manual native transcription under the same authored rules. The two `mixed` fixtures are authored regression companions and retain all source constraints; added clues are not attributed to the publishers.
 
+`sized-sudokupad-xsums-white-dots.scl` and `sized-sudokupad-xsums-black.scl` retain both original [Kroppelgangers X-Sum Twins](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=000IFK) SudokuPad exports: [White Dots](https://sudokupad.app/6slam9s9ap) and [Black Dots](https://sudokupad.app/0n497kpnvt). Both preserve the six outside totals and two marked relations. The import maps white dots to consecutive X-Sum totals and black dots to 1:2 ratios; Wasm verifies the distinct published solutions and rejects either dot when its relation is changed.
+
 Independent proof replay, all eight transforms, disabled profiles, input/history, storage/sharing, hints/pages/Finder, Learn/practice and calibrated Hard New Puzzle use the real app/worker callers. The bounded subset table used for local input is checked against direct full-row permutations. [Complete source, validation, performance and limits](../../SUDOKU_X_SUM_AUDIT.md). Full authored Coach formats remain in issue 7; diagonal X-Sums remain separate native research in 204.
 
 ## Skyscrapers app integration
