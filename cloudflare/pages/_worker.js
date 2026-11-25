@@ -438,6 +438,15 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
     fields(rule, { type: oneOf('kropki') }, { consecutive: marks, ratioTwo: marks }) ||
+    (fields(rule, { type: oneOf('xv') }, { five: marks, ten: marks }) &&
+      [rule.five, rule.ten].some(value => value && ((value.pairs?.length ?? 0) > 0 || value.negative === true)) &&
+      new Set([...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size ===
+        (rule.five?.pairs?.length ?? 0) + (rule.ten?.pairs?.length ?? 0)) ||
+    (fields(rule, { type: oneOf('non-consecutive') }, { except: list(pair, 0, 2 * size * (size - 1)) }) &&
+      (rule.except === undefined || new Set(rule.except.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.except.length)) ||
+    (fields(rule, { type: oneOf('clone'), groups: list(group => list(cell, 2, size * size)(group) && new Set(group).size === group.length, 1, size * size) }) ) ||
+    (fields(rule, { type: oneOf('between'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
+    (size === 6 && fields(rule, { type: oneOf('modular'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('quadruple'), topLeft: integer(0, size * (size - 1) - 1), digits: list(integer(1, size), 1, 4) }) &&
       rule.topLeft % size < size - 1) ||
     numberedDotRule(rule, size) ||

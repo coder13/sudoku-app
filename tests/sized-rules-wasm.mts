@@ -210,6 +210,59 @@ test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async
   } }), 'conflict')
 })
 
+test('#87 Coach Non-Consecutive composes with white and black dots and a Thermometer', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const digits = [...solution].map(Number)
+  const whiteDots: [number, number][] = []
+  for (let row = 0; row < 6; row++) for (let column = 0; column < 6; column++) {
+    const cell = row * 6 + column
+    for (const [nextRow, nextColumn] of [[row, column + 1], [row + 1, column]]) {
+      if (nextRow < 6 && nextColumn < 6) {
+        const next = nextRow * 6 + nextColumn
+        if (Math.abs(digits[cell] - digits[next]) === 1) whiteDots.push([cell, next])
+      }
+    }
+  }
+  const regionLabels = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions: regionLabels, givenConstraints: [
+    { type: 'nonconsecutive', settings: {}, segments: [] },
+    { type: 'difference', settings: {}, segments: whiteDots.map(cells => ({ cells, parameters: { difference: 1 } })) },
+    { type: 'ratio', settings: {}, segments: [{ cells: [5, 11], parameters: { ratio: 2 } }] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13], parameters: {} }] },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.sizedRules?.[0], { type: 'non-consecutive', except: whiteDots })
+  assert.deepEqual(imported.sizedRules?.[1],
+    { type: 'kropki', consecutive: { pairs: whiteDots, negative: false } })
+  assert.deepEqual(imported.sizedRules?.slice(2), [
+    { type: 'kropki', ratioTwo: { pairs: [[5, 11]], negative: false } },
+    { type: 'thermometer', cells: [12, 13] },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'non-consecutive'
+      ? { ...rule, except: whiteDots.slice(1) }
+      : rule),
+  } }), 'conflict', 'each positive white-dot edge is exempted from Non-Consecutive')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'kropki' && rule.ratioTwo
+      ? { type: 'kropki' as const, consecutive: rule.ratioTwo }
+      : rule),
+  } }), 'conflict', 'the black dot keeps its 1:2 meaning')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'kropki' && rule.consecutive
+      ? { type: 'kropki' as const, ratioTwo: { ...rule.consecutive, pairs: whiteDots } }
+      : rule),
+  } }), 'conflict', 'the white dots keep their consecutive meaning')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.map(rule => rule.type === 'thermometer'
+      ? { ...rule, cells: [...rule.cells].reverse() }
+      : rule),
+  } }), 'conflict', 'the thermometer order composes with both dot families')
+})
+
 test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
   const solution = '123456456123234561561234345612612345'
   const regionLabels = Array.from({ length: 36 }, (_, cell) =>

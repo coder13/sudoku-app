@@ -465,6 +465,59 @@ test('sized Coach Kropki combines positive dots, independent negative rules and 
   await assert.rejects(detectPuzzle(coachCode(source)), /invalid rules/)
 })
 
+test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed rules', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const digits = [...solution].map(Number)
+  const whiteDots: [number, number][] = []
+  for (let row = 0; row < 6; row++) for (let column = 0; column < 6; column++) {
+    const cell = row * 6 + column
+    for (const [nextRow, nextColumn] of [[row, column + 1], [row + 1, column]]) {
+      if (nextRow < 6 && nextColumn < 6) {
+        const next = nextRow * 6 + nextColumn
+        if (Math.abs(digits[cell] - digits[next]) === 1) whiteDots.push([cell, next])
+      }
+    }
+  }
+  const source = {
+    ...six, givenDigits: solution, regions: rectangularRegions(2, 3), givenConstraints: [
+      { type: 'nonconsecutive', settings: {}, segments: [] },
+      { type: 'difference', settings: {}, segments: whiteDots.map(cells => ({ cells, parameters: { difference: 1 } })) },
+      { type: 'ratio', settings: {}, segments: [{ cells: [5, 11], parameters: { ratio: 2 } }] },
+      { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13], parameters: {} }] },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode(source))
+  assert.deepEqual(imported.sizedRules?.[0], { type: 'non-consecutive', except: whiteDots })
+  assert.deepEqual(imported.sizedRules?.[1],
+    { type: 'kropki', consecutive: { pairs: whiteDots, negative: false } })
+  assert.deepEqual(imported.sizedRules?.slice(2), [
+    { type: 'kropki', ratioTwo: { pairs: [[5, 11]], negative: false } },
+    { type: 'thermometer', cells: [12, 13] },
+  ])
+  assert.equal(conflictsOf(solution, undefined, imported.grid, imported.sizedRules).size, 0)
+  const game = { ...makeGame('coach-combo', 'Coach combination', solution, 'imported', 0, imported.grid),
+    sized: { rules: imported.sizedRules!, solution } }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.sized, game.sized)
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.grid, imported.grid)
+  assert.deepEqual(shared.sixRules, imported.sizedRules)
+})
+
+test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV combinations', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const grid = { size: 6 as const, boxRows: 2 as const, boxColumns: 3 as const }
+  const rules = [
+    { type: 'between' as const, cells: [0, 1, 2] },
+    { type: 'clone' as const, groups: [[0, 1], [6, 7]] },
+    { type: 'modular' as const, cells: [0, 1, 2] },
+    { type: 'xv' as const, five: { negative: true } },
+  ]
+  const game = { ...makeGame('coach-rule-share', 'Coach rule share', solution, 'imported', 0, grid),
+    sized: { rules, solution } }
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.sixRules, rules)
+})
+
 test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {
   for (const type of ['difference', 'ratio'] as const) {
     const amountKey = type
