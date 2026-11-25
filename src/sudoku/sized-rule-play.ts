@@ -5,6 +5,7 @@ import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
+import { positionDigit, positionText } from './digit-symbols.ts'
 
 export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
@@ -277,7 +278,7 @@ function checkSizedRuleHintPosition({ solution }: SizedRuleGame, values: string,
   if (Array.from(values).some((digit, cell) => digit !== '0' && digit !== solution[cell])) {
     throw new EngineError('The placed digits conflict with this puzzle’s solution.', 'conflict')
   }
-  if (eliminations?.some((mask, cell) => values[cell] === '0' && (mask & (1 << (Number(solution[cell]) - 1))))) {
+  if (eliminations?.some((mask, cell) => values[cell] === '0' && (mask & (1 << (positionDigit(solution[cell]) - 1))))) {
     throw new EngineError('A required candidate is missing.', 'invalid-eliminations')
   }
 }
@@ -301,11 +302,11 @@ export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGri
     const choice = deduction && sizedRuleHintChoice(game, deduction, grid)
     if (choice) steps.push(choice)
     return {
-      givens, entries: digits.map((digit, cell) => givens[cell] === '0' ? digit : 0).join(''),
+      givens, entries: positionText(digits.map((digit, cell) => givens[cell] === '0' ? digit : 0)),
       eliminations, candidates, pattern: choice?.pattern,
     }
   })
-  const board = trace.at(-1)!.digits.join('')
+  const board = positionText(trace.at(-1)!.digits)
   return { board, steps, positions, status: board === game.solution ? 'solved' : 'stalled' }
 }
 
@@ -315,5 +316,5 @@ export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, val
   const trace = await run({
     type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
   })
-  return trace?.at(-1)?.digits.join('') ?? values
+  return trace?.at(-1) ? positionText(trace.at(-1)!.digits) : values
 }

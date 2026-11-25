@@ -876,13 +876,18 @@ pub(crate) fn region_sum_ranges(
         .collect()
 }
 
-fn add_digit<const WORDS: usize>(sums: [u128; WORDS], domain: u16) -> [u128; WORDS] {
+fn add_value<const WORDS: usize>(
+    sums: [u128; WORDS],
+    domain: u16,
+    value_offset: u8,
+) -> [u128; WORDS] {
     let mut next = [0; WORDS];
     for digit in digits(domain) {
+        let value = u32::from(digit - value_offset);
         for word in 0..WORDS {
-            next[word] |= sums[word] << digit;
-            if word > 0 {
-                next[word] |= sums[word - 1] >> (128 - digit);
+            next[word] |= sums[word] << value;
+            if word > 0 && value != 0 {
+                next[word] |= sums[word - 1] >> (128 - value);
             }
         }
     }
@@ -894,9 +899,19 @@ fn reachable(domains: &[u16]) -> u128 {
 }
 
 pub(crate) fn reachable_sums<const WORDS: usize>(domains: &[u16]) -> [u128; WORDS] {
+    reachable_sums_with_offset(domains, 0)
+}
+
+pub(crate) fn reachable_sums_with_offset<const WORDS: usize>(
+    domains: &[u16],
+    value_offset: u8,
+) -> [u128; WORDS] {
     let mut empty = [0; WORDS];
     empty[0] = 1;
-    domains.iter().copied().fold(empty, add_digit)
+    domains
+        .iter()
+        .copied()
+        .fold(empty, |sums, domain| add_value(sums, domain, value_offset))
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
@@ -909,10 +924,20 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
     support: &mut [u16],
     prefix: &mut [[u128; WORDS]],
 ) -> [u128; WORDS] {
+    sum_support_with_prefix_and_offset(domains, totals, support, prefix, 0)
+}
+
+pub(crate) fn sum_support_with_prefix_and_offset<const WORDS: usize>(
+    domains: &[u16],
+    totals: [u128; WORDS],
+    support: &mut [u16],
+    prefix: &mut [[u128; WORDS]],
+    value_offset: u8,
+) -> [u128; WORDS] {
     prefix[0] = [0; WORDS];
     prefix[0][0] = 1;
     for (i, &domain) in domains.iter().enumerate() {
-        prefix[i + 1] = add_digit(prefix[i], domain);
+        prefix[i + 1] = add_value(prefix[i], domain, value_offset);
     }
     let matched: [u128; WORDS] =
         std::array::from_fn(|word| prefix[domains.len()][word] & totals[word]);
@@ -927,11 +952,14 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
         let mut previous = [0; WORDS];
         let mut supported = 0;
         for digit in digits(domain) {
+            let value = u32::from(digit - value_offset);
             let mut fits = false;
             for word in 0..WORDS {
-                let mut shifted = allowed[word] >> digit;
+                let mut shifted = allowed[word] >> value;
                 if word + 1 < WORDS {
-                    shifted |= allowed[word + 1] << (128 - digit);
+                    if value != 0 {
+                        shifted |= allowed[word + 1] << (128 - value);
+                    }
                 }
                 fits |= prefix[i][word] & shifted != 0;
                 previous[word] |= shifted;

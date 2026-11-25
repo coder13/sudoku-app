@@ -6,7 +6,8 @@ import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-link
 import { STARTER } from './formats.ts'
 import { sizedKillerState } from './sized-killer.ts'
 import { variantPlacedRuleState } from './variant-placed-rules.ts'
-import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, gridValueOffset, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
+import { positionDigit, positionSymbol } from './digit-symbols.ts'
 import type { Candidate, DeductionAction, Difficulty, VariantPuzzle, VariantRule } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { endpointLineState } from './between.ts'
@@ -327,20 +328,42 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
 export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sizedRules?: SizedRuleGame['rules']): Set<number> {
   const conflicts = new Set<number>()
   const cellCount = grid.size ** 2
+  const valueOffset = gridValueOffset(grid)
   for (let i = 0; i < cellCount; i++) {
     const placed = values[i]
     if (placed === '0') continue
-    const digit = Number(placed)
+    const digit = positionDigit(placed)
     if (sizedRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
-      digit % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+      (digit - valueOffset) % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+    if (sizedRules?.some(rule => rule.type === 'digit-restriction' && rule.cells.includes(i) && !rule.digits.includes(digit - valueOffset))) conflicts.add(i)
     if (puzzle?.rules?.some(rule => rule.type === 'digit-restriction' && rule.cells.includes(i) && !rule.digits.includes(digit))) conflicts.add(i)
     for (let j = i + 1; j < cellCount; j++) {
       const other = values[j]
       if (other === '0') continue
       if (placed === other && peer(i, j, puzzle, grid, sizedRules) ||
-        ((variantDigitExclusions(puzzle, i, j, digit) | sizedDigitExclusions(sizedRules, i, j, digit, grid.size)) & 1 << (Number(other) - 1))) {
+        ((variantDigitExclusions(puzzle, i, j, digit) | sizedDigitExclusions(sizedRules, i, j, digit, grid.size, valueOffset)) & 1 << (positionDigit(other) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
+      }
+    }
+  }
+  for (const rule of sizedRules ?? []) {
+    if (rule.type === 'parity-line') {
+      for (let index = 1; index < rule.cells.length; index++) {
+        const first = rule.cells[index - 1], second = rule.cells[index]
+        if (values[first] !== '0' && values[second] !== '0' &&
+          (positionDigit(values[first]) - valueOffset) % 2 === (positionDigit(values[second]) - valueOffset) % 2) {
+          conflicts.add(first)
+          conflicts.add(second)
+        }
+      }
+    } else if (rule.type === 'palindrome') {
+      for (let index = 0; index < Math.floor(rule.cells.length / 2); index++) {
+        const first = rule.cells[index], second = rule.cells[rule.cells.length - index - 1]
+        if (values[first] !== '0' && values[second] !== '0' && values[first] !== values[second]) {
+          conflicts.add(first)
+          conflicts.add(second)
+        }
       }
     }
   }
@@ -649,11 +672,13 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   const givens = visibleGivensOf(game)
   const editable = selection.filter((i) => givens[i] === '0')
   if (mode === 'value') {
-    const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
+    const digitText = positionSymbol(digit)
+    const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === digitText ? 0 : digit
     if (value && editable.length !== 1 && !options.allowMultipleValues) return game
     for (const i of editable) {
-      if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
-      entries = entries.slice(0, i) + value + entries.slice(i + 1)
+      const valueText = value ? positionSymbol(value) : '0'
+      if (entries[i] !== '0' && entries[i] !== valueText) replacedEntry = true
+      entries = entries.slice(0, i) + valueText + entries.slice(i + 1)
     }
     if (value && options.removeCandidates !== false) {
       const bit = 1 << (value - 1)
@@ -670,7 +695,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         let allowed = ruleMasks?.[i] ?? 511
         for (const cell of editable) {
           const removed = (peer(cell, i, puzzle, grid, sizedRules) ? bit : 0) |
-            variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size)
+            variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size, gridValueOffset(grid))
           allowed &= ~removed
         }
         center[i] &= allowed
@@ -796,16 +821,16 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
   let changed = false
 
   for (let index = 0; index < nextValues.length; index++) {
-    const digit = Number(nextValues[index])
+    const digit = positionDigit(nextValues[index])
     if (givens[index] !== '0' || entries[index] !== '0' || digit === 0) continue
-    entries[index] = String(digit)
+    entries[index] = positionSymbol(digit)
     center[index] = 0
     corner[index] = 0
     if (removeCandidates) {
       const bit = 1 << (digit - 1)
       for (let peerIndex = 0; peerIndex < nextValues.length; peerIndex++) {
         const removed = (peer(index, peerIndex, puzzle, game.grid, game.sized?.rules) ? bit : 0) |
-          variantDigitExclusions(puzzle, index, peerIndex, digit) | sizedDigitExclusions(game.sized?.rules, index, peerIndex, digit, game.grid?.size ?? 9)
+          variantDigitExclusions(puzzle, index, peerIndex, digit) | sizedDigitExclusions(game.sized?.rules, index, peerIndex, digit, game.grid?.size ?? 9, gridValueOffset(game.grid))
         center[peerIndex] &= ~removed
         corner[peerIndex] &= ~removed
       }

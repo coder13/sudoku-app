@@ -111,6 +111,12 @@ pub enum SizedConstraint {
         cells: Vec<usize>,
         min_difference: u8,
     },
+    ParityLine {
+        cells: Vec<usize>,
+    },
+    Palindrome {
+        cells: Vec<usize>,
+    },
     NonConsecutive {
         except: Vec<[usize; 2]>,
     },
@@ -395,6 +401,7 @@ pub struct SizedConstraintTracePosition {
 #[derive(Debug)]
 pub struct SizedConstraintGrid {
     layout: SizedGrid,
+    value_offset: u8,
     rules: Vec<SizedConstraint>,
     parity: Vec<(usize, u16)>,
     diagonals: Vec<Vec<usize>>,
@@ -427,6 +434,14 @@ pub struct SizedConstraintGrid {
     coupled_sums: Vec<CoupledSums>,
 }
 
+fn parity_mask(parity: SizedParity, value_offset: u8) -> u16 {
+    if (parity == SizedParity::Odd) ^ (value_offset == 1) {
+        0x5555
+    } else {
+        0xaaaa
+    }
+}
+
 impl SizedConstraintGrid {
     pub fn new(spec: GridSpec, rules: &[SizedConstraint]) -> Option<Self> {
         Self::with_layout(SizedGrid::new(spec)?, rules)
@@ -434,7 +449,17 @@ impl SizedConstraintGrid {
 
     /// Compile the rules against an existing rectangular or irregular layout.
     pub fn with_layout(layout: SizedGrid, rules: &[SizedConstraint]) -> Option<Self> {
+        Self::with_layout_and_values(layout, rules, false)
+    }
+
+    /// Candidate rank zero is always blank. In a zero-based alphabet rank one has value zero.
+    pub(crate) fn with_layout_and_values(
+        layout: SizedGrid,
+        rules: &[SizedConstraint],
+        zero_based: bool,
+    ) -> Option<Self> {
         let size = layout.size();
+        let value_offset = u8::from(zero_based);
         let mut parity = vec![layout.full_mask; layout.cell_count()];
         let mut diagonals = Vec::new();
         let mut extra_houses = Vec::new();
@@ -489,10 +514,7 @@ impl SizedConstraintGrid {
                     if cells.is_empty() {
                         return None;
                     }
-                    let mask = match kind {
-                        SizedParity::Odd => 0x5555,
-                        SizedParity::Even => 0xaaaa,
-                    };
+                    let mask = parity_mask(*kind, value_offset);
                     for &cell in cells {
                         *parity.get_mut(cell)? &= mask;
                     }
@@ -603,16 +625,28 @@ impl SizedConstraintGrid {
                     group_by_region,
                 } => {
                     region_sums.resize_with(index + 1, || None);
-                    region_sums[index] =
-                        Some(RegionSum::compile(&layout, cells, *group_by_region)?);
+                    region_sums[index] = Some(RegionSum::compile(
+                        &layout,
+                        cells,
+                        *group_by_region,
+                        value_offset,
+                    )?);
                     equal_sums.resize_with(index + 1, || None);
-                    equal_sums[index] =
-                        Some(EqualSums::region_sum(&layout, cells, *group_by_region)?);
+                    equal_sums[index] = Some(EqualSums::region_sum(
+                        &layout,
+                        cells,
+                        *group_by_region,
+                        value_offset,
+                    )?);
                 }
                 SizedConstraint::LineAssignments { paths, types } => {
                     line_assignments.resize_with(index + 1, || None);
-                    line_assignments[index] =
-                        Some(LineAssignments::compile(&layout, paths, types)?);
+                    line_assignments[index] = Some(LineAssignments::compile(
+                        &layout,
+                        paths,
+                        types,
+                        value_offset,
+                    )?);
                 }
                 SizedConstraint::Nonogram {
                     axis,
@@ -717,6 +751,8 @@ impl SizedConstraintGrid {
                 | SizedConstraint::LabeledDots { .. }
                 | SizedConstraint::AntiSum { .. }
                 | SizedConstraint::AntiKing
+                | SizedConstraint::ParityLine { .. }
+                | SizedConstraint::Palindrome { .. }
                 | SizedConstraint::Modular { .. }
                 | SizedConstraint::Quadruple { .. }
                 | SizedConstraint::Xv { .. } => {}
@@ -770,10 +806,11 @@ impl SizedConstraintGrid {
             .enumerate()
             .filter(|(_, mask)| *mask != layout.full_mask)
             .collect();
-        let pair_links = compile_pairs(size, rules)?;
+        let pair_links = compile_pairs(size, rules, value_offset)?;
         let coupled_sums = CoupledSums::compile(&equal_sums);
         Some(Self {
             layout,
+            value_offset,
             rules: rules.to_vec(),
             parity,
             diagonals,
@@ -1326,10 +1363,7 @@ impl SizedConstraintGrid {
                     }
                 }
                 SizedConstraint::Parity { cells, parity } => {
-                    let excluded = match parity {
-                        SizedParity::Odd => 0xaaaa,
-                        SizedParity::Even => 0x5555,
-                    };
+                    let excluded = !parity_mask(*parity, self.value_offset);
                     for &cell in cells {
                         eliminations_for(cell, candidates[cell] & excluded, &mut actions);
                     }
@@ -1649,6 +1683,8 @@ impl SizedConstraintGrid {
                 }
                 SizedConstraint::Xv { .. }
                 | SizedConstraint::Whispers { .. }
+                | SizedConstraint::ParityLine { .. }
+                | SizedConstraint::Palindrome { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::AntiKing
@@ -1916,6 +1952,8 @@ impl SizedConstraintGrid {
                     self.between_support(cells, &domains).is_none()
                 }
                 SizedConstraint::Whispers { .. }
+                | SizedConstraint::ParityLine { .. }
+                | SizedConstraint::Palindrome { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::Xv { .. }

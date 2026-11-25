@@ -213,6 +213,8 @@ export type SizedLineType =
   | { type: 'renban' }
 
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+  | { type: 'parity-line'; cells: readonly number[] }
+  | { type: 'palindrome'; cells: readonly number[] }
   | { type: 'line-assignments'; paths: readonly (readonly number[])[]; types: readonly SizedLineType[] }
   | Extract<VariantRule, { type: 'digit-restriction' }>
   | { type: 'anti-king' }
@@ -226,7 +228,7 @@ export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'par
   | { type: 'fractional-regions'; pieces: readonly { quarters: readonly number[]; color: string }[] }
   | { type: 'double-arrow'; ends: readonly [number, number]; cells: readonly number[] }
   | { type: 'crust'; clues: readonly { direction: 'north' | 'east' | 'south' | 'west'; cells: readonly number[]; sum: number; crossed?: number }[]; sharedRegion?: readonly [number, number]; fixedEdges?: readonly (readonly [number, number])[] }
-export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
+export type SizedConstraintPosition = SizedClassicPosition & { zeroBased?: true; rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'solve-unique' | 'candidates' }
   | { operation: 'hints'; eliminations?: readonly number[]; limit: number }

@@ -10,6 +10,7 @@ import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
@@ -84,6 +85,60 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
   const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position: ratioPosition, limit: 10 })
   assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
     choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
+})
+
+test('#396/#404 imports Coach Anti-King and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regionLabels = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions: regionLabels, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 1.5]], parameters: { text: '16' } },
+      { cells: [[1.5, -0.5]], parameters: { text: '7' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13, 14], parameters: {} }] },
+    { type: 'antiKing', settings: {}, segments: [] },
+  ] })
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code, coach: {
+    hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sums with a Thermometer',
+  } }), { headers: { 'content-type': 'application/json' } }))
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [6, 7, 8, 9, 10, 11], sum: 16 },
+    { type: 'x-sum', direction: 'south', cells: [1, 7, 13, 19, 25, 31], sum: 7 },
+    { type: 'thermometer', cells: [12, 13, 14] },
+    { type: 'anti-king' },
+  ])
+
+  const blank = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, '0'.repeat(36))
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: blank })
+  assert.ok(candidates?.every(mask => mask !== 0))
+  const completed = { ...blank, digits: Array.from(solution, Number) }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'x-sum' && rule.direction === 'east'
+      ? { ...rule, sum: rule.sum + 1 }
+      : rule),
+  } }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'thermometer' ? { ...rule, cells: [...rule.cells].reverse() } : rule),
+  } }), 'conflict')
+
+  const kingOnly = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 2 ? 1 : 0), rules: [{ type: 'anti-king' as const }] }
+  const kingCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: kingOnly })
+  const classicCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: kingOnly.digits,
+  } })
+  assert.ok(kingCandidates && classicCandidates)
+  assert.equal(kingCandidates[9] & 1, 0, 'Anti-King removes the given value from a diagonal neighbor')
+  assert.notEqual(classicCandidates[9] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKing', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKing/)
 })
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {
