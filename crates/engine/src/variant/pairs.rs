@@ -6,7 +6,10 @@ use std::{
     sync::Arc,
 };
 
-use super::{CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, VariantTechnique, cell_mask};
+use super::{
+    CompiledVariant, MarkedPairs, Parity, PuzzleRule, VariantDefinitionError, VariantTechnique,
+    cell_mask,
+};
 use crate::{
     CELLS, DIGITS, SizedDotRelation,
     hints::{digit_bit, digits},
@@ -190,7 +193,9 @@ pub(super) const XV: [Relation; 2] = [|a, b| a + b == 5, |a, b| a + b == 10];
 
 impl PairCompiler {
     pub(super) fn exempt_xv_edges(&mut self, edges: &[[usize; 2]]) {
-        self.xv.exemptions.extend(edges.iter().map(|&[a, b]| [a.min(b), a.max(b)]));
+        self.xv
+            .exemptions
+            .extend(edges.iter().map(|&[a, b]| [a.min(b), a.max(b)]));
     }
 
     pub fn compile_rule(
@@ -205,10 +210,12 @@ impl PairCompiler {
                 .then_some(())
                 .ok_or(invalid)
         };
-        let source = |technique| Arc::new(RuleSource {
-            technique,
-            indices: vec![index],
-        });
+        let source = |technique| {
+            Arc::new(RuleSource {
+                technique,
+                indices: vec![index],
+            })
+        };
         match rule {
             PuzzleRule::Parity { cells, parity } => {
                 valid_cells(cells, 1..=CELLS)?;
@@ -227,15 +234,30 @@ impl PairCompiler {
             }
             PuzzleRule::DigitRestriction { cells, digits, .. } => {
                 valid_cells(cells, 1..=CELLS)?;
-                if digits.is_empty() || digits.iter().any(|digit| !(1..=9).contains(digit)) ||
-                    digits.iter().copied().collect::<std::collections::BTreeSet<_>>().len() != digits.len() {
+                if digits.is_empty()
+                    || digits.iter().any(|digit| !(1..=9).contains(digit))
+                    || digits
+                        .iter()
+                        .copied()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len()
+                        != digits.len()
+                {
                     return Err(invalid);
                 }
-                let allowed = digits.iter().fold(0, |mask, &digit| mask | digit_bit(digit));
+                let allowed = digits
+                    .iter()
+                    .fold(0, |mask, &digit| mask | digit_bit(digit));
                 for &cell in cells {
                     puzzle.allowed_digits[cell] &= allowed;
-                    if puzzle.allowed_digits[cell] == 0 { return Err(invalid); }
-                    puzzle.digit_restriction_clues.push(DigitRestrictionClue { rule: index, cell, allowed });
+                    if puzzle.allowed_digits[cell] == 0 {
+                        return Err(invalid);
+                    }
+                    puzzle.digit_restriction_clues.push(DigitRestrictionClue {
+                        rule: index,
+                        cell,
+                        allowed,
+                    });
                 }
             }
             PuzzleRule::Clone { groups } => {
@@ -287,14 +309,81 @@ impl PairCompiler {
                         .push(pair(&source, cells, |a, b| a.abs_diff(b) != 1));
                 }
             }
+            PuzzleRule::DistantNeighbors { marked_cells } => {
+                valid_cells(marked_cells, 9..=9)?;
+                let mut identities = [None; 9];
+                for &cell in marked_cells {
+                    let box_index = (cell / 27) * 3 + cell % 9 / 3;
+                    if identities[box_index].replace(cell).is_some() {
+                        return Err(invalid);
+                    }
+                }
+                if identities.iter().any(Option::is_none) {
+                    return Err(invalid);
+                }
+                let source = source(VariantTechnique::NonConsecutive);
+                let mut add = |first: usize, second: usize, within_one: bool| {
+                    self.clues.push(pair(&source, [first, second], move |a, b| {
+                        if within_one {
+                            a.abs_diff(b) > 1
+                        } else {
+                            a.abs_diff(b) != 1
+                        }
+                    }));
+                };
+                for box_row in 0usize..3 {
+                    for box_column in 0usize..3 {
+                        let identity = identities[box_row * 3 + box_column].unwrap();
+                        let row = identity / 9;
+                        let column = identity % 9;
+                        for neighbor in [
+                            (row > 0).then(|| identity - 9),
+                            (row < 8).then(|| identity + 9),
+                            (column > 0).then(|| identity - 1),
+                            (column < 8).then(|| identity + 1),
+                        ]
+                        .into_iter()
+                        .flatten()
+                        {
+                            add(identity, neighbor, false);
+                        }
+                        if box_column < 2 {
+                            let other = identities[box_row * 3 + box_column + 1].unwrap();
+                            add(identity, other, false);
+                            for row in 0..3 {
+                                add(27 * box_row + 3 * box_column + row * 9 + 2, other, true);
+                                add(
+                                    27 * box_row + 3 * (box_column + 1) + row * 9,
+                                    identity,
+                                    true,
+                                );
+                            }
+                        }
+                        if box_row < 2 {
+                            let other = identities[(box_row + 1) * 3 + box_column].unwrap();
+                            add(identity, other, false);
+                            for column in 0..3 {
+                                add(27 * box_row + 3 * box_column + 18 + column, other, true);
+                                add(27 * (box_row + 1) + 3 * box_column + column, identity, true);
+                            }
+                        }
+                    }
+                }
+            }
             PuzzleRule::Inequality { less, greater } => {
                 let source = source(VariantTechnique::Inequality);
                 let cells = [*less, *greater];
                 valid_cells(&cells, 2..=2)?;
                 self.clues.push(pair(&source, cells, |a, b| a < b));
             }
-            PuzzleRule::Minimum { cells, ignore_marked_neighbors }
-            | PuzzleRule::Maximum { cells, ignore_marked_neighbors } => {
+            PuzzleRule::Minimum {
+                cells,
+                ignore_marked_neighbors,
+            }
+            | PuzzleRule::Maximum {
+                cells,
+                ignore_marked_neighbors,
+            } => {
                 let source = source(VariantTechnique::Inequality);
                 let marked = cell_mask(cells).filter(|&mask| mask != 0).ok_or(invalid)?;
                 let minimum = matches!(rule, PuzzleRule::Minimum { .. });
@@ -302,10 +391,18 @@ impl PairCompiler {
                     let a_marked = marked & (1u128 << a) != 0;
                     let b_marked = marked & (1u128 << b) != 0;
                     if a_marked && (!*ignore_marked_neighbors || !b_marked) {
-                        self.clues.push(pair(&source, if minimum { [a, b] } else { [b, a] }, |a, b| a < b));
+                        self.clues.push(pair(
+                            &source,
+                            if minimum { [a, b] } else { [b, a] },
+                            |a, b| a < b,
+                        ));
                     }
                     if b_marked && (!*ignore_marked_neighbors || !a_marked) {
-                        self.clues.push(pair(&source, if minimum { [b, a] } else { [a, b] }, |a, b| a < b));
+                        self.clues.push(pair(
+                            &source,
+                            if minimum { [b, a] } else { [a, b] },
+                            |a, b| a < b,
+                        ));
                     }
                 }
             }
@@ -321,7 +418,11 @@ impl PairCompiler {
                     invalid,
                 )?;
             }
-            PuzzleRule::LabeledDots { relation, marks, negative } => {
+            PuzzleRule::LabeledDots {
+                relation,
+                marks,
+                negative,
+            } => {
                 let source = source(VariantTechnique::Kropki);
                 if marks.len() > 144 || marks.is_empty() && !negative {
                     return Err(invalid);
@@ -367,7 +468,8 @@ impl PairCompiler {
                 }
                 // Edge-sharing cells share a row or column, so two equal
                 // digits cannot support each other even for an even total.
-                self.clues.push(pair(&source, *cells, |a, b| a != b && a + b == *sum));
+                self.clues
+                    .push(pair(&source, *cells, |a, b| a != b && a + b == *sum));
             }
             PuzzleRule::Thermometer { cells } => {
                 let source = source(VariantTechnique::Thermometer);
@@ -416,19 +518,32 @@ impl PairCompiler {
     }
 
     pub fn finish(mut self, puzzle: &mut CompiledVariant) {
-        puzzle.kropki_marks = finish_markers(&mut self.clues, self.kropki, VariantTechnique::Kropki, KROPKI);
+        puzzle.kropki_marks = finish_markers(
+            &mut self.clues,
+            self.kropki,
+            VariantTechnique::Kropki,
+            KROPKI,
+        );
         finish_markers(&mut self.clues, self.xv, VariantTechnique::Xv, XV);
         for (kind, rule) in self.labeled_negative.into_iter().enumerate() {
             let Some(index) = rule else { continue };
-            let source = Arc::new(RuleSource { technique: VariantTechnique::Kropki, indices: vec![index] });
-            for cells in orthogonal_pairs().filter(|edge| !self.labeled_marked[kind].contains(edge)) {
-                self.clues.push(pair(&source, cells, |a, b| !KROPKI[kind](a, b)));
+            let source = Arc::new(RuleSource {
+                technique: VariantTechnique::Kropki,
+                indices: vec![index],
+            });
+            for cells in orthogonal_pairs().filter(|edge| !self.labeled_marked[kind].contains(edge))
+            {
+                self.clues
+                    .push(pair(&source, cells, |a, b| !KROPKI[kind](a, b)));
             }
         }
         let mut allowed = BTreeMap::<_, Allowed>::new();
         for clue in &self.clues {
             // The chess rules already contribute to the exact solver's peer table.
-            if matches!(clue.source.technique, VariantTechnique::AntiKnight | VariantTechnique::AntiKing) {
+            if matches!(
+                clue.source.technique,
+                VariantTechnique::AntiKnight | VariantTechnique::AntiKing
+            ) {
                 continue;
             }
             for link in &clue.links {
@@ -511,9 +626,9 @@ fn finish_markers(
             technique,
             indices: markers.rule_indices,
         });
-        for cells in orthogonal_pairs().filter(|pair| {
-            !markers.marked.contains_key(pair) && !markers.exemptions.contains(pair)
-        }) {
+        for cells in orthogonal_pairs()
+            .filter(|pair| !markers.marked.contains_key(pair) && !markers.exemptions.contains(pair))
+        {
             clues.push(pair(&source, cells, |a, b| {
                 markers
                     .negative
@@ -560,7 +675,9 @@ fn path(source: &Arc<RuleSource>, cells: &[usize], relation: impl Fn(u8, u8) -> 
         // A walk may revisit a cell. Keep every edge, with one domain and
         // assignment variable per distinct cell.
         cells: cells.iter().copied().fold(Vec::new(), |mut scope, cell| {
-            if !scope.contains(&cell) { scope.push(cell); }
+            if !scope.contains(&cell) {
+                scope.push(cell);
+            }
             scope
         }),
         links,
@@ -587,4 +704,58 @@ fn geometric_pairs(
             .then_some([first, second])
         })
     })
+}
+
+#[cfg(test)]
+mod distant_neighbors_tests {
+    use super::super::{PuzzleRule, VariantPuzzle};
+    use crate::CELLS;
+
+    fn clue_for(puzzle: &crate::variant::CompiledVariant, cells: [usize; 2]) -> &super::PairClue {
+        puzzle
+            .pair_clues
+            .iter()
+            .find(|clue| clue.cells == cells || clue.cells == [cells[1], cells[0]])
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing {cells:?} in {:?}",
+                    puzzle
+                        .pair_clues
+                        .iter()
+                        .map(|clue| &clue.cells)
+                        .collect::<Vec<_>>()
+                )
+            })
+    }
+
+    #[test]
+    fn box_identity_rules_cover_markers_and_both_sides_of_each_border() {
+        let puzzle = VariantPuzzle {
+            version: 1,
+            givens: [0; CELLS],
+            regions: super::super::RegionLayout::Boxes,
+            rules: vec![PuzzleRule::DistantNeighbors {
+                marked_cells: vec![0, 4, 8, 36, 40, 44, 72, 76, 80],
+            }],
+        }
+        .compile()
+        .unwrap();
+
+        let marker_neighbor = clue_for(&puzzle, [0, 1]).binary_relation().unwrap();
+        assert!(!marker_neighbor.permits(3, 4));
+        assert!(marker_neighbor.permits(3, 5));
+
+        let adjacent_identities = clue_for(&puzzle, [0, 4]).binary_relation().unwrap();
+        assert!(!adjacent_identities.permits(3, 4));
+        assert!(adjacent_identities.permits(3, 5));
+
+        let left_face_to_neighbor = clue_for(&puzzle, [2, 4]).binary_relation().unwrap();
+        assert!(!left_face_to_neighbor.permits(4, 3));
+        assert!(left_face_to_neighbor.permits(4, 6));
+
+        let right_face_to_neighbor = clue_for(&puzzle, [0, 3]).binary_relation().unwrap();
+        assert!(!right_face_to_neighbor.permits(3, 3));
+        assert!(!right_face_to_neighbor.permits(3, 4));
+        assert!(right_face_to_neighbor.permits(3, 5));
+    }
 }

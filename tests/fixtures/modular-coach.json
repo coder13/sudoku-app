@@ -561,7 +561,7 @@
       "solution": "614325246531462153351264135642523416",
       "imageUrl": "https://sudoku.coach/open_graph_images/Cmki.png",
       "imageSha256": "7b4203e499e36bf8e88ca238112560e1d845a2033ee6a079b8c80a028958824d",
-      "deferred": "The original export uses a 6×6 grid. Preserve it for larger model/format work.",
+      "deferred": "",
       "description": "More like a 2/10, just a little amuse-bouche."
     },
     {
@@ -584,27 +584,161 @@
       "solution": "173694258948352716526817493261573849485926371739148625357481962692735184814269537",
       "imageUrl": "https://sudoku.coach/open_graph_images/7rs9.png",
       "imageSha256": "aca87d331e5c859e288f770afd2a77cd1ba6527ba6dbdc2efefcde23de5d5bac",
-      "deferred": "The pasted code requires the publication’s line legend. The original short link imports the authored orange and blue paths.",
+      "resolved": "The exact reviewed raw export now uses its published orange Entropic and blue Region Sum legend.",
       "publishedPuzzle": {
         "version": 1,
         "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
         "rules": [
-          {"type": "non-consecutive"},
-          {"type": "entropic", "cells": [72, 73, 63, 64, 65, 55, 56, 48]},
-          {"type": "entropic", "cells": [60, 52, 51, 50, 42, 34]},
-          {"type": "entropic", "cells": [20, 12, 21, 30, 22]},
-          {"type": "modular", "cells": [29, 38, 47, 57, 58]},
-          {"type": "modular", "cells": [34, 26]},
-          {"type": "region-sum", "cells": [58, 59, 60, 52, 42, 34], "groupByRegion": false},
-          {"type": "region-sum", "cells": [14, 22, 12, 20, 29, 38], "groupByRegion": false},
-          {"type": "region-sum", "cells": [56, 48, 40, 49], "groupByRegion": false},
-          {"type": "region-sum", "cells": [47, 39], "groupByRegion": false},
-          {"type": "entropic", "cells": [40, 31, 41, 40, 39, 49, 40]},
-          {"type": "region-sum", "cells": [42, 32, 22, 14], "groupByRegion": false},
-          {"type": "region-sum", "cells": [14, 6], "groupByRegion": false},
-          {"type": "region-sum", "cells": [38, 30], "groupByRegion": false},
-          {"type": "region-sum", "cells": [50, 58], "groupByRegion": false},
-          {"type": "region-sum", "cells": [57, 49], "groupByRegion": false}
+          {
+            "type": "non-consecutive"
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              72,
+              73,
+              63,
+              64,
+              65,
+              55,
+              56,
+              48
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              60,
+              52,
+              51,
+              50,
+              42,
+              34
+            ]
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              20,
+              12,
+              21,
+              30,
+              22
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              29,
+              38,
+              47,
+              57,
+              58
+            ]
+          },
+          {
+            "type": "modular",
+            "cells": [
+              34,
+              26
+            ]
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              58,
+              59,
+              60,
+              52,
+              42,
+              34
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              14,
+              22,
+              12,
+              20,
+              29,
+              38
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              56,
+              48,
+              40,
+              49
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              47,
+              39
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "entropic",
+            "cells": [
+              40,
+              31,
+              41,
+              40,
+              39,
+              49,
+              40
+            ]
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              42,
+              32,
+              22,
+              14
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              14,
+              6
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              38,
+              30
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              50,
+              58
+            ],
+            "groupByRegion": false
+          },
+          {
+            "type": "region-sum",
+            "cells": [
+              57,
+              49
+            ],
+            "groupByRegion": false
+          }
         ]
       },
       "description": "Orange = entropy, brown = modular, blue = regional sum (including the cosmetic lines)."
@@ -618,7 +752,6 @@
       "solution": "5234141523234151523434152",
       "imageUrl": "https://sudoku.coach/open_graph_images/7hzU.png",
       "imageSha256": "28212b1d6057848c78e33dfb8fec7eb0f347a8be814d3d821a0bb8db965652f8",
-      "deferred": "The original Latin-square export uses a 5×5 grid. Preserve its relaxed regions and complete rule list.",
       "description": "Thin lines = entropic, thick = modular"
     },
     {

@@ -18,7 +18,9 @@ impl DoubleArrow {
             || ends.iter().any(|&cell| cell >= layout.cell_count())
             || !(1..=2 * layout.size()).contains(&cells.len())
             || cells.iter().enumerate().any(|(index, &cell)| {
-                cell >= layout.cell_count() || ends.contains(&cell) || cells[..index].contains(&cell)
+                cell >= layout.cell_count()
+                    || ends.contains(&cell)
+                    || cells[..index].contains(&cell)
             })
         {
             return None;
@@ -30,15 +32,20 @@ impl DoubleArrow {
             for (left, &a) in involved.clone().enumerate() {
                 for (offset, &b) in involved.clone().skip(left + 1).enumerate() {
                     let right = left + 1 + offset;
-                    if layout.memberships[a].iter().any(|house| {
-                        *house != NO_REGION && layout.memberships[b].contains(house)
-                    }) {
+                    if layout.memberships[a]
+                        .iter()
+                        .any(|house| *house != NO_REGION && layout.memberships[b].contains(house))
+                    {
                         peers[left] |= 1 << right;
                     }
                 }
             }
         }
-        Some(Self { ends, cells: cells.to_vec(), peers })
+        Some(Self {
+            ends,
+            cells: cells.to_vec(),
+            peers,
+        })
     }
 
     pub(super) fn support(&self, candidates: &[u16]) -> ([u16; 2], [u16; 2 * MAX_SIZE]) {
@@ -54,7 +61,10 @@ impl DoubleArrow {
         // Only the totals of two endpoint digits are relevant, even for long lines.
         let end_totals = reachable_sums(&end_domains);
         let matched = sum_support_with_prefix(
-            &line_domains[..len], end_totals, &mut line_support[..len], &mut [[0u128; 1]; 2 * MAX_SIZE + 1],
+            &line_domains[..len],
+            end_totals,
+            &mut line_support[..len],
+            &mut [[0u128; 1]; 2 * MAX_SIZE + 1],
         );
         sum_support_with_prefix(&end_domains, matched, &mut end_support, &mut [[0]; 3]);
 
@@ -68,7 +78,11 @@ impl DoubleArrow {
             let mut domains = [0; SHORT_ARROW_CELLS];
             domains[..2].copy_from_slice(&end_support);
             domains[2..2 + len].copy_from_slice(&line_support[..len]);
-            let mut search = ShortArrowSupport { target: domains, peers: self.peers, supported: [0; SHORT_ARROW_CELLS] };
+            let mut search = ShortArrowSupport {
+                target: domains,
+                peers: self.peers,
+                supported: [0; SHORT_ARROW_CELLS],
+            };
             search.visit(&domains[..len + 2], 0, 0);
             end_support.copy_from_slice(&search.supported[..2]);
             line_support[..len].copy_from_slice(&search.supported[2..2 + len]);
@@ -98,7 +112,11 @@ impl ShortArrowSupport {
             let bit = choices & choices.wrapping_neg();
             choices ^= bit;
             let digit = bit.trailing_zeros() as i32 + 1;
-            let remaining = if index < 2 { remaining + digit } else { remaining - digit };
+            let remaining = if index < 2 {
+                remaining + digit
+            } else {
+                remaining - digit
+            };
 
             let mut next = [0; SHORT_ARROW_CELLS];
             next[..domains.len()].copy_from_slice(domains);

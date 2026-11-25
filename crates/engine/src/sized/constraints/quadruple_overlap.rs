@@ -1,4 +1,6 @@
-use super::{RegionSum, SizedConstraintGrid, SizedConstraintStep, SizedQuadruple, eliminations_for};
+use super::{
+    RegionSum, SizedConstraintGrid, SizedConstraintStep, SizedQuadruple, eliminations_for,
+};
 
 const MAX_CELLS: usize = 8;
 const MAX_PAIR_ASSIGNMENTS: usize = 65_536;
@@ -32,11 +34,24 @@ impl SizedConstraintGrid {
         }
         let mut remaining = MAX_TOTAL_ASSIGNMENTS;
         let mut assignment = digits.to_vec();
-        for (left_id, left) in self.quadruples.iter().enumerate().filter_map(|(id, clue)| Some((id, clue.as_ref()?))) {
-            let right_clues = self.quadruples.iter().enumerate().skip(left_id + 1)
+        for (left_id, left) in self
+            .quadruples
+            .iter()
+            .enumerate()
+            .filter_map(|(id, clue)| Some((id, clue.as_ref()?)))
+        {
+            let right_clues = self
+                .quadruples
+                .iter()
+                .enumerate()
+                .skip(left_id + 1)
                 .filter_map(|(id, clue)| Some((id, Clue::Quadruple(clue.as_ref()?))))
-                .chain(self.region_sums.iter().enumerate()
-                    .filter_map(|(id, line)| Some((id, Clue::RegionSum(line.as_ref()?)))));
+                .chain(
+                    self.region_sums
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(id, line)| Some((id, Clue::RegionSum(line.as_ref()?)))),
+                );
             for (right_id, right) in right_clues {
                 let mut cells = left.cells.to_vec();
                 match right {
@@ -63,10 +78,13 @@ impl SizedConstraintGrid {
                 }
                 // The product of the domain sizes bounds the full enumeration.
                 // Never draw a conclusion from part of a search.
-                let Some(work) = domains[..cells.len()].iter().try_fold(1usize, |work, mask| {
-                    let next = work * mask.count_ones() as usize;
-                    (next <= MAX_PAIR_ASSIGNMENTS).then_some(next)
-                }) else {
+                let Some(work) = domains[..cells.len()]
+                    .iter()
+                    .try_fold(1usize, |work, mask| {
+                        let next = work * mask.count_ones() as usize;
+                        (next <= MAX_PAIR_ASSIGNMENTS).then_some(next)
+                    })
+                else {
                     continue;
                 };
                 let Some(budget) = remaining.checked_sub(work) else {
@@ -78,8 +96,12 @@ impl SizedConstraintGrid {
                 for (index, &cell) in cells.iter().enumerate() {
                     for (next, &other) in cells.iter().enumerate().skip(index + 1) {
                         if self.layout.memberships[cell].iter().any(|&house| {
-                            house < self.layout.houses.len() && self.layout.memberships[other].contains(&house)
-                        }) || self.diagonals.iter().chain(&self.extra_houses)
+                            house < self.layout.houses.len()
+                                && self.layout.memberships[other].contains(&house)
+                        }) || self
+                            .diagonals
+                            .iter()
+                            .chain(&self.extra_houses)
                             .any(|house| house.contains(&cell) && house.contains(&other))
                         {
                             peers[index] |= 1 << next;
@@ -105,7 +127,9 @@ impl SizedConstraintGrid {
                     cells.sort_unstable();
                     actions.sort_unstable();
                     choices.push(SizedConstraintStep::QuadrupleOverlap {
-                        rules: [left_id, right_id], cells, actions,
+                        rules: [left_id, right_id],
+                        cells,
+                        actions,
                     });
                     if choices.len() == limit {
                         return;
@@ -127,7 +151,11 @@ struct Overlap<'a> {
 impl Overlap<'_> {
     fn collect(&mut self, index: usize, domains: [u16; MAX_CELLS], assignment: &mut [u8]) {
         let Some(&cell) = self.cells.get(index) else {
-            if self.clues.iter().all(|clue| clue.permits(assignment, self.full_mask)) {
+            if self
+                .clues
+                .iter()
+                .all(|clue| clue.permits(assignment, self.full_mask))
+            {
                 for (mask, digit) in self.support.iter_mut().zip(domains) {
                     *mask |= digit;
                 }

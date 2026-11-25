@@ -13,6 +13,7 @@ mod patterns;
     )
 ))]
 pub(crate) use patterns::OverlaySearch;
+pub(crate) use patterns::unique_layouts;
 #[cfg(feature = "variants")]
 pub(crate) use patterns::{RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses};
 
@@ -1232,7 +1233,10 @@ impl HintEvidence {
             Self::UniqueRectangle {
                 candidate_counts, ..
             } => {
-                let corner_candidates: usize = candidate_counts.iter().map(|&count| usize::from(count)).sum();
+                let corner_candidates: usize = candidate_counts
+                    .iter()
+                    .map(|&count| usize::from(count))
+                    .sum();
                 scaled_effort_cost(base, corner_candidates, 9)
             }
             Self::Chain { links } => scaled_effort_cost(base, links.len(), 4),
@@ -2456,7 +2460,10 @@ mod tests {
             panic!("expected multiple choices");
         };
         let expected: [(Technique, &[HintAction]); 7] = [
-            (Technique::DirectHiddenPair, &[HintAction::Place(Candidate { cell: 52, digit: 8 })]),
+            (
+                Technique::DirectHiddenPair,
+                &[HintAction::Place(Candidate { cell: 52, digit: 8 })],
+            ),
             (
                 LockedPair,
                 &[remove(2, 4), remove(5, 8), remove(16, 4), remove(16, 8)],

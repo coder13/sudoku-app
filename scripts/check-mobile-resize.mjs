@@ -568,6 +568,15 @@ try {
       report.checks.push({ scenario: 'resize puzzle by touch from the toolbar', reducedMotion })
     } finally { await context.close() }
   }
+  console.log('Checking puzzle resize between the navigation and puzzle')
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { context, page, client } = await openPage()
+    try {
+      await page.emulateMedia({ reducedMotion })
+      await checkPuzzleDragAbove(page, client)
+      report.checks.push({ scenario: 'shrink and restore puzzle by touch from above', reducedMotion })
+    } finally { await context.close() }
+  }
   assert.deepEqual(errors, [], 'resize must not produce browser or ResizeObserver errors')
   assert.deepEqual(await hashes(), sourceHashes, 'Sources must not change during the resize checks or measurements')
   report.sourceHashesVerifiedAtEnd = true

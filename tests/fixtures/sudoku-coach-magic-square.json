@@ -1,0 +1,8 @@
+{
+  "issue": 423,
+  "url": "https://sudoku.coach/en/s/7uYV",
+  "title": "Coloring Book of Magic",
+  "description": "Rules:\n- Digits cannot repeat in Cages.\n- Middle Box is a Magic Square. In a 3x3 Magic Square: every Row, Column and Diagonal has an equal sum.\n\nNote: Cages with no small clue number on its corner: are all 9-cell cages.",
+  "solution": "748521396659387124312946785591834672267159438483672519124795863936418257875263941",
+  "code": "SCv7_32_f2e7r4ltdr1j0344ru2v638i57lceqovk5hu3ga80j1k1og6mp9q03fitpap0545ubhobk7g3lskfqi4vkq6pns7jt64q0nlodbhtnpuotspjej1bhj6kfie6hmajc86mhu1u2i5jencu14qeevsuvu84rnnd5sn8u05bc03ivl220ih71n431retbr7jiajs57eecvu8knc49d8g4jfh20g2154r236an30276115h205m2i0p30g72lb6c18l092o0p6u00pm5e5fak40hlo8lo7eq6d0vuva8hb94jo8ht6iu95likkgsjj03ia23smso8ovdov13vb76qpe2lkjqr3o9pt5lbt0nge6illiqhdues0bjdrsi762rtm4mqr1kn7k4m09ajfbsmtihjhnufaefdv0bd3vtcj0"
+}

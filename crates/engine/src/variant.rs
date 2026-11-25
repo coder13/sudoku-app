@@ -4,12 +4,13 @@ use std::sync::OnceLock;
 
 use crate::{Board, CELLS, SizedDotRelation, SizedLabeledDot};
 
+mod aqre;
 mod cages;
 mod compile;
 #[cfg(any(feature = "generation", test))]
 mod generation;
+pub(crate) mod global_entropy;
 mod lines;
-mod global_entropy;
 mod logical;
 mod pairs;
 pub(crate) use pairs::{KROPKI, PairConstraint};
@@ -22,31 +23,37 @@ mod visibility;
 #[cfg(feature = "wasm-api")]
 mod wire;
 
+use aqre::AqreConstraint;
+pub use aqre::{AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade};
+use cages::{CageHouseSum, CompiledCage};
 #[cfg(any(feature = "generation", test))]
 pub use generation::{
     GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
     VariantGenerationOptions, start_variant_generation,
 };
-use cages::{CageHouseSum, CompiledCage};
-use lines::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum};
-pub(crate) use search::record_support;
-pub(crate) use lines::{digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix};
+use lines::{
+    DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum,
+};
+pub(crate) use lines::{
+    digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix,
+};
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{
-    VARIANT_SCORING_VERSION, VariantClueScope, VariantDeduction, VariantEntropyAreaProof,
-    VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,
-    VariantGroupSumLinkSource, VariantLineHouseProof, VariantLogicalError, VariantRating,
-    VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck, VariantConstraintScope,
+    VariantDeduction, VariantEntropyAreaProof, VariantEvidence, VariantExclusionPremise,
+    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantGroupOrderBranch, VariantGroupOrderCheck, VariantGroupOrderEliminationProof,
+    VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
+    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource,
+    VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
+    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
+    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantRating, VariantRayHouseProof,
+    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart,
+    VariantRegionSumProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
     VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
     VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantTrace, VariantTrialFailure,
-    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
-    VariantGroupOrderBranch, VariantGroupOrderEliminationProof,
-    VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
-    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
-    VariantMatchingLayoutCase, VariantMatchingLayoutProof,
-    VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
-    VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
+    VariantSumPairProof, VariantTechnique, VariantThermometerHouseProof, VariantTrace,
+    VariantTrialFailure,
 };
 use pairs::{DigitRestrictionClue, PairClue, ParityClue, PositiveSum};
 #[cfg(all(
@@ -58,12 +65,19 @@ pub(crate) use practice::generate_practice_example;
 #[cfg(any(feature = "teaching", test))]
 pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
 use quadruple::Quadruple;
+pub(crate) use search::record_support;
 mod lettered_quadruples;
 use lettered_quadruples::LetteredQuadruples;
+mod neighbor_match;
+use neighbor_match::CompiledNeighborMatch;
+mod magic_square;
+use magic_square::CompiledMagicSquare;
+mod unknown_cage_sums;
 pub(crate) use quadruple::QuadrupleSupport;
 pub use search::VariantPositionError;
 pub(crate) use symmetry::SquareTransform;
 pub use symmetry::canonical_variant;
+use unknown_cage_sums::CompiledUnknownCageSums;
 pub use visibility::{VariantVisibility, VariantVisibilityError};
 
 /// The version of the structured puzzle and position format.
@@ -133,7 +147,11 @@ pub enum Parity {
 
 /// Shape used to display a digit restriction clue.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
 pub enum DigitRestrictionShape {
     Circle,
     Cross,
@@ -142,7 +160,11 @@ pub enum DigitRestrictionShape {
 
 /// The low, middle, or high digit group in an Entropy area.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "kebab-case"))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
 pub enum EntropyGroup {
     /// Digits 1–3.
     Low,
@@ -220,12 +242,30 @@ impl ClueDirection {
 
 /// One circle in a puzzle-wide letter-to-digit key.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(rename_all = "camelCase", deny_unknown_fields))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
 pub struct LetteredQuadruple {
     /// Top-left cell touching the circle.
     pub top_left: usize,
     /// Each printed letter must occur in a separate cell.
     pub letters: String,
+}
+
+/// A printed digit that must occur in at least one orthogonal neighbor.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct NeighborMatchClue {
+    /// Cell containing the authored clue label.
+    pub cell: usize,
+    /// Digit required in an orthogonal neighbor.
+    pub digit: u8,
 }
 
 // One list supplies the wire identifiers and the protocol's supported-rule check.
@@ -276,6 +316,15 @@ rules! {
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
         color: Option<String>,
     }
+    /// Add Aqre shading rules to a Sudoku or Latin square.
+    Aqre => "aqre" {
+        /// Aqre Snake rules or the digit-consecutive Aqre+ rules.
+        kind: AqreKind,
+        /// Cell regions with optional shaded-cell count clues.
+        regions: Vec<AqreRegion>,
+        /// Cells whose starting shade is fixed by the author.
+        given_shades: Vec<AqreGivenShade>,
+    }
     /// Require all rows and columns of a rotated grid to use the same digit set.
     InsideGrid => "inside-grid" {
         /// Ordered rows of the grid, with each cell identified by its outer index.
@@ -300,6 +349,28 @@ rules! {
     LetteredQuadruples => "lettered-quadruples" {
         /// All circles using this key.
         clues: Vec<LetteredQuadruple>,
+    }
+    /// Require each authored digit to occur in at least one orthogonal neighbor of its clue cell.
+    NeighborMatch => "neighbor-match" {
+        /// Clue cells and their required neighboring digits.
+        clues: Vec<NeighborMatchClue>,
+    }
+    /// Require each row, column, and diagonal of a 3 × 3 square to sum to 15.
+    MagicSquare => "magic-square" {
+        /// The nine cells making up the square.
+        cells: Vec<usize>,
+    }
+    /// Require fifteen distinct, consecutive cage sums with selected adjacent totals.
+    UnknownCageSums => "unknown-cage-sums" {
+        /// Cell groups for the unsummed cages; these must partition the grid.
+        cages: Vec<Vec<usize>>,
+        /// Pairs of cage indices whose sums must differ by one.
+        consecutive_pairs: Vec<[usize; 2]>,
+    }
+    /// Apply the published Distant Neighbors relationships to each 3 × 3 box identity.
+    DistantNeighbors => "distant-neighbors" {
+        /// The identity cells, in box row-major order.
+        marked_cells: Vec<usize>,
     }
     /// Constrain a Quadruple's largest digit to the sum of the other three.
     QuadrupleSum => "quadruple-sum" {
@@ -471,14 +542,30 @@ rules! {
         /// One position is unrestricted. Every reference must be in the grid.
         cells: Vec<usize>,
     }
-    /// Require low (1–3), middle (4–6) and high (7–9) digits in every 2 × 2 area.
-    GlobalEntropy => "global-entropy" {}
+    /// Require one digit from each of three groups in every 2 × 2 area.
+    GlobalEntropy => "global-entropy" {
+        /// Optional authored digit groups. Omitted groups use the standard 1–3, 4–6, 7–9 split.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Vec::is_empty"))]
+        groups: Vec<Vec<u8>>,
+    }
     /// Require the indicated group to appear twice in a 2 × 2 area, with each other group once.
     EntropyWindowGroup => "entropy-window-group" {
         /// The four cells of one 2 × 2 area in row-major order.
         cells: [usize; 4],
         /// Which entropy group appears twice.
         group: EntropyGroup,
+    }
+    /// Require an explicit set of digits to occur in ascending order along a directed house.
+    DigitOrder => "digit-order" {
+        /// The nine cells of a row or column, ordered from the clue side.
+        cells: Vec<usize>,
+        /// Distinct digits whose positions must increase in the directed cell order.
+        digits: Vec<u8>,
+    }
+    /// Require an apparent connection across a broken Entropic path to fail in at least one crossing triple.
+    ForbiddenEntropicConnection => "forbidden-entropic-connection" {
+        /// The two cells on either side of the gap and their neighboring line cells, in path order.
+        cells: [usize; 4],
     }
     /// Require each interior digit to fall strictly between the endpoint digits.
     Between => "between" {
@@ -677,6 +764,12 @@ pub struct VariantPosition {
         serde(default = "wire::empty_masks", with = "wire::masks")
     )]
     pub eliminations: [u16; CELLS],
+    /// Cell shades: 0 unknown, 1 unshaded, and 2 shaded.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(default = "wire::empty_grid", with = "wire::shades")
+    )]
+    pub shades: Board,
 }
 
 impl VariantPosition {
@@ -686,6 +779,7 @@ impl VariantPosition {
             puzzle,
             entries: [0; CELLS],
             eliminations: [0; CELLS],
+            shades: [0; CELLS],
         }
     }
 
@@ -773,8 +867,13 @@ pub struct CompiledVariant {
     group_sum_chains: Vec<GroupSumChain>,
     quadruples: Vec<Quadruple>,
     lettered_quadruples: Option<LetteredQuadruples>,
+    neighbor_matches: Vec<CompiledNeighborMatch>,
+    magic_squares: Vec<CompiledMagicSquare>,
+    unknown_cage_sums: Vec<CompiledUnknownCageSums>,
     global_entropy: Option<usize>,
+    global_entropy_groups: [u16; 3],
     entropy_window_groups: Vec<(usize, [usize; 4], EntropyGroup)>,
+    aqre_rules: Vec<AqreConstraint>,
     pair_clues: Vec<PairClue>,
     positive_sums: Vec<PositiveSum>,
     pair_clue_memberships: [Vec<usize>; CELLS],
@@ -800,7 +899,10 @@ impl CompiledVariant {
         first != second
             && (first / 9 == second / 9
                 || first % 9 == second % 9
-                || enforce_regions && self.primary_region(first).is_some_and(|region| self.primary_region(second) == Some(region)))
+                || enforce_regions
+                    && self
+                        .primary_region(first)
+                        .is_some_and(|region| self.primary_region(second) == Some(region)))
     }
 
     fn primary_region(&self, cell: usize) -> Option<usize> {
@@ -847,11 +949,15 @@ fn drawing_paths_cover(cells: &[usize], segments: &Option<Vec<Vec<usize>>>) -> b
         return true;
     };
     !segments.is_empty()
-        && segments.iter().all(|path| {
-            !path.is_empty() && path.iter().all(|&cell| cell < CELLS)
-        })
-        && Some(segments.iter().flatten().fold(0u128, |mask, &cell| mask | (1 << cell)))
-            == cell_mask(cells)
+        && segments
+            .iter()
+            .all(|path| !path.is_empty() && path.iter().all(|&cell| cell < CELLS))
+        && Some(
+            segments
+                .iter()
+                .flatten()
+                .fold(0u128, |mask, &cell| mask | (1 << cell)),
+        ) == cell_mask(cells)
 }
 
 pub(crate) fn cell_mask(cells: &[usize]) -> Option<u128> {

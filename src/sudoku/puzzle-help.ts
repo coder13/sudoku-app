@@ -137,7 +137,7 @@ export async function puzzleSolution(game: Game, run = runEngine) {
   if (!variant) {
     const techniqueOrder = game.practiceTechnique
       ? practiceTechniqueOrder(await run({ type: 'techniques' }), game.practiceTechnique) : undefined
-    return run({ type: 'logical-solve', values: game.givens, techniqueOrder,
+    return run({ type: 'logical-solve', values: game.givens, complete: true, techniqueOrder,
       includeStepDetails: true, includeMoveAvailability: true })
   }
   const position = variantPosition(variant)

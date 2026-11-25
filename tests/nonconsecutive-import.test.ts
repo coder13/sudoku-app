@@ -35,7 +35,40 @@ test('global Non-Consecutive imports preserve the named rule and reject unknown 
     { type: 'nonconsecutive', segments: [{ cells: [0, 1] }], settings: {} },
     { type: 'nonconsecutive', segments: [], settings: { cyclic: true } },
   ]) await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [constraint] })), /unsupported/)
-  await assert.rejects(detectPuzzle(exports.examples[1].code), /6 × 6.*unsupported active rule/)
+  const flockers = await detectPuzzle(exports.examples[1].code)
+  assert.deepEqual(flockers.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(flockers.sizedRules?.find(rule => rule.type === 'non-consecutive'), { type: 'non-consecutive' })
+  assert.equal(flockers.sizedRules?.some(rule => rule.type === 'whispers'), true)
+  assert.equal(flockers.sizedRules?.some(rule => rule.type === 'inequality'), true)
+})
+
+test('sized Coach white-dot exceptions are retained independent of source layer order', async () => {
+  const source = exports.examples[1].decoded as { givenDigits?: string; regions: number[]; givenConstraints: Record<string, unknown>[] }
+  const nonconsecutive = source.givenConstraints.find(rule => rule.type === 'nonconsecutive')!
+  const dot = { type: 'difference', segments: [{ cells: [0, 1], parameters: { difference: 1 } }], settings: {} }
+  const imported = await detectPuzzle(coachCode({ ...source, givenConstraints: [nonconsecutive, dot, ...source.givenConstraints.filter(rule => rule !== nonconsecutive)] }))
+  const reverse = await detectPuzzle(coachCode({ ...source, givenConstraints: [...source.givenConstraints.filter(rule => rule !== nonconsecutive), dot, nonconsecutive] }))
+  const rule = imported.sizedRules?.find(rule => rule.type === 'non-consecutive')
+  assert.deepEqual(rule, { type: 'non-consecutive', except: [[0, 1]] })
+  assert.deepEqual(reverse.sizedRules?.find(rule => rule.type === 'non-consecutive'), rule)
+  const blackDot = { type: 'ratio', segments: [{ cells: [0, 1], parameters: { ratio: 2 } }], settings: {} }
+  const withoutException = await detectPuzzle(coachCode({ ...source, givenConstraints: [...source.givenConstraints, blackDot] }))
+  assert.deepEqual(withoutException.sizedRules?.find(rule => rule.type === 'non-consecutive'), { type: 'non-consecutive' })
+
+  const negativeWhiteLayer = { type: 'difference', segments: [{ cells: [0, 1], parameters: { difference: 1 } }], settings: { negativeConstraint: true } }
+  const negativeWhite = await detectPuzzle(coachCode({ ...source, givenConstraints: [...source.givenConstraints, negativeWhiteLayer] }))
+  assert.deepEqual(negativeWhite.sizedRules?.find(rule => rule.type === 'non-consecutive'), { type: 'non-consecutive', except: [[0, 1]] })
+  assert.deepEqual(negativeWhite.sizedRules?.find(rule => rule.type === 'kropki'), {
+    type: 'kropki', consecutive: { pairs: [[0, 1]], negative: true },
+  })
+  const negativeWhiteReordered = await detectPuzzle(coachCode({ ...source,
+    givenConstraints: [negativeWhiteLayer, ...source.givenConstraints] }))
+  assert.deepEqual(negativeWhiteReordered.sizedRules?.find(rule => rule.type === 'non-consecutive'),
+    negativeWhite.sizedRules?.find(rule => rule.type === 'non-consecutive'))
+
+  const labeledDifference = { type: 'difference', segments: [{ cells: [0, 1], parameters: { difference: 2 } }], settings: {} }
+  const labeled = await detectPuzzle(coachCode({ ...source, givenConstraints: [...source.givenConstraints, labeledDifference] }))
+  assert.deepEqual(labeled.sizedRules?.find(rule => rule.type === 'non-consecutive'), { type: 'non-consecutive' })
 })
 
 test('real Coach white dots exempt exactly their edges, independent of source order', async () => {
@@ -50,6 +83,18 @@ test('real Coach white dots exempt exactly their edges, independent of source or
     givenConstraints: [...exports.examples[0].decoded.givenConstraints].reverse() }))
   assert.deepEqual(swapped.variant!.puzzle.rules!.find(rule => rule.type === 'non-consecutive'), rule)
   assert.match(variantRuleDescriptions(original.variant!.puzzle).join(' '), /white-dot pairs are exempt/)
+  const sourceConstraints = exports.examples[0].decoded.givenConstraints
+  const whiteLayer = sourceConstraints.find(rule => rule.type === 'difference')!
+  const nonconsecutiveLayer = sourceConstraints.find(rule => rule.type === 'nonconsecutive')!
+  const negativeWhite = await detectPuzzle(coachCode({ ...exports.examples[0].decoded, givenConstraints: [
+    { ...whiteLayer, settings: { negativeConstraint: true } }, nonconsecutiveLayer,
+  ] }))
+  const negativeRule = negativeWhite.variant!.puzzle.rules!.find(rule => rule.type === 'non-consecutive')
+  assert.equal(negativeRule?.type, 'non-consecutive')
+  assert.deepEqual(negativeRule?.except, rule.except)
+  assert.deepEqual(negativeWhite.variant!.puzzle.rules!.find(rule => rule.type === 'kropki'), {
+    type: 'kropki', consecutive: { pairs: whiteLayer.segments.map(segment => segment.cells), negative: true },
+  })
   // Native data keeps its explicit meaning; a dot does not implicitly exempt an edge.
   const native = { id: 'mixed', puzzle: { version: 1, givens: '0'.repeat(81), rules: [
     { type: 'non-consecutive' }, { type: 'kropki', consecutive: { pairs: [[0, 1]] } },

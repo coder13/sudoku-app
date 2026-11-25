@@ -32,11 +32,12 @@ export function OutsideClues({ layout, hidden, size = 9 }: { layout: Layout; hid
           </marker>
         </defs>
       )}
-      {layout.clues.map(({ rule, x, y, lane, arrow, label }, i) => (
+      {layout.clues.map(({ rule, x, y, lane, arrow, label, secondaryLabel, dr, dc }, i) => (
         <g key={i} data-outside-clue={rule.type} data-outside-lane={lane}>
-          <text x={x} y={y}>
+          <text className={rule.type === 'nonogram' && rule.axis === 'row' ? 'outside-clue-row' : undefined} x={x} y={y}>
             {label}
           </text>
+          {secondaryLabel !== undefined && <text className="outside-clue-secondary" x={x - dc * .56} y={y - dr * .56}>{secondaryLabel}</text>}
           {arrow && <line className="outside-diagonal-arrow" {...arrow} markerEnd={`url(#${marker})`} />}
         </g>
       ))}

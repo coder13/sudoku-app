@@ -4,6 +4,7 @@ import { rectangularLayouts, type RectangularBoxRows, type SizedGrid } from './g
 import { generationVariant, isPuzzleVariantId, isVariantId, variantDifficulty, type PuzzleVariantId, type VariantId } from './variants.ts'
 
 export const MINI_NAME = 'Mini Sudoku'
+export const FOUR_JIGSAW_NAME = '4 × 4 Jigsaw'
 export const FIVE_JIGSAW_NAME = '5 × 5 Jigsaw Sudoku'
 export const FIVE_BOXLESS_NAME = '5 × 5 Boxless Sudoku'
 export const FIVE_JIGSAW_RULE = 'Place each digit from 1 to 5 once in every row, column, and outlined region.'
@@ -88,6 +89,7 @@ export function newPuzzleDifficulty(variant: NewPuzzleId, preference: Difficulty
 
 export function sizedGridName(grid: SizedGrid) {
   if ('noRegions' in grid) return grid.size === 5 ? FIVE_BOXLESS_NAME : SEVEN_BOXLESS_NAME
+  if (grid.size === 4 && 'regions' in grid) return FOUR_JIGSAW_NAME
   if (grid.size === 5) return FIVE_JIGSAW_NAME
   if (grid.size === 7) return SEVEN_JIGSAW_NAME
   if (grid.size === 8) return EIGHT_NAME

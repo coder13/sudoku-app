@@ -119,6 +119,8 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'triple-pattern-overlay': 'Three-digit Pattern Overlay',
   'quadruple-pattern-overlay': 'Four-digit Pattern Overlay',
   'quintuple-pattern-overlay': 'Five-digit Pattern Overlay',
+  'sextuple-pattern-overlay': 'Six-digit Pattern Overlay',
+  'septuple-pattern-overlay': 'Seven-digit Pattern Overlay',
   'tridagon-aic': 'Tridagon AIC',
   'unique-rectangle-aic': 'Unique Rectangle alternating inference chain',
   'unique-rectangle-discontinuous-nice-loop': 'Unique Rectangle discontinuous Nice Loop',

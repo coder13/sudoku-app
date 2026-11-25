@@ -1,6 +1,7 @@
 export type LatinRule = {
   label: string
-  kind?: 'line' | 'parity'
+  kind?: 'line' | 'parity' | 'thermometer' | 'renban' | 'entropic' | 'modular' | 'between' | 'lockout' | 'arrow' | 'minimum' | 'maximum' |
+    'anti-knight' | 'anti-king' | 'nonconsecutive'
   cells: readonly number[]
   support: (domains: readonly number[]) => readonly number[] | null
 }
@@ -55,6 +56,11 @@ function lineSupport(cells: readonly number[], domains: readonly number[], all: 
     if (only >= 0) supported[only] = digit
   }
   return supported.includes(0) ? null : supported
+}
+
+export function distinctLatinRule(cells: readonly number[], label: string, size: number,
+  kind: LatinRule['kind'] = 'line'): LatinRule {
+  return { kind, label, cells, support: domains => lineSupport(cells, domains, (1 << size) - 1) }
 }
 
 export function createLatinPuzzle(size: number, givens: readonly number[], extra: readonly LatinRule[]): LatinPuzzle {

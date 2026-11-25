@@ -62,6 +62,8 @@ export function countLineSolutions(puzzle: VariantPuzzle, budget = 200_000, extr
     else if (rule.type === 'between') rule.cells.slice(1, -1).forEach(cell =>
       betweenTriples.push([rule.cells[0], cell, rule.cells[rule.cells.length - 1]]))
     else if (rule.type === 'whispers') rule.cells.slice(1).forEach((cell, i) => edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) >= rule.minDifference]))
+    else if (rule.type === 'consecutive-run') rule.cells.slice(1).forEach((cell, i) =>
+      edges.push([rule.cells[i], cell, (a, b) => Math.abs(a - b) === 1]))
     else if (rule.type === 'palindrome') rule.cells.slice(0, Math.floor(rule.cells.length / 2)).forEach((cell, i) =>
       edges.push([cell, rule.cells[rule.cells.length - 1 - i], (a, b) => a === b]))
     else if (rule.type === 'inequality') edges.push([rule.less, rule.greater, (a, b) => a < b])

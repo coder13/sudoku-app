@@ -68,8 +68,8 @@ test('strict X-Sums acceptance retains all edges and totals 1–45, including ma
     )
 })
 
-test('original Coach AsnF retains cosmetic totals and authored meaning without silently inventing a typed rule', async () => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8'))
+test('original Coach AsnF imports its published cosmetic X-Sums and complete definition', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8'))
   assert.equal(source.metadata.custom_constraints, true)
   assert.match(source.metadata.description, /X is the first digit/)
   const text = source.decoded.givenConstraints.flatMap((constraint: { segments: { parameters: { text: string } }[] }) =>
@@ -77,7 +77,14 @@ test('original Coach AsnF retains cosmetic totals and authored meaning without s
   )
   assert.equal(text.length, 16)
   assert.equal(sources[3].puzzle.rules!.length, 16)
-  await assert.rejects(detectPuzzle(source.metadata.sudoku), /unsupported|not supported/)
+  const imported = await detectPuzzle(source.metadata.sudoku)
+  assert.equal(imported.title, 'X sums #3')
+  assert.equal(imported.variant?.id, 'x-sum')
+  assert.deepEqual(imported.variant?.puzzle, sources[3].puzzle)
+  assertVariantCompletion(imported.variant!.puzzle, source.metadata.solution)
+  const counted = countLineSolutions(imported.variant!.puzzle)
+  assert.equal(counted.count, 1)
+  assert.equal(counted.solution, source.metadata.solution)
 })
 
 test('local X-Sum support agrees with direct nine-digit permutations for every total and varied partial rows', () => {

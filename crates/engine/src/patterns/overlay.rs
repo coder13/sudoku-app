@@ -1,10 +1,16 @@
 #[cfg(feature = "variants")]
 use super::PEERS;
-#[cfg(any(feature = "variants", all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))))]
+#[cfg(any(
+    feature = "variants",
+    all(
+        feature = "wasm-api",
+        any(target_arch = "wasm32", test, feature = "cli")
+    )
+))]
 use super::candidate_positions;
 use super::{
-    ControlFlow, Deduction, HintEvidence, House, Technique, bit_indices,
-    cell_bit, cells, house_cells, report_eliminations, templates,
+    ControlFlow, Deduction, HintEvidence, House, Technique, bit_indices, cell_bit, cells,
+    house_cells, report_eliminations, templates,
 };
 use crate::{
     Board, CELLS, DIGITS, PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof,
@@ -13,7 +19,11 @@ use crate::{
 use std::{cell::OnceCell, collections::BTreeMap};
 
 mod packing;
-use packing::{Family, compatible_support};
+use packing::{Family, bounded_support, compatible_support};
+mod complete;
+pub(crate) use complete::unique_layouts;
+
+const WIDE_OVERLAY_CHOICES: u32 = 250_000;
 
 #[cfg(feature = "variants")]
 mod witnesses;
@@ -48,7 +58,10 @@ impl<'a> OverlaySearch<'a> {
 
     #[cfg(any(
         feature = "variants",
-        all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli"))
+        all(
+            feature = "wasm-api",
+            any(target_arch = "wasm32", test, feature = "cli")
+        )
     ))]
     pub(crate) fn update_position(&mut self, board: &Board, masks: &[u16; CELLS]) {
         self.positions = candidate_positions(masks);
@@ -121,7 +134,9 @@ impl<'a> OverlaySearch<'a> {
     /// Read existing coverage without spending another search budget.
     #[cfg(feature = "variants")]
     pub(crate) fn known_full_completion_support(&self) -> bool {
-        self.witnessed.as_ref().and_then(OnceCell::get)
+        self.witnessed
+            .as_ref()
+            .and_then(OnceCell::get)
             .is_some_and(|support| self.full_support(support))
     }
 
@@ -152,12 +167,34 @@ impl<'a> OverlaySearch<'a> {
         let width = technique
             .pattern_overlay_width()
             .expect("overlay technique");
+        let wide = width > 5;
+        let mut remaining = wide.then_some(WIDE_OVERLAY_CHOICES);
         for group in (1..=DIGITS).filter(|group| group.count_ones() == width) {
-            let supported = self.support(group);
+            if remaining == Some(0) {
+                break;
+            }
+            let supported = if wide {
+                let Some(supported) = self.wide_support(group, &mut remaining) else {
+                    continue;
+                };
+                supported
+            } else {
+                self.support(group)
+            };
             if bit_indices(group).any(|digit| supported[digit] == 0) {
                 continue;
             }
-            let (before, already_forced) = self.narrower_support(group);
+            if wide
+                && bit_indices(group).all(|digit| {
+                    self.positions[digit] & (!supported[digit] | required(supported[digit])) == 0
+                })
+            {
+                continue;
+            }
+            let Some((before, already_forced)) = self.narrower_support(group, &mut remaining)
+            else {
+                continue;
+            };
             for digit in bit_indices(group) {
                 let live = self.positions[digit];
                 let evidence = || {
@@ -190,20 +227,44 @@ impl<'a> OverlaySearch<'a> {
         ControlFlow::Continue(())
     }
 
-    fn narrower_support(&mut self, group: u16) -> ([u128; 9], [u128; 9]) {
+    fn narrower_support(
+        &mut self,
+        group: u16,
+        remaining: &mut Option<u32>,
+    ) -> Option<([u128; 9], [u128; 9])> {
         let mut before = self.allowed;
         let mut forced = [0; 9];
         if !group.is_power_of_two() {
             for omit in bit_indices(group) {
                 let subgroup = group ^ (1 << omit);
-                let support = self.support(subgroup);
+                let support = if remaining.is_some() {
+                    self.wide_support(subgroup, remaining)?
+                } else {
+                    self.support(subgroup)
+                };
                 for digit in bit_indices(subgroup) {
                     before[digit] &= support[digit];
                     forced[digit] |= required(support[digit]);
                 }
             }
         }
-        (before, forced)
+        Some((before, forced))
+    }
+
+    fn wide_support(&mut self, group: u16, remaining: &mut Option<u32>) -> Option<[u128; 9]> {
+        if let Some(&support) = self.supports.get(&group) {
+            return Some(support);
+        }
+        let families: Vec<_> = bit_indices(group)
+            .map(|digit| Family {
+                digit,
+                allowed: self.allowed[digit],
+                layouts: self.layouts(digit),
+            })
+            .collect();
+        let support = bounded_support(&families, remaining)?;
+        self.supports.insert(group, support);
+        Some(support)
     }
 
     fn support(&mut self, group: u16) -> [u128; 9] {
@@ -254,7 +315,9 @@ impl<'a> OverlaySearch<'a> {
                 templates::possible(self.allowed[digit])
             };
         } else {
-            let (before, _) = self.narrower_support(group);
+            let (before, _) = self
+                .narrower_support(group, &mut None)
+                .expect("unlimited narrower search");
             let mut families: Vec<_> = bit_indices(group)
                 .map(|digit| Family {
                     digit,
@@ -346,7 +409,6 @@ fn required(support: u128) -> u128 {
         .fold(0, |forced, sites| forced | sites)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -356,7 +418,13 @@ mod tests {
     #[test]
     fn full_completion_certificates_invalidate_on_edits_and_do_not_accept_empty_domains() {
         static HOUSES: std::sync::OnceLock<[u128; 27]> = std::sync::OnceLock::new();
-        let houses = HOUSES.get_or_init(|| House::all().map(house_cells).collect::<Vec<_>>().try_into().unwrap());
+        let houses = HOUSES.get_or_init(|| {
+            House::all()
+                .map(house_cells)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
+        });
         let mut board = [0; CELLS];
         let mut masks = [DIGITS; CELLS];
         let mut search = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
@@ -384,7 +452,13 @@ mod tests {
     #[test]
     fn candidate_edits_invalidate_witnesses_and_preserve_exact_unaffected_support() {
         static HOUSES: std::sync::OnceLock<[u128; 27]> = std::sync::OnceLock::new();
-        let houses = HOUSES.get_or_init(|| House::all().map(house_cells).collect::<Vec<_>>().try_into().unwrap());
+        let houses = HOUSES.get_or_init(|| {
+            House::all()
+                .map(house_cells)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
+        });
         let board = [0; CELLS];
         let mut masks = [crate::DIGITS; CELLS];
         let mut search = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
@@ -399,19 +473,37 @@ mod tests {
 
         let mut fresh = OverlaySearch::for_variant(&board, &masks, houses, &PEERS, true);
         assert_eq!(search.support(0b110), fresh.support(0b110));
-        assert_eq!(search.known_completion_support(), fresh.known_completion_support());
+        assert_eq!(
+            search.known_completion_support(),
+            fresh.known_completion_support()
+        );
         assert!(search.known_completion_support().is_some());
         let actual = search.support(0b011);
         assert_eq!(actual[0] & cell_bit(0), 0);
-        assert_eq!(actual, OverlaySearch::classic(&board, &masks).support(0b011));
+        assert_eq!(
+            actual,
+            OverlaySearch::classic(&board, &masks).support(0b011)
+        );
     }
 
     #[cfg(feature = "variants")]
     #[test]
     fn completion_support_preserves_every_positive_proof_and_falls_back_without_witnesses() {
-        let houses: Vec<_> = House::all().map(|house| house.cells().into_iter().fold(0, |mask, cell| mask | cell_bit(cell))).collect();
-        for technique in [Technique::PatternOverlay, Technique::PairwisePatternOverlay, Technique::TriplePatternOverlay,
-            Technique::QuadruplePatternOverlay, Technique::QuintuplePatternOverlay] {
+        let houses: Vec<_> = House::all()
+            .map(|house| {
+                house
+                    .cells()
+                    .into_iter()
+                    .fold(0, |mask, cell| mask | cell_bit(cell))
+            })
+            .collect();
+        for technique in [
+            Technique::PatternOverlay,
+            Technique::PairwisePatternOverlay,
+            Technique::TriplePatternOverlay,
+            Technique::QuadruplePatternOverlay,
+            Technique::QuintuplePatternOverlay,
+        ] {
             for example in technique.practice_examples() {
                 let position = example.position().unwrap();
                 let board = position.values().unwrap();
@@ -419,13 +511,26 @@ mod tests {
                 let masks = std::array::from_fn(|cell| legal[cell] & !position.eliminations[cell]);
                 let collect = |mut search: OverlaySearch<'_>| {
                     let mut proofs = Vec::<crate::Hint>::new();
-                    let _ = search.visit(technique, &mut |proof| { proofs.push(proof.into()); ControlFlow::Continue(()) });
+                    let _ = search.visit(technique, &mut |proof| {
+                        proofs.push(proof.into());
+                        ControlFlow::Continue(())
+                    });
                     proofs
                 };
                 let reference = collect(OverlaySearch::new(&board, candidate_positions(&masks)));
-                assert!(reference.iter().any(|proof| proof.actions == example.expected_actions));
-                assert_eq!(collect(OverlaySearch::for_variant(&board, &masks, &houses, &PEERS, true)), reference);
-                let mut no_witness = OverlaySearch::for_variant(&board, &masks, &houses, &PEERS, true);
+                assert!(
+                    reference
+                        .iter()
+                        .any(|proof| proof.actions == example.expected_actions)
+                );
+                assert_eq!(
+                    collect(OverlaySearch::for_variant(
+                        &board, &masks, &houses, &PEERS, true
+                    )),
+                    reference
+                );
+                let mut no_witness =
+                    OverlaySearch::for_variant(&board, &masks, &houses, &PEERS, true);
                 no_witness.witnessed.as_mut().unwrap().set([0; 9]).unwrap();
                 assert_eq!(collect(no_witness), reference);
             }
@@ -461,9 +566,10 @@ mod tests {
     #[cfg(feature = "wasm-api")]
     #[test]
     fn interchangeable_digit_groups_match_exact_joint_support_after_an_edit() {
-        let solution =
-            crate::parse_givens("658492731974316582132875694461523978387149256295768143849251367726934815513687429")
-                .unwrap();
+        let solution = crate::parse_givens(
+            "658492731974316582132875694461523978387149256295768143849251367726934815513687429",
+        )
+        .unwrap();
         let board = solution.map(|digit| if [5, 7].contains(&digit) { 0 } else { digit });
         let mut masks = candidates(&board).unwrap();
         let mut search = OverlaySearch::classic(&board, &masks);

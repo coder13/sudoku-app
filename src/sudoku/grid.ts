@@ -27,11 +27,19 @@ export function sixGridForBoxRows(boxRows?: 2 | 3) {
 }
 
 export type MiniGrid = typeof MINI_GRID
-export type JigsawSize = 5 | 7
-export const isJigsawSize = (size: unknown): size is JigsawSize => size === 5 || size === 7
-export type JigsawGrid<Size extends JigsawSize = JigsawSize> = { size: Size; regions: readonly (readonly number[])[] }
+export type JigsawSize = 4 | 5 | 6 | 7
+export const isJigsawSize = (size: unknown): size is JigsawSize => size === 4 || size === 5 || size === 6 || size === 7
+export type JigsawGrid<Size extends JigsawSize = JigsawSize> = {
+  size: Size
+  regions: readonly (readonly number[])[]
+  /** Regions connect across opposite edges of both axes. */
+  wrapAround?: true
+}
 export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
-export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | typeof FIVE_BOXLESS_GRID | typeof SEVEN_BOXLESS_GRID
+export const NINE_BOXLESS_GRID = { size: 9, noRegions: true } as const
+export const SIX_BOXLESS_GRID = { size: 6, noRegions: true } as const
+export type BoxlessGrid = typeof FIVE_BOXLESS_GRID | typeof SIX_BOXLESS_GRID | typeof SEVEN_BOXLESS_GRID | typeof NINE_BOXLESS_GRID
+export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | BoxlessGrid
 const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -77,16 +85,16 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 export function isSizedGrid(value: unknown): value is SizedGrid {
   if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if (value === null || typeof value !== 'object') return false
-  if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value &&
-    (value.size === 5 || value.size === 7) && value.noRegions === true
+  if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && (value.size === 5 || value.size === 6 || value.size === 7 || value.size === 9) && value.noRegions === true
   const grid = value as Partial<RectangularGrid>
   return Object.keys(grid).length === 3 && isRectangularSize(grid.size) &&
     rectangularLayouts(grid.size).some(layout => layout.boxRows === grid.boxRows && layout.boxColumns === grid.boxColumns)
 }
 
 export function isJigsawGrid(value: unknown, allowDisconnected = false): value is JigsawGrid {
-  if (!value || typeof value !== 'object' || Object.keys(value).length !== 2) return false
+  if (!value || typeof value !== 'object') return false
   const grid = value as Partial<JigsawGrid>
+  if (Object.keys(grid).length !== (grid.wrapAround === true ? 3 : 2) || grid.wrapAround !== undefined && grid.wrapAround !== true) return false
   if (!isJigsawSize(grid.size) || !Array.isArray(grid.regions) || grid.regions.length !== grid.size) return false
   const { size, regions } = grid
   const seen = new Set<number>()
@@ -96,7 +104,8 @@ export function isJigsawGrid(value: unknown, allowDisconnected = false): value i
       if (!Number.isInteger(cell) || cell < 0 || cell >= size ** 2 || seen.has(cell)) return false
       seen.add(cell)
     }
-    if (!allowDisconnected && !connectedGridCells(part, size)) return false
+    if (grid.wrapAround === true ? !connectedGridCells(part, size, true)
+      : !allowDisconnected && !connectedGridCells(part, size)) return false
   }
   return true
 }
@@ -112,11 +121,11 @@ export function jigsawMembership(grid: JigsawGrid) {
   return regions
 }
 
-export function jigsawRegionColors(membership: readonly number[], size: number) {
+export function jigsawRegionColors(membership: readonly number[], size: number, wrapAround = false) {
   const cellsByRegion = regionsFromMembership(membership, size)
   const regions = [...new Set(membership)].filter(region => region !== undefined)
   const colors: number[] = []
-  if (regions.some(region => !connectedGridCells(cellsByRegion[region], size))) {
+  if (regions.some(region => !connectedGridCells(cellsByRegion[region], size, wrapAround))) {
     // A detached piece must have a color unique to its region.
     regions.forEach((region, index) => { colors[region] = index + 1 })
     return colors
@@ -124,6 +133,8 @@ export function jigsawRegionColors(membership: readonly number[], size: number) 
   const neighbors = new Map(regions.map(region => [region, new Set<number>()]))
   membership.forEach((region, cell) => {
     const edges = [cell % size < size - 1 ? membership[cell + 1] : undefined, membership[cell + size]]
+    if (wrapAround && cell % size === 0) edges.push(membership[cell + size - 1])
+    if (wrapAround && Math.floor(cell / size) === 0) edges.push(membership[cell + size * (size - 1)])
     for (const other of edges) {
       if (other === undefined || other === region) continue
       neighbors.get(region)!.add(other)
@@ -159,7 +170,7 @@ export function sizedGridIdentity(grid: SizedGrid) {
   if ('noRegions' in grid) return `boxless:${grid.size}`
   if ('regions' in grid) {
     const regions = grid.regions.map(cells => [...cells].sort((a, b) => a - b)).sort((a, b) => a[0] - b[0])
-    return `jigsaw:${grid.size}:${JSON.stringify(regions)}`
+    return `jigsaw:${grid.size}:${grid.wrapAround ? 'wrap:' : ''}${JSON.stringify(regions)}`
   }
   return grid.size === 6 ? `six:${grid.boxRows}` : `sized:${grid.size}:${grid.boxRows}:${grid.boxColumns}`
 }
@@ -195,11 +206,19 @@ export function gridCellsShareEdge(first: number, second: number, size: number) 
   return Math.abs(Math.floor(first / size) - Math.floor(second / size)) + Math.abs(first % size - second % size) === 1
 }
 
-export function connectedGridCells(cells: readonly number[], size: number) {
+export function connectedGridCells(cells: readonly number[], size: number, wrapAround = false) {
   if (cells.length < 2) return cells.length === 1
+  const members = new Set(cells)
   const reached = new Set([cells[0]])
   for (const cell of reached) {
-    for (const neighbor of cells) if (gridCellsShareEdge(cell, neighbor, size)) reached.add(neighbor)
+    const row = Math.floor(cell / size), column = cell % size
+    const neighbors = [
+      row > 0 ? cell - size : wrapAround ? cell + size * (size - 1) : -1,
+      row < size - 1 ? cell + size : wrapAround ? cell - size * (size - 1) : -1,
+      column > 0 ? cell - 1 : wrapAround ? cell + size - 1 : -1,
+      column < size - 1 ? cell + 1 : wrapAround ? cell - size + 1 : -1,
+    ]
+    for (const neighbor of neighbors) if (members.has(neighbor)) reached.add(neighbor)
   }
   return reached.size === cells.length
 }
@@ -251,6 +270,14 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   if (!rules) return 0
   let excluded = kropkiDigitExclusions(rules, cell, other, digit, size)
   for (const rule of rules) {
+    if (rule.type === 'non-consecutive' && gridCellsShareEdge(cell, other, size) &&
+      !rule.except?.some(([a, b]) => a === cell && b === other || a === other && b === cell)) {
+      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < size ? 1 << digit : 0)
+    }
+    if (rule.type === 'inequality') {
+      if (rule.less === cell && rule.greater === other) excluded |= (1 << digit) - 1
+      if (rule.greater === cell && rule.less === other) excluded |= ((1 << size) - 1) & ~((1 << (digit - 1)) - 1)
+    }
     if (rule.type === 'anti-sum' && gridCellsShareEdge(cell, other, size)) {
       const forbidden = rule.sum - digit
       if (forbidden >= 1 && forbidden <= size) excluded |= 1 << (forbidden - 1)

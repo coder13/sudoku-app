@@ -69,10 +69,10 @@ test('all preserved Coach combinations keep every constraint and their complete 
     const { game } = await prepareImportedPuzzle(source.code)
     const puzzle = game.variant!.puzzle
     assert.equal(game.variant!.solution, source.solution)
-    assert.equal(puzzle.rules!.length, [2, 6, 3, 12][index])
+    assert.equal(puzzle.rules!.length, [2, 6, 3, 12, 4][index])
     assertVariantCompletion(puzzle, source.solution)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder })
-    assert.equal(trace.steps.length, [27, 170, 199, 6][index]); assert.equal(trace.rating.points, [1059, 3597, 92756, 206][index])
+    assert.equal(trace.steps.length, [27, 170, 199, 6, 212][index]); assert.equal(trace.rating.points, [1059, 3597, 92756, 206, 4254][index])
     let played = game
     for (const step of trace.steps) {
       for (const action of step.actions) {
@@ -82,7 +82,7 @@ test('all preserved Coach combinations keep every constraint and their complete 
       if (step.technique === 'xv') assertXvProof(puzzle, step)
       played = applyDeduction(played, step.actions, variantHouseMasks(puzzle, valuesOf(played)))
     }
-    const complete = index === 1 || index === 2
+    const complete = index === 1 || index === 2 || index === 4
     assert.equal(isSolved(played), complete)
     if (!complete) assert.equal(trace.rating.status, 'stalled')
     else assert.equal(valuesOf(played), source.solution)

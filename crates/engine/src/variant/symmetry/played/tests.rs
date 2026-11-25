@@ -183,7 +183,7 @@ fn played_entropy_keys_cover_every_group_permutation_and_grid_symmetry() {
     ];
     let mut original = VariantPuzzle {
         rules: vec![
-            PuzzleRule::GlobalEntropy {},
+            PuzzleRule::GlobalEntropy { groups: Vec::new() },
             PuzzleRule::Entropic {
                 cells: vec![0, 10, 20],
             },
@@ -202,7 +202,9 @@ fn played_entropy_keys_cover_every_group_permutation_and_grid_symmetry() {
                     let members = [low, medium, high];
                     for transform in SquareTransform::ALL {
                         let mut equivalent = original.clone();
-                        equivalent.rules.push(PuzzleRule::GlobalEntropy {});
+                        equivalent
+                            .rules
+                            .push(PuzzleRule::GlobalEntropy { groups: Vec::new() });
                         for digit in &mut equivalent.givens {
                             if *digit != 0 {
                                 let group = usize::from((*digit - 1) / 3);
@@ -222,7 +224,10 @@ fn played_entropy_keys_cover_every_group_permutation_and_grid_symmetry() {
     assert_eq!(original.rules.len(), 2);
     assert_eq!(original.givens[0], 1);
     let public = canonical_variant(&VariantPuzzle {
-        rules: vec![PuzzleRule::GlobalEntropy {}, PuzzleRule::GlobalEntropy {}],
+        rules: vec![
+            PuzzleRule::GlobalEntropy { groups: Vec::new() },
+            PuzzleRule::GlobalEntropy { groups: Vec::new() },
+        ],
         ..VariantPuzzle::classic([0; CELLS])
     })
     .unwrap();
@@ -232,7 +237,7 @@ fn played_entropy_keys_cover_every_group_permutation_and_grid_symmetry() {
 #[test]
 fn played_entropy_keys_keep_cross_group_changes_and_numeric_companions_distinct() {
     let mut original = VariantPuzzle {
-        rules: vec![PuzzleRule::GlobalEntropy {}],
+        rules: vec![PuzzleRule::GlobalEntropy { groups: Vec::new() }],
         ..VariantPuzzle::classic([0; CELLS])
     };
     original.givens[..9].copy_from_slice(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -554,7 +559,10 @@ fn played_modular_names_preserve_remainder_relations_and_mixed_partitions_keep_d
             );
         }
     }
-    for companion in [entropic(&[0, 12, 24]), PuzzleRule::GlobalEntropy {}] {
+    for companion in [
+        entropic(&[0, 12, 24]),
+        PuzzleRule::GlobalEntropy { groups: Vec::new() },
+    ] {
         let mut source = VariantPuzzle {
             rules: vec![modular(&[0, 12, 24]), companion],
             ..VariantPuzzle::classic([0; CELLS])

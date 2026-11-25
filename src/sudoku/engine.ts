@@ -45,7 +45,10 @@ export type VariantRule =
   | { type: 'distinct-cells'; cells: readonly number[]; color?: string }
   | { type: 'consecutive-run'; cells: readonly number[]; color?: string; fromBulb?: boolean }
   | { type: 'inside-grid'; rows: readonly (readonly number[])[] }
-  | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number }[]; coverGrid?: boolean }
+  | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number; showSum?: boolean }[]; coverGrid?: boolean }
+  | { type: 'magic-square'; cells: readonly number[] }
+  | { type: 'unknown-cage-sums'; cages: readonly (readonly number[])[]; consecutivePairs: readonly (readonly [number, number])[] }
+  | { type: 'distant-neighbors'; markedCells: readonly number[] }
   | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
   | { type: 'lettered-quadruples'; clues: readonly import('./lettered-quadruples.ts').LetteredQuadruple[] }
   | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
@@ -67,8 +70,15 @@ export type VariantRule =
   | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
   | { type: 'entropic'; cells: readonly number[] }
   | { type: 'modular'; cells: readonly number[] }
-  | { type: 'global-entropy' }
+  | { type: 'global-entropy'; groups?: readonly (readonly number[])[] }
   | { type: 'entropy-window-group'; cells: readonly [number, number, number, number]; group: 'low' | 'middle' | 'high' }
+  | { type: 'digit-order'; cells: readonly number[]; digits: readonly number[] }
+  | { type: 'forbidden-entropic-connection'; cells: readonly [number, number, number, number] }
+  | { type: 'aqre'; kind: 'snake' | 'plus'; regions: readonly {
+      cells: readonly number[]
+      count?: { type: 'fixed'; value: number } | { type: 'digit-cell'; cell: number }
+    }[]; givenShades: readonly { cell: number; shade: 'unshaded' | 'shaded' }[] }
+  | { type: 'neighbor-match'; clues: readonly { cell: number; digit: number }[] }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
   | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
@@ -116,6 +126,7 @@ export type VariantPosition = {
   puzzle: VariantPuzzle
   entries?: string
   eliminations?: readonly number[]
+  shades?: string
 }
 
 export type VariantVisibility = {
@@ -148,7 +159,7 @@ type VariantRequest = {
 
 export type SizedClassicPosition = {
   version: 2
-  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[] } | { size: number; noRegions: true }
+  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[]; wrapAround?: true } | { size: number; noRegions: true }
   digits: readonly number[]
 }
 
@@ -191,12 +202,21 @@ export type SizedLabeledDotsRule = {
 }
 export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
 export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'whispers' | 'xv' | 'sandwich' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' }>
+export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; index: number; digits: readonly number[]; runs: readonly number[] }
+export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
+export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
+export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+  | { type: 'anti-king' }
+  | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }
-  | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow
+  | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
+  | { type: 'row-equation'; cells: readonly number[]; operators: readonly EquationOperator[] }
+  | { type: 'fractional-regions'; pieces: readonly { quarters: readonly number[]; color: string }[] }
   | { type: 'double-arrow'; ends: readonly [number, number]; cells: readonly number[] }
+  | { type: 'crust'; clues: readonly { direction: 'north' | 'east' | 'south' | 'west'; cells: readonly number[]; sum: number; crossed?: number }[]; sharedRegion?: readonly [number, number]; fixedEdges?: readonly (readonly [number, number])[] }
 export type SizedConstraintPosition = SizedClassicPosition & { rules: readonly SizedConstraintRule[] }
 type SizedConstraintRequest = { type: 'sized-variant'; position: SizedConstraintPosition } & (
   | { operation: 'analyze' | 'solve' | 'solve-unique' | 'candidates' }
@@ -276,7 +296,8 @@ export type EngineRequest =
   | ({ type: 'solve-singles'; displayedCandidates?: readonly number[] } & CandidatePosition)
   | { type: 'generate'; seed: number }
   | ({ type: 'rate'; values: string } & SolverOptions)
-  | ({ type: 'logical-solve'; includePositions?: boolean; includeStepDetails?: boolean; includeMoveAvailability?: boolean } & StartingPosition & SolverOptions)
+  | ({ type: 'logical-solve'; complete?: boolean; includePositions?: boolean; includeStepDetails?: boolean; includeMoveAvailability?: boolean } & StartingPosition & SolverOptions)
+  | ({ type: 'replay-eight-digit-overlay'; proof: EightDigitOverlayProof } & StartingPosition)
   | ({ type: 'logical-solve-with-rank'; includePositions?: boolean; rankOptions?: Partial<RankFallbackOptions> } & StartingPosition & SolverOptions)
   | ({ type: 'compare-solve-paths'; technique: string } & StartingPosition & SolverOptions)
   | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
@@ -554,6 +575,11 @@ export type LessonExample = LessonPosition & {
 export type SolvePosition = PositionSnapshot & { candidates?: number[]; pattern?: ProofPattern }
 
 export type MoveAvailability = { easyMoves: number; bottleneck: boolean }
+export type EightDigitOverlayProof = {
+  omittedDigit: number
+  /** Eight layouts in digit order, skipping the omitted digit. */
+  layouts: number[][]
+}
 export type LogicalSolution = {
   board: string
   steps: Deduction[]
@@ -564,6 +590,8 @@ export type LogicalSolution = {
   exact?: true
   /** A verified completion shown separately from the last logical position. */
   exactPosition?: SolvePosition
+  completionProof?: EightDigitOverlayProof
+  completionActions?: DeductionAction[]
 }
 export type PathComparison = { withTechnique: LogicalSolution; withoutTechnique: LogicalSolution }
 export type AlternatePath =
@@ -751,6 +779,7 @@ export type EngineResult<T extends EngineRequest> =
   T extends { type: 'solve' } ? string | null :
   T extends { type: 'rate' } ? PuzzleRating :
   T extends { type: 'logical-solve' } ? LogicalSolution :
+  T extends { type: 'replay-eight-digit-overlay' } ? boolean :
   T extends { type: 'logical-solve-with-rank' } ? RankSolution :
   T extends { type: 'compare-solve-paths' } ? PathComparison :
   T extends { type: 'alternate-solve-path' } ? AlternatePath :
@@ -1003,10 +1032,20 @@ function dispatchNext(connection: EngineConnection) {
   try {
     connection.worker ??= connect(connection)
     connection.active = id
-    connection.worker.postMessage({ id, request: pending.request })
+    connection.worker.postMessage({ id, request: omitPresentationMetadata(pending.request) })
   } catch (error) {
     closeConnection(connection, error instanceof Error ? error : new Error(String(error)))
   }
+}
+
+// Presentation-only import metadata is retained by the app but must not be
+// sent to the strict Rust puzzle schema.
+function omitPresentationMetadata(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(omitPresentationMetadata)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== 'showSum')
+    .map(([key, nested]) => [key, omitPresentationMetadata(nested)]))
 }
 
 function sendRequest<T extends EngineRequest>(connection: EngineConnection, request: T, { signal, latestKey }: EngineRunOptions = {}): Promise<EngineResult<T>> {

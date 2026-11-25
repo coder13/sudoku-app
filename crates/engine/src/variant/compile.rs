@@ -3,6 +3,7 @@
 use std::sync::OnceLock;
 
 use super::{
+    AqreConstraint, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
     CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
     VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
     cell_mask, cells_in,
@@ -61,8 +62,13 @@ impl VariantPuzzle {
             group_sum_chains: Vec::new(),
             quadruples: Vec::new(),
             lettered_quadruples: None,
+            neighbor_matches: Vec::new(),
+            magic_squares: Vec::new(),
+            unknown_cage_sums: Vec::new(),
             global_entropy: None,
+            global_entropy_groups: [0b000000111, 0b000111000, 0b111000000],
             entropy_window_groups: Vec::new(),
+            aqre_rules: Vec::new(),
             pair_clues: Vec::new(),
             positive_sums: Vec::new(),
             pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
@@ -125,16 +131,69 @@ impl VariantPuzzle {
                         return Err(VariantDefinitionError::IncompleteCages);
                     }
                 }
-                PuzzleRule::GlobalEntropy {} => {
+                PuzzleRule::GlobalEntropy { groups } => {
+                    let groups = if groups.is_empty() {
+                        [0b000000111, 0b000111000, 0b111000000]
+                    } else {
+                        let mut masks = [0u16; 3];
+                        let mut seen = 0u16;
+                        if groups.len() != 3 {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        for (group, digits) in groups.iter().enumerate() {
+                            if digits.is_empty() {
+                                return Err(VariantDefinitionError::InvalidRule(index));
+                            }
+                            for &digit in digits {
+                                if !(1..=9).contains(&digit) || seen & (1 << (digit - 1)) != 0 {
+                                    return Err(VariantDefinitionError::InvalidRule(index));
+                                }
+                                let bit = 1 << (digit - 1);
+                                seen |= bit;
+                                masks[group] |= bit;
+                            }
+                        }
+                        if seen != 0b111111111 {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        let mut canonical_masks = masks;
+                        canonical_masks.sort_unstable();
+                        if canonical_masks != [0b000000111, 0b000111000, 0b111000000] {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        masks
+                    };
+                    compiled.global_entropy_groups = groups;
                     compiled.global_entropy.get_or_insert(index);
                 }
                 PuzzleRule::EntropyWindowGroup { cells, group } => {
                     let [top_left, top_right, bottom_left, bottom_right] = *cells;
-                    if top_left >= 72 || top_left % 9 >= 8 || top_right != top_left + 1 ||
-                        bottom_left != top_left + 9 || bottom_right != top_left + 10 {
+                    if top_left >= 72
+                        || top_left % 9 >= 8
+                        || top_right != top_left + 1
+                        || bottom_left != top_left + 9
+                        || bottom_right != top_left + 10
+                    {
                         return Err(VariantDefinitionError::InvalidRule(index));
                     }
                     compiled.entropy_window_groups.push((index, *cells, *group));
+                }
+                PuzzleRule::DigitOrder { .. } | PuzzleRule::ForbiddenEntropicConnection { .. } => {
+                    let line =
+                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    compiled.lines.push(line);
+                }
+                PuzzleRule::Aqre {
+                    kind,
+                    regions,
+                    given_shades,
+                } => {
+                    if compiled.aqre_rules.len() > 0 {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    let aqre = AqreConstraint::compile(*kind, regions, given_shades)
+                        .map_err(|_| VariantDefinitionError::InvalidRule(index))?;
+                    compiled.aqre_rules.push(aqre);
                 }
                 PuzzleRule::Quadruple { top_left, digits }
                 | PuzzleRule::QuadrupleSum { top_left, digits } => {
@@ -160,6 +219,29 @@ impl VariantPuzzle {
                         enforce_regions,
                     )?);
                 }
+                PuzzleRule::NeighborMatch { clues } => {
+                    compiled
+                        .neighbor_matches
+                        .extend(CompiledNeighborMatch::compile(index, clues)?);
+                }
+                PuzzleRule::MagicSquare { cells } => {
+                    compiled
+                        .magic_squares
+                        .push(CompiledMagicSquare::compile(index, cells)?);
+                }
+                PuzzleRule::UnknownCageSums {
+                    cages,
+                    consecutive_pairs,
+                } => {
+                    compiled
+                        .unknown_cage_sums
+                        .push(CompiledUnknownCageSums::compile(
+                            index,
+                            cages,
+                            consecutive_pairs,
+                            &mut occupied_cages,
+                        )?);
+                }
                 PuzzleRule::Arrow { .. }
                 | PuzzleRule::PillArrow { .. }
                 | PuzzleRule::Renban { .. }
@@ -175,7 +257,8 @@ impl VariantPuzzle {
                 | PuzzleRule::LittleKiller { .. }
                 | PuzzleRule::XSum { .. }
                 | PuzzleRule::Skyscrapers { .. } => {
-                    let line = LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    let line =
+                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
                     compiled.lines.push(line);
                 }
                 PuzzleRule::Parity { .. }
@@ -184,6 +267,7 @@ impl VariantPuzzle {
                 | PuzzleRule::AntiKnight {}
                 | PuzzleRule::AntiKing {}
                 | PuzzleRule::NonConsecutive { .. }
+                | PuzzleRule::DistantNeighbors { .. }
                 | PuzzleRule::Inequality { .. }
                 | PuzzleRule::Minimum { .. }
                 | PuzzleRule::Maximum { .. }
@@ -240,9 +324,23 @@ impl VariantPuzzle {
                     .map(|clue| cell_mask(&clue.cells).unwrap()),
             )
             .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
-            .chain(compiled.digit_restriction_clues.iter().map(|clue| 1u128 << clue.cell))
+            .chain(
+                compiled
+                    .digit_restriction_clues
+                    .iter()
+                    .map(|clue| 1u128 << clue.cell),
+            )
+            .chain(
+                compiled
+                    .neighbor_matches
+                    .iter()
+                    .flat_map(|clue| clue.neighbors.iter().map(|&cell| 1u128 << cell)),
+            )
             .fold(0, |cells, scope| cells | scope);
-        if compiled.global_entropy.is_some() || compiled.lettered_quadruples.is_some() {
+        if compiled.global_entropy.is_some()
+            || compiled.lettered_quadruples.is_some()
+            || !compiled.aqre_rules.is_empty()
+        {
             compiled.extra_rule_cells = (1u128 << CELLS) - 1;
         }
         Ok(compiled)

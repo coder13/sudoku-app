@@ -47,6 +47,19 @@ fn orthogonal_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
     })
 }
 
+fn king_edges(size: usize) -> impl Iterator<Item = [usize; 2]> {
+    (0..size * size).flat_map(move |cell| {
+        let row = cell / size;
+        let column = cell % size;
+        [
+            (row + 1 < size && column + 1 < size).then_some([cell, cell + size + 1]),
+            (row + 1 < size && column > 0).then_some([cell, cell + size - 1]),
+        ]
+        .into_iter()
+        .flatten()
+    })
+}
+
 #[derive(Debug)]
 pub(super) struct RowColumnSum {
     pub marked: Vec<PairConstraint<MAX_SIZE>>,
@@ -70,7 +83,11 @@ impl RowColumnSum {
             return None;
         }
         let sum = |[a, b]: [usize; 2]| {
-            if b - a == 1 { a / size + 1 } else { a % size + 1 }
+            if b - a == 1 {
+                a / size + 1
+            } else {
+                a % size + 1
+            }
         };
         let link = |cells| {
             let total = sum(cells) as u8;
@@ -105,7 +122,9 @@ impl RowColumnSum {
     }
 
     pub fn unmarked_support(&self, domains: &[u16]) -> UnmarkedSumSupport {
-        let Some(links) = &self.unmarked else { return UnmarkedSumSupport::Unrestricted };
+        let Some(links) = &self.unmarked else {
+            return UnmarkedSumSupport::Unrestricted;
+        };
         let mut only = None;
         for link in links {
             let masks = link.restrict(link.cells.map(|cell| domains[cell]));
@@ -115,7 +134,10 @@ impl RowColumnSum {
             if only.is_some() {
                 return UnmarkedSumSupport::Unrestricted;
             }
-            only = Some(UnmarkedSumSupport::One { cells: link.cells, masks });
+            only = Some(UnmarkedSumSupport::One {
+                cells: link.cells,
+                masks,
+            });
         }
         only.unwrap_or(UnmarkedSumSupport::Impossible)
     }
@@ -125,10 +147,11 @@ impl RowColumnSum {
             let [left, right] = link.cells.map(|cell| digits[cell]);
             left == 0 || right == 0 || link.permits(left, right)
         }) && self.unmarked.as_ref().is_none_or(|links| {
-            digits.contains(&0) || links.iter().any(|link| {
-                let [left, right] = link.cells.map(|cell| digits[cell]);
-                link.permits(left, right)
-            })
+            digits.contains(&0)
+                || links.iter().any(|link| {
+                    let [left, right] = link.cells.map(|cell| digits[cell]);
+                    link.permits(left, right)
+                })
         })
     }
 }
@@ -140,9 +163,17 @@ pub(super) fn compile_pairs(
     if !rules.iter().any(|rule| {
         matches!(
             rule,
-            SizedConstraint::Kropki { .. } | SizedConstraint::Difference { .. }
-                | SizedConstraint::LabeledDots { .. } | SizedConstraint::AntiSum { .. }
-                | SizedConstraint::Whispers { .. } | SizedConstraint::Xv { .. }
+            SizedConstraint::Kropki { .. }
+                | SizedConstraint::CornerKropki { .. }
+                | SizedConstraint::Difference { .. }
+                | SizedConstraint::LabeledDots { .. }
+                | SizedConstraint::AntiSum { .. }
+                | SizedConstraint::Whispers { .. }
+                | SizedConstraint::NonConsecutive { .. }
+                | SizedConstraint::Inequality { .. }
+                | SizedConstraint::AntiKing
+                | SizedConstraint::Modular { .. }
+                | SizedConstraint::Xv { .. }
         )
     }) {
         return Some(Vec::new());
@@ -158,15 +189,54 @@ pub(super) fn compile_pairs(
     let mut differences: [Option<PairConstraint<MAX_SIZE>>; MAX_SIZE] =
         std::array::from_fn(|_| None);
     for (index, rule) in rules.iter().enumerate() {
+        if let SizedConstraint::Inequality { less, greater } = *rule {
+            if less == greater || adjacent_edge([less, greater], size).is_none() {
+                return None;
+            }
+            groups[index].push(SizedPairLink {
+                constraint: PairConstraint::from_relation([less, greater], size, |x, y| x < y),
+                kropki: None,
+            });
+            continue;
+        }
+        if matches!(rule, SizedConstraint::AntiKing) {
+            groups[index].extend(king_edges(size).map(|cells| SizedPairLink {
+                constraint: PairConstraint::from_relation(cells, size, |x, y| x != y),
+                kropki: None,
+            }));
+            continue;
+        }
+        if let SizedConstraint::NonConsecutive { except } = rule {
+            let mut exempt = BTreeSet::new();
+            for &pair in except {
+                let cells = adjacent_edge(pair, size)?;
+                if !exempt.insert(cells) {
+                    return None;
+                }
+            }
+            for cells in orthogonal_edges(size).filter(|cells| !exempt.contains(cells)) {
+                groups[index].push(SizedPairLink {
+                    constraint: PairConstraint::from_relation(cells, size, |x, y| {
+                        x.abs_diff(y) != 1
+                    }),
+                    kropki: None,
+                });
+            }
+            continue;
+        }
         if let SizedConstraint::AntiSum { sum } = *rule {
             if !(2..=2 * size as u8).contains(&sum) {
                 return None;
             }
-            let constraint = PairConstraint::from_relation([0, 1], size, |x, y| x != y && x + y != sum);
+            let constraint =
+                PairConstraint::from_relation([0, 1], size, |x, y| x != y && x + y != sum);
             groups[index].extend(orthogonal_edges(size).map(|cells| {
                 let mut constraint = constraint.clone();
                 constraint.cells = cells;
-                SizedPairLink { constraint, kropki: None }
+                SizedPairLink {
+                    constraint,
+                    kropki: None,
+                }
             }));
             continue;
         }
@@ -187,7 +257,12 @@ pub(super) fn compile_pairs(
             });
             continue;
         }
-        if let SizedConstraint::LabeledDots { relation, marks, negative } = rule {
+        if let SizedConstraint::LabeledDots {
+            relation,
+            marks,
+            negative,
+        } = rule
+        {
             let ratio = *relation == SizedDotRelation::Ratio;
             let kind = usize::from(ratio);
             if marks.len() > 2 * size * (size - 1) || marks.is_empty() && !negative {
@@ -217,23 +292,106 @@ pub(super) fn compile_pairs(
             }
             continue;
         }
-        if let SizedConstraint::Whispers { cells, min_difference } = rule {
+        if let SizedConstraint::Whispers {
+            cells,
+            min_difference,
+        } = rule
+        {
             for pair in cells.windows(2) {
                 let cells = [pair[0], pair[1]];
-                let constraint = PairConstraint::from_relation(cells, size, |x, y| x.abs_diff(y) >= *min_difference);
-                groups[index].push(SizedPairLink { constraint, kropki: None });
+                let constraint = PairConstraint::from_relation(cells, size, |x, y| {
+                    x.abs_diff(y) >= *min_difference
+                });
+                groups[index].push(SizedPairLink {
+                    constraint,
+                    kropki: None,
+                });
+            }
+            continue;
+        }
+        if let SizedConstraint::Modular { cells } = rule {
+            if size != 6
+                || cells.len() < 3
+                || cells.len() > size * size
+                || cells.iter().any(|&cell| cell >= size * size)
+            {
+                return None;
+            }
+            let mut pairs = BTreeSet::new();
+            for window in cells.windows(3) {
+                if window[0] == window[1] || window[0] == window[2] || window[1] == window[2] {
+                    return None;
+                }
+                for (position, &left) in window.iter().enumerate() {
+                    for &right in &window[position + 1..] {
+                        let cells = [left.min(right), left.max(right)];
+                        if pairs.insert(cells) {
+                            groups[index].push(SizedPairLink {
+                                constraint: PairConstraint::from_relation(cells, size, |x, y| {
+                                    (x - 1) % 3 != (y - 1) % 3
+                                }),
+                                kropki: None,
+                            });
+                        }
+                    }
+                }
             }
             continue;
         }
         if let SizedConstraint::Xv { five, ten } = rule {
             for (kind, (marks, total)) in [five, ten].into_iter().zip([5u8, 10u8]).enumerate() {
-                if marks.negative { xv_negative[kind].get_or_insert(index); }
-                if marks.pairs.len() > 2 * size * (size - 1) { return None; }
+                if marks.negative {
+                    xv_negative[kind].get_or_insert(index);
+                }
+                if marks.pairs.len() > 2 * size * (size - 1) {
+                    return None;
+                }
                 for &pair in &marks.pairs {
                     let cells = adjacent_edge(pair, size)?;
                     xv_marked[kind].insert(cells);
-                    let constraint = PairConstraint::from_relation(cells, size, |x, y| x + y == total);
-                    groups[index].push(SizedPairLink { constraint, kropki: None });
+                    let constraint =
+                        PairConstraint::from_relation(cells, size, |x, y| x + y == total);
+                    groups[index].push(SizedPairLink {
+                        constraint,
+                        kropki: None,
+                    });
+                }
+            }
+            continue;
+        }
+        if let SizedConstraint::CornerKropki {
+            consecutive,
+            ratio_two,
+        } = rule
+        {
+            if consecutive.is_empty() && ratio_two.is_empty() {
+                return None;
+            }
+            for (kind, corners) in [consecutive, ratio_two].into_iter().enumerate() {
+                if corners.len() > (size - 1) * (size - 1) {
+                    return None;
+                }
+                let mut seen = BTreeSet::new();
+                for &corner in corners {
+                    if corner >= size * (size - 1)
+                        || corner % size == size - 1
+                        || !seen.insert(corner)
+                    {
+                        return None;
+                    }
+                    let base = positive[kind]
+                        .get_or_insert_with(|| {
+                            PairConstraint::from_relation([0, 1], size, KROPKI[kind])
+                        })
+                        .clone();
+                    for cells in [[corner, corner + size + 1], [corner + 1, corner + size]] {
+                        let mut constraint = base.clone();
+                        constraint.cells = cells;
+                        groups[index].push(SizedPairLink {
+                            constraint,
+                            kropki: Some((RELATIONS[kind], false, None)),
+                        });
+                    }
                 }
             }
             continue;
@@ -272,7 +430,13 @@ pub(super) fn compile_pairs(
     }
     for (kind, index) in labeled_negative.into_iter().enumerate() {
         if let Some(index) = index {
-            add_unmarked_links(size, kind, &labeled_marked[kind], &mut groups[index], Some(kind as u8 + 1));
+            add_unmarked_links(
+                size,
+                kind,
+                &labeled_marked[kind],
+                &mut groups[index],
+                Some(kind as u8 + 1),
+            );
         }
     }
     for (kind, index) in xv_negative.into_iter().enumerate() {
@@ -294,7 +458,10 @@ fn add_unmarked_sum_links(
     for cells in orthogonal_edges(size).filter(|cells| !marked.contains(cells)) {
         let mut constraint = constraint.clone();
         constraint.cells = cells;
-        group.push(SizedPairLink { constraint, kropki: None });
+        group.push(SizedPairLink {
+            constraint,
+            kropki: None,
+        });
     }
 }
 

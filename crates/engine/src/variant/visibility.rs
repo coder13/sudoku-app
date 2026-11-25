@@ -113,7 +113,10 @@ impl VariantPosition {
                     ten.negative &= visibility.complete_xv;
                 }
                 PuzzleRule::AdjacentTotal { sum: 5 | 10, .. }
-                    if visibility.complete_xv && !visible => return Err(HiddenMarkers),
+                    if visibility.complete_xv && !visible =>
+                {
+                    return Err(HiddenMarkers);
+                }
                 _ => {}
             }
             if visible {

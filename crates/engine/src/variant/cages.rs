@@ -180,11 +180,11 @@ impl CompiledCage {
     }
 }
 
-fn digit_sets(size: usize, sum: u16) -> impl Iterator<Item = u16> {
+pub(super) fn digit_sets(size: usize, sum: u16) -> impl Iterator<Item = u16> {
     (1..=DIGITS).filter(move |set| set.count_ones() as usize == size && digit_sum(*set) == sum)
 }
 
-fn distinct_support(domains: &[u16], sets: impl Iterator<Item = u16>) -> [u16; 9] {
+pub(super) fn distinct_support(domains: &[u16], sets: impl Iterator<Item = u16>) -> [u16; 9] {
     let mut support = [0; 9];
     // A digit set only supports a candidate if its digits can be assigned to the cells.
     for set in sets {

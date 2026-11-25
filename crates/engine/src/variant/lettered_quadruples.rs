@@ -29,7 +29,10 @@ impl LetteredQuadruples {
             if quadruple::cells(clue.top_left).is_none()
                 || std::mem::replace(&mut corners[clue.top_left], true)
                 || !(1..=4).contains(&clue.letters.len())
-                || !clue.letters.bytes().all(|letter| letter.is_ascii_uppercase())
+                || !clue
+                    .letters
+                    .bytes()
+                    .all(|letter| letter.is_ascii_uppercase())
             {
                 return Err(invalid);
             }
@@ -40,39 +43,62 @@ impl LetteredQuadruples {
         if alphabet.len() > 9 {
             return Err(invalid);
         }
-        let encoded: Vec<_> = clues.iter().map(|clue| {
-            let cells = quadruple::cells(clue.top_left).expect("validated corner");
-            let digits = clue.letters.bytes().map(|letter| {
-                alphabet.binary_search(&letter).expect("known letter") as u8 + 1
-            }).collect::<Vec<_>>();
-            (cells, digits)
-        }).collect();
+        let encoded: Vec<_> = clues
+            .iter()
+            .map(|clue| {
+                let cells = quadruple::cells(clue.top_left).expect("validated corner");
+                let digits = clue
+                    .letters
+                    .bytes()
+                    .map(|letter| alphabet.binary_search(&letter).expect("known letter") as u8 + 1)
+                    .collect::<Vec<_>>();
+                (cells, digits)
+            })
+            .collect();
         let mut symbolic = VariantPuzzle::classic([0; CELLS]);
         symbolic.regions = puzzle.regions.clone();
-        symbolic.rules.extend(encoded.iter().map(|(cells, digits)| PuzzleRule::Quadruple {
-            top_left: cells[0], digits: digits.clone(),
-        }));
+        symbolic
+            .rules
+            .extend(encoded.iter().map(|(cells, digits)| PuzzleRule::Quadruple {
+                top_left: cells[0],
+                digits: digits.clone(),
+            }));
         // A bijection preserves equality and difference. Include constraints
         // justified without knowing the numeric identities of the letters.
         for other in &puzzle.rules {
             match other {
-                PuzzleRule::Diagonal { .. } | PuzzleRule::ExtraHouse { .. }
-                | PuzzleRule::DistinctCells { .. } | PuzzleRule::Clone { .. }
-                | PuzzleRule::Palindrome { .. } | PuzzleRule::InsideGrid { .. }
-                | PuzzleRule::AntiKnight { .. } | PuzzleRule::AntiKing { .. } => {
+                PuzzleRule::Diagonal { .. }
+                | PuzzleRule::ExtraHouse { .. }
+                | PuzzleRule::DistinctCells { .. }
+                | PuzzleRule::Clone { .. }
+                | PuzzleRule::Palindrome { .. }
+                | PuzzleRule::InsideGrid { .. }
+                | PuzzleRule::AntiKnight { .. }
+                | PuzzleRule::AntiKing { .. } => {
                     symbolic.rules.push(other.clone());
                 }
-                PuzzleRule::Whispers { cells, min_difference } if *min_difference > 0 => {
+                PuzzleRule::Whispers {
+                    cells,
+                    min_difference,
+                } if *min_difference > 0 => {
                     for pair in cells.windows(2) {
-                        symbolic.rules.push(PuzzleRule::DistinctCells { cells: pair.to_vec(), color: None });
+                        symbolic.rules.push(PuzzleRule::DistinctCells {
+                            cells: pair.to_vec(),
+                            color: None,
+                        });
                     }
                 }
                 PuzzleRule::KillerCages { cages, .. } => {
                     for cage in cages {
                         if cage.cells.len() == 9 {
-                            symbolic.rules.push(PuzzleRule::ExtraHouse { cells: cage.cells.clone() });
+                            symbolic.rules.push(PuzzleRule::ExtraHouse {
+                                cells: cage.cells.clone(),
+                            });
                         } else if cage.cells.len() >= 2 {
-                            symbolic.rules.push(PuzzleRule::DistinctCells { cells: cage.cells.clone(), color: None });
+                            symbolic.rules.push(PuzzleRule::DistinctCells {
+                                cells: cage.cells.clone(),
+                                color: None,
+                            });
                         }
                     }
                 }
@@ -81,9 +107,15 @@ impl LetteredQuadruples {
         }
         // If another rule is invalid the main compiler reports that error.
         // An unavailable projection leaves ordinary key checks available.
-        let layouts = symbolic.compile_with_regions(enforce_regions).ok()
+        let layouts = symbolic
+            .compile_with_regions(enforce_regions)
+            .ok()
             .and_then(|grid| grid.complete_bounded(SYMBOL_LAYOUTS, SYMBOL_SEARCH_NODES));
-        Ok(Self { rule, clues: encoded, layouts })
+        Ok(Self {
+            rule,
+            clues: encoded,
+            layouts,
+        })
     }
 
     /// Check all printed occurrences and the shared key. On a completed grid
@@ -134,7 +166,9 @@ impl LetteredQuadruples {
             let mut supported = *domains;
             let mut trial = *domains;
             for cell in 0..CELLS {
-                if domains[cell].count_ones() < 2 || !self.clues.iter().any(|(cells, _)| cells.contains(&cell)) {
+                if domains[cell].count_ones() < 2
+                    || !self.clues.iter().any(|(cells, _)| cells.contains(&cell))
+                {
                     continue;
                 }
                 for digit in crate::hints::digits(domains[cell]) {

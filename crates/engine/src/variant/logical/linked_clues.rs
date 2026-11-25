@@ -66,7 +66,9 @@ impl CompiledVariant {
             .lines
             .iter()
             .enumerate()
-            .filter_map(|(index, line)| (line.technique.id() == "between").then_some(Scope::Line(index)))
+            .filter_map(|(index, line)| {
+                (line.technique.id() == "between").then_some(Scope::Line(index))
+            })
             .collect();
         if lines.is_empty() {
             return;

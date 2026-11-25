@@ -116,7 +116,8 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
   ['FLAb', '90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936'],
-  ['FWUv', '64d94be814557c8b9e2445e0e6e9118ce7888ae6f0f41a0a2a2ca7d7f4294748'],
+  // FWUv's Bento description explains region outlines; the rules are encoded.
+  ['FWUv', '37628a3e7b9d6537e0647a8eef0a6352ea693e6bde79a9400d44315e37882ed8'],
   ['7kvK', '3fc5d6fdf1da8e5517863b670de7ef743337ee7a9e5d6294f00edcca0c464244'],
   ['DhdV', '7b2a040b11cd623b995c7e2b78d54a0b9aaa0e48ef55b8edaf467d31d2665c2c'],
   ['HQXe', '8bbd958b3f4a8d5ca91c840be985c2fe74b02540be3cf76cdf8c978fa436f718'],
@@ -131,6 +132,8 @@ const reviewedCoachNotes = new Map([
   ['DD1N', 'b1fd849b96f752b4ab3fc985405a0428859a2e1f34beafab47edf44229498e59'],
   ['EoGB', '3878f1cf8dcc3a108d0f9f4232b70b519c93e726c15249dbe8f1fb8a2055a2cc'],
   ['HCHW', '466fb79c06a194a1fe0134d57c30d96bd01c302aa6b88f64b539ce245a658136'],
+  // This exact legend labels the two encoded line styles; it adds no rule.
+  ['7hzU', '8c6d7c65ce35ea28fec297a68be7363fc37c08b5749febfd17a6d406c9333aaf'],
 ])
 
 // Coach publishes the puzzle code and its author instructions separately.
@@ -166,14 +169,76 @@ async function coachPublication(puzzle, id, code) {
   const letteredQuadruples = puzzle.custom_constraints && id === 'ALYC' &&
     await digest(code) === 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653' &&
     await digest(lines.join('\n')) === 'c294c3a30269133929f4ac39c1144372cad5e8daf2dcfb4ad6bf08db5d9d1bdb'
-  const authoredRule = coachAuthoredRule(lines) ?? (letteredQuadruples ? 'lettered-quadruples' : insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
-    : mirroredRenbans ? 'mirrored-renban' : undefined)
+  const neighborMatch = !puzzle.custom_constraints && id === 'CGrN' &&
+    await digest(code) === '03e7bc424d19df4aef06c805c6b97c6a75b7f3cd9e46f22470cd5a9acd198d31' &&
+    lines.length === 1 &&
+    /^Each given clue number indicates that the digit must match at least one of its orthogonal neighbors\. Thanks to Raumplaner for introducing my to this constraint!$/i.test(lines[0])
+  const magicSquare = puzzle.custom_constraints && id === '7uYV' &&
+    await digest(code) === '8c4aceec22d1628faeb544944dfa6664913a08e1aaf468b4bcd5514fb7b844b1' &&
+    lines.length === 4 && /^Rules:?$/i.test(lines[0]) &&
+    /^- Digits cannot repeat in Cages\.$/i.test(lines[1]) &&
+    /^- Middle Box is a Magic Square\. In a 3x3 Magic Square: every Row, Column and Diagonal has an equal sum\.$/i.test(lines[2]) &&
+    /^Note: Cages with no small clue number on its corner: are all 9-cell cages\.$/i.test(lines[3])
+  const unknownCageSums = puzzle.custom_constraints && id === 'EZjn' &&
+    await digest(code) === 'a96fdbd3eb78af79cf63b1ce787f1d3a3e4a1d70b249f23a7dedb11e2667a88f' &&
+    lines.length === 5 && /^Custom Rules:$/i.test(lines[0]) &&
+    /^- Digits do not repeat in Cages\. Each Cage has an unique sum that needs to be determined\.$/i.test(lines[1]) &&
+    /^- Cage-Sums must form a consecutive sequence of sums - without repeating sums - so, if a lowest Cage would be the sum of 1, then the total number of Cages is the total sum of the highest Cage-Sum\.$/i.test(lines[2]) &&
+    /^- Two Cages separated by letter \[C\] means that the sum of those Cages must be consecutive\.$/i.test(lines[3]) &&
+    /^Ps\. I've written out the Progressive-Hints for the full logical Solve-Path in comments\.$/i.test(lines[4])
+  const distantNeighbors = puzzle.custom_constraints && id === 'F5mq' &&
+    await digest(code) === 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b6c0f28621e30405be9b0f' &&
+    await digest(lines.join('\n')) === 'ce4b24a59783026d64900a13f28aad86a95e100c76d9c937cc4df0bdff777cc1'
+  const normalizedDescription = puzzle.description.trim().replace(/\s+/g, ' ')
+  const wrappedRegions = id === 'DMnw' &&
+    await digest(code) === '501832fec680e8fa268be297919615522b2a9150da212cde066797ec6e6828dc' &&
+    await digest(normalizedDescription) === '47a362eba4881e510b72e237448b791366f772d4192c3b39457022d70a732919'
+  const sunnyEntropy = id === 'CKio' &&
+    await digest(code) === '1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6' &&
+    await digest(normalizedDescription) === 'c1265a09aface15fec9b466eaba1922667b8bcd38278233785a834bcb00b8638'
+  const aqreSnake = id === 'CLbA' &&
+    await digest(code) === '1122b77d323927c3bebba4bf417adf32a2781b093d3c9d245de379d60c739175' &&
+    await digest(normalizedDescription) === 'f37247558e631bc52f04a292345568f1999b46f099edc335c4be3cc3b2a088cf'
+  const xvEntropy = id === 'CSiE' &&
+    await digest(code) === 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806' &&
+    await digest(normalizedDescription) === '68e8bba405bb9e23afff6f1740a8820fdbcdf504c51bea91f718f656a4403971'
+  const aqrePlus = id === 'CFvb' &&
+    await digest(code) === 'c3f966b0f62af5c3a15e4f69169b3fbb3ca038e0869e879f181183af48fda081' &&
+    await digest(normalizedDescription) === 'c52002863606aded630fdce5caab04cdbed9726d983b065cb2a76488c3187680'
+  const reviewedArtwork = id === 'CS1G' &&
+    await digest(code) === '512f5f0ace1feb1cae309b457724cfe8a9e36a91207358d9f9bdf4d0067a1e16' &&
+    await digest(normalizedDescription) === '99d6d5d48a989f91c50d61d0f4850b73b02d2d65df11607b776dfb6c669d90e4'
+  const entropicBreaks = id === 'LEjN' &&
+    await digest(code) === 'd132b7f78337e31d2c433c56d70264ac46a31d7d507952c5581f661b7dcf79f9' &&
+    await digest(lines.join('\n')) === '5eb666adc2b990f9f3746b25a0219e2c0a3f4ce0da75d2ba0fbe10d41316fa20'
+  const entropicGroupOrder = id === '7nms' &&
+    await digest(code) === 'a53d999916a980c445143564ea4188bdbf35f7df545bf2d946b4e307dedd15ba' &&
+    await digest(lines.join('\n')) === '629da23297e891d66951a794a5a87c94ce5b332b58a6b756fd8ed5d13673b3ec'
+  const sizedNonogram = id === '8kgS' &&
+    await digest(code) === 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932' &&
+    await digest(lines.join('\n')) === '41c5bceab29cd478eaf4584e428d55226383f2c8edc6ca29bb61ca233b7f26da'
+  const sizedSkyscrapers = id === '9W3o' &&
+    await digest(code) === 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e99613f57e06f03121' &&
+    await digest(normalizedDescription) === 'b6d146d70cef35da5ee9ee38794bf8eb10e466cb4562fe5ffaa27b068eca1ffd'
+  const sizedEntropicRunaround = id === 'Cmki' &&
+    await digest(code) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f' &&
+    await digest(normalizedDescription) === '5a81c40e9790e9877d160f43b0bf70947717ea2cea43b9cd36a804abf53ec3a1'
+  const authoredRule = coachAuthoredRule(lines) ?? (distantNeighbors ? 'distant-neighbors' : unknownCageSums ? 'unknown-cage-sums' : magicSquare ? 'magic-square' : letteredQuadruples ? 'lettered-quadruples' : insideGrid ? 'inside-grid' : partialRegions ? 'partial-regions' : colouredLines ? 'line-colours'
+    : mirroredRenbans ? 'mirrored-renban' : neighborMatch ? 'neighbor-match'
+      : sunnyEntropy ? 'entropy-window-groups' : aqreSnake ? 'aqre-snake' : xvEntropy ? 'xv-empty-cosmetic-cage'
+        : aqrePlus ? 'aqre-plus' : reviewedArtwork ? 'reviewed-artwork'
+      : entropicBreaks ? 'entropic-breaks' : entropicGroupOrder ? 'entropic-group-order'
+        : wrappedRegions ? 'wrapped-regions' : sizedNonogram ? 'sized-nonogram' : sizedSkyscrapers ? 'sized-skyscrapers'
+          : sizedEntropicRunaround ? 'sized-entropic-runaround' : undefined)
   // The published Whispers lesson explains the encoded rules and its digit guide.
   const whispersGuide = !puzzle.custom_constraints && id === 'B5mt' &&
     await digest(lines.join('\n')) === '1096372a68245ca1a72bcc77b65c1fba8d89ca5559c3d4666e8463d2ed5b219d'
   const reviewedNote = reviewedCoachNotes.get(id)
+  const reviewedNoteDigest = await digest(lines.join('\n'))
+  const alternateFwuVNote = id === 'FWUv' &&
+    reviewedNoteDigest === '64d94be814557c8b9e2445e0e6e9118ce7888ae6f0f41a0a2a2ca7d7f4294748'
   const hasAuthorInstructions = puzzle.custom_constraints || !lines.every(line => coachGreeting.test(line) || coachRatingNote.test(line)) &&
-    (!reviewedNote || await digest(lines.join('\n')) !== reviewedNote)
+    (!reviewedNote || reviewedNoteDigest !== reviewedNote) && !alternateFwuVNote
   return {
     hasAuthorInstructions,
     ...(authoredRule && { authoredRule }),
@@ -301,17 +366,33 @@ const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
 function jigsawGrid(value) {
   const size = value?.size
-  if (size !== 5 && size !== 7) return false
-  if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) }) ||
+  if (size !== 4 && size !== 5 && size !== 7) return false
+  if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) },
+    { wrapAround: oneOf(true) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
+  if (value.wrapAround && !value.regions.every(part => connectedRegion(part, size, true))) return false
   return true
 }
-function connectedRegion(part, size) {
+function connectedRegion(part, size, wrapAround = false) {
   const connected = new Set([part[0]])
   for (const cell of connected) {
-    for (const next of part) if (sharesGridEdge(cell, next, size)) connected.add(next)
+    const row = Math.floor(cell / size), column = cell % size
+    const neighbors = [
+      row > 0 ? cell - size : wrapAround ? cell + size * (size - 1) : -1,
+      row < size - 1 ? cell + size : wrapAround ? cell - size * (size - 1) : -1,
+      column > 0 ? cell - 1 : wrapAround ? cell + size - 1 : -1,
+      column < size - 1 ? cell + 1 : wrapAround ? cell - size + 1 : -1,
+    ]
+    for (const next of part) if (sharesGridEdge(cell, next, size) || neighbors.includes(next)) connected.add(next)
   }
   return connected.size === size
+}
+function connectedCells(cells, size) {
+  const connected = new Set([cells[0]])
+  for (const cell of connected) {
+    for (const next of cells) if (sharesGridEdge(cell, next, size)) connected.add(next)
+  }
+  return connected.size === cells.length
 }
 const sevenBoxlessGrid = value => fields(value, { size: oneOf(7), noRegions: oneOf(true) })
 const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || sevenBoxlessGrid(value)
@@ -332,6 +413,9 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
       segments.every(part => part.every(index => cells.includes(index))))
   const region = cell => regions ? regions.findIndex(part => part.includes(cell)) : Math.floor(cell / size / boxRows) * (size / boxColumns) + Math.floor(cell % size / boxColumns)
   const sumEnd = value => cell(value) || fields(value, { direction: oneOf('north', 'east', 'south', 'west'), index: integer(0, size - 1) })
+  const entropyGroups = value => Array.isArray(value) && value.length === 3 &&
+    value.every(group => list(integer(1, size), 1, size)(group)) &&
+    value.flat().length === size && new Set(value.flat()).size === size
   const occupiedCages = new Set()
   const validCage = cage => {
     if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
@@ -345,6 +429,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
   }
   const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
     fields(rule, { type: oneOf('parity'), parity: oneOf('odd', 'even'), cells: list(cell, 1, size * size) }) ||
+    (fields(rule, { type: oneOf('global-entropy') }, { groups: entropyGroups }) &&
+      (rule.groups === undefined ? size === 9 : entropyGroups(rule.groups))) ||
     (fields(rule, { type: oneOf('extra-house'), cells: list(cell, size, size) }) && new Set(rule.cells).size === size) ||
     (fields(rule, { type: oneOf('killer-cages'), cages: list(validCage, 1, size * size) }, { coverGrid: boolean }) &&
       (!rule.coverGrid || rule.cages.reduce((count, cage) => count + cage.cells.length, 0) === size * size)) ||
@@ -359,6 +445,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('whispers'), cells: list(cell, 2, size * size), minDifference: integer(1, size - 1) }) &&
+      new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('linked-double-arrow'), ends: list(sumEnd, 2, 2), cells: list(cell, 1, size * size) }) &&
       new Set(rule.cells).size === rule.cells.length && rule.ends.some(end => !cell(end)) &&
       rule.ends.every(end => !cell(end) || !rule.cells.includes(end)) &&
@@ -369,7 +457,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('renban'), cells: list(cell, 1, size) }, { segments: drawing }) && coversCells(rule)) ||
     (!noRegions && fields(rule, { type: oneOf('region-sum'), cells: list(cell, 2, size * size) }, { segments: drawing, groupByRegion: boolean }) &&
       coversCells(rule) && new Set(rule.cells.map(region)).size >= 2)
-  return list(valid, size === 4 ? 1 : 0, 128)(value)
+  return list(valid, size === 4 && !regions ? 1 : 0, 128)(value)
 }
 const ruleAuthor = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 72
 const algebraicCage = value => {
@@ -432,10 +520,20 @@ const artworkTile = mark => fields(mark, {
   color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
   opacity: value => Number.isInteger(value) && value >= 0 && value <= 255,
 })
+const artworkText = mark => fields(mark, {
+  type: oneOf('text'), center: artworkPoint,
+  text: value => typeof value === 'string' && value.length > 0 && value.length <= 100,
+  size: value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 2,
+  color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  opacity: value => Number.isInteger(value) && value >= 0 && value <= 255,
+  outlineColor: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  outlineThickness: value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= .1,
+  offsetY: value => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1,
+})
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
-    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) || artworkTile(mark), 1, 512)
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) || artworkTile(mark) || artworkText(mark), 1, 512)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
@@ -466,6 +564,23 @@ const letteredCircle = clue => fields(clue, { topLeft: quadrupleCorner,
 const letteredClues = clues => list(letteredCircle, 1, 64)(clues) &&
   new Set(clues.map(clue => clue.topLeft)).size === clues.length &&
   new Set(clues.flatMap(clue => [...clue.letters])).size <= 9
+const neighborMatchClues = clues => list(clue => fields(clue, { cell, digit: integer(1, 9) }), 1)(clues) &&
+  new Set(clues.map(clue => clue.cell)).size === clues.length
+const aqreCount = value => fields(value, { type: oneOf('fixed'), value: integer(0, 81) }) ||
+  fields(value, { type: oneOf('digit-cell'), cell })
+const aqreRegion = value => fields(value, { cells: uniqueCells(1, 81) }, { count: aqreCount }) &&
+  connectedCells(value.cells, 9) && (!value.count || value.count.type === 'fixed'
+    ? !value.count || value.count.value <= value.cells.length
+    : value.cells.includes(value.count.cell))
+const aqreRule = value => fields(value, {
+  type: oneOf('aqre'), kind: oneOf('snake', 'plus'), regions: list(aqreRegion, 1, 81),
+  givenShades: list(shade => fields(shade, { cell, shade: oneOf('unshaded', 'shaded') }), 0, 81),
+}) && value.regions.every(region => region.cells.every(cell => !value.regions.some(other =>
+  other !== region && other.cells.includes(cell)))) &&
+  value.regions.reduce((count, region) => count + region.cells.length, 0) === 81 &&
+  new Set(value.regions.flatMap(region => region.cells)).size === 81 &&
+  new Set(value.givenShades.map(shade => shade.cell)).size === value.givenShades.length &&
+  (value.kind !== 'plus' || value.regions.every(region => region.count?.type === 'digit-cell'))
 const ruleFields = {
   'adjacent-total': [{ cells: list(cell, 2, 2), sum: integer(3, 17) }],
   between: [{ cells: list(cell, 3, 81) }],
@@ -500,6 +615,7 @@ const ruleFields = {
   parity: [{ cells, parity: oneOf('odd', 'even') }],
   quadruple,
   'lettered-quadruples': [{ clues: letteredClues }],
+  'neighbor-match': [{ clues: neighborMatchClues }],
   'quadruple-sum': quadruple,
   sandwich: [{ direction, cells: house, sum: integer(0, 35) }],
   skyscrapers: [{ direction, cells: house, count: integer(1, 9) }],
@@ -507,6 +623,7 @@ const ruleFields = {
 }
 const rule = value => {
   if (value?.type === 'labeled-dots') return numberedDotRule(value, 9)
+  if (value?.type === 'aqre') return aqreRule(value)
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
   if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false

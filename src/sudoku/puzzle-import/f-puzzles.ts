@@ -12,7 +12,7 @@ const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone',
 const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'diagonal+', 'diagonal-'])
 const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
-const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([57])\s*[×x]\s*\1)? sudoku rules apply(?:\.|: fill each row, column and region with the digits 1[-–]([57])\.)$/i
+const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([4567])\s*[×x]\s*\1)? sudoku rules apply(?:\.|: fill each row, column and region with the digits 1[-–]([4567])\.)$/i
 const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
 const FP_ANTI_SUM = /^Anti-Sum(?: \((\d{1,2})\))?: Digits in orthogonally (?:adjacent|connected) cells may not sum to (\d{1,2})\.$/i
 const FP_JIGSAW_DOTS = /^A white dot with a number in it implies the difference between two cells\. A black dot with a number in it implies the ratio relationship between two cells\.$/i
@@ -67,7 +67,7 @@ function fpRowColumnSum(data: Record<string, unknown>, clauses: readonly string[
   return { type: 'row-column-sum', pairs, ...(statements[0][1] && { requireUnmarked: true }) }
 }
 
-function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 5 | 7, labels: readonly unknown[], givens: string): ImportResult {
+function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 4 | 5 | 6 | 7, labels: readonly unknown[], givens: string): ImportResult {
   const regions: number[][] = Array.from({ length: size }, () => [])
   for (const [cell, label] of labels.entries()) {
     if (typeof label !== 'number' || !Number.isInteger(label) || label < 0 || label >= size) {
@@ -150,11 +150,13 @@ export function fromFPuzzles(input: string, format: 'f-puzzles' | 'SudokuPad'): 
 
 function fromFPuzzlesData(data: unknown): ImportResult {
   if (!record(data) || data.size !== 4 && !isJigsawSize(data.size) && data.size !== 8 && data.size !== 9 || !Array.isArray(data.grid) || data.grid.length !== data.size) {
-    throw new Error('Import supports 4 × 4, 5 × 5 Jigsaw, 7 × 7 Jigsaw, 8 × 8, and 9 × 9 f-puzzles grids.')
+    throw new Error('Import supports 4 × 4, 5 × 5, 6 × 6, and 7 × 7 Jigsaw, 8 × 8, and 9 × 9 f-puzzles grids.')
   }
   const size = data.size
   const mini = size === MINI_GRID.size
-  const jigsaw = isJigsawSize(size)
+  const miniLabels = mini ? data.grid.flatMap((row, rowIndex) => Array.isArray(row) ? row.map((cell, columnIndex) =>
+    record(cell) && cell.region !== undefined ? cell.region : Math.floor(rowIndex / 2) * 2 + Math.floor(columnIndex / 2)) : []) : []
+  const jigsaw = isJigsawSize(size) && (size !== 4 || !hasMiniBoxes(miniLabels))
   const eight = size === 8
   const fields = jigsaw ? FPUZZLES_JIGSAW_FIELDS : eight ? FPUZZLES_EIGHT_FIELDS : FPUZZLES_FIELDS
   for (const [key, value] of Object.entries(data)) {

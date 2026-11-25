@@ -10,9 +10,10 @@ use super::generation::{
 };
 use super::{INVALID_ELIMINATIONS, INVALID_TECHNIQUE, ResultValue, grid_string, puzzle_error};
 use crate::{
-    Analysis, DEFAULT_HINT_LIMIT, DEFAULT_VARIANT_SEARCH_NODES, Difficulty, PuzzleRule,
-    VARIANT_SCORING_VERSION, VariantDefinitionError, VariantLogicalError, VariantPosition,
-    VariantPositionError, VariantTechnique, VariantVisibility, VariantVisibilityError,
+    Analysis, AqrePositionError, DEFAULT_HINT_LIMIT, DEFAULT_VARIANT_SEARCH_NODES, Difficulty,
+    PuzzleRule, VARIANT_SCORING_VERSION, VariantDefinitionError, VariantLogicalError,
+    VariantPosition, VariantPositionError, VariantTechnique, VariantVisibility,
+    VariantVisibilityError,
 };
 #[cfg(feature = "teaching")]
 use crate::{HintAction, variant_practice_examples};
@@ -272,12 +273,23 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         Operation::Rate => return Ok(json!(position.rate(&order()?).map_err(logical_error)?)),
         Operation::Trace => {
             let stop = crate::variant::cell_mask(
-                options.stop_after_placement_in.as_deref().unwrap_or_default(),
+                options
+                    .stop_after_placement_in
+                    .as_deref()
+                    .unwrap_or_default(),
             )
-            .ok_or(("invalid-placement-boundary", "Choose distinct cells between 0 and 80."))?;
+            .ok_or((
+                "invalid-placement-boundary",
+                "Choose distinct cells between 0 and 80.",
+            ))?;
             return Ok(json!(
                 position
-                    .trace_with_boundary(&order()?, stop, options.include_steps.unwrap_or(true), usize::MAX)
+                    .trace_with_boundary(
+                        &order()?,
+                        stop,
+                        options.include_steps.unwrap_or(true),
+                        usize::MAX
+                    )
                     .map_err(logical_error)?
             ));
         }
@@ -297,6 +309,9 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         _ => {}
     }
     let compiled = compiled_puzzle(&position.puzzle)?;
+    compiled
+        .check_shades(entries, &position.shades)
+        .map_err(aqre_position_error)?;
     Ok(match operation {
         Operation::Normalize => json!(position),
         Operation::Candidates => json!(
@@ -309,11 +324,15 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
             let allowed = super::play_masks(options.displayed_candidates, None)?;
             let mut values = *entries;
             loop {
-                let mut masks = compiled.candidates(&values, eliminations).map_err(position_error)?;
+                let mut masks = compiled
+                    .candidates(&values, eliminations)
+                    .map_err(position_error)?;
                 for (mask, allowed) in masks.iter_mut().zip(allowed.iter()) {
                     *mask &= allowed;
                 }
-                let Some((cell, digit)) = crate::next_single(&masks, compiled.houses().iter().map(|house| house.cells)) else {
+                let Some((cell, digit)) =
+                    crate::next_single(&masks, compiled.houses().iter().map(|house| house.cells))
+                else {
                     for (value, &given) in values.iter_mut().zip(compiled.givens()) {
                         if given != 0 {
                             *value = given;
@@ -343,7 +362,9 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
         }
         Operation::SolveUnique => match compiled.solve_unique(entries, eliminations, budget) {
             Ok(solution) => json!({ "status": "unique", "solution": grid_string(solution) }),
-            Err(VariantPositionError::Puzzle(analysis)) => json!({ "status": puzzle_error(analysis).0 }),
+            Err(VariantPositionError::Puzzle(analysis)) => {
+                json!({ "status": puzzle_error(analysis).0 })
+            }
             Err(error) => return Err(position_error(error)),
         },
         Operation::Hints => {
@@ -386,7 +407,9 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
 
 // Each worker owns one compiled definition. Entries, removals and visibility
 // stay per request. A different definition replaces the cached topology.
-fn compiled_puzzle(puzzle: &crate::VariantPuzzle) -> ResultValue<std::rc::Rc<crate::CompiledVariant>> {
+fn compiled_puzzle(
+    puzzle: &crate::VariantPuzzle,
+) -> ResultValue<std::rc::Rc<crate::CompiledVariant>> {
     use std::{cell::RefCell, rc::Rc};
     thread_local! {
         static CACHE: RefCell<Option<(crate::VariantPuzzle, Rc<crate::CompiledVariant>)>> = const { RefCell::new(None) };
@@ -469,5 +492,91 @@ fn position_error(error: VariantPositionError) -> (&'static str, &'static str) {
     match error {
         VariantPositionError::Puzzle(analysis) => puzzle_error(analysis),
         VariantPositionError::InvalidEliminations(_) => INVALID_ELIMINATIONS,
+    }
+}
+
+fn aqre_position_error(error: AqrePositionError) -> (&'static str, &'static str) {
+    match error {
+        AqrePositionError::InvalidShade(_) => (
+            "invalid-shading",
+            "Shade cells with 0, 1 (unshaded), or 2 (shaded).",
+        ),
+        AqrePositionError::GivenShade(_) => (
+            "aqre-conflict",
+            "A cell's authored shade cannot be changed.",
+        ),
+        AqrePositionError::LongRun(_) => (
+            "aqre-conflict",
+            "A row or column cannot contain four consecutive cells of the same shade.",
+        ),
+        AqrePositionError::RegionCount(_) => (
+            "aqre-conflict",
+            "A region cannot meet its shaded-cell count.",
+        ),
+        AqrePositionError::Disconnected => (
+            "aqre-conflict",
+            "All shaded cells must form one orthogonally connected area.",
+        ),
+        AqrePositionError::NonConsecutiveDigits(_) => (
+            "aqre-conflict",
+            "Shaded digits in this Aqre+ region must form a consecutive set.",
+        ),
+    }
+}
+
+#[cfg(test)]
+mod aqre_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn position(shades: String) -> Value {
+        let regions = (0..9)
+            .map(|row| {
+                json!({
+                    "cells": (row * 9..row * 9 + 9).collect::<Vec<_>>(),
+                    "count": { "type": "fixed", "value": 0 },
+                })
+            })
+            .collect::<Vec<_>>();
+        json!({
+            "puzzle": {
+                "version": 1,
+                "givens": "0".repeat(81),
+                "regions": { "type": "partial", "regions": [] },
+                "rules": [{
+                    "type": "aqre",
+                    "kind": "snake",
+                    "regions": regions,
+                    "givenShades": [{ "cell": 10, "shade": "unshaded" }],
+                }],
+            },
+            "entries": "0".repeat(81),
+            "shades": shades,
+        })
+    }
+
+    fn options() -> Options {
+        serde_json::from_value(json!({})).unwrap()
+    }
+
+    #[test]
+    fn protocol_normalizes_aqre_definitions_and_checks_player_shades() {
+        let normalized =
+            execute(Operation::Normalize, position("0".repeat(81)), options()).unwrap();
+        assert_eq!(normalized["shades"], "0".repeat(81));
+
+        let mut invalid = "0".repeat(81);
+        invalid.replace_range(10..11, "2");
+        assert_eq!(
+            execute(Operation::Candidates, position(invalid), options()),
+            Err((
+                "aqre-conflict",
+                "A cell's authored shade cannot be changed."
+            )),
+        );
+
+        let candidates =
+            execute(Operation::Candidates, position("0".repeat(81)), options()).unwrap();
+        assert_eq!(candidates.as_array().unwrap().len(), 81);
     }
 }

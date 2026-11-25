@@ -2,7 +2,8 @@ import type { ImportedCellColors } from './imported-colors.ts'
 
 type Point = readonly [x: number, y: number]
 
-export type AuthoredMark = { type: 'outline' | 'divider'; points: readonly Point[]; thickness: number }
+export type AuthoredMark = { type: 'outline'; points: readonly Point[]; thickness: number }
+  | { type: 'divider'; points: readonly Point[]; thickness: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
   | { type: 'tile'; center: Point; size: number; rotation: number; color: string; opacity: number }
   | { type: 'text'; center: Point; text: string; size: number; color: string; opacity: number;
@@ -93,6 +94,10 @@ const reviewedShapeArtwork = new Map([
   ['512f5f0ace1feb1cae309b457724cfe8a9e36a91207358d9f9bdf4d0067a1e16', 'Thank RP you'],
 ])
 
+const reviewedTextArtwork = new Map([
+  ['1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6', 'Sunny with a chance of Entropy'],
+])
+
 // These reviews cover the complete authoring data and ordered cell shades.
 const reviewedFills = new Map([
   ['fc0d8c24d3f5897483883cbb961b9e2738352ab5689f6b58a7a1ded8629aba8c', 'Hallowteeth'],
@@ -128,6 +133,31 @@ export async function reviewedCoachFillTitle(data: Record<string, unknown>, fill
 
 export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
   const hash = await reviewKey(code)
+  const textTitle = hash && reviewedTextArtwork.get(hash)
+  if (textTitle) {
+    const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
+    if (layers.length !== 1 || !record(layers[0])) return
+    const layer = layers[0]
+    const settings = layer.settings
+    const [segment] = Array.isArray(layer.segments) ? layer.segments : []
+    if (Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+      !record(settings) || settings.positionVerticalOffset !== 7 || settings.opacity !== 188 ||
+      settings.colour !== '#ffa852' || settings.textSize !== 91 || settings.outlineColour !== '#f77c00' ||
+      settings.outlineThickness !== 1 || Object.keys(settings).some(key =>
+        !['positionVerticalOffset', 'opacity', 'colour', 'textSize', 'outlineColour', 'outlineThickness'].includes(key)) ||
+      !Array.isArray(layer.segments) || layer.segments.length !== 1 || !record(segment) ||
+      Object.keys(segment).some(key => !['cells', 'parameters'].includes(key)) ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+      !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
+      segment.cells[0][0] !== 4.5 || segment.cells[0][1] !== 4.5 || !record(segment.parameters) ||
+      segment.parameters.text !== 'RP' || Object.keys(segment.parameters).some(key => key !== 'text')) return
+    const artwork: AuthoredMark[] = [{ type: 'text', text: segment.parameters.text as string,
+      center: [segment.cells[0][0] as number, segment.cells[0][1] as number], size: (settings.textSize as number) / 200,
+      color: settings.colour as string, opacity: settings.opacity as number,
+      outlineColor: settings.outlineColour as string, outlineThickness: (settings.outlineThickness as number) / 100,
+      offsetY: (settings.positionVerticalOffset as number) / 100 }]
+    return validAuthoredArtwork(artwork) ? { layers, artwork, title: textTitle } : undefined
+  }
   const reviewedTitle = hash && reviewedShapeArtwork.get(hash)
   if (reviewedTitle) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape')

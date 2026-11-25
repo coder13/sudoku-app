@@ -6745,6 +6745,110 @@
             "digit-layouts",
             "nested-proofs-and-search"
           ]
+        },
+        {
+          "id": "sextuple-pattern-overlay",
+          "title": "Six-digit Pattern Overlay",
+          "summary": "Six-digit Pattern Overlay rules out a candidate when no combination of six complete digit layouts can include it. A layout puts its digit once in each row, column, and box.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Test a candidate against five other digits"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Use this check when smaller overlays leave a candidate unresolved. Choose six digits with few layouts and start with the layouts that include the candidate you want to test.",
+                "Try to fit one layout for each of the other five digits. Each cell can belong to only one layout. Remove the candidate if every combination fails."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "sextuple-pattern-overlay",
+              "copy": {
+                "description": "The only layout for 1 that uses R3C2 cannot fit alongside layouts for 3, 6, 7, 8, and 9. Remove 1 from R3C2."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "sextuple-pattern-overlay",
+                  "title": "Six-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Choose six digits and look for the layouts that use the candidate you want to test.",
+                "check": "Fit one complete layout per digit without sharing a cell.",
+                "reason": "Remove the candidate if no compatible combination uses it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Five-digit Pattern Overlay",
+              "href": "/learn/quintuple-pattern-overlay"
+            }
+          ],
+          "difficulty": "impossible",
+          "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
+            "nested-proofs-and-search"
+          ]
+        },
+        {
+          "id": "septuple-pattern-overlay",
+          "title": "Seven-digit Pattern Overlay",
+          "summary": "Seven-digit Pattern Overlay checks whether a candidate can fit seven digit layouts on the same grid. A candidate can fit each smaller group separately and fail when all seven digits must fit together.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Fit all seven layouts at once"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Use this check after smaller overlays leave the candidate in play. Start with a layout for that digit that uses the candidate. Try to fit complete layouts for the other six digits around it.",
+                "Check every layout that uses the candidate. If none can fit all six other layouts without sharing a cell, remove the candidate."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "septuple-pattern-overlay",
+              "copy": {
+                "description": "Every combination that fits all seven digits excludes 3 from both R6C2 and R6C8."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "septuple-pattern-overlay",
+                  "title": "Seven-digit Pattern Overlay"
+                }
+              ],
+              "guide": {
+                "start": "Start with a layout containing the candidate you want to test.",
+                "check": "Try fitting complete layouts for the other six digits around it and repeat for each layout that uses the candidate.",
+                "reason": "Remove the candidate if no compatible combination uses it."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Six-digit Pattern Overlay",
+              "href": "/learn/sextuple-pattern-overlay"
+            }
+          ],
+          "difficulty": "impossible",
+          "prerequisites": [
+            "pattern-overlay",
+            "digit-layouts",
+            "nested-proofs-and-search"
+          ]
         }
       ]
     },
@@ -9243,6 +9347,42 @@
             }
           ],
           "difficulty": "hard"
+        },
+        {
+          "id": "digit-order",
+          "title": "Digit order",
+          "summary": "A digit-order clue marks three digits that must appear in ascending order along one row or column. Their possible positions can rule out candidates elsewhere in the line.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Read the line from the marked end"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "An outside digit-order clue marks three digits and a direction along one row or column. Read from the marked end: the digits must appear in ascending order, while other digits in the line may appear anywhere.",
+                "Use this rule when a candidate could leave too few cells, or the wrong order, for the three marked digits. Compare their available cells along the line before removing it.",
+                "For example, if a row's 4–5–6 clue reads from the right, 4 at R3C5 and 6 at R3C2 leave only R3C3 or R3C4 for 5. R3C3 is 9, so the order leaves R3C4 for 5. Place 5 in R3C4."
+              ]
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "digit-order",
+                  "title": "Digit order"
+                }
+              ],
+              "guide": {
+                "start": "Find the row or column named by the clue. Read its cells from the marked end and locate the three digits in the required order.",
+                "check": "Each digit must appear later along the line than the previous one. The other digits do not affect this order.",
+                "reason": "Remove a candidate only if it leaves no way to place all three digits in order."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "medium"
         },
         {
           "id": "x-sum",

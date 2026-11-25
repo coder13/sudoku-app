@@ -6,8 +6,8 @@ use super::{ResponseValue, ResultValue, puzzle_error};
 #[cfg(feature = "generation")]
 use crate::GridSpec;
 use crate::{
-    AlgebraicCage, AlgebraicRating, Analysis, CageTotal, PuzzleRule, SEARCH_LIMIT,
-    SIZED_GRID_VERSION, SizedAlgebraicCages, SizedConstraint, SizedConstraintGrid,
+    AlgebraicCage, AlgebraicRating, Analysis, CageTotal, EquationOperator, PuzzleRule,
+    SEARCH_LIMIT, SIZED_GRID_VERSION, SizedAlgebraicCages, SizedConstraint, SizedConstraintGrid,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -28,23 +28,83 @@ enum Rule {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct FractionalPiece {
+    quarters: Vec<usize>,
+    color: String,
+}
+
+#[derive(Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)]
 enum SizedRule {
-    SlowThermometer { cells: Vec<usize> },
-    DoubleArrow { ends: [usize; 2], cells: Vec<usize> },
-    LinkedDoubleArrow { ends: [crate::SizedSumEnd; 2], cells: Vec<usize> },
-    Difference { cells: [usize; 2], difference: u8 },
-    AntiSum { sum: u8 },
+    Entropic {
+        cells: Vec<usize>,
+        groups: Vec<Vec<u8>>,
+    },
+    FractionalRegions {
+        pieces: Vec<FractionalPiece>,
+    },
+    LittleKiller {
+        direction: crate::ClueDirection,
+        cells: Vec<usize>,
+        sum: u16,
+    },
+    SlowThermometer {
+        cells: Vec<usize>,
+    },
+    DoubleArrow {
+        ends: [usize; 2],
+        cells: Vec<usize>,
+    },
+    LinkedDoubleArrow {
+        ends: [crate::SizedSumEnd; 2],
+        cells: Vec<usize>,
+    },
+    Difference {
+        cells: [usize; 2],
+        difference: u8,
+    },
+    Nonogram {
+        axis: crate::RunAxis,
+        index: usize,
+        digits: Vec<u8>,
+        runs: Vec<u8>,
+    },
+    Skyscrapers {
+        direction: crate::ClueDirection,
+        index: usize,
+        count: u8,
+    },
+    AntiSum {
+        sum: u8,
+    },
     RowColumnSum {
         pairs: Vec<[usize; 2]>,
         #[serde(default, rename = "requireUnmarked")]
         require_unmarked: bool,
+    },
+    RowEquation {
+        cells: Vec<usize>,
+        operators: Vec<EquationOperator>,
+    },
+    CornerKropki {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        consecutive: Vec<usize>,
+        #[serde(default, rename = "ratioTwo", skip_serializing_if = "Vec::is_empty")]
+        ratio_two: Vec<usize>,
     },
     LabeledDots {
         relation: crate::sized::SizedDotRelation,
         marks: Vec<crate::sized::SizedLabeledDot>,
         #[serde(default)]
         negative: bool,
+    },
+    Crust {
+        clues: Vec<crate::CrustClue>,
+        #[serde(default, rename = "sharedRegion")]
+        shared_region: Option<[usize; 2]>,
+        #[serde(default, rename = "fixedEdges")]
+        fixed_edges: Vec<[usize; 2]>,
     },
 }
 
@@ -94,36 +154,156 @@ impl TryFrom<Rule> for SizedConstraint {
 
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
+            Rule::Variant(PuzzleRule::AntiKing {}) => Self::AntiKing,
+            Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
             Rule::Variant(PuzzleRule::Thermometer { cells }) => Self::Thermometer { cells },
             Rule::Sized(SizedRule::SlowThermometer { cells }) => Self::SlowThermometer { cells },
-            Rule::Variant(PuzzleRule::Whispers { cells, min_difference }) => Self::Whispers { cells, min_difference },
-            Rule::Variant(PuzzleRule::Xv { five, ten }) => Self::Xv { five, ten },
-            Rule::Variant(PuzzleRule::Sandwich { cells, direction, sum }) => Self::Sandwich { cells, direction, sum },
-            Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
-            Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => Self::DoubleArrow { ends, cells },
-            Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => Self::LinkedDoubleArrow { ends, cells },
-            Rule::Variant(PuzzleRule::Quadruple { top_left, digits }) => Self::Quadruple { top_left, digits },
-            Rule::Variant(PuzzleRule::Kropki { consecutive, ratio_two }) => {
-                Self::Kropki { consecutive, ratio_two }
+            Rule::Variant(PuzzleRule::Between { cells }) => Self::Between { cells },
+            Rule::Variant(PuzzleRule::Whispers {
+                cells,
+                min_difference,
+            }) => Self::Whispers {
+                cells,
+                min_difference,
+            },
+            Rule::Variant(PuzzleRule::NonConsecutive { except }) => Self::NonConsecutive { except },
+            Rule::Variant(PuzzleRule::Inequality { less, greater }) => {
+                Self::Inequality { less, greater }
             }
+            Rule::Variant(PuzzleRule::Xv { five, ten }) => Self::Xv { five, ten },
+            Rule::Variant(PuzzleRule::Sandwich {
+                cells,
+                direction,
+                sum,
+            }) => Self::Sandwich {
+                cells,
+                direction,
+                sum,
+            },
+            Rule::Variant(PuzzleRule::Arrow { circle, cells }) => Self::Arrow { circle, cells },
+            Rule::Sized(SizedRule::DoubleArrow { ends, cells }) => {
+                Self::DoubleArrow { ends, cells }
+            }
+            Rule::Sized(SizedRule::LinkedDoubleArrow { ends, cells }) => {
+                Self::LinkedDoubleArrow { ends, cells }
+            }
+            Rule::Variant(PuzzleRule::Quadruple { top_left, digits }) => {
+                Self::Quadruple { top_left, digits }
+            }
+            Rule::Variant(PuzzleRule::Kropki {
+                consecutive,
+                ratio_two,
+            }) => Self::Kropki {
+                consecutive,
+                ratio_two,
+            },
             Rule::Variant(PuzzleRule::Renban { cells, segments }) => {
-                validate_drawing(&cells, segments, "Renban drawing paths must cover the same cells as the line.")?;
+                validate_drawing(
+                    &cells,
+                    segments,
+                    "Renban drawing paths must cover the same cells as the line.",
+                )?;
                 Self::Renban { cells }
             }
-            Rule::Variant(PuzzleRule::KillerCages { cages, cover_grid }) => Self::KillerCages { cages, cover_grid },
-            Rule::Variant(PuzzleRule::RegionSum { cells, group_by_region, segments }) => {
-                validate_drawing(&cells, segments, "Region Sum drawing paths must cover the same cells as the line.")?;
-                Self::RegionSum { cells, group_by_region }
+            Rule::Variant(PuzzleRule::Modular { cells }) => Self::Modular { cells },
+            Rule::Variant(PuzzleRule::GlobalEntropy { groups }) => Self::GlobalEntropy { groups },
+            Rule::Variant(PuzzleRule::KillerCages { cages, cover_grid }) => {
+                Self::KillerCages { cages, cover_grid }
+            }
+            Rule::Variant(PuzzleRule::RegionSum {
+                cells,
+                group_by_region,
+                segments,
+            }) => {
+                validate_drawing(
+                    &cells,
+                    segments,
+                    "Region Sum drawing paths must cover the same cells as the line.",
+                )?;
+                Self::RegionSum {
+                    cells,
+                    group_by_region,
+                }
             }
             Rule::Sized(SizedRule::AntiSum { sum }) => Self::AntiSum { sum },
-            Rule::Sized(SizedRule::RowColumnSum { pairs, require_unmarked }) => Self::RowColumnSum { pairs, require_unmarked },
-            Rule::Sized(SizedRule::Difference { cells, difference }) => Self::Difference { cells, difference },
-            Rule::Sized(SizedRule::LabeledDots { relation, marks, negative }) => Self::LabeledDots { relation, marks, negative },
+            Rule::Sized(SizedRule::RowColumnSum {
+                pairs,
+                require_unmarked,
+            }) => Self::RowColumnSum {
+                pairs,
+                require_unmarked,
+            },
+            Rule::Sized(SizedRule::RowEquation { cells, operators }) => {
+                Self::RowEquation { cells, operators }
+            }
+            Rule::Sized(SizedRule::FractionalRegions { pieces }) => Self::FractionalRegions {
+                pieces: pieces.into_iter().map(|piece| piece.quarters).collect(),
+            },
+            Rule::Sized(SizedRule::LittleKiller {
+                direction,
+                cells,
+                sum,
+            }) => Self::LittleKiller {
+                direction,
+                cells,
+                sum,
+            },
+            Rule::Sized(SizedRule::Nonogram {
+                axis,
+                index,
+                digits,
+                runs,
+            }) => Self::Nonogram {
+                axis,
+                index,
+                digits,
+                runs,
+            },
+            Rule::Sized(SizedRule::Skyscrapers {
+                direction,
+                index,
+                count,
+            }) => Self::Skyscrapers {
+                direction,
+                index,
+                count,
+            },
+            Rule::Sized(SizedRule::CornerKropki {
+                consecutive,
+                ratio_two,
+            }) => Self::CornerKropki {
+                consecutive,
+                ratio_two,
+            },
+            Rule::Sized(SizedRule::Difference { cells, difference }) => {
+                Self::Difference { cells, difference }
+            }
+            Rule::Sized(SizedRule::LabeledDots {
+                relation,
+                marks,
+                negative,
+            }) => Self::LabeledDots {
+                relation,
+                marks,
+                negative,
+            },
+            Rule::Sized(SizedRule::Crust {
+                clues,
+                shared_region,
+                fixed_edges,
+            }) => Self::Crust {
+                clues,
+                shared_region,
+                fixed_edges,
+            },
             Rule::Variant(_) => {
-                return Err(("unsupported-rule", "This rule is unavailable on the sized grid."));
+                return Err((
+                    "unsupported-rule",
+                    "This rule is unavailable on the sized grid.",
+                ));
             }
             Rule::Algebraic(_) => {
                 return Err((
@@ -135,12 +315,18 @@ impl TryFrom<Rule> for SizedConstraint {
     }
 }
 
-fn validate_drawing(cells: &[usize], segments: Option<Vec<Vec<usize>>>, message: &'static str) -> ResultValue<()> {
+fn validate_drawing(
+    cells: &[usize],
+    segments: Option<Vec<Vec<usize>>>,
+    message: &'static str,
+) -> ResultValue<()> {
     if let Some(segments) = segments
         && (segments.is_empty()
             || segments.iter().any(Vec::is_empty)
             || segments.iter().flatten().any(|cell| !cells.contains(cell))
-            || cells.iter().any(|cell| !segments.iter().any(|part| part.contains(cell))))
+            || cells
+                .iter()
+                .any(|cell| !segments.iter().any(|part| part.contains(cell))))
     {
         return Err(("invalid-rules", message));
     }
@@ -187,7 +373,8 @@ pub(super) fn generate(
             digits,
             rules,
         } = definition;
-        if version != SIZED_GRID_VERSION || !matches!(layout, Layout::Boxes(spec) if spec == grid)
+        if version != SIZED_GRID_VERSION
+            || !matches!(layout, Layout::Boxes(spec) if spec == grid)
             || digits.iter().any(|&digit| digit > 4)
         {
             return Err((
@@ -272,7 +459,9 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
     let Layout::Boxes(spec) = &grid else {
         return execute_constraints(grid, &digits, rules, operation);
     };
-    if spec.size != 4 || (!rules.is_empty() && !rules.iter().any(|rule| matches!(rule, Rule::Algebraic(_)))) {
+    if spec.size != 4
+        || (!rules.is_empty() && !rules.iter().any(|rule| matches!(rule, Rule::Algebraic(_))))
+    {
         return execute_constraints(grid, &digits, rules, operation);
     }
     let grid = *spec;
@@ -305,7 +494,9 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             }))
         }
         Operation::Solve => ResponseValue::Json(json!(puzzle.solve(&digits, SEARCH_LIMIT))),
-        Operation::SolveUnique => ResponseValue::Json(unique_reply(puzzle.solve_unique(&digits, SEARCH_LIMIT))),
+        Operation::SolveUnique => {
+            ResponseValue::Json(unique_reply(puzzle.solve_unique(&digits, SEARCH_LIMIT)))
+        }
         Operation::Candidates => {
             return Err((
                 "unsupported-operation",
@@ -371,9 +562,15 @@ fn execute_constraints(
                 .solve(digits, SEARCH_LIMIT)
                 .map(|digits| json!({ "digits": digits, "variables": {} }))
         ),
-        Operation::SolveUnique => unique_reply(puzzle.solve_unique(digits, SEARCH_LIMIT)
-            .map(|digits| json!({ "digits": digits, "variables": {} }))),
-        Operation::Candidates => json!(puzzle.candidates(digits)),
+        Operation::SolveUnique => unique_reply(
+            puzzle
+                .solve_unique(digits, SEARCH_LIMIT)
+                .map(|digits| json!({ "digits": digits, "variables": {} })),
+        ),
+        Operation::Candidates => match puzzle.candidates_with_budget(digits, SEARCH_LIMIT) {
+            Ok(candidates) => json!(candidates),
+            Err(analysis) => return Err(puzzle_error(analysis)),
+        },
         Operation::Hints {
             eliminations,
             limit,

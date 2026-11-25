@@ -43,11 +43,13 @@ pub use hints::{
     next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
 };
 pub use logical::{
-    AlternatePath, AlternatePathStatus, Difficulty, LogicalSolve, MoveAvailability, PathComparison,
-    PuzzleRating, RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch,
+    AlternatePath, AlternatePathStatus, CompleteClassicSolve, Difficulty,
+    EightDigitOverlayCompletion, EightDigitOverlayProof, LogicalSolve, MoveAvailability,
+    PathComparison, PuzzleRating, RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch,
     RankSolveStatus, RankSolveStep, ReplayedStep, SCORING_VERSION, SolveScore, SolveStatus,
-    compare_paths, opening_techniques, rate_puzzle, search_alternate_path, solve_logically,
-    solve_position, solve_position_with_rank,
+    compare_paths, opening_techniques, rate_puzzle, replay_eight_digit_overlay_at,
+    search_alternate_path, solve_logically, solve_position, solve_position_completely,
+    solve_position_with_rank,
 };
 pub use position::PositionSnapshot;
 #[cfg(any(feature = "teaching", test))]
@@ -62,41 +64,51 @@ pub use rank::{
 };
 #[cfg(feature = "variants")]
 pub use sized::{
-    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion, AlgebraicDifficulty, AlgebraicHints, AlgebraicRating,
-    AlgebraicStep, AlgebraicTracePosition,
+    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
+    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition,
     CageTotal, SizedAlgebraicCages,
 };
 #[cfg(feature = "variants")]
 pub use sized::{
-    SizedConstraint, SizedConstraintFailure, SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep,
-    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity, SizedSumEnd,
+    CrustClue, EquationOperator, RunAxis, SizedConstraint, SizedConstraintFailure,
+    SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep, SizedConstraintTracePosition,
+    SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot,
+    SizedParity, SizedSumEnd,
 };
-#[cfg(feature = "generation")]
-pub use sized::{MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use sized::{GeneratedAlgebraic, generate_algebraic};
-pub use sized::{GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHints, SizedTechnique, SizedTracePosition};
+pub use sized::{
+    GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHints, SizedTechnique,
+    SizedTracePosition,
+};
+#[cfg(feature = "generation")]
+pub use sized::{
+    MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini,
+    generate_six,
+};
 pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{
-    ClueDirection, CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage, MarkedPairs,
-    Parity, LetteredQuadruple, PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION,
-    VariantClueScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
-    VariantEvidence, VariantExclusionPremise, VariantGroupSumChainProof, VariantGroupSumLink,
-    VariantGroupSumLinkSource, VariantHouse, VariantHouseKind, VariantLineHouseProof,
-    VariantLogicalError, VariantPosition, VariantPositionError, VariantPuzzle, VariantRating,
-    VariantRayHouseProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
-    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
-    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantTrace, VariantTrialFailure, VariantVisibility, VariantVisibilityError,
-    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
-    VariantGroupOrderBranch, VariantGroupOrderEliminationProof,
-    VariantConstraintCheck, VariantConstraintScope, VariantLinkedClueProof,
+    AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade, ClueDirection,
+    CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage,
+    LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity, PuzzleRule, RegionLayout,
+    VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck,
+    VariantConstraintScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
+    VariantEvidence, VariantExclusionPremise, VariantGroupLineHouseCase,
+    VariantGroupLineHouseConflict, VariantGroupLineHouseProof, VariantGroupOrderBranch,
+    VariantGroupOrderCheck, VariantGroupOrderEliminationProof, VariantGroupOrderProof,
+    VariantGroupOrderRefutation, VariantGroupOrderScope, VariantGroupSumChainProof,
+    VariantGroupSumLink, VariantGroupSumLinkSource, VariantHouse, VariantHouseKind,
+    VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
     VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
-    VariantMatchingLayoutCase, VariantMatchingLayoutProof,
-    VariantGroupOrderCheck, VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
-    VariantKropkiHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof, VariantThermometerHouseProof,
-    canonical_variant,
+    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantPosition, VariantPositionError,
+    VariantPuzzle, VariantRating, VariantRayHouseProof, VariantRegionSumHouseLine,
+    VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof,
+    VariantRenbanGroupConflict, VariantRenbanGroupPlacement, VariantRenbanGroupProjection,
+    VariantRenbanGroupProof, VariantRenbanHouseProof, VariantRenbanSumHouseProof,
+    VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay, VariantSumPairProof,
+    VariantTechnique, VariantThermometerHouseProof, VariantTrace, VariantTrialFailure,
+    VariantVisibility, VariantVisibilityError, canonical_variant,
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]
 pub use variant::{
@@ -344,7 +356,9 @@ fn next_single(
         let singles = seen & !repeated;
         if singles != 0 {
             let offset = singles.trailing_zeros();
-            let cell = house.into_iter().find(|&cell| masks[cell] & (1 << offset) != 0)?;
+            let cell = house
+                .into_iter()
+                .find(|&cell| masks[cell] & (1 << offset) != 0)?;
             return Some((cell, offset as u8 + 1));
         }
     }
@@ -355,7 +369,11 @@ fn classic_singles(mut board: Board, allowed: &[u16; CELLS]) -> Option<Board> {
     let mut units = Units::from_board(&board)?;
     loop {
         let masks = std::array::from_fn(|cell| {
-            if board[cell] == 0 { units.available(cell) & allowed[cell] } else { 0 }
+            if board[cell] == 0 {
+                units.available(cell) & allowed[cell]
+            } else {
+                0
+            }
         });
         let Some((cell, digit)) = next_single(&masks, House::all().map(House::cells)) else {
             return Some(board);
@@ -624,7 +642,10 @@ mod tests {
 
     #[test]
     fn validation_resolves_sparse_puzzles_with_forced_singles() {
-        let board = parse_givens("345000000000200010000000000020100000000004500600000007800750000000060040000000300").unwrap();
+        let board = parse_givens(
+            "345000000000200010000000000020100000000004500600000007800750000000060040000000300",
+        )
+        .unwrap();
         assert_eq!(analyze(&board), Analysis::Unique);
         let answer = solve(&board).unwrap();
         assert!(!answer.contains(&0));

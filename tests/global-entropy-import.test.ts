@@ -134,6 +134,7 @@ test('global imports reject local cells, unknown parameters and invalid definiti
   await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'globalEntropy', segments: [{ cells: [0] }] }] })), /unsupported cells/)
   assert.equal(isPlayablePuzzle('global-entropy', { ...plain, rules: [{ type: 'global-entropy', cells: [0, 1, 9, 10] }] }), false)
   assert.equal(isPlayablePuzzle('global-entropy', { ...plain, rules: [{ type: 'global-entropy', groups: [1, 2, 3] }] }), false)
+  assert.equal(isPlayablePuzzle('global-entropy', { ...plain, rules: [{ type: 'global-entropy', groups: [[1, 2], [3, 4], [5, 6, 7, 8, 9]] }] }), false)
 })
 
 test('the Disjoint Groups presentation requires all nine exact houses and preserves their source indices', () => {
@@ -155,24 +156,24 @@ test('the Disjoint Groups presentation requires all nine exact houses and preser
   assert.deepEqual([...disjointGroupRuleIndices(shifted)], [1, 2, 3, 4, 5, 6, 7, 8, 9])
 })
 
-test('raw exports preserve their encoded scope while incomplete authored sources remain tracked', async ({ mock }) => {
-  const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
-  mock.method(globalThis, 'fetch', async (path: string) => {
-    const source = deferred.find(({ url }: { url: string }) => path === `/api/v1/import/sudoku-coach/${url.split('/').at(-1)}`)
-    assert.ok(source)
-    return Response.json({ code: source.code })
-  })
-  for (const source of deferred) await assert.rejects(detectPuzzle(source.url), /Copy → Puzzle|version|unsupported format/i)
-  const spiral = deferred.find((source: { url: string }) => source.url.endsWith('LEjN'))
+test('raw imports preserve the spiral gap and enforce Entropic Order group positions', async () => {
+  const spiral = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8'))
+    .examples.find((source: { url: string }) => source.url.endsWith('LEjN'))
+  const ordered = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8'))
+    .examples.find((source: { url: string }) => source.url.endsWith('7nms'))
+  assert.ok(spiral && ordered)
+  assert.equal(spiral.deferred, '')
+  assert.equal(ordered.deferred, '')
   const encoded = (await detectPuzzle(spiral.code)).variant!.puzzle
-  assert.equal(encoded.rules!.length, 19)
+  assert.equal(encoded.rules!.length, 35)
   assert.equal(encoded.rules!.filter(rule => rule.type === 'entropic').length, 18)
   assert.equal(encoded.rules!.filter(rule => rule.type === 'global-entropy').length, 1)
+  assert.equal(encoded.rules!.filter(rule => rule.type === 'forbidden-entropic-connection').length, 16)
   assertVariantCompletion(encoded, spiral.solution)
-  assert.match(spiral.deferred, /forbidden connections.*168/)
-  const ordered = deferred.find((source: { url: string }) => source.url.endsWith('7nms'))
-  await assert.rejects(detectPuzzle(ordered.code), /cosmeticText/)
-  assert.match(ordered.deferred, /order digit groups.*169/)
+  const importedOrder = (await detectPuzzle(ordered.code)).variant!.puzzle
+  const orders = importedOrder.rules!.filter(rule => rule.type === 'digit-order')
+  assert.equal(orders.length, 7)
+  assertVariantCompletion(importedOrder, ordered.solution)
 })
 
 

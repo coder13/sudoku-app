@@ -156,13 +156,22 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
 }
 
 export function variantPosition(
-  variant: VariantGame, position?: { entries: string; eliminations?: readonly number[] },
+  variant: VariantGame, position?: { entries: string; eliminations?: readonly number[]; shades?: string },
 ): VariantPosition {
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
   const entries = variant.fog && position
     ? [...position.entries].map((digit, cell) => puzzle.givens[cell] === '0' ? digit : '0').join('')
     : position?.entries
-  return { puzzle, entries, eliminations: position?.eliminations }
+  const hasAqre = puzzle.rules?.some(rule => rule.type === 'aqre')
+  const shades = hasAqre ? position?.shades ?? (() => {
+    const initial = Array(puzzle.givens.length).fill('0')
+    for (const rule of puzzle.rules ?? []) if (rule.type === 'aqre') for (const given of rule.givenShades) {
+      initial[given.cell] = given.shade === 'shaded' ? '2' : '1'
+    }
+    return initial.join('')
+  })() : undefined
+  return { puzzle, entries, eliminations: position?.eliminations,
+    ...(hasAqre && { shades }) }
 }
 
 export async function playCandidates(game: Game, run: EngineRunner = runEngine, variantRules?: readonly VariantToolId[]) {

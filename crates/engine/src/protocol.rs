@@ -116,11 +116,19 @@ enum Request {
         eliminations: Option<Vec<u16>>,
         technique_order: Option<Vec<String>>,
         #[serde(default)]
+        complete: bool,
+        #[serde(default)]
         include_positions: bool,
         #[serde(default)]
         include_step_details: bool,
         #[serde(default)]
         include_move_availability: bool,
+    },
+    ReplayEightDigitOverlay {
+        values: String,
+        entries: Option<String>,
+        eliminations: Option<Vec<u16>>,
+        proof: super::EightDigitOverlayProof,
     },
     LogicalSolveWithRank {
         values: String,
@@ -827,13 +835,25 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
             entries,
             eliminations,
             technique_order,
+            complete,
             include_positions,
             include_step_details,
             include_move_availability,
         } => {
             let start = starting_position(&values, entries.as_deref(), eliminations)?;
-            let trace = solve_position(&start, profile(technique_order)?.technique_order())
-                .map_err(hint_error)?;
+            let full_profile = complete && technique_order.is_none();
+            let profile = profile(technique_order)?;
+            let order = if full_profile {
+                Technique::DIFFICULTY_ORDER
+            } else {
+                profile.technique_order()
+            };
+            let (trace, completion) = if complete {
+                let solve = super::solve_position_completely(&start, order).map_err(hint_error)?;
+                (solve.named, solve.completion)
+            } else {
+                (solve_position(&start, order).map_err(hint_error)?, None)
+            };
             let positions = (include_positions || include_step_details)
                 .then(|| {
                     trace
@@ -858,6 +878,24 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 })
                 .transpose()?;
             let mut response = trace_value(&trace);
+            if let Some(completion) = completion {
+                let solution = completion.solution;
+                let entries = std::array::from_fn(|cell| {
+                    if start.givens[cell] == 0 {
+                        solution[cell]
+                    } else {
+                        0
+                    }
+                });
+                response["board"] = json!(grid_string(solution));
+                response["exactPosition"] = snapshot_value(&PositionSnapshot {
+                    givens: start.givens,
+                    entries,
+                    eliminations: [0; super::CELLS],
+                });
+                response["completionProof"] = json!(completion.proof);
+                response["completionActions"] = json!(completion.actions);
+            }
             if let Some(positions) = positions {
                 response["positions"] = Value::Array(positions);
             }
@@ -865,6 +903,17 @@ fn execute(request: Request) -> ResultValue<ResponseValue> {
                 response["moveAvailability"] = json!(trace.move_availability());
             }
             Ok(response)
+        }
+        Request::ReplayEightDigitOverlay {
+            values,
+            entries,
+            eliminations,
+            proof,
+        } => {
+            let start = starting_position(&values, entries.as_deref(), eliminations)?;
+            Ok(json!(
+                super::replay_eight_digit_overlay_at(&start, &proof).map_err(hint_error)?
+            ))
         }
         Request::LogicalSolveWithRank {
             values,

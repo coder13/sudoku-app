@@ -80,12 +80,20 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                             .iter()
                             .all(|&rule| position.puzzle.rules.get(rule).is_some())
                     );
-                    if matches!(technique, VariantTechnique::InsideGrid | VariantTechnique::LetteredQuadruples) {
+                    if matches!(
+                        technique,
+                        VariantTechnique::InsideGrid | VariantTechnique::LetteredQuadruples
+                    ) {
                         // The shared set or key stays in view. Each exercise
                         // must use it to explain a different part of the grid.
-                        let focus: Vec<_> = exercise.deduction.actions.iter()
+                        let focus: Vec<_> = exercise
+                            .deduction
+                            .actions
+                            .iter()
                             .map(|action| action.candidate().cell)
-                            .collect::<BTreeSet<_>>().into_iter().collect();
+                            .collect::<BTreeSet<_>>()
+                            .into_iter()
+                            .collect();
                         assert!(focus.iter().all(|cell| cells.contains(cell)));
                         scopes.insert(focus);
                     } else {
@@ -93,7 +101,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     }
                 }
                 VariantEvidence::SumPair(proof) => {
-                    assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    assert!(
+                        proof
+                            .rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
                     scopes.insert(proof.cells.to_vec());
                 }
                 VariantEvidence::GroupLineHouse { rule, cells, .. } => {
@@ -105,31 +118,51 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     scopes.insert(cells.to_vec());
                 }
                 VariantEvidence::GroupLineSumHouse { rules, cells, .. } => {
-                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    assert!(
+                        rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
                     scopes.insert(cells.to_vec());
                 }
-                VariantEvidence::GroupSumImplication { assumption, links, .. } => {
+                VariantEvidence::GroupSumImplication {
+                    assumption, links, ..
+                } => {
                     let cells = std::iter::once(assumption.cell)
                         .chain(links.into_iter().map(|link| link.candidate.cell))
                         .collect();
                     scopes.insert(cells);
                 }
                 VariantEvidence::GroupLinePhaseSum { rules, cells, .. } => {
-                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    assert!(
+                        rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
                     scopes.insert(cells.to_vec());
                 }
                 VariantEvidence::GroupLineDisjointSum { rules, cells, .. } => {
-                    assert!(rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    assert!(
+                        rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
                     scopes.insert(cells.to_vec());
                 }
                 VariantEvidence::GroupLineSumChain(proof) => {
-                    assert!(proof.rules.iter().all(|&rule| position.puzzle.rules.get(rule).is_some()));
+                    assert!(
+                        proof
+                            .rules
+                            .iter()
+                            .all(|&rule| position.puzzle.rules.get(rule).is_some())
+                    );
                     scopes.insert(proof.cells.to_vec());
                 }
                 VariantEvidence::GroupLineHouseSupport(proof) => {
                     assert!(matches!(
                         position.puzzle.rules[proof.rule],
-                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                        sudoku_app_engine::PuzzleRule::Entropic { .. }
+                            | sudoku_app_engine::PuzzleRule::Modular { .. }
                     ));
                     scopes.insert(proof.cells.to_vec());
                 }
@@ -143,7 +176,11 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     assert!(proof.conflict.forced.is_empty());
                     assert!(proof.assumed.len() > 1);
                     assert!(proof.assumed.iter().any(|&cell| {
-                        exercise.suggestion == HintAction::Eliminate(Candidate { cell, digit: proof.digit })
+                        exercise.suggestion
+                            == HintAction::Eliminate(Candidate {
+                                cell,
+                                digit: proof.digit,
+                            })
                     }));
                     scopes.insert(proof.assumed);
                 }
@@ -160,7 +197,8 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     scopes.insert(proof.cells.to_vec());
                 }
                 VariantEvidence::ThermometerHouse(proof) => {
-                    let PuzzleRule::Thermometer { cells } = &position.puzzle.rules[proof.rule] else {
+                    let PuzzleRule::Thermometer { cells } = &position.puzzle.rules[proof.rule]
+                    else {
                         panic!("the proof must cite its Thermometer")
                     };
                     assert_eq!(cells, &proof.line_cells);
@@ -168,10 +206,16 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                 }
                 VariantEvidence::RegionSumHouse(proof) => {
                     assert!(proof.lines.iter().all(|line| matches!(
-                        position.puzzle.rules[line.rule], PuzzleRule::RegionSum { .. }
+                        position.puzzle.rules[line.rule],
+                        PuzzleRule::RegionSum { .. }
                     )));
-                    let cells = proof.lines.iter().flat_map(|line| &line.parts)
-                        .flat_map(|part| part.cells.iter().copied()).chain(proof.remainder).collect();
+                    let cells = proof
+                        .lines
+                        .iter()
+                        .flat_map(|line| &line.parts)
+                        .flat_map(|part| part.cells.iter().copied())
+                        .chain(proof.remainder)
+                        .collect();
                     scopes.insert(cells);
                 }
                 VariantEvidence::RegionSumDistinct(proof) => {
@@ -179,12 +223,19 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                         position.puzzle.rules[proof.rule],
                         PuzzleRule::RegionSum { .. }
                     ));
-                    scopes.insert(proof.parts.iter().flat_map(|part| part.cells.clone()).collect());
+                    scopes.insert(
+                        proof
+                            .parts
+                            .iter()
+                            .flat_map(|part| part.cells.clone())
+                            .collect(),
+                    );
                 }
                 VariantEvidence::GroupOrder(proof) => {
                     assert!(matches!(
                         position.puzzle.rules[proof.rule],
-                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                        sudoku_app_engine::PuzzleRule::Entropic { .. }
+                            | sudoku_app_engine::PuzzleRule::Modular { .. }
                     ));
                     for order in proof.rejected {
                         scopes.insert(order.conflict.cells);
@@ -193,7 +244,8 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                 VariantEvidence::GroupOrderElimination(proof) => {
                     assert!(matches!(
                         position.puzzle.rules[proof.rule],
-                        sudoku_app_engine::PuzzleRule::Entropic { .. } | sudoku_app_engine::PuzzleRule::Modular { .. }
+                        sudoku_app_engine::PuzzleRule::Entropic { .. }
+                            | sudoku_app_engine::PuzzleRule::Modular { .. }
                     ));
                     scopes.insert(proof.cells);
                 }
@@ -213,7 +265,7 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     let (entropy, circles) = proof.rules.split_first().unwrap();
                     assert!(matches!(
                         position.puzzle.rules[*entropy],
-                        PuzzleRule::GlobalEntropy {}
+                        PuzzleRule::GlobalEntropy { .. }
                     ));
                     if technique == VariantTechnique::EntropyQuadruple {
                         assert!(!circles.is_empty());
@@ -222,7 +274,8 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                         assert_eq!(proof.windows.len(), 2);
                     }
                     for &rule in circles {
-                        let PuzzleRule::Quadruple { top_left, .. } = &position.puzzle.rules[rule] else {
+                        let PuzzleRule::Quadruple { top_left, .. } = &position.puzzle.rules[rule]
+                        else {
                             panic!("the proof must cite a printed circle");
                         };
                         assert!(proof.windows.iter().any(|window| window[0] == *top_left));
@@ -232,7 +285,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                 }
                 VariantEvidence::RayHouses(proof) => {
                     assert!(!proof.houses.is_empty());
-                    assert!(proof.rules.iter().all(|&index| index < position.puzzle.rules.len()));
+                    assert!(
+                        proof
+                            .rules
+                            .iter()
+                            .all(|&index| index < position.puzzle.rules.len())
+                    );
                     scopes.insert(proof.cells);
                 }
                 VariantEvidence::RenbanGroupCounts(proof) => {
@@ -253,15 +311,31 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                 }
                 VariantEvidence::RenbanSum(proof) => {
                     let [renban, ray] = proof.rules.map(|index| &position.puzzle.rules[index]);
-                    assert!(matches!(renban, sudoku_app_engine::PuzzleRule::Renban { .. }));
-                    assert!(matches!(ray, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
+                    assert!(matches!(
+                        renban,
+                        sudoku_app_engine::PuzzleRule::Renban { .. }
+                    ));
+                    assert!(matches!(
+                        ray,
+                        sudoku_app_engine::PuzzleRule::LittleKiller { .. }
+                    ));
                     scopes.insert(proof.cells);
                 }
                 VariantEvidence::RenbanSumHouse(proof) => {
-                    let [contained, sum, other] = proof.rules.map(|index| &position.puzzle.rules[index]);
-                    assert!(matches!(contained, sudoku_app_engine::PuzzleRule::Renban { .. }));
-                    assert!(matches!(sum, sudoku_app_engine::PuzzleRule::LittleKiller { .. }));
-                    assert!(matches!(other, sudoku_app_engine::PuzzleRule::Renban { .. }));
+                    let [contained, sum, other] =
+                        proof.rules.map(|index| &position.puzzle.rules[index]);
+                    assert!(matches!(
+                        contained,
+                        sudoku_app_engine::PuzzleRule::Renban { .. }
+                    ));
+                    assert!(matches!(
+                        sum,
+                        sudoku_app_engine::PuzzleRule::LittleKiller { .. }
+                    ));
+                    assert!(matches!(
+                        other,
+                        sudoku_app_engine::PuzzleRule::Renban { .. }
+                    ));
                     scopes.insert(proof.cells);
                 }
                 VariantEvidence::LockedDigit { clue, .. } => {
@@ -272,7 +346,12 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     );
                     scopes.insert(clue.cells);
                 }
-                VariantEvidence::QuadrupleLock { clues, sites, digit, .. } => {
+                VariantEvidence::QuadrupleLock {
+                    clues,
+                    sites,
+                    digit,
+                    ..
+                } => {
                     for (clue, sites) in clues.iter().zip(sites) {
                         assert!(clue.rules.iter().all(|&rule| matches!(
                             &position.puzzle.rules[rule],
@@ -283,7 +362,10 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                     scopes.insert(clues.into_iter().flat_map(|clue| clue.cells).collect());
                 }
                 VariantEvidence::RuleForcing { assumption, .. } => {
-                    assert_eq!(exercise.deduction.actions, vec![HintAction::Eliminate(assumption)]);
+                    assert_eq!(
+                        exercise.deduction.actions,
+                        vec![HintAction::Eliminate(assumption)]
+                    );
                     scopes.insert(vec![assumption.cell]);
                 }
                 VariantEvidence::CageSum { cells, .. }

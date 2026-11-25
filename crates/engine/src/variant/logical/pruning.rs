@@ -1,7 +1,8 @@
 //! Check Classic detector eligibility before graph construction and search.
 
 use super::{
-    Analysis, CELLS, CompiledVariant, OverlaySearch, ProofPosition, Technique, UNIQUENESS_PROBE_NODES,
+    Analysis, CELLS, CompiledVariant, OverlaySearch, ProofPosition, Technique,
+    UNIQUENESS_PROBE_NODES,
 };
 use crate::hints::has_rectangle_guardians;
 
@@ -21,9 +22,9 @@ impl CompiledVariant {
             if !is_rectangle_graph(technique) {
                 return false;
             }
-            let has_guardians = position.rectangle_guardians.get_or_init(|| {
-                has_rectangle_guardians(&position.masks, self.extra_rule_cells)
-            });
+            let has_guardians = position
+                .rectangle_guardians
+                .get_or_init(|| has_rectangle_guardians(&position.masks, self.extra_rule_cells));
             // Rule scopes and the live candidates can rule out every rectangle
             // before either the exact check or the graph has to run.
             return !has_guardians || !self.uniqueness_is_verified(position);

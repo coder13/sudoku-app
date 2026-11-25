@@ -13,7 +13,7 @@ import { cloneFPuzzles } from './helpers/clone-export.ts'
 import lzString from 'lz-string'
 
 const empty = '0'.repeat(81), bit = (digit: number) => 1 << (digit - 1)
-const sources = ['murphy', 'newman'].map(name => JSON.parse(readFileSync(new URL('./fixtures/clone-' + name + '.json', import.meta.url), 'utf8')) as { title: string; puzzle: VariantPuzzle; solution: string; originalOnlineCode: string })
+const sources = ['murphy', 'newman'].map(name => JSON.parse(readFileSync(new URL('./fixtures/clone-' + name + '.json', import.meta.url), 'utf8')) as { title: string; puzzle: VariantPuzzle; solution: string; originalOnlineUrl: string; originalOnlineCode: string })
 const linked: VariantPuzzle = { version: 1, givens: empty, rules: [
   { type: 'clone', groups: [[0, 40]] }, { type: 'clone', groups: [[80, 40, 16]] },
 ] }
@@ -79,6 +79,29 @@ test('both original colored exports retain their complete corresponding shapes, 
       assert.deepEqual(imported.givenCellColors, fullColors)
     }
   }
+})
+
+test('published Clone SudokuPad links resolve the root and author-namespaced exports', async ({ mock }) => {
+  const requests: string[] = []
+  mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const path = String(input)
+    requests.push(path)
+    const source = sources.find(({ originalOnlineUrl }) => {
+      const id = originalOnlineUrl!.replace('https://sudokupad.app/', '')
+      return path === '/api/v1/import/sudokupad/' + id
+    })
+    return source ? Response.json({ code: source.originalOnlineCode }) : new Response(null, { status: 404 })
+  })
+
+  for (const source of sources) {
+    const imported = await detectPuzzle(source.originalOnlineUrl!)
+    assert.ok(imported.title?.toLowerCase().includes(source.title.toLowerCase()))
+    assert.deepEqual(imported.variant?.puzzle, source.puzzle)
+  }
+  assert.deepEqual(requests, sources.map(({ originalOnlineUrl }) => {
+    const id = originalOnlineUrl!.replace('https://sudokupad.app/', '')
+    return '/api/v1/import/sudokupad/' + id
+  }))
 })
 
 test('colored Clone clues reject mismatched copies, outlines, palettes, and additional rules', async () => {

@@ -56,7 +56,8 @@ test('original modern Coach sources retain checked complete and partial profiles
     { app: [285, 4, 0], original: [74, 2], native: [74, 2] },
   ] as const
   let index = 0
-  for (const source of load('coach').examples.filter((source: { deferred?: string }) => !source.deferred)) {
+  for (const source of load('coach').examples.filter((source: { deferred?: string; url: string }) =>
+    !source.deferred && !source.url.endsWith('/5NW'))) {
     const { game } = await prepareImportedPuzzle(source.code), puzzle = game.variant!.puzzle
     assert.deepEqual(puzzle, source.puzzle); assert.equal(game.variant!.solution, source.solution)
     assertVariantCompletion(puzzle, source.solution)
@@ -91,6 +92,21 @@ test('original modern Coach sources retain checked complete and partial profiles
     assert.ok((await puzzleHints(game, 10)).choices.length >= 1)
     index++
   }
+})
+
+test('the original SCv4 Romeo and Juliet import keeps every rule and solves to its printed completion', async () => {
+  const source = load('coach').examples.find((source: { url: string }) => source.url.endsWith('/5NW'))
+  const { game } = await prepareImportedPuzzle(source.code, [], { deferRating: true })
+  const puzzle = game.variant!.puzzle
+  assert.equal(game.title, source.title)
+  assert.equal(game.variant!.solution, source.solution)
+  assertVariantCompletion(puzzle, source.solution)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'renban').length, 6)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'consecutive-run').length, 1)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'kropki').length, 7)
+  assert.equal(puzzle.rules?.filter(rule => rule.type === 'xv').length, 7)
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle } }), 'unique')
+  assert.equal(await runEngine({ type: 'variant', operation: 'solve', position: { puzzle } }), source.solution)
 })
 
 test('Renbann9 offers both group-count proofs at its genuine two-step stall', async () => {

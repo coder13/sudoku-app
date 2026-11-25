@@ -66,7 +66,7 @@ test('saved puzzle state is independent from its source and survives a reset', (
 
 test('bookmarks survive saving and reset and restore the grid and sketch as one undo step', () => {
   const entered = enter(enter(STARTER_GAME, [2], 'value', 4), [3], 'center', 6)
-  const position = { ...entered.position, eliminations: entered.position.corner.map((_, cell) => cell === 3 ? 2 : 0) }
+  const position = { ...entered.position, shades: '2' + '0'.repeat(80), eliminations: entered.position.corner.map((_, cell) => cell === 3 ? 2 : 0) }
   const chainSketch = initialChainSketch
   const bookmark = createPuzzleBookmark({ ...entered, position, chainSketch }, '  Before the guess  ')
   const saved = readGame(entered.id, JSON.stringify({ ...entered, bookmarks: [bookmark], elapsed: 210 }))!

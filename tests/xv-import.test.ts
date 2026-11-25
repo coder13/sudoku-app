@@ -13,10 +13,10 @@ import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
 const empty = '0'.repeat(81)
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/xv-clover.json', import.meta.url), 'utf8')) as { puzzle: VariantPuzzle; solution: string }
-const examples = JSON.parse(readFileSync(new URL('./fixtures/xv-coach.json', import.meta.url), 'utf8')).examples as { code: string; url: string; solution: string; deferred: string[]; requiresXv?: boolean }[]
+const examples = JSON.parse(readFileSync(new URL('./fixtures/xv-coach.json', import.meta.url), 'utf8')).examples as { code: string; url: string; solution: string; deferred: string[]; requiresXv?: boolean; requiresAdjacentTotal?: boolean }[]
 
 test('unmodified Coach XV exports retain every marked sum and every companion rule', async () => {
-  for (const [index, source] of examples.filter(example => !example.deferred.length).entries()) {
+  for (const [index, source] of examples.filter(example => !example.requiresAdjacentTotal).entries()) {
     const imported = (await detectPuzzle(source.code)).variant!
     assert.equal(imported.id, 'mixed')
     const encoded = source.code.split('_')[2]
@@ -41,7 +41,7 @@ test('unmodified Coach XV exports retain every marked sum and every companion ru
 test('XV keeps its wire format while Coach general totals use their own rule', async () => {
   assert.equal(isPlayablePuzzle('xv', fixture.puzzle), true)
   assert.equal(generationVariant({ id: 'xv' }), 'xv')
-  const general = await detectPuzzle(examples.find(example => example.deferred.length)!.code)
+  const general = await detectPuzzle(examples.find(example => example.requiresAdjacentTotal)!.code)
   assert.deepEqual(general.variant!.puzzle.rules!.at(-1), { type: 'adjacent-total', cells: [80, 79], sum: 15 })
   for (const sum of [undefined, null, 0, 2, 18, 15.5, '5']) {
     await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'twoCellSum', segments: [{ cells: [0, 1], parameters: { sum } }] }] })), /sum/)
@@ -54,6 +54,17 @@ test('XV keeps its wire format while Coach general totals use their own rule', a
     { settings: { negativeConstraint: true }, segments: [{ cells: [0, 1], parameters: { sum: 5 } }] },
   ]) await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'twoCellSum', ...constraint }] })))
   assert.equal(isPlayablePuzzle('xv', { version: 1, givens: empty, rules: [{ type: 'xv', five: { negative: 'yes' } }] }), false)
+})
+
+test('Coach Kropki marker segments reject fields the importer cannot preserve', async () => {
+  for (const type of ['difference', 'ratio']) {
+    await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{
+      type, segments: [{ cells: [0, 1], parameters: {}, authoredMeaning: 'unknown' }],
+    }] })), /invalid (difference|ratio) marker/)
+  }
+  await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'twoCellSum', segments: [{
+    cells: [0, 1], parameters: { sum: 5 }, authoredMeaning: 'unknown',
+  }] }] })), /unsupported segment fields \(twoCellSum\)/)
 })
 
 test('every digit pair obeys positive sums and independent global negative flags across layers', () => {

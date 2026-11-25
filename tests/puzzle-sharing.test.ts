@@ -154,6 +154,10 @@ test('the sharing API validates the common rule contract against a Mini layout',
     const combined = { ...arrow, sizedRules: [...arrow.sizedRules, regionSum] }
     const { id: combinedShareId } = await api<{ id: string }>('shares', 'POST', combined)
     assert.deepEqual(await api(`shares/${combinedShareId}`), combined)
+    const sixEntropy = { version: 1, title: 'Six Entropy', grid: { size: 6, boxRows: 2, boxColumns: 3 },
+      givens: '0'.repeat(36), sizedRules: [{ type: 'global-entropy', groups: [[1, 2], [3, 4], [5, 6]] }] }
+    const { id: entropyShareId } = await api<{ id: string }>('shares', 'POST', sixEntropy)
+    assert.deepEqual(await api(`shares/${entropyShareId}`), sixEntropy)
     for (const invalid of [
       { ...combined, sizedRules: [{ ...regionSum, groupByRegion: 'true' }] },
       { ...combined, sizedRules: [{ ...regionSum, cells: [0, 1], segments: undefined }] },
@@ -171,6 +175,8 @@ test('the sharing API validates the common rule contract against a Mini layout',
       { ...definition, sizedRules: [{ type: 'renban', cells: [0, 1, 5], segments: [[0, 1]] }] },
       { ...definition, sizedRules: [{ type: 'thermometer', cells: [0, 1, 2, 3, 7] }] },
       { ...definition, sizedRules: [{ ...definition.sizedRules[0], solution: '1234341221434321' }] },
+      { ...sixEntropy, sizedRules: [{ type: 'global-entropy', groups: [[1, 2], [2, 4], [5, 6]] }] },
+      { ...sixEntropy, sizedRules: [{ type: 'global-entropy', groups: [[1, 2], [3, 4]] }] },
     ]) await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
   } finally { sqlite.close() }
 })

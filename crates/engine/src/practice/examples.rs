@@ -18,10 +18,35 @@ pub(super) const MULTI_COLORING: [PracticeExample; 3] = [
             "000000000200700005050008000800000000000000000001000000100000000000000000000000000",
         ),
         eliminations: Some(&elimination_masks(&[
-            (0, 6), (11, 3), (18, 6), (20, 3), (21, 3), (22, 3), (24, 4), (26, 9),
-            (28, 3), (53, 7), (53, 9), (55, 2), (55, 3), (55, 7), (56, 6), (56, 9),
-            (57, 4), (57, 6), (58, 6), (59, 6), (60, 2), (60, 7), (60, 9), (61, 9),
-            (63, 3), (64, 7), (72, 4), (73, 2), (73, 7),
+            (0, 6),
+            (11, 3),
+            (18, 6),
+            (20, 3),
+            (21, 3),
+            (22, 3),
+            (24, 4),
+            (26, 9),
+            (28, 3),
+            (53, 7),
+            (53, 9),
+            (55, 2),
+            (55, 3),
+            (55, 7),
+            (56, 6),
+            (56, 9),
+            (57, 4),
+            (57, 6),
+            (58, 6),
+            (59, 6),
+            (60, 2),
+            (60, 7),
+            (60, 9),
+            (61, 9),
+            (63, 3),
+            (64, 7),
+            (72, 4),
+            (73, 2),
+            (73, 7),
         ])),
         expected_actions: &[remove(46, 3), remove(56, 3), remove(68, 3)],
     },
@@ -134,7 +159,10 @@ pub(super) const ALS_CELL_CONTINUOUS_NICE_LOOP: PracticeExample = PracticeExampl
 // https://hodoku.sourceforge.net/libraries/reglib-1.3.txt
 pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
     match technique {
-        Technique::DirectPointing | Technique::DirectClaiming | Technique::DirectHiddenPair | Technique::DirectHiddenTriple => unreachable!(),
+        Technique::DirectPointing
+        | Technique::DirectClaiming
+        | Technique::DirectHiddenPair
+        | Technique::DirectHiddenTriple => unreachable!(),
         Technique::UniqueRectangleAic => [rectangle_chains::AIC[1], rectangle_chains::AIC[2]],
         Technique::UniqueRectangleDiscontinuousNiceLoop => [
             rectangle_chains::DISCONTINUOUS[1],
@@ -585,6 +613,12 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
         Technique::QuintuplePatternOverlay => {
             [pattern_overlay::QUINTUPLE[1], pattern_overlay::QUINTUPLE[2]]
         }
+        Technique::SextuplePatternOverlay => {
+            [pattern_overlay::SEXTUPLE[1], pattern_overlay::SEXTUPLE[2]]
+        }
+        Technique::SeptuplePatternOverlay => {
+            [pattern_overlay::SEPTUPLE[1], pattern_overlay::SEPTUPLE[2]]
+        }
         Technique::KrakenFish1 => {
             const {
                 [
@@ -708,10 +742,24 @@ pub(super) const fn supplemental(technique: Technique) -> [PracticeExample; 2] {
                 ]
             }
         }
-        Technique::HiddenSingleBox => const { [
-            PracticeExample { givens: "200040007400000000317008506050009020002030700090400080508200471000000002100080005", entries: None, eliminations: None, expected_actions: &[place(73, 2)] },
-            PracticeExample { givens: "502000000019030005006005008000400500001726400008003000900600200200070810000000903", entries: None, eliminations: None, expected_actions: &[place(72, 1)] },
-        ] },
+        Technique::HiddenSingleBox => {
+            const {
+                [
+                    PracticeExample {
+                        givens: "200040007400000000317008506050009020002030700090400080508200471000000002100080005",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[place(73, 2)],
+                    },
+                    PracticeExample {
+                        givens: "502000000019030005006005008000400500001726400008003000900600200200070810000000903",
+                        entries: None,
+                        eliminations: None,
+                        expected_actions: &[place(72, 1)],
+                    },
+                ]
+            }
+        }
         Technique::HiddenSingle => {
             const {
                 [

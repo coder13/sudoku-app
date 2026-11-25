@@ -29,7 +29,11 @@ impl Cage {
             .filter(|mask| mask.count_ones() as usize == count)
             .filter(|&mask| digits(mask).map(u16::from).sum::<u16>() == cage.sum)
             .collect();
-        (!sets.is_empty()).then(|| Self { cells: cage.cells.clone(), sets, size })
+        (!sets.is_empty()).then(|| Self {
+            cells: cage.cells.clone(),
+            sets,
+            size,
+        })
     }
 
     pub(super) fn permits(&self, digits: &[u8]) -> bool {
@@ -104,7 +108,10 @@ mod tests {
         for sum in 3..=13 {
             let cage = Cage::compile(
                 &layout,
-                &KillerCage { cells: vec![0, 1], sum },
+                &KillerCage {
+                    cells: vec![0, 1],
+                    sum,
+                },
                 &mut [false; MAX_SIZE * MAX_SIZE],
             )
             .unwrap();

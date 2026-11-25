@@ -15,8 +15,10 @@ pub use algebraic::{
 mod constraints;
 #[cfg(feature = "variants")]
 pub use constraints::{
-    SizedConstraint, SizedConstraintFailure, SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep,
-    SizedConstraintTracePosition, SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot, SizedParity, SizedSumEnd,
+    CrustClue, EquationOperator, RunAxis, SizedConstraint, SizedConstraintFailure,
+    SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep, SizedConstraintTracePosition,
+    SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot,
+    SizedParity, SizedSumEnd,
 };
 
 #[cfg(feature = "generation")]
@@ -24,7 +26,10 @@ mod generation;
 #[cfg(all(feature = "generation", feature = "variants"))]
 pub use generation::{GeneratedAlgebraic, generate_algebraic};
 #[cfg(feature = "generation")]
-pub use generation::{MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini, generate_six};
+pub use generation::{
+    MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini,
+    generate_six,
+};
 
 /// Wire version for a sized Classic grid. Version 1 uses the original 9×9 format.
 pub const SIZED_GRID_VERSION: u8 = 2;
@@ -148,15 +153,21 @@ impl SizedGrid {
         if !(4..=MAX_SIZE).contains(&size) {
             return None;
         }
-        Some(Self::from_memberships(size, 2 * size, (0..size * size).map(|cell| {
-            [cell / size, size + cell % size, NO_REGION]
-        })))
+        Some(Self::from_memberships(
+            size,
+            2 * size,
+            (0..size * size).map(|cell| [cell / size, size + cell % size, NO_REGION]),
+        ))
     }
 
     fn from_region_ids(size: usize, regions: impl Iterator<Item = usize>) -> Self {
-        Self::from_memberships(size, 3 * size, regions.enumerate().map(|(cell, region)| {
-            [cell / size, size + cell % size, 2 * size + region]
-        }))
+        Self::from_memberships(
+            size,
+            3 * size,
+            regions
+                .enumerate()
+                .map(|(cell, region)| [cell / size, size + cell % size, 2 * size + region]),
+        )
     }
 
     fn from_memberships(
@@ -165,14 +176,17 @@ impl SizedGrid {
         memberships: impl Iterator<Item = [usize; 3]>,
     ) -> Self {
         let mut houses: Vec<_> = (0..house_count).map(|_| Vec::with_capacity(size)).collect();
-        let memberships = memberships.enumerate().map(|(cell, indices)| {
-            for house in indices {
-                if let Some(cells) = houses.get_mut(house) {
-                    cells.push(cell);
+        let memberships = memberships
+            .enumerate()
+            .map(|(cell, indices)| {
+                for house in indices {
+                    if let Some(cells) = houses.get_mut(house) {
+                        cells.push(cell);
+                    }
                 }
-            }
-            indices
-        }).collect();
+                indices
+            })
+            .collect();
         Self {
             size,
             full_mask: u16::MAX >> (MAX_SIZE - size),
@@ -280,7 +294,10 @@ impl SizedGrid {
     ) -> Option<SizedHints> {
         let candidates = self.hint_candidates(digits, eliminations)?;
         let choices = self.hint_choices(&candidates, limit, singles_only)?;
-        Some(SizedHints { candidates, choices })
+        Some(SizedHints {
+            candidates,
+            choices,
+        })
     }
 
     fn hint_candidates(&self, digits: &[u8], eliminations: &[u16]) -> Option<Vec<u16>> {

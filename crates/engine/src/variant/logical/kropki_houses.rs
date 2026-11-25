@@ -25,7 +25,12 @@ impl CompiledVariant {
             for &index in &self.memberships[left] {
                 if self.house_masks[index] & (1u128 << right) != 0
                     && self.search_houses.binary_search(&index).is_ok()
-                    && let Some(proof) = explain(position, relation, &clue.source.indices, &self.houses[index])
+                    && let Some(proof) = explain(
+                        position,
+                        relation,
+                        &clue.source.indices,
+                        &self.houses[index],
+                    )
                 {
                     proofs.push(proof);
                 }
@@ -44,7 +49,10 @@ fn explain(
     let pair_domains = pair.map(|cell| position.domain(cell));
     let dot_only = relation.restrict(pair_domains);
     let domains = house.cells.map(|cell| position.domain(cell));
-    let remaining: Vec<_> = house.cells.iter().enumerate()
+    let remaining: Vec<_> = house
+        .cells
+        .iter()
+        .enumerate()
         .filter_map(|(index, cell)| (!pair.contains(cell)).then_some(index))
         .collect();
     let remaining_domains: Vec<_> = remaining.iter().map(|&index| domains[index]).collect();
@@ -57,7 +65,10 @@ fn explain(
             // Both orders of one pair leave the same digits for the other cells.
             let fits = *tested[used as usize].get_or_insert_with(|| {
                 record_support::<7, 512>(
-                    DIGITS & !used, &remaining_domains, &mut remaining_support, &mut [None; 512],
+                    DIGITS & !used,
+                    &remaining_domains,
+                    &mut remaining_support,
+                    &mut [None; 512],
                 )
             });
             if fits {
@@ -75,14 +86,17 @@ fn explain(
     // Report candidates supported by each premise on its own.
     let mut house_only = [0; 9];
     record_support::<9, 512>(DIGITS, &domains, &mut house_only, &mut [None; 512]);
-    let mut actions = position.removals(&house.cells, house.cells.iter().enumerate().map(|(index, cell)| {
-        if let Some(end) = pair.iter().position(|candidate| candidate == cell) {
-            pair_support[end] | !(dot_only[end] & house_only[index])
-        } else {
-            let slot = remaining.iter().position(|&peer| peer == index).unwrap();
-            remaining_support[slot] | !house_only[index]
-        }
-    }));
+    let mut actions = position.removals(
+        &house.cells,
+        house.cells.iter().enumerate().map(|(index, cell)| {
+            if let Some(end) = pair.iter().position(|candidate| candidate == cell) {
+                pair_support[end] | !(dot_only[end] & house_only[index])
+            } else {
+                let slot = remaining.iter().position(|&peer| peer == index).unwrap();
+                remaining_support[slot] | !house_only[index]
+            }
+        }),
+    );
     if actions.is_empty() {
         return None;
     }
@@ -97,10 +111,16 @@ fn explain(
             cells: house.cells,
             domains,
             tested: tested.iter().flatten().count(),
-            locked: tested.iter().enumerate().filter_map(|(used, &fits)|
-                (fits == Some(true)).then_some(used as u16)).fold(DIGITS, |common, used| common & used),
-            rejected: tested.into_iter().enumerate().filter_map(|(used, fits)|
-                (fits == Some(false)).then_some(used as u16)).collect(),
+            locked: tested
+                .iter()
+                .enumerate()
+                .filter_map(|(used, &fits)| (fits == Some(true)).then_some(used as u16))
+                .fold(DIGITS, |common, used| common & used),
+            rejected: tested
+                .into_iter()
+                .enumerate()
+                .filter_map(|(used, fits)| (fits == Some(false)).then_some(used as u16))
+                .collect(),
         })),
     })
 }
