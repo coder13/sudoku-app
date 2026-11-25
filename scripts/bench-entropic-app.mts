@@ -84,7 +84,9 @@ test(`measure ${family} engine requests, actual app callers and fixed-template g
                 ? ['Hyk5', 'Hafj']
                 : family === 'modular'
                   ? ['HCHW']
-                  : ['A2s7', 'CJhv', '9KxH', '91BB', '8oer', 'FaxQ']
+                  : family === 'global-entropy'
+                    ? []
+                    : ['A2s7', 'CJhv', '9KxH', '91BB', '8oer', 'FaxQ']
             ).some((id) => s.url.endsWith(id)),
           }))),
   ]

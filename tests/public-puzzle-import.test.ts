@@ -154,6 +154,47 @@ test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
 
+test('GEnq imports its encoded 6×6 rules when the exact note only sets a solve-time challenge', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-6x6-thermo.json', import.meta.url), 'utf8')) as {
+    sudoku_id: string; sudoku: string; name: string; description: string; reportedSolution: string
+  }
+  const url = `https://sudoku.coach/en/s/${source.sudoku_id}`
+  const endpoint = `https://sudoku.coach/beapi/get-sudoku/${source.sudoku_id}`
+  let description = source.description
+  const publication = () => ({ sudoku_id: source.sudoku_id, sudoku: source.sudoku, name: source.name,
+    blocked: false, custom_constraints: false, description })
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: publication() }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === url) return Promise.resolve(new Response(page()))
+    if (path === endpoint) return Promise.resolve(Response.json(publication()))
+    if (typeof path === 'string' && path.startsWith('/api/v1/import/')) {
+      return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+    }
+    return Promise.resolve(new Response('Not found.', { status: 404 }))
+  })
+
+  const metadata = await (await request('sudoku-coach/GEnq')).json()
+  assert.deepEqual(metadata, { code: source.sudoku, coach: {
+    hasAuthorInstructions: false, title: source.name,
+  } })
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.title, source.name)
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.equal(imported.givens, '000000000000000006400000000000010000')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'diagonal', diagonal: 'main' },
+    { type: 'parity', cells: [25, 10], parity: 'even' },
+    { type: 'thermometer', cells: [12, 6, 0, 1] },
+    { type: 'thermometer', cells: [23, 29, 35, 34] },
+  ])
+  assert.equal(source.reportedSolution.length, 24)
+
+  description += '\nPalindrome lines apply.'
+  const changedMetadata = await (await request('sudoku-coach/GEnq')).json()
+  assert.equal(changedMetadata.coach.hasAuthorInstructions, true)
+  await assert.rejects(detectPuzzle(url), /author instructions/)
+})
+
 test('#382 imports the published 7×7 Coach Skyscrapers clues only with their authored rules', async ({ mock }) => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
     metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }

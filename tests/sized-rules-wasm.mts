@@ -84,6 +84,21 @@ test('#407 validates sized Sandwich totals, including zero, alongside a Thermome
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
 })
 
+test('GEnq preserves its published 6×6 diagonal, parity and thermometer combination', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-6x6-thermo.json', import.meta.url), 'utf8')) as {
+    sudoku: string
+  }
+  const imported = await detectPuzzle(source.sudoku)
+  assert.ok(imported.grid && imported.sizedRules)
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.givens!)
+  const solved = await runEngine({ type: 'sized-variant', operation: 'solve', position })
+  assert.ok(solved?.digits)
+  assert.equal(solved.digits.length, 36)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: solved.digits,
+  } }), 'unique')
+})
+
 test('#404 enforces sized X-Sums with distinct prefix digits and directional rays', async () => {
   const position: SizedConstraintPosition = {
     version: 2,

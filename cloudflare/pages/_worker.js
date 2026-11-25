@@ -115,6 +115,9 @@ const coachGreeting = /^(?:good luck|have fun|enjoy(?: the puzzle)?|let['’]s g
 // These descriptions cover construction, the author's solve, or where to ask
 // for hints. Bind the full note to its publication so added rules stay visible.
 const reviewedCoachNotes = new Map([
+  // This source's only author note is a solve-time challenge; its complete
+  // mathematical constraints are encoded in the export.
+  ['GEnq', '8347d04585f2c27fbd5b8c407a744d295a63e1e688b090de436d49b7d9aa6298'],
   ['FLAb', '90ec75ed5b14d05432d12fb74bd3e07c33031d2c0a21423546e797cb6fe26936'],
   // FWUv's Bento description explains region outlines; the rules are encoded.
   ['FWUv', '37628a3e7b9d6537e0647a8eef0a6352ea693e6bde79a9400d44315e37882ed8'],
