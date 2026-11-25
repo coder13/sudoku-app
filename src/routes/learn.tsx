@@ -1,20 +1,89 @@
 import { createFileRoute, Link, Outlet, useMatch, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, List } from 'lucide-react'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { lessonsByVariant } from '../sudoku/lesson-difficulties'
 import { learnFundamentals, lessonRoutes } from '../sudoku/lessons'
 import '../lessons.css'
 
 export const Route = createFileRoute('/learn')({ component: LearnLayout })
 
+const DEFAULT_LEARN_WIDTH = 1320
+const DEFAULT_LEARN_ARTICLE_WIDTH = 810
+const MAX_LEARN_WIDTH = 1920
+
+function boundedLearnWidth(width: number, max: number) {
+  return Math.max(DEFAULT_LEARN_WIDTH, Math.min(max, Math.round(width)))
+}
+
 export function LearnLayout() {
   const article = useRouterState({ select: ({ location }) => location.pathname })
+  const [learnWidth, setLearnWidth] = useState(DEFAULT_LEARN_WIDTH)
+  const [maxLearnWidth, setMaxLearnWidth] = useState(MAX_LEARN_WIDTH)
+  const resizeStart = useRef<{ pointerId: number; x: number; width: number } | null>(null)
+
+  useEffect(() => {
+    const update = () => {
+      const max = Math.max(DEFAULT_LEARN_WIDTH, Math.min(MAX_LEARN_WIDTH, window.innerWidth))
+      resizeStart.current = null
+      setMaxLearnWidth(max)
+      setLearnWidth(width => boundedLearnWidth(width, max))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  function startResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || !event.isPrimary || resizeStart.current) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    resizeStart.current = { pointerId: event.pointerId, x: event.clientX, width: learnWidth }
+  }
+
+  function moveResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = resizeStart.current
+    if (!start || start.pointerId !== event.pointerId) return
+    // The Learn wrapper stays centered, so its right edge moves by half of each width change.
+    setLearnWidth(boundedLearnWidth(start.width + (event.clientX - start.x) * 2, maxLearnWidth))
+  }
+
+  function finishResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (resizeStart.current?.pointerId === event.pointerId) resizeStart.current = null
+  }
+
+  function adjustLearnWidth(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 128 : 32
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault()
+      setLearnWidth(width => boundedLearnWidth(width + (event.key === 'ArrowRight' ? step : -step), maxLearnWidth))
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      setLearnWidth(DEFAULT_LEARN_WIDTH)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      setLearnWidth(maxLearnWidth)
+    }
+  }
+
+  const articleWidth = DEFAULT_LEARN_ARTICLE_WIDTH + learnWidth - DEFAULT_LEARN_WIDTH
+  const maxArticleWidth = DEFAULT_LEARN_ARTICLE_WIDTH + maxLearnWidth - DEFAULT_LEARN_WIDTH
+  const pageStyle = {
+    '--learn-width': `${learnWidth}px`,
+    '--learn-content-expansion': `${learnWidth - DEFAULT_LEARN_WIDTH}px`,
+  } as CSSProperties
+
   return (
-    <div className="learn-page">
+    <div className="learn-page" style={pageStyle}>
       <TechniqueNavigation />
-      <main className="learn-content">
+      <main className="learn-content" id="learn-content-area">
         <div className="advanced-article-tab" aria-hidden="true">Article</div>
         <div className="learn-content-scroll motion-screen" key={article}><Outlet /></div>
+        <div className="learn-content-resizer" role="separator" tabIndex={0} aria-orientation="vertical"
+          aria-label="Learn content width" aria-controls="learn-content-area"
+          aria-valuemin={DEFAULT_LEARN_ARTICLE_WIDTH} aria-valuemax={maxArticleWidth} aria-valuenow={articleWidth}
+          aria-valuetext={`${articleWidth} pixels`} onPointerDown={startResize} onPointerMove={moveResize}
+          onPointerUp={finishResize} onPointerCancel={finishResize} onLostPointerCapture={finishResize}
+          onKeyDown={adjustLearnWidth} />
       </main>
     </div>
   )

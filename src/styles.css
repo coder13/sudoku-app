@@ -1149,6 +1149,8 @@ svg { flex-shrink: 0; }
   --lesson-area-fill: #edf1fb;
   --lesson-secondary-fill: #f3effb;
   --lesson-pattern-fill: #dce8fc;
+  --lesson-pivot-fill: #f3d48a;
+  --lesson-wing-fill: #d8e5f2;
   --lesson-pattern: #214b9c;
   --lesson-accent: #805216;
   --lesson-result: #186444;
@@ -1159,6 +1161,8 @@ svg { flex-shrink: 0; }
   --lesson-area-fill: #272740;
   --lesson-secondary-fill: #32263c;
   --lesson-pattern-fill: #303a60;
+  --lesson-pivot-fill: #59472b;
+  --lesson-wing-fill: #2d4355;
   --lesson-pattern: #b0caff;
   --lesson-accent: #ffd18b;
   --lesson-result: #95e8bf;

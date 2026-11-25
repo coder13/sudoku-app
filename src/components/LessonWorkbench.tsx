@@ -1,5 +1,5 @@
 import { Button } from './Button'
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { Link2 } from 'lucide-react'
 import type { Candidate, DeductionAction, PositionSnapshot, VariantPuzzle } from '../sudoku/engine'
 import { runEngine } from '../sudoku/engine'
@@ -27,7 +27,17 @@ export type LessonTools = {
   reveal: (action: DeductionAction) => void
 }
 
-export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false, showTools = !preview, showChainTools = false, guide, children }: {
+export const DEFAULT_LESSON_TOOLS_WIDTH = 340
+const MIN_LESSON_TOOLS_WIDTH = 236
+const MIN_LESSON_BOARD_WIDTH = 320
+const LESSON_WORKBENCH_GAP = 16
+
+function clampLessonToolsWidth(width: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, Math.round(width)))
+}
+
+export function LessonWorkbench({ puzzle, label, annotations, region, initialPencil = false, onEdit, preview = false,
+  showTools = !preview, showChainTools = false, guide, children, toolsWidth: controlledToolsWidth, onToolsWidthChange }: {
   puzzle: Pick<PositionSnapshot, 'givens' | 'entries'> & { candidates: readonly number[]; variantPuzzle?: VariantPuzzle }
   label: string
   annotations?: BoardAnnotations
@@ -39,6 +49,8 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   showChainTools?: boolean
   guide?: (ready: boolean) => ReactNode
   children?: (tools: LessonTools) => ReactNode
+  toolsWidth?: number
+  onToolsWidthChange?: (width: number) => void
 }) {
   const initial = useMemo(() => makeLessonGame(puzzle), [puzzle])
   const [game, setGame] = useState(initial)
@@ -67,11 +79,25 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
   const [legalCandidates, setLegalCandidates] = useState<{ values: string; masks: number[] | null }>()
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
   const [panelHeight, setPanelHeight] = useState(280)
+  const [workbenchWidth, setWorkbenchWidth] = useState(0)
+  const [localToolsWidth, setLocalToolsWidth] = useState(controlledToolsWidth ?? DEFAULT_LESSON_TOOLS_WIDTH)
+  const toolsWidth = controlledToolsWidth ?? localToolsWidth
   const [preferences, setPreferences] = useState({ advancedModes: DEFAULT_ADVANCED_MODES,
     appearance: DEFAULT_APPEARANCE, errorMode: DEFAULT_ERROR_MODE, highlighting: DEFAULT_HIGHLIGHT_PREFERENCES, inputSize: DEFAULT_INPUT_SIZE })
+  const boardId = useId()
+  const workbench = useRef<HTMLDivElement>(null)
   const board = useRef<HTMLDivElement>(null)
   const tools = useRef<HTMLDivElement>(null)
   const guidePanel = useRef<HTMLDivElement>(null)
+  const dividerDrag = useRef<{ pointerId: number; x: number; toolsWidth: number; min: number; max: number } | null>(null)
+  const toolsWidthRef = useRef(toolsWidth)
+  const toolsWidthChangeRef = useRef(onToolsWidthChange)
+  toolsWidthRef.current = toolsWidth
+  toolsWidthChangeRef.current = onToolsWidthChange
+  const updateToolsWidth = useCallback((width: number) => {
+    setLocalToolsWidth(width)
+    toolsWidthChangeRef.current?.(width)
+  }, [])
   useGridClickAway(board, () => setSelected([]), (target) => Boolean(
     guidePanel.current?.contains(target) || tools.current?.contains(target) && target.closest('button, input, select, textarea, a'),
   ))
@@ -84,6 +110,22 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     window.addEventListener('storage', update)
     return () => window.removeEventListener('storage', update)
   }, [])
+  useLayoutEffect(() => {
+    const element = workbench.current
+    if (!showTools || !element) return
+    const measure = () => {
+      const width = element.clientWidth
+      setWorkbenchWidth(width)
+      if (width <= 640) return
+      const max = Math.max(MIN_LESSON_TOOLS_WIDTH, width - LESSON_WORKBENCH_GAP - MIN_LESSON_BOARD_WIDTH)
+      const next = clampLessonToolsWidth(toolsWidthRef.current, MIN_LESSON_TOOLS_WIDTH, max)
+      if (next !== toolsWidthRef.current) updateToolsWidth(next)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element, { box: 'border-box' })
+    return () => { observer.disconnect(); dividerDrag.current = null }
+  }, [showTools, updateToolsWidth])
   const shownGame = preview ? initial : game
   const interactive = ready && !preview
   const values = valuesOf(shownGame)
@@ -335,8 +377,50 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
     }
   }
 
-  return <div className="lesson-workbench" data-ready={ready} data-tools={showTools} role="group" aria-label={showTools ? `${label} and input tools` : label} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale } as CSSProperties}>
-    <div className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
+  function startDividerDrag(event: PointerEvent<HTMLDivElement>) {
+    const element = workbench.current
+    if (event.button !== 0 || !event.isPrimary || !element || dividerDrag.current) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    const width = element.getBoundingClientRect().width
+    const gap = Number.parseFloat(getComputedStyle(element).columnGap) || LESSON_WORKBENCH_GAP
+    const max = Math.max(MIN_LESSON_TOOLS_WIDTH, width - gap - MIN_LESSON_BOARD_WIDTH)
+    dividerDrag.current = { pointerId: event.pointerId, x: event.clientX, toolsWidth, min: MIN_LESSON_TOOLS_WIDTH, max }
+  }
+
+  function moveDividerDrag(event: PointerEvent<HTMLDivElement>) {
+    const drag = dividerDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    updateToolsWidth(clampLessonToolsWidth(drag.toolsWidth - (event.clientX - drag.x), drag.min, drag.max))
+  }
+
+  function finishDividerDrag(event: PointerEvent<HTMLDivElement>) {
+    if (dividerDrag.current?.pointerId === event.pointerId) dividerDrag.current = null
+  }
+
+  function resizeDividerWithKeyboard(event: KeyboardEvent<HTMLDivElement>) {
+    const max = Math.max(MIN_LESSON_TOOLS_WIDTH, workbenchWidth - LESSON_WORKBENCH_GAP - MIN_LESSON_BOARD_WIDTH)
+    const step = event.shiftKey ? 80 : 32
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault()
+      event.stopPropagation()
+      updateToolsWidth(clampLessonToolsWidth(toolsWidth - (event.key === 'ArrowRight' ? step : -step), MIN_LESSON_TOOLS_WIDTH, max))
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      event.stopPropagation()
+      updateToolsWidth(max)
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      event.stopPropagation()
+      updateToolsWidth(MIN_LESSON_TOOLS_WIDTH)
+    }
+  }
+
+  const boardWidth = Math.max(MIN_LESSON_BOARD_WIDTH, workbenchWidth - toolsWidth - LESSON_WORKBENCH_GAP)
+  const maxBoardWidth = Math.max(MIN_LESSON_BOARD_WIDTH, workbenchWidth - MIN_LESSON_TOOLS_WIDTH - LESSON_WORKBENCH_GAP)
+
+  return <div ref={workbench} className="lesson-workbench" data-ready={ready} data-tools={showTools} role="group" aria-label={showTools ? `${label} and input tools` : label} onKeyDown={keyDown} style={{ '--board-font-scale': preferences.appearance.gridTextScale, '--lesson-tools-width': `${toolsWidth}px` } as CSSProperties}>
+    <div id={boardId} className="lesson-board" style={region ? { '--diagram-columns': region.columns } as CSSProperties : undefined}>
       <Board givens={puzzle.givens} values={values} position={shownGame.position} region={region} errors={errors} variantPuzzle={puzzle.variantPuzzle}
         candidates={usingChains ? chainMasks ?? undefined : undefined}
         annotations={boardAnnotations} showGuides
@@ -378,6 +462,12 @@ export function LessonWorkbench({ puzzle, label, annotations, region, initialPen
         {ruleClues.map((clue, index) => <li key={index}>{clue}</li>)}
       </ul>}
     </div>
+    {showTools && <div className="lesson-workbench-resizer" role="separator" tabIndex={0} aria-orientation="vertical"
+      aria-label="Resize practice board and keypad" aria-controls={boardId}
+      aria-valuemin={MIN_LESSON_BOARD_WIDTH} aria-valuemax={maxBoardWidth} aria-valuenow={Math.min(boardWidth, maxBoardWidth)}
+      aria-valuetext={`${Math.min(boardWidth, maxBoardWidth)} pixels puzzle width`}
+      onPointerDown={startDividerDrag} onPointerMove={moveDividerDrag} onPointerUp={finishDividerDrag}
+      onPointerCancel={finishDividerDrag} onLostPointerCapture={finishDividerDrag} onKeyDown={resizeDividerWithKeyboard} />}
     {guide && <div className="lesson-workbench-guide" ref={guidePanel}>{guide(ready)}</div>}
     {showTools && <div className="lesson-workbench-tools" ref={tools}>
       <Controls mode={mode} pencil={pencil} togglePencil={() => switchPenPencil(!savedPencil)} candidateKind={candidateKind} setCandidateKind={setCandidateKind}
