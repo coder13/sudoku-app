@@ -270,7 +270,7 @@ test('#87 imports an f-puzzles Jigsaw and Anti-Knight combination without droppi
   assert.ok(decoded)
   const source = JSON.parse(decoded)
   delete source.arrow
-  source.ruleset = 'Normal irregular 6x6 Sudoku rules apply.\n\n- Anti-knight Sudoku rules apply.'
+  source.ruleset = 'Normal irregular 6x6 Antiknight Sudoku rules apply.'
   source.solution = Array.from('456321321654612543543216234165165432', Number)
   for (const row of source.grid) for (const [column, cell] of row.entries()) cell.region = column
 
