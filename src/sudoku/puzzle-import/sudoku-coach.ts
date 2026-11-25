@@ -1571,9 +1571,14 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
       return [{ type: 'global-entropy', ...(groups && { groups }) }]
     }
     if (record(constraint) && constraint.type === 'greaterLess') {
-      if (!Array.isArray(constraint.segments) || constraint.segments.length === 0) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
+      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+        hasData(constraint.settings) || !Array.isArray(constraint.segments)) {
+        throw new Error('This Sudoku Coach puzzle has an inequality layer with unsupported fields or settings.')
+      }
+      if (constraint.segments.length === 0) throw new Error('This Sudoku Coach puzzle has no inequality signs.')
       return constraint.segments.map(segment => {
-        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters) ||
+        if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+          !Array.isArray(segment.cells) || segment.cells.length !== 2 || hasData(segment.parameters) ||
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= grid.size ** 2) || segment.cells[0] === segment.cells[1] ||
           !gridCellsShareEdge(segment.cells[0], segment.cells[1], grid.size)) throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
         return { type: 'inequality', less: segment.cells[0], greater: segment.cells[1] }

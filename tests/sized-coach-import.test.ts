@@ -39,6 +39,20 @@ test('six-by-six Coach decoding preserves the box orientation, clue order and bo
   assert.deepEqual(tall.grid, { size: 6, boxRows: 3, boxColumns: 2 })
 })
 
+test('six-by-six Coach inequality imports reject unknown layer, setting and segment fields', async () => {
+  const inequality = { type: 'greaterLess', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] }
+  const invalid = [
+    { ...inequality, futureRule: true },
+    { ...inequality, settings: { futureSetting: true } },
+    { ...inequality, segments: [{ ...inequality.segments[0], futureSegment: true }] },
+    { ...inequality, segments: [{ cells: [0, 1], parameters: { futureParameter: true } }] },
+  ]
+  for (const [index, layer] of invalid.entries()) {
+    await assert.rejects(decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [layer] })),
+      /inequality|settings|invalid/i, `inequality variant ${index + 1}`)
+  }
+})
+
 test('six-by-six Coach decoding imports Sandwich clues with other typed rules', async () => {
   const solution = '123456456123234561561234345612612345'
   const sandwich = (side: string, index: number, value: number) => ({ type: 'sandwich',
