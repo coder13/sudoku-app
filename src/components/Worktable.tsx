@@ -860,12 +860,14 @@ export function Worktable({
       // The anchor is measured in viewport pixels, while fixed offsets inherit the page zoom.
       const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
       const width = menu.offsetWidth * scale
-      const height = menu.offsetHeight * scale
       const gap = 8
-      const left = Math.max(gap, anchor.left - width - gap)
-      const top = Math.max(gap, Math.min(anchor.top + (anchor.height - height) / 2, window.innerHeight - height - gap))
+      const right = Math.min(anchor.right, window.innerWidth - gap)
+      const left = Math.max(gap, right - width)
+      const top = Math.min(anchor.top, window.innerHeight - gap)
       menu.style.left = `${left / scale}px`
       menu.style.top = `${top / scale}px`
+      menu.style.maxHeight = `${Math.max(0, window.innerHeight - top - gap) / scale}px`
+      menu.style.transformOrigin = 'top right'
     }
     position()
     const workspace = menu.closest('main')
