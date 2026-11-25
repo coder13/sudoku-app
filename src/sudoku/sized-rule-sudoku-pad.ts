@@ -1,6 +1,6 @@
 import { closedRegionSumCells } from './region-sum.ts'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow } from './engine.ts'
-import { gridRegionIndex, isGridText, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions } from './grid.ts'
+import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -38,6 +38,9 @@ export function readPath(value: unknown, size: number, maxPoints = size) {
 
 function sudokuPadRuleClauses(text: string) {
   const lines = text.trim().split(/\r?\n/)
+  if (lines.length && lines.every(line => /^\s*\*\s+/.test(line))) {
+    return lines.map(line => line.replace(/^\s*\*\s+/, '').replace(/\s+/g, ' ').trim())
+  }
   if (!lines.some(line => /^-{3,}/.test(line))) {
     return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki):)/i)
       .map(part => part.replace(/\s+/g, ' '))
@@ -224,7 +227,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect'].includes(key))) {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
-  if (!Array.isArray(cells) || (cells.length !== 4 && !isRectangularSize(cells.length)) ||
+  if (!Array.isArray(cells) || (cells.length !== 4 && !isRectangularSize(cells.length) && !isJigsawSize(cells.length)) ||
     cells.some(row => !Array.isArray(row) || row.length !== cells.length)) {
     throw new Error('This SudokuPad export has an invalid grid.')
   }
@@ -247,13 +250,21 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       labels[cell] = index
     }
   }
-  const grid = isRectangularSize(size) ? rectangularGridFromRegions(size, labels) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
-  if (!grid) throw new Error('This SudokuPad puzzle needs rectangular boxes.')
+  const completeRegions = labels.every(label => label >= 0)
+  const jigsaw = isJigsawSize(size) && completeRegions ? { size, regions: regionsFromMembership(labels, size) } : undefined
+  const rowRegions = size === 5 && new Set(labels).size === size &&
+    labels.every((region, cell) => region === labels[Math.floor(cell / size) * size])
+  const grid = isRectangularSize(size) ? rectangularGridFromRegions(size, labels)
+    : rowRegions ? FIVE_BOXLESS_GRID
+      : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID
+        : isJigsawGrid(jigsaw, true) ? jigsaw : undefined
+  if (!grid) throw new Error('This SudokuPad puzzle needs a supported region layout.')
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
   // text identifies what they mean, and the bulb determines direction.
   const rulesText = sudokuPadRuleClauses(metadata.rules)
   const base = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1(?:\s+to\s+|\s*[–-]\s*)(\d+)(?: once each)? in every row, column,? and (\d+)[x×](\d+) box\.?$/i.exec(rulesText[0])
+  const rowColumnBase = /^Normal (\d+)[x×](\d+) sudoku rules apply[.:] Place the digits 1\s*[–-]\s*(\d+)(?: once each)? in every row and column\.?$/i.exec(rulesText[0])
   const shortBase = /^(?:Normal|Standard) (\d+)[x×](\d+) sudoku rules apply\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const authoredSizedBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: In every row, column and (?:in )?(?:(\d+)[x×](\d+) )?every box the digits from 1 to (\d+) have to appear at ?least once\.$/i.exec(rulesText[0])
@@ -265,11 +276,12 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
   const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
+  const ratioPairs = /^Ratio Pairs: Digits separated by a black dot are in a 1:2 ratio \(i\.e\. one digit is double the other\)\. No negative constraint\s*[-–]\s*adjacent digits may be in a 1:2 ratio without a dot being present\.$/i
   const kropki = /^(?:Digits separated by a white dot are consecutive\. Digits separated by a black dot have a 1:2 ratio\. Not all dots are given|Kropki: digits separated by a black dot are in an 1:2 ratio \(i\.e\. one digit is double the other\); digits separated by a white dot are consecutive)\.$/i
   const compactKropki = /^PARTIAL KROPKI - A white dot between two cells requires that the value in one cell is exactly 1 greater than the value of the other cell\. - A black dot between two cells requires that the value in one cell is exactly double the value of the other cell\.$/i
-  const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause)
+  const isKropki = (clause: string) => kropki.test(clause) || compactKropki.test(clause) || ratioPairs.test(clause)
   const arrow = /^(?:Digits along an arrow sum to the digit in a bulb\. Digits may repeat if allowed by other rules|Arrows: the digits along the arrow must sum to the number in the circled cells)\.$/i
-  const killer = /^Killer cages: digits in a killer cage must sum to the number in the top left corner and cannot repeat\.$/i
+  const killer = /^(?:Killer cages: digits in a killer cage must sum to the number in the top left corner and cannot repeat|Killer Cages: Digits in a dotted cage must not repeat, and must sum to the total in the top-left corner of the cage)\.$/i
   const authoredKiller = clauses.some(clause => killer.test(clause))
   const doubleArrow = /^Double Arrows: (?:Digits along a grey line have the same sum as the sum of the two connected circles|the sum of the digits along a line (?:is|are) equal to the sum of the digits in the circles at either end of that line)\.?$/i
   const authoredArrows = clauses.some(clause => arrow.test(clause))
@@ -313,13 +325,15 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     return !!match && Number(match[1] ?? match[2]) === size
   }
   const authoredAnyThermometers = authoredThermometers || authoredSlowThermometers
-  const validBase = base ? base.slice(1, 4).every(part => Number(part) === size) &&
-    (Number(base[4]) === grid.boxRows && Number(base[5]) === grid.boxColumns ||
-      authoredDoubleArrows && Number(base[4]) === grid.boxColumns && Number(base[5]) === grid.boxRows)
+  const rectangularGrid = grid && !('regions' in grid) && !('noRegions' in grid) ? grid : undefined
+  const validBase = rowColumnBase ? !!grid && 'noRegions' in grid && rowColumnBase.slice(1, 4).every(part => Number(part) === size)
+    : base ? !!rectangularGrid && base.slice(1, 4).every(part => Number(part) === size) &&
+    (Number(base[4]) === rectangularGrid.boxRows && Number(base[5]) === rectangularGrid.boxColumns ||
+      authoredDoubleArrows && Number(base[4]) === rectangularGrid.boxColumns && Number(base[5]) === rectangularGrid.boxRows)
     : Number(compactBase?.[1]) === size || Number(shortBase?.[1]) === size && Number(shortBase?.[2]) === size ||
-      Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
-      (!authoredSizedBase?.[3] || Number(authoredSizedBase[3]) === grid.boxRows && Number(authoredSizedBase[4]) === grid.boxColumns ||
-        Number(authoredSizedBase[3]) === grid.boxColumns && Number(authoredSizedBase[4]) === grid.boxRows)
+      !!rectangularGrid && Number(authoredSizedBase?.[1]) === size && Number(authoredSizedBase?.[2]) === size && Number(authoredSizedBase?.[5]) === size &&
+      (!authoredSizedBase?.[3] || Number(authoredSizedBase[3]) === rectangularGrid.boxRows && Number(authoredSizedBase[4]) === rectangularGrid.boxColumns ||
+        Number(authoredSizedBase[3]) === rectangularGrid.boxColumns && Number(authoredSizedBase[4]) === rectangularGrid.boxRows)
   if (!validBase || authoredThermometers && authoredSlowThermometers ||
     conflictingWhisperMinimums || whispersClauses.some(difference => difference < 1 || difference >= size) ||
     clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&

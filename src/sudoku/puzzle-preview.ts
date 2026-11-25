@@ -10,7 +10,7 @@ import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-
 import { findSharedAttempt } from './puzzle-sharing.ts'
 import { applyPuzzleGrade, needsPuzzleGrade, puzzleGradeIsStale, ratePuzzle, type PuzzleGrade } from './puzzle-rating.ts'
 import { validation } from './puzzle-validation.ts'
-import { FIVE_JIGSAW_NAME, SEVEN_BOXLESS_NAME } from './new-puzzle.ts'
+import { sizedGridName } from './new-puzzle.ts'
 import { variantName } from './variants.ts'
 import { solveLatin } from '../latin/engine.ts'
 import type { FutoshikiEntry } from '../futoshiki/catalog.ts'
@@ -140,9 +140,7 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
   const name = algebraic ? (algebraic.source?.title.trim().slice(0, 72) || 'Imported Algebraic Cages')
     : variant?.id === 'mixed' && !variant.fog ? 'Imported mixed-rule puzzle'
     : variant ? `Imported ${variantName(variant)} puzzle`
-      : grid && 'noRegions' in grid ? `Imported ${SEVEN_BOXLESS_NAME}`
-        : grid?.size === 5 ? `Imported ${FIVE_JIGSAW_NAME}`
-        : grid?.size === 4 ? 'Imported Mini Sudoku' : grid ? `Imported ${grid.size} × ${grid.size} Sudoku` : 'Imported puzzle'
+      : grid ? `Imported ${sizedGridName(grid)}` : 'Imported puzzle'
   let game: Game = { ...makeGame(createGameId(), title ?? name, givens, 'imported', undefined, grid), collection, sharedPuzzleId,
     ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }), ...(authoredArtwork && { authoredArtwork }) }
   if (grid && (grid.size !== 4 || sizedRules?.length)) {

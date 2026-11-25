@@ -18,7 +18,7 @@ import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
 import { MIN_TECHNIQUE_PUZZLES } from '../sudoku/technique-progress'
 import {
-  ALGEBRAIC_CAGES_NAME, EIGHT_NAME, FIVE_JIGSAW_NAME, gameVariantId, isGameVariantId, isSizedPuzzleId,
+  ALGEBRAIC_CAGES_NAME, EIGHT_NAME, FIVE_BOXLESS_NAME, FIVE_JIGSAW_NAME, gameVariantId, isGameVariantId, isSizedPuzzleId,
   newPuzzleDifficulty, MINI_NAME, SEVEN_BOXLESS_NAME, SEVEN_JIGSAW_NAME, SIX_NAME, rectangularBoxRows,
   rectangularPuzzleSize, sizedGridName, sizedPuzzleOptions, type NewPuzzleId, type SizedPuzzleId,
 } from '../sudoku/new-puzzle'
@@ -112,6 +112,7 @@ function SolvedPuzzleLibrary({ games, active, loading }: { games: Game[]; active
         <option value="mini">{MINI_NAME}</option>
         <option value="six">{SIX_NAME}</option>
         <option value="jigsaw-five">{FIVE_JIGSAW_NAME}</option>
+        <option value="boxless-five">{FIVE_BOXLESS_NAME}</option>
         <option value="jigsaw-seven">{SEVEN_JIGSAW_NAME}</option>
         <option value="eight">{EIGHT_NAME}</option>
         <option value="boxless-seven">{SEVEN_BOXLESS_NAME}</option>

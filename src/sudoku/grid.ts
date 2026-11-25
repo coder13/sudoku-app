@@ -2,6 +2,7 @@ import type { House, SizedClassicPosition, SizedConstraintRule, VariantRule } fr
 
 export const CLASSIC_GRID = { size: 9, boxRows: 3, boxColumns: 3 } as const
 export const MINI_GRID = { size: 4, boxRows: 2, boxColumns: 2 } as const
+export const FIVE_BOXLESS_GRID = { size: 5, noRegions: true } as const
 const RECTANGULAR_LAYOUTS = {
   6: [{ size: 6, boxRows: 2, boxColumns: 3 }, { size: 6, boxRows: 3, boxColumns: 2 }],
   8: [{ size: 8, boxRows: 2, boxColumns: 4 }, { size: 8, boxRows: 4, boxColumns: 2 }],
@@ -30,7 +31,7 @@ export type JigsawSize = 5 | 7
 export const isJigsawSize = (size: unknown): size is JigsawSize => size === 5 || size === 7
 export type JigsawGrid<Size extends JigsawSize = JigsawSize> = { size: Size; regions: readonly (readonly number[])[] }
 export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
-export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | typeof SEVEN_BOXLESS_GRID
+export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | typeof FIVE_BOXLESS_GRID | typeof SEVEN_BOXLESS_GRID
 const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -76,7 +77,8 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 export function isSizedGrid(value: unknown): value is SizedGrid {
   if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if (value === null || typeof value !== 'object') return false
-  if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && value.size === 7 && value.noRegions === true
+  if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value &&
+    (value.size === 5 || value.size === 7) && value.noRegions === true
   const grid = value as Partial<RectangularGrid>
   return Object.keys(grid).length === 3 && isRectangularSize(grid.size) &&
     rectangularLayouts(grid.size).some(layout => layout.boxRows === grid.boxRows && layout.boxColumns === grid.boxColumns)
