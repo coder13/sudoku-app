@@ -127,9 +127,9 @@ impl SizedGrid {
         Some(Self::from_region_ids(size, regions))
     }
 
-    /// Build a layout whose authored regions partition the grid.
+    /// Build a layout whose authored regions partition a 3–16 cell grid.
     pub fn with_regions(size: usize, regions: &[Vec<usize>]) -> Option<Self> {
-        if !(4..=MAX_SIZE).contains(&size) || regions.len() != size {
+        if !(3..=MAX_SIZE).contains(&size) || regions.len() != size {
             return None;
         }
         let mut region_ids = vec![usize::MAX; size * size];

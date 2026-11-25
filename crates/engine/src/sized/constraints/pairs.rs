@@ -200,6 +200,8 @@ pub(super) fn compile_pairs(
                 | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::Minimum { .. }
+                | SizedConstraint::Maximum { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. }
@@ -306,6 +308,55 @@ pub(super) fn compile_pairs(
                 constraint: PairConstraint::from_relation([less, greater], size, |x, y| x < y),
                 kropki: None,
             });
+            continue;
+        }
+        if let SizedConstraint::Minimum {
+            cells,
+            ignore_marked_neighbors,
+        }
+        | SizedConstraint::Maximum {
+            cells,
+            ignore_marked_neighbors,
+        } = rule
+        {
+            let mut marked = [false; super::MAX_CELLS];
+            if cells.is_empty()
+                || cells
+                    .iter()
+                    .any(|&cell| cell >= size * size || std::mem::replace(&mut marked[cell], true))
+            {
+                return None;
+            }
+            let minimum = matches!(rule, SizedConstraint::Minimum { .. });
+            let relation =
+                PairConstraint::from_relation([0, 1], size, |less, greater| less < greater);
+            for &cell in cells {
+                let row = cell / size;
+                let column = cell % size;
+                for adjacent in [
+                    (row > 0).then(|| cell - size),
+                    (row + 1 < size).then_some(cell + size),
+                    (column > 0).then(|| cell - 1),
+                    (column + 1 < size).then_some(cell + 1),
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    if *ignore_marked_neighbors && marked[adjacent] {
+                        continue;
+                    }
+                    let mut constraint = relation.clone();
+                    constraint.cells = if minimum {
+                        [cell, adjacent]
+                    } else {
+                        [adjacent, cell]
+                    };
+                    groups[index].push(SizedPairLink {
+                        constraint,
+                        kropki: None,
+                    });
+                }
+            }
             continue;
         }
         if matches!(rule, SizedConstraint::AntiKnight) {

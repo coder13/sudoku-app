@@ -84,6 +84,18 @@ enum SizedRule {
         cells: [usize; 2],
         difference: u8,
     },
+    Minimum {
+        cells: Vec<usize>,
+        #[serde(default, rename = "ignoreMarkedNeighbors")]
+        ignore_marked_neighbors: bool,
+    },
+    Maximum {
+        cells: Vec<usize>,
+        #[serde(default, rename = "ignoreMarkedNeighbors")]
+        ignore_marked_neighbors: bool,
+        #[serde(default, rename = "shaded", skip_serializing_if = "Option::is_none")]
+        shaded: Option<bool>,
+    },
     Nonogram {
         axis: crate::RunAxis,
         index: usize,
@@ -203,6 +215,29 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::NonConsecutive { except }) => Self::NonConsecutive { except },
             Rule::Variant(PuzzleRule::Inequality { less, greater }) => {
                 Self::Inequality { less, greater }
+            }
+            Rule::Sized(SizedRule::Minimum {
+                cells,
+                ignore_marked_neighbors,
+            }) => Self::Minimum {
+                cells,
+                ignore_marked_neighbors,
+            },
+            Rule::Sized(SizedRule::Maximum {
+                cells,
+                ignore_marked_neighbors,
+                shaded,
+            }) => {
+                if shaded.is_some_and(|shaded| !shaded) {
+                    return Err((
+                        "invalid-rules",
+                        "A shaded Maximum clue only accepts a true shading flag.",
+                    ));
+                }
+                Self::Maximum {
+                    cells,
+                    ignore_marked_neighbors,
+                }
             }
             Rule::Variant(PuzzleRule::Xv { five, ten }) => Self::Xv { five, ten },
             Rule::Variant(PuzzleRule::Sandwich {

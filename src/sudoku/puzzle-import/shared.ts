@@ -63,7 +63,7 @@ export function parseJSON(text: string, format: string, limit = MAX_DECODED_LENG
   throw new Error(`This ${format} puzzle is unreadable. Copy it again and try once more.`)
 }
 
-export function jigsawLayoutError(size: 4 | 5 | 6 | 7) {
-  const count = size === 4 ? 'four' : size === 5 ? 'five' : size === 6 ? 'six' : 'seven'
+export function jigsawLayoutError(size: 3 | 4 | 5 | 6 | 7) {
+  const count = size === 3 ? 'three' : size === 4 ? 'four' : size === 5 ? 'five' : size === 6 ? 'six' : 'seven'
   return `A ${size} × ${size} Jigsaw grid needs ${count} connected regions of ${count} cells.`
 }
