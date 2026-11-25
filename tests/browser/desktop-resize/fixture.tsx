@@ -197,6 +197,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
           toggleMulti: noop,
         }}
         history={{ undo: noop, redo: noop, canUndo: false, canRedo: false }}
+        actions={{}}
         layout={{
           advancedModes: { ...DEFAULT_ADVANCED_MODES, candidateLayout },
           disabled: false,
@@ -214,7 +215,6 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
   const hint = showHint ? (
     <PlayHint mobile={false}>
       <HintCard
-        compact
         hint={{ title: 'WXYZ-Wing', text: '' }}
         navigation={{ index: hintIndex, count: 2, onMove: (offset) => setHintIndex((hintIndex + offset + 2) % 2) }}
         lesson={{ id: 'wxyz-wing', title: 'WXYZ-Wing' }}
