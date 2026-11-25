@@ -62,6 +62,13 @@ test('#7 keeps both Between paths and validates the published 6 × 6 completion 
     rules: imported.sizedRules,
   } })
   assert.equal(completion, 'unique')
+  const blank = {
+    version: 2 as const,
+    grid: imported.grid,
+    digits: Array(36).fill(0),
+    rules: imported.sizedRules,
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: blank }), 'unique')
   assert.equal(imported.sizedRules.filter(rule => rule.type === 'little-killer').length, 3)
 })
 
