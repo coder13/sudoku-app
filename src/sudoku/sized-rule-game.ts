@@ -118,6 +118,35 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       Array.isArray(rule.cells) && rule.cells.length >= 3 && rule.cells.length <= size ** 2 &&
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
       new Set(rule.cells).size === rule.cells.length
+    if (rule.type === 'line-assignments') {
+      if (Object.keys(rule).length !== 3 || !Array.isArray(rule.paths) || !Array.isArray(rule.types) ||
+        rule.paths.length !== rule.types.length || rule.types.length < 2 || rule.types.length > 3) return false
+      const paths = rule.paths as unknown[]
+      const samePath = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((cell, index) => cell === b[index])
+      if (!paths.every(path => Array.isArray(path) && path.length >= 2 && path.length <= size ** 2 &&
+        path.every(cell => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(path).size === path.length) || paths.some((path, index) => paths.slice(0, index).some(previous =>
+        samePath(path as unknown[], previous as unknown[]) || samePath(path as unknown[], [...previous as unknown[]].reverse())))) return false
+      const kinds = new Set<string>()
+      return (rule.types as unknown[]).every(type => {
+        if (!type || typeof type !== 'object' || Array.isArray(type)) return false
+        const item = type as Record<string, unknown>
+        if (item.type === 'entropic') {
+          if (Object.keys(item).length !== 2 || !Array.isArray(item.groups) || item.groups.length !== 3 ||
+            !item.groups.every(group => Array.isArray(group) && group.length > 0 && group.every(digit =>
+              Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size))) return false
+          const digits = item.groups.flat() as number[]
+          if (digits.length !== size || new Set(digits).size !== size) return false
+        } else if (item.type === 'region-sum') {
+          if (Object.keys(item).length !== 1 || 'noRegions' in grid) return false
+        } else if (item.type === 'renban') {
+          if (Object.keys(item).length !== 1) return false
+        } else return false
+        if (kinds.has(String(item.type))) return false
+        kinds.add(String(item.type))
+        return true
+      })
+    }
     if (rule.type === 'entropic') {
       if (Object.keys(rule).some(key => !['type', 'cells', 'groups'].includes(key)) ||
         !Array.isArray(rule.cells) || rule.cells.length < 3 || rule.cells.length > size ** 2 + 1 ||

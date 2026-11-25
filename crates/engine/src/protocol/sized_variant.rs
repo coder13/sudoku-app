@@ -8,6 +8,7 @@ use crate::GridSpec;
 use crate::{
     AlgebraicCage, AlgebraicRating, Analysis, CageTotal, EquationOperator, PuzzleRule,
     SEARCH_LIMIT, SIZED_GRID_VERSION, SizedAlgebraicCages, SizedConstraint, SizedConstraintGrid,
+    SizedLineType,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -43,6 +44,10 @@ enum SizedRule {
     Entropic {
         cells: Vec<usize>,
         groups: Vec<Vec<u8>>,
+    },
+    LineAssignments {
+        paths: Vec<Vec<usize>>,
+        types: Vec<SizedLineType>,
     },
     FractionalRegions {
         pieces: Vec<FractionalPiece>,
@@ -164,6 +169,9 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::AntiKing {}) => Self::AntiKing,
             Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
+            Rule::Sized(SizedRule::LineAssignments { paths, types }) => {
+                Self::LineAssignments { paths, types }
+            }
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },

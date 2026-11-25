@@ -207,7 +207,13 @@ export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; inde
 export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
 export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
+export type SizedLineType =
+  | { type: 'entropic'; groups: readonly (readonly number[])[] }
+  | { type: 'region-sum' }
+  | { type: 'renban' }
+
 export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+  | { type: 'line-assignments'; paths: readonly (readonly number[])[]; types: readonly SizedLineType[] }
   | Extract<VariantRule, { type: 'digit-restriction' }>
   | { type: 'anti-king' }
   | { type: 'zipper'; cells: readonly number[] }

@@ -5,6 +5,7 @@ mod equal_sums;
 mod fractional_regions;
 mod grouped_line;
 mod killer;
+mod line_assignments;
 mod linked_double_arrow;
 mod little_killer;
 mod nonogram;
@@ -30,6 +31,8 @@ use self::equal_sums::EqualSums;
 use self::fractional_regions::FractionalRegions;
 use self::grouped_line::EntropicLine;
 use self::killer::Cage;
+use self::line_assignments::LineAssignments;
+pub use self::line_assignments::SizedLineType;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
 use self::little_killer::LittleKiller;
@@ -162,6 +165,10 @@ pub enum SizedConstraint {
     RegionSum {
         cells: Vec<usize>,
         group_by_region: bool,
+    },
+    LineAssignments {
+        paths: Vec<Vec<usize>>,
+        types: Vec<SizedLineType>,
     },
     Renban {
         cells: Vec<usize>,
@@ -416,6 +423,7 @@ pub struct SizedConstraintGrid {
     entropic_lines: Vec<Option<EntropicLine>>,
     zippers: Vec<Option<ZipperLine>>,
     equal_sums: Vec<Option<EqualSums>>,
+    line_assignments: Vec<Option<LineAssignments>>,
     coupled_sums: Vec<CoupledSums>,
 }
 
@@ -452,6 +460,7 @@ impl SizedConstraintGrid {
         let mut entropic_lines = Vec::new();
         let mut zippers = Vec::new();
         let mut equal_sums = Vec::new();
+        let mut line_assignments = Vec::new();
         let mut cages = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
@@ -599,6 +608,11 @@ impl SizedConstraintGrid {
                     equal_sums.resize_with(index + 1, || None);
                     equal_sums[index] =
                         Some(EqualSums::region_sum(&layout, cells, *group_by_region)?);
+                }
+                SizedConstraint::LineAssignments { paths, types } => {
+                    line_assignments.resize_with(index + 1, || None);
+                    line_assignments[index] =
+                        Some(LineAssignments::compile(&layout, paths, types)?);
                 }
                 SizedConstraint::Nonogram {
                     axis,
@@ -788,6 +802,7 @@ impl SizedConstraintGrid {
             entropic_lines,
             zippers,
             equal_sums,
+            line_assignments,
             coupled_sums,
         })
     }
@@ -980,6 +995,18 @@ impl SizedConstraintGrid {
                 for cell in line.cells() {
                     changed |= candidates[cell] != supported[cell];
                     candidates[cell] = supported[cell];
+                }
+            }
+            for constraint in self.line_assignments.iter().flatten() {
+                let Some(support) = constraint.support(candidates) else {
+                    return false;
+                };
+                if support.surviving == 0 {
+                    return false;
+                }
+                for &cell in &constraint.cells {
+                    changed |= candidates[cell] != support.masks[cell];
+                    candidates[cell] = support.masks[cell];
                 }
             }
             for equation in self.row_equations.iter().flatten() {
@@ -1416,6 +1443,17 @@ impl SizedConstraintGrid {
                     }
                     for &cell in cells {
                         eliminations_for(cell, candidates[cell] & !supported[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::LineAssignments { .. } => {
+                    let constraint = self.line_assignments[rule].as_ref()?;
+                    let support = constraint.support(&domains)?;
+                    for &cell in &constraint.cells {
+                        eliminations_for(
+                            cell,
+                            candidates[cell] & !support.masks[cell],
+                            &mut actions,
+                        );
                     }
                 }
                 SizedConstraint::Nonogram { .. } => {
@@ -1930,6 +1968,10 @@ impl SizedConstraintGrid {
                 SizedConstraint::RegionSum { .. } => self.region_sums[rule]
                     .as_ref()
                     .is_some_and(|line| !line.support(&domains, &mut [0; MAX_SIZE * MAX_SIZE])),
+                SizedConstraint::LineAssignments { .. } => self.line_assignments[rule]
+                    .as_ref()?
+                    .support(&domains)
+                    .is_none(),
                 SizedConstraint::Nonogram { .. } => {
                     self.nonograms[rule].as_ref()?.support(&domains).is_none()
                 }
@@ -2207,6 +2249,19 @@ impl SizedConstraintGrid {
                 .iter()
                 .flatten()
                 .all(|line| line.permits(digits))
+            && self.line_assignments.iter().flatten().all(|group| {
+                let domains = digits
+                    .iter()
+                    .map(|&digit| {
+                        if digit == 0 {
+                            self.layout.full_mask
+                        } else {
+                            1 << (digit - 1)
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                group.support(&domains).is_some()
+            })
             && self
                 .global_entropy
                 .iter()

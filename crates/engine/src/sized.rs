@@ -18,7 +18,7 @@ pub use constraints::{
     CrustClue, EquationOperator, RunAxis, SizedConstraint, SizedConstraintFailure,
     SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep, SizedConstraintTracePosition,
     SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot,
-    SizedParity, SizedSumEnd, XSumDotRelation,
+    SizedLineType, SizedParity, SizedSumEnd, XSumDotRelation,
 };
 
 #[cfg(feature = "generation")]
