@@ -117,6 +117,22 @@ test('#404 imports the original 4 × 4 X-Sum Twins Penpa export and verifies bot
   })
 })
 
+test('#404 resolves the published X-Sum Twins short link to the same imported rules', async ({ mock }) => {
+  const fetcher = mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, '/api/v1/import/sudokupad/6slam9s9ap')
+    return Response.json({ code: xSumDotCode })
+  })
+  const imported = await detectPuzzle('https://sudokupad.app/6slam9s9ap')
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '4x4 X-Sum Twins: White Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum-dot', ends: [{ direction: 'south', index: 1 }, { direction: 'south', index: 2 }], relation: 'consecutive' },
+    { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'consecutive' },
+  ])
+  assert.equal(fetcher.mock.callCount(), 1)
+})
+
 test('sized SudokuPad rejects unrepresented rules and geometry', () => {
   assert.throws(() => decodeSizedSudokuPad(encode({ ...input, lines: [{}] })), /unsupported puzzle fields/)
   assert.throws(() => decodeSizedSudokuPad(encode({ ...input, metadata: { ...metadata, rules: metadata.rules + '\n* Antiknight.' } })), /cannot verify/)
