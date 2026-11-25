@@ -2007,9 +2007,9 @@ svg { flex-shrink: 0; }
   font-size: 0.75rem;
 }
 .controls .color-mode-button { grid-column: 2; grid-row: 1; }
-.controls .clear-digit-highlights-button { grid-column: 2; grid-row: 2; }
+.controls .clear-digit-highlights-button { grid-column: 2; grid-row: 4; }
 .controls .candidate-group-paint-button { grid-column: 2; grid-row: 3; }
-.controls .candidate-match-button { grid-column: 2; grid-row: 4; }
+.controls .candidate-match-button { grid-column: 2; grid-row: 2; }
 .side-actions .puzzle-check-button { display: none; }
 .controls-actions-wrap { position: relative; display: grid; }
 .controls-actions-space { block-size: var(--mode-button-size); }
