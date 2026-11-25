@@ -130,6 +130,21 @@ test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized r
   const antiKnightHints = await runEngine({ type: 'sized-variant', operation: 'hints', position: antiKnightPosition, limit: 10 })
   assert.ok(antiKnightHints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
     choice.actions.some(action => action.eliminate?.cell === 13 && action.eliminate.digit === 1)))
+  const antiKnightSolution = (await runEngine({ type: 'sized-variant', operation: 'solve', position: antiKnightPosition }))?.digits
+  assert.ok(antiKnightSolution)
+  assert.ok(antiKnightSolution[6] < antiKnightSolution[7] && antiKnightSolution[7] < antiKnightSolution[8],
+    'the solved combination respects its Thermometer')
+  for (let cell = 0; cell < 36; cell++) {
+    const row = Math.floor(cell / 6), column = cell % 6
+    for (const [rowDelta, columnDelta] of [[1, 2], [2, 1]]) {
+      for (const rowSign of [-1, 1]) for (const columnSign of [-1, 1]) {
+        const otherRow = row + rowDelta * rowSign, otherColumn = column + columnDelta * columnSign
+        if (otherRow >= 0 && otherRow < 6 && otherColumn >= 0 && otherColumn < 6) {
+          assert.notEqual(antiKnightSolution[cell], antiKnightSolution[otherRow * 6 + otherColumn])
+        }
+      }
+    }
+  }
   const completed = { ...blank, digits: Array.from(solution, Number) }
   const withoutAntiKnight = { ...completed, rules: completed.rules.filter(rule => rule.type !== 'anti-knight') }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: withoutAntiKnight }), 'unique')
