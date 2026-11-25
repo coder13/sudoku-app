@@ -127,6 +127,9 @@ test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized r
   assert.ok(antiKnightCandidates.slice(1).every(mask => mask !== 0), 'Anti-Knight composes with a Thermometer')
   assert.equal(antiKnightCandidates[13] & 1, 0, 'Anti-Knight removes the given value from a knight-move cell')
   assert.notEqual(classicKnightCandidates[13] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+  const antiKnightHints = await runEngine({ type: 'sized-variant', operation: 'hints', position: antiKnightPosition, limit: 10 })
+  assert.ok(antiKnightHints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 13 && action.eliminate.digit === 1)))
   const completed = { ...blank, digits: Array.from(solution, Number) }
   const withoutAntiKnight = { ...completed, rules: completed.rules.filter(rule => rule.type !== 'anti-knight') }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: withoutAntiKnight }), 'unique')

@@ -208,6 +208,16 @@ test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear c
   }
 })
 
+test('#394 imports SudokuPad Anti-Knight metadata alongside sized companion rules', async () => {
+  const base = thermoExport(2)
+  const source = { ...base, metadata: { ...base.metadata, antiknight: true } }
+  const imported = await detectPuzzle(encode(source))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-knight' },
+    { type: 'thermometer', cells: [0, 1, 2, 3] },
+  ])
+})
+
 test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {
   const imported = await detectPuzzle(easyThermoCode)
   assert.equal(imported.format, 'SudokuPad')

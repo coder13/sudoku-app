@@ -432,8 +432,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   if (Object.keys(data).some(key => !fields.includes(key)) ||
     data.cellSize !== undefined && (typeof data.cellSize !== 'number' || !Number.isFinite(data.cellSize) || data.cellSize <= 0) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
-    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking'].includes(key)) ||
-    metadata.antiking !== undefined && typeof metadata.antiking !== 'boolean') {
+    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking', 'antiknight'].includes(key)) ||
+    metadata.antiking !== undefined && typeof metadata.antiking !== 'boolean' ||
+    metadata.antiknight !== undefined && typeof metadata.antiknight !== 'boolean') {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
   if (!Array.isArray(cells) || (cells.length !== 4 && cells.length !== 5 && !isRectangularSize(cells.length)) ||
@@ -505,6 +506,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const antiKing = /^Anti[- ]King:?\s+(?:No two identical digits can be orthogonally or diagonally adjacent to each other|Cells separated by a chess king['’]s move cannot contain the same digit)\.?$/i
   const printedAntiKing = clauses.some(clause => antiKing.test(clause))
   const authoredAntiKing = metadata.antiking === true || printedAntiKing
+  const antiKnight = /^Anti[- ]Knight:?\s+(?:No two identical digits can be a knight['’]s move apart|Cells separated by a chess knight['’]s move cannot contain the same digit)\.?$/i
+  const printedAntiKnight = clauses.some(clause => antiKnight.test(clause))
+  const authoredAntiKnight = metadata.antiknight === true || printedAntiKnight
   const entropicLineRule = /^Entropic lines: every 3 consecutive digits along a peach line must contain a low digit \(([\d, ]+)\), a middle digit \(([\d, ]+)\) and a high digit \(([\d, ]+)\)\.$/i
   const namedEntropicRule = /^Both lines are Entropic lines\. Along the lines, they must contain a low \(([\d, ]+)\) middle \(([\d, ]+)\) and high \(([\d, ]+)\) digit in any 3 consecutive cells\. Eg: \d+(?:-\d+)+$/i
   const parseEntropicGroups = (clause: string) => {
@@ -604,14 +608,16 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     conflictingWhisperMinimums || whispersClauses.some(difference => difference < 1 || difference >= size) ||
     clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&
       !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !regionSumCompanion.test(clause) && !killer.test(clause) &&
-      !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) &&
+      !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) && !antiKnight.test(clause) &&
       !parseEntropicGroups(clause) && whisperDifference(clause) === undefined && !palindrome.test(clause) && !parityLine.test(clause) &&
       !(dualZipper && (evenZipper.test(clause) || squareDigitRule.test(clause) || regionSumCompanion.test(clause))) &&
-      !(ambiguityZipper && (evenZipper.test(clause) || ambiguityClauses.some(pattern => pattern.test(clause))))) || metadata.antiking === false && printedAntiKing) {
+      !(ambiguityZipper && (evenZipper.test(clause) || ambiguityClauses.some(pattern => pattern.test(clause))))) ||
+    metadata.antiking === false && printedAntiKing || metadata.antiknight === false && printedAntiKnight) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
   if (authoredAntiKing) rules.push({ type: 'anti-king' })
+  if (authoredAntiKnight) rules.push({ type: 'anti-knight' })
   if (ambiguityZipper) {
     const zipperLines = readLayeredZipper(lines, overlays, underlays, size, '?')
     const types: SizedLineType[] = [
@@ -811,6 +817,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     authoredDoubleArrows !== rules.some(rule => rule.type === 'double-arrow') ||
     authoredBetween !== rules.some(rule => rule.type === 'between') ||
     authoredAntiKing !== rules.some(rule => rule.type === 'anti-king') ||
+    authoredAntiKnight !== rules.some(rule => rule.type === 'anti-knight') ||
     authoredEntropic !== rules.some(rule => rule.type === 'entropic') ||
     authoredPalindrome !== rules.some(rule => rule.type === 'palindrome') ||
     authoredParityLine !== rules.some(rule => rule.type === 'parity-line') ||
