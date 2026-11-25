@@ -9,10 +9,11 @@ import aliasesJson from '../sudoku/generated/lesson-aliases.json'
 import examplesJson from '../sudoku/generated/lesson-examples.json?raw'
 import { lessonDiagram, lessonValues } from '../sudoku/lesson-diagram'
 import { lessonExample, type EngineLessonExample, type LessonExercise } from '../sudoku/lesson-examples'
+import { CLASSIC_GRID, type PlayGrid } from '../sudoku/grid.ts'
 import { lessonReadingOrder } from '../sudoku/lesson-difficulties'
 import { lessonRoutes, type LessonArticle, type LessonBlock } from '../sudoku/lessons'
 import { generateLessonExercise, loadWorkedExample, readWorkedExampleNumber, saveWorkedExampleNumber, type WorkedExample } from '../sudoku/worked-examples'
-import { LessonWorkbench } from './LessonWorkbench'
+import { DEFAULT_LESSON_TOOLS_WIDTH, LessonWorkbench } from './LessonWorkbench'
 import { LearnHeading, LessonDifficulty } from './LearnHeading'
 import { PracticePuzzle } from './LessonPractice'
 import { SelectControl } from './SelectControl'
@@ -39,12 +40,18 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
   fallbackReason?: string
 }) {
   const { region: crop, copy, notes } = block ?? {}
-  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } = lessonDiagram(example)
+  const jigsawRegions = example.variantPuzzle?.regions?.type === 'jigsaw' ? example.variantPuzzle.regions.regions : undefined
+  const jigsawGrid = jigsawRegions ? { ...CLASSIC_GRID, regions: jigsawRegions } : null
+  const grid: PlayGrid = jigsawGrid ?? CLASSIC_GRID
+  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } =
+    lessonDiagram(example, undefined, { grid })
   const view = crop ?? (block && !example.variantPuzzle ? region : undefined)
   const results = copy?.results ?? defaultResults
   const trace = copy?.trace ?? defaultTrace
   const strong = annotations.links?.some((link) => !link.dashed)
   const weak = annotations.links?.some((link) => link.dashed && !link.arrow)
+  const hasCandidateRemovals = [...(annotations.candidates?.values() ?? [])]
+    .some(marks => [...marks.values()].some(mark => mark.mark === 'strike'))
   const summary = copy?.description ?? description
   const explanation = copy?.reason ?? (reasonSteps ? undefined : reason || fallbackReason)
   return (
@@ -60,11 +67,12 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
         </div>}
         {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
-        {(accentLabel || strong || weak) && <div className="lesson-legend" aria-label="Diagram key">
+        {(accentLabel || strong || weak || hasCandidateRemovals) && <div className="lesson-legend" aria-label="Diagram key">
           {accentLabel && <>
             <span><i className="lesson-key-pattern" aria-hidden="true" /><span>{copy?.patternLabel ?? mainLabel}</span></span>
             <span><i className="lesson-key-accent" aria-hidden="true" /><span>{copy?.accentLabel ?? accentLabel}</span></span>
           </>}
+          {hasCandidateRemovals && <span><i className="lesson-key-removal" aria-hidden="true" /><span>Candidates to remove</span></span>}
           {strong && <span><i className="lesson-key-link" aria-hidden="true" /><span>{copy?.strongLabel ?? 'Strong link. At least one is true.'}</span></span>}
           {weak && <span><i className="lesson-key-link dashed" aria-hidden="true" /><span>{copy?.weakLabel ?? 'Weak link. At most one is true.'}</span></span>}
         </div>}
@@ -162,7 +170,7 @@ function WorkedExamples({ article, block, variant, diagrams, editorPreview }: {
   const authored = useMemo(() => diagrams.map(({ block }) => block).filter(({ example }) =>
     example === technique || (technique === drills[0].example && !drills.some(drill => drill.example === example))),
   [diagrams, drills, technique])
-  return <section className="surface lesson-worked-examples" id="worked-example" aria-labelledby="examples">
+  return <section className="lesson-worked-examples" id="worked-example" aria-labelledby="examples">
     <header className="lesson-practice-heading">
       <h2 id="examples">Examples</h2>
       {!editorPreview && drills.length > 1 && <label className="lesson-drill">
@@ -185,6 +193,7 @@ export function Practice({ block, variant, launch, blockIndex, editorPreview }: 
   const { drills, title, selectLabel } = block
   const [chosen, setChosen] = useState(() => drills.find(({ example }) => example === variant) ?? drills[0])
   const [generated, setGenerated] = useState<LessonExercise | null>(null)
+  const [toolsWidth, setToolsWidth] = useState(DEFAULT_LESSON_TOOLS_WIDTH)
   const [generation, setGeneration] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [ready, setReady] = useState(false)
   const generationId = useRef(0)
@@ -252,7 +261,8 @@ export function Practice({ block, variant, launch, blockIndex, editorPreview }: 
           : generation === 'error' ? 'Could not generate an example. Try again.' : ''}
       </p>
       {practiceError && <p role="alert" className="lesson-new-example-error">{practiceError}</p>}
-      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction} practiceGuide={block.guide} />
+      <PracticePuzzle key={`${chosen.example}:${grid}`} puzzle={puzzle} technique={chosen.title} instruction={block.instruction}
+      practiceGuide={block.guide} toolsWidth={toolsWidth} onToolsWidthChange={setToolsWidth} />
     </section>
   )
 }

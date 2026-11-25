@@ -40,8 +40,9 @@ function retryGuidance(attempt: DeductionAction, answers: readonly DeductionActi
     : `This cell has a ${technique} removal. Try a different candidate in ${address}.`
 }
 
-export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }: {
+export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide, toolsWidth, onToolsWidthChange }: {
   puzzle: LessonExercise; technique: string; instruction?: string; practiceGuide?: PracticeGuide
+  toolsWidth?: number; onToolsWidthChange?: (width: number) => void
 }) {
   const canPlace = puzzle.answers.some((answer) => 'place' in answer)
   const canRemove = puzzle.answers.some((answer) => 'eliminate' in answer)
@@ -113,6 +114,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide }
   return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
     initialPencil={canRemove && !canPlace}
     preview={solution} showTools showChainTools={showChainTools} guide={guide}
+    toolsWidth={toolsWidth} onToolsWidthChange={onToolsWidthChange}
     onEdit={() => { setResult(null); setGuidance(undefined) }}>
     {({ actions, reset, reveal }) => <>
       <div className="lesson-practice-actions">

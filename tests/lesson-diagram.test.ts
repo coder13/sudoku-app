@@ -217,12 +217,12 @@ test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfil
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    'The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7. If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.',
-    'Placing 8 in R4C3 would rule out every 8 in the wing (R4C7 and R9C3).',
-    'That leaves only 1, 5, and 9 for four cells. These three digits can fill at most three cells.',
+    'Candidate 1 is restricted; all its cells share row 9. Candidate 5 is restricted; all its cells share column 7. Candidate 9 is restricted; all its cells share column 7. Candidate 8 is unrestricted because a pair of its candidate cells does not share a row, column, or box. A restricted candidate can appear at most once in the wing.',
+    'If R4C3 is 8, it rules out every 8 in the wing (R4C7 and R9C3).',
+    'That leaves only the three restricted candidates (1, 5, and 9) for four cells. They can fill at most three cells, so the unrestricted candidate must appear in the wing.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
-  assert.equal(diagram.accentLabel, 'Digit the wing must use')
+  assert.equal(diagram.accentLabel, 'Unrestricted candidate')
   assert.deepEqual(diagram.results, ['Remove 8 from R4C3.'])
 })
 

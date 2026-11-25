@@ -1,15 +1,31 @@
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 use super::DEFAULT_VARIANT_SEARCH_NODES;
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
-use crate::{Analysis, Board};
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 use super::symmetry::SquareTransform;
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
-use crate::Random;
 use super::{
-    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence,
-    VariantHouseKind, VariantPosition, VariantPuzzle, VariantTechnique,
+    CompiledVariant, PuzzleRule, VariantDeduction, VariantEvidence, VariantHouseKind,
+    VariantPosition, VariantPuzzle, VariantTechnique,
 };
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+use crate::Random;
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+use crate::{Analysis, Board};
 use crate::{CELLS, Candidate, HintAction, Technique, parse_givens};
 
 mod examples;
@@ -40,7 +56,7 @@ pub enum VariantPracticeError {
     MissingProof(usize),
 }
 
-/// Load three distinct exercises for a variant technique.
+/// Load three distinct exercises positioned where the target is easiest.
 ///
 /// Classic techniques reuse the classic exercises in structured positions.
 /// Pattern Overlay also includes a worked Jigsaw exercise.
@@ -102,7 +118,11 @@ pub fn variant_practice_examples(
 }
 
 /// Build a seeded variant drill by changing clues around a verified teaching move.
-#[cfg(all(feature = "teaching", feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
 pub(crate) fn generate_practice_example(
     technique: VariantTechnique,
     seed: u32,
@@ -122,7 +142,13 @@ pub(crate) fn generate_practice_example(
             HintAction::Eliminate(_) => HintAction::Eliminate(candidate),
         };
         let mut compiled = position.puzzle.compile().ok()?;
-        let solution = compiled.solve(&position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES).ok()?;
+        let solution = compiled
+            .solve(
+                &position.entries,
+                &position.eliminations,
+                DEFAULT_VARIANT_SEARCH_NODES,
+            )
+            .ok()?;
         let mut order: [usize; CELLS] = std::array::from_fn(|cell| cell);
         random.shuffle(&mut order);
         let wanted = 2 + random.index(6);
@@ -137,12 +163,22 @@ pub(crate) fn generate_practice_example(
             let after = if before == 0 { solution[cell] } else { 0 };
             position.puzzle.givens[cell] = after;
             compiled.givens[cell] = after;
-            let unique = after != 0 || compiled.analyze(
-                &position.entries, &position.eliminations, DEFAULT_VARIANT_SEARCH_NODES,
-            ) == Ok(Analysis::Unique);
-            if unique && let Ok(example) = exercise_with(&compiled, 0, &position, technique, suggestion) {
+            let unique = after != 0
+                || compiled.analyze(
+                    &position.entries,
+                    &position.eliminations,
+                    DEFAULT_VARIANT_SEARCH_NODES,
+                ) == Ok(Analysis::Unique);
+            if unique
+                && let Some((focused, focused_suggestion)) =
+                    focus_position(&compiled, position.clone(), technique, Some(suggestion))
+                && let Ok(example) =
+                    exercise_with(&compiled, 0, &focused, technique, focused_suggestion)
+            {
                 edits += 1;
-                let values = std::array::from_fn(|cell| position.puzzle.givens[cell].max(position.entries[cell]));
+                let values = std::array::from_fn(|cell| {
+                    focused.puzzle.givens[cell].max(focused.entries[cell])
+                });
                 if values != exclude {
                     generated = Some(example);
                 }
@@ -165,13 +201,84 @@ fn exercise(
     index: usize,
     position: VariantPosition,
     technique: VariantTechnique,
-    suggestion: HintAction,
+    preferred_suggestion: HintAction,
 ) -> Result<VariantPracticeExercise, VariantPracticeError> {
     let compiled = position
         .puzzle
         .compile()
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
+    let (position, suggestion) = focus_position(
+        &compiled,
+        position.clone(),
+        technique,
+        Some(preferred_suggestion),
+    )
+    .unwrap_or((position, preferred_suggestion));
     exercise_with(&compiled, index, &position, technique, suggestion)
+}
+
+fn focus_position(
+    compiled: &CompiledVariant,
+    mut position: VariantPosition,
+    technique: VariantTechnique,
+    preferred_suggestion: Option<HintAction>,
+) -> Option<(VariantPosition, HintAction)> {
+    let techniques: Vec<_> = VariantTechnique::all().collect();
+    let easier: Vec<_> = techniques
+        .iter()
+        .copied()
+        .filter(|candidate| {
+            (candidate.difficulty(), candidate.cost()) < (technique.difficulty(), technique.cost())
+        })
+        .collect();
+
+    for _ in 0..(CELLS * 10) {
+        let target_proofs = compiled
+            .deductions(&position.entries, &position.eliminations, technique)
+            .ok()?;
+        let easier_hint = compiled
+            .ranked_hints(&position.entries, &position.eliminations, &easier, 1)
+            .ok()?
+            .into_iter()
+            .next();
+
+        if easier_hint.is_none() {
+            if let Some(suggestion) = preferred_suggestion
+                .filter(|suggestion| {
+                    target_proofs
+                        .iter()
+                        .any(|proof| proof.actions.contains(suggestion))
+                })
+                .or_else(|| {
+                    target_proofs
+                        .first()
+                        .and_then(|proof| proof.actions.first())
+                        .copied()
+                })
+            {
+                return Some((position, suggestion));
+            }
+        }
+
+        let next = match easier_hint {
+            Some(hint) => hint,
+            None => compiled
+                .ranked_hints(&position.entries, &position.eliminations, &techniques, 1)
+                .ok()?
+                .into_iter()
+                .next()?,
+        };
+        let previous = position.clone();
+        crate::position::record_actions(
+            &mut position.entries,
+            &mut position.eliminations,
+            &next.actions,
+        );
+        if position == previous {
+            return None;
+        }
+    }
+    None
 }
 
 fn exercise_with(
@@ -186,10 +293,18 @@ fn exercise_with(
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
     let mut proofs = compiled.explain(&snapshot, technique);
     if technique == VariantTechnique::LockedCandidates {
-        proofs.retain(|proof| matches!(proof.evidence,
-            VariantEvidence::Intersection { source: VariantHouseKind::Diagonal(_), .. } |
-            VariantEvidence::Intersection { target: VariantHouseKind::Diagonal(_), .. }
-        ));
+        proofs.retain(|proof| {
+            matches!(
+                proof.evidence,
+                VariantEvidence::Intersection {
+                    source: VariantHouseKind::Diagonal(_),
+                    ..
+                } | VariantEvidence::Intersection {
+                    target: VariantHouseKind::Diagonal(_),
+                    ..
+                }
+            )
+        });
     }
     let mut answers: Vec<_> = proofs
         .iter()

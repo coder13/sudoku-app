@@ -2,9 +2,11 @@ import type { BoardAnnotations, BoardGroup, BoardLink, CandidateAnnotation, Cell
 import type { Candidate, House, InferenceNode, PracticeExercise } from './engine'
 import type { PracticeGuide } from './lesson-content.ts'
 import { DIGITS } from './game.ts'
-import { boardPoint, candidateName, cellName, houseCells, houseName, inferenceCandidates, inferenceGroupMeaning, inferenceName } from './lesson-diagram.ts'
+import { boardPoint, candidateCount, candidateName, cellName, houseCells, houseName, inferenceCandidates, inferenceName, wingCellRoles } from './lesson-diagram.ts'
 
-type Focus = { houses?: House[]; cells?: number[]; candidates?: Candidate[]; accent?: Candidate[]; links?: BoardLink[]; groups?: BoardGroup[] }
+import { inferenceGroupMeaning } from './lesson-diagram.ts'
+
+type Focus = { houses?: House[]; cells?: number[]; candidates?: Candidate[]; accent?: Candidate[]; pivotCells?: number[]; wingCells?: number[]; links?: BoardLink[]; groups?: BoardGroup[] }
 type Clue = Focus & { text: string }
 type Search = { start: Clue; check: Clue; follow?: string }
 
@@ -14,12 +16,14 @@ const names = (cells: readonly number[]) => list.format(cells.map(cellName))
 const digits = (values: readonly number[]) => list.format(values.map(String))
 const houses = (values: readonly House[]) => list.format(values.map(houseName))
 
-export function practiceClueAnnotations({ houses = [], cells = [], candidates = [], accent = [], links, groups }: Focus): BoardAnnotations {
+export function practiceClueAnnotations({ houses = [], cells = [], candidates = [], accent = [], pivotCells = [], wingCells = [], links, groups }: Focus): BoardAnnotations {
   const area = new Map<number, CellAnnotation>()
   for (const house of houses) {
     for (const cell of houseCells(house)) area.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
   }
   for (const cell of cells) area.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
+  for (const cell of wingCells) area.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
+  for (const cell of pivotCells) area.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
   const marks = new Map<number, Map<number, CandidateAnnotation>>()
   function mark(values: Candidate[], color: string, label: string) {
     for (const { cell, digit } of values) {
@@ -127,26 +131,30 @@ export function practiceSearch({ deduction: { technique, evidence, actions }, ca
   if ('wing' in evidence) {
     const { pivot, pincers, digits: [x, y, z] } = evidence.wing
     const xyz = technique === 'xyz-wing'
+    const roles = wingCellRoles(evidence)
     return {
-      start: { cells: [pivot], text: `Read the ${xyz ? 'three' : 'two'} candidates in ${cellName(pivot)}. Look for cells it sees with exactly two candidates.` },
-      check: { cells: [pivot, ...pincers], candidates: marks([pivot, ...pincers], [x, y, z]),
+      start: { cells: [pivot], pivotCells: roles.pivots, text: `Read the ${xyz ? 'three' : 'two'} candidates in ${cellName(pivot)}. Look for cells it sees with exactly two candidates.` },
+      check: { cells: [pivot, ...pincers], pivotCells: roles.pivots, wingCells: roles.wings, candidates: marks([pivot, ...pincers], [x, y, z]),
         text: `Compare ${cellName(pivot)} with ${names(pincers)}. One wing shares ${x} with the pivot, and the other shares ${y}. Which digit do the wings share?` },
       follow: `Try each digit in the pivot. Where can ${z} go in each case? Look for another ${z} that sees ${xyz ? 'all three cells' : 'both wings'}.`,
     }
   }
   if ('w-wing' in evidence) {
     const { wings, link, linkedDigit, digit } = evidence['w-wing']
+    const roles = wingCellRoles(evidence)
     return {
-      start: { cells: wings.slice(0, 1), text: `Start at ${cellName(wings[0])}. Look for a second cell with the same two candidates.` },
-      check: { cells: wings, houses: [link.house], candidates: marks(wings), text: `The matching cell is ${cellName(wings[1])}. Find the two places for ${linkedDigit} in ${houseName(link.house)}. Do the two places see different wings?` },
+      start: { cells: wings.slice(0, 1), wingCells: wings.slice(0, 1), text: `Start at ${cellName(wings[0])}. Look for a second cell with the same two candidates.` },
+      check: { cells: wings, wingCells: roles.wings, houses: [link.house], candidates: marks(wings), text: `The matching cell is ${cellName(wings[1])}. Find the two places for ${linkedDigit} in ${houseName(link.house)}. Do the two places see different wings?` },
       follow: `Try both places for ${linkedDigit}. Each forces ${digit} into a different wing. Look for a ${digit} that sees both wings.`,
     }
   }
   if ('wxyz-wing' in evidence) {
     const { cells, digits: values } = evidence['wxyz-wing']
+    const roles = wingCellRoles(evidence, cell => candidateCount(candidates[cell] ?? 0))
+    const pivot = roles.pivots[0] ?? cells[0]
     return {
-      start: { cells: cells.slice(0, 1), text: `Start at ${cellName(cells[0])}. Look nearby for cells that use some of the same candidates.` },
-      check: { cells, candidates: marks(cells, values), text: 'Count the different candidate digits in the four highlighted cells. There must be four in total.' },
+      start: { cells: [pivot], pivotCells: [pivot], text: `Start at ${cellName(pivot)}. Look nearby for cells that use some of the same candidates.` },
+      check: { cells, pivotCells: roles.pivots, wingCells: roles.wings, candidates: marks(cells, values), text: 'Count the different candidate digits in the four highlighted cells. There must be four in total.' },
       follow: 'Choose one digit. Do all wing cells with that digit see each other? Repeat for the other digits. Which digit must the wing use?',
     }
   }
