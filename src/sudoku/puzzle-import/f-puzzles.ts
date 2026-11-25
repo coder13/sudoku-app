@@ -296,9 +296,11 @@ function fromFPuzzlesData(data: unknown): ImportResult {
       }
       // On these Jigsaw grids, f-puzzles omits labels for the default row regions.
       const region = defaultRowRegions ? Math.floor(index / size)
-        : mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2)
-          : size === 6 ? gridRegionIndex({ size, boxRows: 2, boxColumns: 3 }, index)
-            : jigsaw ? Math.floor(index / size) : eight ? undefined : standardRegion(index)
+        : jigsaw && fortressCells && size === 4 ? gridRegionIndex({ size, boxRows: 2, boxColumns: 2 }, index)
+          : jigsaw && fortressCells && size === 6 ? gridRegionIndex({ size, boxRows: 2, boxColumns: 3 }, index)
+            : jigsaw ? Math.floor(index / size)
+              : mini ? Math.floor(index / 8) * 2 + Math.floor(index % 4 / 2)
+                : eight ? undefined : standardRegion(index)
       labels.push(cell.region === undefined ? region : cell.region)
       digits.push(cell.given ? String(cell.value) : '0')
     }
