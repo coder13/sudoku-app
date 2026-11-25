@@ -106,14 +106,17 @@ impl XSum {
             for (domain, &cell) in suffix_domains.iter_mut().zip(&self.cells[length..]) {
                 *domain = domains[cell];
             }
-            for (sum, prefixes) in subsets_by_size_sum()[length]
-                .iter()
-                .enumerate()
-                .skip(length)
-            {
-                if only_total.is_some_and(|target| target != sum) {
+            let subsets = &subsets_by_size_sum()[length];
+            let (first_sum, last_sum) = only_total
+                .map(|target| (target, target))
+                .unwrap_or((length, maximum));
+            if first_sum < length || last_sum > maximum {
+                continue;
+            }
+            for sum in first_sum..=last_sum {
+                let Some(prefixes) = subsets.get(sum) else {
                     continue;
-                }
+                };
                 for &prefix_digits in prefixes {
                     if prefix_digits & first == 0 {
                         continue;
