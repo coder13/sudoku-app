@@ -6,7 +6,8 @@ import { nonogramState, validNonogramRule } from './sized-nonogram.ts'
 import { skyscrapersState, validSizedSkyscrapersRule } from './sized-skyscrapers.ts'
 import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
-import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { isGridText, gridCellsShareEdge, gridDiagonalCells, gridValueOffset, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { positionDigit, positionText } from './digit-symbols.ts'
 import { sizedRegionSumParts } from './region-sum.ts'
 import { sizedKillerState, validSizedKillerRule } from './sized-killer.ts'
 import { validation } from './puzzle-validation.ts'
@@ -107,7 +108,17 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         return true
       })
     }
-    if (rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'anti-knight' || rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'parity-line') return Object.keys(rule).length === 2 && Array.isArray(rule.cells) &&
+      rule.cells.length >= 2 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && rule.cells.every((cell: number, index: number) =>
+        index === 0 || gridCellsShareEdge(rule.cells[index - 1], cell, size))
+    if (rule.type === 'palindrome') return Object.keys(rule).length === 2 && Array.isArray(rule.cells) &&
+      rule.cells.length >= 2 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && rule.cells.every((cell: number, index: number) =>
+        index === 0 || gridCellsShareEdge(rule.cells[index - 1], cell, size))
     if (rule.type === 'digit-restriction') return Object.keys(rule).every(key =>
       ['type', 'cells', 'digits', 'shape'].includes(key)) && Array.isArray(rule.cells) && rule.cells.length > 0 &&
       rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
@@ -315,7 +326,8 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
 }
 
 export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame, 'rules'>, values: string): SizedConstraintPosition {
-  return { ...sizedClassicPosition(grid, values), grid, rules }
+  return { ...sizedClassicPosition(grid, values), rules,
+    ...('notation' in grid && grid.notation === 'zero-based' && { zeroBased: true }) }
 }
 
 export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution, authoredSolutionOnly }: SizedRuleDefinition, run: EngineRunner = runEngine): Promise<SizedRuleGame> {
@@ -334,7 +346,7 @@ export async function verifySizedRulePuzzle({ grid, givens, rules, author, autho
   const result = await run({ type: 'sized-variant', operation: 'solve-unique', position })
   if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
   if (result.status !== 'unique') throw new Error(validation[result.status].text)
-  const solution = result.solution.digits.join('')
+  const solution = positionText(result.solution.digits)
   if (authoredSolution !== undefined && solution !== authoredSolution) {
     throw new Error('The authored solution conflicts with the puzzle’s rules.')
   }
@@ -342,6 +354,8 @@ export async function verifySizedRulePuzzle({ grid, givens, rules, author, autho
 }
 
 export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame, grid: SizedGrid, givens: string): SizedRuleGame | undefined {
+  const valueOffset = gridValueOffset(grid)
+  const digit = (cell: number) => positionDigit(solution[cell]) - valueOffset
   if (!isSizedRuleList(rules, grid) || (grid.size === 4 && !('regions' in grid) && !rules.length) || !isGridText(solution, grid) || solution.includes('0') ||
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
@@ -349,35 +363,41 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     if (rule.type === 'corner-kropki') {
       for (const kind of cornerKropkiKinds) for (const corner of rule[kind] ?? []) {
         if (cornerPairs(corner, grid.size).some(([a, b]) =>
-          !cornerKropkiAllows(Number(solution[a]), Number(solution[b]), kind))) return
+          !cornerKropkiAllows(digit(a), digit(b), kind))) return
       }
     } else if (rule.type === 'diagonal') {
       if (new Set(gridDiagonalCells(grid.size, rule.diagonal).map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'extra-house') {
       if (new Set(rule.cells.map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'parity') {
-      if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+      if (rule.cells.some(cell => digit(cell) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+    } else if (rule.type === 'parity-line') {
+      if (rule.cells.some((cell, index) => index > 0 && digit(cell) % 2 === digit(rule.cells[index - 1]) % 2)) return
+    } else if (rule.type === 'palindrome') {
+      if (rule.cells.some((cell, index) => index < Math.floor(rule.cells.length / 2) &&
+        solution[cell] !== solution[rule.cells[rule.cells.length - index - 1]])) return
     } else if (rule.type === 'digit-restriction') {
-      if (rule.cells.some(cell => !rule.digits.includes(Number(solution[cell])))) return
+      if (rule.cells.some(cell => !rule.digits.includes(digit(cell)))) return
     } else if (rule.type === 'zipper') {
       const pairTotals = Array.from({ length: Math.floor(rule.cells.length / 2) }, (_, index) =>
-        Number(solution[rule.cells[index]]) + Number(solution[rule.cells[rule.cells.length - index - 1]]))
+        digit(rule.cells[index]) + digit(rule.cells[rule.cells.length - index - 1]))
       if (new Set(pairTotals).size > 1 || rule.cells.length % 2 &&
-        pairTotals.some(total => total !== Number(solution[rule.cells[Math.floor(rule.cells.length / 2)]]))) return
+        pairTotals.some(total => total !== digit(rule.cells[Math.floor(rule.cells.length / 2)]))) return
     } else if (rule.type === 'renban') {
-      const digits = rule.cells.map(cell => Number(solution[cell]))
+      const digits = rule.cells.map(cell => positionDigit(solution[cell]))
       if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
     } else if (rule.type === 'region-sum') {
-      const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
+      const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + digit(cell), 0))
       if (new Set(totals).size !== 1) return
     } else if (rule.type === 'x-sum') {
-      const first = Number(solution[rule.cells[0]])
-      if (rule.cells.slice(0, first).reduce((total, cell) => total + Number(solution[cell]), 0) !== rule.sum) return
+      const first = digit(rule.cells[0])
+      if (rule.cells.slice(0, first).reduce((total, cell) => total + digit(cell), 0) !== rule.sum) return
     } else if (rule.type === 'x-sum-dot') {
       const total = (end: number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }) => {
-        if (typeof end === 'number') return Number(solution[end])
+        if (typeof end === 'number') return digit(end)
         const ray = sizedSumEndCells(end, grid.size)
-        return ray.slice(0, Number(solution[ray[0]])).reduce((sum, cell) => sum + Number(solution[cell]), 0)
+        const count = digit(ray[0])
+        return ray.slice(0, count).reduce((sum, cell) => sum + digit(cell), 0)
       }
       const [a, b] = rule.ends.map(total)
       if (rule.relation === 'consecutive' ? Math.abs(a - b) !== 1 : a !== 2 * b && b !== 2 * a) return
@@ -385,18 +405,18 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       if (linkedDoubleArrowConflicts(rule, solution, grid.size)) return
     } else if (rule.type === 'arrow' || rule.type === 'double-arrow') {
       const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
-      const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + Number(solution[cell]), 0)
+      const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + digit(cell), 0)
       if (total(rule.cells) !== total(ends)) return
     } else if (rule.type === 'anti-sum') {
       const { size } = grid
       for (let cell = 0; cell < size ** 2; cell++) {
-        const digit = Number(solution[cell])
-        if (cell % size < size - 1 && digit + Number(solution[cell + 1]) === rule.sum ||
-          cell < size * (size - 1) && digit + Number(solution[cell + size]) === rule.sum) return
+        const value = digit(cell)
+        if (cell % size < size - 1 && value + digit(cell + 1) === rule.sum ||
+          cell < size * (size - 1) && value + digit(cell + size) === rule.sum) return
       }
     } else if (rule.type === 'row-column-sum') {
       const { size } = grid
-      const matches = (pair: readonly [number, number]) => Number(solution[pair[0]]) + Number(solution[pair[1]]) === rowColumnSumTotal(pair, size)
+      const matches = (pair: readonly [number, number]) => digit(pair[0]) + digit(pair[1]) === rowColumnSumTotal(pair, size)
       if (!rule.pairs.every(matches)) return
       if (rule.requireUnmarked) {
         const marked = new Set(rules.flatMap(layer => layer.type === 'row-column-sum'
@@ -407,19 +427,19 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       }
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
-      if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
+      if (Math.abs(positionDigit(solution[a]) - positionDigit(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
     else if (rule.type === 'slow-thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] < solution[rule.cells[index - 1]])) return
     else if (rule.type === 'between' && rule.cells.slice(1, -1).some(cell => {
-      const digit = Number(solution[cell])
-      const first = Number(solution[rule.cells[0]]), last = Number(solution[rule.cells.at(-1)!])
-      return digit <= Math.min(first, last) || digit >= Math.max(first, last)
+      const value = digit(cell)
+      const first = digit(rule.cells[0]), last = digit(rule.cells.at(-1)!)
+      return value <= Math.min(first, last) || value >= Math.max(first, last)
     })) return
     else if (rule.type === 'whispers' && rule.cells.some((cell, index) => index > 0 &&
-      Math.abs(Number(solution[cell]) - Number(solution[rule.cells[index - 1]])) < rule.minDifference)) return
+      Math.abs(digit(cell) - digit(rule.cells[index - 1])) < rule.minDifference)) return
     else if (rule.type === 'xv' || rule.type === 'sandwich') {
       if (rule.type === 'xv') {
-        const invalid = (pairs: MarkedPairs | undefined, total: number) => pairs?.pairs?.some(([a, b]) => Number(solution[a]) + Number(solution[b]) !== total)
+        const invalid = (pairs: MarkedPairs | undefined, total: number) => pairs?.pairs?.some(([a, b]) => digit(a) + digit(b) !== total)
         if (invalid(rule.five, 5) || invalid(rule.ten, 10)) return
         if (rule.five?.negative || rule.ten?.negative) {
           const markedFive = new Set(rule.five?.pairs?.map(([a, b]) => Math.min(a, b) * grid.size ** 2 + Math.max(a, b)) ?? [])
@@ -428,16 +448,16 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
             const neighbors = [cell % grid.size < grid.size - 1 ? cell + 1 : -1, cell + grid.size < grid.size ** 2 ? cell + grid.size : -1]
             for (const other of neighbors.filter(value => value >= 0)) {
               const key = cell * grid.size ** 2 + other
-              const sum = Number(solution[cell]) + Number(solution[other])
+              const sum = digit(cell) + digit(other)
               if (rule.five?.negative && !markedFive.has(key) && sum === 5 || rule.ten?.negative && !markedTen.has(key) && sum === 10) return
             }
           }
         }
       } else {
-        const one = rule.cells.findIndex(cell => solution[cell] === '1')
-        const high = rule.cells.findIndex(cell => Number(solution[cell]) === grid.size)
+        const one = rule.cells.findIndex(cell => digit(cell) === 1)
+        const high = rule.cells.findIndex(cell => digit(cell) === grid.size)
         if (one < 0 || high < 0 || rule.cells.slice(Math.min(one, high) + 1, Math.max(one, high))
-          .reduce((sum, cell) => sum + Number(solution[cell]), 0) !== rule.sum) return
+          .reduce((sum, cell) => sum + digit(cell), 0) !== rule.sum) return
       }
     }
   }
@@ -447,10 +467,10 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
   if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
     const { size } = grid
     for (let cell = 0; cell < size ** 2; cell++) {
-      const digit = Number(solution[cell])
+      const digit = positionDigit(solution[cell])
       const neighbors = [cell + 1, cell + size]
       if (neighbors.some(other => other < size ** 2 &&
-        kropkiDigitExclusions(rules, cell, other, digit, size) & 1 << (Number(solution[other]) - 1))) return
+        kropkiDigitExclusions(rules, cell, other, digit, size, valueOffset) & 1 << (positionDigit(solution[other]) - 1))) return
     }
   }
   return { rules, solution, ...(isSizedRuleAuthor(author) && { author }) }

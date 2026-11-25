@@ -2,7 +2,9 @@ use std::ops::Range;
 
 use super::super::{NO_REGION, SizedGrid};
 use super::{MAX_CELLS, MAX_SIZE};
-use crate::variant::{reachable_sums, region_sum_ranges, sum_support_with_prefix};
+use crate::variant::{
+    reachable_sums_with_offset, region_sum_ranges, sum_support_with_prefix_and_offset,
+};
 
 /// A collection of disjoint groups which must all have the same total.
 #[derive(Debug)]
@@ -10,11 +12,17 @@ pub(super) struct EqualSums {
     cells: Vec<usize>,
     groups: Vec<Range<usize>>,
     pub(super) max_total: usize,
+    pub(super) value_offset: u8,
 }
 
 impl EqualSums {
-    pub fn region_sum(layout: &SizedGrid, cells: &[usize], group_by_region: bool) -> Option<Self> {
-        if !layout.has_regions() {
+    pub fn region_sum(
+        layout: &SizedGrid,
+        cells: &[usize],
+        group_by_region: bool,
+        value_offset: u8,
+    ) -> Option<Self> {
+        if !layout.has_regions() || value_offset > 1 {
             return None;
         }
         let mut seen = [false; MAX_CELLS];
@@ -24,6 +32,7 @@ impl EqualSums {
             }
         }
         let size = layout.size();
+        let max_value = size - usize::from(value_offset);
         let mut cells = cells.to_vec();
         let groups = region_sum_ranges(
             &mut cells,
@@ -38,9 +47,9 @@ impl EqualSums {
             .map(|range| {
                 let length = range.len();
                 if layout.memberships[cells[range.start]][2] == NO_REGION {
-                    length * size
+                    length * max_value
                 } else {
-                    length * (2 * size - length + 1) / 2
+                    length * (2 * max_value - length + 1) / 2
                 }
             })
             .min()?;
@@ -48,6 +57,7 @@ impl EqualSums {
             cells,
             groups,
             max_total,
+            value_offset,
         })
     }
 
@@ -82,6 +92,7 @@ impl EqualSums {
             cells,
             groups,
             max_total,
+            value_offset: 0,
         })
     }
 
@@ -114,10 +125,10 @@ impl EqualSums {
             for (mask, &cell) in masks.iter_mut().zip(group) {
                 *mask = domains[cell];
             }
-            for (total, reachable) in common
-                .iter_mut()
-                .zip(reachable_sums::<WORDS>(&masks[..group.len()]))
-            {
+            for (total, reachable) in common.iter_mut().zip(reachable_sums_with_offset::<WORDS>(
+                &masks[..group.len()],
+                self.value_offset,
+            )) {
                 *total &= reachable;
             }
         }
@@ -150,18 +161,20 @@ impl EqualSums {
             let mut support_active = [0; MAX_SIZE];
             let matched = if words == 1 {
                 let mut p = [[0; 1]; MAX_SIZE + 1];
-                sum_support_with_prefix::<1>(
+                sum_support_with_prefix_and_offset::<1>(
                     &masks[..group.len()],
                     [totals[0]],
                     &mut support_active[..group.len()],
                     &mut p,
+                    self.value_offset,
                 )[0]
             } else {
-                sum_support_with_prefix::<2>(
+                sum_support_with_prefix_and_offset::<2>(
                     &masks[..group.len()],
                     totals,
                     &mut support_active[..group.len()],
                     &mut prefix_active,
+                    self.value_offset,
                 )
                 .iter()
                 .any(|&word| word != 0) as u128
@@ -174,5 +187,32 @@ impl EqualSums {
             }
         }
         self.cells.iter().all(|&cell| supported[cell] != 0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{GridSpec, SizedGrid};
+
+    #[test]
+    fn region_sum_total_masks_use_displayed_zero_based_values() {
+        let layout = SizedGrid::new(GridSpec {
+            size: 4,
+            box_rows: 2,
+            box_columns: 2,
+        })
+        .unwrap();
+        let cells = [0, 2, 3];
+        let line = EqualSums::region_sum(&layout, &cells, false, 1).unwrap();
+        let one_based = EqualSums::region_sum(&layout, &cells, false, 0).unwrap();
+        let mut domains = [0; 16];
+        for (cell, digit) in [(0, 4), (2, 2), (3, 3)] {
+            domains[cell] = 1 << (digit - 1);
+        }
+
+        assert_ne!(line.totals(&domains)[0] & (1 << 3), 0);
+        assert_eq!(one_based.totals(&domains)[0], 0);
+        assert!(line.support_at_totals(&domains, &mut [0; 16], [1 << 3, 0]));
     }
 }

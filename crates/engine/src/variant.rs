@@ -13,7 +13,7 @@ pub(crate) mod global_entropy;
 mod lines;
 mod logical;
 mod pairs;
-pub(crate) use pairs::{KROPKI, PairConstraint};
+pub(crate) use pairs::PairConstraint;
 #[cfg(any(feature = "teaching", test))]
 mod practice;
 mod quadruple;
@@ -35,7 +35,8 @@ use lines::{
     DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum,
 };
 pub(crate) use lines::{
-    digit_set_support, reachable_sums, region_sum_ranges, sum_support_with_prefix,
+    digit_set_support, reachable_sums, reachable_sums_with_offset, region_sum_ranges,
+    sum_support_with_prefix, sum_support_with_prefix_and_offset,
 };
 pub(crate) use lines::{renban_support, wide_renban_support};
 pub use logical::{

@@ -18,6 +18,8 @@ pub(super) struct Definition {
     grid: Layout,
     digits: Vec<u8>,
     rules: Vec<Rule>,
+    #[serde(default, rename = "zeroBased")]
+    zero_based: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -48,6 +50,12 @@ enum SizedRule {
     LineAssignments {
         paths: Vec<Vec<usize>>,
         types: Vec<SizedLineType>,
+    },
+    ParityLine {
+        cells: Vec<usize>,
+    },
+    Palindrome {
+        cells: Vec<usize>,
     },
     FractionalRegions {
         pieces: Vec<FractionalPiece>,
@@ -166,12 +174,15 @@ impl TryFrom<Rule> for SizedConstraint {
 
     fn try_from(rule: Rule) -> Result<Self, Self::Error> {
         Ok(match rule {
+            Rule::Variant(PuzzleRule::AntiKnight {}) => Self::AntiKnight,
             Rule::Variant(PuzzleRule::AntiKing {}) => Self::AntiKing,
             Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
             Rule::Sized(SizedRule::LineAssignments { paths, types }) => {
                 Self::LineAssignments { paths, types }
             }
+            Rule::Sized(SizedRule::ParityLine { cells }) => Self::ParityLine { cells },
+            Rule::Sized(SizedRule::Palindrome { cells }) => Self::Palindrome { cells },
             Rule::Variant(PuzzleRule::Diagonal { diagonal }) => Self::Diagonal(diagonal),
             Rule::Variant(PuzzleRule::ExtraHouse { cells }) => Self::ExtraHouse { cells },
             Rule::Variant(PuzzleRule::Parity { cells, parity }) => Self::Parity { cells, parity },
@@ -401,8 +412,10 @@ pub(super) fn generate(
             grid: layout,
             digits,
             rules,
+            zero_based,
         } = definition;
         if version != SIZED_GRID_VERSION
+            || zero_based
             || !matches!(layout, Layout::Boxes(spec) if spec == grid)
             || digits.iter().any(|&digit| digit > 4)
         {
@@ -436,6 +449,7 @@ pub(super) fn generate(
         grid: Layout::Boxes(grid),
         digits: generated.givens.to_vec(),
         rules: generated.cages.into_iter().map(Rule::from).collect(),
+        zero_based: false,
     }))
 }
 
@@ -476,6 +490,7 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
         grid,
         digits,
         rules,
+        zero_based,
     } = definition;
     if version != SIZED_GRID_VERSION {
         return Err((
@@ -483,15 +498,21 @@ pub(super) fn execute(definition: Definition, operation: Operation) -> ResultVal
             "This sized grid format is unsupported.",
         ));
     }
+    if zero_based && rules.iter().any(|rule| matches!(rule, Rule::Algebraic(_))) {
+        return Err((
+            "unsupported-rule",
+            "Algebraic cages require one-based values.",
+        ));
+    }
     // Keep the original Algebraic Cages response for saved Mini puzzles.
     // All other constraint positions use the layout supplied with the rules.
     let Layout::Boxes(spec) = &grid else {
-        return execute_constraints(grid, &digits, rules, operation);
+        return execute_constraints(grid, &digits, rules, operation, zero_based);
     };
     if spec.size != 4
         || (!rules.is_empty() && !rules.iter().any(|rule| matches!(rule, Rule::Algebraic(_))))
     {
-        return execute_constraints(grid, &digits, rules, operation);
+        return execute_constraints(grid, &digits, rules, operation, zero_based);
     }
     let grid = *spec;
     if grid.size != 4 || grid.box_rows != 2 || grid.box_columns != 2 {
@@ -571,6 +592,7 @@ fn execute_constraints(
     digits: &[u8],
     rules: Vec<Rule>,
     operation: Operation,
+    zero_based: bool,
 ) -> ResultValue<ResponseValue> {
     let layout = grid.compile(digits)?;
     let full = layout.digit_mask();
@@ -578,7 +600,7 @@ fn execute_constraints(
         .into_iter()
         .map(SizedConstraint::try_from)
         .collect::<Result<Vec<_>, _>>()?;
-    let puzzle = SizedConstraintGrid::with_layout(layout, &constraints)
+    let puzzle = SizedConstraintGrid::with_layout_and_values(layout, &constraints, zero_based)
         .ok_or(("invalid-rules", "Check the cells and paths in the rules."))?;
     let removals = |value| candidate_removals(value, digits.len(), full);
     let value = match operation {

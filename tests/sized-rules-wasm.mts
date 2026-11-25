@@ -10,6 +10,7 @@ import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
@@ -84,6 +85,97 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
   const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position: ratioPosition, limit: 10 })
   assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
     choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
+})
+
+test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regionLabels = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions: regionLabels, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 1.5]], parameters: { text: '16' } },
+      { cells: [[1.5, -0.5]], parameters: { text: '7' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13, 14], parameters: {} }] },
+    { type: 'antiKnight', settings: {}, segments: [] },
+    { type: 'antiKing', settings: {}, segments: [] },
+  ] })
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code, coach: {
+    hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sums with a Thermometer',
+  } }), { headers: { 'content-type': 'application/json' } }))
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [6, 7, 8, 9, 10, 11], sum: 16 },
+    { type: 'x-sum', direction: 'south', cells: [1, 7, 13, 19, 25, 31], sum: 7 },
+    { type: 'thermometer', cells: [12, 13, 14] },
+    { type: 'anti-knight' },
+    { type: 'anti-king' },
+  ])
+
+  const blank = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, '0'.repeat(36))
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: blank })
+  assert.equal(candidates, null, 'the mixed clues have no completion once Anti-Knight is retained')
+  const antiKnightPosition = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 0 ? 1 : 0), rules: [
+    { type: 'anti-knight' as const }, { type: 'thermometer' as const, cells: [6, 7, 8] },
+  ] }
+  const antiKnightCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: antiKnightPosition })
+  const classicKnightCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: antiKnightPosition.digits,
+  } })
+  assert.ok(antiKnightCandidates && classicKnightCandidates)
+  assert.ok(antiKnightCandidates.slice(1).every(mask => mask !== 0), 'Anti-Knight composes with a Thermometer')
+  assert.equal(antiKnightCandidates[13] & 1, 0, 'Anti-Knight removes the given value from a knight-move cell')
+  assert.notEqual(classicKnightCandidates[13] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+  const antiKnightHints = await runEngine({ type: 'sized-variant', operation: 'hints', position: antiKnightPosition, limit: 10 })
+  assert.ok(antiKnightHints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 13 && action.eliminate.digit === 1)))
+  const antiKnightSolution = (await runEngine({ type: 'sized-variant', operation: 'solve', position: antiKnightPosition }))?.digits
+  assert.ok(antiKnightSolution)
+  assert.ok(antiKnightSolution[6] < antiKnightSolution[7] && antiKnightSolution[7] < antiKnightSolution[8],
+    'the solved combination respects its Thermometer')
+  for (let cell = 0; cell < 36; cell++) {
+    const row = Math.floor(cell / 6), column = cell % 6
+    for (const [rowDelta, columnDelta] of [[1, 2], [2, 1]]) {
+      for (const rowSign of [-1, 1]) for (const columnSign of [-1, 1]) {
+        const otherRow = row + rowDelta * rowSign, otherColumn = column + columnDelta * columnSign
+        if (otherRow >= 0 && otherRow < 6 && otherColumn >= 0 && otherColumn < 6) {
+          assert.notEqual(antiKnightSolution[cell], antiKnightSolution[otherRow * 6 + otherColumn])
+        }
+      }
+    }
+  }
+  const completed = { ...blank, digits: Array.from(solution, Number) }
+  const withoutAntiKnight = { ...completed, rules: completed.rules.filter(rule => rule.type !== 'anti-knight') }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: withoutAntiKnight }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'conflict',
+    'the imported Anti-Knight rule rejects the authored grid where equal digits share a knight move')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'x-sum' && rule.direction === 'east'
+      ? { ...rule, sum: rule.sum + 1 }
+      : rule),
+  } }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'thermometer' ? { ...rule, cells: [...rule.cells].reverse() } : rule),
+  } }), 'conflict')
+
+  const kingOnly = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 2 ? 1 : 0), rules: [{ type: 'anti-king' as const }] }
+  const kingCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: kingOnly })
+  const classicCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: kingOnly.digits,
+  } })
+  assert.ok(kingCandidates && classicCandidates)
+  assert.equal(kingCandidates[9] & 1, 0, 'Anti-King removes the given value from a diagonal neighbor')
+  assert.notEqual(classicCandidates[9] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKing', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKing/)
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKnight', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKnight/)
 })
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {

@@ -1,4 +1,5 @@
 import { closedRegionSumCells } from './region-sum.ts'
+import { positionSymbol } from './digit-symbols.ts'
 import { readCornerKropki } from './corner-kropki.ts'
 import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedLineType, SizedSumEnd } from './engine.ts'
 import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isMiniGrid, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
@@ -99,7 +100,7 @@ function readLayeredZipper(lines: unknown, overlays: unknown, underlays: unknown
 function sudokuPadRuleClauses(text: string) {
   const lines = text.trim().split(/\r?\n/)
   if (!lines.some(line => /^-{3,}/.test(line))) {
-    return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki(?: pairs)?|Anti-King|Entropic lines|Both lines are Entropic lines|Between Lines|Cells separated by):)/i)
+    return text.trim().split(/\n\s*\n|(?<=\.)\s+(?=(?:Double Arrows|Arrows|Thermometer|Killer cages|Kropki(?: pairs)?|Anti-King|Entropic lines|Both lines are Entropic lines|Between Lines|Cells separated by|Dutch whispers|German whispers|Renban|Parity lines|Palindromes?|Region sum lines):)/i)
       .flatMap(part => part.startsWith('Normal ') ? part.split(/(?<=\.)\s+(?=There are black and white dots in the grid\.)/i) : [part])
       .map(part => part.replace(/\s+/g, ' '))
   }
@@ -224,10 +225,10 @@ export function readKropkiDots(overlays: unknown, size: number): SizedConstraint
 const isPoint = (value: unknown): value is [number, number] =>
   Array.isArray(value) && value.length === 2 && value.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
 
-function sudokuPadWhispersMinimum(color: string) {
+function sudokuPadWhispersMinimum(color: string, statements: readonly { family: string; minimum: number }[]) {
   const normalized = color.toLowerCase()
-  if (/^#ffa600(?:ff)?$/.test(normalized)) return 2
-  if (/^#67f067(?:ff)?$/.test(normalized)) return 3
+  if (/^#ffa600(?:ff)?$/.test(normalized)) return statements.find(statement => statement.family === 'Dutch')?.minimum ?? 2
+  if (/^#67f067(?:ff)?$/.test(normalized)) return statements.find(statement => statement.family === 'German')?.minimum ?? 3
   return undefined
 }
 
@@ -431,8 +432,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   if (Object.keys(data).some(key => !fields.includes(key)) ||
     data.cellSize !== undefined && (typeof data.cellSize !== 'number' || !Number.isFinite(data.cellSize) || data.cellSize <= 0) ||
     !record(metadata) || typeof metadata.rules !== 'string' ||
-    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking'].includes(key)) ||
-    metadata.antiking !== undefined && typeof metadata.antiking !== 'boolean') {
+    Object.keys(metadata).some(key => !['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking', 'antiknight'].includes(key)) ||
+    metadata.antiking !== undefined && typeof metadata.antiking !== 'boolean' ||
+    metadata.antiknight !== undefined && typeof metadata.antiknight !== 'boolean') {
     throw new Error('This SudokuPad puzzle contains unsupported rules or markings.')
   }
   if (!Array.isArray(cells) || (cells.length !== 4 && cells.length !== 5 && !isRectangularSize(cells.length)) ||
@@ -440,12 +442,15 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     throw new Error('This SudokuPad export has an invalid grid.')
   }
   const size = cells.length
+  const sourceRules = metadata.rules.trim()
+  const zeroBase = /^(?:Normal|Standard) (\d+)\s*[x×]\s*(\d+) sudoku rules apply, using the digits 0[-–](\d+)\.\s*Place the digits 0[-–]\3 once in every row, column,? and (\d+)\s*[x×]\s*(\d+) (?:box|region)\.(?:\s+|$)/i.exec(sourceRules)
+  const minimum = zeroBase ? 0 : 1
   const givens = cells.flat().map(cell => {
     if (!record(cell) || Object.keys(cell).some(key => key !== 'value') ||
-      (cell.value !== undefined && !(Number.isInteger(cell.value) && Number(cell.value) >= 1 && Number(cell.value) <= size))) {
+      (cell.value !== undefined && !(Number.isInteger(cell.value) && Number(cell.value) >= minimum && Number(cell.value) < size + minimum))) {
       throw new Error('This SudokuPad export has an unsupported cell clue.')
     }
-    return String(cell.value ?? 0)
+    return cell.value === undefined ? '0' : positionSymbol(Number(cell.value) + 1 - minimum)
   }).join('')
   if (!Array.isArray(regions) || regions.length !== size || regions.some(box => !Array.isArray(box) || box.length !== size)) {
     throw new Error('This SudokuPad puzzle needs rectangular boxes.')
@@ -458,7 +463,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       labels[cell] = index
     }
   }
-  const rulesText = sudokuPadRuleClauses(metadata.rules)
+  const rulesInput = zeroBase ? sourceRules.slice(zeroBase[0].length) : sourceRules
+  const rulesText = sudokuPadRuleClauses(rulesInput)
   const jigsawBase = JIGSAW_BASE.exec(rulesText[0])
   const jigsaw = jigsawBase && isJigsawSize(size) && Number(jigsawBase[2]) === size && labels.every(label => label >= 0)
     ? { size, regions: regionsFromMembership(labels, size) } : undefined
@@ -466,7 +472,7 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     labels.every((region, cell) => region === labels[Math.floor(cell / size) * size])
   const grid = jigsaw && isJigsawGrid(jigsaw) ? jigsaw
     : rowRegions ? FIVE_BOXLESS_GRID
-      : isRectangularSize(size) ? rectangularGridFromRegions(size, labels) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
+      : isRectangularSize(size) ? rectangularGridFromRegions(size, labels, zeroBase ? 'zero-based' : undefined) : matchesRectangularRegions(MINI_GRID, labels) ? MINI_GRID : undefined
   if (!grid) throw new Error('This SudokuPad puzzle needs rectangular boxes.')
 
   // SudokuPad's generic lines and circles are drawing primitives. The rules
@@ -477,11 +483,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const boxFirstBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: every row, column and (\d+)[x×](\d+) box contains the digits 1[-–](\d+) exactly once each\.$/i.exec(rulesText[0])
   const compactBase = /^SUDOKU - Fill the grid with the digits 1[-–](\d+) so that no digit repeats in a row, column, or box\.$/i.exec(rulesText[0])
   const authoredSizedBase = /^Normal (\d+)[x×](\d+) sudoku rules apply: In every row, column and (?:in )?(?:(\d+)[x×](\d+) )?every box the digits from 1 to (\d+) have to appear at ?least once\.$/i.exec(rulesText[0])
-  const clauses = rulesText.slice(1)
+  const clauses = zeroBase ? rulesText.filter(Boolean) : rulesText.slice(1)
   const thermometer = /^(?:Digits along a thermometer strictly increase from bulb to tip|Thermometer: digits on a thermometer must strictly increase from the bulb to the tip|Thermometers: digits along a thermometer increase from bulb to tip|Thermometers: Digits on a thermometer strictly increase from the bulb to the tip)\.$/i
   const compactThermometer = /^THERMOMETER - Digits increase in value along a thermometer, starting from the bulb end\.(?: They don't have to be adjacent, for example 1-3-4 or 2-4 would be just fine\.)?$/i
   const slowThermometer = /^Slow thermometers?: Digits on a slow thermo increase or stay the same but never decrease\.$/i
-  const renban = /^Digits along a pink line form a set of non-repeating consecutive digits in any order\.$/i
+  const renban = /^(?:Digits along a pink line form a set of non-repeating consecutive digits in any order|Renban: purple lines must contain a set of consecutive digits in any order)\.$/i
   const compactRenban = /^RENBAN - Digits on a purple Renban line must be a set of consecutive, non-repeating digits \(in any order\)\.(?: For example, a length 3 line could have -3-1-2-, but not -1-2-4- or -1-3-1-\.)?$/i
   const isRenban = (clause: string) => renban.test(clause) || compactRenban.test(clause)
   const isThermometer = (clause: string) => thermometer.test(clause) || compactThermometer.test(clause)
@@ -500,6 +506,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const antiKing = /^Anti[- ]King:?\s+(?:No two identical digits can be orthogonally or diagonally adjacent to each other|Cells separated by a chess king['’]s move cannot contain the same digit)\.?$/i
   const printedAntiKing = clauses.some(clause => antiKing.test(clause))
   const authoredAntiKing = metadata.antiking === true || printedAntiKing
+  const antiKnight = /^Anti[- ]Knight:?\s+(?:No two identical digits can be a knight['’]s move apart|Cells separated by a chess knight['’]s move cannot contain the same digit)\.?$/i
+  const printedAntiKnight = clauses.some(clause => antiKnight.test(clause))
+  const authoredAntiKnight = metadata.antiknight === true || printedAntiKnight
   const entropicLineRule = /^Entropic lines: every 3 consecutive digits along a peach line must contain a low digit \(([\d, ]+)\), a middle digit \(([\d, ]+)\) and a high digit \(([\d, ]+)\)\.$/i
   const namedEntropicRule = /^Both lines are Entropic lines\. Along the lines, they must contain a low \(([\d, ]+)\) middle \(([\d, ]+)\) and high \(([\d, ]+)\) digit in any 3 consecutive cells\. Eg: \d+(?:-\d+)+$/i
   const parseEntropicGroups = (clause: string) => {
@@ -517,7 +526,9 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const authoredSlowThermometers = clauses.some(clause => slowThermometer.test(clause))
   const compactBulbs = clauses.some(clause => compactThermometer.test(clause)) || authoredThermometers || authoredSlowThermometers
   const authoredRenban = clauses.some(isRenban)
-  const regionSum = /^Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums\.$/i
+  const regionSum = /^(?:Box borders split region sum lines into segments with the same sum\. Different lines can have different segment sums|Region sum lines: region borders divide blue lines into segments\. The values on each segment have the same sum, though this sum can be different for different lines)\.$/i
+  const palindrome = /^Palindromes: digits on a grey line read the same forwards and backwards\.$/i
+  const parityLine = /^Parity lines: along a red line, adjacent digits must alternate between odd and even\.$/i
   const evenZipper = /^Zipper(?: Lines)?: Digits an equal distance to the circled center of a line sum to the same total\.$/i
   const squareDigitRule = /^S: The top-left corner contains a square digit \(1 or 4\)\.$/i
   const regionSumCompanion = /^Region Sum Lines: Box borders divide lines into segments with equal sums\.$/i
@@ -538,8 +549,10 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const whisperStatement = (clause: string) => {
     const german = /^(?:German whisper lines: )?Two cells connected by a German whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
     const dutch = /^(?:Dutch whisper lines: )?Two cells connected by a Dutch whisper line must have a difference of at least (\d+)\.$/i.exec(clause)
+    const direct = /^(Dutch|German) whispers: adjacent digits on an? (?:orange|green) line must differ by at least (\d+)\.$/i.exec(clause)
     const match = german ?? dutch
-    return match ? { family: german ? 'German' : 'Dutch', minimum: Number(match[1]) } : undefined
+    return match ? { family: german ? 'German' : 'Dutch', minimum: Number(match[1]) }
+      : direct ? { family: direct[1][0].toUpperCase() + direct[1].slice(1).toLowerCase(), minimum: Number(direct[2]) } : undefined
   }
   const whisperStatements = clauses.flatMap(clause => {
     const statement = whisperStatement(clause)
@@ -555,6 +568,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const conflictingWhisperMinimums = [...whisperMinimums.values()].some(minimums => minimums.size > 1)
   const whisperDifference = (clause: string) => whisperStatement(clause)?.minimum
   const authoredWhispers = whispersClauses.length > 0
+  const authoredPalindrome = clauses.some(clause => palindrome.test(clause))
+  const authoredParityLine = clauses.some(clause => parityLine.test(clause))
   const xv = /^XV-Pairs: Cells joined by an X or V must sum to 10\(X\) or 5\(V\)\.$/i
   const authoredXv = clauses.some(clause => xv.test(clause))
   const sandwich = /^Sandwich sum: (?:Digits between 1 and (\d+) in the indicated row or column must sum to the indicated value|Clues on the edge of the grid show the sum of the digits sandwiched between the 1 and the (\d+) in that row or column)\.$/i
@@ -574,7 +589,11 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   const matchesBoxDimensions = (width: string, height: string) =>
     Number(width) === boxColumns && Number(height) === boxRows ||
     Number(width) === boxRows && Number(height) === boxColumns
-  const validBase = jigsawBase ? Number(jigsawBase[2]) === size : rowColumnBase
+  const validZeroBase = !!zeroBase && 'notation' in grid && grid.notation === 'zero-based' &&
+    Number(zeroBase[1]) === size && Number(zeroBase[2]) === size && Number(zeroBase[3]) === size - 1 &&
+    'boxRows' in grid && (Number(zeroBase[4]) === grid.boxColumns && Number(zeroBase[5]) === grid.boxRows ||
+      Number(zeroBase[4]) === grid.boxRows && Number(zeroBase[5]) === grid.boxColumns)
+  const validBase = zeroBase ? validZeroBase : jigsawBase ? Number(jigsawBase[2]) === size : rowColumnBase
     ? rowColumnBase.slice(1, 4).every(part => Number(part) === size)
     : boxFirstBase
     ? [boxFirstBase[1], boxFirstBase[2], boxFirstBase[5]].every(value => Number(value) === size) &&
@@ -588,15 +607,17 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
   if (!validBase || authoredThermometers && authoredSlowThermometers ||
     conflictingWhisperMinimums || whispersClauses.some(difference => difference < 1 || difference >= size) ||
     clauses.some(clause => !isThermometer(clause) && !slowThermometer.test(clause) && !isRenban(clause) && !isKropki(clause) &&
-      !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !killer.test(clause) &&
-      !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) &&
-      !parseEntropicGroups(clause) && whisperDifference(clause) === undefined &&
+      !arrow.test(clause) && !doubleArrow.test(clause) && !regionSum.test(clause) && !regionSumCompanion.test(clause) && !killer.test(clause) &&
+      !xv.test(clause) && !isSandwich(clause) && !betweenLine.test(clause) && !cornerKropki.test(clause) && !antiKing.test(clause) && !antiKnight.test(clause) &&
+      !parseEntropicGroups(clause) && whisperDifference(clause) === undefined && !palindrome.test(clause) && !parityLine.test(clause) &&
       !(dualZipper && (evenZipper.test(clause) || squareDigitRule.test(clause) || regionSumCompanion.test(clause))) &&
-      !(ambiguityZipper && (evenZipper.test(clause) || ambiguityClauses.some(pattern => pattern.test(clause))))) || metadata.antiking === false && printedAntiKing) {
+      !(ambiguityZipper && (evenZipper.test(clause) || ambiguityClauses.some(pattern => pattern.test(clause))))) ||
+    metadata.antiking === false && printedAntiKing || metadata.antiknight === false && printedAntiKnight) {
     throw new Error('This SudokuPad puzzle has authored rules this importer cannot verify.')
   }
   const rules: SizedConstraintRule[] = []
   if (authoredAntiKing) rules.push({ type: 'anti-king' })
+  if (authoredAntiKnight) rules.push({ type: 'anti-knight' })
   if (ambiguityZipper) {
     const zipperLines = readLayeredZipper(lines, overlays, underlays, size, '?')
     const types: SizedLineType[] = [
@@ -663,12 +684,13 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       throw new Error('This SudokuPad export has an unsupported line.')
     }
     const mayBeRegionSum = authoredRegionSum &&
-      ((!authoredAnyThermometers && !authoredRenban && !authoredDoubleArrows && !authoredWhispers) || /^#2ecbff(?:ff)?$/i.test(line.color))
+      ((!authoredAnyThermometers && !authoredRenban && !authoredDoubleArrows && !authoredWhispers && !authoredPalindrome && !authoredParityLine) || /^#2ecbff(?:ff)?$/i.test(line.color))
     const mayBeRenban = authoredRenban &&
-      ((!authoredAnyThermometers && !authoredRegionSum && !authoredDoubleArrows && !authoredWhispers) || /^#f067f0(?:ff)?$/i.test(line.color))
-    const whisperMin = sudokuPadWhispersMinimum(line.color)
+      ((!authoredAnyThermometers && !authoredRegionSum && !authoredDoubleArrows && !authoredWhispers && !authoredPalindrome && !authoredParityLine) || /^#f067f0(?:ff)?$/i.test(line.color))
+    const whisperMin = sudokuPadWhispersMinimum(line.color, whisperStatements)
     const mayBeWhispers = authoredWhispers && whisperMin !== undefined && whispersClauses.includes(whisperMin)
-    const path = readPath(line.wayPoints, size, mayBeRegionSum || authoredDoubleArrows || authoredEntropic || authoredBetween ? size ** 2 + 1 : size)
+    const mayBePalindrome = authoredPalindrome && /^(?:#([a-f\d])\1\1f?|#([a-f\d]{2})\2\2(?:ff)?)$/i.test(line.color)
+    const path = readPath(line.wayPoints, size, mayBeRegionSum || mayBePalindrome || authoredDoubleArrows || authoredEntropic || authoredBetween ? size ** 2 + 1 : size)
     if (authoredBetween) {
       const color = line.color.toLowerCase()
       const circleByCell = new Map<number, number>()
@@ -715,6 +737,10 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       rules.push({ type: 'entropic', cells: path, groups: entropicGroups! })
       continue
     }
+    if (authoredParityLine && /^#(?:f66f?|ff6666(?:ff)?|f00f?|ff0000(?:ff)?)$/i.test(line.color)) {
+      rules.push({ type: 'parity-line', cells: path })
+      continue
+    }
     if (doubleCircles.size) {
       const color = line.color.toLowerCase()
       const circle = (cell: number) => doubleCircles.get(`${color}:${cell}`)
@@ -747,6 +773,8 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
       rules.push({ type: 'region-sum', cells, ...(unique.length !== path.length || cells !== unique ? { segments: [path] } : {}) })
     } else if (matching.length === 0 && mayBeRenban) {
       rules.push({ type: 'renban', cells: path })
+    } else if (matching.length === 0 && mayBePalindrome) {
+      rules.push({ type: 'palindrome', cells: path })
     } else if (matching.length === 0 && mayBeWhispers) {
       rules.push({ type: 'whispers', cells: path, minDifference: whisperMin! })
     } else {
@@ -789,14 +817,24 @@ export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
     authoredDoubleArrows !== rules.some(rule => rule.type === 'double-arrow') ||
     authoredBetween !== rules.some(rule => rule.type === 'between') ||
     authoredAntiKing !== rules.some(rule => rule.type === 'anti-king') ||
+    authoredAntiKnight !== rules.some(rule => rule.type === 'anti-knight') ||
     authoredEntropic !== rules.some(rule => rule.type === 'entropic') ||
+    authoredPalindrome !== rules.some(rule => rule.type === 'palindrome') ||
+    authoredParityLine !== rules.some(rule => rule.type === 'parity-line') ||
     clauses.some(clause => namedEntropicRule.test(clause)) && rules.filter(rule => rule.type === 'entropic').length !== 2 ||
     authoredRegionSum !== rules.some(rule => rule.type === 'region-sum') ||
     authoredZipper !== rules.some(rule => rule.type === 'zipper') || !isSizedRuleList(rules, grid) ||
     (isMiniGrid(grid) && !rules.length)) {
     throw new Error('This SudokuPad export has incomplete or invalid lines.')
   }
-  const { title, author, solution } = metadata
+  const { title, author } = metadata
+  const sourceSolution = metadata.solution
+  let solution: string | undefined
+  if (sourceSolution !== undefined) {
+    if (typeof sourceSolution !== 'string') throw new Error('This SudokuPad export has an invalid authored solution.')
+    solution = zeroBase ? Array.from(sourceSolution, digit =>
+      /^\d$/.test(digit) ? positionSymbol(Number(digit) + 1) : '').join('') : sourceSolution
+  }
   if (solution !== undefined && (!isGridText(solution, grid) || solution.includes('0'))) {
     throw new Error('This SudokuPad export has an invalid authored solution.')
   }

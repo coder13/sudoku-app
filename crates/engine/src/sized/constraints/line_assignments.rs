@@ -47,6 +47,7 @@ impl LineAssignments {
         layout: &SizedGrid,
         paths: &[Vec<usize>],
         types: &[SizedLineType],
+        value_offset: u8,
     ) -> Option<Self> {
         if paths.len() != types.len() || !(2..=MAX_TYPES).contains(&types.len()) {
             return None;
@@ -95,7 +96,8 @@ impl LineAssignments {
                             .map(Line::Entropic)
                     }
                     SizedLineType::RegionSum => {
-                        EqualSums::region_sum(layout, cells, false).map(Line::RegionSum)
+                        EqualSums::region_sum(layout, cells, false, value_offset)
+                            .map(Line::RegionSum)
                     }
                     SizedLineType::Renban => (cells.len() <= size).then_some(Line::Renban),
                 })
@@ -289,6 +291,7 @@ mod tests {
                 },
                 SizedLineType::Renban,
             ],
+            0,
         )
         .unwrap();
         for seed in 0..96u32 {

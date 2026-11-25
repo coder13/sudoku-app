@@ -46,9 +46,13 @@ impl CoupledSums {
                     }
                     let left_count = left.groups().count();
                     let right_count = right.groups().count();
-                    // All grid digits are positive, so a zero total can never
-                    // be supported by either equal-sum rule.
-                    let compatible = (1..=left.max_total)
+                    // Zero is a valid total when the grid uses zero-based values.
+                    let minimum = if left.value_offset == 1 || right.value_offset == 1 {
+                        0
+                    } else {
+                        1
+                    };
+                    let compatible = (minimum..=left.max_total)
                         .filter_map(|total| {
                             let whole = total * left_count;
                             (whole % right_count == 0 && whole / right_count <= right.max_total)
@@ -413,6 +417,24 @@ mod tests {
     use crate::{GridSpec, SizedGrid};
 
     #[test]
+    fn crossed_zero_based_region_sums_keep_zero_as_a_compatible_total() {
+        let layout = SizedGrid::new(GridSpec {
+            size: 4,
+            box_rows: 2,
+            box_columns: 2,
+        })
+        .unwrap();
+        let cells = [0, 8, 1, 9];
+        let sums = [
+            Some(EqualSums::region_sum(&layout, &cells, false, 1).unwrap()),
+            Some(EqualSums::region_sum(&layout, &cells, true, 1).unwrap()),
+        ];
+        let pairs = CoupledSums::compile(&sums);
+        assert_eq!(pairs.len(), 1);
+        assert!(pairs[0].compatible.contains(&[0, 0]));
+    }
+
+    #[test]
     fn crossed_zipper_and_region_sum_support_matches_direct_assignments() {
         let layout = SizedGrid::new(GridSpec {
             size: 4,
@@ -423,7 +445,7 @@ mod tests {
         let line = [0, 5, 6, 3];
         let sums = [
             Some(EqualSums::zipper(&layout, &line).unwrap()),
-            Some(EqualSums::region_sum(&layout, &line, false).unwrap()),
+            Some(EqualSums::region_sum(&layout, &line, false, 0).unwrap()),
         ];
         let pairs = CoupledSums::compile(&sums);
         assert_eq!(pairs.len(), 1);
@@ -473,7 +495,7 @@ mod tests {
         let line = [2, 7, 13, 12];
         let sums = [
             Some(EqualSums::zipper(&layout, &line).unwrap()),
-            Some(EqualSums::region_sum(&layout, &line, false).unwrap()),
+            Some(EqualSums::region_sum(&layout, &line, false, 0).unwrap()),
         ];
         let pairs = CoupledSums::compile(&sums);
         assert_eq!(pairs.len(), 1);
@@ -526,7 +548,7 @@ mod tests {
         let line = [9, 3, 4, 11, 16, 22, 21, 26, 31, 24];
         let sums = [
             Some(EqualSums::zipper(&layout, &line).unwrap()),
-            Some(EqualSums::region_sum(&layout, &line, false).unwrap()),
+            Some(EqualSums::region_sum(&layout, &line, false, 0).unwrap()),
         ];
         let pairs = CoupledSums::compile(&sums);
         assert_eq!(pairs.len(), 1);
@@ -595,7 +617,7 @@ mod tests {
         let line: Vec<_> = (0..16).collect();
         let sums = [
             Some(EqualSums::zipper(&layout, &line).unwrap()),
-            Some(EqualSums::region_sum(&layout, &line, true).unwrap()),
+            Some(EqualSums::region_sum(&layout, &line, true, 0).unwrap()),
         ];
         let pairs = CoupledSums::compile(&sums);
         assert_eq!(pairs.len(), 1);
