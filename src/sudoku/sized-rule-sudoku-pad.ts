@@ -290,7 +290,7 @@ function readArrows(arrows: unknown, overlays: unknown[], size: number) {
   return { rules, unused: overlays.filter((_, index) => !used.has(index)) }
 }
 
-/** Import the reviewed padded Penpa export for the 4×4 X-Sum Twins puzzle. */
+/** Import the reviewed padded Penpa exports for the 4×4 X-Sum Twins puzzles. */
 export function readSudokuPadXSumDots(data: Record<string, unknown>) {
   const fields = ['id', 'settings', 'cellSize', 'cells', 'regions', 'lines', 'underlays', 'overlays', 'metadata', 'cages']
   const { id, settings, cellSize, cells, regions, lines, underlays, overlays, metadata, cages } = data
@@ -314,12 +314,14 @@ export function readSudokuPadXSumDots(data: Record<string, unknown>) {
   }
   const rulesText = typeof sourceMetadata.rules === 'string'
     ? sourceMetadata.rules.trim().split(/\n\s*\n/).map(clause => clause.replace(/\s+/g, ' ')) : []
+  const dotRule = /^Numbers separated by a (white|black) dot (?:are consecutive|have a ratio of 1:2)\. Not all possible dots are necessarily given\.$/i.exec(rulesText[2] ?? '')
   if (rulesText.length !== 3 ||
     !/^Normal 4\s*[x×]\s*4 sudoku rules apply: in the 4\s*[x×]\s*4 grid, place the digits 1-4 once each in every row, column, and box\.$/i.test(rulesText[0]) ||
     !/^X-Sums: numbers outside the grid indicate the sum of the first N digits in that row or column seen from the direction of the clue, where N is the first digit seen by the clue\.$/i.test(rulesText[1]) ||
-    !/^Numbers separated by a white dot are consecutive\. Not all possible dots are necessarily given\.$/i.test(rulesText[2])) {
+    !dotRule || (dotRule[1].toLowerCase() === 'white') !== /are consecutive/i.test(rulesText[2])) {
     throw new Error('This SudokuPad X-Sum export has unsupported or incomplete rules.')
   }
+  const relation = dotRule[1].toLowerCase() === 'white' ? 'consecutive' : 'ratio'
   if (!Array.isArray(cells) || cells.length !== 5 || cells.some(row => !Array.isArray(row) || row.length !== 5)) {
     throw new Error('This SudokuPad X-Sum export needs its blank padded 5 × 5 grid.')
   }
@@ -394,10 +396,12 @@ export function readSudokuPadXSumDots(data: Record<string, unknown>) {
     !samePoint(underlays[0].center as number[], [2.5, 2.5]) || underlays[0].width !== 5 || underlays[0].height !== 5) {
     throw new Error('This SudokuPad X-Sum export has unsupported board artwork.')
   }
-  if (!Array.isArray(overlays) || overlays.length !== 2) throw new Error('This SudokuPad X-Sum export needs both white dots.')
+  if (!Array.isArray(overlays) || overlays.length !== 2) throw new Error('This SudokuPad X-Sum export needs both dots.')
   const dots = overlays.map(overlay => {
     if (!record(overlay) || Object.keys(overlay).some(key => !['borderSize', 'borderColor', 'backgroundColor', 'rounded', 'center', 'width', 'height'].includes(key)) ||
-      overlay.borderSize !== 1.7 || overlay.borderColor !== '#000000' || overlay.backgroundColor !== '#FFFFFF' || overlay.rounded !== 1 ||
+      overlay.backgroundColor !== (relation === 'consecutive' ? '#FFFFFF' : '#000000') || overlay.rounded !== 1 ||
+      (relation === 'consecutive' ? overlay.borderSize !== 1.7 || overlay.borderColor !== '#000000'
+        : overlay.borderSize !== undefined || overlay.borderColor !== undefined) ||
       overlay.width !== 0.286 || overlay.height !== 0.286 || !point(overlay.center)) {
       throw new Error('This SudokuPad X-Sum export has an unsupported dot.')
     }
@@ -414,8 +418,8 @@ export function readSudokuPadXSumDots(data: Record<string, unknown>) {
     for (const clue of clueMarkers) if (samePoint(midpoint(clue.center, clue.firstCenter), dot)) {
       possibilities.push([clue.end, clue.firstCell])
     }
-    if (possibilities.length !== 1) throw new Error('A SudokuPad white dot does not identify exactly one X-Sum relation.')
-    rules.push({ type: 'x-sum-dot', ends: possibilities[0], relation: 'consecutive' })
+    if (possibilities.length !== 1) throw new Error('A SudokuPad dot does not identify exactly one X-Sum relation.')
+    rules.push({ type: 'x-sum-dot', ends: possibilities[0], relation })
   }
   const solutionText = sourceMetadata.solution
   if (typeof sourceMetadata.title !== 'string' || typeof sourceMetadata.author !== 'string' || typeof solutionText !== 'string' || solutionText.length !== 25) {

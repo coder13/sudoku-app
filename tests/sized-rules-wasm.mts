@@ -156,6 +156,22 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
     choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
 })
 
+test('#404 enforces both black-dot ratios from the original X-Sum Twins import', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-black.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  assert.equal(imported.authoredSolution, '4231312424131342')
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  for (let altered = 0; altered < position.rules.length; altered++) {
+    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+      ...position, rules: position.rules.map((rule, index) => index === altered && rule.type === 'x-sum-dot'
+        ? { ...rule, relation: 'consecutive' as const }
+        : rule),
+    } }), 'conflict', `changing black dot ${altered + 1} to a white-dot relation`)
+  }
+})
+
 test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async ({ mock }) => {
   const solution = '123456456123234561561234345612612345'
   const regionLabels = Array.from({ length: 36 }, (_, cell) =>
