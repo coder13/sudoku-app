@@ -28,3 +28,19 @@ test('#414 complete boxless export verifies with all source rules in Wasm', asyn
   assert.deepEqual(shared.variant?.puzzle, game.variant.puzzle)
   assert.deepEqual(shared.authoredArtwork, game.authoredArtwork)
 })
+
+test('#414 keeps the Anti-Knight, Kropki, and Whispers combination required for uniqueness', async () => {
+  const { game } = await prepareImportedPuzzle(source.code)
+  assert.ok(game.variant)
+  const puzzle = game.variant.puzzle
+  const blank = '0'.repeat(81)
+  const analyze = (rules: typeof puzzle.rules) => runEngine({
+    type: 'variant', operation: 'analyze', position: { puzzle: { ...puzzle, rules }, entries: blank },
+  })
+
+  assert.equal(await analyze(puzzle.rules), 'unique')
+  for (const family of ['anti-knight', 'kropki', 'whispers'] as const) {
+    assert.equal(await analyze(puzzle.rules?.filter(rule => rule.type !== family)), 'multiple',
+      `expected the source to become ambiguous without ${family}`)
+  }
+})
