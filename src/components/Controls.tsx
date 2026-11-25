@@ -217,7 +217,6 @@ export function Controls(props: Props) {
                 <button aria-pressed={props.candidateKind === 'corner'} disabled={editsDisabled} onClick={() => props.setCandidateKind('corner')}>Corner</button>
               </div>
             )}
-            {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
             <PuzzleKeypad variant={colors ? 'palette' : gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined}
               label={candidateColors ? 'Candidate colors' : colors ? 'Cell colors' : 'Digit pad'}>
               {choices.map((digit) => {
@@ -249,6 +248,7 @@ export function Controls(props: Props) {
                 )
               })}
             </PuzzleKeypad>
+            {colors && <ColorTargetPicker target={props.colorTarget} disabled={props.disabled} onTarget={props.setColorTarget} />}
             {colors && <Button type="button" className="color-shade-switch"
               title={`Switch color shade (${shortcutLabel(shortcuts.switchColorShade)})`}
               aria-keyshortcuts={shortcutLabel(shortcuts.switchColorShade)}

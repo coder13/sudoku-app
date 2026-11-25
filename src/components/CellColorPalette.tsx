@@ -54,8 +54,8 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
   const alternate = brush === null ? null : alternateColorShade(brush)
   return (
     <section className="cell-color-palette" aria-label="Coloring">
-      <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
+      <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
       <div className="cell-color-actions">
         <Button type="button" className="color-shade-switch" aria-label="Switch shade" aria-keyshortcuts={shadeKey}
           disabled={disabled || alternate === null}

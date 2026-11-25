@@ -1389,15 +1389,11 @@ export function Worktable({
 
   function input(digit: number, inputMode = highlightMode ? 'value' : mode, cells = selected, placeInSelection = false) {
     if (inputMode !== 'color' && digit > gridSize) return
-    if (brush !== null && (inputMode === 'value' || colorTarget === 'candidate')) {
-      if (colorTarget === 'candidate') {
-        if (digit > 0) {
-          const paintHighlightedGroup = candidateCount(highlightedDigitMask) > 1
-          paintCandidateDigits(paintHighlightedGroup ? digitsInMask(highlightedDigitMask) : [digit], brush)
-        }
-        return
+    if (brush !== null && inputMode === 'value') {
+      if (digit > 0) {
+        const paintHighlightedGroup = candidateCount(highlightedDigitMask) > 1 && hasCandidate(highlightedDigitMask, digit)
+        paintCandidateDigits(paintHighlightedGroup ? digitsInMask(highlightedDigitMask) : [digit], brush)
       }
-      highlightColorDigit(digit === 0 || digit === coloringDigit ? null : digit)
       return
     }
     if (colorBrush !== null) setColorBrush(null)
@@ -1469,7 +1465,7 @@ export function Worktable({
   function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
     if (cellDrivenHighlight) setSelected([])
     const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
-    if (brush !== null && colorTarget === 'candidate') {
+    if (brush !== null) {
       const currentMask = highlightedDigitMask || previous
       const digitBit = 1 << (digit - 1)
       const mask = currentMask ^ digitBit
@@ -1488,7 +1484,7 @@ export function Worktable({
   }
 
   function paintCandidateDigits(digits: readonly number[], color: number) {
-    if (!canPaint || colorTarget !== 'candidate' || !digits.length) return
+    if (!canPaint || !digits.length) return
     const selected = new Set(digits.filter((digit) => Number.isInteger(digit) && digit >= 1 && digit <= gridSize))
     if (!selected.size) return
     edit((current) => {
@@ -2026,7 +2022,7 @@ export function Worktable({
         if (digitShortcut > gridSize) return
         event.preventDefault()
         if (event.repeat) return
-        if (shortcutDigit && hasInputSelection && !(brush !== null && colorTarget === 'candidate')) input(shortcutDigit, candidateMode)
+        if (shortcutDigit && hasInputSelection && brush === null) input(shortcutDigit, candidateMode)
         else toggleDigitHighlight(digitShortcut, shortcutDigit ? 'all' : 'any')
       } else if (!draft && !shortcut && highlightedDigit) {
         event.preventDefault()
@@ -2064,7 +2060,9 @@ export function Worktable({
         event.preventDefault()
         if ((brush !== null || colorMode || eraseMode) && event.repeat) return
         const digit = Number(key)
-        if (brush !== null || colorMode || eraseMode) {
+        if (brush !== null) {
+          input(digit, 'value')
+        } else if (colorMode || eraseMode) {
           highlightColorDigit(digit === coloringDigit ? null : digit)
         } else if (solvingDigitShortcuts && selected.length) {
           input(digit, 'value', selected, true)
