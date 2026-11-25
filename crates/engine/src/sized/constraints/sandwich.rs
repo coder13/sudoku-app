@@ -247,4 +247,63 @@ mod tests {
         impossible_domains[size - 1] = 0b100000;
         assert!(!impossible.support(&impossible_domains, &mut [0; MAX_SIZE * MAX_SIZE]));
     }
+
+    #[test]
+    fn four_cell_support_matches_every_latin_row_domain_and_total() {
+        let size = 4;
+        let cells: Vec<_> = (0..size).collect();
+        let clues: Vec<_> = (0..=5)
+            .map(|sum| Sandwich::compile(size, &cells, ClueDirection::East, sum).unwrap())
+            .collect();
+        let rows: Vec<[u8; 4]> = (1..=4)
+            .flat_map(|a| (1..=4).filter(move |&b| b != a).map(move |b| (a, b)))
+            .flat_map(|(a, b)| {
+                (1..=4)
+                    .filter(move |&c| c != a && c != b)
+                    .map(move |c| (a, b, c))
+            })
+            .flat_map(|(a, b, c)| {
+                (1..=4)
+                    .filter(move |&d| d != a && d != b && d != c)
+                    .map(move |d| [a, b, c, d])
+            })
+            .collect();
+
+        for encoded_domains in 0..1u32 << (size * size) {
+            let domains: [u16; 4] =
+                std::array::from_fn(|cell| ((encoded_domains >> (cell * size)) & 0b1111) as u16);
+            let mut expected = [[0u16; 4]; 6];
+            for row in &rows {
+                if row
+                    .iter()
+                    .enumerate()
+                    .all(|(cell, &digit)| domains[cell] & (1 << (digit - 1)) != 0)
+                {
+                    let one = row.iter().position(|&digit| digit == 1).unwrap();
+                    let high = row.iter().position(|&digit| digit == size as u8).unwrap();
+                    let sum: usize = row[one.min(high) + 1..one.max(high)]
+                        .iter()
+                        .map(|&digit| usize::from(digit))
+                        .sum();
+                    for (supported, &digit) in expected[sum].iter_mut().zip(row) {
+                        *supported |= 1 << (digit - 1);
+                    }
+                }
+            }
+
+            for (sum, clue) in clues.iter().enumerate() {
+                let mut actual = [0; MAX_SIZE * MAX_SIZE];
+                assert_eq!(
+                    clue.support(&domains, &mut actual),
+                    expected[sum].iter().any(|&mask| mask != 0),
+                    "domain masks {domains:?}, total {sum}"
+                );
+                assert_eq!(
+                    &actual[..size],
+                    &expected[sum],
+                    "domain masks {domains:?}, total {sum}"
+                );
+            }
+        }
+    }
 }
