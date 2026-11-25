@@ -11,12 +11,13 @@ const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'sol
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
 const FPUZZLES_SIX_FIELDS = new Set([...FPUZZLES_FIELDS, 'antiknight', 'arrow'])
 const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
-const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'clone', 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
+const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'antiknight', 'clone', 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
 const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([34567])\s*[×x]\s*\1)? sudoku rules apply(?:[.:]\s*fill each row, column and region with the digits 1[-–]([34567])\.|[.!])$/i
 const FP_FORTRESS_DESCRIPTION = /^Fortress rules apply: Digits in gr[ae]y cells have to be larger than digits in neighboring white cells\.$/i
 const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
 const FP_ANTI_SUM = /^Anti-Sum(?: \((\d{1,2})\))?: Digits in orthogonally (?:adjacent|connected) cells may not sum to (\d{1,2})\.$/i
+const FP_JIGSAW_ANTI_KNIGHT = /^Anti-knight Sudoku rules apply\.$/i
 const FP_JIGSAW_DOTS = /^A white dot with a number in it implies the difference between two cells\. A black dot with a number in it implies the ratio relationship between two cells\.$/i
 const FP_ROW_COLUMN_SUM = /^Diamond-Sum: Digits in cells horizontally connected by a diamond sum to their row index\. Digits in cells vertically connected by a diamond sum to their column index\.(?: (Not all diamonds are given\.))?$/i
 const PLAIN_EIGHT_RULES = /^\s*(?:normal|standard) 8\s*[×x]\s*8 sudoku rules apply[.!]?\s*$/i
@@ -195,6 +196,15 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 3 | 4 | 5 | 6 |
     rules.push({ type: 'labeled-dots', relation, marks })
   }
   const [, ...clauses] = jigsawRuleClauses(data.ruleset)
+  if (data.antiknight !== undefined && typeof data.antiknight !== 'boolean') {
+    throw new Error('This f-puzzles export has an invalid Anti-Knight flag.')
+  }
+  const antiKnightClauses = clauses.filter(clause => FP_JIGSAW_ANTI_KNIGHT.test(clause))
+  const hasAntiKnight = data.antiknight === true
+  if (hasAntiKnight !== (antiKnightClauses.length === 1)) {
+    throw new Error('This f-puzzles export has Anti-Knight metadata that does not match its ruleset.')
+  }
+  if (hasAntiKnight) rules.push({ type: 'anti-knight' })
   const antiSums = clauses.map(clause => antiSumFromClause(clause, size)).filter(sum => sum !== undefined)
   if (!fpJigsawMetadata(data, antiSums.length > 0)) throw new Error('This f-puzzles export includes unsupported XV rules or cages.')
   const diamonds = fpRowColumnSum(data, clauses, size)
@@ -223,7 +233,7 @@ function knownJigsawRuleset(text: string, size: number) {
   const match = FP_JIGSAW_BASE.exec(base)
   const sizes = match?.slice(1).filter(value => value !== undefined)
   return !!sizes?.length && sizes.every(value => Number(value) === size) && clauses.every(clause =>
-    FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || FP_ROW_COLUMN_SUM.test(clause) ||
+    FP_JIGSAW_ANTI_KNIGHT.test(clause) || FP_JIGSAW_THERMOMETER.test(clause) || FP_JIGSAW_DOTS.test(clause) || FP_ROW_COLUMN_SUM.test(clause) ||
     FP_FORTRESS_DESCRIPTION.test(clause) || antiSumFromClause(clause, size) !== undefined)
 }
 
