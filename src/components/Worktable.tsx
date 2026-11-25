@@ -76,6 +76,7 @@ import {
   redo,
   replaceCandidates,
   restartGame,
+  setAqreShade,
   setGamePaused,
   singleFromCandidates,
   toggleCandidateGroup,
@@ -333,6 +334,7 @@ export function Worktable({
     eliminations,
     displayedCandidates,
     candidateDigitColors,
+    aqreShades,
     puzzle,
     hintPosition,
     conflicts,
@@ -2358,6 +2360,7 @@ export function Worktable({
     algebraicCages: cages,
     sizedRules,
     givens: game.givens,
+    aqreShades,
     givenCellColors: game.givenCellColors,
   }
   const boardAppearance = {
@@ -2478,6 +2481,9 @@ export function Worktable({
         pointerFocusedCell: pointerFocusedCell,
         boardRef: boardRef,
         onCell: canSelectCell && !paintingCandidates ? clickCell : undefined,
+        onAqreShade: canSelectCell && !paintingCandidates && !hintAnnotations
+          ? (cell, shade) => edit(current => setAqreShade(current, cell, shade))
+          : undefined,
         onCellDoubleClick: canSelectCell && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined,
         onPaintCandidate: paintingCandidates ? colorCandidate : undefined,
         dragSelect: canSelectCell && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates),

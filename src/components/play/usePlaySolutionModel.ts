@@ -6,7 +6,7 @@ import { lessonDiagram } from '../../sudoku/lesson-diagram'
 import { techniqueDifficulties } from '../../sudoku/technique-difficulties'
 import { isChainStep } from './play-model'
 import {
-  solutionEndIndex, solutionEndSummary, solutionStatus, verifiedSolutionSummary,
+  solutionCompletionSummary, solutionEndIndex, solutionEndSummary, solutionStatus,
   type SolutionPathState,
 } from '../SolutionPath'
 import { fogView } from '../../sudoku/fog'
@@ -45,9 +45,9 @@ export function usePlaySolutionModel({
     : undefined
   const solutionHintCopy: PuzzleHint | null = replayedSolutionStep
     ? describeHint(replayedSolutionStep.deduction, { difficulty: solutionStepDifficulty, cellReferenceStyle, gridSize })
-    : exactPosition ? verifiedSolutionSummary
+    : exactPosition && trace ? solutionCompletionSummary(trace)
       : trace && solutionStep === trace.steps.length
-        ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined)
+        ? solutionEndSummary(solutionStatus(trace), exactFogSolution || undefined, Boolean('completionProof' in trace && trace.completionProof))
         : null
 
   return {

@@ -5,10 +5,17 @@ use super::{MAX_SIZE, SizedGrid};
 
 /// A digit in an end circle or an X-Sum outside the grid.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "wasm-api", derive(serde::Serialize, serde::Deserialize), serde(untagged, deny_unknown_fields))]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(untagged, deny_unknown_fields)
+)]
 pub enum SizedSumEnd {
     Digit(usize),
-    XSum { direction: ClueDirection, index: usize },
+    XSum {
+        direction: ClueDirection,
+        index: usize,
+    },
 }
 
 #[derive(Debug)]
@@ -40,27 +47,35 @@ impl End {
         let size = layout.size();
         let ray = match end {
             SizedSumEnd::Digit(cell) => {
-                return (cell < layout.cell_count()).then(|| Self { ray: vec![cell], x_sum: false });
+                return (cell < layout.cell_count()).then(|| Self {
+                    ray: vec![cell],
+                    x_sum: false,
+                });
             }
-            SizedSumEnd::XSum { direction, index } if index < size => {
-                (0..size)
-                    .map(|offset| match direction {
-                        ClueDirection::North => Some((size - 1 - offset) * size + index),
-                        ClueDirection::South => Some(offset * size + index),
-                        ClueDirection::East => Some(index * size + offset),
-                        ClueDirection::West => Some(index * size + size - 1 - offset),
-                        _ => None,
-                    })
-                    .collect::<Option<Vec<_>>>()?
-            }
+            SizedSumEnd::XSum { direction, index } if index < size => (0..size)
+                .map(|offset| match direction {
+                    ClueDirection::North => Some((size - 1 - offset) * size + index),
+                    ClueDirection::South => Some(offset * size + index),
+                    ClueDirection::East => Some(index * size + offset),
+                    ClueDirection::West => Some(index * size + size - 1 - offset),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?,
             _ => return None,
         };
         Some(Self { ray, x_sum: true })
     }
 
     fn total(&self, digits: &[u8]) -> usize {
-        let count = if self.x_sum { usize::from(digits[self.ray[0]]) } else { 1 };
-        self.ray[..count].iter().map(|&cell| usize::from(digits[cell])).sum()
+        let count = if self.x_sum {
+            usize::from(digits[self.ray[0]])
+        } else {
+            1
+        };
+        self.ray[..count]
+            .iter()
+            .map(|&cell| usize::from(digits[cell]))
+            .sum()
     }
 
     fn head(&self, length: usize) -> Option<(usize, u8)> {
@@ -69,18 +84,32 @@ impl End {
 }
 
 impl LinkedDoubleArrow {
-    pub(super) fn compile(layout: &SizedGrid, ends: [SizedSumEnd; 2], path: &[usize]) -> Option<Self> {
-        if ends[0] == ends[1] || path.is_empty() || path.len() > layout.cell_count() ||
-            path.iter().enumerate().any(|(index, &cell)| {
-                cell >= layout.cell_count() || path[..index].contains(&cell) ||
-                    ends.contains(&SizedSumEnd::Digit(cell))
+    pub(super) fn compile(
+        layout: &SizedGrid,
+        ends: [SizedSumEnd; 2],
+        path: &[usize],
+    ) -> Option<Self> {
+        if ends[0] == ends[1]
+            || path.is_empty()
+            || path.len() > layout.cell_count()
+            || path.iter().enumerate().any(|(index, &cell)| {
+                cell >= layout.cell_count()
+                    || path[..index].contains(&cell)
+                    || ends.contains(&SizedSumEnd::Digit(cell))
             })
         {
             return None;
         }
         let size = layout.size();
-        let ends = [End::compile(layout, ends[0])?, End::compile(layout, ends[1])?];
-        let mut cells: Vec<_> = path.iter().copied().chain(ends.iter().flat_map(|end| end.ray.iter().copied())).collect();
+        let ends = [
+            End::compile(layout, ends[0])?,
+            End::compile(layout, ends[1])?,
+        ];
+        let mut cells: Vec<_> = path
+            .iter()
+            .copied()
+            .chain(ends.iter().flat_map(|end| end.ray.iter().copied()))
+            .collect();
         cells.sort_unstable();
         cells.dedup();
 
@@ -109,7 +138,9 @@ impl LinkedDoubleArrow {
                 let mut free = Vec::new();
                 for &cell in &cells {
                     let weight = weights[cell];
-                    if let Some((_, pinned)) = heads.iter().flatten().find(|&&(head, _)| head == cell) {
+                    if let Some((_, pinned)) =
+                        heads.iter().flatten().find(|&&(head, _)| head == cell)
+                    {
                         target -= i32::from(weight) * i32::from(*pinned);
                     } else if weight == 0 {
                         free.push(cell);
@@ -121,17 +152,33 @@ impl LinkedDoubleArrow {
                     }
                 }
                 if let Ok(target) = usize::try_from(target) {
-                    cases.push(SumCase { heads, terms, free, target });
+                    cases.push(SumCase {
+                        heads,
+                        terms,
+                        free,
+                        target,
+                    });
                 }
             }
         }
         let largest_target = cases.iter().map(|case| case.target).max().unwrap_or(0);
-        Some(Self { cells, path: path.to_vec(), ends, size, cases, largest_target })
+        Some(Self {
+            cells,
+            path: path.to_vec(),
+            ends,
+            size,
+            cases,
+            largest_target,
+        })
     }
 
     pub(super) fn permits(&self, values: &[u8]) -> bool {
-        self.cells.iter().any(|&cell| values[cell] == 0) ||
-            self.path.iter().map(|&cell| usize::from(values[cell])).sum::<usize>()
+        self.cells.iter().any(|&cell| values[cell] == 0)
+            || self
+                .path
+                .iter()
+                .map(|&cell| usize::from(values[cell]))
+                .sum::<usize>()
                 == self.ends.iter().map(|end| end.total(values)).sum::<usize>()
     }
 
@@ -151,7 +198,12 @@ impl LinkedDoubleArrow {
         prefix[0][0] = 1;
         let mut matched = false;
         for case in &self.cases {
-            if case.heads.iter().flatten().any(|&(cell, digit)| domains[cell] & (1 << (digit - 1)) == 0) {
+            if case
+                .heads
+                .iter()
+                .flatten()
+                .any(|&(cell, digit)| domains[cell] & (1 << (digit - 1)) == 0)
+            {
                 continue;
             }
             let len = case.terms.len();
@@ -198,7 +250,11 @@ impl LinkedDoubleArrow {
                 }
                 allowed = previous;
             }
-            if self.cells.iter().all(|&cell| supported[cell] == domains[cell]) {
+            if self
+                .cells
+                .iter()
+                .all(|&cell| supported[cell] == domains[cell])
+            {
                 break;
             }
         }
@@ -208,8 +264,11 @@ impl LinkedDoubleArrow {
     fn weighted_digit(&self, weight: i8, digit: u8) -> usize {
         let digit = usize::from(digit);
         // Reflect negative terms around size + 1 to use nonnegative shifts.
-        if weight > 0 { digit * weight as usize }
-        else { (self.size + 1 - digit) * usize::from(weight.unsigned_abs()) }
+        if weight > 0 {
+            digit * weight as usize
+        } else {
+            (self.size + 1 - digit) * usize::from(weight.unsigned_abs())
+        }
     }
 }
 
@@ -224,15 +283,24 @@ mod tests {
         let values: Vec<_> = (0..size * size)
             .map(|cell| (1 + (cell / size + cell % size) % size) as u8)
             .collect();
-        let path: Vec<_> = (0..2 * size).filter(|&cell| cell != 13 && cell != 30).collect();
+        let path: Vec<_> = (0..2 * size)
+            .filter(|&cell| cell != 13 && cell != 30)
+            .collect();
         let rule = LinkedDoubleArrow::compile(
             &grid,
             [
-                SizedSumEnd::XSum { direction: ClueDirection::East, index: 14 },
-                SizedSumEnd::XSum { direction: ClueDirection::West, index: 15 },
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::East,
+                    index: 14,
+                },
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::West,
+                    index: 15,
+                },
             ],
             &path,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(rule.permits(&values));
         assert!(rule.largest_target >= 128);
         let mut domains: Vec<_> = values.iter().map(|&digit| 1 << (digit - 1)).collect();

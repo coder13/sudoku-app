@@ -1,7 +1,8 @@
 #![cfg(feature = "variants")]
 
 use sudoku_app_engine::{
-    Analysis, GridSpec, SizedConstraint as Rule, SizedConstraintGrid, SizedDiagonal, SizedParity,
+    Analysis, ClueDirection, GridSpec, SizedConstraint as Rule, SizedConstraintGrid, SizedDiagonal,
+    SizedParity,
 };
 
 const SIX: GridSpec = GridSpec {
@@ -48,10 +49,93 @@ fn diagonal_parity_and_thermometers_all_matter_to_the_solution() {
         Analysis::Multiple
     );
     assert_eq!(grid.analyze(&digits, 1), Analysis::SearchLimit);
-    for (cell, mask) in grid.candidates(&digits).unwrap().iter().enumerate() {
+    for (cell, mask) in grid
+        .candidates(&digits)
+        .unwrap()
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
         if digits[cell] == 0 {
             assert_ne!(mask & (1 << (answer[cell] - 1)), 0);
         }
+    }
+}
+
+#[test]
+fn published_little_killer_between_gjbz_proves_unique_with_a_small_budget() {
+    // https://sudoku.coach/en/s/GJBz
+    let rules = [
+        Rule::LittleKiller {
+            direction: ClueDirection::SouthWest,
+            cells: vec![17, 22, 27, 32],
+            sum: 8,
+        },
+        Rule::LittleKiller {
+            direction: ClueDirection::SouthWest,
+            cells: vec![29, 34],
+            sum: 10,
+        },
+        Rule::LittleKiller {
+            direction: ClueDirection::NorthEast,
+            cells: vec![18, 13, 8, 3],
+            sum: 11,
+        },
+        Rule::Between {
+            cells: vec![20, 15, 16, 10, 4],
+        },
+        Rule::Between {
+            cells: vec![0, 6, 7, 14],
+        },
+    ];
+    let grid = SizedConstraintGrid::new(SIX, &rules).unwrap();
+    let expected = b"164523532641216435345216623154451362".map(|digit| digit - b'0');
+    assert_eq!(grid.analyze(&[0; 36], 1_000), Analysis::Unique);
+    assert_eq!(
+        grid.solve_unique(&[0; 36], 1_000).as_deref(),
+        Ok(expected.as_slice())
+    );
+}
+
+#[test]
+fn quadki_corner_dots_constrain_both_diagonals_and_explain_pair_hints() {
+    let dots = Rule::CornerKropki {
+        consecutive: vec![28, 13],
+        ratio_two: vec![1, 8, 15, 20],
+    };
+    let expected = b"164523523164352641416235641352235416".map(|digit| digit - b'0');
+    let puzzle = SizedConstraintGrid::new(SIX, &[dots]).unwrap();
+    assert_eq!(
+        puzzle.solve_unique(&[0; 36], 1_000_000).as_deref(),
+        Ok(expected.as_slice())
+    );
+
+    let mut placed = [0; 36];
+    placed[1] = 6;
+    let candidates = puzzle.candidates(&placed).unwrap().unwrap();
+    assert_eq!(candidates[8], 1 << (3 - 1));
+    assert!(
+        puzzle
+            .hints(&placed, &[0; 36], 36)
+            .unwrap()
+            .choices
+            .iter()
+            .any(|step| matches!(step,
+                sudoku_app_engine::SizedConstraintStep::Kropki { pair, .. } if pair.cells == [1, 8]
+            ))
+    );
+
+    for corner in [5, 35, 36] {
+        assert!(
+            SizedConstraintGrid::new(
+                SIX,
+                &[Rule::CornerKropki {
+                    consecutive: vec![corner],
+                    ratio_two: vec![],
+                }]
+            )
+            .is_none()
+        );
     }
 }
 
@@ -73,7 +157,7 @@ fn shared_thermometer_cells_propagate_parity_to_the_tip() {
         ],
     )
     .unwrap();
-    let candidates = grid.candidates(&[0; 36]).unwrap();
+    let candidates = grid.candidates(&[0; 36]).unwrap().unwrap();
     assert_eq!(candidates[2], 1 << 3);
     assert_eq!(candidates[8], 1 << 4);
     assert_eq!(candidates[14], 1 << 5);
@@ -81,7 +165,7 @@ fn shared_thermometer_cells_propagate_parity_to_the_tip() {
     let mut placed = [0; 36];
     placed[2] = 3;
     assert_eq!(grid.analyze(&placed, 100_000), Analysis::Conflict);
-    assert!(grid.candidates(&placed).is_none());
+    assert_eq!(grid.candidates(&placed), Ok(None));
     assert!(SizedConstraintGrid::new(SIX, &[Rule::Thermometer { cells: vec![0, 0] }]).is_none());
 }
 
@@ -119,11 +203,70 @@ fn exact_search_proves_the_sparse_jigsaw_thermometer_within_a_small_node_budget(
 }
 
 #[test]
+fn six_by_six_entropic_runaround_preserves_all_rules_and_solution() {
+    use sudoku_app_engine::SizedGrid;
+
+    let labels = [
+        1, 1, 1, 1, 2, 2, 1, 5, 5, 1, 5, 2, 4, 4, 5, 5, 5, 2, 4, 6, 6, 6, 2, 2, 4, 6, 3, 6, 6, 3,
+        4, 4, 3, 3, 3, 3,
+    ];
+    let regions: Vec<Vec<usize>> = (1..=6)
+        .map(|label| {
+            labels
+                .iter()
+                .enumerate()
+                .filter_map(|(cell, &region)| (region == label).then_some(cell))
+                .collect()
+        })
+        .collect();
+    let layout = SizedGrid::with_regions(6, &regions).unwrap();
+    let rules = [
+        Rule::Whispers {
+            cells: vec![4, 5, 11, 16, 21, 26, 31, 30, 24, 19, 14, 9, 4],
+            min_difference: 3,
+        },
+        Rule::Whispers {
+            cells: vec![22, 15, 8, 1, 0, 6, 13, 20, 27, 34, 35, 29, 22],
+            min_difference: 3,
+        },
+        Rule::Xv {
+            five: sudoku_app_engine::MarkedPairs {
+                pairs: vec![[4, 10]],
+                negative: false,
+            },
+            ten: sudoku_app_engine::MarkedPairs::default(),
+        },
+        Rule::Modular {
+            cells: vec![21, 22, 23],
+        },
+        Rule::Modular {
+            cells: vec![20, 26, 32],
+        },
+        Rule::Modular {
+            cells: vec![8, 7, 6],
+        },
+        Rule::Modular {
+            cells: vec![11, 10, 4],
+        },
+    ];
+    let puzzle = SizedConstraintGrid::with_layout(layout, &rules).unwrap();
+    let solution: Vec<u8> = b"614325246531462153351264135642523416"
+        .iter()
+        .map(|digit| digit - b'0')
+        .collect();
+    assert_eq!(puzzle.analyze(&solution, 100_000), Analysis::Unique);
+    assert_eq!(
+        puzzle.solve(&[0; 36], 1_000_000).as_deref(),
+        Some(solution.as_slice())
+    );
+    assert_eq!(puzzle.analyze(&[0; 36], 1_000_000), Analysis::Unique);
+}
+
+#[test]
 fn the_published_boxless_killer_uses_only_rows_columns_and_the_authored_cages() {
     use sudoku_app_engine::{KillerCage, SizedGrid};
     let digits = [0; 49];
-    let expected = b"3542671762314513754265214763415623764375122761354"
-        .map(|digit| digit - b'0');
+    let expected = b"3542671762314513754265214763415623764375122761354".map(|digit| digit - b'0');
     let layout = SizedGrid::without_regions(7).unwrap();
     let mut repeated = digits;
     repeated[0] = 1;
@@ -134,18 +277,62 @@ fn the_published_boxless_killer_uses_only_rows_columns_and_the_authored_cages() 
     assert_eq!(layout.analyze(&digits, 100_000), Analysis::Multiple);
 
     let authored: &[(u16, &[usize])] = &[
-        (26, &[0, 1, 2, 7, 8, 14]), (8, &[3, 4]), (13, &[5, 6, 13]),
-        (5, &[9, 10]), (5, &[11, 12]), (5, &[15, 22]), (17, &[16, 17, 23, 24]),
-        (11, &[18, 25]), (8, &[19, 20]), (10, &[27, 34]), (24, &[26, 32, 33, 38, 39, 40]),
-        (9, &[21, 28]), (15, &[35, 42, 43]), (5, &[29, 36]), (11, &[30, 31]),
-        (9, &[37, 44]), (4, &[45, 46]), (11, &[41, 47, 48]),
+        (26, &[0, 1, 2, 7, 8, 14]),
+        (8, &[3, 4]),
+        (13, &[5, 6, 13]),
+        (5, &[9, 10]),
+        (5, &[11, 12]),
+        (5, &[15, 22]),
+        (17, &[16, 17, 23, 24]),
+        (11, &[18, 25]),
+        (8, &[19, 20]),
+        (10, &[27, 34]),
+        (24, &[26, 32, 33, 38, 39, 40]),
+        (9, &[21, 28]),
+        (15, &[35, 42, 43]),
+        (5, &[29, 36]),
+        (11, &[30, 31]),
+        (9, &[37, 44]),
+        (4, &[45, 46]),
+        (11, &[41, 47, 48]),
     ];
-    let cages = authored.iter().map(|(sum, cells)| KillerCage { cells: cells.to_vec(), sum: *sum }).collect();
-    let puzzle = SizedConstraintGrid::with_layout(layout, &[Rule::KillerCages { cages, cover_grid: true }]).unwrap();
+    let cages = authored
+        .iter()
+        .map(|(sum, cells)| KillerCage {
+            cells: cells.to_vec(),
+            sum: *sum,
+        })
+        .collect();
+    let puzzle = SizedConstraintGrid::with_layout(
+        layout,
+        &[Rule::KillerCages {
+            cages,
+            cover_grid: true,
+        }],
+    )
+    .unwrap();
     assert_eq!(puzzle.analyze(&digits, 100_000), Analysis::Unique);
-    assert_eq!(puzzle.solve(&digits, 100_000).as_deref(), Some(expected.as_slice()));
-    assert!(puzzle.candidates(&digits).unwrap().iter().all(|&mask| mask != 0));
-    assert_eq!(puzzle.trace(digits.to_vec(), vec![0; 49], false).unwrap().last().unwrap().digits, expected);
+    assert_eq!(
+        puzzle.solve(&digits, 100_000).as_deref(),
+        Some(expected.as_slice())
+    );
+    assert!(
+        puzzle
+            .candidates(&digits)
+            .unwrap()
+            .unwrap()
+            .iter()
+            .all(|&mask| mask != 0)
+    );
+    assert_eq!(
+        puzzle
+            .trace(digits.to_vec(), vec![0; 49], false)
+            .unwrap()
+            .last()
+            .unwrap()
+            .digits,
+        expected
+    );
 }
 
 #[test]
@@ -154,29 +341,37 @@ fn boxless_cages_and_extra_houses_use_all_sixteen_digits() {
 
     let layout = SizedGrid::without_regions(16).unwrap();
     let rules = [
-        Rule::ExtraHouse { cells: (0..16).map(|i| 17 * i).collect() },
+        Rule::ExtraHouse {
+            cells: (0..16).map(|i| 17 * i).collect(),
+        },
         Rule::KillerCages {
             cages: vec![
-                KillerCage { cells: vec![0, 17], sum: 31 },
-                KillerCage { cells: vec![33], sum: 16 },
+                KillerCage {
+                    cells: vec![0, 17],
+                    sum: 31,
+                },
+                KillerCage {
+                    cells: vec![33],
+                    sum: 16,
+                },
             ],
             cover_grid: false,
         },
     ];
     let puzzle = SizedConstraintGrid::with_layout(layout, &rules).unwrap();
     let mut digits = [0; 256];
-    let candidates = puzzle.candidates(&digits).unwrap();
+    let candidates = puzzle.candidates(&digits).unwrap().unwrap();
     assert_eq!(candidates[0], 0xc000);
     assert_eq!(candidates[17], 0xc000);
     assert_eq!(candidates[33], 0x8000);
     assert_eq!(candidates[34] & 0xc000, 0);
 
     digits[0] = 16;
-    let candidates = puzzle.candidates(&digits).unwrap();
+    let candidates = puzzle.candidates(&digits).unwrap().unwrap();
     assert_eq!(candidates[17], 0x4000);
     assert_eq!(candidates[34] & 0x8000, 0);
     digits[51] = 16;
-    assert!(puzzle.candidates(&digits).is_none());
+    assert_eq!(puzzle.candidates(&digits), Ok(None));
 }
 
 // https://sudokupad.app/y176p34zew
@@ -185,13 +380,32 @@ fn published_choose_your_fighter_double_arrows_are_unique() {
     let digits = b"030000000000000000000002000000000000".map(|digit| digit - b'0');
     let answer = b"435621162354521463346512253146614235".map(|digit| digit - b'0');
     let rules = [
-        Rule::DoubleArrow { ends: [16, 21], cells: vec![22, 28, 34, 33, 27] },
-        Rule::DoubleArrow { ends: [21, 24], cells: vec![26, 19] },
-        Rule::DoubleArrow { ends: [24, 7], cells: vec![18, 12] },
-        Rule::DoubleArrow { ends: [7, 5], cells: vec![8, 9, 4] },
-        Rule::DoubleArrow { ends: [5, 16], cells: vec![11, 17] },
+        Rule::DoubleArrow {
+            ends: [16, 21],
+            cells: vec![22, 28, 34, 33, 27],
+        },
+        Rule::DoubleArrow {
+            ends: [21, 24],
+            cells: vec![26, 19],
+        },
+        Rule::DoubleArrow {
+            ends: [24, 7],
+            cells: vec![18, 12],
+        },
+        Rule::DoubleArrow {
+            ends: [7, 5],
+            cells: vec![8, 9, 4],
+        },
+        Rule::DoubleArrow {
+            ends: [5, 16],
+            cells: vec![11, 17],
+        },
     ];
-    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let layout = GridSpec {
+        size: 6,
+        box_rows: 2,
+        box_columns: 3,
+    };
     let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
     let result = grid.solve_unique(&digits, 100_000).unwrap();
     assert_eq!(result, answer);
@@ -203,17 +417,48 @@ fn published_hamburger_double_arrows_are_unique() {
     let digits = b"000000000000000000000000000000000000".map(|digit| digit - b'0');
     let answer = b"421653365214142536653421536142214365".map(|digit| digit - b'0');
     let rules = [
-        Rule::DoubleArrow { ends: [0, 4], cells: vec![1, 2, 3] },
-        Rule::DoubleArrow { ends: [11, 35], cells: vec![17, 23, 29] },
-        Rule::DoubleArrow { ends: [34, 30], cells: vec![33, 32, 31] },
-        Rule::DoubleArrow { ends: [12, 24], cells: vec![18] },
-        Rule::DoubleArrow { ends: [7, 10], cells: vec![8, 9] },
-        Rule::DoubleArrow { ends: [10, 22], cells: vec![16] },
-        Rule::DoubleArrow { ends: [22, 19], cells: vec![21, 20] },
-        Rule::DoubleArrow { ends: [19, 22], cells: vec![26, 27] },
-        Rule::DoubleArrow { ends: [19, 22], cells: vec![14, 15] },
+        Rule::DoubleArrow {
+            ends: [0, 4],
+            cells: vec![1, 2, 3],
+        },
+        Rule::DoubleArrow {
+            ends: [11, 35],
+            cells: vec![17, 23, 29],
+        },
+        Rule::DoubleArrow {
+            ends: [34, 30],
+            cells: vec![33, 32, 31],
+        },
+        Rule::DoubleArrow {
+            ends: [12, 24],
+            cells: vec![18],
+        },
+        Rule::DoubleArrow {
+            ends: [7, 10],
+            cells: vec![8, 9],
+        },
+        Rule::DoubleArrow {
+            ends: [10, 22],
+            cells: vec![16],
+        },
+        Rule::DoubleArrow {
+            ends: [22, 19],
+            cells: vec![21, 20],
+        },
+        Rule::DoubleArrow {
+            ends: [19, 22],
+            cells: vec![26, 27],
+        },
+        Rule::DoubleArrow {
+            ends: [19, 22],
+            cells: vec![14, 15],
+        },
     ];
-    let layout = GridSpec { size: 6, box_rows: 2, box_columns: 3 };
+    let layout = GridSpec {
+        size: 6,
+        box_rows: 2,
+        box_columns: 3,
+    };
     let grid = SizedConstraintGrid::new(layout, &rules).unwrap();
     let result = grid.solve_unique(&digits, 100_000).unwrap();
     assert_eq!(result, answer);
@@ -225,19 +470,95 @@ fn published_double_arrow_x_sums_has_one_solution() {
     use sudoku_app_engine::{ClueDirection::*, SizedSumEnd as End};
     let answer = b"614523235461521346346152463215152634".map(|digit| digit - b'0');
     let rules = [
-        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: South, index: 1 }, End::XSum { direction: East, index: 1 }], cells: vec![0] },
-        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: West, index: 3 }, End::XSum { direction: North, index: 2 }], cells: vec![29, 28, 33] },
-        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: East, index: 5 }, End::XSum { direction: North, index: 2 }], cells: vec![30, 31] },
-        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: North, index: 2 }, End::XSum { direction: South, index: 2 }], cells: vec![32, 26, 20, 14, 8, 2] },
-        Rule::LinkedDoubleArrow { ends: [End::XSum { direction: South, index: 2 }, End::XSum { direction: West, index: 1 }], cells: vec![3, 10, 17] },
+        Rule::LinkedDoubleArrow {
+            ends: [
+                End::XSum {
+                    direction: South,
+                    index: 1,
+                },
+                End::XSum {
+                    direction: East,
+                    index: 1,
+                },
+            ],
+            cells: vec![0],
+        },
+        Rule::LinkedDoubleArrow {
+            ends: [
+                End::XSum {
+                    direction: West,
+                    index: 3,
+                },
+                End::XSum {
+                    direction: North,
+                    index: 2,
+                },
+            ],
+            cells: vec![29, 28, 33],
+        },
+        Rule::LinkedDoubleArrow {
+            ends: [
+                End::XSum {
+                    direction: East,
+                    index: 5,
+                },
+                End::XSum {
+                    direction: North,
+                    index: 2,
+                },
+            ],
+            cells: vec![30, 31],
+        },
+        Rule::LinkedDoubleArrow {
+            ends: [
+                End::XSum {
+                    direction: North,
+                    index: 2,
+                },
+                End::XSum {
+                    direction: South,
+                    index: 2,
+                },
+            ],
+            cells: vec![32, 26, 20, 14, 8, 2],
+        },
+        Rule::LinkedDoubleArrow {
+            ends: [
+                End::XSum {
+                    direction: South,
+                    index: 2,
+                },
+                End::XSum {
+                    direction: West,
+                    index: 1,
+                },
+            ],
+            cells: vec![3, 10, 17],
+        },
     ];
     let grid = SizedConstraintGrid::new(SIX, &rules).unwrap();
     let result = grid.solve_unique(&[0; 36], 100_000).unwrap();
     assert_eq!(result, answer);
-    assert!(grid.candidates(&[0; 36]).unwrap().iter().zip(answer).all(|(&mask, digit)| mask & (1 << (digit - 1)) != 0));
+    assert!(
+        grid.candidates(&[0; 36])
+            .unwrap()
+            .unwrap()
+            .iter()
+            .zip(answer)
+            .all(|(&mask, digit)| mask & (1 << (digit - 1)) != 0)
+    );
 
-    let swapped = answer.map(|digit| match digit { 4 => 5, 5 => 4, other => other });
-    assert_eq!(SizedConstraintGrid::new(SIX, &[]).unwrap().analyze(&swapped, 100_000), Analysis::Unique);
+    let swapped = answer.map(|digit| match digit {
+        4 => 5,
+        5 => 4,
+        other => other,
+    });
+    assert_eq!(
+        SizedConstraintGrid::new(SIX, &[])
+            .unwrap()
+            .analyze(&swapped, 100_000),
+        Analysis::Unique
+    );
     assert_eq!(grid.analyze(&swapped, 100_000), Analysis::Conflict);
 }
 
@@ -245,28 +566,55 @@ fn published_double_arrow_x_sums_has_one_solution() {
 fn tournament_6x6_quadruples_preserve_repeated_required_digits() {
     let givens = b"050000600000000004000050000300002000".map(|digit| digit - b'0');
     let answer = b"351462624513215634463251146325532146".map(|digit| digit - b'0');
-    let rules = [(3, vec![1,4,5,6]), (8, vec![4,5,5,6]), (13, vec![1,3,5,6]), (18, vec![1,4,4,6])]
-        .map(|(top_left, digits)| Rule::Quadruple { top_left, digits });
+    let rules = [
+        (3, vec![1, 4, 5, 6]),
+        (8, vec![4, 5, 5, 6]),
+        (13, vec![1, 3, 5, 6]),
+        (18, vec![1, 4, 4, 6]),
+    ]
+    .map(|(top_left, digits)| Rule::Quadruple { top_left, digits });
     let puzzle = SizedConstraintGrid::new(SIX, &rules).unwrap();
-    assert_eq!(puzzle.solve_unique(&givens, 1_000_000).as_deref(), Ok(answer.as_slice()));
+    assert_eq!(
+        puzzle.solve_unique(&givens, 1_000_000).as_deref(),
+        Ok(answer.as_slice())
+    );
     for omitted in [0, 1, 3] {
-        let others = rules.iter().enumerate().filter(|(index, _)| *index != omitted)
-            .map(|(_, rule)| rule.clone()).collect::<Vec<_>>();
-        assert_eq!(SizedConstraintGrid::new(SIX, &others).unwrap().analyze(&givens, 1_000_000), Analysis::Multiple);
+        let others = rules
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != omitted)
+            .map(|(_, rule)| rule.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            SizedConstraintGrid::new(SIX, &others)
+                .unwrap()
+                .analyze(&givens, 1_000_000),
+            Analysis::Multiple
+        );
     }
 }
 
 #[test]
 fn sixteen_digit_quadruples_respect_their_corner_and_the_highest_digit() {
-    let spec = GridSpec { size: 16, box_rows: 4, box_columns: 4 };
+    let spec = GridSpec {
+        size: 16,
+        box_rows: 4,
+        box_columns: 4,
+    };
     let rule = |top_left, digits| Rule::Quadruple { top_left, digits };
-    for invalid in [rule(15, vec![3]), rule(240, vec![3]), rule(3, vec![17]), rule(3, vec![0]), rule(3, vec![])] {
+    for invalid in [
+        rule(15, vec![3]),
+        rule(240, vec![3]),
+        rule(3, vec![17]),
+        rule(3, vec![0]),
+        rule(3, vec![]),
+    ] {
         assert!(SizedConstraintGrid::new(spec, &[invalid]).is_none());
     }
     let grid = SizedConstraintGrid::new(spec, &[rule(3, vec![16, 16])]).unwrap();
     let mut digits = vec![0; 256];
     digits[3] = 16;
-    let masks = grid.candidates(&digits).unwrap();
+    let masks = grid.candidates(&digits).unwrap().unwrap();
     assert_eq!(masks[20], 1 << 15);
     assert_eq!(masks[4] & (1 << 15), 0);
     assert_eq!(masks[19] & (1 << 15), 0);

@@ -1,0 +1,8 @@
+{
+  "issue": 434,
+  "url": "https://sudoku.coach/en/s/F5mq",
+  "title": "Distant Neighbors 2",
+  "description": "Custom Global-Constraint:\n1a. Each 3x3 Box starts with a value of zero. Each Box's marked cell: defines the Box's identity\n- e.g: If the marked cell in any Box is a digit=6, then that Box is identified as [Box 6].\n1b. Any two Boxes sharing a Border= cannot be identified as consecutive digits.\n\n2. There cannot be consecutive digits orthogonally next to a marked cell(s).\n\n3. Any  two 3x3 Boxes sharing a border= a three edge cells next to the neighboring box, must not contain consecutive digits relative to the neighboring Box’s identity.\n- E.g: If identified [Box 4] is next to identified [Box 6]= then a three edge cells in [B6] that touch the [B4], can never contain the digits 345; and a three edge cells in [B4] that touch the [B6], can never contain the digits 567.",
+  "solution": "375681294896542371142937658751324869963158742428796135514273986287469513639815427",
+  "code": "SCv7_32_f2e8b4phdu1j0445vu5rnnjg6i3e1b79r2mti8g688nd8alhi4gpbmk8vtf76tlbkiir51p7f2ucuttmhqlmh79unrk4u4gr0mhdbrr4jpqanhq1dg2245jomfbbhf7i0l7iq1a5liobapgobmmsqn36fsavka1m3611gfrqru3n1l3addu7h87m9jfq31lqdpv2k4em0mm1uoalg12904iai201b25uerqpihji7pr9r9jarpg1pdb9strt3m6ebqedvvn1a0e4t132j8g9djju98rnds1rt3j5i6vqlu0rq0ilo6v8omjqal8lbtdn1ms26sr6g956d0n694p669h8689j8isg77jn49j568mm6bhgj1427ptil0poikajcj3efjno4oo6ks34i8m3j9so14d9ocjp2cipuinh161gc9qd9b7ebj041n755dtv0qnv7ctkffasr6t1o4dim407te7e8rhs7vtvo7sqnbftjbcv713tsfelrl07entc6de68t0nu9qqcbtukshuu"
+}

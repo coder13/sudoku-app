@@ -6,14 +6,13 @@ use crate::CELLS;
 pub(super) const WIDTH: usize = 5;
 // Keep each transient index below 81 KiB of cell bitmaps. Larger families
 // retain the exact linear search without allocating this index.
-const MAX_LAYOUTS: usize = 8192;
-const WORDS: usize = MAX_LAYOUTS / 64;
-type LayoutSets = [[u64; WORDS]; WIDTH];
+const MAX_WORDS: usize = 8192 / 64;
+type LayoutSets<const GROUP: usize, const WORDS: usize> = [[u64; WORDS]; GROUP];
 
-pub(super) struct Packing {
-    families: [IndexedFamily; WIDTH],
-    available: LayoutSets,
-    equivalent: [u8; WIDTH],
+pub(super) struct Packing<const GROUP: usize, const WORDS: usize = MAX_WORDS> {
+    families: [IndexedFamily; GROUP],
+    available: LayoutSets<GROUP, WORDS>,
+    equivalent: [u8; GROUP],
 }
 
 struct IndexedFamily {
@@ -23,16 +22,16 @@ struct IndexedFamily {
     by_cell: Vec<u64>,
 }
 
-impl Packing {
-    pub(super) fn new(families: &[Family<'_>], equivalent: [u8; WIDTH]) -> Option<Self> {
-        let families: &[Family<'_>; WIDTH] = families.try_into().ok()?;
+impl<const GROUP: usize, const WORDS: usize> Packing<GROUP, WORDS> {
+    pub(super) fn new(families: &[Family<'_>], equivalent: [u8; GROUP]) -> Option<Self> {
+        let families: &[Family<'_>; GROUP] = families.try_into().ok()?;
         if families
             .iter()
-            .any(|family| family.layouts.len() > MAX_LAYOUTS || family.allowed >> CELLS != 0)
+            .any(|family| family.layouts.len() > WORDS * 64 || family.allowed >> CELLS != 0)
         {
             return None;
         }
-        let mut available = [[0; WORDS]; WIDTH];
+        let mut available = [[0; WORDS]; GROUP];
         let families =
             std::array::from_fn(|index| IndexedFamily::new(families[index], &mut available[index]));
         Some(Self {
@@ -43,21 +42,40 @@ impl Packing {
     }
 
     pub(super) fn find(&self, pinned: usize, target: usize, witness: &mut [u128; 9]) -> bool {
+        self.find_with_budget(pinned, target, witness, &mut None)
+            .expect("unlimited layout search")
+    }
+
+    pub(super) fn find_with_budget(
+        &self,
+        pinned: usize,
+        target: usize,
+        witness: &mut [u128; 9],
+        remaining_choices: &mut Option<u32>,
+    ) -> Option<bool> {
         let mut available = self.available;
         let family = &self.families[pinned];
         available[pinned][..family.words].copy_from_slice(family.at(target));
-        let mut scratch = [[[0; WORDS]; WIDTH]; WIDTH - 1];
-        self.visit((1 << WIDTH) - 1, pinned, &available, &mut scratch, witness)
+        let mut scratch = [[[0; WORDS]; GROUP]; GROUP];
+        self.visit(
+            (1 << GROUP) - 1,
+            pinned,
+            &available,
+            &mut scratch,
+            witness,
+            remaining_choices,
+        )
     }
 
     fn visit(
         &self,
         remaining: u8,
         pinned: usize,
-        available: &LayoutSets,
-        scratch: &mut [LayoutSets],
+        available: &LayoutSets<GROUP, WORDS>,
+        scratch: &mut [LayoutSets<GROUP, WORDS>],
         witness: &mut [u128; 9],
-    ) -> bool {
+        remaining_choices: &mut Option<u32>,
+    ) -> Option<bool> {
         if remaining.is_power_of_two() {
             let index = remaining.trailing_zeros() as usize;
             let family = &self.families[index];
@@ -65,14 +83,14 @@ impl Packing {
                 if bits != 0 {
                     witness[family.digit] =
                         family.layouts[word * 64 + bits.trailing_zeros() as usize];
-                    return true;
+                    return Some(true);
                 }
             }
-            return false;
+            return Some(false);
         }
         let mut chosen = 0;
         let mut smallest = usize::MAX;
-        for index in 0..WIDTH {
+        for index in 0..GROUP {
             if remaining & (1 << index) == 0 {
                 continue;
             }
@@ -81,7 +99,7 @@ impl Packing {
                 .map(|word| word.count_ones() as usize)
                 .sum();
             if count == 0 {
-                return false;
+                return Some(false);
             }
             if count < smallest {
                 chosen = index;
@@ -105,18 +123,21 @@ impl Packing {
         for (word, &choices) in available[chosen][..family.words].iter().enumerate() {
             let mut choices = choices;
             while choices != 0 {
+                if let Some(remaining) = remaining_choices {
+                    *remaining = remaining.checked_sub(1)?;
+                }
                 let layout_index = word * 64 + choices.trailing_zeros() as usize;
                 let layout = family.layouts[layout_index];
                 choices &= choices - 1;
                 if self.restrict(rest, equivalent, chosen, layout_index, available, next)
-                    && self.visit(rest, pinned, next, scratch, witness)
+                    && self.visit(rest, pinned, next, scratch, witness, remaining_choices)?
                 {
                     witness[family.digit] = layout;
-                    return true;
+                    return Some(true);
                 }
             }
         }
-        false
+        Some(false)
     }
 
     fn restrict(
@@ -125,13 +146,13 @@ impl Packing {
         equivalent: u8,
         selected: usize,
         layout_index: usize,
-        available: &LayoutSets,
-        next: &mut LayoutSets,
+        available: &LayoutSets<GROUP, WORDS>,
+        next: &mut LayoutSets<GROUP, WORDS>,
     ) -> bool {
         let layout = self.families[selected].layouts[layout_index];
         let layout_word = layout_index / 64;
         let layout_bit = layout_index % 64;
-        for index in 0..WIDTH {
+        for index in 0..GROUP {
             if remaining & (1 << index) == 0 {
                 continue;
             }
@@ -166,7 +187,7 @@ impl Packing {
 }
 
 impl IndexedFamily {
-    fn new(family: Family<'_>, available: &mut [u64; WORDS]) -> Self {
+    fn new(family: Family<'_>, available: &mut [u64]) -> Self {
         let layouts: Vec<_> = family
             .layouts
             .iter()

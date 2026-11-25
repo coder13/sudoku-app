@@ -553,6 +553,18 @@ function validCells(list: unknown, min: number) {
     new Set(list).size === list.length && list.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < 81)
 }
 
+function validMagicSquareCells(cells: unknown) {
+  if (!validCells(cells, 9)) return false
+  const indices = cells as number[]
+  if (indices.length !== 9) return false
+  const rows = indices.map(cell => Math.floor(cell / 9))
+  const columns = indices.map(cell => cell % 9)
+  const minRow = Math.min(...rows), minColumn = Math.min(...columns)
+  return Math.max(...rows) - minRow === 2 && Math.max(...columns) - minColumn === 2 &&
+    Array.from({ length: 3 }, (_, row) => Array.from({ length: 3 }, (_, column) =>
+      (minRow + row) * 9 + minColumn + column)).flat().every(cell => indices.includes(cell))
+}
+
 function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
   if (!Array.isArray(regions) || regions.length > 9 || !partial && regions.length !== 9 ||
     !regions.every((region) => validCells(region, 9) && region.length === 9) ||
@@ -585,13 +597,80 @@ function isPlayableRule(rule: VariantRule): boolean {
       Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
       rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
     case 'lettered-quadruples': return Object.keys(rule).length === 2 && validLetteredQuadruples(rule.clues)
-    case 'global-entropy': return Object.keys(rule).every(key => key === 'type')
+    case 'global-entropy': {
+      if (Object.keys(rule).some(key => key !== 'type' && key !== 'groups')) return false
+      if (rule.groups === undefined) return true
+      if (!Array.isArray(rule.groups) || rule.groups.length !== 3 ||
+        !rule.groups.every(group => Array.isArray(group) && group.length > 0 &&
+          group.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9))) return false
+      const digits = rule.groups.flat()
+      return digits.length === 9 && new Set(digits).size === 9 &&
+        digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9) &&
+        rule.groups.map(group => [...group].sort((a, b) => a - b).join(','))
+          .sort().join('|') === '1,2,3|4,5,6|7,8,9'
+    }
     case 'entropy-window-group': {
       if (Object.keys(rule).some(key => !['type', 'cells', 'group'].includes(key)) ||
         !Array.isArray(rule.cells) || rule.cells.length !== 4 || !['low', 'middle', 'high'].includes(rule.group)) return false
       const [topLeft, topRight, bottomLeft, bottomRight] = rule.cells
       return Number.isInteger(topLeft) && topLeft >= 0 && topLeft < 72 && topLeft % 9 < 8 &&
         topRight === topLeft + 1 && bottomLeft === topLeft + 9 && bottomRight === topLeft + 10
+    }
+    case 'digit-order': {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'digits'].includes(key)) ||
+        !Array.isArray(rule.cells) || rule.cells.length !== 9 || !validCells(rule.cells, 9) ||
+        !Array.isArray(rule.digits) || rule.digits.length !== 3 || ![[1, 2, 3], [4, 5, 6], [7, 8, 9]].some(group =>
+          group.every((digit, index) => rule.digits[index] === digit))) return false
+      const row = Math.floor(rule.cells[0] / 9), column = rule.cells[0] % 9
+      return rule.cells.every((cell, index) => cell === row * 9 + index) ||
+        rule.cells.every((cell, index) => cell === row * 9 + 8 - index) ||
+        rule.cells.every((cell, index) => cell === index * 9 + column) ||
+        rule.cells.every((cell, index) => cell === (8 - index) * 9 + column)
+    }
+    case 'forbidden-entropic-connection': return Object.keys(rule).every(key => key === 'type' || key === 'cells') &&
+      Array.isArray(rule.cells) && rule.cells.length === 4 && validCells(rule.cells, 4) &&
+      rule.cells.slice(1).every((cell, index) => cellsShareEdge(rule.cells[index], cell))
+    case 'aqre': {
+      if (Object.keys(rule).some(key => !['type', 'kind', 'regions', 'givenShades'].includes(key)) ||
+        rule.kind !== 'snake' && rule.kind !== 'plus' || !Array.isArray(rule.regions) || rule.regions.length === 0 ||
+        !Array.isArray(rule.givenShades)) return false
+      const cells = rule.regions.flatMap(region => region?.cells ?? [])
+      if (cells.length !== 81 || new Set(cells).size !== 81 || !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)) return false
+      if (!rule.regions.every(region => region && Object.keys(region).every(key => ['cells', 'count'].includes(key)) &&
+        validCells(region.cells, 1) && connectedGridCells(region.cells, 9) &&
+        (region.count === undefined || region.count?.type === 'fixed' && Number.isInteger(region.count.value) &&
+          region.count.value >= 0 && region.count.value <= region.cells.length || region.count?.type === 'digit-cell' &&
+          Number.isInteger(region.count.cell) && region.cells.includes(region.count.cell)) &&
+        (rule.kind !== 'plus' || region.count?.type === 'digit-cell'))) return false
+      const shadeCells = rule.givenShades.map(given => given?.cell)
+      return rule.givenShades.every(given => given && Object.keys(given).length === 2 &&
+        Number.isInteger(given.cell) && given.cell >= 0 && given.cell < 81 &&
+        (given.shade === 'unshaded' || given.shade === 'shaded')) && new Set(shadeCells).size === shadeCells.length
+    }
+    case 'neighbor-match': return Object.keys(rule).every(key => key === 'type' || key === 'clues') &&
+      Array.isArray(rule.clues) && rule.clues.length > 0 && rule.clues.every(clue => clue &&
+        Object.keys(clue).every(key => key === 'cell' || key === 'digit') && Number.isInteger(clue.cell) &&
+        clue.cell >= 0 && clue.cell < 81 && Number.isInteger(clue.digit) && clue.digit >= 1 && clue.digit <= 9) &&
+      new Set(rule.clues.map(clue => clue.cell)).size === rule.clues.length
+    case 'magic-square': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validMagicSquareCells(rule.cells)
+    case 'unknown-cage-sums': {
+      if (Object.keys(rule).some(key => !['type', 'cages', 'consecutivePairs'].includes(key)) ||
+        !Array.isArray(rule.cages) || rule.cages.length !== 15 || !Array.isArray(rule.consecutivePairs)) return false
+      const cells = rule.cages.flat()
+      return rule.cages.every(cage => validCells(cage, 1) && cage.length <= 9) &&
+        cells.length === 81 && new Set(cells).size === 81 &&
+        rule.consecutivePairs.every(pair => Array.isArray(pair) && pair.length === 2 &&
+          Number.isInteger(pair[0]) && Number.isInteger(pair[1]) && pair[0] >= 0 && pair[0] < 15 &&
+          pair[1] >= 0 && pair[1] < 15 && pair[0] !== pair[1]) &&
+        new Set(rule.consecutivePairs.map(pair => [...pair].sort((a, b) => a - b).join(':'))).size === rule.consecutivePairs.length
+    }
+    case 'distant-neighbors': {
+      const boxes = Array.from({ length: 9 }, () => 0)
+      return Object.keys(rule).every(key => key === 'type' || key === 'markedCells') &&
+        Array.isArray(rule.markedCells) && rule.markedCells.length === 9 &&
+        rule.markedCells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81 &&
+          (boxes[Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)]++ === 0)) &&
+        boxes.every(count => count === 1)
     }
     case 'anti-knight': case 'anti-king': return true
     case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
@@ -631,7 +710,9 @@ function isPlayableRule(rule: VariantRule): boolean {
       Math.abs(Math.floor(rule.pill[0] / 9) - Math.floor(rule.pill[1] / 9)) <= 1 && Math.abs(rule.pill[0] % 9 - rule.pill[1] % 9) <= 1 &&
       (rule.fromTens === undefined || typeof rule.fromTens === 'boolean')
     case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
-      cage && validCells(cage.cells, 1) && Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45)
+      cage && Object.keys(cage).every(key => ['cells', 'sum', 'showSum'].includes(key)) && validCells(cage.cells, 1) &&
+      Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45 &&
+      (cage.showSum === undefined || typeof cage.showSum === 'boolean'))
     case 'labeled-dots': {
       if (rule.relation !== 'ratio' && rule.relation !== 'difference' ||
         rule.negative !== undefined && typeof rule.negative !== 'boolean') return false
@@ -699,6 +780,13 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   skyscrapers: VARIANTS.skyscrapers.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
   'entropy-window-group': 'Global Entropy shape',
+  'digit-order': 'Digit order',
+  'forbidden-entropic-connection': 'Broken Entropic connection',
+  aqre: 'Aqre',
+  'neighbor-match': 'Neighbor Match',
+  'magic-square': 'Magic Square',
+  'unknown-cage-sums': 'Unique Cages',
+  'distant-neighbors': 'Distant Neighbors',
   renban: PUZZLE_VARIANTS.renban.name,
   'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
   xv: PUZZLE_VARIANTS.xv.name,
@@ -793,6 +881,18 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         descriptions.push(`In each marked 2 × 2 window, the four cells contain at least one low, middle, and high digit. The ${group} shape shows which digit group appears twice.`)
         break
       }
+      case 'digit-order': {
+        const first = rule.cells[0], last = rule.cells.at(-1)!
+        const step = rule.cells[1] - first
+        const side = step === 9 ? 'top' : step === -9 ? 'bottom' : step === 1 ? 'left' : 'right'
+        const house = first % 9 === last % 9
+          ? `column ${first % 9 + 1}` : `row ${Math.floor(first / 9) + 1}`
+        descriptions.push(`The ${rule.digits.join(', ')} in ${house} appear in ascending order from the ${side}.`)
+        break
+      }
+      case 'forbidden-entropic-connection':
+        descriptions.push('Across this broken connection, at least one of the two triples cannot contain one low, one middle, and one high digit.')
+        break
       case 'entropic':
         descriptions.push(PUZZLE_VARIANTS.entropic.rule)
         break
@@ -893,6 +993,22 @@ function describedVariantRules(puzzle: VariantPuzzle) {
       case 'lettered-quadruples':
         descriptions.push('Each letter stands for the same digit throughout the puzzle. Different letters stand for different digits.',
           'Each letter in a circle needs a separate cell among the four surrounding cells.')
+        break
+      case 'neighbor-match':
+        descriptions.push(...rule.clues.map(({ cell, digit }) =>
+          `Neighbor-match clue ${digit} in R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}: at least one orthogonally adjacent cell contains ${digit}.`))
+        break
+      case 'magic-square':
+        descriptions.push('The three rows, three columns, and two diagonals in the marked 3 × 3 area each sum to 15.')
+        break
+      case 'unknown-cage-sums':
+        descriptions.push('Cages have unknown totals, and digits cannot repeat within a cage. The 15 cage totals form a consecutive sequence with no repeats. A C link between two cages means their totals differ by 1.')
+        break
+      case 'distant-neighbors':
+        descriptions.push('The digit in each marked cell gives the identity of its 3 × 3 box.')
+        descriptions.push('Boxes that share an edge cannot have consecutive identities.')
+        descriptions.push('Digits in cells orthogonally next to a marked cell cannot be consecutive.')
+        descriptions.push('For boxes that share an edge, the three cells along each facing border cannot contain a digit equal to, one below, or one above the neighboring box’s identity.')
         break
       case 'quadruple': case 'quadruple-sum':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)

@@ -254,7 +254,11 @@ fn transpose_hint(hint: &Hint) -> Hint {
     let evidence = match &hint.evidence {
         HintEvidence::Cell(cell) => HintEvidence::Cell(transpose(*cell)),
         HintEvidence::House(house) => HintEvidence::House(transpose_house(*house)),
-        HintEvidence::DirectPlacement { house, premise, removed } => {
+        HintEvidence::DirectPlacement {
+            house,
+            premise,
+            removed,
+        } => {
             let mut removed: Vec<_> = removed.iter().copied().map(transpose).collect();
             removed.sort_unstable();
             let premise = transpose_hint(&Hint {
@@ -546,7 +550,10 @@ fn transpose_hint(hint: &Hint) -> Hint {
             }
         }
         HintEvidence::MultiColoring {
-            groups, links, bridge, other_bridge,
+            groups,
+            links,
+            bridge,
+            other_bridge,
         } => HintEvidence::MultiColoring {
             groups: groups.clone().map(|colors| {
                 colors.map(|values| {

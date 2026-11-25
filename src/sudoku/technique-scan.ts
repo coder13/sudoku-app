@@ -7,8 +7,9 @@ const cachedCounts = new Map<string, TechniqueCounts>()
 type Scan = { observers: number; pending: Map<string, Promise<number>>; worker: ReturnType<typeof createCountWorker> }
 const scans = new Map<string, Scan>()
 
-export function techniqueScanKey(values: string, eliminations?: readonly number[], puzzle?: VariantPuzzle, visibility?: VariantVisibility) {
-  const key = `${values}:${eliminations?.join(',') ?? ''}:${puzzle ? JSON.stringify(puzzle) : 'classic'}`
+export function techniqueScanKey(values: string, eliminations?: readonly number[], puzzle?: VariantPuzzle,
+  visibility?: VariantVisibility, techniqueOrder?: readonly string[]) {
+  const key = `${values}:${eliminations?.join(',') ?? ''}:${puzzle ? JSON.stringify(puzzle) : 'classic'}:${JSON.stringify(techniqueOrder ?? [])}`
   return puzzle && visibility ? `${key}:${JSON.stringify(visibility)}` : key
 }
 
@@ -16,10 +17,12 @@ export function cachedTechniqueCounts(key: string): TechniqueCounts {
   return cachedCounts.get(key) ?? emptyCounts
 }
 
-export function watchTechniqueScan(values: string, eliminations?: readonly number[], position?: VariantPosition, visibility?: VariantVisibility) {
-  const key = techniqueScanKey(values, eliminations, position?.puzzle, visibility)
+export function watchTechniqueScan(values: string, eliminations?: readonly number[], position?: VariantPosition,
+  visibility?: VariantVisibility, techniqueOrder?: readonly string[]) {
+  const key = techniqueScanKey(values, eliminations, position?.puzzle, visibility, techniqueOrder)
   const scan = scans.get(key) ?? {
-    observers: 0, pending: new Map<string, Promise<number>>(), worker: createCountWorker(values, eliminations, position, visibility),
+    observers: 0, pending: new Map<string, Promise<number>>(),
+    worker: createCountWorker(values, eliminations, position, visibility, techniqueOrder),
   }
   scans.set(key, scan)
   scan.observers++

@@ -8,14 +8,18 @@ import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
 import { runEngine, type SizedConstraintRule } from '../src/sudoku/engine.ts'
-import { decodeCoachSix } from '../src/sudoku/puzzle-import.ts'
+import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import worker from '../cloudflare/pages/_worker.js'
 
 useWasmWorker(process.env.SIZED_COACH_WASM)
 
 const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
 const easyThermoSolution = '1234341223414123'
+const coachBetween = JSON.parse(readFileSync(new URL('./fixtures/little-killer-between-GJBz.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string }
+}
 
 const constraints = [
   { type: 'diagonalPositive', segments: [] },
@@ -41,6 +45,147 @@ test('six-by-six Coach constraints reach Wasm together and change the exact solu
     const partial = { ...position, rules: rules.filter(rule => rule.type !== ruleType) }
     assert.equal(await runEngine({ type: 'sized-variant', position: partial, operation: 'analyze' }), 'multiple')
   }
+})
+
+test('#7 keeps both Between paths and validates the published 6 × 6 completion in Wasm', async () => {
+  const imported = await detectPuzzle(coachBetween.metadata.sudoku)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.ok(imported.grid && imported.sizedRules)
+  assert.deepEqual(imported.sizedRules?.filter(rule => rule.type === 'between'), [
+    { type: 'between', cells: [20, 15, 16, 10, 4] },
+    { type: 'between', cells: [0, 6, 7, 14] },
+  ])
+  const completion = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2,
+    grid: imported.grid,
+    digits: Array.from(coachBetween.metadata.solution, Number),
+    rules: imported.sizedRules,
+  } })
+  assert.equal(completion, 'unique')
+  const blank = {
+    version: 2 as const,
+    grid: imported.grid,
+    digits: Array(36).fill(0),
+    rules: imported.sizedRules,
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: blank }), 'unique')
+  assert.equal(imported.sizedRules.filter(rule => rule.type === 'little-killer').length, 3)
+})
+
+test('sized Coach current-state progress reaches Preview, Play and saved reload', async () => {
+  const userDigits = Array(36).fill('0')
+  userDigits[0] = expected[0]
+  const center = Array(36).fill('0')
+  center[1] = '8'
+  const corner = Array(36).fill('0')
+  corner[2] = '16'
+  const progressCode = coachCode({
+    gridSize: 6,
+    givenDigits: '000000000000000000000000000030000400',
+    givenConstraints: constraints,
+    regions: Array.from({ length: 36 }, (_, cell) => Math.floor(cell / 12) * 2 + Math.floor(cell % 6 / 3)),
+    userDigits: userDigits.join(''),
+    userCellCandidates: center.join('-'),
+    userBoxCandidates: corner.join('-'),
+  })
+  const preview = await prepareImportedPuzzle(progressCode)
+  assert.equal(preview.hasProgress, true)
+  assert.equal(preview.game.position.entries, expected[0] + '0'.repeat(35))
+  assert.equal(preview.game.position.center[1], 4)
+  assert.equal(preview.game.position.corner[2], 8)
+  assert.equal(preview.game.started, true)
+  const restored = readGame(preview.game.id, JSON.stringify(preview.game))
+  assert.equal(restored?.position.entries, preview.game.position.entries)
+  assert.equal(restored?.position.center[1], 4)
+  assert.equal(restored?.position.corner[2], 8)
+  assert.deepEqual(restored?.sized, preview.game.sized)
+})
+
+test('Cmki Entropic Runaround imports through raw code and short-link Preview and Play with all rules', async ({ mock }) => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
+    .find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'Cmki', sudoku: fixture.code, name: fixture.title, blocked: false,
+    custom_constraints: true, description: fixture.description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === fixture.url
+    ? Promise.resolve(new Response(page()))
+    : typeof path === 'string' && path.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  const previews = [await prepareImportedPuzzle(fixture.code), await prepareImportedPuzzle(fixture.url)]
+  const [raw, linked] = previews
+  assert.equal(raw.format, 'Sudoku Coach')
+  assert.equal(linked.format, 'Sudoku Coach')
+  assert.equal(linked.game.title, fixture.title)
+  assert.deepEqual(linked.game.grid, raw.game.grid)
+  assert.deepEqual(linked.game.sized?.rules, raw.game.sized?.rules)
+  for (const { game } of previews) {
+    assert.deepEqual(game.grid, {
+      size: 6,
+      regions: [[0, 1, 2, 3, 6, 9], [4, 5, 11, 17, 22, 23], [7, 8, 10, 14, 15, 16],
+        [12, 13, 18, 24, 30, 31], [19, 20, 21, 25, 27, 28], [26, 29, 32, 33, 34, 35]],
+    })
+    assert.equal(game.sized?.rules.length, 7)
+    assert.equal(game.sized?.solution, fixture.solution)
+  }
+  const game = linked.game
+  const position = { digits: Array.from(game.givens, Number), rules: game.sized!.rules, grid: game.grid!, version: 2 as const }
+  assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
+  const solved = await runEngine({ type: 'sized-variant', position, operation: 'solve' })
+  assert.equal(solved?.digits.join(''), fixture.solution)
+  const finished = fillEntries(game, fixture.solution)
+  assert.equal(isSolved(finished), true)
+  const restored = readGame(game.id, JSON.stringify(finished))
+  assert.deepEqual(restored?.grid, game.grid)
+  assert.deepEqual(restored?.sized?.rules, game.sized?.rules)
+  assert.equal(restored?.sized?.solution, fixture.solution)
+  assert.equal(restored?.position.entries, fixture.solution)
+})
+
+test('Coach 5 × 5 fractional regions and Little Killer clues reach the sized engine together', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/coach-fractional-regions.json', import.meta.url), 'utf8'))
+  const decoded = await detectPuzzle(fixture.code)
+  assert.ok(decoded.grid && decoded.sizedRules)
+  const position = { version: 2 as const, digits: Array.from(decoded.givens, Number), rules: decoded.sizedRules, grid: decoded.grid }
+  assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
+  const solved = await runEngine({ type: 'sized-variant', position, operation: 'solve' })
+  assert.equal(solved?.digits.join(''), fixture.solution)
+})
+
+test('#453 fractional regions work on a wide 12 × 12 Latin grid', async () => {
+  const size = 12
+  const width = size * 2
+  const pieces = Array.from({ length: 4 }, (_, piece) => ({
+    color: ['#aa0000', '#00aa00', '#0000aa', '#aaaa00'][piece],
+    quarters: Array.from({ length: width * 6 }, (_, offset) => piece * width * 6 + offset),
+  }))
+  const solution = Array.from({ length: size }, (_, row) =>
+    Array.from({ length: size }, (_, column) => (row + column) % size + 1)).flat()
+  const position = {
+    version: 2 as const,
+    grid: { size, noRegions: true as const },
+    digits: solution,
+    rules: [{ type: 'fractional-regions' as const, pieces }],
+  }
+
+  assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
+})
+
+test('#453 imports the fractional-region puzzle through Preview, Play and saved reload', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/coach-fractional-regions.json', import.meta.url), 'utf8'))
+  const preview = await prepareImportedPuzzle(fixture.code)
+  assert.equal(preview.format, 'Sudoku Coach')
+  assert.deepEqual(preview.game.grid, { size: 5, noRegions: true })
+  assert.equal(preview.game.sized?.rules.filter(rule => rule.type === 'little-killer').length, 3)
+  assert.equal(preview.game.sized?.rules.filter(rule => rule.type === 'fractional-regions').length, 1)
+  assert.equal(preview.game.sized?.solution, fixture.solution)
+  const finished = fillEntries(preview.game, fixture.solution)
+  assert.equal(isSolved(finished), true)
+  const restored = readGame(finished.id, JSON.stringify(finished))
+  assert.deepEqual(restored?.sized?.rules, finished.sized?.rules)
+  assert.equal(restored?.position.entries, fixture.solution)
 })
 
 test('Easy Thermo 1 reaches Preview with both original paths and its unique solution', async () => {
@@ -215,4 +360,39 @@ test('imported Mini Region Sum and Renban lines jointly determine the same grid 
   assert.equal(replay.board, answer)
   assert.ok(replay.steps.some(step => step.technique === 'sized-region-sum'))
   assert.ok(replay.steps.some(step => step.technique === 'sized-renban'))
+})
+
+test('#457 verifies a 4 × 4 Jigsaw and companion Renban through Import Preview', async () => {
+  const givens = '1234234134124123'
+  const regions = [1, 1, 2, 2, 3, 1, 4, 2, 3, 1, 4, 2, 3, 3, 4, 4]
+  const payload = coachCode({ gridSize: 4, regions, givenDigits: givens, givenConstraints: [
+    { type: 'renban', settings: {}, segments: [{ cells: [0, 1, 2], parameters: {} }] },
+  ] })
+  const { game } = await prepareImportedPuzzle(payload)
+  assert.deepEqual(game.grid, {
+    size: 4, regions: [[0, 1, 5, 9], [2, 3, 7, 11], [4, 8, 12, 13], [6, 10, 14, 15]],
+  })
+  assert.deepEqual(game.sized?.rules, [{ type: 'renban', cells: [0, 1, 2] }])
+  assert.equal(game.sized?.solution, givens)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: game.grid!, digits: Array.from(givens, Number), rules: game.sized!.rules,
+  } }), 'unique')
+})
+
+test('#457 solves the published Janko Chaos 001 control through Import Preview', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/janko-chaos-sudoku-001.json', import.meta.url), 'utf8')) as {
+    size: 4; givens: string; regionLabels: number[]; solution: string
+  }
+  const payload = coachCode({ gridSize: source.size, regions: source.regionLabels, givenDigits: source.givens })
+  const { game } = await prepareImportedPuzzle(payload)
+  assert.ok(game.grid && game.sized)
+  assert.deepEqual(game.grid, {
+    size: 4, regions: [[0, 1, 2, 4], [3, 5, 6, 7], [8, 9, 12, 13], [10, 11, 14, 15]],
+  })
+  assert.equal(game.givens, source.givens)
+  assert.equal(game.sized.solution, source.solution)
+  const result = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: game.grid, digits: Array.from(source.givens, Number), rules: game.sized.rules,
+  } })
+  assert.equal(result, 'unique')
 })

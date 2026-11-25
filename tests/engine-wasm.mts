@@ -100,6 +100,14 @@ test('technique counts match full deductions before and after a candidate edit',
   assert.equal(result.code, 'invalid-eliminations')
 })
 
+test('technique count scan assigns an overlapping candidate to its earlier technique', async () => {
+  const { run } = engineRequests()
+  const solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const values = `0${solved.slice(1)}`
+  assert.equal(await run({ type: 'technique-count', values, technique: 'hidden-single', techniqueOrder: ['hidden-single'] }), 1)
+  assert.equal(await run({ type: 'technique-count', values, technique: 'hidden-single', techniqueOrder: ['full-house', 'hidden-single'] }), 0)
+})
+
 test('multi-coloring exports both two-group deductions and drops a broken proof', async () => {
   const { run } = engineRequests()
   const technique = 'multi-coloring'
@@ -432,10 +440,10 @@ test('Unique Rectangle chains and Nice Loops are opt-in and carry the swap premi
   }
 })
 
-test('Pattern Overlay through five digits offers replayable moves and completes an expert stall', async () => {
+test('Pattern Overlay through seven digits offers replayable moves and completes an expert stall', async () => {
   const { run } = engineRequests()
   const ids = ['pattern-overlay', 'pairwise-pattern-overlay', 'triple-pattern-overlay',
-    'quadruple-pattern-overlay', 'quintuple-pattern-overlay']
+    'quadruple-pattern-overlay', 'quintuple-pattern-overlay', 'sextuple-pattern-overlay', 'septuple-pattern-overlay']
   const { techniques, defaultOrder } = await run({ type: 'techniques' })
   for (const [index, technique] of ids.entries()) {
     const metadata = techniques.find(candidate => candidate.id === technique)
@@ -466,9 +474,66 @@ test('Pattern Overlay through five digits offers replayable moves and completes 
     'unique-rectangle-aic', 'unique-rectangle-discontinuous-nice-loop', 'unique-rectangle-continuous-nice-loop')
   const stalled = await run({ type: 'rate', values, techniqueOrder })
   assert.equal(stalled.status, 'stalled')
-  techniqueOrder.splice(techniqueOrder.indexOf('forcing-chain'), 0, ...ids)
+  techniqueOrder.splice(techniqueOrder.indexOf('forcing-chain'), 0, ...ids.slice(0, 5))
   const solved = await run({ type: 'rate', values, techniqueOrder })
   assert.deepEqual(solved.status, { solved: 'impossible' })
+})
+
+test('Wider Pattern Overlay completes puzzles that stall with narrower techniques', async () => {
+  const { run } = engineRequests()
+  const { difficultyOrder } = await run({ type: 'techniques' })
+  const wide = ['sextuple-pattern-overlay', 'septuple-pattern-overlay']
+  assert.deepEqual(difficultyOrder.slice(-2), wide)
+  const order = [...difficultyOrder.slice(0, -2), 'multi-coloring']
+  const examples = [
+    '000000012000003004004020500001060005070008000300900000006010020080006000900700600',
+    '000000012000003004004010500006020001070006000800900600002060050090007000300800000',
+  ]
+  for (const [index, values] of examples.entries()) {
+    const stalled = await run({ type: 'rate', values, techniqueOrder: [...order, ...wide.slice(0, index)] })
+    assert.equal(stalled.status, 'stalled')
+    const trace = await run({ type: 'logical-solve', values, techniqueOrder: [...order, ...wide.slice(0, index + 1)] })
+    assert.deepEqual(trace.rating.status, { solved: 'impossible' })
+    assert.equal(trace.board, await run({ type: 'solve', values }))
+    const first = trace.steps.find(step => step.technique === wide[index])
+    assert.ok(first && 'pattern-overlay' in first.evidence)
+    assert.equal(first.evidence['pattern-overlay'].scopes.length, index + 6)
+    if (index === 0) {
+      assert.deepEqual(first.actions, [{ eliminate: { cell: 19, digit: 1 } }])
+      assert.deepEqual(first.evidence['pattern-overlay'].scopes.map(scope => scope.digit), [1, 3, 6, 7, 8, 9])
+    }
+  }
+})
+
+test('Complete classic solves finish a named stall and replay the eight-layout proof', async () => {
+  const { run } = engineRequests()
+  const values = '000000012000003004004020500001060005070008000300900000006010020080006000900700600'
+  const { difficultyOrder } = await run({ type: 'techniques' })
+  const techniqueOrder = difficultyOrder.slice(0, -2)
+  const trace = await run({ type: 'logical-solve', values, techniqueOrder, complete: true, includePositions: true })
+  assert.equal(trace.rating.status, 'stalled')
+  assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
+  assert.equal(trace.board, await run({ type: 'solve', values }))
+  assert.ok(trace.exactPosition)
+  const last = trace.positions?.at(-1)
+  const proof = trace.completionProof
+  assert.ok(last && proof)
+  assert.equal(proof.layouts.length, 8)
+  assert.ok(proof.layouts.every(layout => layout.length === 9))
+  assert.equal(new Set(proof.layouts.flat()).size, 72)
+  assert.ok(trace.completionActions?.length)
+  const entries = [...last.entries]
+  for (const action of trace.completionActions) {
+    assert.ok('place' in action)
+    entries[action.place.cell] = String(action.place.digit)
+  }
+  assert.deepEqual(trace.exactPosition, { givens: values, entries: entries.join(''), eliminations: Array<number>(81).fill(0) })
+  const request = { type: 'replay-eight-digit-overlay' as const, values, entries: last.entries, eliminations: last.eliminations }
+  assert.equal(await run({ ...request, proof }), true)
+  const edited = structuredClone(proof)
+  edited.layouts[0][0] = 81
+  assert.equal(await run({ ...request, proof: edited }), false)
+  assert.equal(await run({ ...request, proof: { ...proof, omittedDigit: 0 } }), false)
 })
 
 test('Firework chains expose crossing-house links and replay a published removal', async () => {

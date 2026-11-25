@@ -71,7 +71,15 @@ test('legacy input rejects oversized or malformed expansions, unsupported rules 
     'SCv3_yyR30_', 'SCv3_yy90a80b_', 'SCv3_y90a80b_',
   ]) await assert.rejects(detectPuzzle(code), /unsupported format|not supported yet/, code)
 
-  await assert.rejects(detectPuzzle('SCv4_yyR12I0I1I2_'), /Consecutive Line/)
+  assert.deepEqual((await detectPuzzle('SCv4_yyR12I0I1I2_')).variant?.puzzle.rules,
+    [{ type: 'consecutive-run', cells: [0, 1, 2] }])
   await assert.rejects(detectPuzzle('SCv4_y1' + '0a80b_R30_'), /unsupported authored markings/)
   await assert.rejects(detectPuzzle('SCv4_yyR30_y10a80b_yyy0Ac80d0_0Ac80d0_0Ac80d0___y'), /playing state or annotations/)
+})
+
+test('legacy Consecutive Line records import as typed line rules', async () => {
+  const path = [4, 13, 22, 31, 40]
+  const code = `SCv4_yyR12${path.map(cell => `I${cell}`).join('')}_`
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.variant?.puzzle.rules, [{ type: 'consecutive-run', cells: path }])
 })

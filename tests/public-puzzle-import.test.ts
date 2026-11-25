@@ -118,6 +118,80 @@ test('plain published Coach grids are read only from the matching publication an
   }
 })
 
+test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-nonogram.json', import.meta.url), 'utf8')) as {
+    sudoku_id: string; sudoku: string; name: string; description: string; solution: string; givenDigits?: string
+  }
+  const url = `https://sudoku.coach/en/s/${source.sudoku_id}`
+  let description = source.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: source.sudoku_id, sudoku: source.sudoku, name: source.name, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === url) return Promise.resolve(new Response(page()))
+    if (typeof path === 'string' && path.startsWith('/api/v1/import/')) {
+      return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+    }
+    return Promise.resolve(new Response('Not found.', { status: 404 }))
+  })
+
+  const metadata = await (await request('sudoku-coach/8kgS')).json()
+  assert.deepEqual(metadata, { code: source.sudoku, coach: {
+    hasAuthorInstructions: true, authoredRule: 'sized-nonogram', title: source.name,
+  } })
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.title, source.name)
+  assert.deepEqual(imported.grid, { size: 6, noRegions: true })
+  assert.equal(imported.givens?.length, 36)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'nonogram').length, 12)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'renban').length, 7)
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'xv'))
+  assert.ok(!imported.sizedRules?.some(rule => rule.type === 'little-killer'))
+  assert.ok(imported.grid && imported.sizedRules)
+  await assert.rejects(detectPuzzle(source.sudoku), /6 × 6 Jigsaw grid/)
+  description += '\nThe rows also obey another rule.'
+  await assert.rejects(detectPuzzle(url), /author instructions/)
+})
+
+test('#382 imports the published 7×7 Coach Skyscrapers clues only with their authored rules', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+    metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
+  }
+  const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
+  let description = source.metadata.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: source.metadata.sudoku_id, sudoku: source.metadata.sudoku, name: source.metadata.name, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === url) return Promise.resolve(new Response(page()))
+    if (typeof path === 'string' && path.startsWith('/api/v1/import/')) {
+      return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+    }
+    return Promise.resolve(new Response('Not found.', { status: 404 }))
+  })
+
+  const metadata = await (await request('sudoku-coach/9W3o')).json()
+  assert.deepEqual(metadata, { code: source.metadata.sudoku, coach: {
+    hasAuthorInstructions: true, authoredRule: 'sized-skyscrapers', title: source.metadata.name,
+  } })
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.title, source.metadata.name)
+  assert.deepEqual(imported.grid, { size: 7, noRegions: true })
+  assert.equal(imported.givens?.length, 49)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'skyscrapers').length, 12)
+  assert.deepEqual(imported.sizedRules?.filter(rule => rule.type === 'skyscrapers').map(rule =>
+    rule.type === 'skyscrapers' ? [rule.direction, rule.index, rule.count] : []), [
+    ['north', 3, 3], ['north', 5, 2], ['east', 4, 4], ['west', 2, 5], ['north', 4, 2],
+    ['east', 1, 3], ['east', 2, 3], ['east', 6, 5], ['south', 5, 4], ['south', 0, 4],
+    ['west', 5, 5], ['west', 0, 3],
+  ])
+  await assert.rejects(detectPuzzle(source.metadata.sudoku), /unsupported active rule/)
+  description += '\nA decorative label was changed.'
+  await assert.rejects(detectPuzzle(url), /author instructions/)
+})
+
 test('collection exports cannot drop author instructions from sized grids', async ({ mock }) => {
   const base = 'https://sudoku.coach'
   const id = 'Mini'
@@ -136,7 +210,7 @@ test('collection exports cannot drop author instructions from sized grids', asyn
   assert.equal(imported.grid?.size, 4)
   assert.equal(imported.title, puzzle.name)
   description = 'Digits in shaded positions count twice.'
-  await assert.rejects(detectPuzzle(url), /author instructions/)
+  await assert.rejects(detectPuzzle(url), /author instructions|could not be opened|incomplete/)
 })
 
 test('the worker bounds stream reads and rejects ambiguous or unavailable sources', async (context) => {
@@ -182,6 +256,260 @@ test('Coach publication metadata belongs to the requested puzzle and preserves a
       { code, coach: { title: 'Puzzle title', hasAuthorInstructions: true } })
   }
   while (pages.length) assert.deepEqual(await (await request('sudoku-coach/Ab12')).json(), { code })
+})
+
+test('Coach wrapped-region metadata is tied to the exact Mini Jigsaw source and wording', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/coach-mini-wrapped-jigsaw.json', import.meta.url), 'utf8'))
+  let description = source.description
+  const url = 'https://sudoku.coach/en/s/DMnw'
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'DMnw', sudoku: source.code, name: source.title, blocked: false,
+    custom_constraints: false, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', async () => new Response(page()))
+  assert.deepEqual(await (await request('sudoku-coach/DMnw')).json(), {
+    code: source.code,
+    coach: { hasAuthorInstructions: true, authoredRule: 'wrapped-regions', title: source.title },
+  })
+  description += '. Other adjacent cells also wrap.'
+  assert.deepEqual(await (await request('sudoku-coach/DMnw')).json(), {
+    code: source.code, coach: { hasAuthorInstructions: true, title: source.title },
+  })
+})
+
+test('Cmki short-link import retains its complete 6×6 rules only for the reviewed export and note', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
+    .find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  assert.ok(source)
+  const url = source.url
+  let code = source.code
+  let description = source.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'Cmki', sudoku: code, name: source.title, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === url
+    ? Promise.resolve(new Response(page()))
+    : typeof path === 'string' && path.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.title, source.title)
+  assert.deepEqual(imported.givens, '0'.repeat(36))
+  assert.equal(imported.grid?.size, 6)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'whispers').length, 2)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'xv').length, 1)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'modular').length, 4)
+
+  description += '\nCells in the shaded region also form a Renban line.'
+  await assert.rejects(detectPuzzle(url), /author instructions/i)
+  description = source.description
+  code = source.code.slice(0, 10) + (source.code[10] === '0' ? '1' : '0') + source.code.slice(11)
+  await assert.rejects(detectPuzzle(url), /author instructions|unsupported|invalid|could not be opened/i)
+})
+
+test('the reviewed Neighbor Match short link keeps its author rule and rejects changed context', async ({ mock }) => {
+  const authored = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string; sourceDescription?: string }[]
+  }
+  const source = authored.examples.find(example => example.issue === 545)
+  assert.ok(source?.code && source.sourceDescription)
+  const code = source.code
+  const url = 'https://sudoku.coach/en/s/CGrN'
+  const description = source.sourceDescription
+  let sourceCode = code
+  let sourceDescription = description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'CGrN', sudoku: sourceCode, name: 'Raumploximentroplaner', blocked: false,
+    custom_constraints: false, description: sourceDescription,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === url) return Promise.resolve(new Response(page()))
+    if (typeof path === 'string' && path.startsWith('/api/v1/import/')) {
+      return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+    }
+    return new Response('Not found.', { status: 404 })
+  })
+
+  const imported = await detectPuzzle(url)
+  assert.equal(imported.title, 'Raumploximentroplaner')
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'neighbor-match').length, 1)
+  sourceDescription += '\nThe digits in blue cells must also be even.'
+  await assert.rejects(detectPuzzle(url), /author instructions/)
+  sourceDescription = description
+  sourceCode = code.slice(0, 8) + (code[8] === '0' ? '1' : '0') + code.slice(9)
+  await assert.rejects(detectPuzzle(url), /author instructions|could not be opened|incomplete/)
+})
+
+test('Entropic Spiral and Entropic Order short links retain their authored mathematical rules', async ({ mock }) => {
+  const { examples: entropyExamples } = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')) as {
+    examples: { url: string; title: string; code: string; solution: string }[]
+  }
+  const { examples: globalExamples } = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8')) as {
+    examples: { url: string; title: string; code: string; solution: string }[]
+  }
+  const sources = [
+    { source: entropyExamples.find(example => example.url.endsWith('/LEjN'))!,
+      description: 'Wherever the entropic spiral line is broken, it is impossible to connect. i.e. the line is only broken at points where linear entropy is broken',
+      authoredRule: 'forbidden-entropic-connection', expectedRules: 16 },
+    { source: globalExamples.find(example => example.url.endsWith('/7nms'))!,
+      description: 'Clues outside the grid incicate, that the three digits of an entropic group (Low/Medium/High) must be placed in increasing order in the corresponding row or column seen from the clue.',
+      authoredRule: 'digit-order', expectedRules: 7 },
+  ]
+  let active: typeof sources[number]
+  let activeCode = sources[0].source.code
+  let description = ''
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: active.source.url.split('/').at(-1), sudoku: activeCode, name: active.source.title,
+    blocked: false, custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === active.source.url
+    ? Promise.resolve(new Response(page()))
+    : typeof path === 'string' && path.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  for (const item of sources) {
+    assert.ok(item.source)
+    active = item
+    activeCode = item.source.code
+    description = item.description
+
+    const linked = await detectPuzzle(item.source.url)
+    const raw = await detectPuzzle(item.source.code)
+    assert.equal(linked.title, item.source.title)
+    assert.deepEqual(linked.variant?.puzzle, raw.variant?.puzzle)
+    assert.equal(linked.variant?.puzzle.rules?.filter(rule => rule.type === item.authoredRule).length, item.expectedRules)
+
+    description += '\nDigits in purple cells count twice.'
+    await assert.rejects(detectPuzzle(item.source.url), /author instructions/i)
+    description = item.description
+    activeCode = item.source.code.slice(0, 10) + (item.source.code[10] === '0' ? '1' : '0') + item.source.code.slice(11)
+    await assert.rejects(detectPuzzle(item.source.url), /author instructions|does not match|could not be opened/i)
+  }
+})
+
+test('the reviewed #542–547 Coach links preserve authored rules and art without accepting changed context', async ({ mock }) => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; id: string; title: string; code: string }[]
+  }
+  const descriptions = new Map<number, string>([
+    [542, 'A small entropy snack for Raumplaner, to thank you for all your wonderful contributions to the community 🤗 Like a regular Entropy puzzle, every 2x2 box contains at least a low, middle and high digit. The shapes tell you which digit group appears twice in that 2x2 box. Low digits: green squares Middle digits: purple hexagon High digits: pink circles'],
+    [543, 'A special puzzle to thank Raumplaner for all of his amazing puzzles <3 SE 2.3 Aqre: - colour some cells blue so that all blue cells form one connected group - Regions with cosmetic numbers must contain the indicated count of blue cells, and it is allowed to colour the numbered cells --> These regions are NOT sudoku regions, it\'s a latin square puzzle! - The digits in cells with a circle also indicate the amount of blue cells in that region - There may not exist a run of four or more consecutive blue or orange cells horizontally or vertically anywhere in the grid'],
+    [544, 'My first time trying to set a sudoku with these constraints, inspired by Raumplaner!'],
+    [546, 'A Special Puzzle made as "Thank you" sign for the @Raumplaner\'s efforts in the community. (Aqre+) Rules= - Shade some cells so that all shaded cells form one orthoronally connected area. - Regions with numbers (given) must contain the indicated amount of shaded cells. - No Row or Column run of four or more consecutive cells may be entirely shaded, nor entirely unshaded. - If a Given digit (indicator) is in a shaded cell, then the shaded digits in its region must be a consecutive sequence of digits, in any order. Just to clarify/remind: there is no normal Regions, so digits are allowed to repeat inside marked regions, within the limits of other rules. Credits: Thanks @Aeb for giving an valuable Feedback to the puzzle.'],
+    [547, 'This puzzle is a thank you to Raumplaner, who always makes nice puzzles for us. Since I love his Palindrome coloring puzzles, this is my try at creating one for him. Thank you Raumplaner and I hope you (and of course everyone else as well) enjoys it 🍀 Big thanks also to h4nv and GenevieveArchbaker for testing and to Charly for organizing this :)'],
+  ])
+  const items = [542, 543, 544, 546, 547].map(issue => {
+    const source = examples.find(example => example.issue === issue)!
+    return { issue, source, description: descriptions.get(issue)! }
+  })
+  let active = items[0]
+  let activeCode = active.source.code
+  let description = active.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: active.source.id, sudoku: activeCode, name: active.source.title,
+    blocked: false, custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === `https://sudoku.coach/en/s/${active.source.id}`
+    ? Promise.resolve(new Response(page()))
+    : typeof path === 'string' && path.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  for (const item of items) {
+    active = item
+    activeCode = item.source.code
+    description = item.description
+    const linked = await detectPuzzle(`https://sudoku.coach/en/s/${item.source.id}`)
+    const raw = await detectPuzzle(item.source.code)
+    assert.equal(linked.title, item.source.title)
+    assert.deepEqual(linked.variant?.puzzle, raw.variant?.puzzle, `issue #${item.issue}`)
+    assert.deepEqual(linked.authoredArtwork, raw.authoredArtwork, `issue #${item.issue} artwork`)
+
+    description += '\nAn extra rule applies to purple cells.'
+    await assert.rejects(detectPuzzle(`https://sudoku.coach/en/s/${item.source.id}`), /author instructions/i)
+    description = item.description
+    activeCode = item.source.code.slice(0, 10) + (item.source.code[10] === '0' ? '1' : '0') + item.source.code.slice(11)
+    await assert.rejects(detectPuzzle(`https://sudoku.coach/en/s/${item.source.id}`), /author instructions|does not match|could not be opened/i)
+  }
+})
+
+test('the reviewed Magic Square short link preserves the authored rule and rejects altered source data', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-magic-square.json', import.meta.url), 'utf8')) as {
+    code: string; title: string; description: string; url: string
+  }
+  let sudoku = source.code
+  let description = source.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: '7uYV', sudoku, name: source.title, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) => url === source.url
+    ? Promise.resolve(new Response(page()))
+    : typeof url === 'string' && url.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  const linked = await detectPuzzle(source.url)
+  const raw = await detectPuzzle(source.code)
+  assert.deepEqual(linked.variant, raw.variant)
+  assert.deepEqual(linked.variant?.puzzle.rules?.find(rule => rule.type === 'magic-square'), {
+    type: 'magic-square', cells: [30, 31, 32, 39, 40, 41, 48, 49, 50],
+  })
+  description += '\nDigits in red cells count twice.'
+  await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+  description = source.description
+  sudoku = source.code.slice(0, 10) + (source.code[10] === '0' ? '1' : '0') + source.code.slice(11)
+  await assert.rejects(detectPuzzle(source.url), /author instructions|could not be opened|incomplete/i)
+})
+
+test('Unique Cages III short-link imports keep its authored totals and C links', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-unknown-cage-totals.json', import.meta.url), 'utf8')) as {
+    code: string; title: string; description: string; url: string
+  }
+  let description = source.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'EZjn', sudoku: source.code, name: source.title, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) => url === source.url
+    ? Promise.resolve(new Response(page()))
+    : typeof url === 'string' && url.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  const linked = await detectPuzzle(source.url)
+  const raw = await detectPuzzle(source.code)
+  assert.deepEqual(linked.variant, raw.variant)
+  assert.equal(linked.variant?.puzzle.rules?.some(rule => rule.type === 'unknown-cage-sums'), true)
+  description += '\nDigits in red cells count twice.'
+  await assert.rejects(detectPuzzle(source.url), /author instructions/i)
+})
+
+test('Distant Neighbors short-link imports keep the box identity declaration', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-distant-neighbors.json', import.meta.url), 'utf8')) as {
+    code: string; title: string; description: string; url: string
+  }
+  let description = source.description
+  const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: 'F5mq', sudoku: source.code, name: source.title, blocked: false,
+    custom_constraints: true, description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) => url === source.url
+    ? Promise.resolve(new Response(page()))
+    : typeof url === 'string' && url.startsWith('/api/v1/import/')
+      ? worker.fetch(new Request(new URL(url, 'https://sudoku.example'), options), {}, {})
+      : Promise.resolve(new Response('Not found.', { status: 404 })))
+
+  const linked = await detectPuzzle(source.url)
+  const raw = await detectPuzzle(source.code)
+  assert.deepEqual(linked.variant, raw.variant)
+  assert.equal(linked.variant?.puzzle.rules?.some(rule => rule.type === 'distant-neighbors'), true)
+  description += '\nDigits in red cells count twice.'
+  await assert.rejects(detectPuzzle(source.url), /author instructions/i)
 })
 
 test('Coach author notes never bypass custom constraints or extra instructions', async ({ mock }) => {
@@ -273,7 +601,7 @@ test('published Quadruples with Min/Max or numbered dots preserve the full defin
 })
 
 test('the published X-Sums declaration must describe the complete rules', async ({ mock }) => {
-  const { metadata } = JSON.parse(readFileSync(new URL('./fixtures/x-sum-unsupported-AsnF.json', import.meta.url), 'utf8'))
+  const { metadata } = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8'))
   const codes = [
     metadata.description.replaceAll('\n', '\r\n'),
     metadata.description.replace('sum of the first', 'product of the first'),

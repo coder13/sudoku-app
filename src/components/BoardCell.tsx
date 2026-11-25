@@ -40,6 +40,10 @@ export type CellGeometry = {
   boxEdge: boolean
   regionRight: boolean
   regionBottom: boolean
+  wrapTop: boolean
+  wrapRight: boolean
+  wrapBottom: boolean
+  wrapLeft: boolean
   alternateBox: boolean
   clues: string
 }
@@ -70,6 +74,7 @@ export type BoardCellContent = {
 
 export type BoardCellAppearance = {
   cellAnnotation?: CellAnnotation
+  aqreShade?: 'unshaded' | 'shaded'
   candidateAnnotations?: ReadonlyMap<number, CandidateAnnotation>
   annotationsOnTop: boolean
   selected: boolean
@@ -150,7 +155,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     digitSlots, annotatedSlots, candidateColors, importedCandidateColors, colorShades, importedColors,
   } = content
   const {
-    cellAnnotation, candidateAnnotations, annotationsOnTop, selected, selectionEdges, active, pointerFocused,
+    cellAnnotation, aqreShade, candidateAnnotations, annotationsOnTop, selected, selectionEdges, active, pointerFocused,
     error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask,
     highlightLabel, countLabel, linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate,
     highlightedLinkDigit, selectedCandidateMask,
@@ -229,6 +234,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     !color && importedColors?.length && `Cell colors ${importedColors.map(importedColorLabel).join(', ')}`,
     regionAtCell !== undefined && `region ${regionAtCell + 1}`,
     cellAnnotation?.label,
+    aqreShade,
     geometry.whispersLinks ? `Whispers neighbors need at least ${geometry.whispersLinks} distinct digit${geometry.whispersLinks === 1 ? '' : 's'}` : '',
     !fogged && geometry.clues,
     !value && candidateLabel,
@@ -251,7 +257,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     : cellStyle, [cellStyle, selected, selectionBoxShadow])
   const classes = [
     'cell', canSelectLinkCandidate ? 'chain-cell-target' : '', fixed ? 'given' : 'entry', related ? 'peer' : '', matching ? 'matching' : '',
-    cellHighlight, countHighlighted ? 'candidate-count-match' : '',
+    cellHighlight, countHighlighted ? 'candidate-count-match' : '', aqreShade && `aqre-${aqreShade}`,
     color ? `colored${colorShades && colorShades.length > 1 ? ' player-multi-colors' : ''}`
       : importedColors && (!cellAnnotation || annotationsOnTop) ? 'colored imported-colors' : '',
     !error && !annotationsOnTop && (cellAnnotation?.fills?.length ?? 0) > 1 ? 'cell-annotation-multi' : '',
@@ -346,6 +352,8 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}
     data-rule-highlighted={ruleHighlighted || undefined} data-selection-edge={selectionEdges || undefined}
     data-region-bottom={geometry.regionBottom || undefined} data-alternate-box={geometry.alternateBox || undefined}
+    data-wrap-top={geometry.wrapTop || undefined} data-wrap-right={geometry.wrapRight || undefined}
+    data-wrap-bottom={geometry.wrapBottom || undefined} data-wrap-left={geometry.wrapLeft || undefined}
     data-cage-total={cageTotal !== undefined || undefined}
     type={buttonCell || fixedCellAction ? 'button' : undefined}
     tabIndex={givenAction ? 0 : regularCellAction ? (active ? 0 : -1) : buttonCell || fixedCellAction ? -1 : undefined}

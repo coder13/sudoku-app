@@ -171,6 +171,33 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         break
       }
       case 'adjacent-total': assert.equal(digits[rule.cells[0]] + digits[rule.cells[1]], rule.sum); break
+      case 'entropy-window-group': {
+        const groups = rule.cells.map(cell => Math.floor((digits[cell] - 1) / 3))
+        const repeated = rule.group === 'low' ? 0 : rule.group === 'middle' ? 1 : 2
+        assert.ok([0, 1, 2].every(group => groups.includes(group)))
+        assert.equal(groups.filter(group => group === repeated).length, 2)
+        break
+      }
+      case 'digit-order': {
+        const orderedDigits = rule.cells.map(cell => digits[cell]).filter(digit => rule.digits.includes(digit))
+        assert.deepEqual(orderedDigits, rule.digits)
+        break
+      }
+      case 'forbidden-entropic-connection': {
+        const groups = rule.cells.map(cell => Math.floor((digits[cell] - 1) / 3))
+        const firstIsEntropic = new Set(groups.slice(0, 3)).size === 3
+        const secondIsEntropic = new Set(groups.slice(1)).size === 3
+        assert.equal(firstIsEntropic && secondIsEntropic, false)
+        break
+      }
+      case 'neighbor-match':
+        for (const { cell, digit } of rule.clues) {
+          const row = Math.floor(cell / 9), column = cell % 9
+          const neighbors = [row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1,
+            column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1].filter(neighbor => neighbor >= 0)
+          assert.ok(neighbors.some(neighbor => digits[neighbor] === digit), `Clue ${digit} at ${cell} needs a matching orthogonal neighbor`)
+        }
+        break
       case 'labeled-dots': {
         const matches = (a: number, b: number, value: number) => {
           const x = digits[a], y = digits[b]

@@ -94,6 +94,7 @@ pub fn variant_practice_examples(
                     puzzle: VariantPuzzle::classic(snapshot.givens),
                     entries: snapshot.entries,
                     eliminations: snapshot.eliminations,
+                    shades: [0; crate::CELLS],
                 };
                 exercise(index, position, technique, example.expected_actions[0])
             })

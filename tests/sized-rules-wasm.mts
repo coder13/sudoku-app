@@ -1,15 +1,205 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { sizedRuleHintChoices } from '../src/sudoku/sized-rule-play.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
+
+test('#396 validates the published Anti-King and Region Sum combination in the sized engine', async () => {
+  const code = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: Array.from('621345435261216453543126162534354613', Number),
+  } }), 'conflict')
+})
+
+test('#394 validates the published six-cell Anti-Knight and three-Arrow f-puzzles source in the sized engine', async () => {
+  const code = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, imported.authoredSolution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  const alteredArrow = { ...position, rules: position.rules.map((rule, index) => index === 1 && rule.type === 'arrow'
+    ? { ...rule, circle: 0 }
+    : rule) }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: alteredArrow }), 'conflict')
+})
+
+test('#407 validates sized Sandwich totals, including zero, alongside a Thermometer', async () => {
+  const solution = Array.from('123456456123234561561234345612612345', Number)
+  const position = {
+    version: 2 as const,
+    grid: { size: 6, boxRows: 2, boxColumns: 3 },
+    digits: solution,
+    rules: [
+      { type: 'sandwich' as const, direction: 'south' as const, cells: [0, 6, 12, 18, 24, 30], sum: 14 },
+      { type: 'sandwich' as const, direction: 'west' as const, cells: [17, 16, 15, 14, 13, 12], sum: 0 },
+      { type: 'sandwich' as const, direction: 'north' as const, cells: [35, 29, 23, 17, 11, 5], sum: 3 },
+      { type: 'thermometer' as const, cells: [0, 1, 2] },
+    ],
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
+test('#404 enforces sized X-Sums with distinct prefix digits and directional rays', async () => {
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    digits: Array(16).fill(0),
+    rules: [{ type: 'x-sum', direction: 'east', cells: [0, 1, 2, 3], sum: 10 }],
+  }
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 10 })
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(candidates?.[0], 0b1000)
+  assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 0 && action.eliminate.digit === 1) &&
+    choice.actions.some(action => action.eliminate?.cell === 1 && action.eliminate.digit === 4)))
+  const solution = Array.from('4321213412433412', Number)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, digits: solution } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: solution, rules: [{ type: 'x-sum', direction: 'east', cells: [0, 1, 2, 3], sum: 9 }],
+  } }), 'conflict')
+  const wide = {
+    version: 2 as const,
+    grid: { size: 16, boxRows: 4, boxColumns: 4 },
+    digits: Array(256).fill(0),
+    rules: [{ type: 'x-sum' as const, direction: 'east' as const, cells: Array.from({ length: 16 }, (_, index) => index), sum: 136 }],
+  }
+  const wideCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: wide })
+  assert.equal(wideCandidates?.[0], 0x8000)
+})
+
+test('#404 enforces both white-dot relationships from the original X-Sum Twins import', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules)
+  const solution = imported.authoredSolution!
+  const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules }, solution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+
+  const incompatible = {
+    ...position,
+    rules: position.rules.map((rule, index) => index === 0
+      ? { ...rule, relation: 'ratio' as const }
+      : rule),
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: incompatible }), 'conflict')
+
+  const ratioPosition: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    digits: Array(16).fill(0),
+    rules: [{ type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'ratio' }],
+  }
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: ratioPosition })
+  assert.equal(candidates?.[5] & 0b1000, 0)
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position: ratioPosition, limit: 10 })
+  assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
+})
+
+test('#394/#396/#404 imports Coach chess rules and X-Sums with companion sized rules into the shared engine', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regionLabels = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions: regionLabels, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 1.5]], parameters: { text: '16' } },
+      { cells: [[1.5, -0.5]], parameters: { text: '7' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [12, 13, 14], parameters: {} }] },
+    { type: 'antiKnight', settings: {}, segments: [] },
+    { type: 'antiKing', settings: {}, segments: [] },
+  ] })
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ code, coach: {
+    hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sums with a Thermometer',
+  } }), { headers: { 'content-type': 'application/json' } }))
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [6, 7, 8, 9, 10, 11], sum: 16 },
+    { type: 'x-sum', direction: 'south', cells: [1, 7, 13, 19, 25, 31], sum: 7 },
+    { type: 'thermometer', cells: [12, 13, 14] },
+    { type: 'anti-knight' },
+    { type: 'anti-king' },
+  ])
+
+  const blank = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, '0'.repeat(36))
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: blank })
+  assert.equal(candidates, null, 'the mixed clues have no completion once Anti-Knight is retained')
+  const antiKnightPosition = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 0 ? 1 : 0), rules: [
+    { type: 'anti-knight' as const }, { type: 'thermometer' as const, cells: [6, 7, 8] },
+  ] }
+  const antiKnightCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: antiKnightPosition })
+  const classicKnightCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: antiKnightPosition.digits,
+  } })
+  assert.ok(antiKnightCandidates && classicKnightCandidates)
+  assert.ok(antiKnightCandidates.slice(1).every(mask => mask !== 0), 'Anti-Knight composes with a Thermometer')
+  assert.equal(antiKnightCandidates[13] & 1, 0, 'Anti-Knight removes the given value from a knight-move cell')
+  assert.notEqual(classicKnightCandidates[13] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+  const antiKnightHints = await runEngine({ type: 'sized-variant', operation: 'hints', position: antiKnightPosition, limit: 10 })
+  assert.ok(antiKnightHints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 13 && action.eliminate.digit === 1)))
+  const antiKnightSolution = (await runEngine({ type: 'sized-variant', operation: 'solve', position: antiKnightPosition }))?.digits
+  assert.ok(antiKnightSolution)
+  assert.ok(antiKnightSolution[6] < antiKnightSolution[7] && antiKnightSolution[7] < antiKnightSolution[8],
+    'the solved combination respects its Thermometer')
+  for (let cell = 0; cell < 36; cell++) {
+    const row = Math.floor(cell / 6), column = cell % 6
+    for (const [rowDelta, columnDelta] of [[1, 2], [2, 1]]) {
+      for (const rowSign of [-1, 1]) for (const columnSign of [-1, 1]) {
+        const otherRow = row + rowDelta * rowSign, otherColumn = column + columnDelta * columnSign
+        if (otherRow >= 0 && otherRow < 6 && otherColumn >= 0 && otherColumn < 6) {
+          assert.notEqual(antiKnightSolution[cell], antiKnightSolution[otherRow * 6 + otherColumn])
+        }
+      }
+    }
+  }
+  const completed = { ...blank, digits: Array.from(solution, Number) }
+  const withoutAntiKnight = { ...completed, rules: completed.rules.filter(rule => rule.type !== 'anti-knight') }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: withoutAntiKnight }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'conflict',
+    'the imported Anti-Knight rule rejects the authored grid where equal digits share a knight move')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'x-sum' && rule.direction === 'east'
+      ? { ...rule, sum: rule.sum + 1 }
+      : rule),
+  } }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...completed,
+    rules: completed.rules.map(rule => rule.type === 'thermometer' ? { ...rule, cells: [...rule.cells].reverse() } : rule),
+  } }), 'conflict')
+
+  const kingOnly = { ...blank, digits: Array.from({ length: 36 }, (_, cell) => cell === 2 ? 1 : 0), rules: [{ type: 'anti-king' as const }] }
+  const kingCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: kingOnly })
+  const classicCandidates = await runEngine({ type: 'sized-classic', operation: 'candidates', position: {
+    version: 2, grid: imported.grid!, digits: kingOnly.digits,
+  } })
+  assert.ok(kingCandidates && classicCandidates)
+  assert.equal(kingCandidates[9] & 1, 0, 'Anti-King removes the given value from a diagonal neighbor')
+  assert.notEqual(classicCandidates[9] & 1, 0, 'row, column and region alone keep that rank as a candidate')
+
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKing', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKing/)
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: regionLabels, givenConstraints: [
+    { type: 'antiKnight', settings: { distance: 2 }, segments: [] },
+  ] })), /unsupported settings for antiKnight/)
+})
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {
   const layouts = [[4, 2, 2], [6, 2, 3], [6, 3, 2], [8, 2, 4], [8, 4, 2], [10, 2, 5], [12, 3, 4], [16, 4, 4]]
@@ -66,15 +256,147 @@ test('one irregular layout composes Renban and parity without a size-specific so
     position: { ...position, grid: { size: 5, regions: disconnected } } }))
 })
 
-test('the sized dispatcher rejects a whole variant position when a companion rule is unavailable', async () => {
+test('#400 verifies the original SudokuPad Between Lines solution in Wasm', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
+  const { game } = await prepareImportedPuzzle(code)
+  const solution = '634125512364246513351642465231123456'
+  assert.equal(game.title, 'Choose Your Fighter: Between Lines')
+  assert.ok(game.sized && game.grid)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze',
+    position: sizedRulePosition(game.grid, game.sized, solution) }), 'unique')
+  assert.deepEqual(game.sized.solution, solution)
+})
+
+test('#382 solves the published boxless Skyscrapers puzzle with clues from every side', async () => {
+  const solution = Array.from('4573261764213512367545124376631754234516272765413', Number)
+  const rules = [
+    ['north', 3, 3], ['north', 5, 2], ['east', 4, 4], ['west', 2, 5], ['north', 4, 2],
+    ['east', 1, 3], ['east', 2, 3], ['east', 6, 5], ['south', 5, 4], ['south', 0, 4],
+    ['west', 5, 5], ['west', 0, 3],
+  ].map(([direction, index, count]) => ({
+    type: 'skyscrapers' as const,
+    direction: direction as 'north' | 'east' | 'south' | 'west',
+    index: Number(index),
+    count: Number(count),
+  }))
+  const position = { version: 2 as const, grid: { size: 7, noRegions: true as const }, digits: Array(49).fill(0), rules }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.deepEqual((await runEngine({ type: 'sized-variant', operation: 'solve', position }))?.digits, solution)
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.equal(candidates?.length, 49)
+  assert.ok(candidates?.every(mask => mask !== 0))
+  const completed = { ...position, digits: solution }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'unique')
+  const invalid = [...solution]
+  invalid[3] = 1
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, digits: invalid } }), 'conflict')
+})
+
+test('#382 the complete published Skyscrapers import solves with its parsed clue set', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+    metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
+  }
+  const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
+  const page = '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
+    sudoku_id: source.metadata.sudoku_id, sudoku: source.metadata.sudoku, name: source.metadata.name, blocked: false,
+    custom_constraints: true, description: source.metadata.description,
+  } }) + '</script>'
+  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
+    if (path === url) return Promise.resolve(new Response(page))
+    if (typeof path === 'string' && path.startsWith('/api/v1/import/')) {
+      return worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
+    }
+    return Promise.resolve(new Response('Not found.', { status: 404 }))
+  })
+
+  const preview = await prepareImportedPuzzle(url)
+  const game = preview.game
+  assert.ok(game.grid?.size === 7 && game.sized)
+  assert.equal(game.sized.rules.filter(rule => rule.type === 'skyscrapers').length, 12)
+  const result = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: game.grid, rules: game.sized.rules,
+    digits: Array.from(source.metadata.solution, Number),
+  } })
+  assert.equal(result, 'unique')
+  const definition = puzzleDefinitionForSharing(game)
+  assert.deepEqual(definition.sizedRules, game.sized.rules)
+  const reopened = await prepareImportedPuzzle(JSON.stringify({ ...definition, format: 'sudoku-app-puzzle' }))
+  assert.deepEqual(reopened.game.sized?.rules, game.sized.rules)
+})
+
+test('#397 accepts the published 6×6 mixed Non-Consecutive solution and edge exceptions', async () => {
+  const solution = Array.from('642513315246531462264135426351153624', Number)
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size: 6, boxRows: 2, boxColumns: 3 }, digits: solution,
+    rules: [
+      { type: 'non-consecutive' },
+      { type: 'whispers', cells: [9, 16, 21], minDifference: 3 },
+      { type: 'inequality', less: 2, greater: 1 },
+      { type: 'inequality', less: 25, greater: 24 },
+    ],
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+
+  const candidatePosition: SizedConstraintPosition = {
+    ...position, digits: [2, ...Array(35).fill(0)],
+    rules: [{ type: 'non-consecutive' }],
+  }
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: candidatePosition })
+  assert.equal((candidates![1] & 0b000101), 0)
+  const exempt = { ...candidatePosition, rules: [{ type: 'non-consecutive', except: [[1, 0]] as const }] }
+  const exemptCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: exempt })
+  assert.equal(exemptCandidates![1] & 0b000101, 0b000101)
+})
+
+test('#402 applies explicit Global Entropy digit groups on a 6×6 Sudoku grid', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 } as const
+  const groups = [[1, 2], [3, 4], [5, 6]] as const
+  const solution = '123546456123231465645231314652562314'
+  const position = {
+    version: 2 as const,
+    grid,
+    digits: [...solution].map(Number),
+    rules: [{ type: 'global-entropy', groups }],
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
+  const invalidLatinSolution = '321546456321213465645213134652562134'
+  assert.equal(await runEngine({ type: 'sized-variant', position: { ...position, digits: [...invalidLatinSolution].map(Number) }, operation: 'analyze' }), 'conflict')
+  const oneCellBlank = `${solution.slice(0, 7)}0${solution.slice(8)}`
+  const candidates = await runEngine({ type: 'sized-variant', position: { ...position, digits: [...oneCellBlank].map(Number) }, operation: 'candidates' })
+  assert.ok(Array.isArray(candidates))
+  assert.equal(candidates[7] & (1 << (Number(solution[7]) - 1)), 1 << (Number(solution[7]) - 1))
+})
+
+test('#397 imports Non-Consecutive Flockers through Preview with all companion rules', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/nonconsecutive-coach.json', import.meta.url), 'utf8')) as {
+    examples: { url: string; code: string; solution: string }[]
+  }
+  const source = fixture.examples.find(example => example.url.endsWith('/Cby7'))!
+  const { game } = await prepareImportedPuzzle(source.code)
+  assert.ok(game.grid?.size === 6 && game.sized)
+  assert.deepEqual(game.sized.rules.map(rule => rule.type), ['non-consecutive', 'whispers', 'inequality', 'inequality'])
+  const completed = { ...sizedRulePosition(game.grid, game.sized, source.solution), digits: [...source.solution].map(Number) }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'unique')
+  const definition = puzzleDefinitionForSharing(game)
+  assert.deepEqual(definition.sixRules, game.sized.rules)
+  const reopened = await prepareImportedPuzzle(JSON.stringify({ ...definition, format: 'sudoku-app-puzzle' }))
+  assert.deepEqual(reopened.game.sized?.rules, game.sized.rules)
+})
+
+test('the sized dispatcher accepts Between with Renban and rejects an unavailable companion rule', async () => {
+  const position = {
+    version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: Array(16).fill(0),
+    rules: [{ type: 'renban', cells: [0, 1, 2] }, { type: 'between', cells: [5, 6, 7] }],
+  }
   const request = {
     type: 'sized-variant', operation: 'analyze',
-    position: {
-      version: 2, grid: { size: 4, boxRows: 2, boxColumns: 2 }, digits: Array(16).fill(0),
-      rules: [{ type: 'renban', cells: [0, 1, 2] }, { type: 'between', cells: [5, 6, 7] }],
-    },
+    position,
   } as EngineRequest
-  await assert.rejects(runEngine(request), error => error instanceof EngineError && error.code === 'unsupported-rule')
+  assert.equal(await runEngine(request), 'multiple')
+  const unsupported = { ...request, position: { ...position,
+    rules: [...position.rules, { type: 'unknown-companion' }],
+  } } as EngineRequest
+  await assert.rejects(runEngine(unsupported))
 })
 
 test('Kropki support uses the digit range and edge layout on small and wide grids', async () => {
@@ -95,6 +417,40 @@ test('Kropki support uses the digit range and edge layout on small and wide grid
     await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: invalid }),
       error => error instanceof EngineError && error.code === 'invalid-rules')
   }
+})
+
+test('Quadki corner dots constrain both diagonal pairs through the sized engine', async () => {
+  const solution = [...'164523523164352641416235641352235416'].map(Number)
+  const position: SizedConstraintPosition = {
+    version: 2, grid: { size: 6, boxRows: 2, boxColumns: 3 },
+    digits: solution,
+    rules: [{ type: 'corner-kropki', consecutive: [28, 13], ratioTwo: [1, 8, 15, 20] }],
+  }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  const incomplete = { ...position, digits: solution.map((digit, cell) => cell === 8 ? 0 : digit) }
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position: incomplete })
+  assert.equal(masks?.[8], 1 << 2)
+  await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: [{ type: 'corner-kropki', ratioTwo: [5] }],
+  } }), error => error instanceof EngineError)
+})
+
+test('the published Quadki SudokuPad code reaches Preview with its unique engine-verified solution', async () => {
+  const code = readFileSync(new URL('./fixtures/sized-quadki.scl', import.meta.url), 'utf8').trim()
+  const { game } = await prepareImportedPuzzle(code)
+  const solution = '164523523164352641416235641352235416'
+  assert.equal(game.title, 'Quadki')
+  assert.ok(game.grid && game.sized)
+  assert.equal(game.sized.solution, solution)
+  assert.deepEqual(game.sized.rules, [{
+    type: 'corner-kropki', consecutive: [28, 13], ratioTwo: [1, 8, 15, 20],
+  }])
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2,
+    grid: game.grid,
+    digits: [...game.givens].map(Number),
+    rules: game.sized.rules,
+  } }), 'unique')
 })
 
 test('Kropki negative rules exempt any marked edge across authored rule records', async () => {

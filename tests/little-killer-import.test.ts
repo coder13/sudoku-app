@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeCoachSix } from '../src/sudoku/puzzle-import.ts'
 import { conflictsOf, enter, fillEntries, makeGame, redo, undo } from '../src/sudoku/game.ts'
 import { littleKillerState } from '../src/sudoku/little-killer.ts'
 import { outsideClueLayout, validOutsideRay } from '../src/sudoku/outside-clues.ts'
@@ -127,15 +128,27 @@ test('Coach diagonal parameters map every direction and corner and never reinter
     detectPuzzle(data({ positive: false, value: 8 }, [[0, -1]], { distinct: true })),
     /unsupported settings/,
   )
-  for (const code of ['DLeM', 'GJBz']) {
+  for (const code of ['DLeM']) {
     const fixture = JSON.parse(
       readFileSync(new URL('./fixtures/little-killer-unsupported-' + code + '.json', import.meta.url), 'utf8'),
     )
     await assert.rejects(
       detectPuzzle(fixture.metadata.sudoku),
-      code === 'GJBz' ? /6 × 6.*unsupported active rule/ : /cosmetic Little Killer|not supported|unsupported/,
+      /cosmetic Little Killer|not supported|unsupported/,
     )
   }
+})
+
+test('6 × 6 Coach Little Killer keeps its companion Between Lines', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/little-killer-between-GJBz.json', import.meta.url), 'utf8'))
+  const imported = await decodeCoachSix(fixture.metadata.sudoku)
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.rules.filter(rule => rule.type === 'between'), [
+    { type: 'between', cells: [20, 15, 16, 10, 4] },
+    { type: 'between', cells: [0, 6, 7, 14] },
+  ])
+  assert.equal(imported.rules.filter(rule => rule.type === 'little-killer').length, 3)
+  assert.equal(fixture.metadata.solution, '164523532641216435345216623154451362')
 })
 
 test('placed-digit sum masks match direct assignments for every three-cell partial state and total', () => {

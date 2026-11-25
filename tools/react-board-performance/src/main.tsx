@@ -114,10 +114,12 @@ function snapshot(includeFades = false): NormalNode[] {
   const replaced = implementation === 'baseline' ? replacedHouseClues() : new Set<Element>()
   const groups = implementation === 'optimized' ? checkedGroupAdditions(root, props) : undefined
   const candidateTints = implementation === 'optimized' ? checkedCandidateTints() : undefined
+  const hasOutsideClues = Boolean(root.querySelector('.board-frame.has-outside-clues'))
   function normalize(node: Node): NormalNode | null {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || null
     if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return null
     if (replaced.has(node)) return null
+    if (hasOutsideClues && node instanceof HTMLElement && node.matches('.col-labels, .row-labels')) return null
     if (groups?.ignored.has(node)) return null
     if (!includeFades && node.getAttribute('data-board-fade') === 'exit') return null
     const children = [...node.childNodes].map(normalize).filter((item): item is NormalNode => item !== null)
@@ -206,7 +208,12 @@ async function runRegression(options: { motionOnly?: boolean; pressKey?: (key: s
 
   if (!options.motionOnly) {
     const compareScenario = (key: string) => {
-      if (implementation === 'optimized') checkVariantFills(key)
+      if (implementation === 'optimized') {
+        checkVariantFills(key)
+        if (root.querySelector('.board-frame.has-outside-clues') && root.querySelector('.col-labels, .row-labels')) {
+          throw new Error(`${key}: coordinate labels should be hidden when outside clues are shown.`)
+        }
+      }
       compare(key)
     }
     for (const scenario of scenarios()) {

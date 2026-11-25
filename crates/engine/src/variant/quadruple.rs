@@ -65,7 +65,10 @@ impl Quadruple {
     }
 
     pub(super) fn occurrences(&self, digit: u8) -> u8 {
-        self.digits.iter().filter(|&&printed| printed == digit).count() as u8
+        self.digits
+            .iter()
+            .filter(|&&printed| printed == digit)
+            .count() as u8
     }
 
     pub(super) fn support(&self, domains: [u16; 4]) -> [u16; 4] {
@@ -74,7 +77,8 @@ impl Quadruple {
 
     pub(super) fn support_with_entropy(&self, domains: [u16; 4]) -> [u16; 4] {
         let mut supported = [0; 4];
-        self.inner.scan::<true, true>(domains.map(|domain| domain & DIGITS), &mut supported);
+        self.inner
+            .scan::<true, true>(domains.map(|domain| domain & DIGITS), &mut supported);
         supported
     }
 
@@ -152,12 +156,18 @@ fn sum_placements(required: &[u8], peers: &[u8; 4], placements: &mut Vec<[u16; 4
                 for sum_cell in 0..4 {
                     let mut assignment = [a, b, c, a + b + c];
                     assignment[sum_cell..].rotate_right(1);
-                    if (0..4).any(|i| (0..i).any(|j| peers[i] & (1 << j) != 0 && assignment[i] == assignment[j])) {
+                    if (0..4).any(|i| {
+                        (0..i).any(|j| peers[i] & (1 << j) != 0 && assignment[i] == assignment[j])
+                    }) {
                         continue;
                     }
                     let mut unclaimed = assignment;
                     if required.iter().all(|digit| {
-                        unclaimed.iter_mut().find(|other| **other == *digit).map(|other| *other = 0).is_some()
+                        unclaimed
+                            .iter_mut()
+                            .find(|other| **other == *digit)
+                            .map(|other| *other = 0)
+                            .is_some()
                     }) {
                         placements.push(assignment.map(digit_bit));
                     }
@@ -362,9 +372,16 @@ mod tests {
                                                 .any(|peer| peer == clue.cells[second])
                                     })
                                 });
-                                if repeats_in_house || is_sum && !(0..4).any(|target| {
-                                    placed[target] == (0..4).filter(|&i| i != target).map(|i| placed[i]).sum::<u8>()
-                                }) {
+                                if repeats_in_house
+                                    || is_sum
+                                        && !(0..4).any(|target| {
+                                            placed[target]
+                                                == (0..4)
+                                                    .filter(|&i| i != target)
+                                                    .map(|i| placed[i])
+                                                    .sum::<u8>()
+                                        })
+                                {
                                     continue;
                                 }
                                 let mut present = [0; 10];

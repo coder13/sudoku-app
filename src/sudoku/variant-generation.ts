@@ -157,10 +157,19 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'digit-restriction': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
         case 'entropy-window-group': return { ...rule, cells: rule.cells.map(cell).sort((a, b) => a - b) as [number, number, number, number] }
+        case 'forbidden-entropic-connection': return { ...rule, cells: rule.cells.map(cell) as [number, number, number, number] }
         case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
+        case 'neighbor-match': return { ...rule, clues: rule.clues.map(clue => ({ ...clue, cell: cell(clue.cell) })) }
+        case 'distant-neighbors': return { ...rule, markedCells: rule.markedCells.map(cell) }
         case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
           ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),
         })) }
+        case 'aqre': return { ...rule, regions: rule.regions.map(region => ({
+          ...region,
+          cells: region.cells.map(cell).sort((a, b) => a - b),
+          ...(region.count?.type === 'digit-cell' && { count: { ...region.count, cell: cell(region.count.cell) } }),
+        })).sort((a, b) => a.cells[0] - b.cells[0]),
+          givenShades: rule.givenShades.map(given => ({ ...given, cell: cell(given.cell) })).sort((a, b) => a.cell - b.cell) }
         case 'quadruple': case 'quadruple-sum': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
         case 'little-killer': {
           const [dr, dc] = clueDelta(rule.direction)

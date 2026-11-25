@@ -1,0 +1,8 @@
+{
+  "issue": 433,
+  "url": "https://sudoku.coach/en/s/EZjn",
+  "title": "Unique Cages [III]",
+  "description": "Custom Rules: \n- Digits do not repeat in Cages. Each Cage has an unique sum that needs to be determined.\n- Cage-Sums must form a consecutive sequence of sums - without repeating sums - so, if a lowest Cage would be the sum of 1, then the total number of Cages is the total sum of the highest Cage-Sum.\n- Two Cages separated by letter [C] means that the sum of those Cages must be consecutive.\n\nPs. I've written out the Progressive-Hints for the full logical Solve-Path in comments.",
+  "solution": "513879462296154378748623591635291784127348659489567123851936247972415836364782915",
+  "code": "SCv7_32_f2e9r5eddrdj0444ru2rqjg3vomnuv7l0fid170qv0gch112oib0oi8eq8d7ttsi1lh271lth415q17grfcuas243l237d7bbvmtu90m26h6inqimvmbms8qlar9mhlhf0u8gthd2p544j3veqch4tel4g0j39j6jff92ejd6rikqgi1ocg441b8nu1dgla3ml6l66niubgnhh4p4k1qfo8lni3gvs0h86p0a9m08hc0jar06m5nka079ko9dh82ii3ncc04ddg7jm34pr1h5i6235s7s0nb8026fo8dpdim75c2q9812enggpkjg18ns0h3orslpm1gdm08i8g0ehvgvjj1o521bcc0j8r0u8cv4otr5id8ubfb79v1044kg7hbmqo9jm1q788deji4qk101s5a023nom25aif66iqlqspavmfluveaduvltnsattjg3p1tu725nhjv1rjb6vfjnnsuhe1bpcfpq4jlnvkvegvmst3p5p993oulbevkeorp0f2rd575d9jsbfef5kngbot3sduncbqur0elv7nelhpcr3b0vqbln8qnhfhstgeqqbnrhekt8b64a9u1ht2hpuhe67f1kti0kbnoo8hctp776i4f7t0373msnnfqb6q45621jcubhvhi9mpuh8ndctkv7t25eb5ivtrnrtnuvtop53gspp3rd8gvlvdkd6tr8f67bebkf72m3qfdlulp9dhtdcipvfs0ud3lfc5g"
+}

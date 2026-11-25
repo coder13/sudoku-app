@@ -1,15 +1,20 @@
+import { compileLatinLines, type LatinLine } from '../latin/lines.ts'
+import { compileLatinDiagonals, type LatinDiagonal } from '../latin/diagonals.ts'
+import { compileLatinExclusions, type LatinExclusion } from '../latin/exclusions.ts'
+import { compileLatinExtrema, type LatinExtremum } from '../latin/extrema.ts'
 import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
 import { latinParityRules, type LatinParity } from '../latin/parity.ts'
 
-export const operatorSymbol = { equal: '', add: '+', multiply: '×', subtract: '−', divide: '÷' } as const
+export const operatorSymbol = { equal: '', add: '+', multiply: '×', subtract: '−', divide: '÷', hidden: '' } as const
 export type CageOperator = keyof typeof operatorSymbol
+type KnownOperator = Exclude<CageOperator, 'hidden'>
 export type Cage = { target: number; operator: CageOperator; cells: readonly number[]; distinct?: true }
 
-export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[]; parity: readonly LatinParity[] }
+export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[]; parity: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[] }
 
 const tupleTables = new Map<string, Uint16Array>()
 
-function cageTuples(size: number, cage: Cage): Uint16Array {
+function cageTuples(size: number, cage: Cage & { operator: KnownOperator }): Uint16Array {
   const { cells, operator, target } = cage
   // Four bits per cell identify earlier cage positions in the same row or column.
   let layout = 0
@@ -65,11 +70,26 @@ function cageTuples(size: number, cage: Cage): Uint16Array {
   return tuples
 }
 
-function checkCages(size: number, cages: readonly Cage[]) {
+function cageArithmetic(size: number, cage: Cage): Uint16Array {
+  if (cage.operator !== 'hidden') return cageTuples(size, { ...cage, operator: cage.operator })
+  const operations = cage.cells.length === 2
+    ? ['add', 'multiply', 'subtract', 'divide'] as const
+    : ['add', 'multiply'] as const
+  const tables = operations.map(operator => cageTuples(size, { ...cage, operator }))
+  const tuples = new Uint16Array(tables.reduce((length, table) => length + table.length, 0))
+  let offset = 0
+  for (const table of tables) {
+    tuples.set(table, offset)
+    offset += table.length
+  }
+  return tuples
+}
+
+function checkCages(size: number, cages: readonly Cage[], givens: readonly number[]) {
   const covered = new Set<number>()
   for (const { operator, target, cells } of cages) {
     const minimum = operator === 'equal' ? 1 : 2
-    const maximum = operator === 'equal' ? 1 : operator === 'add' || operator === 'multiply' ? 5 : 2
+    const maximum = operator === 'equal' ? 1 : operator === 'subtract' || operator === 'divide' ? 2 : 5
     if (!Object.hasOwn(operatorSymbol, operator) || !Number.isSafeInteger(target) || target <= 0 ||
       cells.length < minimum || cells.length > maximum) throw new Error('Invalid Calcudoku cage.')
     for (const cell of cells) {
@@ -88,20 +108,22 @@ function checkCages(size: number, cages: readonly Cage[]) {
     }
     if (reached.size !== cells.length) throw new Error('A Calcudoku cage must connect along cell edges.')
   }
-  if (covered.size !== size * size) throw new Error('Every Calcudoku cell needs exactly one cage.')
+  if (givens.some((given, cell) => !given && !covered.has(cell))) {
+    throw new Error('Every Calcudoku cell without a given needs exactly one cage.')
+  }
 }
 
-export function createCalcudoku(size: number, cages: readonly Cage[], options: { givens?: readonly number[]; parity?: readonly LatinParity[] } = {}): CalcudokuPuzzle {
+export function createCalcudoku(size: number, cages: readonly Cage[], options: { givens?: readonly number[]; parity?: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[] } = {}): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
   const parity = options.parity ?? []
   const givens = options.givens ? [...options.givens] : Array<number>(size * size).fill(0)
   if (givens.length !== size * size || givens.some(value => !Number.isInteger(value) || value < 0 || value > size)) {
     throw new Error('Invalid Calcudoku givens.')
   }
-  checkCages(size, cages)
+  checkCages(size, cages, givens)
   const rules = cages.map(cage => {
     const { cells, operator, target } = cage
-    const tuples = cageTuples(size, cage)
+    const tuples = cageArithmetic(size, cage)
     if (!tuples.length) throw new Error('A Calcudoku cage has no valid arithmetic combinations.')
     if (operator === 'equal') {
       if (givens[cells[0]] && givens[cells[0]] !== target) throw new Error('A Calcudoku given conflicts with its cage.')
@@ -110,7 +132,7 @@ export function createCalcudoku(size: number, cages: readonly Cage[], options: {
     const length = cells.length
     const cache = new Map<number, readonly number[] | null>()
     return {
-      label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}`,
+      label: `${target}${operatorSymbol[operator]} cage at ${cellLabel(Math.min(...cells), size)}${operator === 'hidden' ? ', hidden operation' : ''}`,
       cells,
       support(domains: readonly number[]) {
         const masks = cells.map(cell => domains[cell])
@@ -134,5 +156,9 @@ export function createCalcudoku(size: number, cages: readonly Cage[], options: {
       },
     }
   })
-  return { ...createLatinPuzzle(size, givens, [...rules, ...latinParityRules(size, parity)]), cages, parity }
+  const lines = options.lines ?? []
+  const diagonals = options.diagonals ?? []
+  const exclusions = options.exclusions ?? []
+  const extrema = options.extrema ?? []
+  return { ...createLatinPuzzle(size, givens, [...rules, ...latinParityRules(size, parity), ...compileLatinLines(lines, size), ...compileLatinDiagonals(diagonals, size), ...compileLatinExclusions(exclusions, size), ...compileLatinExtrema(extrema, size)]), cages, parity, ...(lines.length && { lines }), ...(diagonals.length && { diagonals }), ...(exclusions.length && { exclusions }), ...(extrema.length && { extrema }) }
 }

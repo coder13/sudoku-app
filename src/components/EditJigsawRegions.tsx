@@ -19,6 +19,7 @@ export function EditJigsawRegions({ game, layout, close }: { game: Game; layout:
   const preview: JigsawGrid = {
     size,
     regions: regionsFromMembership(membership, size),
+    ...(layout.wrapAround && { wrapAround: true }),
   }
 
   function assign(cell: number) {
@@ -38,7 +39,7 @@ export function EditJigsawRegions({ game, layout, close }: { game: Game; layout:
 
   function save() {
     if (!isJigsawGrid(preview)) {
-      setError(`Each region needs ${size} cells connected along their edges.`)
+      setError(`Each region needs ${size} cells connected along their edges${layout.wrapAround ? ', including the marked wraparound edges' : ''}.`)
       return
     }
     let failure = 'The draft changed. Reopen Edit regions to see the latest layout.'

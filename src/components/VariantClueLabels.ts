@@ -2,6 +2,7 @@ import { sizedSumEndCells, sizedSumEndLabel } from '../sudoku/sized-linked-doubl
 import type { SizedConstraintRule, VariantPuzzle, VariantRule } from '../sudoku/engine'
 import { extraRegionName, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
+import { fractionalRegionWeights } from '../sudoku/fractional-regions'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
 import { cloneLayout } from '../sudoku/clone'
 
@@ -18,6 +19,11 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       for (const cell of gridDiagonalCells(size, rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
     } else if (rule.type === 'extra-house') {
       for (const cell of rule.cells) labels[cell].add('extra region')
+    } else if (rule.type === 'between') {
+      const [first, last] = [rule.cells[0], rule.cells.at(-1)!]
+      labels[first].add(`Between line endpoint, other endpoint at ${at(last)}`)
+      labels[last].add(`Between line endpoint, other endpoint at ${at(first)}`)
+      for (const cell of rule.cells.slice(1, -1)) labels[cell].add(`Between line interior with endpoints at ${at(first)} and ${at(last)}`)
     } else if (rule.type === 'killer-cages') {
       for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
     } else if (rule.type === 'quadruple') {
@@ -28,6 +34,18 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
       const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(digits)
       for (const cell of rule.cells) labels[cell].add(`${odd ? 'odd circle' : 'even square'}, digit must be ${allowed}`)
+    } else if (rule.type === 'digit-restriction') {
+      const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(rule.digits.map(String))
+      for (const cell of rule.cells) labels[cell].add(`${rule.shape} digit restriction, allowed ${allowed}`)
+    } else if (rule.type === 'zipper') {
+      const centerCell = rule.cells.length % 2 ? rule.cells[Math.floor(rule.cells.length / 2)] : undefined
+      const total = centerCell === undefined ? 'has the same total as the other pairs' : `adds up to ${at(centerCell)}`
+      if (centerCell !== undefined) labels[centerCell].add('Zipper center, gives the total for every pair')
+      for (let index = 0; index < Math.floor(rule.cells.length / 2); index++) {
+        const left = rule.cells[index], right = rule.cells[rule.cells.length - index - 1]
+        labels[left].add(`Zipper pair with ${at(right)}, ${total}`)
+        labels[right].add(`Zipper pair with ${at(left)}, ${total}`)
+      }
     } else if (rule.type === 'renban') {
       renbanNumber++
       for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
@@ -69,6 +87,16 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
         labels[a].add(`${relation} with ${at(b)}`)
         labels[b].add(`${relation} with ${at(a)}`)
       }
+    } else if (rule.type === 'crust') {
+      if (rule.sharedRegion) {
+        const [a, b] = rule.sharedRegion
+        labels[a].add(`Crust region A, also at ${at(b)}`)
+        labels[b].add(`Crust region A, also at ${at(a)}`)
+      }
+      for (const [a, b] of rule.fixedEdges ?? []) {
+        labels[a].add(`fixed Crust region edge with ${at(b)}`)
+        labels[b].add(`fixed Crust region edge with ${at(a)}`)
+      }
     } else if (rule.type === 'kropki') {
       for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
         for (const [a, b] of marks?.pairs ?? []) {
@@ -89,6 +117,23 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
           labels[b].add(`${marker} marker totals ${total} with ${at(a)}`)
         }
       }
+    } else if (rule.type === 'nonogram') {
+      const line = rule.axis === 'row'
+        ? Array.from({ length: size }, (_, column) => rule.index * size + column)
+        : Array.from({ length: size }, (_, row) => row * size + rule.index)
+      const description = `${rule.axis} ${rule.index + 1} Nonogram clue: selected digits ${rule.digits.join(', ')} form consecutive groups of lengths ${rule.runs.join(', ')}`
+      for (const cell of line) labels[cell].add(description)
+    } else if (rule.type === 'row-equation') {
+      const symbols = { add: '+', subtract: 'minus', multiply: 'times', divide: 'divided by', equals: 'equals', join: 'joined to' }
+      const explanation = rule.operators.map((operator, index) => `${symbols[operator]} ${at(rule.cells[index + 1])}`).join(', ')
+      for (const cell of rule.cells) labels[cell].add(`row equation from ${at(rule.cells[0])}: ${explanation}`)
+    } else if (rule.type === 'fractional-regions') {
+      rule.pieces.forEach((piece, index) => {
+        const name = `fractional region ${String.fromCharCode(65 + index)}`
+        for (const [cell, quarters] of fractionalRegionWeights(piece.quarters, size)) {
+          labels[cell].add(`${name}, ${quarters}/4 of the cell`)
+        }
+      })
     }
   }
   return labels.map(items => [...items].join(', '))
@@ -190,6 +235,24 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
           for (const cell of cells) labels[cell].push(`cage totaling ${sum}, starting at ${corner}`)
         }
         break
+      case 'distant-neighbors':
+        for (let box = 0; box < rule.markedCells.length; box++) {
+          const cell = rule.markedCells[box]
+          labels[cell].push(`Distant Neighbors identity cell for box row ${Math.floor(box / 3) + 1}, box column ${box % 3 + 1}; its digit identifies that box`)
+          const row = y(cell), column = x(cell)
+          for (const neighbor of [column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1,
+            row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1]) {
+            if (neighbor >= 0) labels[neighbor].push(`Distant Neighbors: cannot be consecutive to the identity digit at ${reference(cell)}`)
+          }
+        }
+        break
+      case 'unknown-cage-sums':
+        rule.cages.forEach((cells, cage) => {
+          const pairLabels = rule.consecutivePairs.flatMap(([first, second]) => first === cage ? [second] : second === cage ? [first] : [])
+            .map(other => `C link to cage ${other + 1}; the two unknown totals differ by 1`)
+          for (const cell of cells) labels[cell].push(`Unknown-sum cage ${cage + 1}, digits do not repeat${pairLabels.length ? `; ${pairLabels.join('; ')}` : ''}`)
+        })
+        break
       case 'whispers':
         for (const cell of new Set(rule.cells)) {
           const neighbors = new Set(rule.cells.flatMap((other, i) => i > 0
@@ -202,6 +265,9 @@ export function variantCellLabels(rules: readonly VariantRule[], regions?: Varia
         for (const cell of new Set(rule.cells)) labels[cell].push(`Entropic line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different low (1–3), medium (4–6) or high (7–9) groups' : 'every three successive positions contain a low (1–3), medium (4–6) and high (7–9) digit'}`)
         break
       }
+      case 'forbidden-entropic-connection':
+        for (const cell of rule.cells.slice(1, 3)) labels[cell].push(`Broken Entropic connection to ${reference(rule.cells[rule.cells[1] === cell ? 2 : 1])}; the two adjacent triples may not both contain one low, one middle, and one high digit`)
+        break
       case 'modular': {
         const number = rules.slice(0, index + 1).filter(rule => rule.type === 'modular').length
         for (const cell of new Set(rule.cells)) labels[cell].push(`Modular line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different groups {1, 4, 7}, {2, 5, 8} or {3, 6, 9}' : 'every three successive positions contain one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}'}`)

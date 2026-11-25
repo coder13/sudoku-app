@@ -17,6 +17,8 @@ pub(super) enum Layout {
 pub(super) struct Regions {
     size: usize,
     regions: Vec<Vec<usize>>,
+    #[serde(default, rename = "wrapAround")]
+    _wrap_around: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -33,7 +35,8 @@ impl Layout {
             Self::Regions(spec) => SizedGrid::with_regions(spec.size, &spec.regions),
             Self::Boxless(spec) if spec.no_regions => SizedGrid::without_regions(spec.size),
             Self::Boxless(_) => None,
-        }.ok_or((
+        }
+        .ok_or((
             "invalid-layout",
             "Choose boxes or a complete region partition with one cell for each digit.",
         ))
@@ -42,7 +45,9 @@ impl Layout {
     pub(super) fn compile(&self, digits: &[u8]) -> ResultValue<SizedGrid> {
         let layout = self.build()?;
         if digits.len() != layout.cell_count()
-            || digits.iter().any(|&digit| usize::from(digit) > layout.size())
+            || digits
+                .iter()
+                .any(|&digit| usize::from(digit) > layout.size())
         {
             return Err((
                 "invalid-grid",
@@ -54,7 +59,9 @@ impl Layout {
 }
 
 pub(super) fn candidate_removals(
-    value: Option<Vec<u16>>, cell_count: usize, full: u16,
+    value: Option<Vec<u16>>,
+    cell_count: usize,
+    full: u16,
 ) -> ResultValue<Vec<u16>> {
     let eliminations = value.unwrap_or_else(|| vec![0; cell_count]);
     if eliminations.len() != cell_count || eliminations.iter().any(|mask| mask & !full != 0) {

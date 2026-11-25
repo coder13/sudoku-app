@@ -24,14 +24,14 @@ The [Coach corpus](tests/fixtures/modular-coach.json) preserves eight original e
 | --- | --- |
 | [Entropy 7/13](https://sudoku.coach/en/s/Hu9m), DavidW | Zero givens; all 35 rules: Global Entropy, 23 two-cell totals, five Modular paths, five thermometers and a black dot. Independent count is one, matching the printed completion. The earlier Global Entropy corpus now points to this complete integration. |
 | [Modular VII/XIII 2](https://sudoku.coach/en/s/HCHW), cyboogie | Zero givens; all 22 rules: fifteen two-cell totals, six Modular paths and a white dot. One printed total is XI, or eleven. Independent count is one, matching the printed completion. |
-| [Modular Curtain](https://sudoku.coach/en/s/9ZMr), Bluejay | Nine givens and nine column paths, plus 36 circles labelled 3. These require exact difference three. Keep the original source pending [General Difference support](https://github.com/coder13/sudoku-app/issues/85). |
-| [Entropic Runaround](https://sudoku.coach/en/s/Cmki), FatPhil | A 6 × 6 puzzle with replacement regions, two Whispers paths with minimum difference three, a sum and four Modular paths. Grid-size support remains open. |
-| [kicking modular lines…](https://sudoku.coach/en/s/7hzU), vajrajames | A 5 × 5 Latin-square puzzle with Anti-King, two Modular and four Entropic paths. Preserve its grid and region semantics. |
-| [Modular Colouring](https://sudoku.coach/en/s/GYTv), cyboogie | Six Modular paths, eight Consecutive Lines, seven difference-three circles and a printed XI total. Requires [Consecutive Lines](https://github.com/coder13/sudoku-app/issues/89) and [General Difference](https://github.com/coder13/sudoku-app/issues/85). |
-| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | The verified short link imports Non-Consecutive, four Entropic paths, two Modular paths, and nine Region Sum lines. The authored legend accounts for the drawn orange and blue paths. An independent counter verifies the unique published answer. [Verification](SUDOKU_VARIANT_USABILITY_AUDIT.md#published-coach-links) |
+| [Modular Curtain](https://sudoku.coach/en/s/9ZMr), Bluejay | Nine givens, nine column paths, and 36 exact difference-three circles. Import Preview preserves the complete rules and matches the published completion. |
+| [Entropic Runaround](https://sudoku.coach/en/s/Cmki), FatPhil | A 6 × 6 puzzle with replacement regions, two Whispers paths with minimum difference three, an XV pair and four Modular paths. Its raw code and public short link import through Preview and Play, and its unique completion survives reload. The short link accepts only the exact reviewed export and author note. |
+| [kicking modular lines…](https://sudoku.coach/en/s/7hzU), vajrajames | The 5 × 5 Latin-square puzzle imports with Anti-King, two Modular paths, and four Entropic paths. |
+| [Modular Colouring](https://sudoku.coach/en/s/GYTv), cyboogie | Six Modular paths, eight Consecutive Lines, seven exact difference-three circles, and the printed XI total. Import Preview preserves the full rules and validates the published completion. |
+| [220V](https://sudoku.coach/en/s/7rs9), vajrajames | The copied code and short link both import Non-Consecutive, four Entropic paths, two Modular paths, and nine Region Sum lines. The exact reviewed code applies the published legend to its orange and blue paths. An independent counter verifies the unique published answer. [Verification](SUDOKU_VARIANT_USABILITY_AUDIT.md#published-coach-links) |
 | [Skipping through fog](https://sudoku.coach/en/s/Fnxt), ThatOneEspeon | Fog, Odd, Whispers, black dots, sums, Entropic paths, cages, Renban and Modular paths. The complete export now opens through 9×9 Fog import. [Fog app audit](https://github.com/coder13/sudoku-app/issues/91) |
 
-Six raw exports remain deferred. The 220V short link supplies the author legend required to recover its drawn paths. The other deferred sources still need the rules or grid layouts listed above.
+Raw sources that still require unsupported grid or rule models remain deferred. The 220V copied code now retains its published line legend through a reviewed exact-export match.
 
 ## Engine and app contract
 

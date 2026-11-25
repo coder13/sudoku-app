@@ -129,9 +129,9 @@ function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'e
     (grid !== undefined && (!isSizedGrid(grid) || variant !== undefined)) || !isGridText(givens, grid ?? CLASSIC_GRID) ||
     (algebraic !== undefined && (grid?.size !== 4 || !validSharedAlgebraic(algebraic))) ||
     (legacy && (grid?.size !== 6 || data.sizedRules !== undefined || data.sizedAuthor !== undefined)) ||
-    (grid && grid.size !== 4 && sizedRules === undefined) ||
+    (grid && (grid.size !== 4 || 'regions' in grid) && sizedRules === undefined) ||
     (sizedRules !== undefined && (!grid || algebraic !== undefined || !isSizedRuleList(sizedRules, grid) ||
-      (grid.size === 4 && !sizedRules.length))) ||
+      (grid.size === 4 && !('regions' in grid) && !sizedRules.length))) ||
     (sizedAuthor !== undefined && (!sizedRules || !isSizedRuleAuthor(sizedAuthor))) ||
     (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||

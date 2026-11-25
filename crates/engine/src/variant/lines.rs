@@ -5,12 +5,15 @@ pub(super) mod ray_houses;
 pub(super) mod region_sums;
 pub(super) mod renban_sum;
 
-pub(super) use group_sums::{DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums};
+pub(super) use group_sums::{
+    DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums,
+};
 
 use std::{collections::HashMap, ops::Range};
 
 use super::{
-    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind, VariantTechnique, cell_mask,
+    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind,
+    VariantTechnique, cell_mask,
 };
 use crate::{
     CELLS, DIGITS,
@@ -27,14 +30,23 @@ pub(super) struct LineConstraint {
 
 #[derive(Clone, Debug)]
 enum LineKind {
-    EqualSums { parts: Vec<Range<usize>>, distinct_parts: bool },
+    EqualSums {
+        parts: Vec<Range<usize>>,
+        distinct_parts: bool,
+    },
     PillArrow,
     Sum(u16),
     Renban,
-    ConsecutiveRun { from_bulb: bool },
+    ConsecutiveRun {
+        from_bulb: bool,
+    },
     DistinctCells,
     InsideGrid(inside_grid::InsideGrid),
     ThreeGroups(groups::GroupLine),
+    DigitOrder {
+        digits: Vec<u8>,
+    },
+    ForbiddenEntropicConnection,
     Between,
     Lockout,
     Outside(OutsideClue),
@@ -50,7 +62,9 @@ enum OutsideClue {
 impl LineConstraint {
     pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
         match &self.kind {
-            LineKind::EqualSums { parts, .. } if self.technique == VariantTechnique::RegionSum => Some(parts),
+            LineKind::EqualSums { parts, .. } if self.technique == VariantTechnique::RegionSum => {
+                Some(parts)
+            }
             _ => None,
         }
     }
@@ -85,11 +99,21 @@ impl LineConstraint {
                     .chain(cells.iter().copied())
                     .collect();
                 let ranges = vec![0..1, 1..cells.len()];
-                (cells, LineKind::EqualSums { parts: ranges, distinct_parts: false }, VariantTechnique::Arrow)
+                (
+                    cells,
+                    LineKind::EqualSums {
+                        parts: ranges,
+                        distinct_parts: false,
+                    },
+                    VariantTechnique::Arrow,
+                )
             }
             PuzzleRule::PillArrow { pill, cells, .. } => {
                 let [tens, ones] = *pill;
-                if cells.is_empty() || (tens / 9).abs_diff(ones / 9) > 1 || (tens % 9).abs_diff(ones % 9) > 1 {
+                if cells.is_empty()
+                    || (tens / 9).abs_diff(ones / 9) > 1
+                    || (tens % 9).abs_diff(ones % 9) > 1
+                {
                     return Err(invalid);
                 }
                 let cells = pill.iter().chain(cells).copied().collect();
@@ -102,20 +126,26 @@ impl LineConstraint {
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 (cells.clone(), LineKind::Renban, VariantTechnique::Renban)
             }
-            PuzzleRule::ConsecutiveRun { cells, color, .. } | PuzzleRule::DistinctCells { cells, color } => {
+            PuzzleRule::ConsecutiveRun { cells, color, .. }
+            | PuzzleRule::DistinctCells { cells, color } => {
                 let run = matches!(rule, PuzzleRule::ConsecutiveRun { .. });
                 let maximum = if run { 9 } else { 8 };
-                if !(2..=maximum).contains(&cells.len()) ||
-                    color.as_deref().is_some_and(|color| {
-                        !matches!(color.len(), 4 | 5 | 7 | 9) || !color.starts_with('#') ||
-                            !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
-                    }) {
+                if !(2..=maximum).contains(&cells.len())
+                    || color.as_deref().is_some_and(|color| {
+                        !matches!(color.len(), 4 | 5 | 7 | 9)
+                            || !color.starts_with('#')
+                            || !color.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
+                    })
+                {
                     return Err(invalid);
                 }
                 puzzle.add_peers(cell_mask(cells).ok_or(invalid)?);
                 let (kind, technique) = match rule {
                     PuzzleRule::ConsecutiveRun { from_bulb, .. } => (
-                        LineKind::ConsecutiveRun { from_bulb: *from_bulb }, VariantTechnique::ConsecutiveRun,
+                        LineKind::ConsecutiveRun {
+                            from_bulb: *from_bulb,
+                        },
+                        VariantTechnique::ConsecutiveRun,
                     ),
                     _ => (LineKind::DistinctCells, VariantTechnique::DistinctCells),
                 };
@@ -123,7 +153,11 @@ impl LineConstraint {
             }
             PuzzleRule::InsideGrid { rows } => {
                 let grid = inside_grid::InsideGrid::compile(puzzle, rows).ok_or(invalid)?;
-                (rows.iter().flatten().copied().collect(), LineKind::InsideGrid(grid), VariantTechnique::InsideGrid)
+                (
+                    rows.iter().flatten().copied().collect(),
+                    LineKind::InsideGrid(grid),
+                    VariantTechnique::InsideGrid,
+                )
             }
             PuzzleRule::Entropic { cells } | PuzzleRule::Modular { cells } => {
                 let (partition, technique) = if matches!(rule, PuzzleRule::Entropic { .. }) {
@@ -142,6 +176,55 @@ impl LineConstraint {
                     }
                 }
                 (cells, LineKind::ThreeGroups(line), technique)
+            }
+            PuzzleRule::DigitOrder { cells, digits } => {
+                let row = cells.first().map(|cell| cell / 9).ok_or(invalid)?;
+                let column = cells.first().map(|cell| cell % 9).ok_or(invalid)?;
+                let is_row = cells.iter().all(|cell| cell / 9 == row)
+                    && (cells
+                        .iter()
+                        .enumerate()
+                        .all(|(index, cell)| *cell == row * 9 + index)
+                        || cells
+                            .iter()
+                            .enumerate()
+                            .all(|(index, cell)| *cell == row * 9 + 8 - index));
+                let is_column = cells.iter().all(|cell| cell % 9 == column)
+                    && (cells
+                        .iter()
+                        .enumerate()
+                        .all(|(index, cell)| *cell == index * 9 + column)
+                        || cells
+                            .iter()
+                            .enumerate()
+                            .all(|(index, cell)| *cell == (8 - index) * 9 + column));
+                if cells.len() != 9
+                    || (!is_row && !is_column)
+                    || digits.len() != 3
+                    || !matches!(digits.as_slice(), [1, 2, 3] | [4, 5, 6] | [7, 8, 9])
+                {
+                    return Err(invalid);
+                }
+                (
+                    cells.clone(),
+                    LineKind::DigitOrder {
+                        digits: digits.clone(),
+                    },
+                    VariantTechnique::DigitOrder,
+                )
+            }
+            PuzzleRule::ForbiddenEntropicConnection { cells } => {
+                let connected = cells.windows(2).all(|pair| {
+                    (pair[0] / 9).abs_diff(pair[1] / 9) + (pair[0] % 9).abs_diff(pair[1] % 9) == 1
+                });
+                if !connected {
+                    return Err(invalid);
+                }
+                (
+                    cells.to_vec(),
+                    LineKind::ForbiddenEntropicConnection,
+                    VariantTechnique::Entropic,
+                )
             }
             PuzzleRule::Between { cells } => {
                 if cells.len() < 3 {
@@ -164,16 +247,31 @@ impl LineConstraint {
                     return Err(invalid);
                 }
                 cell_mask(cells).ok_or(invalid)?;
-                if cells.iter().any(|&cell| puzzle.primary_region(cell).is_none()) {
+                if cells
+                    .iter()
+                    .any(|&cell| puzzle.primary_region(cell).is_none())
+                {
                     return Err(invalid);
                 }
                 let mut cells = cells.clone();
-                let segments = region_sum_ranges(&mut cells, |cell| puzzle.primary_region(cell).unwrap(), *group_by_region);
+                let segments = region_sum_ranges(
+                    &mut cells,
+                    |cell| puzzle.primary_region(cell).unwrap(),
+                    *group_by_region,
+                );
                 // A line within one region still has a visible path. Its sole
                 // group already satisfies equality of the group totals.
-                let distinct_parts = enforce_regions && segments.len() > 1
+                let distinct_parts = enforce_regions
+                    && segments.len() > 1
                     && segments.iter().any(|part| part.len() > 1);
-                (cells, LineKind::EqualSums { parts: segments, distinct_parts }, VariantTechnique::RegionSum)
+                (
+                    cells,
+                    LineKind::EqualSums {
+                        parts: segments,
+                        distinct_parts,
+                    },
+                    VariantTechnique::RegionSum,
+                )
             }
             PuzzleRule::LittleKiller {
                 cells,
@@ -185,7 +283,11 @@ impl LineConstraint {
                 {
                     return Err(invalid);
                 }
-                (cells.clone(), LineKind::Sum(*sum), VariantTechnique::LittleKiller)
+                (
+                    cells.clone(),
+                    LineKind::Sum(*sum),
+                    VariantTechnique::LittleKiller,
+                )
             }
             PuzzleRule::Sandwich {
                 cells,
@@ -293,7 +395,10 @@ impl LineConstraint {
         if self.cells.len() < 3 || basic_support.contains(&0) {
             return;
         }
-        let scope = self.cells.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        let scope = self
+            .cells
+            .iter()
+            .fold(0, |mask, &cell| mask | (1u128 << cell));
         let outside = narrow & !scope;
         if outside == 0 {
             return;
@@ -316,17 +421,27 @@ impl LineConstraint {
                         if domains[other] & !(domains[a] | domains[b]) != 0 {
                             continue;
                         }
-                        let blocked = line.house_triplet_removals(i, j, [domains[a], domains[b], domains[other]]);
+                        let blocked = line.house_triplet_removals(
+                            i,
+                            j,
+                            [domains[a], domains[b], domains[other]],
+                        );
                         if blocked == 0 {
                             continue;
                         }
                         for (target, &cell) in self.cells.iter().enumerate() {
                             let removals = basic_support[target] & blocked;
-                            if removals != 0 && removals != basic_support[target]
-                                && line.different_phases(target, i) && line.different_phases(target, j)
+                            if removals != 0
+                                && removals != basic_support[target]
+                                && line.different_phases(target, i)
+                                && line.different_phases(target, j)
                             {
-                                visit(puzzle.houses[house].kind, [cell, a, b, other],
-                                    [domains[cell], domains[a], domains[b], domains[other]], removals);
+                                visit(
+                                    puzzle.houses[house].kind,
+                                    [cell, a, b, other],
+                                    [domains[cell], domains[a], domains[b], domains[other]],
+                                    removals,
+                                );
                             }
                         }
                     }
@@ -336,11 +451,21 @@ impl LineConstraint {
     }
 
     pub(super) fn supports_distinct_sums(&self) -> bool {
-        matches!(self.kind, LineKind::EqualSums { distinct_parts: true, .. })
+        matches!(
+            self.kind,
+            LineKind::EqualSums {
+                distinct_parts: true,
+                ..
+            }
+        )
     }
 
     pub(super) fn support_exact(&self, domains: &[u16], support: &mut [u16]) {
-        if let LineKind::EqualSums { parts, distinct_parts: true } = &self.kind {
+        if let LineKind::EqualSums {
+            parts,
+            distinct_parts: true,
+        } = &self.kind
+        {
             if !domains.contains(&0) {
                 region_sums::distinct_support(parts, domains, support);
             }
@@ -357,7 +482,9 @@ impl LineConstraint {
             return;
         }
         match &self.kind {
-            LineKind::EqualSums { parts: segments, .. } => {
+            LineKind::EqualSums {
+                parts: segments, ..
+            } => {
                 let totals = segments.iter().fold(u128::MAX, |totals, range| {
                     totals & reachable(&domains[range.clone()])
                 });
@@ -370,7 +497,9 @@ impl LineConstraint {
             LineKind::PillArrow => pill_arrow_support(domains, support),
             LineKind::Sum(total) => sum_support(domains, 1 << total, support),
             LineKind::Renban => renban_support::<9, 512>(domains, support),
-            LineKind::ConsecutiveRun { from_bulb } => consecutive_run_support(domains, support, *from_bulb),
+            LineKind::ConsecutiveRun { from_bulb } => {
+                consecutive_run_support(domains, support, *from_bulb)
+            }
             LineKind::InsideGrid(grid) => grid.support(domains, support),
             LineKind::DistinctCells => {
                 let union = domains.iter().fold(0, |union, mask| union | mask);
@@ -386,6 +515,10 @@ impl LineConstraint {
                 }
             }
             LineKind::ThreeGroups(line) => line.support(domains, support),
+            LineKind::DigitOrder { digits } => digit_order_support(digits, domains, support),
+            LineKind::ForbiddenEntropicConnection => {
+                forbidden_entropic_connection_support(domains, support)
+            }
             LineKind::Between => endpoint_support(domains, support, false),
             LineKind::Lockout => endpoint_support(domains, support, true),
             LineKind::Outside(clue) => {
@@ -403,7 +536,179 @@ impl LineConstraint {
     }
 }
 
-pub(crate) fn renban_support<const N: usize, const CACHE: usize>(domains: &[u16], support: &mut [u16]) {
+fn digit_order_transition(digits: &[u8], state: usize, digit: u8) -> Option<usize> {
+    match digits.iter().position(|&ordered| ordered == digit) {
+        Some(position) if position == state => Some(state + 1),
+        Some(_) => None,
+        None => Some(state),
+    }
+}
+
+/// A break is valid when joining its neighboring segments would fail either crossing triple.
+fn forbidden_entropic_connection_support(domains: &[u16], support: &mut [u16]) {
+    debug_assert_eq!(domains.len(), 4);
+    for a in 1..=9 {
+        let a_bit = 1 << (a - 1);
+        if domains[0] & a_bit == 0 {
+            continue;
+        }
+        for b in 1..=9 {
+            let b_bit = 1 << (b - 1);
+            if domains[1] & b_bit == 0 {
+                continue;
+            }
+            for c in 1..=9 {
+                let c_bit = 1 << (c - 1);
+                if domains[2] & c_bit == 0 {
+                    continue;
+                }
+                let first_is_entropic = (a - 1) / 3 != (b - 1) / 3
+                    && (a - 1) / 3 != (c - 1) / 3
+                    && (b - 1) / 3 != (c - 1) / 3;
+                for d in 1..=9 {
+                    let d_bit = 1 << (d - 1);
+                    if domains[3] & d_bit == 0 {
+                        continue;
+                    }
+                    let second_is_entropic = (b - 1) / 3 != (c - 1) / 3
+                        && (b - 1) / 3 != (d - 1) / 3
+                        && (c - 1) / 3 != (d - 1) / 3;
+                    if !first_is_entropic || !second_is_entropic {
+                        support[0] |= a_bit;
+                        support[1] |= b_bit;
+                        support[2] |= c_bit;
+                        support[3] |= d_bit;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Keep only assignments where every selected digit occurs once in ascending path order.
+fn digit_order_support(digits: &[u8], domains: &[u16], support: &mut [u16]) {
+    let states = digits.len() + 1;
+    let mut forward = vec![vec![false; states]; domains.len() + 1];
+    forward[0][0] = true;
+    for (index, &domain) in domains.iter().enumerate() {
+        for state in 0..states {
+            if !forward[index][state] {
+                continue;
+            }
+            for digit in 1..=9 {
+                if domain & (1 << (digit - 1)) == 0 {
+                    continue;
+                }
+                if let Some(next) = digit_order_transition(digits, state, digit) {
+                    forward[index + 1][next] = true;
+                }
+            }
+        }
+    }
+
+    let mut backward = vec![vec![false; states]; domains.len() + 1];
+    backward[domains.len()][digits.len()] = true;
+    for index in (0..domains.len()).rev() {
+        for state in 0..states {
+            for digit in 1..=9 {
+                if domains[index] & (1 << (digit - 1)) == 0 {
+                    continue;
+                }
+                if digit_order_transition(digits, state, digit)
+                    .is_some_and(|next| backward[index + 1][next])
+                {
+                    backward[index][state] = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if !forward[domains.len()][digits.len()] {
+        return;
+    }
+    for (index, &domain) in domains.iter().enumerate() {
+        for state in 0..states {
+            if !forward[index][state] {
+                continue;
+            }
+            for digit in 1..=9 {
+                let mask = 1 << (digit - 1);
+                if domain & mask == 0 {
+                    continue;
+                }
+                if digit_order_transition(digits, state, digit)
+                    .is_some_and(|next| backward[index + 1][next])
+                {
+                    support[index] |= mask;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod digit_order_tests {
+    use super::*;
+
+    fn enumerate(digits: &[u8], domains: &[u16]) -> Vec<u16> {
+        fn visit(
+            digits: &[u8],
+            domains: &[u16],
+            index: usize,
+            state: usize,
+            assignment: &mut Vec<u8>,
+            support: &mut [u16],
+        ) {
+            if index == domains.len() {
+                if state == digits.len() {
+                    for (slot, digit) in support.iter_mut().zip(assignment.iter()) {
+                        *slot |= digit_bit(*digit);
+                    }
+                }
+                return;
+            }
+            for digit in 1..=9 {
+                if domains[index] & digit_bit(digit) == 0 {
+                    continue;
+                }
+                if let Some(next) = digit_order_transition(digits, state, digit) {
+                    assignment.push(digit);
+                    visit(digits, domains, index + 1, next, assignment, support);
+                    assignment.pop();
+                }
+            }
+        }
+        let mut support = vec![0; domains.len()];
+        visit(digits, domains, 0, 0, &mut Vec::new(), &mut support);
+        support
+    }
+
+    #[test]
+    fn candidate_support_matches_exhaustive_assignments() {
+        let digits = [1, 2];
+        let domains: Vec<u16> = (1..8).collect();
+        for a in &domains {
+            for b in &domains {
+                for c in &domains {
+                    let input = [*a, *b, *c];
+                    let mut actual = [0; 3];
+                    digit_order_support(&digits, &input, &mut actual);
+                    assert_eq!(
+                        actual.as_slice(),
+                        enumerate(&digits, &input).as_slice(),
+                        "{input:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn renban_support<const N: usize, const CACHE: usize>(
+    domains: &[u16],
+    support: &mut [u16],
+) {
     match *domains {
         [single] => support[0] = single,
         [a, b] => support.copy_from_slice(&[a & (b << 1 | b >> 1), b & (a << 1 | a >> 1)]),
@@ -441,7 +746,11 @@ fn consecutive_run_support(domains: &[u16], support: &mut [u16], from_bulb: bool
     for first in 0..=9 - length {
         for &reverse in directions {
             let digit_at = |i| 1u16 << (first + if reverse { length - 1 - i } else { i });
-            if domains.iter().enumerate().all(|(i, domain)| domain & digit_at(i) != 0) {
+            if domains
+                .iter()
+                .enumerate()
+                .all(|(i, domain)| domain & digit_at(i) != 0)
+            {
                 for (i, mask) in support.iter_mut().enumerate() {
                     *mask |= digit_at(i);
                 }
@@ -512,7 +821,8 @@ fn match_digit(
         let bit = 1 << digit;
         *visited |= bit;
         available &= !bit;
-        if owners[digit] == usize::MAX || match_digit(domains, interval, owners[digit], owners, visited)
+        if owners[digit] == usize::MAX
+            || match_digit(domains, interval, owners[digit], owners, visited)
         {
             owners[digit] = cell;
             return true;
@@ -566,13 +876,18 @@ pub(crate) fn region_sum_ranges(
         .collect()
 }
 
-fn add_digit<const WORDS: usize>(sums: [u128; WORDS], domain: u16) -> [u128; WORDS] {
+fn add_value<const WORDS: usize>(
+    sums: [u128; WORDS],
+    domain: u16,
+    value_offset: u8,
+) -> [u128; WORDS] {
     let mut next = [0; WORDS];
     for digit in digits(domain) {
+        let value = u32::from(digit - value_offset);
         for word in 0..WORDS {
-            next[word] |= sums[word] << digit;
-            if word > 0 {
-                next[word] |= sums[word - 1] >> (128 - digit);
+            next[word] |= sums[word] << value;
+            if word > 0 && value != 0 {
+                next[word] |= sums[word - 1] >> (128 - value);
             }
         }
     }
@@ -584,9 +899,19 @@ fn reachable(domains: &[u16]) -> u128 {
 }
 
 pub(crate) fn reachable_sums<const WORDS: usize>(domains: &[u16]) -> [u128; WORDS] {
+    reachable_sums_with_offset(domains, 0)
+}
+
+pub(crate) fn reachable_sums_with_offset<const WORDS: usize>(
+    domains: &[u16],
+    value_offset: u8,
+) -> [u128; WORDS] {
     let mut empty = [0; WORDS];
     empty[0] = 1;
-    domains.iter().copied().fold(empty, add_digit)
+    domains
+        .iter()
+        .copied()
+        .fold(empty, |sums, domain| add_value(sums, domain, value_offset))
 }
 
 pub(super) fn sum_support(domains: &[u16], totals: u128, support: &mut [u16]) {
@@ -599,12 +924,23 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
     support: &mut [u16],
     prefix: &mut [[u128; WORDS]],
 ) -> [u128; WORDS] {
+    sum_support_with_prefix_and_offset(domains, totals, support, prefix, 0)
+}
+
+pub(crate) fn sum_support_with_prefix_and_offset<const WORDS: usize>(
+    domains: &[u16],
+    totals: [u128; WORDS],
+    support: &mut [u16],
+    prefix: &mut [[u128; WORDS]],
+    value_offset: u8,
+) -> [u128; WORDS] {
     prefix[0] = [0; WORDS];
     prefix[0][0] = 1;
     for (i, &domain) in domains.iter().enumerate() {
-        prefix[i + 1] = add_digit(prefix[i], domain);
+        prefix[i + 1] = add_value(prefix[i], domain, value_offset);
     }
-    let matched: [u128; WORDS] = std::array::from_fn(|word| prefix[domains.len()][word] & totals[word]);
+    let matched: [u128; WORDS] =
+        std::array::from_fn(|word| prefix[domains.len()][word] & totals[word]);
     if matched.iter().all(|&word| word == 0) {
         return matched;
     }
@@ -616,11 +952,14 @@ pub(crate) fn sum_support_with_prefix<const WORDS: usize>(
         let mut previous = [0; WORDS];
         let mut supported = 0;
         for digit in digits(domain) {
+            let value = u32::from(digit - value_offset);
             let mut fits = false;
             for word in 0..WORDS {
-                let mut shifted = allowed[word] >> digit;
+                let mut shifted = allowed[word] >> value;
                 if word + 1 < WORDS {
-                    shifted |= allowed[word + 1] << (128 - digit);
+                    if value != 0 {
+                        shifted |= allowed[word + 1] << (128 - value);
+                    }
                 }
                 fits |= prefix[i][word] & shifted != 0;
                 previous[word] |= shifted;
@@ -640,7 +979,10 @@ fn pill_arrow_support(domains: &[u16], support: &mut [u16]) {
     let shift = |tens: u8| 10 * tens + 1;
     let totals = digits(domains[0]).fold(0, |totals, tens| totals | (ones << shift(tens)));
     let [matched] = sum_support_with_prefix(
-        &domains[2..], [totals], &mut support[2..], &mut [[0]; CELLS],
+        &domains[2..],
+        [totals],
+        &mut support[2..],
+        &mut [[0]; CELLS],
     );
     for tens in digits(domains[0]) {
         let trailing = ((matched >> shift(tens)) & ones) as u16;
@@ -918,10 +1260,12 @@ mod renban_support_tests {
             let all = u16::MAX >> (16 - size);
             for length in 4..=7 {
                 for _ in 0..80 {
-                    let domains: Vec<_> = (0..length).map(|_| {
-                        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                        ((seed >> 16) as u16) & ((seed >> 5) as u16) & all
-                    }).collect();
+                    let domains: Vec<_> = (0..length)
+                        .map(|_| {
+                            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                            ((seed >> 16) as u16) & ((seed >> 5) as u16) & all
+                        })
+                        .collect();
                     let mut support = vec![0; length];
                     wide_renban_support(size, &domains, &mut support);
                     assert_eq!(support, enumerate(size as u8, &domains), "{domains:?}");

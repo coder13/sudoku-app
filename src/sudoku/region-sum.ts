@@ -1,5 +1,6 @@
-import { gridRegionIndex, type PlayGrid } from './grid.ts'
+import { gridRegionIndex, gridValueOffset, type PlayGrid } from './grid.ts'
 import type { SizedConstraintRule, VariantPuzzle, VariantRule } from './engine.ts'
+import { positionDigit } from './digit-symbols.ts'
 
 type RegionSum = Extract<VariantRule, { type: 'region-sum' }>
 
@@ -51,28 +52,30 @@ export function regionSumState(puzzle: VariantPuzzle | undefined, values: string
 }
 
 export function sizedRegionSumState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, grid: PlayGrid) {
-  return regionSumPlacedState(rules, values, grid.size, line => sizedRegionSumParts(line, grid))
+  return regionSumPlacedState(rules, values, grid.size, line => sizedRegionSumParts(line, grid), gridValueOffset(grid))
 }
 
 function regionSumPlacedState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number,
-  split: (rule: RegionSum) => number[][]) {
+  split: (rule: RegionSum) => number[][], valueOffset = 0) {
   const lines = rules?.filter((rule): rule is RegionSum => rule.type === 'region-sum')
   if (!lines?.length) return
   const allowed = Array<number>(size ** 2).fill((1 << size) - 1), conflicts = new Set<number>()
   for (const line of lines) {
     const parts = split(line)
     const ranges = parts.map(cells => cells.reduce(([low, high], cell) => {
-      const digit = Number(values[cell])
-      return [low + (digit || 1), high + (digit || size)]
+      const digit = positionDigit(values[cell])
+      return [low + (digit ? digit - valueOffset : 1 - valueOffset), high + (digit ? digit - valueOffset : size - valueOffset)]
     }, [0, 0]))
     const low = Math.max(...ranges.map(range => range[0])), high = Math.min(...ranges.map(range => range[1]))
     for (const [index, cells] of parts.entries()) for (const cell of cells) {
-      const placed = Number(values[cell])
+      const placed = positionDigit(values[cell])
       let mask = 0
       if (low <= high) for (let digit = 1; digit <= size; digit++) {
         if (placed && placed !== digit) continue
-        const minimum = ranges[index][0] - (placed || 1) + digit
-        const maximum = ranges[index][1] - (placed || size) + digit
+        const currentMinimum = placed ? placed - valueOffset : 1 - valueOffset
+        const currentMaximum = placed ? placed - valueOffset : size - valueOffset
+        const minimum = ranges[index][0] - currentMinimum + digit - valueOffset
+        const maximum = ranges[index][1] - currentMaximum + digit - valueOffset
         if (minimum <= high && maximum >= low) mask |= 1 << (digit - 1)
       }
       allowed[cell] &= mask

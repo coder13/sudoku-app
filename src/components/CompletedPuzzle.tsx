@@ -19,6 +19,7 @@ import { collectionDownloads } from '../sudoku/collection-downloads'
 import { useOnlineStatus } from './useOnlineStatus'
 import { puzzleGenerationRuleset } from '../sudoku/variant-rulesets'
 import { PuzzleCompletionView, type CompletionFact } from './PuzzleCompletionView'
+import { isJigsawGrid } from '../sudoku/grid'
 
 function activePuzzleSummary(game: Game) {
   const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
@@ -94,7 +95,8 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     ? collectionProgress(collectionEntry.collection, games, collectionDifficulty) : undefined
   const recipe = gameGenerationVariant(game)
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
-  const boxRows = game.grid?.size === 6 || game.grid?.size === 8 ? game.grid.boxRows : undefined
+  const boxRows = game.grid && !isJigsawGrid(game.grid) && 'boxRows' in game.grid && (game.grid.size === 6 || game.grid.size === 8)
+    ? game.grid.boxRows : undefined
   const needsChoice = !inCollection && !recipe && !game.customMode
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>

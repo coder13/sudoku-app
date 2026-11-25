@@ -8,7 +8,7 @@ import { sizedClassicPosition } from '../../sudoku/grid'
 import { isAlgebraicCageList } from '../../sudoku/algebraic-cages'
 import { analyzeAlgebraic } from '../../sudoku/algebraic-play'
 import { sizedRulePosition } from '../../sudoku/sized-rule-game'
-import { playCandidates } from '../../sudoku/variant-play'
+import { playCandidates, variantPosition } from '../../sudoku/variant-play'
 import { solveSingleValues } from '../../sudoku/solve-singles'
 import { observeTechniqueActions } from '../../sudoku/technique-history'
 import type { AdvancedModes } from '../../sudoku/preferences'
@@ -97,7 +97,7 @@ export function usePlayPuzzleCommands({ puzzle, state, modes, tasks, host }: Opt
                 ? await run({
                     type: 'variant',
                     operation: 'analyze',
-                    position: { puzzle: game.variant.puzzle, entries: game.position.entries },
+                  position: variantPosition(game.variant, game.position),
                   })
                 : await run({ type: 'analyze', values })
       if (!tasks.currentTaskGame(task)) return

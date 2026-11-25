@@ -121,7 +121,13 @@ fn group_partition(rules: &[PuzzleRule]) -> Option<&'static [[u8; 3]; 3]> {
     let mut partitions = 0;
     for rule in rules {
         match rule {
-            PuzzleRule::GlobalEntropy {} | PuzzleRule::Entropic { .. } => partitions |= 1,
+            PuzzleRule::GlobalEntropy { groups } => {
+                if !groups.is_empty() && !is_default_entropy_partition(groups) {
+                    return None;
+                }
+                partitions |= 1;
+            }
+            PuzzleRule::Entropic { .. } => partitions |= 1,
             PuzzleRule::Modular { .. } => partitions |= 2,
             _ if digit_invariant(rule) => {}
             _ => return None,
@@ -132,6 +138,13 @@ fn group_partition(rules: &[PuzzleRule]) -> Option<&'static [[u8; 3]; 3]> {
         2 => Some(&MODULAR_GROUPS),
         _ => None,
     }
+}
+
+fn is_default_entropy_partition(groups: &[Vec<u8>]) -> bool {
+    let mut groups = groups.to_vec();
+    groups.iter_mut().for_each(|group| group.sort_unstable());
+    groups.sort_unstable();
+    groups == ENTROPY_GROUPS.map(|group| group.to_vec())
 }
 
 // First appearances name the three equal-sized digit groups and their members.

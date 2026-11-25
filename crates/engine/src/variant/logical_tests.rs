@@ -12,10 +12,17 @@ fn renban_sum_scopes_and_actions_replay_on_the_complete_mode_position() {
     let solution = parse_givens(fixture["solution"].as_str().unwrap()).unwrap();
     let compiled = puzzle.compile().unwrap();
     for technique in [VariantTechnique::Renban, VariantTechnique::LittleKiller] {
-        assert!(compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap().is_empty());
+        assert!(
+            compiled
+                .deductions(&[0; CELLS], &[0; CELLS], technique)
+                .unwrap()
+                .is_empty()
+        );
     }
     let technique = VariantTechnique::RenbanSum;
-    let deductions = compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap();
+    let deductions = compiled
+        .deductions(&[0; CELLS], &[0; CELLS], technique)
+        .unwrap();
     let mut scopes = Vec::new();
     for deduction in &deductions {
         let VariantEvidence::RenbanSum(proof) = &deduction.evidence else {
@@ -35,7 +42,10 @@ fn renban_sum_scopes_and_actions_replay_on_the_complete_mode_position() {
         }
     }
     scopes.sort_unstable();
-    assert_eq!(scopes, [([4, 0], 18), ([7, 1], 18), ([13, 3], 14), ([14, 2], 3)]);
+    assert_eq!(
+        scopes,
+        [([4, 0], 18), ([7, 1], 18), ([13, 3], 14), ([14, 2], 3)]
+    );
 
     let start = VariantPosition::new(puzzle);
     let trace = start.solve_logically(&[technique]).unwrap();
@@ -67,7 +77,10 @@ fn renban_sum_works_with_jigsaw_regions_and_skips_partial_overlaps() {
     regions[2][0] = 14;
     let mut puzzle = VariantPuzzle::jigsaw(givens, regions.into());
     puzzle.rules = vec![
-        PuzzleRule::Renban { cells: vec![36, 46, 56], segments: None },
+        PuzzleRule::Renban {
+            cells: vec![36, 46, 56],
+            segments: None,
+        },
         PuzzleRule::LittleKiller {
             cells: vec![36, 46, 56, 66, 76],
             direction: crate::ClueDirection::SouthEast,
@@ -76,14 +89,28 @@ fn renban_sum_works_with_jigsaw_regions_and_skips_partial_overlaps() {
     ];
     let technique = VariantTechnique::RenbanSum;
     let compiled = puzzle.compile().unwrap();
-    let deductions = compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap();
+    let deductions = compiled
+        .deductions(&[0; CELLS], &[0; CELLS], technique)
+        .unwrap();
     assert_eq!(deductions.len(), 1);
-    assert!(deductions[0].actions.contains(&HintAction::Eliminate(Candidate { cell: 76, digit: 5 })));
+    assert!(
+        deductions[0]
+            .actions
+            .contains(&HintAction::Eliminate(Candidate { cell: 76, digit: 5 }))
+    );
 
     // Keep one intersection and a valid completion, with a Renban extending off the ray.
-    puzzle.rules[0] = PuzzleRule::Renban { cells: vec![36, 27], segments: None };
+    puzzle.rules[0] = PuzzleRule::Renban {
+        cells: vec![36, 27],
+        segments: None,
+    };
     let compiled = puzzle.compile().unwrap();
-    assert!(compiled.deductions(&[0; CELLS], &[0; CELLS], technique).unwrap().is_empty());
+    assert!(
+        compiled
+            .deductions(&[0; CELLS], &[0; CELLS], technique)
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[cfg(feature = "wasm-api")]
@@ -108,7 +135,14 @@ fn stronger_public_verification_keeps_bounded_hint_eligibility_stable() {
     let position = compiled.proof_position(&[0; CELLS], &[0; CELLS]).unwrap();
     assert!(!compiled.uniqueness_is_verified(&position));
     assert!(compiled.classic_search_is_empty(&position, Technique::UniqueRectangleAic));
-    assert!(compiled.explain(&position, VariantTechnique::Classic(Technique::UniqueRectangleAic)).is_empty());
+    assert!(
+        compiled
+            .explain(
+                &position,
+                VariantTechnique::Classic(Technique::UniqueRectangleAic)
+            )
+            .is_empty()
+    );
 }
 
 #[cfg(feature = "wasm-api")]
@@ -265,12 +299,25 @@ fn rectangle_graphs_keep_valid_proofs_with_an_unrelated_parity_clue() {
             let expected = compiled
                 .deductions(&source.entries, &source.eliminations, variant)
                 .unwrap();
-            assert!(expected.iter().any(|hint| hint.actions == example.expected_actions));
+            assert!(
+                expected
+                    .iter()
+                    .any(|hint| hint.actions == example.expected_actions)
+            );
             let cell = source.givens.iter().position(|&digit| digit != 0).unwrap();
-            let parity = if source.givens[cell] % 2 == 0 { crate::Parity::Even } else { crate::Parity::Odd };
-            puzzle.rules.push(PuzzleRule::Parity { cells: vec![cell], parity });
+            let parity = if source.givens[cell] % 2 == 0 {
+                crate::Parity::Even
+            } else {
+                crate::Parity::Odd
+            };
+            puzzle.rules.push(PuzzleRule::Parity {
+                cells: vec![cell],
+                parity,
+            });
             let compiled = puzzle.compile().unwrap();
-            let position = compiled.proof_position(&source.entries, &source.eliminations).unwrap();
+            let position = compiled
+                .proof_position(&source.entries, &source.eliminations)
+                .unwrap();
 
             assert!(!compiled.classic_search_is_empty(&position, technique));
             assert_eq!(position.rectangle_guardians.get(), Some(&true));

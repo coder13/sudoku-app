@@ -39,14 +39,20 @@ impl GenerationQuality {
 }
 
 pub(super) fn lower_tier_orders(level: Difficulty) -> Vec<Vec<Technique>> {
-    let canonical: Vec<_> = Technique::DIFFICULTY_ORDER.iter().copied()
-        .filter(|technique| technique.difficulty() < level).collect();
+    let canonical: Vec<_> = Technique::DIFFICULTY_ORDER
+        .iter()
+        .copied()
+        .filter(|technique| technique.difficulty() < level)
+        .collect();
     let mut orders = vec![canonical];
     for reverse in [true, false] {
         let mut order = Vec::new();
         for tier in Difficulty::ALL.into_iter().filter(|tier| *tier < level) {
-            let mut group: Vec<_> = Technique::DIFFICULTY_ORDER.iter().copied()
-                .filter(|technique| technique.difficulty() == tier).collect();
+            let mut group: Vec<_> = Technique::DIFFICULTY_ORDER
+                .iter()
+                .copied()
+                .filter(|technique| technique.difficulty() == tier)
+                .collect();
             if reverse {
                 group.reverse();
             } else if group.len() > 1 {

@@ -8,6 +8,7 @@ import type { Game } from './game.ts'
 import { sizedRuleSingles } from './sized-rule-play.ts'
 import { playVariantPuzzle } from './fog.ts'
 import { puzzleForVariantTools } from './variants.ts'
+import { variantPosition } from './variant-play.ts'
 
 type SolveSingleOptions = {
   eliminations?: readonly number[]
@@ -41,9 +42,10 @@ export async function solveSingleValues(
   const puzzle = playVariantPuzzle(variant, position?.entries) ?? variant.puzzle
   const filteredPuzzle = puzzleForVariantTools(puzzle, variantRules)
   const entries = [...classicValues].map((digit, cell) => (filteredPuzzle.givens[cell] === '0' ? digit : '0')).join('')
+  const shades = variantPosition(variant, position).shades
   return run({
     type: 'variant',
     operation: 'solve-singles',
-    position: { puzzle: filteredPuzzle, entries, eliminations },
+    position: { puzzle: filteredPuzzle, entries, eliminations, ...(shades && { shades }) },
   })
 }

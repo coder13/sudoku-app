@@ -30,7 +30,11 @@ impl CompiledVariant {
         let mut proofs = Vec::new();
         // Keep single areas and shared edges first, then check shared corners.
         let offsets: [&[(usize, i8)]; 3] = [&[(0, 0)], &[(0, 1), (1, 0)], &[(1, -1), (1, 1)]];
-        let offsets = if include_circles { &offsets[..] } else { &offsets[1..] };
+        let offsets = if include_circles {
+            &offsets[..]
+        } else {
+            &offsets[1..]
+        };
         for group in offsets {
             for (_, first) in self.entropy_windows() {
                 let top = first[0];
@@ -47,8 +51,8 @@ impl CompiledVariant {
                         continue;
                     }
                     let second = (other_top != top).then_some(other);
-                    if let Some(proof) =
-                        self.entropy_area_proof(position, technique, entropy, &circles, first, second)
+                    if let Some(proof) = self
+                        .entropy_area_proof(position, technique, entropy, &circles, first, second)
                     {
                         proofs.push(proof);
                         if proofs.len() == limit {
@@ -218,7 +222,8 @@ impl Area {
         {
             return false;
         }
-        if self.is_sum && empty == 0
+        if self.is_sum
+            && empty == 0
             && !satisfies_sum(self.slots.map(|i| domains[i].trailing_zeros() as u8 + 1))
         {
             return false;

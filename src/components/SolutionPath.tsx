@@ -36,7 +36,12 @@ export function solutionStatus(trace: SolutionTrace) {
   return 'rating' in trace ? trace.rating.status : trace.status
 }
 
-export const verifiedSolutionSummary: PuzzleHint = { title: 'Exact solution', text: 'The verified solution is shown.' }
+export function solutionCompletionSummary(trace: SolutionTrace): PuzzleHint {
+  const proof = 'completionProof' in trace ? trace.completionProof : undefined
+  return proof
+    ? { title: 'Eight-digit Pattern Overlay', text: `Only one set of eight compatible layouts fits the puzzle. The eight layouts leave one cell in every row, column, and box for ${proof.omittedDigit}.` }
+    : { title: 'Exact solution', text: 'The verified solution is shown.' }
+}
 
 export function solutionEndIndex(trace: SolutionTrace) {
   return trace.steps.length + Number('exactPosition' in trace && Boolean(trace.exactPosition))
@@ -44,9 +49,11 @@ export function solutionEndIndex(trace: SolutionTrace) {
 
 function isPartialSolution(trace?: SolutionTrace) {
   return trace && solutionStatus(trace) === 'stalled' && !('exact' in trace && trace.exact)
+    && !('completionProof' in trace && trace.completionProof)
 }
 
-export function solutionEndSummary(status: PuzzleRating['status'] | 'solved', exact?: true): PuzzleHint {
+export function solutionEndSummary(status: PuzzleRating['status'] | 'solved', exact?: true, overlayCompletion?: boolean): PuzzleHint {
+  if (overlayCompletion) return { title: 'Last named position', text: 'The configured techniques have no move here.' }
   if (exact) return { title: 'Exact solution', text: 'Visible clues did not yield a complete logical path.' }
   return status === 'stalled'
     ? { title: 'Last position', text: 'The walkthrough ends before the puzzle is solved.' }
@@ -85,10 +92,10 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   const exact = trace && 'exact' in trace && trace.exact
   const partial = isPartialSolution(trace)
   const title = partial ? 'Partial solution' : 'Solution'
-  const last = status && solutionEndSummary(status, exact || undefined)
+  const last = status && solutionEndSummary(status, exact || undefined, Boolean(trace && 'completionProof' in trace && trace.completionProof))
   const moveAvailability = trace && 'moveAvailability' in trace ? trace.moveAvailability : undefined
   const lastBottleneck = bottleneckLabel(moveAvailability?.[count])
-  const finalRows = last ? endIndex > count ? [last, verifiedSolutionSummary] : [last] : []
+  const finalRows = trace && last ? endIndex > count ? [last, solutionCompletionSummary(trace)] : [last] : []
 
   useEffect(() => {
     if (!embedded) close.current?.focus({ preventScroll: true })

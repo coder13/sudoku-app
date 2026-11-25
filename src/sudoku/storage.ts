@@ -1,5 +1,5 @@
 import { readCustomModeDefinition } from './custom-modes.ts'
-import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type PlayGrid, type SizedGrid } from './grid.ts'
+import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type JigsawGrid, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix, rememberPuzzleActivity } from './puzzle-activity.ts'
 import { GAME_PREFIX, indexedPuzzleSaves, type PuzzleSave, type PuzzleVersion } from './puzzle-saves.ts'
 import { validVariantSave } from './variants.ts'
@@ -75,9 +75,10 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     position.draftSizedRules = position.draftSixRules
     delete position.draftSixRules
   }
-  const { entries, center, corner, colors, cellColors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
+  const { entries, shades, center, corner, colors, cellColors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings, eliminations, draftCages, draftSizedRules, draftRegions, chainSketch } = position
   if (draft && 'regions' in grid) {
-    const layout = { size: grid.size, regions: draftRegions }
+    if (!draftRegions) return false
+    const layout: JigsawGrid = { size: grid.size, regions: draftRegions, ...(grid.wrapAround && { wrapAround: true }) }
     if (!isJigsawGrid(layout)) return false
     grid = layout
   } else if (draftRegions !== undefined) return false
@@ -93,6 +94,7 @@ function validPosition(value: unknown, grid: PlayGrid, draft: boolean, cageDraft
     }))
   const mask = (1 << grid.size) - 1
   return isGridText(entries, grid) &&
+    (shades === undefined || typeof shades === 'string' && shades.length === entries.length && /^[012]+$/.test(shades)) &&
     validDigits(center, mask) && validDigits(corner, mask) && validDigits(colors, COLORS.length) && validCellColors(cellColors) &&
     (draftSizedRules === undefined ? !(draft && grid.size !== 4 && grid.size !== 9) :
       draft && grid.size !== 9 && draftCages === undefined && isSizedRuleList(draftSizedRules, grid)) &&

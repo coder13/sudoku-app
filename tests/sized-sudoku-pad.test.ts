@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
-import { readSizedRuleSudokuPad } from '../src/sudoku/sized-rule-sudoku-pad.ts'
+import { readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 
 const metadata = {
   title: 'Shared totals',
@@ -59,6 +59,13 @@ function classicFourByFourSolutions() {
 const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
 const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo-6x6.scl', import.meta.url), 'utf8').trim()
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
+const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
+const xSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
+const weightedLibraCode = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
+const pointingKnightsCode = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
+const entropyLineExamples = JSON.parse(readFileSync(new URL('./fixtures/sudokupad-entropy-lines.json', import.meta.url), 'utf8')) as {
+  examples: { id: string; title: string; code: string }[]
+}
 
 test('sized SudokuPad definitions retain cage order, labels, offsets, and authored metadata', () => {
   const code = encode(input)
@@ -72,6 +79,42 @@ test('sized SudokuPad definitions retain cage order, labels, offsets, and author
   assert.equal(decoded.source.code, code)
   assert.equal(decoded.source.rulesText, metadata.rules)
   assert.equal(decoded.source.author, metadata.author)
+})
+
+test('#400 imports the original Between Lines export with rectangular box notation and translucent circles', async () => {
+  const imported = await detectPuzzle(betweenLinesCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, 'Choose Your Fighter: Between Lines')
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.equal(imported.givens, '030000000000000000000002000000000000')
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'between', cells: [16, 22, 28, 34, 33, 27, 21] },
+    { type: 'between', cells: [21, 26, 19, 24] },
+    { type: 'between', cells: [24, 18, 12, 7] },
+    { type: 'between', cells: [7, 8, 9, 4, 5] },
+    { type: 'between', cells: [5, 11, 17, 16] },
+  ])
+  assert.equal(imported.authoredSolution, '634125512364246513351642465231123456')
+  assert.equal(imported.authoredSolutionOnly, true)
+})
+
+test('#404 imports the original 4 × 4 X-Sum Twins Penpa export and verifies both white dots', async () => {
+  const imported = await detectPuzzle(xSumDotCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '4x4 X-Sum Twins: White Dots')
+  assert.equal(imported.sizedAuthor, 'Cale Schoon')
+  assert.deepEqual(imported.grid, { size: 4, boxRows: 2, boxColumns: 2 })
+  assert.equal(imported.givens, '0'.repeat(16))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum-dot', ends: [{ direction: 'south', index: 1 }, { direction: 'south', index: 2 }], relation: 'consecutive' },
+    { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'consecutive' },
+  ])
+  const decoded = decodeSudokuPadEnvelope(xSumDotCode) as Record<string, unknown>
+  assert.deepEqual(readSudokuPadXSumDots(decoded), {
+    givens: '0'.repeat(16), grid: { size: 4, boxRows: 2, boxColumns: 2 }, sizedRules: imported.sizedRules,
+    title: '4x4 X-Sum Twins: White Dots', sizedAuthor: 'Cale Schoon', authoredSolution: '4321213412433412',
+    authoredSolutionOnly: true,
+  })
 })
 
 test('sized SudokuPad rejects unrepresented rules and geometry', () => {
@@ -118,6 +161,45 @@ test('published 6 × 6 SudokuPad imports keep their combined rules and authored 
   } }), /authored rules this importer cannot verify/)
 })
 
+test('#396 imports the published Anti-King and Region Sum combination with its solution annotation', async () => {
+  const imported = await detectPuzzle(weightedLibraCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, 'Weighted Libra')
+  assert.equal(imported.sizedAuthor, 'vguardiano')
+  assert.equal(imported.givens, '000000030060000000000000060030000000')
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-king' },
+    { type: 'region-sum', cells: [19, 20, 13, 7, 8, 9, 10, 16, 21, 22] },
+    { type: 'region-sum', cells: [25, 26, 27, 28] },
+  ])
+  assert.equal(imported.authoredSolution, '621345435261216453543126162534354612')
+
+  const source = decodeSudokuPadEnvelope(weightedLibraCode) as Record<string, unknown>
+  assert.throws(() => readSizedRuleSudokuPad({ ...source,
+    cages: [{ value: 'solution: 123' }],
+  }), /unsupported rules or markings/)
+})
+
+test('published 6 × 6 Entropic Line imports preserve Anti-King, paths, and authored solutions', async () => {
+  const paths = [
+    [[32, 25, 19, 12, 6, 1]],
+    [[13, 19, 25, 31], [23, 17, 11, 5]],
+  ]
+  for (const [index, example] of entropyLineExamples.examples.entries()) {
+    const imported = await detectPuzzle(example.code)
+    assert.equal(imported.format, 'SudokuPad', example.id)
+    assert.equal(imported.title, example.title)
+    assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+    if (example.id === 'ua0shvo1dt') assert.ok(imported.sizedRules?.some(rule => rule.type === 'anti-king'), `${example.id} has Anti-King`)
+    const entropic = imported.sizedRules?.filter(rule => rule.type === 'entropic') ?? []
+    assert.equal(entropic.length, example.id === '590b62qlwt' ? 2 : 1, `${example.id} line count`)
+    assert.deepEqual(entropic.map(rule => rule.cells), paths[index])
+    assert.ok(entropic.every(rule => rule.type === 'entropic' && rule.groups.flat().length === 6))
+    assert.ok(imported.authoredSolution)
+  }
+})
+
 function thermoExport(boxRows: 2 | 3) {
   const boxColumns = 6 / boxRows
   return {
@@ -146,6 +228,41 @@ test('6 × 6 SudokuPad thermometers follow the bulb and fill skipped collinear c
     assert.deepEqual(imported.sizedRules, [{ type: 'thermometer', cells: [0, 1, 2, 3] }])
     assert.equal(imported.sizedAuthor, 'Test author')
   }
+})
+
+test('#394 imports SudokuPad Anti-Knight metadata alongside sized companion rules', async () => {
+  const base = thermoExport(2)
+  const source = { ...base, metadata: { ...base.metadata, antiknight: true } }
+  const imported = await detectPuzzle(encode(source))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-knight' },
+    { type: 'thermometer', cells: [0, 1, 2, 3] },
+  ])
+})
+
+test('#394 imports the published 6 × 6 f-puzzles Anti-Knight and Arrow combination', async ({ mock }) => {
+  const imported = await detectPuzzle(pointingKnightsCode)
+  assert.equal(imported.format, 'f-puzzles')
+  assert.equal(imported.title, '3 Pointing Knights')
+  assert.equal(imported.sizedAuthor, 'Plok')
+  assert.equal(imported.givens, '0'.repeat(36))
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-knight' },
+    { type: 'arrow', circle: 18, cells: [13, 8, 3] },
+    { type: 'arrow', circle: 28, cells: [21, 14, 7] },
+    { type: 'arrow', circle: 32, cells: [27, 22, 17] },
+  ])
+  assert.equal(imported.authoredSolution, '456321321654612543543216234165165432')
+
+  const fetch = mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudokupad/uzqvdilyi5')
+    return Response.json({ code: pointingKnightsCode })
+  })
+  const linked = await detectPuzzle('https://sudokupad.app/uzqvdilyi5')
+  assert.equal(linked.format, 'SudokuPad')
+  assert.deepEqual(linked.sizedRules, imported.sizedRules)
+  assert.equal(fetch.mock.callCount(), 1)
 })
 
 test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {
@@ -236,6 +353,46 @@ test('6 × 6 SudokuPad lines combine Renban with a thermometer and expand skippe
   assert.deepEqual(pure.sizedRules, [{ type: 'renban', cells: [6, 7, 8] }])
 })
 
+test('6 × 6 SudokuPad splits a closed Between stroke at marked endpoint circles', async () => {
+  const source = thermoExport(2)
+  const path = [0, 1, 2, 3, 4, 5, 11, 17, 23, 29, 35, 34, 33, 32, 31, 30, 24, 18, 12, 6, 0]
+  const toPoint = (cell: number) => [Math.floor(cell / 6) + .5, cell % 6 + .5]
+  const circles = [0, 4, 23, 33, 24].map(cell => ({
+    center: toPoint(cell), width: .4, height: .4, rounded: true,
+    backgroundColor: '#fff', borderColor: '#ccc',
+  }))
+  const imported = await detectPuzzle(encode({
+    ...source,
+    metadata: { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] +
+      ' Between Lines: Digits along a grey line must be strictly between the digits in two connected circles.' },
+    lines: [{ wayPoints: [toPoint(path[0]), toPoint(path[5]), toPoint(path[10]), toPoint(path[15]), toPoint(path[20])], color: '#ccc', thickness: 4 }],
+    underlays: [], overlays: circles,
+  }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'between', cells: [0, 1, 2, 3, 4] },
+    { type: 'between', cells: [4, 5, 11, 17, 23] },
+    { type: 'between', cells: [23, 29, 35, 34, 33] },
+    { type: 'between', cells: [33, 32, 31, 30, 24] },
+    { type: 'between', cells: [24, 18, 12, 6, 0] },
+  ])
+})
+
+test('6 × 6 SudokuPad splits open Between paths and rejects unmatched endpoint circles', async () => {
+  const source = thermoExport(2)
+  const metadataWithBetween = { ...source.metadata, rules: source.metadata.rules.split('\n\n')[0] +
+    ' Between Lines: Digits along a grey line must be strictly between the digits in two connected circles.' }
+  const circle = (cell: number) => ({ center: [Math.floor(cell / 6) + .5, cell % 6 + .5],
+    width: .4, height: .4, rounded: true, backgroundColor: '#fff', borderColor: '#ccc' })
+  const line = { wayPoints: [[.5, .5], [.5, 4.5]], color: '#ccc', thickness: 4 }
+  const valid = await detectPuzzle(encode({ ...source, metadata: metadataWithBetween, lines: [line], underlays: [],
+    overlays: [circle(0), circle(2), circle(4)] }))
+  assert.deepEqual(valid.sizedRules, [
+    { type: 'between', cells: [0, 1, 2] }, { type: 'between', cells: [2, 3, 4] },
+  ])
+  await assert.rejects(detectPuzzle(encode({ ...source, metadata: metadataWithBetween, lines: [line], underlays: [],
+    overlays: [circle(0), circle(2), circle(4), circle(5)] })), /circle|marked/)
+})
+
 test('compact SudokuPad retains empty cells, escaped metadata, and drawing layers', () => {
   const encoded = 'scl' + lzString.compressToBase64("{id:'compact',ca:[{v:'author: A\\'B'},{v:'rules: First\\nSecond'}],ce:[[,{v:3},,]],cs:50,u:[{ct:[0.5,0.5],r:t,c2:#0}],o:[{ct:[1,0.5],c1:#F,c2:001122}]}")
   const decoded = decodeSudokuPadEnvelope(encoded) as Record<string, unknown>
@@ -294,6 +451,21 @@ test('SudokuPad Region Sum keeps box visits and authored line geometry beside ot
     { type: 'renban', cells: [6, 7, 8] },
   ])
   await assert.rejects(detectPuzzle(encode({ ...source, lines: [{ ...blue, color: '#bada55' }, pink] })), /markings without supported rules/)
+})
+
+test('SudokuPad imports the Zipper and Region Sum layered source with its square digit key', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/zipper-region-sum.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string
+  }
+  const imported = await detectPuzzle(fixture.code)
+  assert.equal(imported.authoredSolution, fixture.solution)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'zipper', cells: [2, 7, 13, 12] },
+    { type: 'region-sum', cells: [2, 7, 13, 12] },
+    { type: 'zipper', cells: [9, 3, 4, 11, 16, 22, 21, 26, 31, 24] },
+    { type: 'region-sum', cells: [9, 3, 4, 11, 16, 22, 21, 26, 31, 24] },
+    { type: 'digit-restriction', cells: [0], digits: [1, 4], shape: 'square' },
+  ])
 })
 
 test('SudokuPad imports classic 9 × 9 Nonconsecutive, Quadruple, and Killer clues', async () => {

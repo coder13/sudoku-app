@@ -184,9 +184,9 @@ fn grouped_type_two_chain_uses_every_member_of_its_endpoint() {
     assert_eq!(links[0].strength, LinkStrength::Strong);
     assert_eq!(links.last().unwrap().strength, LinkStrength::Strong);
     assert!(
-        links.windows(2).all(|pair| {
-            pair[0].to == pair[1].from && pair[0].strength != pair[1].strength
-        })
+        links
+            .windows(2)
+            .all(|pair| { pair[0].to == pair[1].from && pair[0].strength != pair[1].strength })
     );
 
     let group_id = graph
@@ -200,7 +200,10 @@ fn grouped_type_two_chain_uses_every_member_of_its_endpoint() {
         .position(|node| node.single() == Some(Candidate { cell: 27, digit: 2 }))
         .unwrap();
     assert!(
-        graph.excluded_by_either(group_id, partial_peer).next().is_none(),
+        graph
+            .excluded_by_either(group_id, partial_peer)
+            .next()
+            .is_none(),
         "R4C1 sees only R1C1, so the group cannot remove 1 in R4C1"
     );
 
@@ -210,7 +213,12 @@ fn grouped_type_two_chain_uses_every_member_of_its_endpoint() {
         .iter()
         .position(|node| node.digit == 2 && node.members == (cell_bit(9) | cell_bit(10)))
         .unwrap();
-    assert!(graph.excluded_by_either(group_id, other_group).next().is_none());
+    assert!(
+        graph
+            .excluded_by_either(group_id, other_group)
+            .next()
+            .is_none()
+    );
 }
 
 #[derive(Clone, Copy, Debug)]

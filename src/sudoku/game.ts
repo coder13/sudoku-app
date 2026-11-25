@@ -1,11 +1,14 @@
 import { sizedQuadrupleState } from './sized-quadruple.ts'
+import { nonogramState } from './sized-nonogram.ts'
+import { skyscrapersState as sizedSkyscrapersState } from './sized-skyscrapers.ts'
 import { fogView, playVariantPuzzle } from './fog.ts'
 import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-linked-double-arrow.ts'
 import { STARTER } from './formats.ts'
 import { sizedKillerState } from './sized-killer.ts'
 import { variantPlacedRuleState } from './variant-placed-rules.ts'
-import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
-import type { Candidate, DeductionAction, Difficulty, VariantPuzzle } from './engine.ts'
+import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, gridValueOffset, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
+import { positionDigit, positionSymbol } from './digit-symbols.ts'
+import type { Candidate, DeductionAction, Difficulty, VariantPuzzle, VariantRule } from './engine.ts'
 import { globalEntropyState } from './global-entropy.ts'
 import { endpointLineState } from './between.ts'
 import { pillArrowState } from './pill-arrow.ts'
@@ -38,6 +41,7 @@ export type EnterOptions = { allowMultipleValues?: boolean; toggleValue?: boolea
 
 export type Position = {
   entries: string
+  shades?: string
   center: number[]
   corner: number[]
   colors: number[]
@@ -145,6 +149,14 @@ export function makeGame(id: string, title: string, givens: string, source: Sour
   }
 }
 
+export function setAqreShade(game: Game, cell: number, shade: 'unknown' | 'unshaded' | 'shaded'): Game {
+  if (!Number.isInteger(cell) || cell < 0 || cell >= game.position.entries.length || game.givens[cell] !== '0') return game
+  if (game.variant?.puzzle.rules?.some(rule => rule.type === 'aqre' && rule.givenShades.some(given => given.cell === cell))) return game
+  const current = game.position.shades ?? '0'.repeat(game.position.entries.length)
+  const next = current.slice(0, cell) + (shade === 'unknown' ? '0' : shade === 'unshaded' ? '1' : '2') + current.slice(cell + 1)
+  return next === current ? game : move(game, { ...game.position, shades: next })
+}
+
 export function restartGame(game: Game): Game {
   return {
     ...makeGame(game.id, game.title, game.givens, game.source, game.created, game.grid),
@@ -195,11 +207,12 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   sized?: Pick<SizedRuleGame, 'rules'>
   sizedRules?: SizedRuleGame['rules']
 }): string {
-  if (game.grid && (game.grid.size !== 4 || game.sized || game.sizedRules?.length)) {
+  if (game.grid && ('regions' in game.grid || game.grid.size !== 4 || game.sized || game.sizedRules?.length)) {
     const rules = game.sized?.rules ?? game.sizedRules ?? []
     const keys = [...new Set(rules.map(rule => JSON.stringify(orderedPuzzleFields(
       rule.type === 'renban' ? { type: rule.type, cells: [...rule.cells].sort((a, b) => a - b) }
-        : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) }
+        : rule.type === 'nonogram' ? { ...rule, digits: [...rule.digits].sort((a, b) => a - b) }
+          : rule.type === 'parity' ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) }
           : rule.type === 'row-column-sum' ? {
             type: rule.type,
             pairs: rule.pairs.map(([a, b]) => [Math.min(a, b), Math.max(a, b)]).sort(([a, b], [c, d]) => a - c || b - d),
@@ -220,7 +233,8 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
     ? { ...variant.puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
     : variant.puzzle
   const rules = definition.rules?.map(rule => rule.type === 'digit-restriction'
-    ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) } : rule)
+    ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) }
+    : rule.type === 'neighbor-match' ? { ...rule, clues: [...rule.clues].sort((a, b) => a.cell - b.cell) } : rule)
   return `${variant.id}:${JSON.stringify(orderedPuzzleFields(rules ? { ...definition, rules } : definition))}`
 }
 
@@ -302,6 +316,8 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
     variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
     sizedQuadrupleState(sizedRules, values, grid.size),
+    nonogramState(sizedRules, values, grid.size),
+    sizedSkyscrapersState(sizedRules, values, grid.size),
   ]
     .filter(state => state !== undefined)
   const result = states[0]
@@ -316,20 +332,42 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
 export function conflictsOf(values: string, puzzle?: VariantPuzzle, grid: PlayGrid = CLASSIC_GRID, sizedRules?: SizedRuleGame['rules']): Set<number> {
   const conflicts = new Set<number>()
   const cellCount = grid.size ** 2
+  const valueOffset = gridValueOffset(grid)
   for (let i = 0; i < cellCount; i++) {
     const placed = values[i]
     if (placed === '0') continue
-    const digit = Number(placed)
+    const digit = positionDigit(placed)
     if (sizedRules?.some(rule => rule.type === 'parity' && rule.cells.includes(i) &&
-      digit % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+      (digit - valueOffset) % 2 !== (rule.parity === 'odd' ? 1 : 0))) conflicts.add(i)
+    if (sizedRules?.some(rule => rule.type === 'digit-restriction' && rule.cells.includes(i) && !rule.digits.includes(digit - valueOffset))) conflicts.add(i)
     if (puzzle?.rules?.some(rule => rule.type === 'digit-restriction' && rule.cells.includes(i) && !rule.digits.includes(digit))) conflicts.add(i)
     for (let j = i + 1; j < cellCount; j++) {
       const other = values[j]
       if (other === '0') continue
       if (placed === other && peer(i, j, puzzle, grid, sizedRules) ||
-        ((variantDigitExclusions(puzzle, i, j, digit) | sizedDigitExclusions(sizedRules, i, j, digit, grid.size)) & 1 << (Number(other) - 1))) {
+        ((variantDigitExclusions(puzzle, i, j, digit) | sizedDigitExclusions(sizedRules, i, j, digit, grid.size, valueOffset)) & 1 << (positionDigit(other) - 1))) {
         conflicts.add(i)
         conflicts.add(j)
+      }
+    }
+  }
+  for (const rule of sizedRules ?? []) {
+    if (rule.type === 'parity-line') {
+      for (let index = 1; index < rule.cells.length; index++) {
+        const first = rule.cells[index - 1], second = rule.cells[index]
+        if (values[first] !== '0' && values[second] !== '0' &&
+          (positionDigit(values[first]) - valueOffset) % 2 === (positionDigit(values[second]) - valueOffset) % 2) {
+          conflicts.add(first)
+          conflicts.add(second)
+        }
+      }
+    } else if (rule.type === 'palindrome') {
+      for (let index = 0; index < Math.floor(rule.cells.length / 2); index++) {
+        const first = rule.cells[index], second = rule.cells[rule.cells.length - index - 1]
+        if (values[first] !== '0' && values[second] !== '0' && values[first] !== values[second]) {
+          conflicts.add(first)
+          conflicts.add(second)
+        }
       }
     }
   }
@@ -356,9 +394,61 @@ export function candidateCount(mask: number): number {
   return count
 }
 
+function validCompletedAqre(values: string, shades: string,
+  rule: Extract<VariantRule, { type: 'aqre' }>): boolean {
+  if (shades.length !== values.length || [...shades].some(shade => shade !== '1' && shade !== '2')) return false
+  for (const given of rule.givenShades) {
+    if (shades[given.cell] !== (given.shade === 'shaded' ? '2' : '1')) return false
+  }
+
+  for (let line = 0; line < 9; line++) for (let start = 0; start <= 5; start++) {
+    const horizontal = Array.from({ length: 4 }, (_, offset) => shades[line * 9 + start + offset])
+    const vertical = Array.from({ length: 4 }, (_, offset) => shades[(start + offset) * 9 + line])
+    if (horizontal.every(shade => shade === horizontal[0]) || vertical.every(shade => shade === vertical[0])) return false
+  }
+
+  for (const region of rule.regions) {
+    const shaded = region.cells.filter(cell => shades[cell] === '2')
+    const target = region.count?.type === 'fixed' ? region.count.value
+      : region.count?.type === 'digit-cell' ? Number(values[region.count.cell]) : undefined
+    if (target !== undefined && shaded.length !== target) return false
+    if (rule.kind === 'plus' && region.count?.type === 'digit-cell' && shades[region.count.cell] === '2') {
+      const digits = shaded.map(cell => Number(values[cell]))
+      const distinct = new Set(digits)
+      if (distinct.size !== digits.length || Math.max(...digits) - Math.min(...digits) + 1 !== digits.length) return false
+    }
+  }
+
+  const first = shades.indexOf('2')
+  if (first < 0) return false
+  const reached = new Set([first])
+  const pending = [first]
+  while (pending.length) {
+    const cell = pending.pop()!
+    const row = Math.floor(cell / 9), column = cell % 9
+    const neighbors = [row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1,
+      column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1]
+    for (const neighbor of neighbors) if (neighbor >= 0 && shades[neighbor] === '2' && !reached.has(neighbor)) {
+      reached.add(neighbor)
+      pending.push(neighbor)
+    }
+  }
+  return reached.size === [...shades].filter(shade => shade === '2').length
+}
+
 export function isSolved(game: Game): boolean {
   const values = gridValues(game.givens, game.position.entries)
   const solution = game.sized?.solution ?? game.algebraic?.solution ?? game.variant?.solution
+  const aqreRules = game.variant?.puzzle.rules?.filter(rule => rule.type === 'aqre') ?? []
+  if (aqreRules.length) {
+    const shades = [...(game.position.shades ?? '0'.repeat(game.givens.length))]
+    for (const rule of aqreRules) for (const given of rule.givenShades) {
+      if (shades[given.cell] === '0') shades[given.cell] = given.shade === 'shaded' ? '2' : '1'
+    }
+    return game.source !== 'draft' && !values.includes('0') &&
+      !conflictsOf(values, game.variant?.puzzle, game.grid).size && aqreRules.every(rule =>
+        rule.type === 'aqre' && validCompletedAqre(values, shades.join(''), rule))
+  }
   return game.source !== 'draft' && (solution ? values === solution : !values.includes('0') && !conflictsOf(values, undefined, game.grid).size)
 }
 
@@ -645,11 +735,13 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
   const givens = visibleGivensOf(game)
   const editable = selection.filter((i) => givens[i] === '0')
   if (mode === 'value') {
-    const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === String(digit) ? 0 : digit
+    const digitText = positionSymbol(digit)
+    const value = options.toggleValue && editable.length === 1 && entries[editable[0]] === digitText ? 0 : digit
     if (value && editable.length !== 1 && !options.allowMultipleValues) return game
     for (const i of editable) {
-      if (entries[i] !== '0' && entries[i] !== String(value)) replacedEntry = true
-      entries = entries.slice(0, i) + value + entries.slice(i + 1)
+      const valueText = value ? positionSymbol(value) : '0'
+      if (entries[i] !== '0' && entries[i] !== valueText) replacedEntry = true
+      entries = entries.slice(0, i) + valueText + entries.slice(i + 1)
     }
     if (value && options.removeCandidates !== false) {
       const bit = 1 << (value - 1)
@@ -666,7 +758,7 @@ export function enter(game: Game, selection: number[], mode: Mode, digit: number
         let allowed = ruleMasks?.[i] ?? 511
         for (const cell of editable) {
           const removed = (peer(cell, i, puzzle, grid, sizedRules) ? bit : 0) |
-            variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size)
+            variantDigitExclusions(puzzle, cell, i, value) | sizedDigitExclusions(sizedRules, cell, i, value, grid.size, gridValueOffset(grid))
           allowed &= ~removed
         }
         center[i] &= allowed
@@ -792,16 +884,16 @@ export function fillEntries(game: Game, nextValues: string, removeCandidates = t
   let changed = false
 
   for (let index = 0; index < nextValues.length; index++) {
-    const digit = Number(nextValues[index])
+    const digit = positionDigit(nextValues[index])
     if (givens[index] !== '0' || entries[index] !== '0' || digit === 0) continue
-    entries[index] = String(digit)
+    entries[index] = positionSymbol(digit)
     center[index] = 0
     corner[index] = 0
     if (removeCandidates) {
       const bit = 1 << (digit - 1)
       for (let peerIndex = 0; peerIndex < nextValues.length; peerIndex++) {
         const removed = (peer(index, peerIndex, puzzle, game.grid, game.sized?.rules) ? bit : 0) |
-          variantDigitExclusions(puzzle, index, peerIndex, digit) | sizedDigitExclusions(game.sized?.rules, index, peerIndex, digit, game.grid?.size ?? 9)
+          variantDigitExclusions(puzzle, index, peerIndex, digit) | sizedDigitExclusions(game.sized?.rules, index, peerIndex, digit, game.grid?.size ?? 9, gridValueOffset(game.grid))
         center[peerIndex] &= ~removed
         corner[peerIndex] &= ~removed
       }

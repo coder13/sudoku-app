@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, fillEntries, makeGame, undo, redo, type Game } from '../src/sudoku/game.ts'
-import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { solveLatin } from '../src/latin/engine.ts'
+import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import {
   generationVariant,
@@ -165,10 +167,53 @@ test('malformed paths and unknown parameters reject without partial imports', as
 })
 
 
-test('incomplete source exports stay explicit rather than losing unsupported companion rules', async () => {
-  const deferred = load('coach').examples.filter((source: { deferred?: string }) => source.deferred)
-  assert.equal(deferred.length, 3)
-  for (const source of deferred) await assert.rejects(prepareImportedPuzzle(source.code), /unsupported|not supported|version|rectangular boxes|region|difference|cosmetic|9 × 9/i, source.url)
+test('Cmki imports as a complete six-by-six mixed-rule Coach puzzle', async () => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.givens, '0'.repeat(36))
+  assert.deepEqual(imported.grid, {
+    size: 6,
+    regions: [[0, 1, 2, 3, 6, 9], [4, 5, 11, 17, 22, 23], [7, 8, 10, 14, 15, 16],
+      [12, 13, 18, 24, 30, 31], [19, 20, 21, 25, 27, 28], [26, 29, 32, 33, 34, 35]],
+  })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'whispers', cells: [4, 5, 11, 16, 21, 26, 31, 30, 24, 19, 14, 9, 4], minDifference: 3 },
+    { type: 'whispers', cells: [22, 15, 8, 1, 0, 6, 13, 20, 27, 34, 35, 29, 22], minDifference: 3 },
+    { type: 'xv', five: { pairs: [[4, 10]] } },
+    { type: 'modular', cells: [21, 22, 23] },
+    { type: 'modular', cells: [20, 26, 32] },
+    { type: 'modular', cells: [8, 7, 6] },
+    { type: 'modular', cells: [11, 10, 4] },
+  ])
+})
+
+test('the original 5 × 5 Modular/Entropic Coach export retains every line and its unique Anti-King completion', async ({ mock }) => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7hzU'))
+  assert.ok(source)
+  const shortLinkEndpoint = '/api/v1/import/sudoku-coach/7hzU'
+  mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, shortLinkEndpoint)
+    return Response.json({ code: source.code, coach: { title: source.title, hasAuthorInstructions: false } })
+  })
+
+  const pasted = await detectPuzzle(source.code)
+  const linked = await detectPuzzle(source.url)
+  const puzzle = pasted.futoshiki!.puzzle
+  const summarize = (value: typeof puzzle) => ({ size: value.size, givens: value.givens, inequalities: value.inequalities,
+    parity: value.parity, diagonals: value.diagonals, exclusions: value.exclusions,
+    lines: value.lines?.map(({ type, cells }) => ({ type, cells })), extrema: value.extrema })
+  assert.deepEqual(summarize(linked.futoshiki!.puzzle), summarize(puzzle))
+  assert.equal(puzzle.size, 5)
+  assert.deepEqual(puzzle.exclusions, ['anti-king'])
+  assert.deepEqual(puzzle.lines?.map(line => line.type), [
+    'modular', 'modular', 'entropic', 'entropic', 'entropic', 'entropic',
+  ])
+  assert.deepEqual(solveLatin(puzzle).solution?.join(''), source.solution)
+  assert.equal(solveLatin(puzzle).status, 'unique')
+  const restored = readImportedFutoshiki(pasted.futoshiki!.id)!.puzzle
+  assert.deepEqual(summarize(restored), summarize(puzzle))
 })
 
 test('published Modular imports retain their numbered white dots and ordered runs', async () => {
@@ -190,6 +235,24 @@ test('published Modular imports retain their numbered white dots and ordered run
     assert.equal(rules.some(rule => rule.type === 'adjacent-total' && rule.sum === 11), total)
     assertVariantCompletion(variant.puzzle, source.solution)
   }
+})
+
+test('the reviewed 220V raw Coach code applies its published color legend without short-link context', async () => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7rs9'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.deepEqual(imported.variant?.puzzle, source.publishedPuzzle)
+  assertVariantCompletion(imported.variant!.puzzle, source.solution)
+})
+
+test('the 220V line legend does not apply to a modified raw export', async () => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7rs9'))
+  assert.ok(source)
+  const payload = await decodeSudokuCoachPayload(source.code)
+  const line = payload.givenConstraints.find((layer: { type: string }) => layer.type === 'cosmeticLine')
+  assert.ok(line)
+  line.segments[0].cells[0][0] += 0.01
+  await assert.rejects(detectPuzzle(coachCode(payload)), /unsupported|invalid/i)
 })
 
 

@@ -4,10 +4,10 @@ use super::{
     parse_givens,
 };
 
-#[path = "practice/examples.rs"]
-mod examples;
 #[path = "practice/direct.rs"]
 mod direct;
+#[path = "practice/examples.rs"]
+mod examples;
 #[path = "practice/pattern_overlay.rs"]
 mod pattern_overlay;
 #[path = "practice/rectangle_chains.rs"]
@@ -1195,7 +1195,10 @@ impl Technique {
             Self::HiddenSingleBox => const { &[place(76, 3)] },
             Self::NakedSingle => const { &[place(12, 3)] },
             Self::HiddenSingle => const { &[place(5, 9)] },
-            Self::DirectPointing | Self::DirectClaiming | Self::DirectHiddenPair | Self::DirectHiddenTriple => return direct::examples(self)[0],
+            Self::DirectPointing
+            | Self::DirectClaiming
+            | Self::DirectHiddenPair
+            | Self::DirectHiddenTriple => return direct::examples(self)[0],
             Self::Pointing | Self::Claiming => const { &[remove(24, 2), remove(25, 2)] },
             Self::NakedPair => const { &[remove(63, 4), remove(63, 6)] },
             Self::HiddenPair => {
@@ -1291,6 +1294,8 @@ impl Technique {
             Self::TriplePatternOverlay => return pattern_overlay::TRIPLE[0],
             Self::QuadruplePatternOverlay => return pattern_overlay::QUADRUPLE[0],
             Self::QuintuplePatternOverlay => return pattern_overlay::QUINTUPLE[0],
+            Self::SextuplePatternOverlay => return pattern_overlay::SEXTUPLE[0],
+            Self::SeptuplePatternOverlay => return pattern_overlay::SEPTUPLE[0],
             Self::KrakenFish1 => return KRAKEN_FISH_1,
             Self::KrakenFish2 => return KRAKEN_FISH_2,
         };
@@ -2392,7 +2397,9 @@ mod tests {
                     .unwrap()
                     .into_iter()
                     .filter(|hint| {
-                        hint.actions.iter().any(|a| example.expected_actions.contains(a))
+                        hint.actions
+                            .iter()
+                            .any(|a| example.expected_actions.contains(a))
                     })
                     .collect();
                 if technique != Technique::GroupedAic || example != wide {
@@ -2410,10 +2417,10 @@ mod tests {
                     let HintEvidence::Inference { links } = hint.evidence else {
                         panic!("grouped Type 2 must record its links");
                     };
-                    assert_eq!(links[0].from, InferenceNode::Candidate(Candidate {
-                        cell: 74,
-                        digit: 8,
-                    }));
+                    assert_eq!(
+                        links[0].from,
+                        InferenceNode::Candidate(Candidate { cell: 74, digit: 8 })
+                    );
                     let last = links.last().unwrap();
                     assert!(matches!(&last.to, InferenceNode::Group { digit: 1, cells }
                         if cells == &[2, 11, 20] || cells == &[55, 64, 73]));
@@ -2426,8 +2433,13 @@ mod tests {
                     for link in &links {
                         assert_link_is_valid(link, &masks);
                     }
-                    assert!(links[0].from.candidates().chain(last.to.candidates())
-                        .all(|end| candidates_conflict(Candidate { cell: 74, digit: 1 }, end)));
+                    assert!(
+                        links[0]
+                            .from
+                            .candidates()
+                            .chain(last.to.candidates())
+                            .all(|end| candidates_conflict(Candidate { cell: 74, digit: 1 }, end))
+                    );
                 }
             }
         }

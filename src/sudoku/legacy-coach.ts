@@ -54,7 +54,7 @@ const globalRules: Partial<Record<number, string>> = {
   1: 'diagonalNegative', 2: 'diagonalPositive', 3: 'antiKnight', 4: 'antiKing',
   5: 'nonconsecutive', 30: 'globalEntropy', 31: 'nonconsecutive',
 }
-const lineRules: Partial<Record<number, string>> = { 10: 'thermometer', 11: 'renban' }
+const lineRules: Partial<Record<number, string>> = { 10: 'thermometer', 11: 'renban', 12: 'consecutiveLine' }
 const pairRules: Partial<Record<number, readonly [type: string, parameter: string, fallback: number]>> = {
   6: ['twoCellSum', 'sum', 5], 14: ['difference', 'difference', 1], 15: ['ratio', 'ratio', 2],
 }
@@ -90,8 +90,8 @@ function legacyConstraint(record: string) {
   }
   // The optional parameter is the palette number for the outlined house.
   if (id === 40 && cells.length === 9 && parameters.length <= 1) return layer('region')
-  if (id === 12 || !global && !line && !pair && ![13, 20, 40].includes(id)) {
-    throw new Error(`This Sudoku Coach legacy rule is not supported yet (${id === 12 ? 'Consecutive Line' : id}).`)
+  if (!global && !line && !pair && ![13, 20, 40].includes(id)) {
+    throw new Error(`This Sudoku Coach legacy rule is not supported yet (${id}).`)
   }
   throw invalidLegacy()
 }

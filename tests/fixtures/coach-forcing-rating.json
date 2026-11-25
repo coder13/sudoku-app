@@ -8,7 +8,7 @@
       "solved": "impossible"
     },
     "points": 385401,
-    "traceDigest": "3466ebebdb65244950baabec5415f02856dc9c4115baef504f73c81f8c6563ec"
+    "traceDigest": "93f188fae691b3865c7001457967558fd133a0e2b99e0aa853a0acdcf91bb47f"
   },
   {
     "id": "FhZd",
@@ -19,7 +19,7 @@
       "solved": "impossible"
     },
     "points": 174100,
-    "traceDigest": "896f4866b2258e08ef505433f6616c1cfab1d2cf89e8e7db57c9fc9fa2137932"
+    "traceDigest": "2c42dbf4e0edad04a6fd9d626e4da5361d1804c2d098de238813394dd4eeb6c9"
   },
   {
     "id": "J6TH",
@@ -30,7 +30,7 @@
       "solved": "impossible"
     },
     "points": 10405,
-    "traceDigest": "f55e692e46865b32f31a23f662bf105672e0255bd17e895aabd47eb41d1b7fe2"
+    "traceDigest": "cc540a945fad9792beb2fce34317b7bb3c7f24f1adda6300ff38baee0c5e7920"
   },
   {
     "id": "Lq4f",
@@ -39,6 +39,6 @@
     "solution": "157342986349786152862951437673428591218579643594613728431865279925137864786294315",
     "status": "stalled",
     "points": 870,
-    "traceDigest": "74ca8f62a0dcfd45ec30454e199752d3f5489f067f2335c2cdc5a5046d54de4b"
+    "traceDigest": "5ed8df138646fcd2a6190d4a6ecb909ae0158c8202a63fa6d06748c109ebfe6e"
   }
 ]

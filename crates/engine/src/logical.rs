@@ -4,8 +4,13 @@ use super::hints::{Deduction, DeductionSearch, checked_position};
 use super::position::Position;
 use super::{Analysis, Board, Hint, HintError, PositionSnapshot, Technique};
 
+mod complete;
 #[path = "logical/paths.rs"]
 mod paths;
+pub use complete::{
+    CompleteClassicSolve, EightDigitOverlayCompletion, EightDigitOverlayProof,
+    replay_eight_digit_overlay_at, solve_position_completely,
+};
 pub use paths::{
     AlternatePath, AlternatePathStatus, MoveAvailability, PathComparison, compare_paths,
     search_alternate_path,
@@ -521,16 +526,33 @@ mod tests {
 
     #[test]
     fn direct_pointing_solves_a_medium_puzzle_at_easy() {
-        let board = parse_givens("004000500000024008095700006070060081050090040830070050900007860300940000007000200").unwrap();
+        let board = parse_givens(
+            "004000500000024008095700006070060081050090040830070050900007860300940000007000200",
+        )
+        .unwrap();
         let order = Difficulty::Easy.technique_order();
-        let singles: Vec<_> = order.iter().copied().filter(|t| t.direct_premise().is_none()).collect();
-        assert_eq!(solve_logically(&board, &singles).unwrap().status, SolveStatus::Stalled);
+        let singles: Vec<_> = order
+            .iter()
+            .copied()
+            .filter(|t| t.direct_premise().is_none())
+            .collect();
+        assert_eq!(
+            solve_logically(&board, &singles).unwrap().status,
+            SolveStatus::Stalled
+        );
         let trace = solve_logically(&board, &order).unwrap();
         assert_eq!(trace.status, SolveStatus::Solved(Difficulty::Easy));
         assert_eq!(trace.score.points, 574);
-        let index = trace.steps.iter().position(|step| step.technique == Technique::DirectPointing).unwrap();
+        let index = trace
+            .steps
+            .iter()
+            .position(|step| step.technique == Technique::DirectPointing)
+            .unwrap();
         let step = trace.replay_step(index).unwrap();
-        assert_eq!(step.deduction.actions, [HintAction::Place(Candidate { cell: 9, digit: 6 })]);
+        assert_eq!(
+            step.deduction.actions,
+            [HintAction::Place(Candidate { cell: 9, digit: 6 })]
+        );
         assert!(matches!(
             &step.deduction.evidence,
             HintEvidence::DirectPlacement { house: House::Box(0), removed, .. } if !removed.is_empty()

@@ -1,8 +1,9 @@
 import { calcudokuFromRecipe, decodeGeneratedNumberPuzzle } from '../number-puzzles/generated.ts'
 import { createCalcudoku, type Cage, type CageOperator, type CalcudokuPuzzle } from './engine.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
+import type { ImportedCellColors } from '../sudoku/imported-colors.ts'
 
-export type CalcudokuEntry = NumberPuzzleEntry & { puzzle: CalcudokuPuzzle }
+export type CalcudokuEntry = NumberPuzzleEntry & { puzzle: CalcudokuPuzzle; givenCellColors?: ImportedCellColors }
 type Recipe = [number, CageOperator, number[]]
 const recipes: Record<typeof numberPuzzleDifficulties[number], { size: number; boards: Recipe[][] }> = {
   easy: {

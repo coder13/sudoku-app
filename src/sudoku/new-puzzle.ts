@@ -4,7 +4,9 @@ import { rectangularLayouts, type RectangularBoxRows, type SizedGrid } from './g
 import { generationVariant, isPuzzleVariantId, isVariantId, variantDifficulty, type PuzzleVariantId, type VariantId } from './variants.ts'
 
 export const MINI_NAME = 'Mini Sudoku'
+export const FOUR_JIGSAW_NAME = '4 × 4 Jigsaw'
 export const FIVE_JIGSAW_NAME = '5 × 5 Jigsaw Sudoku'
+export const FIVE_BOXLESS_NAME = '5 × 5 Boxless Sudoku'
 export const FIVE_JIGSAW_RULE = 'Place each digit from 1 to 5 once in every row, column, and outlined region.'
 export const EIGHT_NAME = '8 × 8 Sudoku'
 export const EIGHT_RULE = 'Place each digit from 1 to 8 once in every row, column, and box.'
@@ -20,7 +22,7 @@ export const miniDifficulties = ['easy', 'medium'] as const
 export type MiniDifficulty = typeof miniDifficulties[number]
 export type SizedPuzzleId = 'mini' | 'algebraic-cages' | 'jigsaw-five' | 'six' | 'jigsaw-seven' | 'eight'
 export type NewPuzzleId = VariantId | SizedPuzzleId
-export type GameVariantId = PuzzleVariantId | SizedPuzzleId | 'boxless-seven'
+export type GameVariantId = PuzzleVariantId | SizedPuzzleId | 'boxless-five' | 'boxless-seven'
 
 export const sizedPuzzleOptions = {
   mini: { name: MINI_NAME, rule: MINI_RULE },
@@ -50,11 +52,11 @@ export function isNewPuzzleId(value: unknown): value is NewPuzzleId {
 }
 
 export function isGameVariantId(value: unknown): value is GameVariantId {
-  return value === 'boxless-seven' || isSizedPuzzleId(value) || isPuzzleVariantId(value)
+  return value === 'boxless-five' || value === 'boxless-seven' || isSizedPuzzleId(value) || isPuzzleVariantId(value)
 }
 
 export function gameVariantId(game: Pick<Game, 'grid' | 'variant' | 'algebraic'>): GameVariantId {
-  if (game.grid && 'noRegions' in game.grid) return 'boxless-seven'
+  if (game.grid && 'noRegions' in game.grid) return game.grid.size === 5 ? 'boxless-five' : 'boxless-seven'
   if (game.algebraic) return 'algebraic-cages'
   switch (game.grid?.size) {
     case 4: return 'mini'
@@ -86,7 +88,8 @@ export function newPuzzleDifficulty(variant: NewPuzzleId, preference: Difficulty
 }
 
 export function sizedGridName(grid: SizedGrid) {
-  if ('noRegions' in grid) return SEVEN_BOXLESS_NAME
+  if ('noRegions' in grid) return grid.size === 5 ? FIVE_BOXLESS_NAME : SEVEN_BOXLESS_NAME
+  if (grid.size === 4 && 'regions' in grid) return FOUR_JIGSAW_NAME
   if (grid.size === 5) return FIVE_JIGSAW_NAME
   if (grid.size === 7) return SEVEN_JIGSAW_NAME
   if (grid.size === 8) return EIGHT_NAME

@@ -1,14 +1,20 @@
+import { cornerKropkiAllows, cornerKropkiKinds, cornerPairs, validCornerKropki } from './corner-kropki.ts'
 import { sizedQuadrupleState, validSizedQuadruple } from './sized-quadruple.ts'
 import { PUZZLE_VARIANTS } from './variants.ts'
-import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndKey } from './sized-linked-double-arrow.ts'
+import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndCells, sizedSumEndKey } from './sized-linked-double-arrow.ts'
+import { nonogramState, validNonogramRule } from './sized-nonogram.ts'
+import { skyscrapersState, validSizedSkyscrapersRule } from './sized-skyscrapers.ts'
 import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
-import { isGridText, gridCellsShareEdge, gridDiagonalCells, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { isGridText, gridCellsShareEdge, gridDiagonalCells, gridValueOffset, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
+import { positionDigit, positionText } from './digit-symbols.ts'
 import { sizedRegionSumParts } from './region-sum.ts'
 import { sizedKillerState, validSizedKillerRule } from './sized-killer.ts'
 import { validation } from './puzzle-validation.ts'
+import { validRowEquation } from './row-equation.ts'
+import { FRACTIONAL_REGIONS_DESCRIPTION, validFractionalRegions } from './fractional-regions.ts'
 
-export type SizedRuleDefinition = { grid: SizedGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string }
+export type SizedRuleDefinition = { grid: SizedGrid; givens: string; rules: readonly SizedConstraintRule[]; author?: string; authoredSolution?: string; authoredSolutionOnly?: true }
 export type SizedRuleGame = Pick<SizedRuleDefinition, 'rules' | 'author'> & { solution: string }
 
 export function isSizedRuleAuthor(value: unknown): value is string {
@@ -48,11 +54,148 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
   const occupiedCages = new Set<number>()
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
+    if (rule.type === 'fractional-regions') return Object.keys(rule).length === 2 &&
+      'noRegions' in grid && validFractionalRegions(rule.pieces, size, 0)
+    if (rule.type === 'little-killer') {
+      const cells = Array.isArray(rule.cells) ? rule.cells as number[] : []
+      const direction = rule.direction
+      if (Object.keys(rule).length !== 4 || typeof direction !== 'string' || !['north-east', 'south-east', 'south-west', 'north-west'].includes(direction) ||
+        cells.length < 1 || cells.length > size ||
+        cells.some((cell: number) => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
+        new Set(cells).size !== cells.length || !Number.isInteger(rule.sum) || Number(rule.sum) < cells.length || Number(rule.sum) > size * cells.length) return false
+      const [dr, dc] = direction === 'north-east' ? [-1, 1] : direction === 'south-east' ? [1, 1]
+        : direction === 'south-west' ? [1, -1] : [-1, -1]
+      const first = cells[0]
+      const row = Math.floor(first / size), column = first % size
+      if (row - dr >= 0 && row - dr < size && column - dc >= 0 && column - dc < size) return false
+      return cells.every((cell: number, index: number) => cell === (row + dr * index) * size + column + dc * index) &&
+        (row + dr * rule.cells.length < 0 || row + dr * rule.cells.length >= size ||
+          column + dc * rule.cells.length < 0 || column + dc * rule.cells.length >= size)
+    }
+    if (rule.type === 'crust') {
+      if (Object.keys(rule).some(key => !['type', 'clues', 'sharedRegion', 'fixedEdges'].includes(key)) ||
+        !Array.isArray(rule.clues) || rule.clues.length === 0 ||
+        rule.clues.length > 4 * size || !('noRegions' in grid)) return false
+      const validEdgePair = (value: unknown): value is readonly [number, number] => Array.isArray(value) && value.length === 2 &&
+        value.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2) && value[0] !== value[1] &&
+        gridCellsShareEdge(value[0], value[1], size)
+      if (rule.sharedRegion !== undefined && (!Array.isArray(rule.sharedRegion) || rule.sharedRegion.length !== 2 ||
+        rule.sharedRegion.some((cell: unknown) => !Number.isInteger(cell) || typeof cell !== 'number' || cell < 0 || cell >= size ** 2) ||
+        rule.sharedRegion[0] === rule.sharedRegion[1])) return false
+      if (rule.fixedEdges !== undefined && (!Array.isArray(rule.fixedEdges) || rule.fixedEdges.length > 2 * size * (size - 1) ||
+        !rule.fixedEdges.every(validEdgePair) ||
+        new Set(rule.fixedEdges.map(([a, b]: [number, number]) => `${Math.min(a, b)}:${Math.max(a, b)}`)).size !== rule.fixedEdges.length)) return false
+      const seen = new Set<string>()
+      return rule.clues.every((clue: unknown) => {
+        if (!clue || typeof clue !== 'object' || Array.isArray(clue)) return false
+        const item = clue as Record<string, unknown>
+        if (Object.keys(item).some(key => !['direction', 'cells', 'sum', 'crossed'].includes(key)) ||
+          !['north', 'east', 'south', 'west'].includes(String(item.direction)) ||
+          !Array.isArray(item.cells) || item.cells.length !== size ||
+          item.cells.some(cell => !Number.isInteger(cell) || Number(cell) < 0 || Number(cell) >= size ** 2) ||
+          !Number.isInteger(item.sum) || Number(item.sum) < 1 || Number(item.sum) > size * (size + 1) / 2 ||
+          item.crossed !== undefined && (!Number.isInteger(item.crossed) || Number(item.crossed) < 0 || Number(item.crossed) >= size)) return false
+        const cells = item.cells as number[]
+        const direction = item.direction
+        const first = cells[0]
+        const valid = direction === 'north' ? Math.floor(first / size) === size - 1 && cells.every((cell, i) => cell === first - i * size)
+          : direction === 'south' ? Math.floor(first / size) === 0 && cells.every((cell, i) => cell === first + i * size)
+            : direction === 'east' ? first % size === 0 && cells.every((cell, i) => cell === first + i)
+              : first % size === size - 1 && cells.every((cell, i) => cell === first - i)
+        const key = `${direction}:${first}`
+        if (!valid || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    }
+    if (rule.type === 'anti-knight' || rule.type === 'anti-king') return Object.keys(rule).length === 1
+    if (rule.type === 'parity-line') return Object.keys(rule).length === 2 && Array.isArray(rule.cells) &&
+      rule.cells.length >= 2 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && rule.cells.every((cell: number, index: number) =>
+        index === 0 || gridCellsShareEdge(rule.cells[index - 1], cell, size))
+    if (rule.type === 'palindrome') return Object.keys(rule).length === 2 && Array.isArray(rule.cells) &&
+      rule.cells.length >= 2 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && rule.cells.every((cell: number, index: number) =>
+        index === 0 || gridCellsShareEdge(rule.cells[index - 1], cell, size))
+    if (rule.type === 'digit-restriction') return Object.keys(rule).every(key =>
+      ['type', 'cells', 'digits', 'shape'].includes(key)) && Array.isArray(rule.cells) && rule.cells.length > 0 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length && Array.isArray(rule.digits) && rule.digits.length > 0 &&
+      rule.digits.every((digit: unknown) => Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size) &&
+      new Set(rule.digits).size === rule.digits.length && ['circle', 'cross', 'square'].includes(rule.shape)
+    if (rule.type === 'zipper') return Object.keys(rule).length === 2 &&
+      Array.isArray(rule.cells) && rule.cells.length >= 3 && rule.cells.length <= size ** 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      new Set(rule.cells).size === rule.cells.length
+    if (rule.type === 'line-assignments') {
+      if (Object.keys(rule).length !== 3 || !Array.isArray(rule.paths) || !Array.isArray(rule.types) ||
+        rule.paths.length !== rule.types.length || rule.types.length < 2 || rule.types.length > 3) return false
+      const paths = rule.paths as unknown[]
+      const samePath = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((cell, index) => cell === b[index])
+      if (!paths.every(path => Array.isArray(path) && path.length >= 2 && path.length <= size ** 2 &&
+        path.every(cell => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(path).size === path.length) || paths.some((path, index) => paths.slice(0, index).some(previous =>
+        samePath(path as unknown[], previous as unknown[]) || samePath(path as unknown[], [...previous as unknown[]].reverse())))) return false
+      const kinds = new Set<string>()
+      return (rule.types as unknown[]).every(type => {
+        if (!type || typeof type !== 'object' || Array.isArray(type)) return false
+        const item = type as Record<string, unknown>
+        if (item.type === 'entropic') {
+          if (Object.keys(item).length !== 2 || !Array.isArray(item.groups) || item.groups.length !== 3 ||
+            !item.groups.every(group => Array.isArray(group) && group.length > 0 && group.every(digit =>
+              Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size))) return false
+          const digits = item.groups.flat() as number[]
+          if (digits.length !== size || new Set(digits).size !== size) return false
+        } else if (item.type === 'region-sum') {
+          if (Object.keys(item).length !== 1 || 'noRegions' in grid) return false
+        } else if (item.type === 'renban') {
+          if (Object.keys(item).length !== 1) return false
+        } else return false
+        if (kinds.has(String(item.type))) return false
+        kinds.add(String(item.type))
+        return true
+      })
+    }
+    if (rule.type === 'entropic') {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'groups'].includes(key)) ||
+        !Array.isArray(rule.cells) || rule.cells.length < 3 || rule.cells.length > size ** 2 + 1 ||
+        rule.cells.some((cell: unknown) => !Number.isInteger(cell) || Number(cell) < 0 || Number(cell) >= size ** 2) ||
+        !Array.isArray(rule.groups) || rule.groups.length !== 3 ||
+        !rule.groups.every((group: unknown) => Array.isArray(group) && group.length > 0 &&
+          group.every((digit: unknown) => Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size))) return false
+      const digits = rule.groups.flat() as number[]
+      return digits.length === size && new Set(digits).size === size
+    }
     if (rule.type === 'killer-cages') return validSizedKillerRule(rule, size, occupiedCages)
     if (rule.type === 'quadruple') return validSizedQuadruple(rule, size)
+    if (rule.type === 'nonogram') return validNonogramRule(rule, size)
+    if (rule.type === 'skyscrapers') return validSizedSkyscrapersRule(rule, size)
     if (rule.type === 'diagonal') {
       return Object.keys(rule).length === 2 && (rule.diagonal === 'main' || rule.diagonal === 'anti')
     }
+    if (rule.type === 'global-entropy') {
+      if (Object.keys(rule).some(key => key !== 'type' && key !== 'groups')) return false
+      if (rule.groups === undefined) return size === 9
+      if (!Array.isArray(rule.groups) || rule.groups.length !== 3 ||
+        !rule.groups.every((group: unknown) => Array.isArray(group) && group.length > 0 &&
+          group.every((digit: unknown) => Number.isInteger(digit) && Number(digit) >= 1 && Number(digit) <= size))) return false
+      const digits = rule.groups.flat() as number[]
+      return digits.length === size && new Set(digits).size === size &&
+        digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= size)
+    }
+    if (rule.type === 'non-consecutive') {
+      return Object.keys(rule).every(key => key === 'type' || key === 'except') &&
+        (rule.except === undefined || Array.isArray(rule.except) && rule.except.length <= 2 * size * (size - 1) &&
+          rule.except.every((pair: unknown) => Array.isArray(pair) && pair.length === 2 &&
+            pair.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2) && gridCellsShareEdge(pair[0], pair[1], size)) &&
+          new Set(rule.except.map(([a, b]: [number, number]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.except.length)
+    }
+    if (rule.type === 'inequality') return Object.keys(rule).length === 3 &&
+      Number.isInteger(rule.less) && rule.less >= 0 && rule.less < size ** 2 &&
+      Number.isInteger(rule.greater) && rule.greater >= 0 && rule.greater < size ** 2 && rule.less !== rule.greater &&
+      gridCellsShareEdge(rule.less, rule.greater, size)
     if (rule.type === 'anti-sum') {
       return Object.keys(rule).length === 2 && Number.isInteger(rule.sum) && rule.sum >= 2 && rule.sum <= 2 * size
     }
@@ -65,10 +208,12 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
           pair.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2) && gridCellsShareEdge(pair[0], pair[1], size)) &&
         new Set(rule.pairs.map(([a, b]: [number, number]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.pairs.length
     }
+    if (rule.type === 'row-equation') return validRowEquation(rule, size)
     if (rule.type === 'kropki') {
       return Object.keys(rule).every(key => ['type', 'consecutive', 'ratioTwo'].includes(key)) &&
         [rule.consecutive, rule.ratioTwo].every(marks => marks === undefined || validKropkiMarks(marks, size))
     }
+    if (rule.type === 'corner-kropki') return validCornerKropki(rule, size)
     if (rule.type === 'xv') {
       if (Object.keys(rule).some(key => !['type', 'five', 'ten'].includes(key)) ||
         rule.five !== undefined && !validKropkiMarks(rule.five, size) ||
@@ -87,6 +232,20 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         cells.every((cell, index) => index === 0 || cell !== cells[index - 1])
     }
     if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size)
+    if (rule.type === 'x-sum') {
+      if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) ||
+        Object.keys(rule).length !== 4 || !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
+        !Array.isArray(rule.cells) || rule.cells.length !== size ||
+        rule.cells.some((cell: unknown) => typeof cell !== 'number' || !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
+        !Number.isInteger(rule.sum) || Number(rule.sum) < 1 || Number(rule.sum) > size * (size + 1) / 2) return false
+      const cells = rule.cells as number[]
+      const first = cells[0]
+      const direction = rule.direction
+      return direction === 'north' ? Math.floor(first / size) === size - 1 && cells.every((cell, index) => cell === first - index * size)
+        : direction === 'south' ? Math.floor(first / size) === 0 && cells.every((cell, index) => cell === first + index * size)
+          : direction === 'east' ? first % size === 0 && cells.every((cell, index) => cell === first + index)
+            : first % size === size - 1 && cells.every((cell, index) => cell === first - index)
+    }
     if (rule.type === 'labeled-dots') {
       const ratio = rule.relation === 'ratio'
       return Object.keys(rule).every(key => ['type', 'relation', 'marks', 'negative'].includes(key)) &&
@@ -100,6 +259,24 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
           gridCellsShareEdge(mark.cells[0], mark.cells[1], size) &&
           typeof mark.value === 'number' && Number.isInteger(mark.value) && (ratio ? mark.value >= 2 && mark.value <= size : mark.value >= 1 && mark.value < size))
     }
+    if (rule.type === 'x-sum-dot') {
+      const ends: unknown = rule.ends
+      if (Object.keys(rule).length !== 3 || !['consecutive', 'ratio'].includes(String(rule.relation)) ||
+        !Array.isArray(ends) || ends.length !== 2 || !ends.every(end => isSizedSumEnd(end, size)) ||
+        ends.every(end => typeof end === 'number') || sizedSumEndKey(ends[0]) === sizedSumEndKey(ends[1])) return false
+      const rays = ends.map(end => sizedSumEndCells(end, size))
+      const overlap = rays[0].filter(cell => rays[1].includes(cell))
+      if (overlap.length > 1) return false
+      if (typeof ends[0] === 'number' || typeof ends[1] === 'number') {
+        const digit = typeof ends[0] === 'number' ? ends[0] : ends[1]
+        const xSumRay = typeof ends[0] === 'number' ? rays[1] : rays[0]
+        if (xSumRay[0] !== digit) return false
+      } else {
+        const vertical = (end: { direction: string }) => end.direction === 'north' || end.direction === 'south'
+        if (vertical(ends[0]) !== vertical(ends[1]) || overlap.length) return false
+      }
+      return true
+    }
     const cells: unknown = rule.cells
     if (!Array.isArray(cells) || cells.length > size ** 2 ||
       !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2)) return false
@@ -108,6 +285,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         Number.isInteger(rule.circle) && rule.circle >= 0 && rule.circle < size ** 2 &&
         !cells.includes(rule.circle) && new Set(cells).size === cells.length
     }
+    if (rule.type === 'modular') return size === 6 && Object.keys(rule).length === 2 && cells.length >= 3 && cells.length <= size ** 2
     if (rule.type === 'linked-double-arrow') {
       const ends: unknown = rule.ends
       return Object.keys(rule).length === 3 && cells.length >= 1 && new Set(cells).size === cells.length &&
@@ -125,6 +303,8 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return Object.keys(rule).length === 3 && cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size) &&
         Number.isInteger(rule.difference) && rule.difference >= 1 && rule.difference < size
     }
+    if (rule.type === 'between') return Object.keys(rule).length === 2 && cells.length >= 3 &&
+      cells.length <= size ** 2 && new Set(cells).size === cells.length
     if (rule.type === 'extra-house') return Object.keys(rule).length === 2 && cells.length === size && new Set(cells).size === size
     if (rule.type === 'parity') {
       return Object.keys(rule).length === 3 && cells.length > 0 && (rule.parity === 'even' || rule.parity === 'odd')
@@ -146,16 +326,27 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
 }
 
 export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame, 'rules'>, values: string): SizedConstraintPosition {
-  return { ...sizedClassicPosition(grid, values), grid, rules }
+  return { ...sizedClassicPosition(grid, values), rules,
+    ...('notation' in grid && grid.notation === 'zero-based' && { zeroBased: true }) }
 }
 
-export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution }: SizedRuleDefinition, run: EngineRunner = runEngine): Promise<SizedRuleGame> {
+export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution, authoredSolutionOnly }: SizedRuleDefinition, run: EngineRunner = runEngine): Promise<SizedRuleGame> {
   if (!isSizedRuleList(rules, grid)) throw new Error('This grid has invalid or unsupported rules.')
+  if (authoredSolutionOnly && authoredSolution !== undefined) {
+    if (!isGridText(authoredSolution, grid) || authoredSolution.includes('0') ||
+      Array.from(givens).some((digit, cell) => digit !== '0' && digit !== authoredSolution[cell])) {
+      throw new Error('The authored solution conflicts with the puzzle’s rules.')
+    }
+    const completion = await run({ type: 'sized-variant', operation: 'analyze', position:
+      sizedRulePosition(grid, { rules }, authoredSolution) })
+    if (completion !== 'unique') throw new Error('The authored solution conflicts with the puzzle’s rules.')
+    return { rules, solution: authoredSolution, ...(isSizedRuleAuthor(author) && { author }) }
+  }
   const position = sizedRulePosition(grid, { rules }, givens)
   const result = await run({ type: 'sized-variant', operation: 'solve-unique', position })
   if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
   if (result.status !== 'unique') throw new Error(validation[result.status].text)
-  const solution = result.solution.digits.join('')
+  const solution = positionText(result.solution.digits)
   if (authoredSolution !== undefined && solution !== authoredSolution) {
     throw new Error('The authored solution conflicts with the puzzle’s rules.')
   }
@@ -163,38 +354,69 @@ export async function verifySizedRulePuzzle({ grid, givens, rules, author, autho
 }
 
 export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame, grid: SizedGrid, givens: string): SizedRuleGame | undefined {
-  if (!isSizedRuleList(rules, grid) || (grid.size === 4 && !rules.length) || !isGridText(solution, grid) || solution.includes('0') ||
+  const valueOffset = gridValueOffset(grid)
+  const digit = (cell: number) => positionDigit(solution[cell]) - valueOffset
+  if (!isSizedRuleList(rules, grid) || (grid.size === 4 && !('regions' in grid) && !rules.length) || !isGridText(solution, grid) || solution.includes('0') ||
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
   for (const rule of rules) {
-    if (rule.type === 'diagonal') {
+    if (rule.type === 'corner-kropki') {
+      for (const kind of cornerKropkiKinds) for (const corner of rule[kind] ?? []) {
+        if (cornerPairs(corner, grid.size).some(([a, b]) =>
+          !cornerKropkiAllows(digit(a), digit(b), kind))) return
+      }
+    } else if (rule.type === 'diagonal') {
       if (new Set(gridDiagonalCells(grid.size, rule.diagonal).map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'extra-house') {
       if (new Set(rule.cells.map(cell => solution[cell])).size !== grid.size) return
     } else if (rule.type === 'parity') {
-      if (rule.cells.some(cell => Number(solution[cell]) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+      if (rule.cells.some(cell => digit(cell) % 2 !== (rule.parity === 'odd' ? 1 : 0))) return
+    } else if (rule.type === 'parity-line') {
+      if (rule.cells.some((cell, index) => index > 0 && digit(cell) % 2 === digit(rule.cells[index - 1]) % 2)) return
+    } else if (rule.type === 'palindrome') {
+      if (rule.cells.some((cell, index) => index < Math.floor(rule.cells.length / 2) &&
+        solution[cell] !== solution[rule.cells[rule.cells.length - index - 1]])) return
+    } else if (rule.type === 'digit-restriction') {
+      if (rule.cells.some(cell => !rule.digits.includes(digit(cell)))) return
+    } else if (rule.type === 'zipper') {
+      const pairTotals = Array.from({ length: Math.floor(rule.cells.length / 2) }, (_, index) =>
+        digit(rule.cells[index]) + digit(rule.cells[rule.cells.length - index - 1]))
+      if (new Set(pairTotals).size > 1 || rule.cells.length % 2 &&
+        pairTotals.some(total => total !== digit(rule.cells[Math.floor(rule.cells.length / 2)]))) return
     } else if (rule.type === 'renban') {
-      const digits = rule.cells.map(cell => Number(solution[cell]))
+      const digits = rule.cells.map(cell => positionDigit(solution[cell]))
       if (new Set(digits).size !== digits.length || Math.max(...digits) - Math.min(...digits) !== digits.length - 1) return
     } else if (rule.type === 'region-sum') {
-      const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + Number(solution[cell]), 0))
+      const totals = sizedRegionSumParts(rule, grid).map(part => part.reduce((total, cell) => total + digit(cell), 0))
       if (new Set(totals).size !== 1) return
+    } else if (rule.type === 'x-sum') {
+      const first = digit(rule.cells[0])
+      if (rule.cells.slice(0, first).reduce((total, cell) => total + digit(cell), 0) !== rule.sum) return
+    } else if (rule.type === 'x-sum-dot') {
+      const total = (end: number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }) => {
+        if (typeof end === 'number') return digit(end)
+        const ray = sizedSumEndCells(end, grid.size)
+        const count = digit(ray[0])
+        return ray.slice(0, count).reduce((sum, cell) => sum + digit(cell), 0)
+      }
+      const [a, b] = rule.ends.map(total)
+      if (rule.relation === 'consecutive' ? Math.abs(a - b) !== 1 : a !== 2 * b && b !== 2 * a) return
     } else if (rule.type === 'linked-double-arrow') {
       if (linkedDoubleArrowConflicts(rule, solution, grid.size)) return
     } else if (rule.type === 'arrow' || rule.type === 'double-arrow') {
       const ends = rule.type === 'arrow' ? [rule.circle] : rule.ends
-      const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + Number(solution[cell]), 0)
+      const total = (cells: readonly number[]) => cells.reduce((sum, cell) => sum + digit(cell), 0)
       if (total(rule.cells) !== total(ends)) return
     } else if (rule.type === 'anti-sum') {
       const { size } = grid
       for (let cell = 0; cell < size ** 2; cell++) {
-        const digit = Number(solution[cell])
-        if (cell % size < size - 1 && digit + Number(solution[cell + 1]) === rule.sum ||
-          cell < size * (size - 1) && digit + Number(solution[cell + size]) === rule.sum) return
+        const value = digit(cell)
+        if (cell % size < size - 1 && value + digit(cell + 1) === rule.sum ||
+          cell < size * (size - 1) && value + digit(cell + size) === rule.sum) return
       }
     } else if (rule.type === 'row-column-sum') {
       const { size } = grid
-      const matches = (pair: readonly [number, number]) => Number(solution[pair[0]]) + Number(solution[pair[1]]) === rowColumnSumTotal(pair, size)
+      const matches = (pair: readonly [number, number]) => digit(pair[0]) + digit(pair[1]) === rowColumnSumTotal(pair, size)
       if (!rule.pairs.every(matches)) return
       if (rule.requireUnmarked) {
         const marked = new Set(rules.flatMap(layer => layer.type === 'row-column-sum'
@@ -205,14 +427,19 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
       }
     } else if (rule.type === 'difference') {
       const [a, b] = rule.cells
-      if (Math.abs(Number(solution[a]) - Number(solution[b])) !== rule.difference) return
+      if (Math.abs(positionDigit(solution[a]) - positionDigit(solution[b])) !== rule.difference) return
     } else if (rule.type === 'thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] <= solution[rule.cells[index - 1]])) return
     else if (rule.type === 'slow-thermometer' && rule.cells.some((cell, index) => index > 0 && solution[cell] < solution[rule.cells[index - 1]])) return
+    else if (rule.type === 'between' && rule.cells.slice(1, -1).some(cell => {
+      const value = digit(cell)
+      const first = digit(rule.cells[0]), last = digit(rule.cells.at(-1)!)
+      return value <= Math.min(first, last) || value >= Math.max(first, last)
+    })) return
     else if (rule.type === 'whispers' && rule.cells.some((cell, index) => index > 0 &&
-      Math.abs(Number(solution[cell]) - Number(solution[rule.cells[index - 1]])) < rule.minDifference)) return
+      Math.abs(digit(cell) - digit(rule.cells[index - 1])) < rule.minDifference)) return
     else if (rule.type === 'xv' || rule.type === 'sandwich') {
       if (rule.type === 'xv') {
-        const invalid = (pairs: MarkedPairs | undefined, total: number) => pairs?.pairs?.some(([a, b]) => Number(solution[a]) + Number(solution[b]) !== total)
+        const invalid = (pairs: MarkedPairs | undefined, total: number) => pairs?.pairs?.some(([a, b]) => digit(a) + digit(b) !== total)
         if (invalid(rule.five, 5) || invalid(rule.ten, 10)) return
         if (rule.five?.negative || rule.ten?.negative) {
           const markedFive = new Set(rule.five?.pairs?.map(([a, b]) => Math.min(a, b) * grid.size ** 2 + Math.max(a, b)) ?? [])
@@ -221,27 +448,29 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
             const neighbors = [cell % grid.size < grid.size - 1 ? cell + 1 : -1, cell + grid.size < grid.size ** 2 ? cell + grid.size : -1]
             for (const other of neighbors.filter(value => value >= 0)) {
               const key = cell * grid.size ** 2 + other
-              const sum = Number(solution[cell]) + Number(solution[other])
+              const sum = digit(cell) + digit(other)
               if (rule.five?.negative && !markedFive.has(key) && sum === 5 || rule.ten?.negative && !markedTen.has(key) && sum === 10) return
             }
           }
         }
       } else {
-        const one = rule.cells.findIndex(cell => solution[cell] === '1')
-        const high = rule.cells.findIndex(cell => Number(solution[cell]) === grid.size)
+        const one = rule.cells.findIndex(cell => digit(cell) === 1)
+        const high = rule.cells.findIndex(cell => digit(cell) === grid.size)
         if (one < 0 || high < 0 || rule.cells.slice(Math.min(one, high) + 1, Math.max(one, high))
-          .reduce((sum, cell) => sum + Number(solution[cell]), 0) !== rule.sum) return
+          .reduce((sum, cell) => sum + digit(cell), 0) !== rule.sum) return
       }
     }
   }
+  if (nonogramState(rules, solution, grid.size)?.conflicts.size) return
+  if (skyscrapersState(rules, solution, grid.size)?.conflicts.size) return
   if (sizedKillerState(rules, solution, grid.size)?.conflicts.size || sizedQuadrupleState(rules, solution, grid.size)?.conflicts.size) return
   if (rules.some(rule => rule.type === 'kropki' || rule.type === 'labeled-dots')) {
     const { size } = grid
     for (let cell = 0; cell < size ** 2; cell++) {
-      const digit = Number(solution[cell])
+      const digit = positionDigit(solution[cell])
       const neighbors = [cell + 1, cell + size]
       if (neighbors.some(other => other < size ** 2 &&
-        kropkiDigitExclusions(rules, cell, other, digit, size) & 1 << (Number(solution[other]) - 1))) return
+        kropkiDigitExclusions(rules, cell, other, digit, size, valueOffset) & 1 << (positionDigit(solution[other]) - 1))) return
     }
   }
   return { rules, solution, ...(isSizedRuleAuthor(author) && { author }) }
@@ -256,6 +485,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'killer-cages') clues.add('Digits in a cage add to its printed total and cannot repeat.')
     else if (rule.type === 'quadruple') clues.add(PUZZLE_VARIANTS.quadruple.rule)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
+    else if (rule.type === 'digit-restriction') clues.add(`Marked ${rule.shape} cells can contain only ${new Intl.ListFormat('en').format(rule.digits.map(String))}.`)
+    else if (rule.type === 'zipper') clues.add(rule.cells.length % 2
+      ? 'Each pair of cells equally far from the Zipper center has a total equal to the center digit.'
+      : 'Each pair of cells equally far from the Zipper center has the same total as every other pair.')
     else if (rule.type === 'renban') clues.add('The cells on each Renban line contain different consecutive digits in any order.')
     else if (rule.type === 'region-sum') clues.add(rule.groupByRegion
       ? `The digits on a Region Sum line have the same total in each ${group}. All cells in the same ${group} count together.`
@@ -271,6 +504,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
       if (rule.requireUnmarked) clues.add('At least one edge without a diamond must also have digits that add to its row or column number.')
     }
     else if (rule.type === 'anti-sum') clues.add(`Digits in cells that share an edge cannot add to ${rule.sum}.`)
+    else if (rule.type === 'crust') clues.add('Each row and column forms part of one inferred region. Outside totals add digits up to the first region boundary; an edge count gives how many region boundaries the line crosses before its total ends.')
     else if (rule.type === 'difference') clues.add('The number on each Difference marker gives the exact difference between its two digits.')
     else if (rule.type === 'labeled-dots') {
       if (rule.marks.length) clues.add(rule.relation === 'ratio'
@@ -284,8 +518,20 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'slow-thermometer') clues.add('Digits increase or stay the same from the bulb to the tip of each slow thermometer.')
     else if (rule.type === 'whispers') clues.add(`Neighboring digits on each Whispers line differ by at least ${rule.minDifference}.`)
     else if (rule.type === 'sandwich') clues.add(`The digits between 1 and ${grid.size} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    else if (rule.type === 'x-sum') clues.add(`The first digit seen from the ${rule.direction} side tells how many digits to add, including that first digit. The total equals the outside clue.`)
+    else if (rule.type === 'x-sum-dot') clues.add(rule.relation === 'consecutive'
+      ? 'The totals shown by the two connected X-Sum clues are consecutive.'
+      : 'The totals shown by the two connected X-Sum clues have a 1:2 ratio.')
+    else if (rule.type === 'nonogram') {
+      const otherDigits = Array.from({ length: grid.size }, (_, index) => index + 1).filter(digit => !rule.digits.includes(digit))
+      clues.add(`The outside clue lists the lengths of consecutive runs of selected digits (${rule.digits.join(', ')}) in its row or column. Separate two runs with at least one digit outside that set (${otherDigits.join(', ')}).`)
+    }
+    else if (rule.type === 'row-equation') clues.add('Each marked row equation must be true. Multiplication and division come before addition and subtraction; evaluate operations of equal precedence from left to right. Adjacent digits joined without an operator form one multi-digit number.')
+    else if (rule.type === 'fractional-regions') clues.add(FRACTIONAL_REGIONS_DESCRIPTION)
+    else if (rule.type === 'skyscrapers') clues.add('Each outside clue shows how many buildings are visible from that side of its row or column. A digit is visible when it is taller than every digit between it and that side.')
     else if (rule.type === 'xv') clues.add('Digits joined by V add to 5. Digits joined by X add to 10.')
-    else {
+    else if (rule.type === 'between') clues.add('Each interior digit on a Between line lies strictly between the digits at its two endpoints.')
+    else if (rule.type === 'kropki') {
       if (rule.consecutive?.pairs?.length) clues.add('Digits separated by a white dot are consecutive.')
       if (rule.ratioTwo?.pairs?.length) clues.add('Across a black dot, one digit is double the other.')
       if (rule.consecutive?.negative) clues.add('An unmarked edge cannot separate consecutive digits.')

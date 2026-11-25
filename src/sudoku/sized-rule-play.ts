@@ -1,10 +1,11 @@
 import { quadrupleCells } from './variants.ts'
-import { linkedDoubleArrowCells } from './sized-linked-double-arrow.ts'
+import { linkedDoubleArrowCells, sizedSumEndCells } from './sized-linked-double-arrow.ts'
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
 import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
+import { positionDigit, positionText } from './digit-symbols.ts'
 
 export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-contradiction'] as const
 
@@ -61,6 +62,27 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
         candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
     }
   }
+  if (step.type === 'coupled-sums') {
+    const [first, second] = step.rules.map(index => rules[index])
+    if (!first || !second || !('cells' in first) || !('cells' in second)) throw new Error('Invalid shared path totals hint.')
+    const describe = (rule: typeof first) => rule.type === 'zipper' ? 'the Zipper line'
+      : rule.type === 'region-sum' ? 'the Region Sum line' : 'the equal-total line'
+    const cells = [...new Set([...first.cells, ...second.cells])]
+    const at = (cell: number) => `R${Math.floor(cell / size) + 1}C${cell % size + 1}`
+    const list = new Intl.ListFormat('en')
+    const compatibleTotals = step.totals.map(([left, right]) =>
+      `${describe(first)} total ${left} with ${describe(second)} total ${right}`)
+    return {
+      actions: step.actions, technique: 'sized-coupled-sums',
+      evidence: { variant: {
+        description: `${describe(first)} and ${describe(second)} cover the same cells ${list.format(cells.map(at))}, so their totals must agree across the shared path.`,
+        reason: compatibleTotals.length
+          ? `The compatible totals are ${list.format(compatibleTotals)}. Remove candidates that cannot fit any of these pairs.`
+          : 'Compare the totals allowed by both rules and remove candidates that cannot fit a compatible pair of totals.',
+      } },
+      pattern: { houses: [], cells, candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
+    }
+  }
   const { actions, rule: index } = step
   const rule = rules[index]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
@@ -70,6 +92,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     : rule.type === 'arrow' ? [rule.circle, ...rule.cells]
       : rule.type === 'double-arrow' ? [rule.ends[0], ...rule.cells, rule.ends[1]]
         : rule.type === 'linked-double-arrow' ? linkedDoubleArrowCells(rule, size)
+          : rule.type === 'x-sum-dot' ? [...new Set(rule.ends.flatMap(end => sizedSumEndCells(end, size)))]
           : rule.type === 'xv' ? [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].flat()
         : 'cells' in rule ? [...rule.cells] : []
   const candidates = actions.map(action => 'place' in action ? action.place : action.eliminate)
@@ -94,6 +117,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'parity') {
     description = rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.'
     reason = `Remove the ${rule.parity === 'odd' ? 'even' : 'odd'} candidates from each marked cell.`
+  } else if (rule.type === 'digit-restriction') {
+    description = `A ${rule.shape} mark allows only ${new Intl.ListFormat('en').format(rule.digits.map(String))} in each marked cell.`
+    reason = 'Remove the candidates that are not allowed by the marked digit set.'
   } else if (rule.type === 'renban') {
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
@@ -109,6 +135,11 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'linked-double-arrow') {
     description = 'The Double Arrow line and its two end circles have the same total. Each X-Sum adds the first X digits from its end.'
     reason = 'Remove candidates that cannot fit both totals with the correct X-Sum lengths.'
+  } else if (rule.type === 'x-sum-dot') {
+    description = rule.relation === 'consecutive'
+      ? 'The totals at the two connected X-Sum endpoints are consecutive.'
+      : 'The totals at the two connected X-Sum endpoints have a 1:2 ratio.'
+    reason = 'Remove candidates that cannot support related totals at both endpoints.'
   } else if (rule.type === 'double-arrow') {
     description = 'The digits along this Double Arrow add up to the sum of the digits in its two end circles.'
     reason = 'Remove candidates that cannot contribute to a shared total while keeping different digits in cells that share a house.'
@@ -131,6 +162,9 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'slow-thermometer') {
     description = 'Digits stay the same or increase from the bulb to the tip of this slow thermometer.'
     reason = 'Remove each candidate that cannot fit in a non-decreasing sequence along the line.'
+  } else if (rule.type === 'between') {
+    description = 'Each interior digit on this Between line lies strictly between its two endpoint digits.'
+    reason = 'Remove each candidate that cannot fit between the endpoint digits while every interior cell remains possible.'
   } else if (rule.type === 'whispers') {
     description = `Neighboring digits on this Whispers line differ by at least ${rule.minDifference}.`
     reason = 'Remove each candidate that cannot pair with a digit in the next cell at the required difference.'
@@ -208,6 +242,10 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     } else {
       conflict = 'No unmarked edge can reach its row or column sum.'
     }
+  } else if (failure.type === 'coupled-sums') {
+    const [first, second] = failure.rules.map(index => rules[index])
+    for (const rule of [first, second]) if (rule && 'cells' in rule) locations.push(...rule.cells)
+    conflict = 'The equal-total rules on these shared cells cannot use compatible totals.'
   } else if (failure.type === 'anti-sum') {
     const rule = rules[failure.rule]
     locations.push(...failure.cells)
@@ -240,7 +278,7 @@ function checkSizedRuleHintPosition({ solution }: SizedRuleGame, values: string,
   if (Array.from(values).some((digit, cell) => digit !== '0' && digit !== solution[cell])) {
     throw new EngineError('The placed digits conflict with this puzzle’s solution.', 'conflict')
   }
-  if (eliminations?.some((mask, cell) => values[cell] === '0' && (mask & (1 << (Number(solution[cell]) - 1))))) {
+  if (eliminations?.some((mask, cell) => values[cell] === '0' && (mask & (1 << (positionDigit(solution[cell]) - 1))))) {
     throw new EngineError('A required candidate is missing.', 'invalid-eliminations')
   }
 }
@@ -264,11 +302,11 @@ export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGri
     const choice = deduction && sizedRuleHintChoice(game, deduction, grid)
     if (choice) steps.push(choice)
     return {
-      givens, entries: digits.map((digit, cell) => givens[cell] === '0' ? digit : 0).join(''),
+      givens, entries: positionText(digits.map((digit, cell) => givens[cell] === '0' ? digit : 0)),
       eliminations, candidates, pattern: choice?.pattern,
     }
   })
-  const board = trace.at(-1)!.digits.join('')
+  const board = positionText(trace.at(-1)!.digits)
   return { board, steps, positions, status: board === game.solution ? 'solved' : 'stalled' }
 }
 
@@ -278,5 +316,5 @@ export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, val
   const trace = await run({
     type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
   })
-  return trace?.at(-1)?.digits.join('') ?? values
+  return trace?.at(-1) ? positionText(trace.at(-1)!.digits) : values
 }

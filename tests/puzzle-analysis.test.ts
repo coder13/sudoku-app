@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import type { DeductionAction, DeductionMatch, EngineRequest, EngineResponse, HintChoice } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
-import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches } from '../src/sudoku/puzzle-analysis.ts'
+import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, classicBasicTechniqueCounts, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches } from '../src/sudoku/puzzle-analysis.ts'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../src/sudoku/technique-scan.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
@@ -36,7 +36,6 @@ test('the technique finder includes every detector in the Rust engine catalog', 
     .at(-1), { title: 'Other techniques', techniques: ['future-technique'] })
 })
 
-
 test('count distinct action targets for each technique even with overlapping proofs and moves', () => {
   const findings = summarizeDeductions([
     match([{ place: { cell: 0, digit: 1 } }], ['naked-single', 'full-house']),
@@ -63,6 +62,15 @@ test('count distinct action targets for each technique even with overlapping pro
     technique: 'bug-plus-one', patterns: 1, placements: [{ cell: 4, digit: 9 }], removals: [],
   })
   assert.deepEqual(summarizeGroup([]), { placements: 0, removals: 0 })
+})
+
+test('attribute an overlapping single candidate to the first basic technique', () => {
+  const solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const values = `0${solved.slice(1)}`
+  assert.deepEqual(classicBasicTechniqueCounts(values), {
+    'full-house': { count: 1 }, 'hidden-single-box': { count: 0 },
+    'naked-single': { count: 0 }, 'hidden-single': { count: 0 },
+  })
 })
 
 test('the technique finder caches zero counts, separates edits, and retries failures', async (t) => {
@@ -109,6 +117,13 @@ test('the technique finder caches zero counts, separates edits, and retries fail
   assert.equal(requests, 3)
 })
 
+test('technique scan keys include the candidate attribution order', () => {
+  assert.notEqual(
+    techniqueScanKey(STARTER, undefined, undefined, undefined, ['pointing', 'claiming']),
+    techniqueScanKey(STARTER, undefined, undefined, undefined, ['claiming', 'pointing']),
+  )
+})
+
 test('hide-zero filter retains pending techniques and scan failures', () => {
   const groups = [
     { title: 'Singles', techniques: ['naked-single', 'hidden-single'] },
@@ -141,8 +156,8 @@ test('technique hint navigation groups all eliminations from one pointing patter
   const second: HintChoice['evidence'] = {
     intersection: { source: { box: 1 }, target: { row: 1 }, cells: [12, 13] },
   }
-  function withEvidence(actions: DeductionAction[], evidence: HintChoice['evidence']): DeductionMatch {
-    const found = match(actions, ['pointing'])
+  function withEvidence(actions: DeductionAction[], evidence: HintChoice['evidence'], technique = 'pointing'): DeductionMatch {
+    const found = match(actions, [technique])
     return { ...found, proofs: found.proofs.map((proof) => ({ ...proof, evidence })) }
   }
   const matches = [
@@ -163,4 +178,19 @@ test('technique hint navigation groups all eliminations from one pointing patter
   assert.deepEqual(hints[1].evidence, second)
   assert.deepEqual(hints[1].actions, [{ eliminate: { cell: 17, digit: 5 } }])
   assert.deepEqual(techniqueHintsFromMatches(matches, 'xy-wing'), [])
+
+  const alsEvidence: HintChoice['evidence'] = { 'als-xz': {
+    sets: [
+      { cells: [1, 2, 3, 4], digits: [1, 2, 3, 4] },
+      { cells: [10, 11, 12, 13], digits: [1, 2, 3, 4] },
+    ],
+    links: [1],
+  } }
+  const alsMatches = [
+    withEvidence([{ eliminate: { cell: 30, digit: 5 } }], alsEvidence, 'als-xz'),
+    withEvidence([{ eliminate: { cell: 38, digit: 5 } }], alsEvidence, 'als-xz'),
+  ]
+  assert.deepEqual(techniqueHintsFromMatches(alsMatches, 'als-xz').map(({ actions }) => actions), [[
+    { eliminate: { cell: 30, digit: 5 } }, { eliminate: { cell: 38, digit: 5 } },
+  ]])
 })

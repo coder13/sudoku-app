@@ -31,7 +31,7 @@ test('Cauldron imports, rates and replays to its published grid using checked do
   const trace = (techniqueOrder: readonly string[]) => runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
   const before = await trace(order.filter(id => id !== technique && id !== 'linked-clue-contradiction'))
   assert.equal(before.rating.status, 'stalled')
-  assert.equal(before.steps.length, 82)
+  assert.equal(before.steps.length, 83)
   const after = await trace(order)
   assert.deepEqual(after.rating.status, { solved: 'medium' })
   assert.equal(after.steps.length, 123)

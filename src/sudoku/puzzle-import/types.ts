@@ -18,6 +18,7 @@ export type ImportResult = {
   sizedRules?: SizedRuleGame['rules']
   sizedAuthor?: string
   authoredSolution?: string
+  authoredSolutionOnly?: true
   algebraic?: AlgebraicDefinition
   title?: string
   sharedPuzzleId?: string

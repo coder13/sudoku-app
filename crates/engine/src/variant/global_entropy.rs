@@ -27,15 +27,7 @@ impl CompiledVariant {
 }
 
 pub(super) fn support(domains: [u16; 4]) -> [u16; 4] {
-    let pattern = domains
-        .iter()
-        .enumerate()
-        .fold(0, |pattern, (cell, domain)| {
-            let groups = GROUPS.iter().enumerate().fold(0, |mask, (group, digits)| {
-                mask | (usize::from(domain & digits != 0) << group)
-            });
-            pattern | (groups << (3 * cell))
-        });
+    let pattern = group_domain_pattern(domains);
     let supported = SUPPORT[pattern];
     std::array::from_fn(|cell| {
         let groups = supported >> (3 * cell);
@@ -47,6 +39,53 @@ pub(super) fn support(domains: [u16; 4]) -> [u16; 4] {
                     0
                 }
             })
+    })
+}
+
+pub(crate) fn support_in_groups(domains: [u16; 4], groups: [u16; 3]) -> [u16; 4] {
+    if groups == GROUPS {
+        return support(domains);
+    }
+    let choices: [u8; 4] = std::array::from_fn(|cell| {
+        groups.iter().enumerate().fold(0, |mask, (group, digits)| {
+            mask | (u8::from(domains[cell] & digits != 0) << group)
+        })
+    });
+    let mut supported_groups = [0u8; 4];
+    for a in 0..3 {
+        if choices[0] & (1 << a) == 0 {
+            continue;
+        }
+        for b in 0..3 {
+            if choices[1] & (1 << b) == 0 {
+                continue;
+            }
+            for c in 0..3 {
+                if choices[2] & (1 << c) == 0 {
+                    continue;
+                }
+                for d in 0..3 {
+                    if choices[3] & (1 << d) == 0 || (1 << a) | (1 << b) | (1 << c) | (1 << d) != 7
+                    {
+                        continue;
+                    }
+                    supported_groups[0] |= 1 << a;
+                    supported_groups[1] |= 1 << b;
+                    supported_groups[2] |= 1 << c;
+                    supported_groups[3] |= 1 << d;
+                }
+            }
+        }
+    }
+    std::array::from_fn(|cell| {
+        let digits = groups.iter().enumerate().fold(0, |mask, (group, digits)| {
+            mask | if supported_groups[cell] & (1 << group) != 0 {
+                *digits
+            } else {
+                0
+            }
+        });
+        domains[cell] & digits
     })
 }
 
@@ -211,13 +250,71 @@ mod tests {
     }
 
     #[test]
+    fn authored_groups_are_validated_and_used_for_global_entropy() {
+        let groups = vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
+        let mut puzzle = VariantPuzzle::classic([0; 81]);
+        puzzle.rules.push(PuzzleRule::GlobalEntropy {
+            groups: groups.clone(),
+        });
+        let compiled = puzzle.compile().unwrap();
+        assert_eq!(compiled.global_entropy_groups, GROUPS);
+
+        puzzle.rules[0] = PuzzleRule::GlobalEntropy {
+            groups: vec![vec![1, 2, 3], vec![2, 4, 6], vec![5, 7, 8, 9]],
+        };
+        assert!(puzzle.compile().is_err());
+        puzzle.rules[0] = PuzzleRule::GlobalEntropy {
+            groups: vec![vec![1, 2], vec![3, 4], vec![5, 6, 7, 8, 9]],
+        };
+        assert!(puzzle.compile().is_err());
+    }
+
+    #[test]
+    fn custom_group_support_matches_direct_assignments() {
+        let groups = [0b000000011, 0b000001100, 0b000110000];
+        for pattern in 0..1 << 12 {
+            let domains = std::array::from_fn(|cell| {
+                groups.iter().enumerate().fold(0, |mask, (group, digits)| {
+                    mask | if pattern & (1 << (cell * 3 + group)) != 0 {
+                        *digits
+                    } else {
+                        0
+                    }
+                })
+            });
+            let mut direct_support = [0u16; 4];
+            for a in digits(domains[0]) {
+                for b in digits(domains[1]) {
+                    for c in digits(domains[2]) {
+                        for d in digits(domains[3]) {
+                            let assigned = [a, b, c, d];
+                            if groups.iter().all(|group| {
+                                assigned.iter().any(|digit| group & (1 << (digit - 1)) != 0)
+                            }) {
+                                for (mask, digit) in direct_support.iter_mut().zip(assigned) {
+                                    *mask |= 1 << (digit - 1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            assert_eq!(
+                support_in_groups(domains, groups),
+                direct_support,
+                "pattern {pattern}"
+            );
+        }
+    }
+
+    #[test]
     fn all_sixty_four_windows_include_shared_box_boundaries_without_wrapping() {
         let mut puzzle = VariantPuzzle::classic([0; 81]);
         assert_eq!(puzzle.compile().unwrap().entropy_windows().count(), 0);
         puzzle.rules.extend([
             PuzzleRule::AntiKing {},
-            PuzzleRule::GlobalEntropy {},
-            PuzzleRule::GlobalEntropy {},
+            PuzzleRule::GlobalEntropy { groups: Vec::new() },
+            PuzzleRule::GlobalEntropy { groups: Vec::new() },
         ]);
         let compiled = puzzle.compile().unwrap();
         let windows: Vec<_> = compiled.entropy_windows().collect();
@@ -248,8 +345,9 @@ mod tests {
                     for d in digits(domains[3]) {
                         let assigned = [a, b, c, d];
                         let groups = assigned.map(|digit| (digit - 1) / 3);
-                        if groups.iter().filter(|&&group| group == target).count() == 2 &&
-                            (0..3).all(|group| groups.contains(&group)) {
+                        if groups.iter().filter(|&&group| group == target).count() == 2
+                            && (0..3).all(|group| groups.contains(&group))
+                        {
                             for (mask, digit) in supported.iter_mut().zip(assigned) {
                                 *mask |= 1 << (digit - 1);
                             }
@@ -290,7 +388,8 @@ mod tests {
             "type": "entropy-window-group",
             "cells": [20, 21, 29, 30],
             "group": "middle"
-        })).unwrap();
+        }))
+        .unwrap();
         let mut puzzle = VariantPuzzle::classic([0; 81]);
         puzzle.rules.push(rule);
         assert!(puzzle.compile().is_ok());
@@ -299,9 +398,13 @@ mod tests {
             "type": "entropy-window-group",
             "cells": [20, 21, 29, 31],
             "group": "middle"
-        })).unwrap();
+        }))
+        .unwrap();
         let mut puzzle = VariantPuzzle::classic([0; 81]);
         puzzle.rules.push(invalid);
-        assert_eq!(puzzle.compile().unwrap_err(), crate::VariantDefinitionError::InvalidRule(0));
+        assert_eq!(
+            puzzle.compile().unwrap_err(),
+            crate::VariantDefinitionError::InvalidRule(0)
+        );
     }
 }

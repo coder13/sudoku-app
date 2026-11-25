@@ -203,6 +203,8 @@ fn batch_generation_reproduces_verified_matches_and_reports_other_outcomes() {
             Technique::TriplePatternOverlay,
             Technique::QuintuplePatternOverlay,
             Technique::KrakenFish2,
+            Technique::SextuplePatternOverlay,
+            Technique::SeptuplePatternOverlay,
         ]
     );
     let solution = solve(&board).unwrap();

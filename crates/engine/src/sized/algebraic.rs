@@ -421,12 +421,18 @@ impl SizedAlgebraicCages {
     }
 
     /// Return the unique completion and its verified variable values.
-    pub fn solve_unique(&self, digits: &[u8], node_budget: u32) -> Result<AlgebraicCompletion, Analysis> {
+    pub fn solve_unique(
+        &self,
+        digits: &[u8],
+        node_budget: u32,
+    ) -> Result<AlgebraicCompletion, Analysis> {
         let (analysis, first) = self.search(digits, node_budget, 2);
         if analysis != Analysis::Unique {
             return Err(analysis);
         }
-        first.and_then(|digits| self.completion(digits)).ok_or(Analysis::Unsolvable)
+        first
+            .and_then(|digits| self.completion(digits))
+            .ok_or(Analysis::Unsolvable)
     }
 
     fn completion(&self, digits: Vec<u8>) -> Option<AlgebraicCompletion> {

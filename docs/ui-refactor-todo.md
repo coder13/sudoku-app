@@ -39,3 +39,4 @@ Keep this list current while the UI refactor is in progress. Add follow-ups as c
 - [x] Audit responsive props on shared Play panel nodes; remove the compact Chains panel content omission and keep future responsive changes presentation-only.
 - [x] Recheck the catalog and Storybook examples after the responsive panel and Play action trigger API changes.
 - [x] Review the refactor diff for state ownership, duplicated behavior, accessibility, and accidental behavior changes; run the non-test checks (`npm run check`, `git diff --check`).
+- [ ] Visually review the newly merged sized-rule clue geometry for fractional regions, Crust, Nonogram, row equations, Zipper, and AQRE in Storybook.

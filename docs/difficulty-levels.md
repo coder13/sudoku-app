@@ -221,5 +221,7 @@ Family assignments are the starting policy. Proof length, grouped nodes, branche
 | `triple-pattern-overlay` | Impossible |
 | `quadruple-pattern-overlay` | Impossible |
 | `quintuple-pattern-overlay` | Impossible |
+| `sextuple-pattern-overlay` | Impossible |
+| `septuple-pattern-overlay` | Impossible |
 | `kraken-fish-1` | Extreme |
 | `kraken-fish-2` | Extreme |

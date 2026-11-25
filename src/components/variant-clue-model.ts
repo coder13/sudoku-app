@@ -37,7 +37,8 @@ export function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[]
 
 function drawingLayer(rule: VariantRule) {
   return rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 :
-    rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' || rule.type === 'entropy-window-group' ? -2 :
+    rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' || rule.type === 'entropy-window-group' || rule.type === 'distant-neighbors' ? -2 :
+      rule.type === 'aqre' ? -1.8 :
       rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
         rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 :
           isQuadrupleRule(rule) || rule.type === 'lettered-quadruples' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 :

@@ -6,9 +6,13 @@ use super::{
 };
 use crate::{
     CELLS,
-    variant::{cells_in, digit_sum, lines::{
-        LineConstraint, region_sums::{DIGIT_SETS, PartSums},
-    }},
+    variant::{
+        cells_in, digit_sum,
+        lines::{
+            LineConstraint,
+            region_sums::{DIGIT_SETS, PartSums},
+        },
+    },
 };
 
 fn totals_list(mask: u64) -> Vec<u8> {
