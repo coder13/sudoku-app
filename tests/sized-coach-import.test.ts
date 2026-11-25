@@ -503,6 +503,21 @@ test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed
   assert.deepEqual(shared.sixRules, imported.sizedRules)
 })
 
+test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV combinations', async () => {
+  const solution = '123456456123231564564231312645645312'
+  const grid = { size: 6 as const, boxRows: 2 as const, boxColumns: 3 as const }
+  const rules = [
+    { type: 'between' as const, cells: [0, 1, 2] },
+    { type: 'clone' as const, groups: [[0, 1], [6, 7]] },
+    { type: 'modular' as const, cells: [0, 1, 2] },
+    { type: 'xv' as const, five: { negative: true } },
+  ]
+  const game = { ...makeGame('coach-rule-share', 'Coach rule share', solution, 'imported', 0, grid),
+    sized: { rules, solution } }
+  const shared = await publishFixture(game)
+  assert.deepEqual(shared.sixRules, rules)
+})
+
 test('sized Coach Difference and Ratio layers reject unknown fields when combined', async () => {
   for (const type of ['difference', 'ratio'] as const) {
     const amountKey = type
