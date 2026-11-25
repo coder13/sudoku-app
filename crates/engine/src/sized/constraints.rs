@@ -118,6 +118,10 @@ pub enum SizedConstraint {
     Palindrome {
         cells: Vec<usize>,
     },
+    /// Corresponding cells in each group must contain equal digits.
+    Clone {
+        groups: Vec<Vec<usize>>,
+    },
     NonConsecutive {
         except: Vec<[usize; 2]>,
     },
@@ -755,6 +759,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::AntiKing
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::Modular { .. }
                 | SizedConstraint::Quadruple { .. }
                 | SizedConstraint::Xv { .. } => {}
@@ -1687,6 +1692,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::AntiKnight
@@ -1957,6 +1963,7 @@ impl SizedConstraintGrid {
                 SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::Xv { .. }

@@ -63,6 +63,35 @@ fn diagonal_parity_and_thermometers_all_matter_to_the_solution() {
 }
 
 #[test]
+fn clone_groups_link_corresponding_digits_and_validate_their_cells() {
+    let rules = [Rule::Clone {
+        groups: vec![vec![0, 9], vec![9, 17], vec![1, 10]],
+    }];
+    let grid = SizedConstraintGrid::new(SIX, &rules).unwrap();
+    let mut digits = [0; 36];
+    digits[0] = 1;
+    let candidates = grid.candidates(&digits).unwrap().unwrap();
+    assert_eq!(candidates[9], 1);
+    assert_eq!(candidates[17], 1);
+
+    digits[9] = 2;
+    assert_eq!(grid.analyze(&digits, 10_000), Analysis::Conflict);
+    assert_eq!(grid.candidates(&digits), Ok(None));
+
+    for groups in [vec![], vec![vec![0]], vec![vec![0, 0]], vec![vec![0, 36]]] {
+        assert!(SizedConstraintGrid::new(SIX, &[Rule::Clone { groups }]).is_none());
+    }
+    let incompatible = SizedConstraintGrid::new(
+        SIX,
+        &[Rule::Clone {
+            groups: vec![vec![0, 1]],
+        }],
+    )
+    .unwrap();
+    assert_eq!(incompatible.analyze(&[0; 36], 10_000), Analysis::Unsolvable);
+}
+
+#[test]
 fn published_little_killer_between_gjbz_proves_unique_with_a_small_budget() {
     // https://sudoku.coach/en/s/GJBz
     let rules = [

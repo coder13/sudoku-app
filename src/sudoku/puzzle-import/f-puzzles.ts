@@ -10,8 +10,8 @@ export const FP_CODE = /^fpuz(?:zles)?/i
 const FPUZZLES_BASE_FIELDS = ['size', 'grid', 'title', 'author', 'ruleset', 'solution', 'successMessage']
 const FPUZZLES_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
 const FPUZZLES_SIX_FIELDS = new Set([...FPUZZLES_FIELDS, 'antiknight', 'arrow'])
-const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'diagonal+', 'diagonal-'])
-const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
+const FPUZZLES_EIGHT_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'killercage', 'clone', 'diagonal+', 'diagonal-'])
+const FPUZZLES_JIGSAW_FIELDS = new Set([...FPUZZLES_BASE_FIELDS, 'clone', 'thermometer', 'difference', 'ratio', 'negative', 'xv', 'cage', 'highlightConflicts', 'rectangle'])
 const PLAIN_RULES = /^\s*(?:(?:normal|standard) (?:classic )?sudoku rules apply[.!]?)?\s*$/i
 const FP_JIGSAW_BASE = /^(?:normal|standard) irregular(?: ([4567])\s*[×x]\s*\1)? sudoku rules apply(?:\.|: fill each row, column and region with the digits 1[-–]([4567])\.)$/i
 const FP_JIGSAW_THERMOMETER = /^(?:Digits along a thermometer must strictly increase from the bulb to the end|Thermometers: Digits along a thermometer must increase starting at the bulb)\.$/i
@@ -27,6 +27,22 @@ function fpCellIndex(value: unknown, size = 9) {
     throw new Error('This f-puzzles export contains an invalid cell reference.')
   }
   return (Number(match[1]) - 1) * size + Number(match[2]) - 1
+}
+
+function fpCloneRules(data: Record<string, unknown>, size: number): Extract<VariantRule, { type: 'clone' }>[] {
+  if (data.clone === undefined) return []
+  if (!Array.isArray(data.clone)) throw new Error('This f-puzzles export has invalid Clone clues.')
+  return data.clone.map(clue => {
+    if (!record(clue) || Object.keys(clue).some(key => key !== 'cells' && key !== 'cloneCells') ||
+      !Array.isArray(clue.cells) || !clue.cells.length || !Array.isArray(clue.cloneCells) || clue.cells.length !== clue.cloneCells.length) {
+      throw new Error('This f-puzzles export has invalid Clone clues.')
+    }
+    const copies = clue.cloneCells.map(cell => fpCellIndex(cell, size))
+    const original = clue.cells.map(cell => fpCellIndex(cell, size))
+    if (new Set(original).size !== original.length || new Set(copies).size !== copies.length ||
+      original.some((cell, index) => cell === copies[index])) throw new Error('This f-puzzles export has invalid Clone clues.')
+    return { type: 'clone', groups: original.map((cell, index) => [cell, copies[index]]) }
+  })
 }
 
 function antiSumFromClause(clause: string, size: number) {
@@ -72,18 +88,21 @@ function fromFPuzzlesSixBySix(data: Record<string, unknown>, givens: string): Im
   const ruleset = typeof data.ruleset === 'string' ? /^Normal 6x6(?: (.*?))? Sudoku rules apply\.$/i.exec(data.ruleset.trim()) : null
   if (!ruleset || !Array.isArray(data.grid) || data.grid.flat().some(cell => record(cell) && cell.region !== undefined)) return
 
-  const declarations = (ruleset[1] ?? '').toLowerCase().split(/ and /).filter(Boolean)
-  if (declarations.some((rule, index) => !['arrows', 'anti-knight'].includes(rule) || declarations.indexOf(rule) !== index)) {
+  const declarations = (ruleset[1] ?? '')
+    .replace(/Grey regions are clones, and must contain the same digits in the same relative positions\.?/ig, 'clone')
+    .toLowerCase().split(/ and /).filter(Boolean)
+  if (declarations.some((rule, index) => !['arrows', 'anti-knight', 'clone'].includes(rule) || declarations.indexOf(rule) !== index)) {
     throw new Error('This f-puzzles export contains custom rules text. Import requires rules the app can read from the board.')
   }
   if (data.antiknight !== undefined && typeof data.antiknight !== 'boolean') throw new Error('This f-puzzles export has an invalid Anti-Knight flag.')
   const hasAntiKnight = data.antiknight === true
   const hasArrows = hasData(data.arrow)
-  if (hasAntiKnight !== declarations.includes('anti-knight') || hasArrows !== declarations.includes('arrows')) {
+  if (hasAntiKnight !== declarations.includes('anti-knight') || hasArrows !== declarations.includes('arrows') ||
+    declarations.includes('clone') && !hasData(data.clone)) {
     throw new Error('This f-puzzles export has rule metadata that does not match its ruleset.')
   }
 
-  const rules: SizedConstraintRule[] = []
+  const rules: SizedConstraintRule[] = fpCloneRules(data, 6)
   if (hasAntiKnight) rules.push({ type: 'anti-knight' })
   if (hasArrows) {
     if (!Array.isArray(data.arrow) || data.arrow.length > 128) throw new Error('This f-puzzles export has invalid Arrows.')
@@ -127,6 +146,7 @@ function fromFPuzzlesJigsaw(data: Record<string, unknown>, size: 4 | 5 | 6 | 7, 
   const grid = { size, regions }
   if (!isJigsawGrid(grid)) throw new Error(jigsawLayoutError(size))
   const rules: SizedConstraintRule[] = []
+  rules.push(...fpCloneRules(data, size))
   if (hasData(data.thermometer)) {
     if (!Array.isArray(data.thermometer)) throw new Error('This f-puzzles export has invalid thermometers.')
     for (const clue of data.thermometer) {
@@ -254,30 +274,21 @@ function fromFPuzzlesData(data: unknown): ImportResult {
   if (jigsaw) return fromFPuzzlesJigsaw(data, size, labels, digits.join(''))
   if (mini) {
     if (!hasMiniBoxes(labels)) throw new Error('Mini Sudoku import requires four 2 × 2 boxes.')
-    if (['killercage', 'clone', 'diagonal+', 'diagonal-'].some(key => hasData(data[key]))) {
+    if (['killercage', 'diagonal+', 'diagonal-'].some(key => hasData(data[key]))) {
       throw new Error('This 4 × 4 f-puzzles grid has rules that Mini Sudoku cannot import yet.')
     }
+    const clones = fpCloneRules(data, size)
+    if (clones.length && !isSizedRuleList(clones, MINI_GRID)) throw new Error('This 4 × 4 f-puzzles grid has invalid Clone clues.')
+    if (clones.length) return { givens: digits.join(''), grid: MINI_GRID, sizedRules: clones }
     return { givens: digits.join(''), grid: MINI_GRID }
   }
   const rules: VariantRule[] = []
+  rules.push(...fpCloneRules(data, size))
   for (const key of ['diagonal+', 'diagonal-']) {
     if (data[key] !== undefined && typeof data[key] !== 'boolean') throw new Error('This f-puzzles export has an invalid diagonal.')
   }
   if (data['diagonal+'] === true) rules.push({ type: 'diagonal', diagonal: 'anti' })
   if (data['diagonal-'] === true) rules.push({ type: 'diagonal', diagonal: 'main' })
-  if (data.clone !== undefined) {
-    if (!Array.isArray(data.clone)) throw new Error('This f-puzzles export has invalid Clone clues.')
-    for (const clue of data.clone) {
-      if (!record(clue) || Object.keys(clue).some(key => key !== 'cells' && key !== 'cloneCells') ||
-        !Array.isArray(clue.cells) || !clue.cells.length || !Array.isArray(clue.cloneCells) || clue.cells.length !== clue.cloneCells.length) {
-        throw new Error('This f-puzzles export has invalid Clone clues.')
-      }
-      const copies = clue.cloneCells.map(cell => fpCellIndex(cell))
-      const original = clue.cells.map(cell => fpCellIndex(cell))
-      if (new Set(original).size !== original.length || new Set(copies).size !== copies.length) throw new Error('This f-puzzles export has invalid Clone clues.')
-      rules.push({ type: 'clone', groups: original.map((cell, i) => [cell, copies[i]]) })
-    }
-  }
   const authoredClone = coloredCells && coloredCloneShapes(coloredCells)
   if (authoredClone) rules.push(...authoredClone.rules)
   if (hasData(data.killercage)) {

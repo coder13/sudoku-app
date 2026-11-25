@@ -197,6 +197,7 @@ pub(super) fn compile_pairs(
                 | SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
+                | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
                 | SizedConstraint::AntiKnight
@@ -240,6 +241,33 @@ pub(super) fn compile_pairs(
                     constraint: PairConstraint::from_relation([left, right], size, |x, y| x == y),
                     kropki: None,
                 });
+            }
+            continue;
+        }
+        if let SizedConstraint::Clone { groups: clones } = rule {
+            if clones.is_empty() || clones.len() > size * size {
+                return None;
+            }
+            for cells in clones {
+                if cells.len() < 2 || cells.len() > size * size {
+                    return None;
+                }
+                let mut seen = BTreeSet::new();
+                if cells
+                    .iter()
+                    .any(|&cell| cell >= size * size || !seen.insert(cell))
+                {
+                    return None;
+                }
+                let first = cells[0];
+                for &other in &cells[1..] {
+                    groups[index].push(SizedPairLink {
+                        constraint: PairConstraint::from_relation([first, other], size, |x, y| {
+                            x == y
+                        }),
+                        kropki: None,
+                    });
+                }
             }
             continue;
         }
