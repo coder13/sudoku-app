@@ -152,6 +152,67 @@ test('#286 routes boxless parity-only puzzles through the Latin-square engine', 
   assert.equal(solveLatin(imported.futoshiki.puzzle).status, 'unique')
 })
 
+test('#477 enforces two-cell Entropic Lines in boxless Futoshiki and Calcudoku puzzles', async () => {
+  const lines = [{ type: 'entropicLine', settings: {}, segments: [
+    { cells: [0, 1], parameters: {} }, { cells: [12, 15], parameters: {} },
+  ] }]
+  const givens = '0'.repeat(16)
+  const code = coachCode({ gridSize: 4, regions: [], givenDigits: givens, givenConstraints: lines })
+  const futoshiki = await detectPuzzle(code)
+  assert.ok(futoshiki.futoshiki)
+  const expectedLines = [
+    { type: 'entropic', cells: [0, 1], groups: [[1, 2, 3], [4]] },
+    { type: 'entropic', cells: [12, 15], groups: [[1, 2, 3], [4]] },
+  ]
+  assert.deepEqual(futoshiki.futoshiki.puzzle.lines, expectedLines)
+
+  const invalidLatin = [...'1234341221434321'].map(Number)
+  assert.equal(checkLatin(futoshiki.futoshiki.puzzle, invalidLatin).complete, false)
+  const futoshikiSolution = solveLatin(futoshiki.futoshiki.puzzle).solution
+  assert.ok(futoshikiSolution)
+  assert.equal(checkLatin(futoshiki.futoshiki.puzzle, futoshikiSolution).complete, true)
+
+  const cages = Array.from({ length: 4 }, (_, row) => ({
+    cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+    parameters: { sum: 10 },
+  }))
+  const calcudoku = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: givens,
+    givenConstraints: [...lines, { type: 'cage', segments: cages }] }))
+  assert.ok(calcudoku.calcudoku)
+  assert.deepEqual(calcudoku.calcudoku.puzzle.lines, expectedLines)
+  assert.equal(checkLatin(calcudoku.calcudoku.puzzle, invalidLatin).complete, false)
+  const calcudokuSolution = solveLatin(calcudoku.calcudoku.puzzle).solution
+  assert.ok(calcudokuSolution)
+  assert.equal(checkLatin(calcudoku.calcudoku.puzzle, calcudokuSolution).complete, true)
+})
+
+test('#476 enforces Anti-Knight with boxless Futoshiki and Calcudoku rules', async () => {
+  const antiKnight = [{ type: 'antiKnight', settings: {}, segments: [] }]
+  const givens = '0'.repeat(16)
+  const futoshiki = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: givens, givenConstraints: antiKnight }))
+  assert.ok(futoshiki.futoshiki)
+  assert.deepEqual(futoshiki.futoshiki.puzzle.exclusions, ['anti-knight'])
+
+  const equalKnightDigits = [...'1234341221434321'].map(Number)
+  assert.equal(checkLatin(futoshiki.futoshiki.puzzle, equalKnightDigits).complete, false)
+  const futoshikiSolution = solveLatin(futoshiki.futoshiki.puzzle).solution
+  assert.ok(futoshikiSolution)
+  assert.equal(checkLatin(futoshiki.futoshiki.puzzle, futoshikiSolution).complete, true)
+
+  const cages = Array.from({ length: 4 }, (_, row) => ({
+    cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+    parameters: { sum: 10 },
+  }))
+  const calcudoku = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: givens,
+    givenConstraints: [...antiKnight, { type: 'cage', segments: cages }] }))
+  assert.ok(calcudoku.calcudoku)
+  assert.deepEqual(calcudoku.calcudoku.puzzle.exclusions, ['anti-knight'])
+  assert.equal(checkLatin(calcudoku.calcudoku.puzzle, equalKnightDigits).complete, false)
+  const calcudokuSolution = solveLatin(calcudoku.calcudoku.puzzle).solution
+  assert.ok(calcudokuSolution)
+  assert.equal(checkLatin(calcudoku.calcudoku.puzzle, calcudokuSolution).complete, true)
+})
+
 test('boxless Coach cell colors reject explicitly until the Latin-square flow can retain them', async () => {
   const givenColours = Array(16).fill('').map((value, cell) => cell === 0 ? '0' : value).join(',')
   await assert.rejects(detectPuzzle(coachCode({
