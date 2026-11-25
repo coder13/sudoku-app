@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { readGame } from '../src/sudoku/storage.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
 
 const source = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-boxless-9x9-separators.json', import.meta.url), 'utf8')) as {
   code: string; issue: number
@@ -43,4 +48,12 @@ test('#414 imports its Latin Square rules, distinct 3×3 groups, and authored di
     { type: 'divider', points: Array.from({ length: 10 }, (_, i) => [3, i]), thickness: .03 },
     { type: 'divider', points: [[3, 6], [2, 6], [1, 6], [0, 6]], thickness: .03 },
   ])
+})
+
+test('#414 keeps its complete rule set and dividers after saving and reloading', async () => {
+  const { game } = await prepareImportedPuzzle(source.code)
+  const restored = readGame(game.id, JSON.stringify(game))
+  assert.ok(restored?.variant)
+  assert.deepEqual(restored.variant.puzzle, game.variant?.puzzle)
+  assert.deepEqual(restored.authoredArtwork, game.authoredArtwork)
 })
