@@ -182,6 +182,8 @@ test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async
   } })
   assert.ok(Array.isArray(candidates))
   assert.ok(candidates.every(mask => mask !== 0))
+  assert.equal(candidates[12], 0b10)
+  assert.equal(candidates[13], 0b100)
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     ...position, rules: position.rules.map(rule => rule.type === 'x-sum' ? { ...rule, sum: 6 } : rule),
   } }), 'conflict')
