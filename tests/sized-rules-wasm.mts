@@ -14,6 +14,37 @@ import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
+test('#393 sized Clone groups constrain corresponding cells in the sized engine', async () => {
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 6, boxRows: 2, boxColumns: 3 },
+    digits: [1, ...Array(35).fill(0)],
+    rules: [
+      { type: 'clone', groups: [[0, 9], [9, 17], [1, 10], [0, 16]] },
+      { type: 'palindrome', cells: [16, 17, 23] },
+    ],
+  }
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.ok(Array.isArray(candidates))
+  assert.equal(candidates[9], 1)
+  assert.equal(candidates[17], 1)
+  assert.equal(candidates[23], 1)
+  const conflict = { ...position, digits: position.digits.map((digit, cell) => cell === 9 ? 2 : digit) }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: conflict }), 'conflict')
+
+  const zeroBased: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 10, boxRows: 2, boxColumns: 5 },
+    zeroBased: true,
+    digits: [1, ...Array(99).fill(0)],
+    rules: [{ type: 'clone', groups: [[0, 15], [15, 29]] }],
+  }
+  const zeroBasedCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: zeroBased })
+  assert.ok(Array.isArray(zeroBasedCandidates))
+  assert.equal(zeroBasedCandidates[15], 1)
+  assert.equal(zeroBasedCandidates[29], 1)
+})
+
 test('#396 validates the published Anti-King and Region Sum combination in the sized engine', async () => {
   const code = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
   const imported = await detectPuzzle(code)

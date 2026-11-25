@@ -212,7 +212,7 @@ export type SizedLineType =
   | { type: 'region-sum' }
   | { type: 'renban' }
 
-export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' }>
+export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'parity' | 'thermometer' | 'between' | 'whispers' | 'non-consecutive' | 'inequality' | 'xv' | 'sandwich' | 'x-sum' | 'renban' | 'kropki' | 'quadruple' | 'arrow' | 'region-sum' | 'extra-house' | 'killer-cages' | 'modular' | 'little-killer' | 'global-entropy' | 'clone' }>
   | { type: 'parity-line'; cells: readonly number[] }
   | { type: 'palindrome'; cells: readonly number[] }
   | { type: 'line-assignments'; paths: readonly (readonly number[])[]; types: readonly SizedLineType[] }
