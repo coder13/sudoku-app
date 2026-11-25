@@ -1065,6 +1065,10 @@ function coachOutsideRay(side: OutsideSide, index: number, size = 9) {
 
 function readCoachXSums(constraint: Record<string, unknown>, segments: readonly unknown[], size = 9) {
   const { settings } = constraint
+  if (constraint.type !== 'cosmeticText' ||
+    Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
+    throw new Error('This Sudoku Coach X-Sums layer has unsupported fields.')
+  }
   if (settings !== undefined && (!record(settings) || Object.keys(settings).some(key =>
     !['gridZoomOut', 'gridSnapToCorners', 'gridSnapToEdges', 'textSize'].includes(key)) ||
     (settings.gridZoomOut !== undefined && settings.gridZoomOut !== 1) ||

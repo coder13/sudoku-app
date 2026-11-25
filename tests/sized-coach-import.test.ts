@@ -100,6 +100,12 @@ test('published sized Coach X-Sums parse outside labels against the grid size', 
   }] })
   responseCode = impossible
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /total from 1 through 21/)
+
+  responseCode = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'cosmeticText', futureSemantics: true, settings: {},
+    segments: [{ cells: [[0.5, -0.5]], parameters: { text: '5' } }],
+  }] })
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /X-Sums layer has unsupported fields/)
 })
 
 test('six-by-six Coach decoding reports unsupported rules instead of importing a partial puzzle', async () => {
