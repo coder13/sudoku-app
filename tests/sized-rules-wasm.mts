@@ -72,6 +72,18 @@ test('#404 enforces both white-dot relationships from the original X-Sum Twins i
       : rule),
   }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: incompatible }), 'conflict')
+
+  const ratioPosition: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    digits: Array(16).fill(0),
+    rules: [{ type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'ratio' }],
+  }
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: ratioPosition })
+  assert.equal(candidates?.[5] & 0b1000, 0)
+  const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position: ratioPosition, limit: 10 })
+  assert.ok(hints?.choices.some(choice => choice.type === 'rule' && choice.rule === 0 &&
+    choice.actions.some(action => action.eliminate?.cell === 5 && action.eliminate.digit === 4)))
 })
 
 test('one Renban request uses the supplied geometry across supported rectangular layouts', async () => {
