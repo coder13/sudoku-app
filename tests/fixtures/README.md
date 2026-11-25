@@ -4,6 +4,8 @@ These fixtures test the complete imported puzzle definition. They include author
 
 `coach-mini-wrapped-jigsaw.json` preserves the published Sudoku Coach export for Mini Jigsaw 3, its 4 × 4 solution, and the author’s description of its wraparound regions. Import recognizes this reviewed export because disconnected region geometry alone cannot establish wraparound. The Rust/Wasm engine accepts the topology metadata, and sharing, Preview and Play preserve it. Finished and unfinished Storybook stories show the matching dashed seams beside the Whispers and Region Sum clues.
 
+`sudokupad-3-pointing-knights.fpuz` preserves the published SudokuPad export for Plok’s 6 × 6 *3 Pointing Knights*. The source link exports f-puzzles data with three Arrows and the Anti-Knight flag. The fixture verifies the short-link export through the shared sized engine.
+
 ## Sparse puzzles
 
 `mixed-puzzles.json` contains two puzzles:

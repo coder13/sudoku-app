@@ -61,6 +61,8 @@ const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
 const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
 const xSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
+const weightedLibraCode = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
+const pointingKnightsCode = readFileSync(new URL('./fixtures/sudokupad-3-pointing-knights.fpuz', import.meta.url), 'utf8').trim()
 const entropyLineExamples = JSON.parse(readFileSync(new URL('./fixtures/sudokupad-entropy-lines.json', import.meta.url), 'utf8')) as {
   examples: { id: string; title: string; code: string }[]
 }
@@ -159,6 +161,26 @@ test('published 6 × 6 SudokuPad imports keep their combined rules and authored 
   } }), /authored rules this importer cannot verify/)
 })
 
+test('#396 imports the published Anti-King and Region Sum combination with its solution annotation', async () => {
+  const imported = await detectPuzzle(weightedLibraCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, 'Weighted Libra')
+  assert.equal(imported.sizedAuthor, 'vguardiano')
+  assert.equal(imported.givens, '000000030060000000000000060030000000')
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-king' },
+    { type: 'region-sum', cells: [19, 20, 13, 7, 8, 9, 10, 16, 21, 22] },
+    { type: 'region-sum', cells: [25, 26, 27, 28] },
+  ])
+  assert.equal(imported.authoredSolution, '621345435261216453543126162534354612')
+
+  const source = decodeSudokuPadEnvelope(weightedLibraCode) as Record<string, unknown>
+  assert.throws(() => readSizedRuleSudokuPad({ ...source,
+    cages: [{ value: 'solution: 123' }],
+  }), /unsupported rules or markings/)
+})
+
 test('published 6 × 6 Entropic Line imports preserve Anti-King, paths, and authored solutions', async () => {
   const paths = [
     [[32, 25, 19, 12, 6, 1]],
@@ -216,6 +238,31 @@ test('#394 imports SudokuPad Anti-Knight metadata alongside sized companion rule
     { type: 'anti-knight' },
     { type: 'thermometer', cells: [0, 1, 2, 3] },
   ])
+})
+
+test('#394 imports the published 6 × 6 f-puzzles Anti-Knight and Arrow combination', async ({ mock }) => {
+  const imported = await detectPuzzle(pointingKnightsCode)
+  assert.equal(imported.format, 'f-puzzles')
+  assert.equal(imported.title, '3 Pointing Knights')
+  assert.equal(imported.sizedAuthor, 'Plok')
+  assert.equal(imported.givens, '0'.repeat(36))
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'anti-knight' },
+    { type: 'arrow', circle: 18, cells: [13, 8, 3] },
+    { type: 'arrow', circle: 28, cells: [21, 14, 7] },
+    { type: 'arrow', circle: 32, cells: [27, 22, 17] },
+  ])
+  assert.equal(imported.authoredSolution, '456321321654612543543216234165165432')
+
+  const fetch = mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, '/api/v1/import/sudokupad/uzqvdilyi5')
+    return Response.json({ code: pointingKnightsCode })
+  })
+  const linked = await detectPuzzle('https://sudokupad.app/uzqvdilyi5')
+  assert.equal(linked.format, 'SudokuPad')
+  assert.deepEqual(linked.sizedRules, imported.sizedRules)
+  assert.equal(fetch.mock.callCount(), 1)
 })
 
 test('Easy Thermo 1 imports its original wording and named publication link', async ({ mock }) => {

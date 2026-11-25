@@ -1,6 +1,6 @@
 import { isJigsawSize, isRectangularSize } from '../grid.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../sized-sudoku-pad.ts'
-import { hasDeclaredSudokuPadJigsaw, readLinkedDoubleArrowSudokuPad, readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../sized-rule-sudoku-pad.ts'
+import { hasDeclaredSudokuPadJigsaw, hasSudokuPadSolutionAnnotation, readLinkedDoubleArrowSudokuPad, readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../sized-rule-sudoku-pad.ts'
 import { digitRuns } from './digit-runs.ts'
 import { FP_CODE, fromFPuzzles } from './f-puzzles.ts'
 import { fetchPublishedExport } from './published-link.ts'
@@ -27,7 +27,9 @@ export function fromSudokuPad(code: string): ImportResult {
       (data.regions.length === 4 || isRectangularSize(data.regions.length)) && data.cells.length === data.regions.length + 2) {
       return { ...readLinkedDoubleArrowSudokuPad(data) }
     }
-    if (record(data) && Array.isArray(data.cells) && !(Array.isArray(data.cages) && data.cages.some(cage => record(cage) && typeof cage.value === 'string')) &&
+    if (record(data) && Array.isArray(data.cells) &&
+      (!(Array.isArray(data.cages) && data.cages.some(cage => record(cage) && typeof cage.value === 'string')) ||
+        record(data.metadata) && hasSudokuPadSolutionAnnotation(data.cages, data.metadata.solution)) &&
       (isRectangularSize(data.cells.length) || isJigsawSize(data.cells.length) ||
       data.cells.length === 4 && (hasDeclaredSudokuPadJigsaw(record(data.metadata) ? data.metadata.rules : undefined) ||
         ['lines', 'underlays', 'overlays', 'arrows'].some(field => Object.hasOwn(data, field))))) {
