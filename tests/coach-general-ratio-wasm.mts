@@ -38,6 +38,35 @@ test('negative Coach Ratio 3 checks its own marker values on classic Sudoku', as
   assert.equal(game.variant?.solution, solution)
 })
 
+test('negative Coach Ratio markers join same-value clues split across classic layers', async () => {
+  const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
+  const digits = [...solution].map(Number)
+  const ratioThreePairs: [number, number][] = []
+  for (let cell = 0; cell < digits.length; cell++) {
+    for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
+      if (next >= 0 && Math.max(digits[cell], digits[next]) === 3 * Math.min(digits[cell], digits[next])) {
+        ratioThreePairs.push([cell, next])
+      }
+    }
+  }
+  assert.ok(ratioThreePairs.length > 1)
+  const [negativeLayerMarks, positiveLayerMarks] = [ratioThreePairs.slice(0, -1), ratioThreePairs.slice(-1)]
+  const { game } = await prepareImportedPuzzle(coachCode({ givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: negativeLayerMarks.map(cells => ({
+      cells, parameters: { ratio: 3 },
+    })) },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: positiveLayerMarks.map(cells => ({
+      cells, parameters: { ratio: 3 },
+    })) },
+  ] }))
+
+  assert.deepEqual(game.variant?.puzzle.rules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: negativeLayerMarks.map(cells => ({ cells, value: 3 })), negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: positiveLayerMarks.map(cells => ({ cells, value: 3 })) },
+  ])
+  assert.equal(game.variant?.solution, solution)
+})
+
 test('negative Coach Difference 2 checks its own marker values on classic Sudoku', async () => {
   const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const digits = [...solution].map(Number)
