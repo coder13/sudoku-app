@@ -71,6 +71,10 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       labels[a].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(b)}`)
       labels[b].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(a)}`)
       for (const cell of rule.cells) labels[cell].add(`Double Arrow ${doubleArrowNumber} line`)
+    } else if (rule.type === 'adjacent-total') {
+      const [a, b] = rule.cells
+      labels[a].add(`sum ${rule.sum} with ${at(b)}`)
+      labels[b].add(`sum ${rule.sum} with ${at(a)}`)
     } else if (rule.type === 'row-column-sum') {
       for (const [a, b] of rule.pairs) {
         const total = rowColumnSumTotal([a, b], size)

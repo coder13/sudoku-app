@@ -223,8 +223,23 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
     ? rule.pairs.map(pair => [pairKey(...pair, size), pair] as const) : []))
   const differences = new Set(diamondEdges.size
     ? rules.flatMap(rule => rule.type === 'difference' ? [pairKey(...rule.cells, size)] : []) : [])
-  const markedEdges = new Set([...dots.keys(), ...rules.flatMap(rule => rule.type === 'xv'
-    ? [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])].map(pair => pairKey(...pair, size)) : [])])
+  const sums = new Map<number, Map<number, SumKind>>()
+  const sumPairs = new Map<number, readonly [number, number]>()
+  const addSum = (a: number, b: number, sum: number, kind: SumKind) => {
+    const edge = pairKey(a, b, size), marks = sums.get(edge) ?? new Map<number, SumKind>()
+    if (kind === 'xv' || !marks.has(sum)) marks.set(sum, kind)
+    sums.set(edge, marks)
+    sumPairs.set(edge, [a, b])
+  }
+  for (const rule of rules) {
+    if (rule.type === 'adjacent-total') addSum(rule.cells[0], rule.cells[1], rule.sum, 'adjacent-total')
+    if (rule.type === 'xv') {
+      for (const [kind, marks] of [rule.five, rule.ten].entries()) for (const [a, b] of marks?.pairs ?? []) {
+        addSum(a, b, kind === 0 ? 5 : 10, 'xv')
+      }
+    }
+  }
+  const markedEdges = new Set([...dots.keys(), ...sums.keys()])
   const dotValues = new Map<number, [number?, number?]>()
   for (const rule of rules) if (rule.type === 'labeled-dots') {
     const kind = rule.relation === 'ratio' ? 1 : 0
@@ -289,10 +304,12 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
     </g>)}
     {rules.flatMap((rule, index) => rule.type === 'whispers' && rule.minDifference !== 5
       ? [<WhispersLabel key={index} rule={rule} markedEdges={markedEdges} size={size} />] : [])}
-    {rules.flatMap(rule => rule.type === 'xv'
-      ? [...(rule.five?.pairs ?? []).map(pair => [pair, 5] as const), ...(rule.ten?.pairs ?? []).map(pair => [pair, 10] as const)] : [])
-      .map(([[a, b], sum]) => <SumClue key={pairKey(a, b, size)} a={a} b={b}
-        sums={[[sum, 'xv']]} dots={dots.get(pairKey(a, b, size)) ?? 0} size={size} />)}
+    {[...sums].map(([edge, marks]) => {
+      const pair = sumPairs.get(edge)
+      if (!pair) return null
+      return <SumClue key={edge} a={pair[0]} b={pair[1]}
+        sums={[...marks].sort(([a], [b]) => a - b)} dots={dots.get(edge) ?? 0} size={size} />
+    })}
     {rules.map((rule, index) => rule.type === 'zipper' && <g key={index} data-zipper>
       <polyline className="variant-zipper" data-zipper-line points={points(rule.cells, size)} />
       {(() => {

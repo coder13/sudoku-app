@@ -47,6 +47,25 @@ test('six-by-six Coach constraints reach Wasm together and change the exact solu
   }
 })
 
+test('sized Coach two-cell sums constrain candidates and reject invalid completions in Wasm', async () => {
+  const sizedSum = coachCode({ gridSize: 6, regions: Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(cell / 12) * 2 + Math.floor(cell % 6 / 3)), givenConstraints: [{
+    type: 'twoCellSum', settings: {}, segments: [{ cells: [0, 1], parameters: { sum: 3 } }],
+  }] })
+  const decoded = await decodeCoachSix(sizedSum)
+  assert.deepEqual(decoded.rules, [{ type: 'adjacent-total', cells: [0, 1], sum: 3 }])
+  const position = { version: decoded.version, grid: decoded.grid, rules: decoded.rules,
+    digits: Array.from(decoded.givens, Number) }
+  const candidates = await runEngine({ type: 'sized-variant', position, operation: 'candidates' })
+  assert.ok(candidates)
+  assert.equal(candidates[0], 0b000011)
+  const solution = '123456456123234561561234345612612345'
+  const invalid = await runEngine({ type: 'sized-variant', position: {
+    ...position, digits: Array.from(solution, Number), rules: [{ type: 'adjacent-total', cells: [0, 1], sum: 4 }],
+  }, operation: 'analyze' })
+  assert.equal(invalid, 'conflict')
+})
+
 test('#7 keeps both Between paths and validates the published 6 × 6 completion in Wasm', async () => {
   const imported = await detectPuzzle(coachBetween.metadata.sudoku)
   assert.equal(imported.format, 'Sudoku Coach')

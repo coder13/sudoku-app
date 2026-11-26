@@ -91,6 +91,20 @@ function CoachNonogramBoard({ finished = false }: { finished?: boolean }) {
 export const CoachNonogramUnfinished: Story = { render: () => <CoachNonogramBoard /> }
 export const CoachNonogramFinished: Story = { render: () => <CoachNonogramBoard finished /> }
 
+function SizedAdjacentTotalBoard({ finished = false }: { finished?: boolean }) {
+  const givens = '0'.repeat(36)
+  const solution = '413652625314234561156243542136361425'
+  const rules: SizedConstraintRule[] = [{ type: 'adjacent-total', cells: [2, 3], sum: 9 }]
+  return <div>
+    <p>{sizedRuleDescriptions(SIX_BOXLESS_GRID, rules).join(' ')}</p>
+    <BoardExample grid={SIX_BOXLESS_GRID} givens={givens} values={finished ? solution : givens}
+      sizedRules={rules} showGuides selected={finished ? [] : [2]} />
+  </div>
+}
+
+export const SizedAdjacentTotalUnfinished: Story = { render: () => <SizedAdjacentTotalBoard /> }
+export const SizedAdjacentTotalFinished: Story = { render: () => <SizedAdjacentTotalBoard finished /> }
+
 function CoachLittleKillerBetweenBoard({ finished = false }: { finished?: boolean }) {
   const [puzzle, setPuzzle] = useState<{ givens: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
   useEffect(() => {
