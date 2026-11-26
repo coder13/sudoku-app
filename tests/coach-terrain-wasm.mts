@@ -17,6 +17,35 @@ const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsu
   source: { sudoku: string; solution: string }
 }
 
+function terrainSandwichSupports(rule: Extract<NonNullable<NonNullable<Awaited<ReturnType<typeof detectPuzzle>>['variant']>['puzzle']['rules']>[number], { type: 'terrain-sandwich' }>) {
+  const support = Array<number>(rule.cells.length).fill(0)
+  const digits = Array<number>(rule.cells.length)
+  const visit = (index: number, used: number) => {
+    if (index === digits.length) {
+      const values = digits.map((digit, cell) => digit * rule.transforms[cell].multiplier + rule.transforms[cell].offset)
+      const ones = values.flatMap((value, cell) => value === 1 ? [cell] : [])
+      const nines = values.flatMap((value, cell) => value === 9 ? [cell] : [])
+      const prefix = [0]
+      values.forEach(value => prefix.push(prefix.at(-1)! + value))
+      const totals = ones.flatMap(one => nines.flatMap(nine => one === nine ? [] : [
+        prefix[Math.max(one, nine)] - prefix[Math.min(one, nine) + 1],
+      ]))
+      if (totals.length && Math.max(...totals) === rule.maximum) {
+        digits.forEach((digit, cell) => { support[cell] |= 1 << (digit - 1) })
+      }
+      return
+    }
+    for (let digit = 1; digit <= 9; digit++) {
+      const bit = 1 << (digit - 1)
+      if (used & bit) continue
+      digits[index] = digit
+      visit(index + 1, used | bit)
+    }
+  }
+  visit(0, 0)
+  return support
+}
+
 test('#196 imports the reviewed Terrain source and checks its transformed maxima in Wasm', async () => {
   const parsed = await detectPuzzle(source.source.sudoku)
   assert.ok(parsed.variant)
@@ -89,4 +118,22 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
       await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
     }
   } finally { sqlite.close() }
+})
+
+test('#196 Terrain candidates match an independent permutation oracle for every published clue', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  const rules = parsed.variant.puzzle.rules ?? []
+  const terrainRules = rules.filter((rule): rule is Extract<typeof rule, { type: 'terrain-sandwich' }> => rule.type === 'terrain-sandwich')
+  assert.equal(terrainRules.length, 15)
+
+  for (const [index, rule] of terrainRules.entries()) {
+    const expected = terrainSandwichSupports(rule)
+    assert.ok(expected.every(mask => mask !== 0), `oracle clue ${index + 1} has support in every ray cell`)
+    const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
+    const actual = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
+    assert.ok(actual)
+    assert.deepEqual(rule.cells.map(cell => actual[cell]), expected,
+      `Terrain clue ${index + 1} candidate support must match all distinct-digit assignments`)
+  }
 })
