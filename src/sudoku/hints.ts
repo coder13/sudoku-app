@@ -7,6 +7,15 @@ const hintStages = ['technique', 'digits', 'location', 'explanation'] as const
 const recoveryStages = ['technique', 'location', 'explanation'] as const
 export type HintStage = typeof hintStages[number]
 
+export function isHintStage(value: unknown): value is HintStage {
+  return hintStages.some(stage => stage === value)
+}
+
+/** Distinguish hints that use different patterns to make the same removal. */
+export function hintChoiceKey(choice: HintChoice) {
+  return JSON.stringify([choice.technique, choice.pattern, choice.actions])
+}
+
 export function moveHintStage(stage: HintStage, offset: -1 | 1, recovery = false): HintStage {
   const stages: readonly HintStage[] = recovery ? recoveryStages : hintStages
   const index = stages.indexOf(stage)

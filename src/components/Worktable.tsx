@@ -28,6 +28,7 @@ import {
   Eraser,
   Eye,
   Info,
+  Layers,
   Lightbulb,
   Link2,
   ListFilter,
@@ -91,7 +92,7 @@ import { sizedRuleDescriptions } from '../sudoku/sized-rule-game'
 import { algebraicRules } from '../sudoku/algebraic-play'
 import { ALGEBRAIC_CAGES_NAME, MINI_NAME, MINI_RULE, sizedGridName } from '../sudoku/new-puzzle'
 import { CLASSIC_GRID, sizedClassicPosition } from '../sudoku/grid'
-import { cellReference, describeHintRemovals, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
+import { cellReference, describeHintRemovals, hintChoiceKey, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
 import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit } from '../sudoku/highlighting'
 import { lessonValues } from '../sudoku/lesson-diagram'
 import { lessonRoutes } from '../sudoku/lessons'
@@ -154,6 +155,7 @@ import { usePlayPanelModel } from './play/usePlayPanelModel'
 import { usePlayInputModel, type CellPaintStroke } from './play/usePlayInputModel'
 import { dispatchCommandShortcut, type UiCommand } from './UiCommand'
 import { mergeBoardAnnotations } from './BoardAnnotations'
+import { CellReferenceHighlightProvider } from './CellReferenceHighlight'
 import { canSelectAlsHighlight, useAlsHighlight } from './useAlsHighlight'
 import { candidateToolMasks, isChainStep } from './play/play-model'
 import { usePlayGameModel } from './play/usePlayGameModel'
@@ -163,6 +165,11 @@ import { usePlaySession } from './play/usePlaySession'
 import { ActionMenuItem } from './ActionMenuItem'
 import { usePlayHintModel, type HintState } from './play/usePlayHintModel'
 import { usePlayHintActions } from './play/usePlayHintActions'
+import { usePlaySubsets } from './play/usePlaySubsets'
+import { SubsetsPanel, subsetMembershipMessage } from './SubsetsPanel'
+import { BoardContextMenu, type BoardContextMenuAnchor } from './BoardContextMenu'
+import type { ChainLinkChoice } from './useChainSketch'
+import { subsetMembershipProblem, type SubsetContext } from '../sudoku/subsets'
 import { usePlayDigitActions } from './play/usePlayDigitActions'
 import { usePlayColorActions } from './play/usePlayColorActions'
 import { usePlayPuzzleCommands } from './play/usePlayPuzzleCommands'
@@ -172,7 +179,7 @@ import { usePlaySolutionModel } from './play/usePlaySolutionModel'
 import { usePlaySolutionLoader } from './play/usePlaySolutionLoader'
 import { usePlayRatingEvents } from './play/usePlayRatingEvents'
 import { usePlayPuzzleRating } from './play/usePlayPuzzleRating'
-import { usePlayCandidateNotes } from './play/usePlayCandidateNotes'
+import { candidateNotesEliminationKey, usePlayCandidateNotes } from './play/usePlayCandidateNotes'
 import { usePlayNakedSingles } from './play/usePlayNakedSingles'
 import { usePlayChainModel } from './play/usePlayChainModel'
 import { usePlayChainActions } from './play/usePlayChainActions'
@@ -312,6 +319,13 @@ export function Worktable({
     updateSolvedSession,
   } = usePlaySolvedGrid(savedGame, pausedOnLaunch)
   const { state: savedPlayState, set: setPlaySessionState } = usePlaySession(game.id)
+  const hintRevealed = savedPlayState?.hintOpen ?? false
+  const setHintRevealed = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
+    setPlaySessionState('hintOpen', current => typeof value === 'function' ? value(current) : value)
+  }, [setPlaySessionState])
+  const desktopHintSizeRef = useRef<number | undefined>(savedPlayState?.desktopHintSize)
+  desktopHintSizeRef.current = savedPlayState?.desktopHintSize
+  const saveDesktopHintSize = useCallback((size: number | undefined) => setPlaySessionState('desktopHintSize', size), [setPlaySessionState])
   const toolPanels = savedPlayState?.toolPanels ?? defaultToolPanels
   const {
     id,
@@ -373,6 +387,7 @@ export function Worktable({
   } | null>(null)
   const [desktopColorsVisible, setDesktopColorsVisible] = useState(false)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
+  const [desktopSubsetsVisible, setDesktopSubsetsVisible] = useState(false)
   const alsHighlightEnabled = advancedModes.experimentalAlsHighlighting
   const [desktopInputVisible, setDesktopInputVisible] = useState(false)
   const showStrongLinks = savedPlayState?.showStrongLinks ?? false
@@ -392,6 +407,17 @@ export function Worktable({
   const [pinnedRule, setPinnedRule] = useState<VariantRuleSectionId | null>(null)
   const [desktopSolutionVisible, setDesktopSolutionVisible] = useState(false)
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
+  const [boardContext, setBoardContext] = useState<{ anchor: BoardContextMenuAnchor; cells: readonly number[] }>()
+  const closeBoardContext = useCallback(() => setBoardContext(undefined), [])
+  const [candidateLinks, setCandidateLinks] = useState<{
+    anchor: BoardContextMenuAnchor
+    choices: readonly ChainLinkChoice[]
+    gameId: string
+    position: Game['position']
+    sketch: Game['chainSketch']
+    subsets: Game['subsetWorkspace']
+  }>()
+  const closeCandidateLinks = useCallback(() => setCandidateLinks(undefined), [])
   const [puzzleDetailsOpen, setPuzzleDetailsOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
@@ -403,7 +429,8 @@ export function Worktable({
   const pauseShortcut = shortcutLabel(shortcuts.pauseOrSwitchView)
   const pauseKeys = pauseShortcut === 'Space' ? ['Space'] : ['Space', pauseShortcut]
   const [hintState, setHint] = useState<HintState | null>(null)
-  const [hintRevealed, setHintRevealed] = useState(false)
+  const previousPlayGameId = useRef(game.id)
+  const resumedOpenHint = useRef<string | null>(null)
   const mobile = useMobileLayout()
   const desktop = !mobile
   const wasMobile = useRef(mobile)
@@ -427,18 +454,21 @@ export function Worktable({
   const chainsPanelRef = useRef<HTMLElement>(null)
   const hintColumnRef = useRef<HTMLDivElement>(null)
   const hintBoardFrameRef = useRef<HTMLDivElement>(null)
+  const puzzleCardRef = useRef<HTMLElement>(null)
   const hintCardRef = useRef<HTMLElement>(null)
-  const hintBodyRef = useRef<HTMLDivElement>(null)
+  const hintHeadingRef = useRef<HTMLDivElement>(null)
   const hintToolbarRef = useRef<HTMLDivElement>(null)
   const desktopHintLayout = useMemo(
     () => ({
       column: hintColumnRef,
-      frame: hintBoardFrameRef,
+      puzzle: puzzleCardRef,
       card: hintCardRef,
-      body: hintBodyRef,
+      heading: hintHeadingRef,
       toolbar: hintToolbarRef,
+      size: desktopHintSizeRef,
+      onSizeChange: saveDesktopHintSize,
     }),
-    []
+    [saveDesktopHintSize]
   )
   const puzzleStageRef = useRef<HTMLDivElement>(null)
   const gridAlignmentBoundaryRef = useRef<HTMLDivElement>(null)
@@ -459,7 +489,6 @@ export function Worktable({
     []
   )
   const restoreCellFocus = useRef<number | null>(null)
-  const puzzleCardRef = useRef<HTMLElement>(null)
   const puzzleCardLayoutRef = useMemo(() => mergeRefs(puzzleCardRef, playLayoutAnchors?.puzzleCard), [playLayoutAnchors])
   const puzzleGridBorderRef = useRef<HTMLDivElement>(null)
   const puzzleMenuRef = useRef<HTMLDivElement>(null)
@@ -513,7 +542,6 @@ export function Worktable({
     game,
     hintState,
     hintRevealed,
-    busy,
     mobile,
     solved,
     draft,
@@ -590,7 +618,6 @@ export function Worktable({
       closePuzzleMenu: () => setPuzzleMenuOpen(false),
       closeActions: () => setActionsOpen(false),
       changeHintVisuals: () => changeHintVisuals('player'),
-      revealHintDetails: setHintRevealed,
       hideSolutionPath,
       openRightPanel: onOpenRightPanel,
     },
@@ -643,7 +670,7 @@ export function Worktable({
     capturePointer: (pointerId) => boardRef.current?.setPointerCapture(pointerId),
   })
   const colorsActive = brush !== null || colorMode
-  const { notes, retry: retryCandidateNotes } = usePlayCandidateNotes({
+  const { notes, eliminationKey, retry: retryCandidateNotes } = usePlayCandidateNotes({
     game,
     values,
     generateCandidateVariants: advancedModes.generateCandidateVariants,
@@ -651,7 +678,7 @@ export function Worktable({
     solved,
   })
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
-  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === game.position.eliminations ? puzzleNotes : undefined
+  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminationKey === eliminationKey ? puzzleNotes : undefined
   const masks = currentNotes?.masks
   const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations), [masks, values, displayedCandidates, eliminations])
   const alsHighlight = useAlsHighlight({
@@ -701,6 +728,7 @@ export function Worktable({
   } = usePlayChainModel({
     game,
     puzzle,
+    visibleCells: fog?.cells,
     values,
     masks,
     noteMasks: puzzleNotes?.masks,
@@ -954,10 +982,9 @@ export function Worktable({
     finishPuzzleTask,
     cancelHintWork: cancelTaskHintWork,
     cancelPendingPuzzleWork: cancelPendingTask,
-    invalidateTechniqueHints,
     hasActiveTask,
   } = puzzleTasks
-  const { showHint, showTechniqueHints, moveHint, changeHintDetail } = usePlayHintActions({
+  const { showHint, showTechniqueHints, resumeHint, moveHint, changeHintDetail } = usePlayHintActions({
     puzzle: { game, values, displayedCandidates, eliminations, position: hintPosition, gridSize },
     state: { hintCount, visibleHint, busy, solved, draft, disabled, mobile },
     host: { advancedWorkspace, showBottomPanel },
@@ -969,6 +996,7 @@ export function Worktable({
     actions: {
       setHint,
       setHintRevealed,
+      clearSavedHint: () => setPlaySessionState('hintView', undefined),
       suspendDrawing: () => {
         if (sketch.drawing) sketch.suspend()
       },
@@ -979,6 +1007,30 @@ export function Worktable({
     },
     tasks: puzzleTasks,
   })
+  const hintPositionKey = useMemo(() => JSON.stringify([
+    solutionIdentity, hintPosition.values, hintPosition.center, hintPosition.corner,
+    hintPosition.eliminations, hintPosition.shades, game.difficulty, game.practiceTechnique,
+  ]), [solutionIdentity, hintPosition, game.difficulty, game.practiceTechnique])
+  const savedHintView = savedPlayState?.hintView
+  useLayoutEffect(() => {
+    if (!visibleHint || session || savedPlayState?.puzzleId !== game.id) return
+    setPlaySessionState('hintView', {
+      position: hintPositionKey,
+      source: visibleHint.source,
+      index: visibleHint.index,
+      stage: visibleHint.stage,
+      ...(deduction ? { choice: hintChoiceKey(deduction) } : {}),
+      ...(visibleHint.visuals === 'player' ? { visuals: 'player' } : {}),
+      ...(visibleHint.reviewingRemoval ? { reviewingRemoval: true } : {}),
+    })
+  }, [visibleHint, deduction, hintPositionKey, session, savedPlayState?.puzzleId, game.id, setPlaySessionState])
+  useEffect(() => {
+    if (!savedPlayState?.hintOpen || savedPlayState.puzzleId !== game.id || resumedOpenHint.current === game.id ||
+      hintState || busy || hasActiveTask() || disabled || solved || draft || game.paused) return
+    resumedOpenHint.current = game.id
+    void resumeHint(savedHintView?.position === hintPositionKey ? savedHintView : undefined)
+  }, [savedPlayState?.hintOpen, savedPlayState?.puzzleId, savedHintView, hintPositionKey, game.id, game.paused, hintState, busy,
+    hasActiveTask, disabled, solved, draft, resumeHint])
 
   const updateWorkingGame = useCallback(
     (transform: (current: Game) => Game) => {
@@ -992,7 +1044,7 @@ export function Worktable({
               current.grid ||
               current.givens !== givens ||
               current.variant !== variant ||
-              (variant && current.position.eliminations !== puzzleNotes.eliminations)
+              candidateNotesEliminationKey(current) !== puzzleNotes.eliminationKey
             )
               return null
             const currentValues = valuesOf(current)
@@ -1004,6 +1056,18 @@ export function Worktable({
     },
     [completed, givens, id, puzzleNotes, session, updateSolvedSession, variant]
   )
+
+  const subsetContext = useMemo<SubsetContext>(() => ({
+    values, masks: toolMasks, grid: grid ?? CLASSIC_GRID, puzzle, sizedRules: sized?.rules, visibleCells: fog?.cells,
+  }), [values, toolMasks, grid, puzzle, sized?.rules, fog?.cells])
+  const subsetsPanelVisible = mobile ? activeToolPanel === 'subsets'
+    : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets'
+  const subsets = usePlaySubsets({
+    game, context: subsetContext, panelVisible: subsetsPanelVisible, panelOpen: openPuzzlePanels.includes('subsets'),
+    enabled: !disabled && !solved && !draft && !placeholder,
+    highlightedDigit: selectedDigit ?? onlyCandidate(highlightedDigitMask),
+    updateGame: updateWorkingGame, clearSelection: () => setSelected([]),
+  })
 
   const { runCheck, generateCandidates, solveAllSingles } = usePlayPuzzleCommands({
     puzzle: {
@@ -1046,8 +1110,8 @@ export function Worktable({
       updateWorkingGame,
     },
   })
-  const { applyCandidateRecovery, applyHint, applyChainEdits } = usePlayHintMutations({
-    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, completed },
+  const { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits } = usePlayHintMutations({
+    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, savedSubsets: savedGame.subsetWorkspace, completed },
     state: {
       recovery,
       visibleHint,
@@ -1057,6 +1121,8 @@ export function Worktable({
       chainMasks,
       chainActions: sketch.allActions,
       chainIds: sketch.appliedChainIds,
+      subsetActions: subsets.actions,
+      subsetMasks: toolMasks,
     },
     modes: advancedModes,
     actions: {
@@ -1142,7 +1208,9 @@ export function Worktable({
   })
 
   const cancelPendingPuzzleWork = useCallback(() => {
-    if (cancelPendingTask()) setHintRevealed(false)
+    if (cancelPendingTask()) {
+      resumedOpenHint.current = null
+    }
   }, [cancelPendingTask])
 
   const cancelHintWork = cancelTaskHintWork
@@ -1152,29 +1220,37 @@ export function Worktable({
     cancelHintWork()
   }, [cancelPendingPuzzleWork, cancelHintWork])
 
-  // Pending actions belong to the full board revision, including colors and
-  // undo history. Clock ticks and rating metadata do not invalidate them.
-  useLayoutEffect(
-    () => cancelPendingPuzzleWork,
-    [cancelPendingPuzzleWork, id, game.source, givens, variant, grid, algebraic, sized, game.position, game.past, game.future, session]
-  )
-  // Completed hint pages remain valid after color-only edits. Their worker is
-  // retained only while the hint inputs, puzzle rules, and play session match.
-  useLayoutEffect(
-    () => () => {
+  const closeInvalidatedHint = useCallback(() => {
+    setHint(null)
+    setHintRevealed(false)
+    setPlaySessionState('hintView', undefined)
+  }, [setHintRevealed, setPlaySessionState])
+
+  // Pending actions belong to the full board revision, including colors and undo history.
+  // Close a canceled hint after an edit, while preserving saved hints across navigation.
+  useLayoutEffect(() => {
+    if (cancelPendingTask() && previousPlayGameId.current === id) closeInvalidatedHint()
+  }, [cancelPendingTask, closeInvalidatedHint, id, game.source, givens, variant, grid, algebraic, sized, game.position, game.past, game.future, session])
+  useLayoutEffect(() => cancelPendingPuzzleWork, [cancelPendingPuzzleWork])
+
+  // Completed hint pages remain valid after color-only edits.
+  const previousHintPosition = useRef(hintPosition)
+  useLayoutEffect(() => {
+    const previous = previousHintPosition.current
+    previousHintPosition.current = hintPosition
+    if (previous.gameId === id && previous !== hintPosition) closeInvalidatedHint()
+    return () => {
       cancelHintWork()
+      resumedOpenHint.current = null
       setHint(null)
-      setHintRevealed(false)
-    },
-    [cancelHintWork, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session]
-  )
+    }
+  }, [cancelHintWork, closeInvalidatedHint, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session])
   useLayoutEffect(() => {
     if (!hintRevealed) cancelHintWork()
   }, [hintRevealed, cancelHintWork])
   useLayoutEffect(() => {
     if (!disabled) return
     cancelPuzzleWork()
-    setHintRevealed(false)
   }, [disabled, cancelPuzzleWork])
 
   function resumePuzzle() {
@@ -1197,7 +1273,10 @@ export function Worktable({
 
   useLayoutEffect(() => {
     puzzleCardRef.current?.closest<HTMLElement>('[data-dock-puzzle-panel]')?.scrollTo(0, 0)
+    if (previousPlayGameId.current === game.id) return
+    previousPlayGameId.current = game.id
     setPointerFocusedCell(null)
+    closeBoardContext()
     setDialogResult(null)
     setPuzzleMenuOpen(false)
     setActionsOpen(false)
@@ -1208,12 +1287,11 @@ export function Worktable({
     setPinnedRule(null)
     setChainColorsOpen(false)
     setHint(null)
-    setHintRevealed(false)
     hintReturnFocus.current = null
     setStartDrawingOnOpen(false)
     resetClickState()
     clearCandidatePaintDrag()
-  }, [clearCandidatePaintDrag, game.id, game.source, resetClickState])
+  }, [clearCandidatePaintDrag, closeBoardContext, game.id, game.source, resetClickState])
 
   useGridClickAway(
     boardRef,
@@ -1369,12 +1447,6 @@ export function Worktable({
       restoreCellFocus.current = null
     }
   }, [paintingCandidates, inputModality])
-
-  useEffect(() => {
-    invalidateTechniqueHints()
-    setHint(null)
-    setHintRevealed(false)
-  }, [hintPosition, invalidateTechniqueHints])
 
   useEffect(() => {
     if (!hintOpen) return
@@ -1559,7 +1631,7 @@ export function Worktable({
   }
 
   usePauseHotkey({
-    enabled: pauseShortcutsEnabled,
+    enabled: pauseShortcutsEnabled && !boardContext,
     draft,
     placeholder: Boolean(placeholder),
     completed,
@@ -1597,6 +1669,7 @@ export function Worktable({
         confirmCandidatesOpen ||
         cancelDraftOpen ||
         event.altKey ||
+        (target instanceof Element && target.closest('.board-context-menu')) ||
         (target instanceof HTMLElement && !checkboxShortcut && (target.isContentEditable || target.closest('input, select, textarea, a')))
       )
         return
@@ -1632,6 +1705,15 @@ export function Worktable({
         return
       }
       const cancelTool = key === 'escape' && !variantRulesOpen && !(target instanceof HTMLElement && target.closest('dialog[open], [popover]:popover-open'))
+      if (subsets.draft) {
+        if (cancelTool) {
+          event.preventDefault()
+          subsets.finish()
+        } else if (/^[1-9]$/.test(key) || key === 'backspace' || key === 'delete') {
+          event.preventDefault()
+        }
+        return
+      }
       if (cancelTool && (sketch.drawing || startDrawingOnOpen)) {
         event.preventDefault()
         if (!event.repeat) {
@@ -1667,10 +1749,12 @@ export function Worktable({
         if (!event.repeat) togglePenPencilMode()
         return
       }
-      if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved && (canApplyHintEdit || canApplyChainEdits)) {
+      if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved &&
+        (canApplyHintEdit || (subsetsPanelVisible ? subsets.actions?.length : canApplyChainEdits))) {
         event.preventDefault()
         if (event.repeat) return
         if (canApplyHintEdit) applyHint()
+        else if (subsetsPanelVisible) applySubsetEdits()
         else applyChainEdits()
         return
       }
@@ -1945,7 +2029,8 @@ export function Worktable({
     <PlayHint mobile={mobile} collapseOnExit={advancedWorkspace} panelRef={mobile ? mobileHintPanelRef : undefined}>
       <HintCard
         hint={solutionHintPanel ? solutionHintCopy : hintLoading ? { title: 'Finding a hint…', text: '' } : hintCopy}
-        layoutAnchors={desktop ? { card: hintCardRef, body: hintBodyRef, toolbar: hintToolbarRef } : undefined}
+        setReferences={explanation?.setReferences ?? locationClue?.setReferences}
+        layoutAnchors={desktop ? { card: hintCardRef, heading: hintHeadingRef, toolbar: hintToolbarRef } : undefined}
         lesson={hintLesson && hintTechnique ? { id: hintTechnique, title: hintLesson.title } : undefined}
         removals={
           revealedDeduction
@@ -2328,6 +2413,21 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
+  const boardContextAvailable = canSelectCell && !interactionBlocked && !disabled && !solved && !draft && !placeholder && !previewing && !subsets.draft
+  useEffect(() => {
+    if (!boardContextAvailable) closeBoardContext()
+  }, [boardContextAvailable, closeBoardContext])
+
+  function openBoardContext(target: EventTarget, point?: { x: number; y: number }) {
+    if (!boardContextAvailable || !(target instanceof Element)) return false
+    const cell = target.closest<HTMLElement>('[role="gridcell"][data-cell]')
+    if (!cell || !boardRef.current?.contains(cell) || cell.dataset.fogged === 'true') return false
+    const index = Number(cell.dataset.cell)
+    const cells = selected.includes(index) ? selected : [index]
+    const bounds = cell.getBoundingClientRect()
+    setBoardContext({ anchor: { ...(point ?? { x: bounds.left, y: bounds.bottom }), focusTarget: cell }, cells })
+    return true
+  }
   // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
   // Paused/preview/finished puzzles retain their mode without showing editable controls.
   const gridInputMode = puzzleInputMode({
@@ -2363,8 +2463,41 @@ export function Worktable({
   )
   const showPlayerColors = colorsPanelOpen || colorBrush !== null || colorMode || hintOpen
   const visibleChainAnnotations =
-    !colorsActive && chainsPanelOpen && !hintVisualsActive && (sketch.annotations.links?.length || sketch.annotations.candidates?.size) ? sketch.annotations : undefined
-  const chainBoardAnnotations = mergeBoardAnnotations(visibleChainAnnotations, alsAnnotations)
+    !colorsActive && chainsPanelOpen && !hintVisualsActive &&
+    (sketch.annotations.links?.length || sketch.annotations.candidates?.size || sketch.annotations.cells?.size) ? sketch.annotations : undefined
+  const chainAndAlsAnnotations = mergeBoardAnnotations(visibleChainAnnotations, alsAnnotations)
+  const chainBoardAnnotations = chainsVisible
+    ? mergeBoardAnnotations(subsets.annotations, chainAndAlsAnnotations)
+    : mergeBoardAnnotations(chainAndAlsAnnotations, subsets.annotations)
+  const visibleSetsForDrawing = openPuzzlePanels.includes('subsets') ? subsets.highlightedIds : undefined
+  const candidateLinksOpen = candidateLinks && sketch.drawing && candidateLinks.gameId === game.id &&
+    candidateLinks.position === game.position && candidateLinks.sketch === game.chainSketch &&
+    candidateLinks.subsets === game.subsetWorkspace
+  useEffect(() => {
+    if (!candidateLinksOpen) closeCandidateLinks()
+  }, [candidateLinksOpen, closeCandidateLinks])
+  function selectChainCandidate(candidate: Candidate) {
+    if (strongLinksVisible) {
+      selectStrongLinkCandidate(candidate)
+      return
+    }
+    const choices = sketch.candidateChoices(candidate, visibleSetsForDrawing)
+    if (choices.length === 1) {
+      choices[0].run()
+      return
+    }
+    if (choices.length > 1) {
+      const cell = boardRef.current?.querySelector<HTMLElement>(`[data-cell="${candidate.cell}"]`)
+      const focusTarget = cell?.querySelector<HTMLElement>(`[data-candidate-digit="${candidate.digit}"]`) ?? cell
+      if (focusTarget) {
+        const { right: x, bottom: y } = focusTarget.getBoundingClientRect()
+        setCandidateLinks({ anchor: { x, y, focusTarget }, choices, gameId: game.id,
+          position: game.position, sketch: game.chainSketch, subsets: game.subsetWorkspace })
+        return
+      }
+    }
+    sketch.select(candidate)
+  }
   const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const boardContent = {
     grid,
@@ -2426,8 +2559,9 @@ export function Worktable({
         ...boardAppearance,
         errors: errors,
         authoredArtwork: game.authoredArtwork,
-        annotations: mergeBoardAnnotations(strongLinksVisible ? strongLinks.annotations : sketch.annotations, alsAnnotations),
-        annotationsOnTop: Boolean(alsAnnotations),
+        annotations: mergeBoardAnnotations(subsets.annotations,
+          mergeBoardAnnotations(strongLinksVisible ? strongLinks.annotations : sketch.annotations, alsAnnotations)),
+        annotationsOnTop: Boolean(alsAnnotations || subsets.annotations),
         showPlayerColors: showPlayerColors,
         showImportedAnnotations: !hintVisualsActive,
         label: sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links',
@@ -2443,7 +2577,8 @@ export function Worktable({
       interaction={{
         boardRef: boardRef,
         linkDrawing: sketch.drawing,
-        onCandidate: strongLinksVisible ? selectStrongLinkCandidate : sketch.select,
+        onCandidate: selectChainCandidate,
+        onGroupCandidate: sketch.groupCandidate,
         onGiven: strongLinksVisible ? (digit) => setStrongLinkHighlights(1 << (digit - 1)) : undefined,
         onLinkSelect: strongLinksVisible ? startStrongLinkChain : undefined,
         onCandidateHover: sketch.drawing ? sketch.hover : undefined,
@@ -2467,8 +2602,8 @@ export function Worktable({
         candidateLayout: advancedModes.candidateLayout,
         authoredArtwork: game.authoredArtwork,
         annotations: hintAnnotations ?? chainBoardAnnotations,
-        annotationsOnTop: Boolean(hintAnnotations || alsAnnotations),
-        showAnnotatedCandidates: Boolean(visibleChainAnnotations),
+        annotationsOnTop: Boolean(hintAnnotations || alsAnnotations || subsets.annotations || sketch.hasSubsetAnnotations && visibleChainAnnotations),
+        showAnnotatedCandidates: Boolean(visibleChainAnnotations || subsets.annotations?.candidates?.size),
         showPlayerColors: showPlayerColors,
         showImportedAnnotations: true,
         descriptionId: badgeMode ? modeBadgeId : undefined,
@@ -2490,19 +2625,20 @@ export function Worktable({
                 mode: candidateMode,
               }
             : undefined,
-        selected: selected,
+        selected: subsets.draft ? [] : selected,
         active: active,
         pointerFocusedCell: pointerFocusedCell,
         boardRef: boardRef,
-        onCell: canSelectCell && !paintingCandidates ? clickCell : undefined,
-        onAqreShade: canSelectCell && !paintingCandidates && !hintAnnotations
+        onCell: subsets.draft ? cell => { setActive(cell); subsets.toggleCell(cell) }
+          : canSelectCell && !paintingCandidates ? clickCell : undefined,
+        onAqreShade: canSelectCell && !subsets.draft && !paintingCandidates && !hintAnnotations
           ? (cell, shade) => edit(current => setAqreShade(current, cell, shade))
           : undefined,
-        onCellDoubleClick: canSelectCell && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined,
-        onPaintCandidate: paintingCandidates ? colorCandidate : undefined,
-        dragSelect: canSelectCell && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates),
-        onCellPointerDown: canSelectCell && !paintingCandidates ? startCellDrag : undefined,
-        onCellPointerMove: canSelectCell && !paintingCandidates ? continueCellDrag : undefined,
+        onCellDoubleClick: canSelectCell && !subsets.draft && !paintingCandidates && !hintAnnotations ? doubleClickCell : undefined,
+        onPaintCandidate: !subsets.draft && paintingCandidates ? colorCandidate : undefined,
+        dragSelect: canSelectCell && !subsets.draft && (cellBrush !== null || canSelectCellsByDrag || canDragCandidates),
+        onCellPointerDown: canSelectCell && !subsets.draft && !paintingCandidates ? startCellDrag : undefined,
+        onCellPointerMove: canSelectCell && !subsets.draft && !paintingCandidates ? continueCellDrag : undefined,
           onGridPointerLeave,
       }}
       layout={liveBoardLayout}
@@ -2769,9 +2905,18 @@ export function Worktable({
       data-pointer-input={(mobile && inputModality === 'pointer') || undefined}
       className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}`}
       onContextMenu={(event) => {
-        if (!cellHold.suppressContextMenu(event)) preventControlClickMenu(event)
+        if (cellHold.suppressContextMenu(event)) return
+        preventControlClickMenu(event)
+        if (!event.defaultPrevented && event.button === 2 &&
+          openBoardContext(event.target, { x: event.clientX, y: event.clientY })) event.preventDefault()
       }}
-      onPointerUp={(event) => finishControlClick(event, clickCell)}
+      onKeyDown={(event) => {
+        if ((event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') && openBoardContext(event.target)) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
+      onPointerUp={(event) => { if (!subsets.draft) finishControlClick(event, clickCell) }}
       onBlur={(event) => {
         const cell = event.target.dataset.cell
         if (cell !== undefined) setPointerFocusedCell((current) => (current === Number(cell) ? null : current))
@@ -2848,6 +2993,17 @@ export function Worktable({
               ]
             : [puzzleMetadata, puzzleActions, puzzleStage]}
         {game.practiceTechnique ? <div className="puzzle-caption">{techniqueLabel(game.practiceTechnique)}</div> : <PuzzleCollectionCredit game={game} />}
+        {boardContext && boardContextAvailable && <BoardContextMenu anchor={boardContext.anchor} onClose={closeBoardContext} actions={[{
+          label: 'Make subset', icon: Layers,
+          unavailable: subsetMembershipMessage(subsetMembershipProblem(boardContext.cells, subsetContext), gridSize),
+          run: () => {
+            if (subsets.saveCells(boardContext.cells)) showPuzzleTool('subsets')
+          },
+        }]} />}
+        {candidateLinksOpen && <BoardContextMenu anchor={candidateLinks.anchor} label="Choose chain link" className="board-link-menu"
+          onClose={closeCandidateLinks} actions={candidateLinks.choices.map(choice => ({
+            label: choice.label, icon: choice.kind === 'candidate' ? Link2 : Layers, run: choice.run,
+          }))} />}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values} active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         <PinnedActionBar actions={visiblePinnedControls} disabled={disabled} />
         {presentationDraft && (
@@ -3121,6 +3277,26 @@ export function Worktable({
   const toolPanelContents: Record<ToolPanelTab, ReactNode> = {
     digits: inputPanel,
     colors: cellColorsPanel,
+    subsets: <SubsetsPanel sets={subsets.sets} gridSize={gridSize} selectedId={subsets.selectedId} highlightedIds={subsets.highlightedIds}
+      drawing={Boolean(subsets.draft)}
+      disabled={disabled || solved}
+      onStart={(id) => {
+        leaveChainInput(false)
+        setColorBrush(null)
+        setInputToolOverride(null)
+        setSelectedDigit(null)
+        changeHintVisuals('player')
+        subsets.start(id)
+        requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
+      }}
+      onFinish={subsets.finish}
+      applyEdits={{ available: Boolean(subsets.actions?.length), shortcut: shortcutLabel(shortcuts.applyEdits), run: applySubsetEdits }}
+      eliminations={{ shown: subsets.showEliminations, toggle: subsets.toggleEliminations }}
+      strongLinks={{ shown: subsets.showStrongLinks, toggle: subsets.toggleStrongLinks }}
+      onSelect={subsets.select}
+      onToggleVisibility={subsets.toggleVisibility}
+      onRemove={subsets.remove}
+    />,
     chains: chainsPanel,
     bookmarks: bookmarksPanel,
     rules: rulesPanel,
@@ -3133,6 +3309,7 @@ export function Worktable({
   const pinnedHint = mobile && mobileHintPinned ? hintPanel : undefined
 
   return (
+    <CellReferenceHighlightProvider>
     <>
       <PlayLayout
         desktop={desktop}
@@ -3240,6 +3417,7 @@ export function Worktable({
               focusChainsRequest={focusChainsRequest}
               onToolVisibilityChange={{
                 chains: setDesktopChainsVisible,
+                subsets: setDesktopSubsetsVisible,
                 colors: setDesktopColorsVisible,
                 solution: setDesktopSolutionVisible,
               }}
@@ -3365,5 +3543,6 @@ export function Worktable({
         }}
       />
     </>
+    </CellReferenceHighlightProvider>
   )
 }

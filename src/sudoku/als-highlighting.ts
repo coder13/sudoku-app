@@ -153,12 +153,12 @@ export function almostLockedSetColor(index: number): string {
 }
 
 export function almostLockedSetAnnotations(sets: readonly AlmostLockedSet[]) {
-  const cells = new Map<number, { fills: readonly string[] }>()
+  const cells = new Map<number, { setMarkers: readonly { color: string }[] }>()
   sets.forEach((set, index) => {
     const color = almostLockedSetColor(index)
     for (const cell of set.cells) {
-      const fills = cells.get(cell)?.fills ?? []
-      if (!fills.includes(color)) cells.set(cell, { fills: [...fills, color] })
+      const setMarkers = cells.get(cell)?.setMarkers ?? []
+      cells.set(cell, { setMarkers: [...setMarkers, { color }] })
     }
   })
   return cells.size ? { cells } : undefined

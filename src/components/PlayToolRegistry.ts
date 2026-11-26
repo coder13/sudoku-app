@@ -1,4 +1,4 @@
-import { Bookmark, Info, Link2, ListFilter, ListOrdered, Palette, type LucideIcon } from 'lucide-react'
+import { Bookmark, Info, Layers, Link2, ListFilter, ListOrdered, Palette, type LucideIcon } from 'lucide-react'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { TOOL_PANEL_ORDER, type PuzzleTool, type ToolPanelTab, type ToolPanels } from '../sudoku/play-session'
 
@@ -27,6 +27,7 @@ export const PLAY_TOOL_REGISTRY = {
   solution: { id: 'solution', label: 'Solution', Icon: ListOrdered, supported: always, availableAfterSolve: true },
   techniques: { id: 'techniques', label: TECHNIQUE_FINDER_TITLE, Icon: ListFilter, supported: always, availableAfterSolve: true },
   colors: { id: 'colors', label: 'Colors', Icon: Palette, supported: always, availableAfterSolve: false },
+  subsets: { id: 'subsets', label: 'Subsets', Icon: Layers, supported: always, availableAfterSolve: false },
   chains: { id: 'chains', label: 'Chains', Icon: Link2, supported: context => !context.gridPuzzle, availableAfterSolve: false },
   bookmarks: { id: 'bookmarks', label: 'Bookmarks', Icon: Bookmark, supported: always, availableAfterSolve: true },
   rules: { id: 'rules', label: 'Rules', Icon: Info, supported: context => context.mixedVariant, availableAfterSolve: true },
@@ -56,6 +57,7 @@ export const PLAY_PANEL_LABELS: Record<ToolPanelTab, string> = {
   solution: PLAY_TOOL_REGISTRY.solution.label,
   techniques: PLAY_TOOL_REGISTRY.techniques.label,
   colors: PLAY_TOOL_REGISTRY.colors.label,
+  subsets: PLAY_TOOL_REGISTRY.subsets.label,
   chains: PLAY_TOOL_REGISTRY.chains.label,
   bookmarks: PLAY_TOOL_REGISTRY.bookmarks.label,
   rules: PLAY_TOOL_REGISTRY.rules.label,

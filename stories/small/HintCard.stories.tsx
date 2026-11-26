@@ -3,6 +3,8 @@ import { useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
 import { HintCard } from '../../src/components/HintCard'
+import { Board } from '../../src/components/Board'
+import { CellReferenceHighlightProvider } from '../../src/components/CellReferenceHighlight'
 import { MobileInputTabs } from '../../src/components/MobileInputTabs'
 import { SelectControl } from '../../src/components/SelectControl'
 import type { ToolPanelTab } from '../../src/sudoku/play-session'
@@ -80,6 +82,21 @@ export const StagedHint: Story = {
     action: { label: 'Apply hint', onClick: fn() },
   },
 }
+export const InteractiveCellReferences: Story = {
+  args: {
+    hint: { title: 'ALS-XZ', text: 'Set 1 (blue) is at r2c6. Set 2 (purple) is at r2c1, r2c3, and r2c5. Compare 3r2c6 with 3r2c5. Check r2c9.' },
+    setReferences: [{ label: 'Set 1', cells: [14] }, { label: 'Set 2', cells: [9, 11, 13] }],
+  },
+  parameters: { layout: 'padded', controls: { disable: true } },
+  render: ({ hint, setReferences }) => <CellReferenceHighlightProvider>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
+      <Board content={{ givens: '0'.repeat(81), values: '0'.repeat(81), candidates: Array(81).fill(0x1ff) }}
+        appearance={{ annotations: { cells: new Map(setReferences?.flatMap(({ label, cells }, index) =>
+          cells.map(cell => [cell, { setMarkers: [{ label, color: index ? '#e6d4f3' : '#d5e4fa' }] }] as const))) } }} />
+      <HintCard hint={hint} setReferences={setReferences} onClose={fn()} />
+    </div>
+  </CellReferenceHighlightProvider>,
+}
 export const Dismissible: Story = {
   args: { hint: defaultFallbackHints[0] },
   render: (args) => <DismissibleCard {...args} />,
@@ -99,7 +116,7 @@ function MobileHintPlacementDemo({ hint }: ComponentProps<typeof HintCard>) {
   const panels: Record<ToolPanelTab, ReactNode> = {
     digits: <div className="compact-controls">Digits input</div>,
     solution: <p>Solution</p>, techniques: <p>Techniques</p>, colors: <p>Colors</p>,
-    chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
+    subsets: <p>Subsets</p>, chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
   }
   const card = visible && <HintCard hint={hint} onClose={() => setVisible(false)} pinned={pinned}
     onTogglePinned={() => setPinned(value => !value)} />

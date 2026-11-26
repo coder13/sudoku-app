@@ -325,7 +325,7 @@ body:has(.learn-page) .topbar-inner { width: min(100%, var(--learn-width)); padd
 }
 .lesson-workbench-tools { display: grid; align-content: start; gap: var(--space-12); min-width: 0; }
 .lesson-chain-tools { min-width: 0; padding: var(--space-8); }
-.lesson-chain-tools .chain-toolbar { flex-wrap: wrap; }
+.lesson-chain-tools .tool-toolbar { flex-wrap: wrap; }
 .lesson-workbench .controls { width: 100%; height: auto; padding: var(--space-8); }
 .lesson-workbench .controls-content {
   --lesson-keypad-width: min(var(--input-size, 210px), calc(100cqw - 108px));

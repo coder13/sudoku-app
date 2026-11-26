@@ -31,7 +31,8 @@ export function continueStrongLinkColors(
   for (const node of queue) {
     const nextColor = colors.get(node) === firstColor ? otherColor : firstColor
     for (const neighbor of nodes) {
-      if (graph.strength(node, neighbor) !== 'strong') continue
+      // Alternating colors require both an inference and a conflict between the endpoints.
+      if (graph.strength(node, neighbor) !== 'strong' || !graph.conflicts(node, neighbor)) continue
       if (colors.has(neighbor)) {
         if (colors.get(neighbor) !== nextColor) return blocked('link-conflict')
       } else {

@@ -126,10 +126,14 @@ function snapshot(includeFades = false): NormalNode[] {
     const children = [...node.childNodes].map(normalize).filter((item): item is NormalNode => item !== null)
     if (!includeFades && node.classList.contains('candidate-marks') && !children.length) return null
     const attributes: Record<string, string> = {}
+    if (implementation === 'optimized' && node.classList.contains('candidate-button') &&
+      node.getAttribute('data-candidate-digit') !== node.textContent?.trim()) {
+      throw new Error('The candidate gesture target must identify the rendered digit.')
+    }
     for (const attr of [...node.attributes].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!includeFades && attr.name === 'data-board-fade') continue
       if (attr.name.startsWith('data-board-') && attr.name !== 'data-board-fade') continue
-      if (['data-candidate-marks', 'data-candidate-button', 'data-paint-candidate'].includes(attr.name)) continue
+      if (['data-candidate-marks', 'data-candidate-button', 'data-candidate-digit', 'data-paint-candidate'].includes(attr.name)) continue
       if (node.getAttribute('role') === 'gridcell' && (node.querySelector('.candidate-button') || props.onCandidate || props.onPaintCandidate) && ['tabindex', 'type'].includes(attr.name)) continue
       if (attr.name === 'style' && node.classList.contains('candidate-button')) continue
       if (attr.name === 'style' && node.classList.contains('cell')) continue

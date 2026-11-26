@@ -10,8 +10,10 @@ import { practiceSearch } from '../../sudoku/lesson-guidance'
 import { lessonRoutes } from '../../sudoku/lessons'
 import { techniqueDifficulties } from '../../sudoku/technique-difficulties'
 import type { HintPosition } from '../../sudoku/puzzle-help'
+import type { HintSource } from '../../sudoku/play-session'
 
 export type HintState = {
+  source: HintSource
   page?: { collection: number; offset: number; available: number }
   position: HintPosition
   choices: HintChoice[]
@@ -28,7 +30,6 @@ type Options = {
   game: Game
   hintState: HintState | null
   hintRevealed: boolean
-  busy: boolean
   mobile: boolean
   solved: boolean
   draft: boolean
@@ -39,15 +40,15 @@ type Options = {
 
 /** Resolve the current hint phase, explanation, and overlay from puzzle and hint state. */
 export function usePlayHintModel({
-  game, hintState, hintRevealed, busy, mobile, solved, draft, solutionHintOpen, hintPosition, cellReferenceStyle,
+  game, hintState, hintRevealed, mobile, solved, draft, solutionHintOpen, hintPosition, cellReferenceStyle,
 }: Options) {
   const grid = game.grid
   const gridSize = (grid ?? CLASSIC_GRID).size
   const hint = hintState?.position === hintPosition ? hintState : null
   const visibleHint = hintRevealed ? hint : null
-  const hintLoading = hintRevealed && busy && !visibleHint
-  const mobileHintOpen = mobile && hintRevealed && !draft && !solved
-  const hintOpen = mobileHintOpen || hintLoading || visibleHint !== null || solutionHintOpen
+  const hintLoading = hintRevealed && !game.paused && !draft && !solved && !visibleHint
+  const hintOpen = (hintRevealed && !game.paused && !draft && !solved) || hintLoading || visibleHint !== null || solutionHintOpen
+  const mobileHintOpen = mobile && hintOpen && !solutionHintOpen
   const deduction = visibleHint?.choices[visibleHint.index - (visibleHint.page?.offset ?? 0)]
   const hintCount = visibleHint?.page?.available ?? visibleHint?.choices.length ?? 0
   const hintStage = visibleHint?.stage

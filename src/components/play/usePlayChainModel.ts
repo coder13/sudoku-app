@@ -2,12 +2,15 @@ import { useCallback, useMemo } from 'react'
 import { playSession } from '../../sudoku/play-session'
 import { onlyCandidate, type Game } from '../../sudoku/game'
 import type { VariantPuzzle } from '../../sudoku/engine'
+import { CLASSIC_GRID } from '../../sudoku/grid'
+import type { SubsetContext } from '../../sudoku/subsets'
 import { candidateToolMasks } from './play-model'
 import { useChainCapability } from '../useChainCapability'
 
 type Options = {
   game: Game
   puzzle?: VariantPuzzle
+  visibleCells?: ReadonlySet<number>
   values: string
   masks: number[] | null | undefined
   noteMasks?: number[] | null
@@ -35,7 +38,7 @@ type Options = {
 
 /** Own the chain graph, drawing sketch, and strong-link view as one play capability. */
 export function usePlayChainModel({
-  game, puzzle, values, masks, noteMasks, notesMatch, displayedCandidates, eliminations, toolMasks, drawingIntent,
+  game, puzzle, visibleCells, values, masks, noteMasks, notesMatch, displayedCandidates, eliminations, toolMasks, drawingIntent,
   highlightedDigitMask, coloringDigit, savedHighlightMode, colorsActive, colorMode, eraseMode, brush,
   draft, solved, completed, disabled, chainsPanelOpen, startDrawingOnOpen, showStrongLinks, hintVisualsActive,
 }: Options) {
@@ -43,9 +46,9 @@ export function usePlayChainModel({
   const chainsActive = !colorsActive && !game.grid && (chainDrawingRequested || startDrawingOnOpen || showStrongLinks)
   const showChainSketches = !colorsActive && (chainsActive || !game.grid && Boolean(game.chainSketch))
   const chainMasks = useMemo(() => {
-    if (!showChainSketches || draft || solved) return null
+    if ((!showChainSketches && !chainsPanelOpen) || draft || solved) return null
     return notesMatch ? toolMasks : candidateToolMasks(noteMasks, values, displayedCandidates, eliminations)
-  }, [showChainSketches, draft, solved, notesMatch, toolMasks, noteMasks, values, displayedCandidates, eliminations])
+  }, [showChainSketches, chainsPanelOpen, draft, solved, notesMatch, toolMasks, noteMasks, values, displayedCandidates, eliminations])
   const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
   const canAnalyzeChains = Boolean(masks && !missingChainCandidates && !disabled)
   const playerHighlightMask = colorMode || eraseMode ? 0 : highlightedDigitMask
@@ -53,6 +56,9 @@ export function usePlayChainModel({
   const setDrawingIntent = useCallback((intent: boolean) => playSession.set(game.id, 'drawingIntent', intent), [game.id])
   const strongLinkMask = highlightedDigitMask || (coloringDigit === null ? 0 : 1 << (coloringDigit - 1))
   const strongLinksVisible = !savedHighlightMode && brush === null && showStrongLinks && chainsActive && canAnalyzeChains && !hintVisualsActive
+  const subsetContext = useMemo<SubsetContext | undefined>(() => game.grid ? undefined : ({
+    grid: CLASSIC_GRID, values, masks: chainMasks, puzzle, visibleCells,
+  }), [game.grid, values, chainMasks, puzzle, visibleCells])
   const chainCapability = useChainCapability({
     game,
     masks: chainMasks,
@@ -64,6 +70,7 @@ export function usePlayChainModel({
       startHighlightDigit,
       drawingIntent: savedHighlightMode || colorsActive ? false : drawingIntent,
       setDrawingIntent,
+      subsetContext,
     },
     strongLinks: { visible: strongLinksVisible, digitMask: strongLinkMask },
   })

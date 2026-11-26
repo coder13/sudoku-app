@@ -6,9 +6,25 @@ Open tools and the selected tab follow you when you switch between mobile and de
 
 Pausing hides the contents of **Solution** and **Techniques**. Resume the puzzle to see them again.
 
+Right-click a cell and choose **Make subset** to save it. To save several cells, select them first and right-click one of them. You can also open the board menu with **Shift+F10**. In **Subsets**, choose **New subset** and select a cell to start a card. The card updates as you add or remove cells. Choose **Done editing subsets**, press **Escape**, or switch tabs to save the set. The pencil edits a saved set. The eye and delete buttons work while editing and after saving.
+
+In **Subset display options**, turn on **Show eliminations** to preview deductions from shown saved sets. **Apply edits** removes those candidates. **Show strong links** displays candidate relationships inside the shown sets.
+
+Shown subsets and their board marks stay visible when you switch tabs while **Subsets** is open.
+
+While drawing a new chain, click a candidate in a shown ALS to start the chain. Click the restricted common candidate in the next set to link it. You can also click a compatible candidate in a shown ALS to join it to the end of a drawn path. When several sets match the same click, click an occurrence unique to the set or temporarily hide the other sets. To build a Death Blossom, select a candidate in the stem cell, then use **Chain actions** to link a saved petal for each stem candidate. Turn on **Show eliminations** in **Chain display options** to preview verified removals before applying them.
+
+To continue past an ALS, click another digit in the set or click an outside candidate that conflicts with every occurrence of that digit in the set. The AIC records the strong link between the two digits within the ALS. Resume drawing candidate links and enter another shown ALS from a strong link as often as the path allows. Show eliminations displays the removals below the notation.
+
+In an ALS chain, the ON and OFF colors follow the assumption shown on the chain card. When ON highlights several candidates for the same digit in one set, that digit must go in one of those cells.
+
+Use **Combine Set** in **Chain actions** to check saved sets together for XYZ-Wing, WXYZ-Wing, or Sue de Coq. For Sue de Coq, combine the intersection, the line set, and the box set. You can also show the sets that make up the pattern in Subsets and preview the removals there.
+
 Open **Chains** and select **Show strong links**. Press 1–9 or tap the keypad to switch the highlight to one digit. Press the same digit again to clear it. Hold a digit on the mobile keypad or press **Shift+1–9** to toggle that digit without changing the others. With no selected digits, the overlay shows no automatic links or highlights. If you highlight both digits in a two-candidate cell, the overlay also marks that link.
 
-The overlay cycles through five pairs, with two alternating colors per connected group. Select a candidate or line to add its connected links to the active chain, starting with **Chain 1**. The selected candidate becomes the endpoint for the next link. Other strong links stay visible while you draw branches. Turn off **Show strong links** to hide the automatic overlay.
+The overlay cycles through five pairs, with two alternating colors per connected group. Select a candidate or line to add its connected links, starting with **Chain 1**. The selected candidate becomes the endpoint for the next link. Other strong links stay visible while you draw branches. Turn off **Show strong links** to hide the automatic overlay.
+
+Choose **End path** to clear the current endpoint while you keep drawing. A link to an existing path extends its chain. The first link of a disconnected path opens a separate chain card. You can also start with **New chain**.
 
 The overlay stays visible when you switch to the mobile Digits tab or the Advanced workspace Input tab.
 
