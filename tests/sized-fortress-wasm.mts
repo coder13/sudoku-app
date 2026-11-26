@@ -89,3 +89,37 @@ test('the sized engine verifies Anti-Knight together with authored Jigsaw region
   })
   assert.equal(verified.solution, '456321321654612543543216234165165432')
 })
+
+test('a published Fortress import composes with Anti-Knight in parsing and candidate propagation', async () => {
+  const puzzle = puzzles.find(puzzle => puzzle.size === 4)!
+  const sourceCode = decodeURIComponent(new URL(puzzle.url).pathname.slice(1))
+  const source = JSON.parse(lzString.decompressFromBase64(sourceCode.slice(4))!)
+  source.antiknight = true
+  source.ruleset += '\n\n- Anti-knight Sudoku rules apply.'
+
+  const imported = await detectPuzzle('fpuz' + lzString.compressToBase64(JSON.stringify(source)))
+  assert.equal(imported.grid?.size, puzzle.size)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'maximum', cells: puzzle.marked, ignoreMarkedNeighbors: true, shaded: true },
+    { type: 'anti-knight' },
+  ])
+  assert.equal(conflictsOf(puzzle.solution, undefined, imported.grid, imported.sizedRules).size, 0)
+  const verified = await verifySizedRulePuzzle({
+    grid: imported.grid!, givens: imported.givens, rules: imported.sizedRules!,
+    authoredSolution: puzzle.solution, authoredSolutionOnly: true,
+  })
+  assert.equal(verified.solution, puzzle.solution)
+
+  const digits = Array(puzzle.size ** 2).fill(0)
+  digits[0] = Number(puzzle.solution[0])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, digits.join(''))
+  const withAntiKnight = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  const withoutAntiKnight = await runEngine({
+    type: 'sized-variant', operation: 'candidates',
+    position: { ...position, rules: imported.sizedRules!.filter(rule => rule.type !== 'anti-knight') },
+  })
+  const sourceDigit = Number(puzzle.solution[0])
+  assert.ok(withAntiKnight && withoutAntiKnight)
+  assert.equal(withAntiKnight[9] & (1 << (sourceDigit - 1)), 0, 'Anti-Knight removes the placed digit from R3C2')
+  assert.notEqual(withoutAntiKnight[9] & (1 << (sourceDigit - 1)), 0, 'Fortress alone permits that non-peer digit')
+})
