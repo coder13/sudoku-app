@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Eraser, Eye, Layers, Link2, Palette, Plus, Redo2, RotateCw, Undo2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eraser, Eye, Layers, Link2, Palette, Redo2, RotateCw, Undo2 } from 'lucide-react'
 import { Fragment, useId, useLayoutEffect, useState, type Ref } from 'react'
 import type { Deduction } from '../sudoku/engine'
 import type { AnalyzedChainSketch, ChainProof } from '../sudoku/chain-sketch-analysis'
@@ -28,6 +28,7 @@ type Props = {
   onApply: () => void
   applyFailed: boolean
   onToggleDrawing: () => void
+  onToggleErasing: () => void
   onChooseColors: () => void
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'applyEdits'>
   strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
@@ -293,7 +294,7 @@ function ChainResults({ proofs, onPreview, showEliminations }: {
   </article>
 }
 
-export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, strongLinks, eliminations, unavailable, onRetryCandidates, inspection, panelRef }: Props) {
+export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onToggleErasing, onChooseColors, shortcuts, strongLinks, eliminations, unavailable, onRetryCandidates, inspection, panelRef }: Props) {
   const chainLabelId = useId()
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
@@ -324,8 +325,8 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
     : completablePaths.find(({ nodes }) => sketch.pending !== null && nodes.includes(sketch.pending))
   const editorControls = <div className="tool-toolbar chain-draw-tools">
     <div className="chain-path-actions">
-      <Button variant="quiet" disabled={!sketch.drawing || sketch.pending === null}
-        title="Deselect the current endpoint and keep drawing" onClick={sketch.endPath}>End path</Button>
+      <Button variant="quiet" disabled={!sketch.canEndPath}
+        title="Finish the current path and keep drawing" onClick={sketch.finishPath}>End path</Button>
     </div>
     <div className="chain-edit-actions">
       <IconButton variant="quiet" aria-label="Undo edit" title="Undo edit (Ctrl+Z or Command+Z)"
@@ -339,7 +340,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         <Redo2 size={16} aria-hidden="true" />
       </IconButton>
       <SketchActionsMenu label="Chain actions" actions={[
-        ...(!sketch.drawingUnavailable || activeAssumption ? [{ label: 'Choose colors', icon: Palette, disabled: false, opensDialog: true, run: onChooseColors }] : []),
+        ...(!sketch.hasFixedSubsetColors || activeAssumption ? [{ label: 'Choose colors', icon: Palette, disabled: false, opensDialog: true, run: onChooseColors }] : []),
         { label: 'Complete loop', icon: RotateCw, disabled: !loopPath,
           title: loopPath ? 'Add links to close the path' : completablePaths.length
             ? 'Select a candidate in the path you want to complete' : 'No loop completion found',
@@ -360,9 +361,6 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
     </div> : <>
       <div className="chain-panel-tools">
         <div className="chain-panel-primary-actions">
-          <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
-            <Plus size={15} aria-hidden="true" /> New chain
-          </Button>
           <Button variant="primary" className="apply-chain-edits" disabled={!sketch.allActions.length}
             title={`Apply deductions from all chains (${applyKey})`} aria-keyshortcuts={applyKey} onClick={onApply}>
             Apply edits
@@ -371,7 +369,10 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
         <div className="chain-panel-display-actions">
           <IconButton variant="quiet" aria-label={drawLabel} title={sketch.drawing ? `${drawLabel} (${drawKey} or Esc)` : `${drawLabel} (${drawKey})`}
             aria-pressed={sketch.drawing} aria-keyshortcuts={sketch.drawing ? `${drawKey} Escape` : drawKey}
-            disabled={sketch.drawingUnavailable} onClick={onToggleDrawing}><Link2 size={16} aria-hidden="true" /></IconButton>
+            onClick={onToggleDrawing}><Link2 size={16} aria-hidden="true" /></IconButton>
+          <IconButton variant="quiet" aria-label="Erase chain nodes" title="Erase nodes from the selected chain"
+            aria-pressed={sketch.erasing} disabled={!sketch.erasing && !sketch.canEraseNodes}
+            onClick={onToggleErasing}><Eraser size={16} aria-hidden="true" /></IconButton>
           <SketchActionsMenu label="Chain display options" actions={[
             ...(eliminations ? [{ label: 'Show eliminations', icon: Eye, disabled: false, toggle: true,
               checked: eliminations.shown, run: eliminations.toggle }] : []),

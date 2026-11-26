@@ -735,6 +735,7 @@ svg { flex-shrink: 0; }
   opacity: 1;
 }
 .desktop-insight-body :is(.chain-panel-tools, .subset-panel-tools) { justify-content: flex-start; align-items: center; gap: var(--space-4); }
+.chain-panel-tools { flex-wrap: wrap; }
 .chain-draw-tools, .chain-path-actions, .chain-edit-actions { gap: var(--space-4); }
 .chain-path-actions, .chain-edit-actions { display: flex; flex-wrap: wrap; }
 .chain-edit-actions { align-items: center; margin-inline-start: auto; }
@@ -1812,6 +1813,8 @@ svg { flex-shrink: 0; }
   place-self: stretch;
 }
 .chain-candidate, .chain-cell-target { cursor: crosshair; }
+[data-chain-eraser] .chain-candidate[aria-disabled="true"] { cursor: default; }
+[data-chain-eraser] .chain-candidate[data-link-target] { cursor: pointer; }
 .candidate-button:focus-visible { outline-offset: -1px; }
 .candidate-match:where(:not(.candidate-color, [data-mark], [aria-pressed="true"])) { color: var(--entry-ink); }
 .board-body[data-annotations-on-top] .board-candidate.candidate-match[data-mark]:not(.candidate-color) {

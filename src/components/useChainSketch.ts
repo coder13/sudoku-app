@@ -53,12 +53,14 @@ function inferenceLinks(graph: ChainGraph, edges: readonly ChainEdge[], pending:
   if (graph.conflicts(exit, target)) return [[pending, exit], [exit, target]]
 }
 
-export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent, updateGame, subsetContext }: {
-  canDraw: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
+export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, canErase, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent, updateGame, subsetContext }: {
+  canDraw: boolean; canErase: boolean; graphCurrent: boolean; canAnalyze: boolean; startHighlightDigit: number | null
   drawingIntent: boolean | null; setDrawingIntent: (intent: boolean) => void
   updateGame?: (change: (current: Game) => Game) => void
   subsetContext?: SubsetContext
 }) {
+  const [eraserOn, setEraserOn] = useState(false)
+  const [finishedSubsetPath, setFinishedSubsetPath] = useState<SubsetProof | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const [hoveredNotation, setHoveredNotation] = useState<ChainNotationPart | null>(null)
   const [subsetFocus, setSubsetFocus] = useState<SubsetChainFocus | null>(null)
@@ -78,11 +80,27 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   const active = sketches.find(({ id }) => id === activeId) ?? sketches[0]
   const edges = active.history.at(-1)!
   const subsetProof = currentSubsetProof(active)
-  const drawingUnavailable = Boolean(subsetProof && subsetProof.kind !== 'path' && subsetProof.kind !== 'endpoint')
-  const canDrawActive = canDraw && canAnalyze && Boolean(graph) && !drawingUnavailable
+  const subsetPathFinished = subsetProof !== null && subsetProof === finishedSubsetPath
+  const hasFixedSubsetColors = subsetProof?.kind === 'blossom' || subsetProof?.kind === 'pattern'
+  const canDrawActive = canDraw && canAnalyze && Boolean(graph)
   const enabled = canDrawActive && !subsetProof
   const mixed = edges.some(edge => edge.some(isAlsChainNode))
-  const drawing = canDrawActive && (drawingIntent ?? pending !== null)
+  const eraserAvailable = canErase && canAnalyze && Boolean(graph)
+  const erasing = eraserAvailable && eraserOn
+  const drawing = !erasing && canDrawActive && (drawingIntent ?? pending !== null)
+  const eraseTargets = useMemo(() => {
+    const targets = new Map<number, ChainNode>()
+    if (!erasing || active.hidden) return targets
+    const nodes = new Set(edges.flat())
+    if (pending !== null) nodes.add(pending)
+    for (const node of nodes) {
+      for (const candidate of chainNodeCandidates(node)) {
+        const id = candidateId(candidate)
+        if (node === id || !targets.has(id)) targets.set(id, node)
+      }
+    }
+    return targets
+  }, [erasing, active.hidden, edges, pending])
   const allDrawnEdges = useMemo(() => drawnChainEdges(sketches, active.id), [sketches, active.id])
   const grouping = enabled && drawing && groupSelection !== null
   const selectedGroup = useMemo(() => {
@@ -101,33 +119,37 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     : [], [graph, sketches, subsetContext, subsetSets])
   const activeAnalysis = analyzed.find(({ id }) => id === active.id)
   const subsetChoices = useMemo(() => {
-    if (!subsetContext || !graph || !canAnalyze || active.hidden) return []
+    if (!subsetContext || !graph || !canAnalyze) return []
+    if (subsetPathFinished || active.hidden) return subsetChainChoices(null, subsetSets, subsetContext)
     if (!edges.length) return subsetChainChoices(subsetProof, subsetSets, subsetContext,
       typeof pending === 'number' ? chainCandidate(pending) : undefined)
+    const starts = pending === null ? subsetChainChoices(null, subsetSets, subsetContext) : []
     const paths = activeAnalysis?.paths
-    if (mixed || paths?.length !== 1 || paths[0].strengths.length !== edges.length) return []
+    if (mixed || paths?.length !== 1 || paths[0].strengths.length !== edges.length) return starts
     const { nodes } = paths[0]
     const path = pending === nodes[0] ? [...nodes].reverse() : nodes
-    return subsetEndpointChoices(path, subsetSets, subsetContext, graph)
-  }, [subsetContext, graph, canAnalyze, active.hidden, activeAnalysis, edges.length, mixed, subsetProof, subsetSets, pending])
+    return [...subsetEndpointChoices(path, subsetSets, subsetContext, graph), ...starts]
+  }, [subsetContext, graph, canAnalyze, active.hidden, activeAnalysis, edges.length, mixed, subsetProof, subsetPathFinished, subsetSets, pending])
   const directSubsetTargets = useMemo(() => {
     const targets = new Map<number, { set: number; proof: SubsetProof }[]>()
-    const atStart = !edges.length && pending === null
+    const atStart = pending === null && (!subsetProof || subsetPathFinished || active.hidden)
     const followingPath = subsetProof?.kind === 'path' || (edges.length > 0 && pending !== null)
     if (!drawing || grouping || !graph || (!atStart && !followingPath)) return targets
+    const existingMembers = atStart && !active.hidden
+      ? new Set(allDrawnEdges.flat().flatMap(graph.members)) : undefined
     const byId = new Map(subsetSets.map(set => [set.id, set]))
     for (const { target, proof } of subsetChoices) {
       const set = target && byId.get(target.set)
-      if (!target || !set) continue
+      if (!target || !set || (atStart && proof.kind !== 'path')) continue
       for (const cell of set.cells) for (const id of graph.cellCandidates[cell]) {
-        if (target.digit !== undefined && chainNodeDigit(id) !== target.digit) continue
+        if (existingMembers?.has(id) || (target.digit !== undefined && chainNodeDigit(id) !== target.digit)) continue
         const choices = targets.get(id) ?? []
         choices.push({ set: set.id, proof })
         targets.set(id, choices)
       }
     }
     return targets
-  }, [drawing, grouping, graph, edges.length, pending, subsetProof, subsetChoices, subsetSets])
+  }, [drawing, grouping, graph, active.hidden, allDrawnEdges, edges.length, pending, subsetProof, subsetPathFinished, subsetChoices, subsetSets])
   const applicable = useMemo(() => applicableChainActions(analyzed, canAnalyze), [analyzed, canAnalyze])
   const visibleApplicable = useMemo(() => visibleChainActions(analyzed, applicable, showEliminations), [analyzed, applicable, showEliminations])
   const loopCompletions = useMemo(() => {
@@ -161,12 +183,18 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     ? completeMedusa(graph, edges, pending, groups) : [], [graph, drawing, active.hidden, pending, edges, groups])
 
   useEffect(() => {
+    setEraserOn(false)
+    setFinishedSubsetPath(null)
     setHovered(null)
     setHoveredNotation(null)
     setSubsetFocus(null)
     setStatus('')
     setGroupSelection(null)
   }, [game.id])
+
+  useEffect(() => {
+    if (!eraserAvailable) setEraserOn(false)
+  }, [eraserAvailable])
 
   useEffect(() => {
     if (!drawing) {
@@ -253,7 +281,13 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     setStatus('')
   }
 
+  function finishPath() {
+    setFinishedSubsetPath(subsetProof)
+    endPath()
+  }
+
   function switchSketch(id: number) {
+    setFinishedSubsetPath(null)
     setGroupSelection(null)
     save((state) => id === state.activeId || !state.sketches.some(sketch => sketch.id === id)
       ? state : { ...state, activeId: id, pending: null })
@@ -266,7 +300,8 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     save((state, current) => {
       if (state.activeId !== active.id || state.pending !== pending || current.position !== game.position ||
         current.subsetWorkspace !== game.subsetWorkspace || (current.chainSketch ?? emptySketch) !== savedSketch) return state
-      return updateSubsetChain(state, proof)
+      const startsSubsetPath = proof?.kind === 'path' && proof.sets.length === 1 && hasChainContent(active)
+      return updateSubsetChain(startsSubsetPath ? selectEmptyChain(state, colorPairs) : state, proof)
     })
     setHovered(null)
     setSubsetFocus(null)
@@ -310,15 +345,27 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     return true
   }
 
+  function startDetached(candidate: Candidate, links: readonly ChainEdge[] = []) {
+    const node = candidateId(candidate)
+    save((state) => {
+      if (state !== savedSketch) return state
+      const next = selectEmptyChain(state, colorPairs)
+      if (links.length) return updateChainEdges(next, [...links], node, candidate.digit, true, colorPairs)
+      return { ...next, pending: node, sketches: next.sketches.map(sketch => sketch.id === next.activeId
+        ? { ...sketch, hidden: false, highlightedDigit: candidate.digit } : sketch) }
+    })
+  }
+
   function beginAt(candidate: Candidate, component: readonly ChainEdge[] = []) {
-    if (!enabled) return
+    if (!canDrawActive) return
     const node = candidateId(candidate)
     const additions = component.filter(edge => !edges.some(existing => sameEdge(edge, existing)))
     setDrawingIntent(true)
     setGroupSelection(null)
     setHovered(null)
     setStatus('')
-    if (additions.length) changeEdges([...edges, ...additions], node, candidate.digit, true)
+    if (subsetProof || active.hidden) startDetached(candidate, component)
+    else if (additions.length) changeEdges([...edges, ...additions], node, candidate.digit, true)
     else updateActive(sketch => ({ ...sketch, hidden: false, highlightedDigit: candidate.digit }), node, true)
   }
 
@@ -357,10 +404,19 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     return false
   }
 
+  function eraseCandidate(candidate: Candidate) {
+    const node = eraseTargets.get(candidateId(candidate))
+    if (node === undefined) return
+    const remaining = edges.filter(edge => !edge.includes(node))
+    if (remaining.length < edges.length) changeEdges(remaining, pending === node ? null : pending)
+    else if (pending === node) endPath()
+  }
+
   function select(candidate: Candidate) {
-    if (!drawing || !graph || active.hidden) return
+    if (!drawing || !graph) return
     const id = candidateId(candidate)
     if (!graph.available(id)) return
+    if (active.hidden || subsetPathFinished || hasFixedSubsetColors) { startDetached(candidate); return }
     if (subsetProof) { continueSavedSetPath(id); return }
     if (mixed && pending === null && !grouping) {
       const ports = [...new Set(edges.flat().filter(isAlsChainNode))].filter(node => graph.members(node).includes(id))
@@ -452,6 +508,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     for (const { set, proof } of directOptions) {
       choices.push({ label: label(set), kind: 'set', run: () => changeSubset(proof) })
     }
+    if (subsetPathFinished || active.hidden) return choices
     for (const set of visibleSets ?? []) {
       if (directOptions.some(option => option.set === set)) continue
       const node = graph.alsNodes.get(set)?.get(candidate.digit)
@@ -484,7 +541,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }
 
   function candidateChoices(candidate: Candidate, visibleSets: ReadonlySet<number> | undefined): ChainLinkChoice[] {
-    if (!drawing || grouping || active.hidden || !graph) return []
+    if (!drawing || grouping || !graph) return []
     const id = candidateId(candidate)
     const choices = savedSetLinkChoices(graph, candidate, visibleSets)
     if (pending === null || pending === id || subsetProof) return choices
@@ -543,12 +600,23 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }
 
   function stop() {
+    setEraserOn(false)
     setDrawingIntent(false)
     endPath()
   }
 
   return {
-    drawing, grouping, groupSelection: grouping ? groupSelection : EMPTY_GROUP_SELECTION,
+    drawing, erasing, grouping, groupSelection: grouping ? groupSelection : EMPTY_GROUP_SELECTION,
+    canEraseNodes: eraserAvailable && !active.hidden && (edges.length > 0 || pending !== null),
+    eraseCandidate,
+    isEraseTarget: (candidate: Candidate) => eraseTargets.has(candidateId(candidate)),
+    stopErasing: () => setEraserOn(false),
+    toggleErasing() {
+      setEraserOn(!erasing)
+      setGroupSelection(null)
+      setHovered(null)
+      setStatus('')
+    },
     canUseGroup: selectedGroup !== null,
     startGroup() {
       if (!enabled || active.hidden) return
@@ -566,11 +634,13 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     highlightNotation(part: ChainNotationPart | null) { setHoveredNotation(part) },
     highlightSubsetNotation: setSubsetFocus,
     subsetSets, subsetChoices, changeSubset,
-    drawingUnavailable,
+    hasFixedSubsetColors,
+    canEndPath: drawing && (pending !== null || (subsetProof !== null && !subsetPathFinished)),
+    finishPath,
     candidateChoices,
     colorPairs, assignedColors: committed.assigned, usedColorPairs: committed.usedPairs,
-    sketches: analyzed, active, status, pending, beginAt, select, groupCandidate, finishLoop, stop, endPath, setHighlightedDigit,
-    suspend: () => { setDrawingIntent(false); setGroupSelection(null) },
+    sketches: analyzed, active, status, pending, beginAt, select, groupCandidate, finishLoop, stop, setHighlightedDigit,
+    suspend: () => { setEraserOn(false); setDrawingIntent(false); setGroupSelection(null) },
     setPreviewedProof,
     showEliminations,
     toggleEliminations() {
@@ -603,15 +673,6 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       }
     },
     switchSketch,
-    addSketch() {
-      setGroupSelection(null)
-      save((state) => {
-        const current = state.sketches.find(({ id }) => id === state.activeId)!
-        return hasChainContent(current) ? selectEmptyChain(state, colorPairs) : state
-      })
-      setHovered(null)
-      setStatus('')
-    },
     toggleVisibility(id: number) {
       setGroupSelection(null)
       save((state) => {
@@ -643,7 +704,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       setGroupSelection(null)
       save((state, current) => {
         if (state.activeId !== active.id) return state
-        const next = undoChainEdit(state, drawing)
+        const next = undoChainEdit(state, drawing || erasing)
         if (next.sketches !== state.sketches) {
           const future = [...(redoFor(current, state)?.future ?? []), state].slice(-MAX_CHAIN_HISTORY)
           setRedoHistory({ gameId: current.id, position: current.position, sketches: next.sketches, activeId: next.activeId, future })
@@ -661,7 +722,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
         const restored = history.future.at(-1)!
         const future = history.future.slice(0, -1)
         setRedoHistory(future.length ? { ...history, sketches: restored.sketches, activeId: restored.activeId, future } : null)
-        return drawing ? restored : { ...restored, pending: null }
+        return drawing || erasing ? restored : { ...restored, pending: null }
       })
       setHovered(null)
       setStatus('')

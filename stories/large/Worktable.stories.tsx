@@ -392,6 +392,15 @@ const branchedGame = {
   ...starter,
   chainSketch: { sketches: [{ ...newChainSketch(1), history: [[], branchedLinks] }], activeId: 1, pending: null },
 }
+const chainEraserGame = { ...branchedGame, id: 'chain-eraser', name: 'Erase chain nodes' }
+
+export const EraseChainNodes: Story = {
+  args: { game: chainEraserGame, games: [chainEraserGame] },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['chains'], active: 'chains' })
+  },
+}
+
 export const ChainShortcuts: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   play: async ({ canvas, userEvent }) => {

@@ -222,7 +222,7 @@ export function LessonWorkbench({
   }
 
   function leaveChainInput() {
-    if (drawingIntent) sketch.stop()
+    if (drawingIntent || sketch.erasing) sketch.stop()
     setShowStrongLinks(false)
   }
   function switchPenPencil(pencil: boolean) {
@@ -253,8 +253,16 @@ export function LessonWorkbench({
     setDigitHighlights({ mask: highlightMask ^ (1 << (digit - 1)), match })
   }
 
+  function toggleChainErasing() {
+    if (!sketch.erasing) setShowStrongLinks(false)
+    sketch.toggleErasing()
+  }
+
   function toggleChainDrawing() {
-    if (!chainsOpen) {
+    if (sketch.erasing) {
+      sketch.stopErasing()
+      if (!drawingIntent) sketch.toggle()
+    } else if (!chainsOpen) {
       setChainsOpen(true)
       setDrawingIntent(true)
     } else sketch.toggle()
@@ -428,7 +436,7 @@ export function LessonWorkbench({
     if (shortcut && (key === 'z' || key === 'y')) {
       event.preventDefault()
       const forward = key === 'y' || event.shiftKey
-      if (sketch.drawing) {
+      if (sketch.drawing || sketch.erasing) {
         if (forward) sketch.redo()
         else sketch.undo()
       } else commit(forward ? redo : undo)
@@ -482,11 +490,12 @@ export function LessonWorkbench({
     }
     if (key === 'delete' || key === 'backspace' || key === '0') {
       event.preventDefault()
-      input(0)
+      if (!sketch.erasing) input(0)
       return
     }
     if (key === 'escape') {
-      if (usingChains) leaveChainInput()
+      if (sketch.erasing) sketch.stopErasing()
+      else if (usingChains) leaveChainInput()
       else {
         setSelected([])
         setSelectedDigit(null)
@@ -593,14 +602,15 @@ export function LessonWorkbench({
                     setSelected(current.additive ? [...new Set([...current.base, ...rectangle])] : rectangle)
                   }
                 : undefined,
-            linkDrawing: sketch.drawing,
-            onCandidate: usingChains ? selectChainCandidate : undefined,
+            linkDrawing: sketch.drawing || sketch.erasing,
+            eraseChainNodes: sketch.erasing,
+            onCandidate: sketch.erasing ? sketch.eraseCandidate : usingChains ? selectChainCandidate : undefined,
             onGroupCandidate: sketch.groupCandidate,
             onCandidateHover: sketch.drawing ? sketch.hover : undefined,
             onLinkSelect: strongLinksVisible ? beginStrongLinkChain : undefined,
             onGiven: strongLinksVisible ? chooseChainDigit : undefined,
-            isLinkTarget: usingChains ? sketch.isLinkTarget : undefined,
-            selectedCandidates: usingChains ? selectedChainCandidates : undefined,
+            isLinkTarget: sketch.erasing ? sketch.isEraseTarget : usingChains ? sketch.isLinkTarget : undefined,
+            selectedCandidates: usingChains && !sketch.erasing ? selectedChainCandidates : undefined,
             onCellDoubleClick:
               interactive && !usingChains && preferences.advancedModes.doubleClickSingles && !pencil && !highlightMode && !colorMode && !eraseMode && selectedDigit === null
                 ? (cell) => {
@@ -706,6 +716,7 @@ export function LessonWorkbench({
               <ChainsPanel
                 sketch={sketch}
                 onToggleDrawing={toggleChainDrawing}
+                onToggleErasing={toggleChainErasing}
                 onApply={applyChainEdits}
                 applyFailed={failedChainActions === sketch.allActions}
                 onChooseColors={() => setChainColorsOpen(true)}
@@ -730,6 +741,7 @@ export function LessonWorkbench({
                   hasHighlights: highlightMask !== 0,
                   count: strongLinks.count,
                   toggle: () => {
+                    if (sketch.erasing) sketch.stopErasing()
                     setShowStrongLinks(!showStrongLinks)
                     lessonInputMode.clearOverride()
                   },

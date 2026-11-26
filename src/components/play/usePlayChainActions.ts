@@ -50,7 +50,7 @@ export function usePlayChainActions({ model, state, actions }: Options) {
       changeHintVisuals('player')
     }
     setStartDrawingOnOpen(false)
-    if (sketch.drawing) sketch.suspend()
+    if (sketch.drawing || sketch.erasing) sketch.suspend()
     setShowStrongLinks(current => !current)
   }
 

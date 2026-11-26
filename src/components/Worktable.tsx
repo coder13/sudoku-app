@@ -749,6 +749,7 @@ export function Worktable({
     completed,
     disabled,
     chainsPanelOpen,
+    chainsVisible,
     startDrawingOnOpen,
     showStrongLinks,
     hintVisualsActive,
@@ -806,7 +807,7 @@ export function Worktable({
     cellColorsDisabled,
     hintAnnotations: Boolean(hintAnnotations),
     mobileHintPreview,
-    sketchDrawing: sketch.drawing,
+    sketchDrawing: sketch.drawing || sketch.erasing,
     browsingStrongLinks,
     selectedDigit,
     highlightedDigitMask,
@@ -1587,7 +1588,7 @@ export function Worktable({
   }
 
   function leaveChainInput(switchMobileToDigits = true) {
-    if (chainDrawingRequested || startDrawingOnOpen) sketch.suspend()
+    if (chainDrawingRequested || startDrawingOnOpen || sketch.erasing) sketch.suspend()
     if (showStrongLinks) setShowStrongLinks(false)
     setStartDrawingOnOpen(false)
     drawingReturn.current = null
@@ -1595,7 +1596,7 @@ export function Worktable({
   }
 
   function toggleHighlightMode() {
-    const enable = sketch.drawing || browsingStrongLinks || !highlightMode
+    const enable = sketch.drawing || sketch.erasing || browsingStrongLinks || !highlightMode
     leaveChainInput()
     setColorBrush(null)
     setPencilModifier(false)
@@ -1619,7 +1620,19 @@ export function Worktable({
     switchPenPencil(togglePencilMode(pencil))
   }
 
+  function toggleChainErasing() {
+    if (!sketch.erasing) {
+      setShowStrongLinks(false)
+      changeHintVisuals('player')
+    }
+    sketch.toggleErasing()
+  }
+
   function toggleChainDrawing() {
+    if (sketch.erasing) {
+      sketch.stopErasing()
+      if (chainDrawingRequested) return
+    }
     if (sketch.drawing || startDrawingOnOpen) {
       stopDrawingAndFocusGrid()
       return
@@ -1714,6 +1727,11 @@ export function Worktable({
         }
         return
       }
+      if (cancelTool && sketch.erasing) {
+        event.preventDefault()
+        sketch.stopErasing()
+        return
+      }
       if (cancelTool && (sketch.drawing || startDrawingOnOpen)) {
         event.preventDefault()
         if (!event.repeat) {
@@ -1725,7 +1743,8 @@ export function Worktable({
       if (drawLinksShortcut && !variantRulesOpen && panelAvailable('chains') && (!disabled || previewing)) {
         event.preventDefault()
         if (event.repeat) return
-        if (sketch.drawing || startDrawingOnOpen) stopDrawingAndFocusGrid()
+        if (sketch.erasing) toggleChainDrawing()
+        else if (sketch.drawing || startDrawingOnOpen) stopDrawingAndFocusGrid()
         else {
           enterChainsMode()
           showChains()
@@ -1733,7 +1752,7 @@ export function Worktable({
         return
       }
       if (previewing) return
-      if (historyShortcut && (sketch.drawing || browsingStrongLinks || (chainsVisible && target instanceof Node && chainsPanelRef.current?.contains(target)))) {
+      if (historyShortcut && (sketch.drawing || sketch.erasing || browsingStrongLinks || (chainsVisible && target instanceof Node && chainsPanelRef.current?.contains(target)))) {
         event.preventDefault()
         if (redoShortcut) sketch.redo()
         else if (sketch.canUndo) sketch.undo()
@@ -1787,6 +1806,10 @@ export function Worktable({
             : (selectedDigit ?? onlyCandidate(highlightedDigitMask) ?? coloringDigit)
         highlightedDigit = nextIncompleteDigit(values, current, gridSize)
         if (highlightedDigit === null) return
+      }
+      if (sketch.erasing) {
+        if (!shortcut && (/^[0-9]$/.test(key) || key === 'delete' || key === 'backspace')) event.preventDefault()
+        return
       }
       if (sketch.drawing || browsingStrongLinks) {
         if (cancelTool && browsingStrongLinks) {
@@ -1948,7 +1971,7 @@ export function Worktable({
   }
 
   function changeHintVisuals(visuals: 'hint' | 'player') {
-    if (visuals === 'hint' && sketch.drawing) sketch.suspend()
+    if (visuals === 'hint' && (sketch.drawing || sketch.erasing)) sketch.suspend()
     setHint((current) => (current && current.visuals !== visuals ? { ...current, visuals } : current))
   }
 
@@ -2137,6 +2160,7 @@ export function Worktable({
       panelRef={chainsPanelRef}
       sketch={sketch}
       onToggleDrawing={toggleChainDrawing}
+      onToggleErasing={toggleChainErasing}
       onApply={applyChainEdits}
       applyFailed={failedChainActions === sketch.allActions}
       onChooseColors={() => setChainColorsOpen(true)}
@@ -2433,7 +2457,7 @@ export function Worktable({
   const gridInputMode = puzzleInputMode({
     drawingLinks: sketch.drawing,
     browsingStrongLinks,
-    erasing: eraseMode,
+    erasing: eraseMode || sketch.erasing,
     coloring: colorMode || brush !== null,
     highlighting: highlightMode,
     penciling: pencilActive,
@@ -2448,6 +2472,10 @@ export function Worktable({
       position={modeBadgePosition}
       onPosition={setModeBadgePosition}
       onActivate={() => {
+        if (sketch.erasing) {
+          sketch.stopErasing()
+          return
+        }
         if (badgeMode === 'chain') {
           if (sketch.drawing) stopDrawingAndFocusGrid()
           else if (browsingStrongLinks) setShowStrongLinks(false)
@@ -2547,7 +2575,7 @@ export function Worktable({
     solutionGrid
   ) : !mobile && completionPanel ? (
     completionPanel
-  ) : (sketch.drawing || browsingStrongLinks) && chainMasks ? (
+  ) : (sketch.drawing || sketch.erasing || browsingStrongLinks) && chainMasks ? (
     <Board
       content={{
         ...boardContent,
@@ -2560,30 +2588,31 @@ export function Worktable({
         errors: errors,
         authoredArtwork: game.authoredArtwork,
         annotations: mergeBoardAnnotations(subsets.annotations,
-          mergeBoardAnnotations(strongLinksVisible ? strongLinks.annotations : sketch.annotations, alsAnnotations)),
+          mergeBoardAnnotations(strongLinksVisible && !sketch.erasing ? strongLinks.annotations : sketch.annotations, alsAnnotations)),
         annotationsOnTop: Boolean(alsAnnotations || subsets.annotations),
         showPlayerColors: showPlayerColors,
         showImportedAnnotations: !hintVisualsActive,
-        label: sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links',
+        label: sketch.erasing ? 'Sudoku grid for erasing chain nodes' : sketch.drawing ? 'Sudoku grid for drawing links' : 'Sudoku grid with strong links',
         descriptionId: badgeMode ? modeBadgeId : undefined,
-        highlightedDigit: strongLinksVisible ? null : chainHighlightDigit,
+        highlightedDigit: strongLinksVisible || sketch.erasing ? null : chainHighlightDigit,
         highlightedDigitMask: strongLinksVisible ? strongLinkMask : 0,
         highlightedDigitMatch: 'any',
         highlighting: highlighting,
-        highlightCandidateCells: true,
+        highlightCandidateCells: !sketch.erasing,
         fullCandidateCellHighlight: true,
-        highlightCandidateCount: !strongLinksVisible && highlightCandidatePairs ? 2 : null,
+        highlightCandidateCount: !sketch.erasing && !strongLinksVisible && highlightCandidatePairs ? 2 : null,
       }}
       interaction={{
         boardRef: boardRef,
-        linkDrawing: sketch.drawing,
-        onCandidate: selectChainCandidate,
+        linkDrawing: sketch.drawing || sketch.erasing,
+        eraseChainNodes: sketch.erasing,
+        onCandidate: sketch.erasing ? sketch.eraseCandidate : selectChainCandidate,
         onGroupCandidate: sketch.groupCandidate,
         onGiven: strongLinksVisible ? (digit) => setStrongLinkHighlights(1 << (digit - 1)) : undefined,
         onLinkSelect: strongLinksVisible ? startStrongLinkChain : undefined,
         onCandidateHover: sketch.drawing ? sketch.hover : undefined,
-        isLinkTarget: sketch.isLinkTarget,
-        selectedCandidates: selectedChainCandidates,
+        isLinkTarget: sketch.erasing ? sketch.isEraseTarget : sketch.isLinkTarget,
+        selectedCandidates: sketch.erasing ? undefined : selectedChainCandidates,
       }}
       layout={liveBoardLayout}
     />
@@ -2903,7 +2932,7 @@ export function Worktable({
       ref={puzzleStageRef}
       data-no-panel-hold={mobile || undefined}
       data-pointer-input={(mobile && inputModality === 'pointer') || undefined}
-      className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}`}
+      className={`puzzle-stage${previewing ? ' solution-preview' : sketch.drawing || sketch.erasing || browsingStrongLinks || visibleChainAnnotations ? ' chain-sketch' : hintAnnotations ? ' hint-preview' : ''}`}
       onContextMenu={(event) => {
         if (cellHold.suppressContextMenu(event)) return
         preventControlClickMenu(event)
@@ -3030,11 +3059,11 @@ export function Worktable({
           selectedDigit: browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : selectedDigit,
           hasCellSelection: hasInputSelection,
           highlightedDigitMask: strongLinksVisible ? strongLinkMask : sketch.drawing || eraseMode ? 0 : highlightedDigitMask,
-          onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : !sketch.drawing && !draft && !solved && !previewing ? toggleDigitHighlight : undefined,
+          onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : !sketch.drawing && !sketch.erasing && !draft && !solved && !previewing ? toggleDigitHighlight : undefined,
           digitHighlightMatch: digitHighlight.match,
           onDigitHighlightMatchChange: !draft && !solved && !previewing ? changeDigitHighlightMatch : undefined,
           values: values,
-          input: sketch.drawing || browsingStrongLinks ? toggleChainHighlight : input,
+          input: sketch.drawing || sketch.erasing || browsingStrongLinks ? toggleChainHighlight : input,
           onPaintDigit: digit => {
             const color = brush ?? (colorMode ? selectedColor : null)
             if (color !== null && !hintAnnotations && !mobileHintPreview) paintCandidateDigit(digit, color)
@@ -3057,17 +3086,18 @@ export function Worktable({
           onPaintCandidateGroup: () => {
             if (candidateBrush !== null) paintSelectedCandidateDigits(candidateBrush)
           },
-          clearDigitHighlightsAvailable: !sketch.drawing && !browsingStrongLinks && !eraseMode && candidateCount(highlightedDigitMask) > 1,
+          clearDigitHighlightsAvailable: !sketch.drawing && !sketch.erasing && !browsingStrongLinks && !eraseMode && candidateCount(highlightedDigitMask) > 1,
           onClearDigitHighlights: clearDigitSelection,
           highlightMode: highlightMode,
           toggleHighlightMode: toggleHighlightMode,
           eraseMode: eraseMode,
           toggleEraseMode: () => {
+            leaveChainInput()
             setColorBrush(null)
             setSelected([])
             toggleInputToolOverride('erase')
           },
-          chainDrawing: sketch.drawing || browsingStrongLinks,
+          chainDrawing: sketch.drawing || sketch.erasing || browsingStrongLinks,
           showMultiSelectButton: !advancedWorkspace,
           multi: multi,
           toggleMulti: toggleMulti,
@@ -3284,7 +3314,6 @@ export function Worktable({
         leaveChainInput(false)
         setColorBrush(null)
         setInputToolOverride(null)
-        setSelectedDigit(null)
         changeHintVisuals('player')
         subsets.start(id)
         requestAnimationFrame(() => boardRef.current?.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus({ preventScroll: true }))
