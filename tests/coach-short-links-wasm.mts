@@ -363,12 +363,17 @@ test('a written black-dot rule restores the negative constraint and keeps all pr
     assert.equal(game.variant?.id, 'mixed')
     assert.equal(game.variant.solution, solution)
     assertVariantCompletion(game.variant.puzzle, solution)
-    const raw = (await detectPuzzle(code)).variant!.puzzle.rules!
+    const direct = await detectPuzzle(code)
+    const rawPuzzle = direct.variant!.puzzle
+    const raw = rawPuzzle.rules!
     const rawDots = raw.find(rule => rule.type === 'kropki')!
-    assert.equal(rawDots.ratioTwo?.negative, false)
+    assert.equal(rawDots.ratioTwo?.negative, true)
     const rules = game.variant.puzzle.rules!
-    assert.deepEqual(rules, raw.map(rule => rule === rawDots
-      ? { ...rawDots, ratioTwo: { ...rawDots.ratioTwo, negative: true } } : rule))
+    assert.deepEqual(rules, raw)
+    assert.deepEqual(game.variant.puzzle, rawPuzzle)
+    assertVariantCompletion(rawPuzzle, solution)
+    const pasted = await prepareImportedPuzzle(code)
+    assert.deepEqual(pasted.game.variant, game.variant)
 
     const expectedDots: string[] = []
     for (let a = 0; a < 81; a++) {

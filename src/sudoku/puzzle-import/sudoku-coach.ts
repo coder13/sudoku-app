@@ -225,6 +225,9 @@ const distantNeighborsCoachExport = 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b
 // The published AsnF instructions name these authored cosmetic labels as X-Sums.
 // Restrict that interpretation to the exact reviewed export, since raw text is otherwise ambiguous.
 const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0f199b5a29ba8382c499e53'
+// K95q's description supplies the complete-black-dot rule, which is absent
+// from the copied SCv7 payload. Recognize only this reviewed source on raw-code imports.
+const allBlackDotsCoachExport = 'e03c0d40bdb9a3ab13512250b4920bd6d6f554da83d136d3e8105f29e713aa6e'
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
   if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
@@ -906,6 +909,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const distantNeighbors = await readCoachDistantNeighbors(code, data)
   const authoredAsnFXSums = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticText') &&
     await sourceHash(code, data) === authoredAsnFXSumsCoachExport
+  const authoredAllBlackDots = !publication && constraints.some(layer => record(layer) && layer.type === 'ratio') &&
+    await sourceHash(code, data) === allBlackDotsCoachExport
   const reviewed220VLineLegend = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticLine') &&
     await sourceHash(code, data) === coach220VLineColoursExport
   if (publication?.authoredRule === 'unknown-cage-sums' && !unknownCageSums) {
@@ -958,7 +963,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ? reviewedCoachColorExports.get(exportHash) : undefined
   const authoredRule = rawQuadArrows ? 'quad-arrows' : magicSquare ? 'magic-square' : unknownCageSums ? 'unknown-cage-sums' :
     distantNeighbors ? 'distant-neighbors' : authoredAsnFXSums ? 'x-sum' :
-      reviewed220VLineLegend ? 'line-colours' : publication?.authoredRule
+      reviewed220VLineLegend ? 'line-colours' : authoredAllBlackDots ? 'all-black-dots' : publication?.authoredRule
   const sourceRules = distantNeighbors ? encodedRules.filter(layer => !record(layer) || layer.type !== 'cosmeticLine') : encodedRules
   let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
     : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(sourceRules, { regions, authoredRule })
@@ -1023,7 +1028,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       }
     }
   }
-  if (publication?.authoredRule === 'all-black-dots') {
+  if (authoredRule === 'all-black-dots') {
     const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
     if (black?.type !== 'kropki' || !black.ratioTwo) {
       throw new Error('The Sudoku Coach export is missing the black Kropki dot layer from the published rules.')
