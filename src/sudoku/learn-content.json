@@ -3296,29 +3296,29 @@
         {
           "id": "wxyz-wing",
           "title": "WXYZ-Wing",
-          "summary": "A WXYZ-Wing has four cells with four candidate digits between them. If three of those digits can each appear only once, the four cells must include the fourth digit. That can rule it out in nearby cells.",
+          "summary": "A WXYZ-Wing has four cells with four candidate digits between them. It tells you which digits must appear in the wing and which candidates you can remove from outside cells. A restricted candidate can appear at most once in the wing because all its candidate cells see one another. An unrestricted candidate may appear more than once because a pair of its candidate cells does not share a row, column, or box.",
           "blocks": [
             {
               "type": "heading",
               "id": "where-to-start",
-              "title": "Count the digits that can repeat"
+              "title": "Find restricted candidates"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Find four cells with just four different candidate digits between them. For each digit, see whether every pair of cells with that digit shares a row, column, or box.",
-                "If every pair sees each other, that digit can occur only once in the four cells. At least three digits must pass this test."
+                "Find four cells with just four distinct candidate digits between them. For each digit, compare every pair of cells with that candidate. If every pair shares a row, column, or box, that digit is a restricted candidate. Otherwise, it is an unrestricted candidate.",
+                "At least three of the four digits must be restricted candidates."
               ]
             },
             {
               "type": "heading",
               "id": "one-unrestricted-digit",
-              "title": "When only one digit can repeat"
+              "title": "When one candidate is unrestricted"
             },
             {
               "type": "text",
               "paragraphs": [
-                "Those three digits can fill at most three cells. The fourth digit must appear somewhere in the wing. Remove it from any outside cell that sees every possible copy in the wing."
+                "The other three digits are restricted candidates, so each can appear in at most one of the four cells. They can fill at most three cells, so the unrestricted candidate must appear in the wing. Remove it from any outside cell that sees every possible copy in the wing."
               ]
             },
             {
@@ -3337,12 +3337,12 @@
             {
               "type": "heading",
               "id": "all-digits-restricted",
-              "title": "When no digit can repeat"
+              "title": "When all four candidates are restricted"
             },
             {
               "type": "text",
               "paragraphs": [
-                "If all four digits can occur only once, the wing must contain each one. For each digit, look for an outside cell that sees every possible copy inside."
+                "Each restricted candidate can appear at most once, so the wing must contain all four digits. For each digit, look for an outside cell that sees every possible copy inside."
               ]
             },
             {

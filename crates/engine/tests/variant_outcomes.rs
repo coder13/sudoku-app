@@ -216,7 +216,10 @@ fn numeric_rules_distinguish_the_exact_outcomes() {
             [1, 2],
         ),
         (
-            PuzzleRule::AdjacentTotal { cells: [3, 4], sum: 13 },
+            PuzzleRule::AdjacentTotal {
+                cells: [3, 4],
+                sum: 13,
+            },
             [1, 2],
             [6, 8],
         ),
@@ -244,7 +247,10 @@ fn numeric_rules_distinguish_the_exact_outcomes() {
             [7, 8],
         ),
         (
-            PuzzleRule::Renban { cells: vec![1, 2, 0], segments: None },
+            PuzzleRule::Renban {
+                cells: vec![1, 2, 0],
+                segments: None,
+            },
             [8, 9],
             [5, 9],
         ),

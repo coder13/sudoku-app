@@ -4,7 +4,7 @@ Use motion to explain a change of state or position. The motion should stay atta
 
 ## Existing motion system
 
-Global durations and easing curves live in `src/styles.css` as `--motion-*` custom properties. The current tokens cover fast (110 ms), standard (150 ms), overlay and panel (240 ms), snap (320 ms), and press (60 ms) motion. Use these tokens for ordinary interface transitions. Use a feature-specific duration only when the interaction needs a distinct, measured settling time, and keep its easing consistent with the motion system.
+Global durations and easing curves live in `src/styles.css` as `--motion-*` custom properties. The current tokens cover fast (110 ms), standard (150 ms), tabs (160 ms), overlay and panel (240 ms), snap (320 ms), and press (60 ms) motion. Use these tokens for ordinary interface transitions. Use a feature-specific duration only when the interaction needs a distinct, measured settling time, and keep its easing consistent with the motion system.
 
 `src/components/Presence.tsx` contains shared behavior:
 
@@ -34,6 +34,16 @@ For a gesture that follows the pointer:
 6. Finish on `transitionend`, with a bounded fallback for a missing event. Clear temporary attributes and styles on completion, cancellation, a new gesture, and unmount.
 
 Use pointer cancellation and lost pointer capture as real cancellation paths. Preserve taps and horizontal scrolling where the gesture only owns vertical movement. Provide enough hit area around the content so the player can begin the gesture without targeting a small handle.
+
+## Layout-changing panels
+
+When a panel adds or removes content, model both the panel's visible motion and the layout that responds to it. Decide which part grows, which part keeps its natural size, and which surrounding surface must make room. Let the layout owner respond to the same measured geometry the player sees; a transform-only preview is not enough if the fitter uses layout dimensions. On mobile, keep an exiting hint in the rendered panel order and normal flow until its measured height reaches zero; keep fit-content layout active through that exit. On entry, collapse the inserted host and synchronously fit the puzzle to that zero-height geometry before the first visible frame.
+
+For input tabs and hint panels across mobile and desktop, use the tabs duration (160 ms). The mobile keypad keeps its measured body height while the toolbar grows above it. Toolbar growth and collapse, edge padding, and the related puzzle-fit transition share that duration; the board fitter observes the input card as its real layout height changes. Mobile and standard desktop hint slots expand from zero height on entry and collapse to zero height on exit. The advanced dock keeps its allocated size, while its hint content collapses to zero height inside it. Keep the 240 ms panel duration for other panel transitions. Include edge padding, borders, and other size-affecting details so cleanup does not cause a second layout jump after the motion ends. Remove temporary minimum heights and animation styles on finish, cancellation, rapid reopen, and unmount.
+
+Before implementing a panel transition, trace the full geometry handoff: measure the settled state, commit the intended layout, animate from the measured visible position, and confirm that the layout fitter sees intermediate geometry rather than only the final state. Avoid competing owners that each recompute or transform the same surface. If a gesture previews layout, keep its position and size derived from the same pointer delta and hand the release position directly to the snap animation.
+
+When a new panel is inserted between existing panels, animate the entering panel's size and let normal layout move its siblings. Do not also FLIP-scale those siblings from the old layout while the inserted panel is changing size; both animations would try to explain the same displacement and can make a panel appear to grow, then snap back. Reserve sibling FLIP for transitions where the target panel is already at its final size.
 
 ## Snap animation handoff
 

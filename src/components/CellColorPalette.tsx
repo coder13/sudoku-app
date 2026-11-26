@@ -1,8 +1,10 @@
 import { Button } from './Button'
 import { ArrowUpDown, Check, Eraser, Link2 } from 'lucide-react'
-import { useId, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { alternateColorShade, COLORS, COLOR_FAMILIES, type ColorTarget } from '../sudoku/game'
+import { COLOR_GROUP_CONTINUATION_ENABLED } from '../sudoku/feature-flags'
 import { shortcutLabel, shortcutStore } from '../sudoku/shortcuts'
+import { colorToneStyle } from './color-tone'
 
 type Props = {
   target: ColorTarget
@@ -28,18 +30,14 @@ export function ColorTargetPicker({ target, disabled, onTarget }: Pick<Props, 't
   )
 }
 
-export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<Props, 'brush' | 'disabled' | 'onColor' | 'onSwitchShade'>) {
-  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const shadeKey = shortcutLabel(shortcuts.switchColorShade)
-  const alternate = brush === null ? null : alternateColorShade(brush)
+export function ColorSwatches({ brush, disabled, onColor }: Pick<Props, 'brush' | 'disabled' | 'onColor'>) {
   return <div className="color-picker">
     <div className="cell-color-swatches" role="group" aria-label="Color shades">
       {['Light', 'Dark'].map((shade, row) => <div className="color-shade-row" key={shade}>
-        <span className="color-shade-label">{shade}</span>
         {COLOR_FAMILIES.map((name, index) => {
           const color = row * COLOR_FAMILIES.length + index + 1
           const label = `${shade} ${name.toLowerCase()}`
-          return <button type="button" className={`cell-color-swatch color-${color}`} key={name}
+          return <button type="button" className="cell-color-swatch" style={colorToneStyle(color)} key={name}
             aria-label={label} title={label} aria-pressed={brush === color} disabled={disabled}
             onClick={() => onColor(color)}>
             {brush === color && <Check size={16} aria-hidden="true" />}
@@ -47,28 +45,23 @@ export function ColorSwatches({ brush, disabled, onColor, onSwitchShade }: Pick<
         })}
       </div>)}
     </div>
-    <Button type="button" className="color-shade-switch" disabled={disabled || alternate === null}
-      title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()} (${shadeKey})`}
-      aria-keyshortcuts={shadeKey} onClick={onSwitchShade}>
-      <ArrowUpDown size={15} aria-hidden="true" /> Switch shade <kbd aria-hidden="true">{shadeKey}</kbd>
-    </Button>
   </div>
 }
 
 export function CellColorPalette({ target, onTarget, brush, hasColors, disabled, onColor, onSwitchShade, onStop, onClear,
   canContinueGroup, groupMessage, onContinueGroup }: Props) {
-  const groupMessageId = useId()
-  const instructions = brush === null
-    ? target === 'cell' ? 'Pick a color, then choose cells. You can also select cells first.'
-      : 'Pick a color, then tap individual candidates.'
-    : brush === 0 ? `Choose ${target === 'cell' ? 'cells' : 'candidates'} to erase their color.` : null
-
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
+  const shadeKey = shortcutLabel(shortcuts.switchColorShade)
+  const alternate = brush === null ? null : alternateColorShade(brush)
   return (
-    <section className="cell-color-palette" aria-label="Coloring">
+    <section className="cell-color-palette" aria-label="Coloring" data-grid-click-away-controls>
+      <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} />
       <ColorTargetPicker target={target} onTarget={onTarget} disabled={disabled} />
-      <ColorSwatches brush={brush} disabled={disabled} onColor={onColor} onSwitchShade={onSwitchShade} />
-      {!disabled && instructions && <p aria-live="polite">{instructions}</p>}
       <div className="cell-color-actions">
+        <Button type="button" className="color-shade-switch" aria-label="Switch shade" aria-keyshortcuts={shadeKey}
+          disabled={disabled || alternate === null}
+          title={alternate === null ? 'Choose a color first' : `Switch to ${COLORS[alternate - 1].toLowerCase()} (${shadeKey})`}
+          onClick={onSwitchShade}><ArrowUpDown size={15} aria-hidden="true" /></Button>
         <Button type="button" aria-pressed={brush === 0} aria-label={`Erase ${target} color`}
           disabled={disabled} onClick={() => onColor(0)}><Eraser size={15} aria-hidden="true" /> Erase</Button>
         <Button type="button" disabled={disabled || !hasColors}
@@ -76,12 +69,12 @@ export function CellColorPalette({ target, onTarget, brush, hasColors, disabled,
         {brush !== null && <Button type="button" title="Stop coloring (Esc)"
           aria-label="Stop coloring" aria-keyshortcuts="Escape" onClick={onStop}>Done</Button>}
       </div>
-      <div className="color-link-tools">
-        {groupMessage && <p className="color-link-message" id={groupMessageId} aria-live="polite">{groupMessage}</p>}
+      {COLOR_GROUP_CONTINUATION_ENABLED && <div className="color-link-tools">
+        {groupMessage && <p className="color-link-message" aria-live="polite">{groupMessage}</p>}
         <Button type="button" className="color-strong-links" disabled={disabled || !canContinueGroup}
           title="Follow strong links from your starting mark, keeping its color pair and existing shades."
-          aria-describedby={groupMessage ? groupMessageId : undefined} onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>
-      </div>
+          onClick={onContinueGroup}><Link2 size={16} aria-hidden="true" /> Continue this group</Button>
+      </div>}
     </section>
   )
 }

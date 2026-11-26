@@ -73,7 +73,8 @@ export function CalcudokuDifficultyPage() {
 }
 
 export function CalcudokuImportPreview({ entry }: { entry: CalcudokuEntry }) {
-  return <NumberPuzzlePreview board={calcudoku.board(entry)} label="Calcudoku puzzle preview" position={entry.initialPosition} />
+  return <NumberPuzzlePreview board={calcudoku.board(entry)} game="calcudoku"
+    label="Calcudoku puzzle preview" position={entry.initialPosition} />
 }
 
 export function CalcudokuPlay({ entry }: { entry: CalcudokuEntry }) {

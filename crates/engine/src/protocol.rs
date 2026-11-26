@@ -561,36 +561,98 @@ fn lesson_position(position: &PositionSnapshot, deduction: &Hint) -> ResultValue
 }
 
 #[cfg(feature = "teaching")]
-fn transpose_lesson_position(position: &PositionSnapshot) -> PositionSnapshot {
-    // Transpose the grid and rename every digit. The same technique applies in a new orientation.
-    let transpose = |cell: usize| cell % 9 * 9 + cell / 9;
-    let rename = |digit: u8| if digit == 0 { 0 } else { (digit + 2) % 9 + 1 };
-    PositionSnapshot {
-        givens: std::array::from_fn(|cell| rename(position.givens[transpose(cell)])),
-        entries: std::array::from_fn(|cell| rename(position.entries[transpose(cell)])),
-        eliminations: std::array::from_fn(|cell| {
-            let mask = position.eliminations[transpose(cell)];
-            ((mask << 3) | (mask >> 6)) & super::DIGITS
-        }),
+fn focused_practice_position(
+    technique: Technique,
+    position: PositionSnapshot,
+) -> Result<PositionSnapshot, (&'static str, &'static str)> {
+    solve_position(&position, Technique::DIFFICULTY_ORDER)
+        .map_err(|_| INVALID_LESSON)?
+        .practice_position(technique)
+        .ok_or(INVALID_LESSON)
+}
+
+#[cfg(feature = "teaching")]
+fn focused_practice_examples(
+    technique: Technique,
+) -> Result<Vec<(PositionSnapshot, Vec<Hint>)>, (&'static str, &'static str)> {
+    let mut exercises = Vec::new();
+    for example in technique.practice_examples() {
+        let Ok(position) = example.position() else {
+            continue;
+        };
+        let Ok(position) = focused_practice_position(technique, position) else {
+            continue;
+        };
+        let Ok(proofs) = technique_deductions_at(&position, technique) else {
+            continue;
+        };
+        if !proofs.is_empty() {
+            exercises.push((position, proofs));
+        }
     }
+
+    if exercises.is_empty() {
+        let position = technique
+            .practice_example()
+            .position()
+            .map_err(puzzle_error)?;
+        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
+        if proofs.is_empty() {
+            return Err((INVALID_LESSON.0, technique.id()));
+        }
+        exercises.push((position, proofs));
+    }
+    let (source, _) = exercises.first().cloned().ok_or(INVALID_LESSON)?;
+    let seed = seed_for_example(technique, 0);
+    let mut random = Random::from_seed(seed);
+    for _ in 0..96 {
+        if exercises.len() == 3 {
+            break;
+        }
+        let (cells, digits) = puzzle_permutation(&mut random);
+        let position = PositionSnapshot {
+            givens: cells.map(|cell| digits[usize::from(source.givens[cell])]),
+            entries: cells.map(|cell| digits[usize::from(source.entries[cell])]),
+            eliminations: cells.map(|cell| {
+                (1..=9).fold(0, |mask, digit| {
+                    let bit = (source.eliminations[cell] >> (digit - 1)) & 1;
+                    mask | (bit << (digits[digit] - 1))
+                })
+            }),
+        };
+        if exercises.iter().any(|(existing, _)| existing == &position) {
+            continue;
+        }
+        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
+        if !proofs.is_empty() {
+            exercises.push((position, proofs));
+        }
+    }
+    if exercises.len() == 3 {
+        Ok(exercises)
+    } else {
+        Err((INVALID_LESSON.0, technique.id()))
+    }
+}
+
+#[cfg(feature = "teaching")]
+fn seed_for_example(technique: Technique, index: u32) -> u32 {
+    technique.id().bytes().fold(0x811c_9dc5_u32, |seed, byte| {
+        (seed ^ u32::from(byte)).wrapping_mul(0x0100_0193)
+    }) ^ index.wrapping_mul(0x9e37_79b9)
 }
 
 #[cfg(feature = "teaching")]
 fn lesson_examples() -> ResultValue {
     let mut lessons = serde_json::Map::new();
     for technique in Technique::ALL {
-        let example = technique.practice_example();
-        let position = example.position().map_err(puzzle_error)?;
-        let deduction = technique_deductions_at(&position, technique)
-            .map_err(|_| INVALID_LESSON)?
-            .into_iter()
-            .find(|hint| hint.actions == example.expected_actions)
-            .ok_or(INVALID_LESSON)?;
-        let practice = transpose_lesson_position(&position);
-        let proofs = technique_deductions_at(&practice, technique).map_err(|_| INVALID_LESSON)?;
-        let proof = proofs.first().ok_or(INVALID_LESSON)?;
-        let mut lesson = lesson_position(&position, &deduction)?;
-        lesson["practice"] = practice_value(&practice, &proofs, proof)?;
+        let exercises = focused_practice_examples(technique)?;
+        let (position, proofs) = exercises.first().ok_or(INVALID_LESSON)?;
+        let deduction = proofs.first().ok_or(INVALID_LESSON)?;
+        let (practice, practice_proofs) = exercises.get(1).unwrap_or(&exercises[0]);
+        let practice_proof = practice_proofs.first().ok_or(INVALID_LESSON)?;
+        let mut lesson = lesson_position(position, deduction)?;
+        lesson["practice"] = practice_value(practice, practice_proofs, practice_proof)?;
         lessons.insert(technique.id().into(), lesson);
     }
     Ok(Value::Object(lessons))
@@ -613,14 +675,9 @@ fn practice_value(position: &PositionSnapshot, proofs: &[Hint], proof: &Hint) ->
 #[cfg(feature = "teaching")]
 fn practice_examples(technique: Technique) -> ResultValue {
     let mut exercises = Vec::new();
-    for example in technique.practice_examples() {
-        let position = example.position().map_err(puzzle_error)?;
-        let proofs = technique_deductions_at(&position, technique).map_err(|_| INVALID_LESSON)?;
-        let expected = proofs
-            .iter()
-            .find(|hint| hint.actions == example.expected_actions)
-            .ok_or(INVALID_LESSON)?;
-        exercises.push(practice_value(&position, &proofs, expected)?);
+    for (position, proofs) in focused_practice_examples(technique)? {
+        let proof = proofs.first().ok_or(INVALID_LESSON)?;
+        exercises.push(practice_value(&position, &proofs, proof)?);
     }
     Ok(Value::Array(exercises))
 }
@@ -628,10 +685,12 @@ fn practice_examples(technique: Technique) -> ResultValue {
 #[cfg(feature = "teaching")]
 fn generate_practice_example(technique: Technique, seed: u32, exclude: Board) -> ResultValue {
     let mut random = Random::from_seed(seed);
-    let mut examples = technique.practice_examples();
+    let mut examples: Vec<_> = focused_practice_examples(technique)?
+        .into_iter()
+        .map(|(position, _)| position)
+        .collect();
     random.shuffle(&mut examples);
-    for example in examples.into_iter().cycle().take(6) {
-        let original = example.position().map_err(puzzle_error)?;
+    for original in examples.into_iter().cycle().take(6) {
         let (cells, digits) = puzzle_permutation(&mut random);
         let position = PositionSnapshot {
             givens: cells.map(|cell| digits[usize::from(original.givens[cell])]),

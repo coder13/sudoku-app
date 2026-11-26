@@ -20,7 +20,7 @@ export type BoardLink = {
   selectFrom?: Candidate
 }
 
-export type CellAnnotation = { fill?: string; ink?: string; label?: string }
+export type CellAnnotation = { fill?: string; fills?: readonly string[]; ink?: string; label?: string }
 export type CandidateAnnotation = { color: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; label?: string }
 export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; label?: string }
 
@@ -29,6 +29,54 @@ export type BoardAnnotations = {
   candidates?: ReadonlyMap<number, ReadonlyMap<number, CandidateAnnotation>>
   links?: readonly BoardLink[]
   groups?: readonly BoardGroup[]
+}
+
+function mergeCellAnnotations(
+  base: BoardAnnotations['cells'],
+  overlay: BoardAnnotations['cells'],
+): BoardAnnotations['cells'] {
+  if (!overlay) return base
+  const cells = new Map(base)
+  for (const [cell, annotation] of overlay) {
+    const current = cells.get(cell)
+    const currentFills = current?.fills?.length ? current.fills : current?.fill ? [current.fill] : []
+    const nextFills = annotation.fills?.length ? annotation.fills : annotation.fill ? [annotation.fill] : []
+    cells.set(cell, { ...current, ...annotation, fills: [...new Set([...currentFills, ...nextFills])] })
+  }
+  return cells
+}
+
+function mergeCandidateAnnotations(
+  base: BoardAnnotations['candidates'],
+  overlay: BoardAnnotations['candidates'],
+): BoardAnnotations['candidates'] {
+  if (!overlay) return base
+  const candidates = new Map(base)
+  for (const [cell, marks] of overlay) {
+    const cellMarks = new Map(base?.get(cell))
+    for (const [digit, mark] of marks) {
+      cellMarks.set(digit, { ...cellMarks.get(digit), ...mark })
+    }
+    candidates.set(cell, cellMarks)
+  }
+  return candidates
+}
+
+/** Add marks from one board layer; overlay fields win when both layers mark the same candidate. */
+export function mergeBoardAnnotations(base: BoardAnnotations | undefined, overlay: BoardAnnotations | undefined): BoardAnnotations | undefined {
+  if (!overlay) return base
+  const cells = mergeCellAnnotations(base?.cells, overlay.cells)
+  const candidates = mergeCandidateAnnotations(base?.candidates, overlay.candidates)
+  const links = overlay.links ? [...(base?.links ?? []), ...overlay.links] : base?.links
+  const groups = overlay.groups ? [...(base?.groups ?? []), ...overlay.groups] : base?.groups
+  return {
+    ...base,
+    ...overlay,
+    ...(cells ? { cells } : {}),
+    ...(candidates ? { candidates } : {}),
+    ...(links ? { links } : {}),
+    ...(groups ? { groups } : {}),
+  }
 }
 
 const CELL = 10
@@ -99,7 +147,7 @@ export function BoardLinks({ links = NO_LINKS, groups = NO_GROUPS, region, candi
     }
     return marks
   }, [links, routes, grouped, candidateInsets, id, onSelect])
-  const group = useMemo(() => <svg aria-hidden="true" className="board-links" viewBox={viewBox} />, [viewBox])
+  const group = useMemo(() => <svg aria-hidden="true" className="board-links" data-board-links viewBox={viewBox} />, [viewBox])
   return <BoardMarks items={items} group={group} />
 }
 

@@ -3,7 +3,7 @@ import { sameCandidateColors, sameImportedCellColors } from './imported-colors.t
 import { sameImportedDrawings } from './imported-drawings.ts'
 import { sameAuthoredArtwork } from './authored-artwork.ts'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from './algebraic-game.ts'
-import { createGameId, EMPTY, hasUniquenessProof, makeGame, markSolveUntimed, puzzleIdentity, uniquenessKey, type Game } from './game.ts'
+import { createGameId, EMPTY, hasUniquenessProof, makeGame, markSolveUntimed, puzzleIdentity, sameCellColors, uniquenessKey, type Game } from './game.ts'
 import { verifySizedRulePuzzle } from './sized-rule-game.ts'
 import { analyzeMini } from './mini-play.ts'
 import { detectPuzzle, importSharedPuzzle, type ImportedPuzzle } from './puzzle-import.ts'
@@ -46,12 +46,12 @@ export function findImportAttempt(games: readonly Game[], preview: PuzzlePreview
   if (game.sharedPuzzleId) return findSharedAttempt(games, game.sharedPuzzleId)
   const attempts = game.whispersGuide ? games.filter(saved => saved.whispersGuide) : games
   if (!hasProgress && !startFresh) return findImportedPuzzle(attempts, game)
-  const { entries, center, corner, colors, importedCellColors, candidateColors, importedCandidateColors, importedDrawings } = game.position
+  const { entries, center, corner, importedCellColors, candidateColors, importedCandidateColors, importedDrawings } = game.position
   const identity = puzzleIdentity(game)
   return attempts.find(saved => saved.source !== 'draft' && (!startFresh || !saved.started) && saved.position.entries === entries &&
     center.every((mask, cell) => mask === saved.position.center[cell]) &&
     corner.every((mask, cell) => mask === saved.position.corner[cell]) &&
-    colors.every((color, cell) => color === saved.position.colors[cell]) &&
+    sameCellColors(game.position, saved.position) &&
     sameImportedCellColors(importedCellColors, saved.position.importedCellColors) &&
     sameCandidateColors(candidateColors, saved.position.candidateColors) &&
     sameCandidateColors(importedCandidateColors, saved.position.importedCandidateColors) &&

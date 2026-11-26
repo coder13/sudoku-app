@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Eraser, Eye, EyeOff, Link2, MoreHorizontal, Palette, Plus, Redo2, RotateCw, Trash2, Undo2 } from 'lucide-react'
-import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useId, useLayoutEffect, useRef, useState, type Ref } from 'react'
 import type { Deduction } from '../sudoku/engine'
+import type { ChainProof } from '../sudoku/chain-sketch-analysis'
 import { chainColor, chainPairIndex, type ChainColor } from '../sudoku/chain-sketch'
 import { chainNodeCandidates, chainPoint, type ChainNode, type LinkStrength } from '../sudoku/chains'
 import { cellReference, techniqueLabel, type CellReferenceOptions } from '../sudoku/hints'
@@ -9,9 +10,12 @@ import { shortcutLabel, type ShortcutPreferences } from '../sudoku/shortcuts'
 import { techniqueActionKey } from '../sudoku/technique-progress'
 import type { BoardLink } from './BoardAnnotations'
 import { Button, IconButton } from './Button'
+import { useActionMenuKeyboard } from './useActionMenuKeyboard'
 import { Modal } from './Modal'
-import type { ChainProof, useChainSketch } from './useChainSketch'
+import type { useChainSketch } from './useChainSketch'
 import { usePlayPreference } from './usePlayPreference'
+import { useAnchoredPopover } from './useAnchoredPopover'
+import { positionScaledRightPopover } from './scaled-popover-position'
 
 type ChainInspection = CellReferenceOptions & { deduction: Deduction; links: readonly BoardLink[]; explanation?: string }
 type Props = {
@@ -21,11 +25,12 @@ type Props = {
   onToggleDrawing: () => void
   onChooseColors: () => void
   shortcuts: Pick<ShortcutPreferences, 'chainDrawing' | 'applyEdits'>
-  compact?: boolean
   strongLinks?: { shown: boolean; hasHighlights: boolean; count: number; toggle: () => void }
   eliminations?: { shown: boolean; toggle: () => void }
   unavailable?: string
+  onRetryCandidates?: () => void
   inspection?: ChainInspection
+  panelRef?: Ref<HTMLElement>
 }
 
 function pointName(point: BoardLink['from'], nameCell = cellName) {
@@ -184,39 +189,16 @@ function ChainActionsMenu({ actions, label = 'Chain actions' }: {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const menu = popover.current
-    const button = trigger.current
-    if (!open || !menu || !button) return
-    const position = () => {
-      const anchor = button.getBoundingClientRect()
-      const scale = Number(getComputedStyle(menu).getPropertyValue('--desktop-layout-scale')) || 1
-      const gap = 8
-      const below = window.innerHeight - anchor.bottom - 2 * gap
-      const above = anchor.top - 2 * gap
-      const opensAbove = menu.scrollHeight * scale > below && above > below
-      menu.style.maxHeight = `${Math.max(0, opensAbove ? above : below) / scale}px`
-      const left = Math.max(gap, Math.min(anchor.right, window.innerWidth - gap) - menu.offsetWidth * scale)
-      const top = opensAbove ? anchor.top - gap - menu.offsetHeight * scale : anchor.bottom + gap
-      menu.style.left = `${left / scale}px`
-      menu.style.top = `${Math.max(gap, top) / scale}px`
-    }
-    position()
-    const first = menu.querySelector<HTMLButtonElement>('button:not([aria-disabled="true"])') ?? menu.querySelector('button')
-    first?.focus({ preventScroll: true })
-    window.addEventListener('resize', position)
-    window.addEventListener('scroll', position, true)
-    return () => {
-      window.removeEventListener('resize', position)
-      window.removeEventListener('scroll', position, true)
-      menu.removeAttribute('style')
-    }
-  }, [open])
+  useAnchoredPopover({ open, anchorRef: trigger, popupRef: popover, clearInlineStyle: true,
+    place: positionScaledRightPopover,
+  })
 
   function close() {
     popover.current?.hidePopover()
     trigger.current?.focus({ preventScroll: true })
   }
+  const onMenuKeyDown = useActionMenuKeyboard({ open, menuRef: popover, triggerRef: trigger,
+    close: () => popover.current?.hidePopover() })
 
   const items = actions.map(({ label: actionLabel, icon: Icon, disabled, title, opensDialog, checked, toggle, run }) => (
     <button type="button" key={actionLabel} role={toggle ? 'menuitemcheckbox' : 'menuitem'} tabIndex={-1} aria-disabled={disabled}
@@ -240,25 +222,13 @@ function ChainActionsMenu({ actions, label = 'Chain actions' }: {
     </IconButton>
     <div ref={popover} id={id} popover="auto" className="app-menu chain-actions-menu" role="menu" aria-label={label}
       onToggle={(event) => setOpen(event.currentTarget.matches(':popover-open'))}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' || event.key === 'Tab') {
-          if (event.key === 'Escape') event.preventDefault()
-          close()
-        } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-          event.preventDefault()
-          const items = Array.from(event.currentTarget.querySelectorAll('button'))
-          const index = items.findIndex(item => item === document.activeElement)
-          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
-            : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
-          items[next]?.focus()
-        }
-      }}>
+      onKeyDown={onMenuKeyDown}>
       {items}
     </div>
   </>
 }
 
-export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, compact, strongLinks, eliminations, unavailable, inspection }: Props) {
+export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onChooseColors, shortcuts, strongLinks, eliminations, unavailable, onRetryCandidates, inspection, panelRef }: Props) {
   const chainLabelId = useId()
   const groupButton = useRef<HTMLButtonElement>(null)
   const groupWasOpen = useRef(false)
@@ -270,9 +240,9 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
   if (inspection) {
     const { deduction, links, explanation, cellReferenceStyle, difficulty } = inspection
     const nameCell = cellReferenceStyle === undefined ? cellName : (cell: number) => cellReference(cell, cellReferenceStyle, difficulty)
-    return <section className="chains-panel" aria-label="Chains">
+    return <section ref={panelRef} className="chains-panel" aria-label="Chains" data-grid-click-away-exempt>
       <h2>{techniqueLabel(deduction.technique)}</h2>
-      {!compact && links.length > 0 && <LinkLegend />}
+      {links.length > 0 && <LinkLegend />}
       {explanation && <p>{explanation}</p>}
       <ul className="chain-results">{deductionResults(deduction.actions, inspection).map((result) => <li key={result}>{result}</li>)}</ul>
       {links.length > 0 && <details className="chain-links">
@@ -327,8 +297,11 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
       ]} />
     </div>
   </div>
-  return <section className="chains-panel" aria-label="Chains">
-    {unavailable ? <p role="status">{unavailable}</p> : <>
+  return <section ref={panelRef} className="chains-panel" aria-label="Chains" data-grid-click-away-exempt>
+    {unavailable ? <div className="chains-unavailable">
+      <p role="status">{unavailable}</p>
+      {onRetryCandidates && <Button variant="quiet" onClick={onRetryCandidates}>Retry candidates</Button>}
+    </div> : <>
       <div className="chain-panel-tools">
         <div className="chain-panel-primary-actions">
           <Button disabled={!sketch.hasLinks} onClick={sketch.addSketch}>
@@ -413,7 +386,7 @@ export function ChainsPanel({ sketch, onApply, applyFailed, onToggleDrawing, onC
           </li>
         })}
       </ul>
-      {!compact && sketch.sketches.some(({ paths }) => paths.length > 0) && <LinkLegend notation />}
+      {sketch.sketches.some(({ paths }) => paths.length > 0) && <LinkLegend notation />}
     </>}
   </section>
 }

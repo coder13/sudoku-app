@@ -1,0 +1,580 @@
+import { Link, useRouter } from '@tanstack/react-router'
+import { Check, ChevronLeft, ChevronRight, Delete, Info, Lightbulb, Pencil } from 'lucide-react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { numberPuzzleDifficultyLabels, type NumberPuzzleEntry } from '../number-puzzles/catalog'
+import { type GeneratedNumberGame } from '../number-puzzles/generated'
+import { generatedNumberHistory, numberPositionKey, openGeneratedNumberPuzzle, saveGeneratedNumberClock, saveGeneratedNumberProgress } from '../number-puzzles/generated-storage'
+import { advanceNumberClock, emptyNumberPosition, hasNumberMoves, loadNumberProgress, NUMBER_HISTORY_SIZE, parseNumberProgress, readNumberProgress, saveNumberClock, saveNumberProgress, type NumberClock, type NumberMove, type NumberPosition, type NumberProgress, type SavedNumberProgress } from '../number-puzzles/progress'
+import { Button, IconButton, buttonClassName } from './Button'
+import { DeductionExplanation, HintCard } from './HintCard'
+import { Modal } from './Modal'
+import { PlayHint, PlayLayout } from './PlayLayout'
+import { PlayActionsButton } from './PlayActionsButton'
+import { PlacementAnalysis, PuzzleAnalysis } from './PuzzleAnalysis'
+import { PuzzleCheckResult, type DialogResult } from './PuzzleCheckResult'
+import { SolutionDialog, SolutionPath, solutionEndSummary, type NumberSolutionTrace } from './SolutionPath'
+import { useMobileLayout } from './mobile-layout'
+import { numberSolution } from '../number-puzzles/solution'
+import { formatTime } from '../sudoku/game'
+import { puzzleTiming } from '../sudoku/puzzle-timing'
+import { usePuzzleTimer } from './usePuzzleTimer'
+import { PLAY_TOOL_REGISTRY } from './PlayToolRegistry'
+import { shortcutLabel, shortcutMatches, shortcutStore } from '../sudoku/shortcuts'
+import { PuzzleKeypad } from './PuzzleKeypad'
+import { PuzzleHistoryActions } from './PuzzleHistoryActions'
+import { useNumberPuzzleGeneration } from './useNumberPuzzleGeneration'
+import { NumberGameHeading } from './NumberPuzzleHeading'
+import { boardPosition, editableCells, puzzleDestination } from './NumberPuzzleModel'
+import { NumberPuzzleGrid } from './NumberPuzzleGrid'
+import type { NumberGameConfig, NumberPuzzleHint } from './NumberPuzzleTypes'
+import { useAnchoredPopover } from './useAnchoredPopover'
+import { closePanelState, selectPanelState } from '../sudoku/play-session'
+import { ActionMenuItem } from './ActionMenuItem'
+import type { UiCommand } from './UiCommand'
+
+/** Use for standalone play with a game-specific board, check, and hint function. */
+export function NumberGamePlay<Entry extends NumberPuzzleEntry>({ config, entry }: {
+  config: NumberGameConfig<Entry>; entry: Entry
+}) {
+  return <main className="puzzles-page puzzles-subscreen puzzle-game-page">
+    <div className="puzzles-layout number-puzzle-layout">
+      <NumberPuzzleBoard config={config} entry={entry} key={entry.id} />
+    </div>
+  </main>
+}
+
+const insightTabs = [PLAY_TOOL_REGISTRY.solution, PLAY_TOOL_REGISTRY.techniques] as const
+type Insight = typeof insightTabs[number]['id']
+const insightOrder: readonly Insight[] = insightTabs.map(({ id }) => id)
+type InsightPanelState = { open: Insight[]; active: Insight | null }
+type HintSelection = { choices: readonly NumberPuzzleHint[]; index: number; depth: number }
+
+function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: { config: NumberGameConfig<Entry>; entry: Entry }) {
+  const { game, name, rules, hasClueCells, generatedEntry } = config
+  const generatedGame = entry.generated && generatedEntry ? game : null
+  const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
+  const board = useMemo(() => config.board(entry), [config, entry])
+  const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
+  const { width, height, maxValue, cellChoices, mirrorEdgeClues } = board
+  const digits = useMemo(() => Array.from({ length: maxValue }, (_, i) => i + 1), [maxValue])
+  const [progress, setProgress] = useState<NumberProgress>(() => ({
+    position: emptyNumberPosition(board.cells.length), past: [], future: [],
+  }))
+  const { position, past, future, clock } = progress
+  const [ready, setReady] = useState(false)
+  const [number, setNumber] = useState(entry.number)
+  const [selection, setSelection] = useState(() => editable.indexOf(true))
+  const [notes, setNotes] = useState(false)
+  const [numberInput, setNumberInput] = useState('')
+  const numberField = useRef<HTMLInputElement>(null)
+  const [showCheck, setShowCheck] = useState(false)
+  const [checkResult, setCheckResult] = useState<DialogResult | null>(null)
+  const mobile = useMobileLayout()
+  const [hintSelection, setHint] = useState<HintSelection | null>(null)
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [mobileInsight, setMobileInsight] = useState<Insight | null>(null)
+  const [insights, setInsights] = useState<InsightPanelState>({ open: [], active: null })
+  const [rearranging, setRearranging] = useState(false)
+  const [solution, setSolution] = useState<ReturnType<typeof numberSolution<NumberPuzzleHint>> | null>(null)
+  const [solutionIndex, setSolutionIndex] = useState(0)
+  const [showSolutionHint, setShowSolutionHint] = useState(false)
+  const [status, setStatus] = useState('')
+  const [storageError, setStorageError] = useState(false)
+  const lastSave = useRef(0)
+  const cellButtons = useRef(new Map<number, HTMLButtonElement>())
+  const actionsButton = useRef<HTMLButtonElement>(null)
+  const actionsMenu = useRef<HTMLDivElement>(null)
+  const result = useMemo(() => board.check(position.values), [board, position.values])
+  const conflictCells = new Set(showCheck ? result.marked : [])
+  const hint = hintSelection?.choices[hintSelection.index]
+  const depth = hintSelection?.depth ?? 0
+  const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
+  const previewing = mobile ? mobileInsight === 'solution' : insights.active === 'solution'
+  const analysisOpen = mobile ? mobileInsight === 'techniques' : insights.active === 'techniques'
+  const found = useMemo(() => analysisOpen && !result.complete && !result.marked.length ? board.hints(position.values) : [],
+    [analysisOpen, board, position.values, result])
+  const locked = !ready || result.complete || previewing
+  const overlayOpen = actionsOpen || rulesOpen || checkResult !== null || mobileInsight !== null
+  const timing = useSyncExternalStore(puzzleTiming.subscribe, puzzleTiming.getSnapshot, puzzleTiming.getServerSnapshot)
+  const timed = clock !== undefined && clock !== 'untimed'
+  const elapsed = timed ? clock.elapsed : 0
+  const showTimer = ready && clock !== 'untimed' && (result.complete ? timed : timing.showTimer && timing.trackTime)
+  const changeClock = useEffectEvent((change: number | 'untimed') => {
+    setProgress(current => {
+      const next = advanceNumberClock(current.clock, change)
+      return next === current.clock ? current : { ...current, clock: next }
+    })
+    function applySavedTime(saved: NumberClock | undefined) {
+      if (saved === undefined) return
+      setProgress(current => {
+        const previous = current.clock
+        if (previous === 'untimed') return current
+        if (saved === 'untimed') return { ...current, clock: saved }
+        if (saved.finished && !previous?.finished) return { ...current, clock: saved }
+        if (previous && previous.elapsed >= saved.elapsed) return current
+        return { ...current, clock: { ...previous, elapsed: saved.elapsed } }
+      })
+    }
+    if (generatedGame) void saveGeneratedNumberClock(generatedGame, entry.id, change).then(applySavedTime)
+    else applySavedTime(saveNumberClock(key, change))
+  })
+  usePuzzleTimer(key, ready && timed && timing.trackTime && !clock.finished &&
+    !result.complete && !overlayOpen && !previewing && !rearranging, seconds => {
+    if (!result.complete) changeClock(seconds)
+  })
+  useEffect(() => {
+    if (ready && timed && !timing.trackTime && !result.complete) changeClock('untimed')
+  }, [ready, result.complete, timed, timing.trackTime])
+
+  useAnchoredPopover({
+    open: !mobile && actionsOpen,
+    anchorRef: actionsButton,
+    popupRef: actionsMenu,
+    observe: (anchor, popup) => [anchor, popup],
+    place: (anchorElement, popup) => {
+      const anchor = anchorElement.getBoundingClientRect()
+      const bounds = popup.getBoundingClientRect()
+      const top = anchor.bottom + bounds.height + 14 <= window.innerHeight
+        ? anchor.bottom + 6 : anchor.top - bounds.height - 6
+      popup.style.top = `${Math.max(8, top)}px`
+      popup.style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - bounds.width - 8))}px`
+    },
+  })
+
+  useEffect(() => {
+    function restore(stored: NumberProgress | null | undefined) {
+      if (!stored) return
+      // Earlier moves have no elapsed time. Keep their solve count without a partial time.
+      setProgress(stored.clock === undefined && hasNumberMoves(stored) ? { ...stored, clock: 'untimed' } : stored)
+    }
+
+    if (generatedGame) {
+      let active = true
+      void openGeneratedNumberPuzzle(generatedGame, entry.id).then(record => {
+        if (!active) return
+        const stored = record.progress && parseNumberProgress(record.progress, editable, maxValue)
+        restore(stored)
+        setNumber(record.number)
+        setReady(true)
+      })
+      return () => { active = false }
+    }
+    const initial = entry.initialPosition
+      ? { position: entry.initialPosition, past: [], future: [], clock: 'untimed' as const }
+      : undefined
+    restore(load() ?? initial)
+    setReady(true)
+  }, [editable, entry.id, entry.initialPosition, generatedGame, load, maxValue])
+
+  function update(move: NumberProgress) {
+    let nextClock: NumberClock = puzzleTiming.getSnapshot().trackTime ? clock ?? { elapsed: 0 } : 'untimed'
+    if (nextClock !== 'untimed' && board.check(move.position.values).complete) nextClock = { ...nextClock, finished: true }
+    const next = { ...move, clock: nextClock }
+    setProgress(next)
+    if (generatedGame) {
+      const save = ++lastSave.current
+      void saveGeneratedNumberProgress(generatedGame, entry.id, next).then(saved => {
+        if (save === lastSave.current) setStorageError(!saved)
+      })
+    } else setStorageError(!saveNumberProgress(key, next))
+    setShowCheck(false)
+    setHint(null)
+    setStatus('')
+  }
+
+  function readCell(cell: number): NumberMove {
+    return [cell, position.values[cell], position.notes[cell]]
+  }
+
+  function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
+    const next = { values: [...position.values], notes: [...position.notes] }
+    next.values[cell] = value
+    next.notes[cell] = marks
+    update({ position: next, past, future })
+  }
+
+  function enter(value: number, cell = selection, pencil = notes) {
+    if (locked || !editable[cell] || !Number.isInteger(value) || value < 0 || value > maxValue) return
+    const previous = readCell(cell)
+    const [, digit, marks] = previous
+    const addNote = value > 0 && pencil
+    if (addNote ? digit !== 0 : value === digit && !marks) return
+    const next: NumberMove = addNote ? [cell, 0, marks ^ (1 << (value - 1))] : [cell, value, 0]
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), previous], [])
+  }
+
+  function undo() {
+    const previous = past.at(-1)
+    if (locked || !previous) return
+    applyMove(previous, past.slice(0, -1), [...future.slice(1 - NUMBER_HISTORY_SIZE), readCell(previous[0])])
+  }
+
+  function redo() {
+    const next = future.at(-1)
+    if (locked || !next) return
+    applyMove(next, [...past.slice(1 - NUMBER_HISTORY_SIZE), readCell(next[0])], future.slice(0, -1))
+  }
+
+  const onPlayKey = useEffectEvent((event: KeyboardEvent) => {
+    if (locked || overlayOpen || rearranging || event.defaultPrevented || event.isComposing || event.altKey) return
+    const target = event.target
+    if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, a, dialog[open]'))) return
+    if (hint && depth === 3 && shortcutMatches(event, shortcuts, 'applyEdits')) {
+      event.preventDefault()
+      if (!event.repeat) applyHint()
+      return
+    }
+    if (!(event.ctrlKey || event.metaKey)) return
+    const key = event.key.toLowerCase()
+    if (key !== 'z' && key !== 'y') return
+    event.preventDefault()
+    if (key === 'y' || event.shiftKey) redo()
+    else undo()
+  })
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => onPlayKey(event)
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  function onGridKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape' && hintSelection) {
+      closeHint()
+      return
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    const direction = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[event.key]
+    if (direction) {
+      event.preventDefault()
+      const [dr, dc] = direction
+      let row = Math.floor(selection / width) + dr
+      let col = selection % width + dc
+      while (row >= 0 && row < height && col >= 0 && col < width) {
+        const cell = row * width + col
+        if (!board.cells[cell].block) {
+          setSelection(cell)
+          cellButtons.current.get(cell)?.focus()
+          return
+        }
+        row += dr
+        col += dc
+      }
+    } else if (cellChoices) {
+      return
+    } else if (/^[1-9]$/.test(event.key) || event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault()
+      if (maxValue > 9 && /^[1-9]$/.test(event.key) && !locked && editable[selection]) {
+        setNumberInput(event.key)
+        numberField.current?.focus()
+      } else enter(Number(event.key) || 0)
+    } else if (event.key.toLowerCase() === 'n') {
+      event.preventDefault()
+      setNotes(current => !current)
+    }
+  }
+
+  function closeActions() {
+    setActionsOpen(false)
+    if (actionsMenu.current?.matches(':popover-open')) actionsMenu.current.hidePopover()
+  }
+
+  const conflictMessage = hasClueCells ? 'Resolve the highlighted clues first.' : 'Resolve the highlighted entries first.'
+
+  function requestHint() {
+    closeActions()
+    const choices = board.hints(position.values, 1)
+    setHint(choices.length ? { choices, index: 0, depth: 0 } : null)
+    setShowCheck(!choices.length && result.marked.length > 0)
+    setStatus(choices.length ? '' : result.marked.length ? conflictMessage
+      : cellChoices ? 'No choice follows from the current clues.' : 'No logical placement found for these entries.')
+  }
+
+  function closeHint() {
+    setHint(null)
+    actionsButton.current?.focus({ preventScroll: true })
+  }
+
+  function applyHint() {
+    if (!hint) return
+    enter(hint.value, hint.cell, false)
+    cellButtons.current.get(hint.cell)?.focus({ preventScroll: true })
+  }
+
+  function selectCell(index: number) {
+    if (index !== selection) setNumberInput('')
+    setSelection(index)
+  }
+
+  function closeInsight(id: Insight, fromMenu = false) {
+    if (mobile) setMobileInsight(null)
+    else setInsights(current => closePanelState<Insight, Insight | null, InsightPanelState>(current, id, open => open.at(-1) ?? null))
+    if (!fromMenu) actionsButton.current?.focus({ preventScroll: true })
+  }
+
+  function openInsight(id: Insight, fromMenu = false) {
+    if (!fromMenu) closeActions()
+    if (id === 'solution') {
+      if (!solution) setSolution(numberSolution(board, editable))
+      setSolutionIndex(0)
+      setShowSolutionHint(false)
+      setShowCheck(false)
+      setHint(null)
+      setStatus('')
+    }
+    if (id === 'techniques' && result.marked.length) setShowCheck(true)
+    if (mobile) setMobileInsight(id)
+    else setInsights(current => selectPanelState<Insight, Insight | null, InsightPanelState>(current, id, [id], insightOrder))
+  }
+
+  function cellName(index: number) {
+    return `R${Math.floor(index / width) + 1}C${index % width + 1}`
+  }
+
+  function nextPuzzle() {
+    return config.entries.find(candidate => {
+      if (candidate.difficulty !== entry.difficulty || candidate.id === entry.id) return false
+      const candidateBoard = config.board(candidate)
+      return !candidateBoard.check(boardPosition(game, candidate.id, candidateBoard).load()?.position.values ?? []).complete
+    })
+  }
+
+  function placement(hint: NumberPuzzleHint) {
+    const choice = cellChoices?.labels[hint.value - 1]
+    return choice ? `${choice} ${board.cells[hint.cell].printed} in ${cellName(hint.cell)}`
+      : `Place ${hint.value} in ${cellName(hint.cell)}`
+  }
+
+  function explanation(hint: NumberPuzzleHint) {
+    return <><DeductionExplanation explanationSteps={hint.reasons} />{hint.renderExplanation?.(cellName)}</>
+  }
+
+  function renderGrid(preview?: { values: readonly number[]; hint: NumberPuzzleHint | null }) {
+    const shownHint = preview ? preview.hint : depth >= 2 ? hint : null
+    const contextCells = preview || depth >= 3 ? new Set(shownHint?.marked ?? []) : undefined
+    return <NumberPuzzleGrid content={{ board, game, name }}
+      appearance={{
+        values: preview?.values ?? position.values,
+        notes: preview ? undefined : position.notes,
+        conflicts: preview ? undefined : conflictCells,
+        highlightedCell: shownHint?.cell,
+        contextCells,
+      }} ariaLabel={preview ? `${name} solution` : undefined}
+      readOnlySemantics={preview ? 'button' : undefined}
+      interaction={preview ? undefined : {
+        selection, locked,
+        onCellFocus: selectCell,
+        onCellClick: (index, value) => {
+          selectCell(index)
+          if (cellChoices) enter(value === cellChoices.off ? 0 : cellChoices.off, index, false)
+        },
+        onCellRef: (index, button) => {
+          if (button) cellButtons.current.set(index, button)
+          else cellButtons.current.delete(index)
+        },
+        onKeyDown: onGridKey,
+      }} />
+  }
+
+  const next = ready && result.complete && !entry.generated ? nextPuzzle() : undefined
+  const trace = useMemo<NumberSolutionTrace | null>(() => solution && ({
+    status: solution.complete ? 'solved' : 'stalled',
+    steps: solution.steps.map(step => step ? { title: step.technique, text: `${placement(step)}.` } : {
+      title: 'Search', text: cellChoices ? 'Check the remaining possible choices.' : 'Find the remaining placements by checking possible values.',
+    }),
+  }), [solution, width, board])
+  const solutionStep = solution?.steps[solutionIndex]
+  const solutionCopy = trace && (solutionStep ? { title: placement(solutionStep), text: '' }
+    : solutionIndex === trace.steps.length ? solutionEndSummary(trace.status)
+      : { title: 'Search', text: 'The solver checked possible values to finish the grid. Select Final grid to see the result.' })
+  const solutionPreview = solution && { values: solution.positions[solutionIndex], hint: solutionStep ?? null }
+  const solutionProps = trace && {
+    state: { status: 'ready' as const, trace }, index: solutionIndex, onSelect: (index: number) => {
+      setSolutionIndex(index)
+      setShowSolutionHint(true)
+    },
+    onRetry: () => setSolution(numberSolution(board, editable)), onClose: () => closeInsight('solution'),
+  }
+  const counts = new Map<string, number>()
+  for (const move of found) counts.set(move.technique, (counts.get(move.technique) ?? 0) + 1)
+  const analysisProps = {
+    title: name, techniques: config.techniques, counts, solved: result.complete,
+    unit: cellChoices ? 'Choices' : undefined,
+    problem: result.marked.length ? conflictMessage : undefined,
+    onSelectTechnique: (technique: string) => {
+      const choices = found.filter(move => move.technique === technique)
+      if (!choices.length) return
+      if (mobile) closeInsight('techniques')
+      setHint({ choices, index: 0, depth: 0 })
+      setStatus('')
+    },
+  }
+
+  const hintChoice = hint && cellChoices?.labels[hint.value - 1]
+  const hintPanel = !mobile && previewing && showSolutionHint && solutionCopy ? <PlayHint mobile={false}>
+    <HintCard hint={solutionCopy} onClose={() => setShowSolutionHint(false)}
+      detail={solutionStep && explanation(solutionStep)} />
+  </PlayHint> : !previewing && hint && hintSelection ? <PlayHint mobile={mobile}>
+    <HintCard hint={{
+      title: depth >= 2 ? placement(hint) : hint.technique,
+      text: hintChoice ? depth === 0 ? 'Use this technique to make a choice.'
+        : depth === 1 ? `Look for a number to ${hintChoice.toLowerCase()}.`
+          : depth === 3 ? 'The targets require this choice.' : ''
+        : depth === 0 ? 'Use this technique to find a placement.'
+        : depth === 1 ? `Look for a place for ${hint.value}.`
+          : depth === 3 ? `These rules leave only ${hint.value} for ${cellName(hint.cell)}.` : '',
+    }} onClose={closeHint}
+      detail={depth === 3 && explanation(hint)}
+      navigation={hintSelection.choices.length > 1 ? {
+        index: hintSelection.index, count: hintSelection.choices.length,
+        onMove: offset => setHint(current => current && {
+          ...current, depth: 0, index: (current.index + offset + current.choices.length) % current.choices.length,
+        }),
+      } : undefined}
+      detailNavigation={{ first: depth === 0, last: depth === 3, onMove: offset => setHint(current => current &&
+        { ...current, depth: Math.max(0, Math.min(3, current.depth + offset)) }) }}
+      action={{ label: 'Apply hint', onClick: applyHint, shortcut: shortcutLabel(shortcuts.applyEdits) }} />
+  </PlayHint> : null
+
+  const actionItems = <>
+    <ActionMenuItem command={{ id: 'number-hint', label: 'View hint', available: !locked, run: requestHint }} Icon={Lightbulb} />
+    <ActionMenuItem command={{ id: 'number-check', label: 'Check puzzle', available: !locked,
+      run: () => { closeActions(); checkPuzzle() } }} Icon={Check} />
+    <div className="app-menu-separator" role="separator" />
+    {insightTabs.map(({ id, label, Icon }) => {
+      const open = insights.open.includes(id)
+      const returnToPuzzle = mobile && previewing && id === 'solution'
+      const command: UiCommand<`number-${Insight}`> = {
+        id: `number-${id}`,
+        label: returnToPuzzle ? 'Return to puzzle' : label,
+        available: ready && (!result.complete || returnToPuzzle),
+        pressed: mobile ? undefined : open,
+        run: () => {
+          if (returnToPuzzle) { closeActions(); closeInsight(id) }
+          else if (mobile) openInsight(id)
+          else if (open) closeInsight(id, true)
+          else openInsight(id, true)
+        },
+      }
+      return <ActionMenuItem key={id} command={command} Icon={Icon}
+        ariaLabel={mobile && id === 'solution' && !returnToPuzzle ? 'Open solution panel' : undefined} />
+    })}
+    <ActionMenuItem command={{ id: 'number-rules', label: 'How to play', available: true,
+      run: () => { closeActions(); setRulesOpen(true) } }} Icon={Info} />
+  </>
+
+  function checkPuzzle() {
+    setHint(null)
+    setShowCheck(true)
+    setStatus('')
+    const conflict = result.marked.length > 0
+    const text = cellChoices
+      ? conflict ? 'The highlighted targets cannot fit these choices.' : 'Each target fits the current choices.'
+      : hasClueCells
+      ? conflict ? 'The highlighted clues cannot fit these entries.' : 'Each clue fits the current entries.'
+      : conflict ? 'The highlighted entries conflict with the rules.' : 'The entries fit the rules checked so far.'
+    setCheckResult({ title: 'Puzzle check', text, tone: conflict ? 'error' : 'neutral' })
+  }
+
+  const puzzlePanel = <section className="surface number-puzzle-board-card">
+    <NumberGameHeading game={game} title={name} inPlay>
+      <div className="number-puzzle-metadata">
+        <small>{entry.generated && 'Generated · '}{numberPuzzleDifficultyLabels[entry.difficulty]} {number}</small>
+        {showTimer && <span className="duration-counter" role="timer" aria-label={`Elapsed time ${formatTime(elapsed)}`}>
+          {formatTime(elapsed)}
+        </span>}
+      </div>
+    </NumberGameHeading>
+    {renderGrid(!mobile && previewing ? solutionPreview ?? undefined : undefined)}
+  </section>
+
+  const inputPanel = <div className="workspace-controls number-puzzle-input-panel">
+    <section className={`surface controls number-puzzle-controls${mobile ? ' compact-controls' : ''}`}
+      data-toggle-cells={Boolean(cellChoices) || undefined} aria-label={`${name} controls`}>
+      <div className="controls-content">
+        <div className="side-actions left-actions" role="group" aria-label="Puzzle actions">
+          <PuzzleHistoryActions undo={undo} redo={redo} canUndo={past.length > 0} canRedo={future.length > 0} disabled={locked} />
+          <div className="controls-actions-wrap">
+            <PlayActionsButton ref={actionsButton} mobile={mobile} open={actionsOpen} disabled={!ready}
+              popoverTarget={mobile ? undefined : 'input-actions-menu'} onClick={mobile ? () => setActionsOpen(true) : undefined} />
+            {!mobile && <div ref={actionsMenu} id="input-actions-menu" className="app-menu puzzle-menu desktop-actions-menu"
+              popover="auto" onToggle={event => {
+                const open = event.currentTarget.matches(':popover-open')
+                setActionsOpen(open)
+                if (open) event.currentTarget.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
+              }}>{actionItems}</div>}
+          </div>
+        </div>
+        {!cellChoices && <div className="keypad-stack">
+          {maxValue > 9 ? <form className="number-puzzle-input" onSubmit={event => {
+            event.preventDefault()
+            const value = Number(numberInput)
+            if (!value || value > maxValue) return
+            enter(value)
+            setNumberInput('')
+            cellButtons.current.get(selection)?.focus()
+          }}>
+            <input ref={numberField} value={numberInput} aria-label={`Number from 1 to ${maxValue}`}
+              placeholder={`1 to ${maxValue}`} inputMode="numeric" maxLength={String(maxValue).length}
+              disabled={locked || !editable[selection]} onChange={event => setNumberInput(event.currentTarget.value.replace(/\D/g, ''))} />
+            <Button type="submit" variant="primary" disabled={locked || !editable[selection] || !Number(numberInput) || Number(numberInput) > maxValue}>
+              {notes ? 'Add note' : 'Place'}
+            </Button>
+          </form> : <PuzzleKeypad label="Digit pad" variant={maxValue === 4 ? 'mini' : maxValue === 6 ? 'six' : undefined}>
+            {digits.map(digit => <button key={digit} type="button" className="key"
+              aria-label={`Enter ${digit}`} disabled={locked || !editable[selection]}
+              onClick={() => enter(digit)}>{digit}</button>)}
+          </PuzzleKeypad>}
+        </div>}
+        {!cellChoices && <div className="side-actions right-actions" role="group" aria-label="Input modes">
+          <IconButton aria-label="Pencil mode" title="Pencil mode" aria-pressed={notes} disabled={locked}
+            onClick={() => setNotes(current => !current)}><Pencil size={18} /></IconButton>
+          <IconButton aria-label="Erase cell" title="Erase cell"
+            disabled={locked || !editable[selection]}
+            onClick={() => enter(0)}><Delete size={18} /></IconButton>
+        </div>}
+      </div>
+    </section>
+    <div className="number-puzzle-status" role="status" aria-live="polite">
+      {result.complete ? 'Puzzle solved.' : status}
+    </div>
+    {result.complete && (next
+      ? <Link className={buttonClassName('primary')} {...puzzleDestination(game, next)}
+        state={{ fromNumberDifficulty: game }} replace>Next puzzle</Link>
+      : config.generatedEntry
+        ? <Button variant="primary" disabled={generation.pending !== null} onClick={() => generation.generate(entry.difficulty)}>
+          {generation.pending ? 'Generating…' : 'Generate next puzzle'}
+        </Button>
+        : <Link className={buttonClassName('primary')} to={`/puzzles/${game}`}>Choose difficulty</Link>)}
+    {generation.error && <p role="alert">{generation.error}</p>}
+    {storageError && <p className="form-error" role="alert">This browser cannot save your progress.</p>}
+  </div>
+
+  return <div className="workspace number-puzzle-play motion-screen">
+    <PlayLayout desktop={!mobile} puzzle={puzzlePanel} input={inputPanel} hint={hintPanel}
+      mobile={{
+        puzzleId: key, rearranging, onRearrangingChange: setRearranging, withHint: Boolean(hintPanel),
+        blocked: overlayOpen, inputTitle: result.complete ? 'Next puzzle' : cellChoices ? 'Controls' : 'Keypad',
+        hintSwipe: hint ? { dismiss: closeHint, apply: depth === 3 ? { label: 'Apply hint', onClick: applyHint } : undefined } : undefined,
+      }}
+      insights={insights.active ? {
+        tabs: insightTabs.filter(tab => insights.open.includes(tab.id)), active: insights.active,
+        onSelect: active => setInsights(current => ({ ...current, active })),
+        onClose: () => { if (insights.active) closeInsight(insights.active) },
+        content: insights.active === 'solution' && solutionProps ? <SolutionPath {...solutionProps} embedded />
+          : <PlacementAnalysis {...analysisProps} />,
+      } : undefined} />
+    {mobile && <Modal title="Actions" className="puzzle-actions-sheet" open={actionsOpen}
+      motionSpeed="overlay" onClose={closeActions}>
+      <div className="app-menu puzzle-menu" id="mobile-actions-menu">{actionItems}</div>
+    </Modal>}
+    <Modal title={`${name} rules`} open={rulesOpen} onClose={() => setRulesOpen(false)}>
+      <div className="variant-rules-copy"><p>{rules}</p></div>
+    </Modal>
+    {checkResult && <PuzzleCheckResult result={checkResult} onClose={() => setCheckResult(null)} />}
+    {mobile && mobileInsight === 'techniques' && <PuzzleAnalysis {...analysisProps} close={() => closeInsight('techniques')} />}
+    {mobile && previewing && solutionProps && solutionPreview && <SolutionDialog {...solutionProps}
+      grid={renderGrid(solutionPreview)} explanation={solutionCopy} detail={solutionStep && explanation(solutionStep)} />}
+  </div>
+}

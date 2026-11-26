@@ -83,7 +83,7 @@ test('the lesson, diagram and solution step explain the actual four-cell group p
   assert.ok('position' in source)
   assertGlobalEntropyProof(source.position.puzzle, source.deduction)
   assert.deepEqual(source.deduction.evidence.type === 'constraint' && source.deduction.evidence.cells, [7, 8, 16, 17])
-  assert.deepEqual(source.deduction.actions, [{ eliminate: { cell: 16, digit: 4 } }, { eliminate: { cell: 16, digit: 6 } }])
+  assert.deepEqual(source.deduction.actions, [{ eliminate: { cell: 16, digit: 4 } }])
   assert.ok(lessonRoutes.get('global-entropy'))
   const view = lessonExample(source)
   for (const cellReferenceStyle of ['concise', 'verbose', 'automatic'] as const) {

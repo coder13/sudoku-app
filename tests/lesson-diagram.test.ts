@@ -217,12 +217,12 @@ test('WXYZ-Wing shows why placing the outside candidate would leave a cell unfil
   }
   const diagram = lessonDiagram({ deduction, candidates })
   assert.deepEqual(diagram.reasonSteps, [
-    'The candidates for 1 share row 9. The candidates for 5 share column 7. The candidates for 9 share column 7. If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.',
-    'Placing 8 in R4C3 would rule out every 8 in the wing (R4C7 and R9C3).',
-    'That leaves only 1, 5, and 9 for four cells. These three digits can fill at most three cells.',
+    'Candidate 1 is restricted; all its cells share row 9. Candidate 5 is restricted; all its cells share column 7. Candidate 9 is restricted; all its cells share column 7. Candidate 8 is unrestricted because a pair of its candidate cells does not share a row, column, or box. A restricted candidate can appear at most once in the wing.',
+    'If R4C3 is 8, it rules out every 8 in the wing (R4C7 and R9C3).',
+    'That leaves only the three restricted candidates (1, 5, and 9) for four cells. They can fill at most three cells, so the unrestricted candidate must appear in the wing.',
   ])
   assert.doesNotMatch(diagram.reason, /fourth cell|exactly one.*8/)
-  assert.equal(diagram.accentLabel, 'Digit the wing must use')
+  assert.equal(diagram.accentLabel, 'Unrestricted candidate')
   assert.deepEqual(diagram.results, ['Remove 8 from R4C3.'])
 })
 
@@ -242,10 +242,9 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /The candidates for 4 share row 4/)
-  assert.match(diagram.reason, /rules out the same digit in the other wing cells/)
-  assert.match(diagram.reason, /Placing 1 in R7C1 would rule out every 1 in the wing \(R1C1 and R4C1\)/)
-  assert.match(diagram.reason, /Placing any crossed-out 4 would rule out every 4 in the wing \(R4C1 and R4C4\)/)
+  assert.match(diagram.reason, /Candidate 4 is restricted; all its cells share row 4/)
+  assert.match(diagram.reason, /If R7C1 is 1, it rules out every 1 in the wing \(R1C1 and R4C1\)/)
+  assert.match(diagram.reason, /If 4 is placed in any of R4C2 and R4C3, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
   assert.deepEqual(diagram.results, ['Remove 1 from R7C1.', 'Remove 4 from R4C2 and R4C3.'])
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)

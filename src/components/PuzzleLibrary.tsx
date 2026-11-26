@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { isSolved, valuesOf, type Game } from '../sudoku/game'
+import { PuzzleRowContent } from './PuzzleRowContent'
 
 export function PuzzleLibrary({ games, active, onSelect }: {
   games: Game[]
@@ -14,11 +15,8 @@ export function PuzzleLibrary({ games, active, onSelect }: {
         return (
           <li key={game.id}>
             <button className="game-row" onClick={() => onSelect(game.id)} aria-current={current ? 'true' : undefined}>
-              <span className="mini-grid" aria-hidden="true">
-                {[...valuesOf(game)].map((digit, i) => <i key={i} data-filled={digit !== '0'} />)}
-              </span>
-              <span className="game-row-copy"><strong>{game.title}</strong>{status && <small>{status}</small>}</span>
-              {current ? <span className="current-dot" aria-hidden="true" /> : <ChevronRight size={17} className="row-arrow" aria-hidden="true" />}
+              <PuzzleRowContent values={valuesOf(game)} size={game.grid?.size} title={game.title} detail={status}
+                trailing={current ? <span className="current-dot" aria-hidden="true" /> : <ChevronRight size={17} className="row-arrow" aria-hidden="true" />} />
             </button>
           </li>
         )

@@ -93,9 +93,8 @@ impl TechniqueCountScan {
             ControlFlow::Continue(())
         };
         if technique.pattern_overlay_width().is_some() {
-            let search = overlay.get_or_insert_with(|| {
-                OverlaySearch::classic(position.board(), position.masks())
-            });
+            let search = overlay
+                .get_or_insert_with(|| OverlaySearch::classic(position.board(), position.masks()));
             let _ = search.visit(technique, &mut collect);
         } else {
             let solution = (technique == Technique::NestedForcingNet)

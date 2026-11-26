@@ -56,7 +56,7 @@ pub enum VariantPracticeError {
     MissingProof(usize),
 }
 
-/// Load three distinct exercises for a variant technique.
+/// Load three distinct exercises positioned where the target is easiest.
 ///
 /// Classic techniques reuse the classic exercises in structured positions.
 /// Pattern Overlay also includes a worked Jigsaw exercise.
@@ -171,11 +171,20 @@ pub(crate) fn generate_practice_example(
                     DEFAULT_VARIANT_SEARCH_NODES,
                 ) == Ok(Analysis::Unique);
             if unique
-                && let Ok(example) = exercise_with(&compiled, 0, &position, technique, suggestion)
+                && let Some(example) =
+                    focus_position(&compiled, position.clone(), technique, Some(suggestion))
+                        .and_then(|(focused, focused_suggestion)| {
+                            exercise_with(&compiled, 0, &focused, technique, focused_suggestion)
+                                .ok()
+                        })
+                        .or_else(|| {
+                            exercise_with(&compiled, 0, &position, technique, suggestion).ok()
+                        })
             {
                 edits += 1;
+                let focused = &example.position;
                 let values = std::array::from_fn(|cell| {
-                    position.puzzle.givens[cell].max(position.entries[cell])
+                    focused.puzzle.givens[cell].max(focused.entries[cell])
                 });
                 if values != exclude {
                     generated = Some(example);
@@ -199,13 +208,88 @@ fn exercise(
     index: usize,
     position: VariantPosition,
     technique: VariantTechnique,
-    suggestion: HintAction,
+    preferred_suggestion: HintAction,
 ) -> Result<VariantPracticeExercise, VariantPracticeError> {
     let compiled = position
         .puzzle
         .compile()
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
-    exercise_with(&compiled, index, &position, technique, suggestion)
+    if let Some(example) = focus_position(
+        &compiled,
+        position.clone(),
+        technique,
+        Some(preferred_suggestion),
+    )
+    .and_then(|(focused, suggestion)| {
+        exercise_with(&compiled, index, &focused, technique, suggestion).ok()
+    }) {
+        return Ok(example);
+    }
+    exercise_with(&compiled, index, &position, technique, preferred_suggestion)
+}
+
+fn focus_position(
+    compiled: &CompiledVariant,
+    mut position: VariantPosition,
+    technique: VariantTechnique,
+    preferred_suggestion: Option<HintAction>,
+) -> Option<(VariantPosition, HintAction)> {
+    let techniques: Vec<_> = VariantTechnique::all().collect();
+    let easier: Vec<_> = techniques
+        .iter()
+        .copied()
+        .filter(|candidate| {
+            (candidate.difficulty(), candidate.cost()) < (technique.difficulty(), technique.cost())
+        })
+        .collect();
+
+    for _ in 0..(CELLS * 10) {
+        let target_proofs = compiled
+            .deductions(&position.entries, &position.eliminations, technique)
+            .ok()?;
+        let easier_hint = compiled
+            .ranked_hints(&position.entries, &position.eliminations, &easier, 1)
+            .ok()?
+            .into_iter()
+            .next();
+
+        if easier_hint.is_none() {
+            if let Some(suggestion) = preferred_suggestion
+                .filter(|suggestion| {
+                    target_proofs
+                        .iter()
+                        .any(|proof| proof.actions.contains(suggestion))
+                })
+                .or_else(|| {
+                    target_proofs
+                        .first()
+                        .and_then(|proof| proof.actions.first())
+                        .copied()
+                })
+            {
+                return Some((position, suggestion));
+            }
+        }
+
+        let next = match easier_hint {
+            Some(hint) => hint,
+            None => compiled
+                .ranked_hints(&position.entries, &position.eliminations, &techniques, 1)
+                .ok()?
+                .into_iter()
+                .next()?,
+        };
+        let previous = position.clone();
+        crate::position::record_actions(
+            &mut position.entries,
+            &mut position.eliminations,
+            &next.actions,
+        );
+        if position == previous {
+            return None;
+        }
+    }
+    None
 }
 
 fn exercise_with(

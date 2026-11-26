@@ -13,6 +13,7 @@ Find the intended interaction in the [component catalog](references/components.m
 - Use `IconButton` for a familiar compact action such as closing a dialog or opening a row menu. Supply a contextual `aria-label`. Use `ChoiceButton` when a person needs an icon, title, and optional description to choose between paths.
 - Use `buttonClassName` or `iconButtonClassName` on a router link or file-picker label when that element needs button styling. Keep the native element’s navigation or file-selection behavior.
 - The keypad, grid candidates, swatches, tabs, menu items and drag handles have specialized sizing or keyboard interactions. Extend their owning component when changing those patterns.
+- For animated UI state or layout changes, follow the [Sudoku animations skill](../sudoku-animations/SKILL.md) and its linked motion guidelines.
 
 ## Place actions on a screen
 

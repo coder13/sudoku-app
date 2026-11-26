@@ -416,9 +416,19 @@ fn exclusions_transform_rules_and_givens_together() {
 fn drawing_metadata_cannot_bypass_logical_puzzle_exclusions() {
     let solution = parse_givens(SOLUTION).unwrap();
     for rule in [
-        PuzzleRule::Palindrome { cells: vec![0, 14], segments: None },
-        PuzzleRule::Renban { cells: vec![0, 3], segments: None },
-        PuzzleRule::RegionSum { cells: vec![0, 1, 5], group_by_region: false, segments: None },
+        PuzzleRule::Palindrome {
+            cells: vec![0, 14],
+            segments: None,
+        },
+        PuzzleRule::Renban {
+            cells: vec![0, 3],
+            segments: None,
+        },
+        PuzzleRule::RegionSum {
+            cells: vec![0, 1, 5],
+            group_by_region: false,
+            segments: None,
+        },
     ] {
         let mut template = VariantPuzzle::classic(solution);
         template.rules.push(rule);
@@ -429,12 +439,16 @@ fn drawing_metadata_cannot_bypass_logical_puzzle_exclusions() {
         match &mut equivalent.rules[0] {
             PuzzleRule::Palindrome { cells, segments }
             | PuzzleRule::Renban { cells, segments }
-            | PuzzleRule::RegionSum { cells, segments, .. } => *segments = Some(vec![cells.clone()]),
+            | PuzzleRule::RegionSum {
+                cells, segments, ..
+            } => *segments = Some(vec![cells.clone()]),
             _ => unreachable!(),
         }
         options.exclude = vec![equivalent.clone()];
-        assert_eq!(start_variant_generation(options.clone()).unwrap().advance(),
-            Some(GenerationStep::Exhausted { attempts: 1 }));
+        assert_eq!(
+            start_variant_generation(options.clone()).unwrap().advance(),
+            Some(GenerationStep::Exhausted { attempts: 1 })
+        );
         // Invalid drawing metadata must still be rejected before normalization.
         match &mut equivalent.rules[0] {
             PuzzleRule::Palindrome { segments, .. }
@@ -443,7 +457,10 @@ fn drawing_metadata_cannot_bypass_logical_puzzle_exclusions() {
             _ => unreachable!(),
         }
         options.exclude = vec![equivalent];
-        assert!(matches!(start_variant_generation(options), Err(VariantGenerationError::InvalidExclusion(0))));
+        assert!(matches!(
+            start_variant_generation(options),
+            Err(VariantGenerationError::InvalidExclusion(0))
+        ));
     }
 }
 

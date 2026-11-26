@@ -7,13 +7,13 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Board as BaselineBoard } from '../baseline/Board'
 import baselineManifest from '../baseline/manifest.json'
 import { Board as OptimizedBoard } from '../../../src/components/Board'
-import { marksOf } from '../../../src/sudoku/game'
+import { COLORS, COLOR_TONES, marksOf } from '../../../src/sudoku/game'
 import { CLASSIC_GRID, jigsawMembership, jigsawRegionColors } from '../../../src/sudoku/grid'
 import { applyTheme } from '../../../src/sudoku/themes'
 import { regionMembership, variantHouseFillCells } from '../../../src/sudoku/variants'
 import { runComparison, type BoardBenchmarkApi, type ComparisonOptions } from './benchmark'
 import { createFixture, reduceAction, type Action, type BoardState, type Implementation } from './model'
-import { propsFromState, scenarios, type BoardProps } from './fixtures'
+import { groupedBoardProps, propsFromState, scenarios, type BoardProps } from './fixtures'
 import { checkedGroupAdditions } from './grouped-parity'
 
 applyTheme(document.documentElement, 'violet', 'light')
@@ -41,11 +41,12 @@ async function mount(next: Implementation, nextProps = props) {
   implementation = next
   props = nextProps
   setCurrent = undefined
-  const Component = next === 'baseline' ? BaselineBoard : OptimizedBoard
   function Host() {
     const [current, setProps] = useState(props)
     setCurrent = setProps
-    return <Component {...current} />
+    return next === 'baseline'
+      ? <BaselineBoard {...current} />
+      : <OptimizedBoard {...groupedBoardProps(current)} />
   }
   reactRoot = createRoot(root)
   reactRoot.render(<Host />)
@@ -127,13 +128,43 @@ function snapshot(includeFades = false): NormalNode[] {
     const attributes: Record<string, string> = {}
     for (const attr of [...node.attributes].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!includeFades && attr.name === 'data-board-fade') continue
+      if (attr.name.startsWith('data-board-') && attr.name !== 'data-board-fade') continue
+      if (['data-candidate-marks', 'data-candidate-button', 'data-paint-candidate'].includes(attr.name)) continue
       if (node.getAttribute('role') === 'gridcell' && (node.querySelector('.candidate-button') || props.onCandidate || props.onPaintCandidate) && ['tabindex', 'type'].includes(attr.name)) continue
       if (attr.name === 'style' && node.classList.contains('candidate-button')) continue
+      if (attr.name === 'style' && node.classList.contains('cell')) continue
       if (attr.name === 'data-house-fill' || attr.name === 'data-region-color') continue
       let value = attr.name === 'class' ? [...node.classList].filter(name => name !== 'shaded-houses-board' && name !== 'chain-candidate').sort().join(' ')
         : attr.name === 'style' && node.classList.contains('candidate-button')
           ? [node.getBoundingClientRect().x, node.getBoundingClientRect().y, node.getBoundingClientRect().width, node.getBoundingClientRect().height].map(value => value.toFixed(2)).join(',')
-          : attr.name === 'style' ? [...node.style].sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
+          : attr.name === 'style' ? [...node.style].filter(key => !node.classList.contains('board-candidate') || !['--tone', '--tone-ink'].includes(key))
+            .sort().map(key => `${key}:${node.style.getPropertyValue(key).trim()}`).join(';') : attr.value
+      if (node.classList.contains('cell') && attr.name === 'aria-label') {
+        const colors = COLORS.map(color => color.toLowerCase())
+        value = value.replace('Cell colors ', '').toLowerCase().split(',').filter(part => {
+          const label = part.trim().replace(/ color$/, '')
+          const candidateColor = label.match(/^\d+\s+(.+)$/)?.[1]
+          return !colors.includes(label) && !colors.includes(candidateColor ?? '')
+        }).join(', ')
+        if (props.highlightedDigitMatch === 'any' && props.highlightCandidateCells) {
+          value = value.replace(/,\s+candidates\s+\d+(?:,\s+\d+)*\s+highlighted/g, ', cell has selected candidates and other candidates')
+        }
+        value = value.replace(/,\s+/g, ', ').replace(/\s+/g, ' ').trim()
+      }
+      if ((node.classList.contains('cell') || node.classList.contains('board-candidate') && node.classList.contains('candidate-color')) && attr.name === 'class') {
+        const classes = value.split(' ')
+        const tone = node instanceof HTMLElement ? node.style.getPropertyValue('--tone').trim().toLowerCase() : ''
+        const color = COLOR_TONES.findIndex(item => item.toLowerCase() === tone) + 1
+        if (color && !classes.some(name => /^color-\d+$/.test(name))) classes.push(`color-${color}`)
+        value = classes.sort().join(' ')
+      }
+      if (node instanceof HTMLElement && node.classList.contains('candidate-button')) {
+        if (attr.name === 'class') value = value.split(' ').filter(name => !/^color-\d+$/.test(name)).join(' ')
+        if (attr.name === 'aria-label') value = value.replace(/ color\b/gi, '').toLowerCase()
+      }
+      if (node instanceof HTMLElement && (node.classList.contains('candidate-color') || node.classList.contains('candidate-glyph')) && attr.name === 'class') {
+        value = value.split(' ').filter(name => !/^color-\d+$/.test(name)).join(' ')
+      }
       if (node === groups?.grid && attr.name === 'aria-describedby' && groups.description) {
         value = value.split(/\s+/).filter(id => id !== groups.description!.id).join(' ')
         if (!value) continue

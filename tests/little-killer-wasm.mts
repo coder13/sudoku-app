@@ -273,9 +273,9 @@ test('three Little Killer practice positions and a fresh drill retain sound move
   })
   for (const exercise of [...examples, fresh]) {
     checkLittleKillerProof(exercise.deduction, exercise.position.puzzle)
-    const counted = countLineSolutions(exercise.position.puzzle)
-    assert.equal(counted.count, 1)
-    assertVariantCompletion(exercise.position.puzzle, counted.solution!)
+    const unique = await runEngine({ type: 'variant', operation: 'solve-unique', position: exercise.position })
+    assert.equal(unique.status, 'unique')
+    assertVariantCompletion(exercise.position.puzzle, unique.solution)
     assert.deepEqual(
       await runEngine({
         type: 'variant',
@@ -294,7 +294,7 @@ test('three Little Killer practice positions and a fresh drill retain sound move
         operation: 'check-practice-move',
         position: exercise.position,
         technique: 'little-killer',
-        action: { eliminate: { cell, digit: Number(counted.solution![cell]) } },
+        action: { eliminate: { cell, digit: Number(unique.solution[cell]) } },
       }),
       null,
     )

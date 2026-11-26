@@ -145,7 +145,9 @@ fn house(puzzle: &VariantPuzzle, kind: VariantHouseKind) -> Vec<usize> {
             RegionLayout::Boxes => (0..9)
                 .map(|i| 27 * (index / 3) + 3 * (index % 3) + 9 * (i / 3) + i % 3)
                 .collect(),
-            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => regions[index].clone(),
+            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => {
+                regions[index].clone()
+            }
         },
         VariantHouseKind::Diagonal(diagonal) => (0..9)
             .map(|i| match diagonal {
@@ -407,41 +409,83 @@ fn every_candidate_mask_matches_direct_neighbor_assignments_for_both_cell_techni
     // do not rely on an inconsistent global position.
     let offsets = [0, 3, 6, 4, 7, 1, 2, 5, 8];
     for shift in 0..9 {
-        let grid: [u8; 81] = std::array::from_fn(|cell| ((2 * (cell % 9 + offsets[cell / 9]) + shift) % 9 + 1) as u8);
+        let grid: [u8; 81] = std::array::from_fn(|cell| {
+            ((2 * (cell % 9 + offsets[cell / 9]) + shift) % 9 + 1) as u8
+        });
         let puzzle = position().puzzle;
-        for kind in (0..9).flat_map(|i| [VariantHouseKind::Row(i), VariantHouseKind::Column(i), VariantHouseKind::Region(i)]) {
-            assert_eq!(house(&puzzle, kind).into_iter().map(|cell| grid[cell]).collect::<std::collections::BTreeSet<_>>().len(), 9);
+        for kind in (0..9).flat_map(|i| {
+            [
+                VariantHouseKind::Row(i),
+                VariantHouseKind::Column(i),
+                VariantHouseKind::Region(i),
+            ]
+        }) {
+            assert_eq!(
+                house(&puzzle, kind)
+                    .into_iter()
+                    .map(|cell| grid[cell])
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len(),
+                9
+            );
         }
-        for a in 0..81 { for b in a+1..81 {
-            if (a / 9usize).abs_diff(b / 9) + (a % 9usize).abs_diff(b % 9) == 1 { assert_ne!(grid[a].abs_diff(grid[b]), 1); }
-        } }
+        for a in 0..81 {
+            for b in a + 1..81 {
+                if (a / 9usize).abs_diff(b / 9) + (a % 9usize).abs_diff(b % 9) == 1 {
+                    assert_ne!(grid[a].abs_diff(grid[b]), 1);
+                }
+            }
+        }
     }
     let mut position = position();
     let compiled = position.puzzle.compile().unwrap();
-    for cell in [0usize, 8, 9, 40, 80] { for domain in 1..=ALL {
-        position.eliminations.fill(0);
-        position.eliminations[cell] = ALL & !domain;
-        let choices: Vec<u8> = (1..=9).filter(|digit| domain & (1 << (digit - 1)) != 0).collect();
-        for technique in [TECHNIQUES[2], TECHNIQUES[3]] {
-            let eligible = if technique == TECHNIQUES[2] {
-                choices.len() == 2 && choices[1] == choices[0] + 1
-            } else {
-                (2..=3).contains(&choices.len()) && choices.last().unwrap() - choices[0] == 2
-            };
-            let mut expected = std::collections::BTreeSet::new();
-            if eligible { for target in 0..81usize {
-                if (cell / 9).abs_diff(target / 9) + (cell % 9).abs_diff(target % 9) != 1 { continue; }
-                for digit in 1..=9u8 {
-                    if choices.iter().all(|&source| source == digit || source.abs_diff(digit) == 1) {
-                        expected.insert(HintAction::Eliminate(Candidate { cell: target, digit }));
+    for cell in [0usize, 8, 9, 40, 80] {
+        for domain in 1..=ALL {
+            position.eliminations.fill(0);
+            position.eliminations[cell] = ALL & !domain;
+            let choices: Vec<u8> = (1..=9)
+                .filter(|digit| domain & (1 << (digit - 1)) != 0)
+                .collect();
+            for technique in [TECHNIQUES[2], TECHNIQUES[3]] {
+                let eligible = if technique == TECHNIQUES[2] {
+                    choices.len() == 2 && choices[1] == choices[0] + 1
+                } else {
+                    (2..=3).contains(&choices.len()) && choices.last().unwrap() - choices[0] == 2
+                };
+                let mut expected = std::collections::BTreeSet::new();
+                if eligible {
+                    for target in 0..81usize {
+                        if (cell / 9).abs_diff(target / 9) + (cell % 9).abs_diff(target % 9) != 1 {
+                            continue;
+                        }
+                        for digit in 1..=9u8 {
+                            if choices
+                                .iter()
+                                .all(|&source| source == digit || source.abs_diff(digit) == 1)
+                            {
+                                expected.insert(HintAction::Eliminate(Candidate {
+                                    cell: target,
+                                    digit,
+                                }));
+                            }
+                        }
                     }
                 }
-            } }
-            let actual = compiled.deductions(&EMPTY, &position.eliminations, technique).unwrap()
-                .into_iter().flat_map(|proof| proof.actions).collect::<std::collections::BTreeSet<_>>();
-            assert_eq!(actual, expected, "{}: cell {cell}, domain {domain}", technique.id());
+                let actual = compiled
+                    .deductions(&EMPTY, &position.eliminations, technique)
+                    .unwrap()
+                    .into_iter()
+                    .flat_map(|proof| proof.actions)
+                    .collect::<std::collections::BTreeSet<_>>();
+                assert_eq!(
+                    actual,
+                    expected,
+                    "{}: cell {cell}, domain {domain}",
+                    technique.id()
+                );
+            }
         }
-    } }
+    }
 }
 
 #[test]
@@ -475,25 +519,44 @@ fn locks_use_declared_jigsaw_and_extra_houses() {
 fn diagonal_locations_can_exclude_a_candidate_outside_their_house() {
     let witness = sudoku_app_engine::parse_givens(
         "135792468792468135468135792924681357681357924357924681813579246246813579579246813",
-    ).unwrap();
+    )
+    .unwrap();
     for (diagonal, sites, targets) in [
         (Diagonal::Main, [30, 40], [31, 39]),
         (Diagonal::Anti, [32, 40], [31, 41]),
     ] {
         let mut position = position();
-        position.puzzle.rules.push(PuzzleRule::Diagonal { diagonal });
+        position
+            .puzzle
+            .rules
+            .push(PuzzleRule::Diagonal { diagonal });
         let cells = house(&position.puzzle, VariantHouseKind::Diagonal(diagonal));
         lock(&mut position, &cells, 5, &sites);
-        let completed = if diagonal == Diagonal::Main { witness } else {
+        let completed = if diagonal == Diagonal::Main {
+            witness
+        } else {
             std::array::from_fn(|cell| witness[cell / 9 * 9 + 8 - cell % 9])
         };
-        assert_eq!(position.puzzle.compile().unwrap().analyze(&completed, &position.eliminations, 1), Ok(sudoku_app_engine::Analysis::Unique));
+        assert_eq!(
+            position
+                .puzzle
+                .compile()
+                .unwrap()
+                .analyze(&completed, &position.eliminations, 1),
+            Ok(sudoku_app_engine::Analysis::Unique)
+        );
         let proofs = deductions(&position, TECHNIQUES[1]);
         assert!(proofs.iter().any(|proof| matches!(&proof.evidence, VariantEvidence::Exclusion {
             premise: VariantExclusionPremise::House { house: VariantHouseKind::Diagonal(kind), .. }, ..
         } if *kind == diagonal)));
-        for target in targets { for digit in [4,6] { assert!(removed(&proofs, target, digit)); } }
-        for proof in &proofs { replay(&position, proof); }
+        for target in targets {
+            for digit in [4, 6] {
+                assert!(removed(&proofs, target, digit));
+            }
+        }
+        for proof in &proofs {
+            replay(&position, proof);
+        }
     }
 }
 

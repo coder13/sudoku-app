@@ -48,7 +48,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'digitMode', label: 'Digit placement mode', description: 'Place digits in selected cells.', category: 'Input modes' },
   { id: 'pencilMode', label: 'Toggle Pen and Pencil modes', description: 'Switch between Pen and Pencil; use the Highlight shortcut to select Highlight mode.', category: 'Input modes' },
   { id: 'highlightMode', label: 'Highlight mode', description: 'Select cells while keeping a digit highlighted.', category: 'Input modes' },
-  { id: 'colorMode', label: 'Color mode', description: 'Color cells or candidates.', category: 'Input modes' },
+  { id: 'colorMode', label: 'Colors / cell-candidate mode', description: 'Open or resume Colors. While coloring, switch between coloring cells and candidates.', category: 'Input modes' },
   { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
   { id: 'chainDrawing', label: 'Toggle draw links', description: 'Start drawing links in Chains or return to your previous input mode.', category: 'Input modes' },

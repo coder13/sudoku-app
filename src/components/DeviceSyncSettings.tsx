@@ -1,7 +1,7 @@
 import { Button, ChoiceButton, buttonClassName } from './Button'
 import { Link, useLocation, useRouter } from '@tanstack/react-router'
 import { KeyRound, Link2, LoaderCircle, QrCode } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { PairingInvitation } from './PairingInvitation'
 import { PairingScanner } from './PairingScanner'
 import { SyncConnectionStatus } from './SyncConnectionStatus'
@@ -24,7 +24,11 @@ declare module '@tanstack/history' {
 type LinkedDevice = Awaited<ReturnType<typeof deviceSync.devices>>[number]
 
 /** Render the setup and management steps inside the Settings dialog. */
-export function DeviceSyncSettings({ step, onBack }: { step: SyncStep | null; onBack: () => void }) {
+export function DeviceSyncSettings({ step, onBack, menuBoundaryRef }: {
+  step: SyncStep | null
+  onBack: () => void
+  menuBoundaryRef: RefObject<HTMLElement | null>
+}) {
   const mobile = useMobileLayout()
   const status = useSyncExternalStore(deviceSync.subscribe, deviceSync.getSnapshot, deviceSync.getServerSnapshot)
   const connection = useSyncExternalStore(deviceSync.subscribeConnection, deviceSync.getConnection, deviceSync.getServerConnection)
@@ -218,6 +222,7 @@ export function DeviceSyncSettings({ step, onBack }: { step: SyncStep | null; on
         </p>}
         <ul className="sync-devices">{devices.map(device =>
         <LinkedDeviceRow key={device.id} device={device} mobile={mobile} current={device.id === deviceSync.credentials()?.id} working={working}
+          menuBoundaryRef={menuBoundaryRef}
           rename={name => action(async () => {
             const result = await deviceSync.rename(device.id, name)
             updateDeviceList(items => items.map(item => item.id === device.id ? { ...item, name: result.name } : item))

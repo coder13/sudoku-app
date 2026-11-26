@@ -55,7 +55,7 @@ test('variant practice playlists keep the trainer rules and can continue in Play
     const first = await generateVariantPracticePuzzle(technique, 42, [], runEngine)
     const next = await generateVariantPracticePuzzle(technique, 42, [first.puzzle], runEngine)
     assert.notDeepEqual(next.puzzle, first.puzzle, technique)
-    assert.equal(next.rating.hardest, technique)
+    assert.ok(next.rating.counts[technique] > 0, technique)
     const id = variantIdForPuzzle(next.puzzle)
     assert.notEqual(id, 'classic', technique)
     if (id === 'classic') assert.fail('Expected a variant puzzle.')

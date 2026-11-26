@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { expect, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
 import { FutoshikiDifficultyPage, FutoshikiImportPreview } from '../../src/components/Futoshiki'
+import { NumberPuzzleGrid as NumberPuzzleGridView } from '../../src/components/NumberPuzzleGrid'
+import { NumberPuzzlePreview as NumberPuzzlePreviewView } from '../../src/components/NumberPuzzlePreview'
 import { KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
@@ -10,6 +12,7 @@ import { createImportedFutoshiki } from '../../src/futoshiki/imported'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
 import { solveLatin } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
+import { emptyNumberPosition } from '../../src/number-puzzles/progress'
 import { numberPositionKey } from '../../src/number-puzzles/generated-storage'
 import { rulloCatalog } from '../../src/rullo/catalog'
 import { PreviewRouter } from '../support/frames'
@@ -20,6 +23,56 @@ const meta = {
 } satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
+
+const sampleNumberBoard = {
+  width: 4,
+  height: 4,
+  maxValue: 4,
+  cells: Array.from({ length: 16 }, (_, index) => ({
+    given: [0, 3, 6, 9, 12, 15].includes(index) ? (index % 4) + 1 : undefined,
+    label: index === 1 ? 'Odd' : undefined,
+    endpoint: index === 5,
+    edges: index % 4 === 3 ? 'right' : undefined,
+  })),
+  check: () => ({ complete: false, marked: [] }),
+  hints: () => [],
+  solve: () => null,
+}
+
+export const NumberPuzzleGrid: Story = {
+  render: function GridRenderer() {
+    const [position, setPosition] = useState(() => emptyNumberPosition(sampleNumberBoard.cells.length))
+    const [selection, setSelection] = useState(1)
+    return <div className="number-puzzle-board-card surface" style={{ maxWidth: 480, margin: '2rem auto', padding: 24 }}>
+      <NumberPuzzleGridView content={{ board: sampleNumberBoard, game: 'futoshiki', name: 'Futoshiki' }}
+        appearance={{ values: position.values, notes: position.notes, conflicts: new Set() }}
+        interaction={{ selection, locked: false, onCellFocus: setSelection,
+          onCellClick: index => setSelection(index), onCellRef: () => {} }} />
+    </div>
+  },
+}
+
+export const NumberPuzzleGridReadOnly: Story = {
+  render: () => <div className="number-puzzle-board-card surface" style={{ maxWidth: 480, margin: '2rem auto', padding: 24 }}>
+    <NumberPuzzleGridView content={{ board: sampleNumberBoard, game: 'futoshiki', name: 'Futoshiki' }}
+      appearance={{
+        values: [1, 0, 3, 0, 0, 2, 0, 4, 2, 0, 4, 0, 0, 4, 0, 1],
+        highlightedCell: 5,
+        contextCells: new Set([1, 5, 9]),
+      }} ariaLabel="Futoshiki solution" />
+  </div>,
+}
+
+export const NumberPuzzlePreview: Story = {
+  render: () => {
+    const position = emptyNumberPosition(sampleNumberBoard.cells.length)
+    position.values[1] = 3
+    position.notes[2] = (1 << 0) | (1 << 2)
+    return <div className="number-puzzle-board-card surface" style={{ maxWidth: 480, margin: '2rem auto', padding: 24 }}>
+      <NumberPuzzlePreviewView board={sampleNumberBoard} game="futoshiki" label="Futoshiki preview" position={position} />
+    </div>
+  },
+}
 
 export const ImportedParityPreview: Story = {
   render: () => <div className="import-preview">
@@ -126,6 +179,11 @@ export const Kakuro: Story = {
     await userEvent.click(solution.getByRole('button', { name: 'Close dialog' }))
     await expect(cell).toHaveAccessibleName(/^R2C3, empty/)
   },
+}
+
+export const KakuroDesktopActions: Story = {
+  render: () => <PreviewRouter shell><KakuroPlay entry={kakuroCatalog[0]} /></PreviewRouter>,
+  globals: { viewport: { value: 'shortDesktop', isRotated: false } },
 }
 
 export const Rullo: Story = {

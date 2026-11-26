@@ -40,7 +40,7 @@ const fixedSections: Array<{ title: string; shortcuts: FixedShortcut[] }> = [
       { label: 'Increase app text size', description: 'Enlarge text and digits throughout the app.', keys: ['Ctrl/⌘', '+'] },
       { label: 'Decrease app text size', description: 'Shrink text and digits throughout the app.', keys: ['Ctrl/⌘', '−'] },
       { label: 'Reset app text size', description: 'Restore the default app text scale.', keys: ['Ctrl/⌘', '0'] },
-      { label: 'Close or cancel', description: 'Close the current menu or stop coloring or drawing links.', keys: ['Escape'] },
+      { label: 'Close or cancel', description: 'Close the current menu. In Colors or Chains, return to Pen/Pencil and keep edits already made.', keys: ['Escape'] },
     ],
   },
 ]

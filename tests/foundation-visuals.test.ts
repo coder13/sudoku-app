@@ -27,7 +27,7 @@ test('visual marks and link endpoints stay on visible candidates within the crop
       if (!visual.region) continue
       const { row, column, rows, columns } = visual.region
       const size = visual.grid?.size ?? 9
-      const { candidates } = foundationBoard(visual, step)
+      const { content: { candidates } } = foundationBoard(visual, step)
       const visible = ({ cell, digit }: { cell: number; digit: number }) => {
         assert.ok(Math.floor(cell / size) >= row && Math.floor(cell / size) < row + rows, id)
         assert.ok(cell % size >= column && cell % size < column + columns, id)

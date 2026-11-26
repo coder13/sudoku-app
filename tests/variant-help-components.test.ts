@@ -307,7 +307,7 @@ function desktopPlayMarkup(tree: ReturnType<typeof worktableTree>) {
 }
 
 for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixed'>)[]) {
-  test(`${id} exposes hint actions, solution, and technique finder in both desktop workspaces`, () => {
+  test(`${id} exposes puzzle options, solution, and technique finder in both desktop workspaces`, () => {
     const previous = playSession.getServerSnapshot
     playSession.getServerSnapshot = () => ({ ...previous(), puzzleId: 'help-controls',
       toolPanels: { open: ['solution', 'techniques'], active: 'techniques' } })
@@ -322,12 +322,14 @@ for (const id of Object.keys(PUZZLE_VARIANTS) as (Exclude<PuzzleVariantId, 'mixe
       assert.match(desktopPlayMarkup(completed), /data-insight-tab="techniques"/, 'An open finder stays visible after completion')
       for (const mode of ['standard', 'advanced'] as const) {
         const tree = worktableTree(id, mode)
-        assert.ok(tree.some(({ type, props }) => type === 'button' && renderToStaticMarkup(createElement('span', null, props.children as ReactNode)).includes('View hint')))
+        assert.ok(tree.some(({ props }) => props.title === 'Puzzle options'),
+          'Puzzle actions remain available from the puzzle options menu')
         if (mode === 'advanced') {
-          const dock = tree.find(({ props }) => props.solutionPath && props.techniques)!
+          const dock = tree.find(({ type }) => typeof type === 'function' && type.name === 'DesktopDockLayout')
           assert.ok(dock, 'Solution and technique finder must reach the dock')
-          assert.ok(elements(dock.props.solutionPath).some(({ type, props }) => type === 'button' && !props.disabled))
-          assert.ok(elements(dock.props.techniques).some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
+          const tools = dock.props.tools as Record<string, ReactNode>
+          assert.ok(elements(tools.solution).some(({ type, props }) => type === 'button' && !props.disabled))
+          assert.ok(elements(tools.techniques).some(({ type }) => typeof type === 'function' && type.name === 'PuzzleAnalysisContents'))
         }
       }
     } finally { playSession.getServerSnapshot = previous }

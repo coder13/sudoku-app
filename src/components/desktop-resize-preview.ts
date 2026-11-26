@@ -19,15 +19,15 @@ const CANDIDATE_PREVIEW_ATTRIBUTE = 'data-desktop-candidate-preview'
 // Replace each note's container-unit font calculation with one pixel font size
 // per group. The live cell supplies the exact space inside its borders, while
 // text keeps its native shaping and hinting at the size that is actually shown.
-export function previewDesktopBoards(workspace: HTMLElement) {
-  const boards = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle .board-body')]
+export function previewDesktopBoards(puzzle: HTMLElement) {
+  const boards = [...puzzle.querySelectorAll<HTMLElement>('[data-board-body]')]
     // Keep candidate and link layering on the fully native rendering path.
-    .filter(body => !body.querySelector('.board-links'))
-  const groups = boards.flatMap(body => [...body.querySelectorAll<HTMLElement>('.candidate-marks')]
+    .filter(body => !body.querySelector('[data-board-links]'))
+  const groups = boards.flatMap(body => [...body.querySelectorAll<HTMLElement>('[data-candidate-marks]')]
     .flatMap(group => {
       const cell = group.parentElement
       const firstCandidate = group.firstElementChild
-      if (!cell?.classList.contains('cell') || !firstCandidate) return []
+      if (!cell?.hasAttribute('data-cell') || !firstCandidate) return []
       const style = getComputedStyle(group)
       if (style.containerType !== 'size') return []
       const cellStyle = getComputedStyle(cell)
@@ -69,7 +69,7 @@ export function previewDesktopBoards(workspace: HTMLElement) {
     // A hint can add a link while a drag is in progress. Return that board to
     // native rendering instead of changing the order of its marks and links.
     for (const body of boards) {
-      if (!body.querySelector('.board-links')) continue
+      if (!body.querySelector('[data-board-links]')) continue
       for (const group of groups) {
         if (group.body !== body || !cells.delete(group.cell)) continue
         observer.unobserve(group.cell)

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type jsQR from 'jsqr'
 import { deviceSyncPath } from '../sudoku/sync-steps'
 import { createPairingScanTracker, isProductionSyncOrigin, readPairingLink, sharesPairingService } from '../sudoku/pairing-link'
+import { useCameraStream } from './useCameraStream'
 
 function readCode(source: CanvasImageSource, width: number, height: number, decode: typeof jsQR, maxEdge: number) {
   const scale = Math.min(1, maxEdge / Math.max(width, height))
@@ -20,11 +21,10 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
   pairingOrigin: string
   onTicket: (ticket: string) => void
 }) {
-  const video = useRef<HTMLVideoElement>(null)
+  const { videoRef: video, ready: cameraReady, failed: cameraFailed, active, stop: stopCamera } = useCameraStream()
   const file = useRef<HTMLInputElement>(null)
   const scanVersion = useRef(0)
-  const [cameraReady, setCameraReady] = useState(false)
-  const [cameraError, setCameraError] = useState('')
+  const [scanUnavailable, setScanUnavailable] = useState(false)
   const [error, setError] = useState('')
   const [otherOrigin, setOtherOrigin] = useState<string | null>(null)
   const matchingScanner = otherOrigin && isProductionSyncOrigin(otherOrigin) ? new URL(deviceSyncPath + '/scan', otherOrigin) : null
@@ -37,54 +37,46 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
   }, [pairingOrigin])
 
   useEffect(() => {
-    const element = video.current!
-    let stream: MediaStream | undefined
+    if (!cameraReady) return
+    const element = video.current
+    if (!element) return
+    const scanVideo = element as HTMLVideoElement
     let timer: ReturnType<typeof setTimeout> | undefined
     let closed = false
     const observe = createPairingScanTracker()
     const resetScan = () => observe(null, performance.now())
     document.addEventListener('visibilitychange', resetScan)
-    function stop() {
-      clearTimeout(timer)
-      stream?.getTracks().forEach(track => track.stop())
-      element.srcObject = null
-    }
     async function start() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
-        if (closed) { stop(); return }
-        element.srcObject = stream
-        await element.play()
         const { default: decode } = await import('jsqr')
-        if (closed) return
-        setCameraReady(true)
+        if (closed || !active.current) return
         function scan() {
-          if (closed) return
+          if (closed || !active.current) return
           try {
             let ticket = null
-            if (!document.hidden && element.readyState >= 2 && element.videoWidth) {
-              const text = readCode(element, element.videoWidth, element.videoHeight, decode, 800)
+            if (!document.hidden && scanVideo.readyState >= 2 && scanVideo.videoWidth) {
+              const text = readCode(scanVideo, scanVideo.videoWidth, scanVideo.videoHeight, decode, 800)
               if (text) ticket = checkCode(text)
             }
             const confirmed = observe(ticket, performance.now())
-            if (confirmed) { stop(); onTicket(confirmed); return }
+            if (confirmed) { stopCamera(); onTicket(confirmed); return }
             timer = setTimeout(scan, ticket ? 100 : 220)
-          } catch { stop(); setCameraError('Camera scan unavailable. Choose a QR photo.') }
+          } catch { stopCamera(); setScanUnavailable(true) }
         }
         scan()
       } catch {
-        stop()
-        if (!closed) setCameraError('Camera unavailable. Allow camera access or choose a QR photo.')
+        if (!closed) { stopCamera(); setScanUnavailable(true) }
       }
     }
     void start()
     return () => {
       closed = true
-      scanVersion.current++
       document.removeEventListener('visibilitychange', resetScan)
-      stop()
+      clearTimeout(timer)
     }
-  }, [checkCode, onTicket])
+  }, [cameraReady, active, checkCode, onTicket, stopCamera])
+
+  useEffect(() => () => { scanVersion.current++ }, [])
 
   async function scanPhoto(photo: File) {
     const version = ++scanVersion.current
@@ -110,8 +102,8 @@ export function PairingScanner({ pairingOrigin, onTicket }: {
   }
   return <section className="sync-scanner">
     <p>On your linked device, open Device sync and choose <strong>Link another device</strong>.</p>
-    <video ref={video} className="sync-camera" hidden={Boolean(cameraError)} muted playsInline autoPlay aria-label="QR scanner camera" />
-    {cameraError ? <p role="status">{cameraError}</p> : !cameraReady && <p role="status">Opening camera…</p>}
+    <video ref={video} className="sync-camera" hidden={cameraFailed || scanUnavailable} muted playsInline autoPlay aria-label="QR scanner camera" />
+    {cameraFailed || scanUnavailable ? <p role="status">{scanUnavailable ? 'Camera scan unavailable. Choose a QR photo.' : 'Camera unavailable. Allow camera access or choose a QR photo.'}</p> : !cameraReady && <p role="status">Opening camera…</p>}
     {error && <p role="alert">{error}</p>}
     {otherOrigin && <p className="sync-scan-origin" role="alert">This code is for{' '}
       <strong>{matchingScanner?.host ?? otherOrigin}</strong>.

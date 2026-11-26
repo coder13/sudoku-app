@@ -5,9 +5,48 @@ export const PUZZLE_TOOL_ORDER = ['colors', 'chains', 'bookmarks'] as const
 export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER, 'rules'] as const
 export type PuzzleTool = typeof TOOL_PANEL_ORDER[number]
 export type ToolPanelTab = 'digits' | PuzzleTool
-type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }
+export type ToolPanels = { open: PuzzleTool[]; active: ToolPanelTab; height?: number }
 export const defaultToolPanels: ToolPanels = { open: [], active: 'digits' }
-type DigitHighlight = { mask: number; match: DigitHighlightMatch }
+
+type PanelSelection<Panel extends string, Active extends string | null> = { open: Panel[]; active: Active }
+
+/** Add requested panels in their shared display order and activate the requested tab. */
+export function selectPanelState<Panel extends string, Active extends string | null, State extends PanelSelection<Panel, Active>>(
+  current: State,
+  active: Active,
+  requested: readonly Panel[],
+  order: readonly Panel[],
+): State {
+  const requestedPanels = new Set([...current.open, ...requested])
+  const open = order.filter(panel => requestedPanels.has(panel))
+  if (current.active === active && open.length === current.open.length && open.every((panel, index) => panel === current.open[index])) return current
+  return { ...current, open, active } as State
+}
+
+/** Remove a panel and let each host choose its active-tab fallback policy. */
+export function closePanelState<Panel extends string, Active extends string | null, State extends PanelSelection<Panel, Active>>(
+  current: State,
+  panel: Panel,
+  fallback: (open: Panel[]) => Active,
+): State {
+  const open = current.open.filter(tab => tab !== panel)
+  if (open.length === current.open.length) return current
+  return { ...current, open, active: (current.active as string | null) === panel ? fallback(open) : current.active } as State
+}
+
+/** Change the persisted tool selection without depending on a particular panel host. */
+export function selectPlayToolPanel(current: ToolPanels, tab: ToolPanelTab, alsoOpen?: PuzzleTool): ToolPanels {
+  const requested = [...(tab === 'digits' ? [] : [tab]), ...(alsoOpen ? [alsoOpen] : [])]
+  return selectPanelState<PuzzleTool, ToolPanelTab, ToolPanels>(current, tab, requested, TOOL_PANEL_ORDER)
+}
+
+/** Close a saved tool and return to Digits when the active panel closes. */
+export function closePlayToolPanel(current: ToolPanels, tool: PuzzleTool): ToolPanels {
+  const next = closePanelState<PuzzleTool, ToolPanelTab, ToolPanels>(current, tool, () => 'digits')
+  return next.open.length ? next : defaultToolPanels
+}
+
+export type DigitHighlight = { mask: number; match: DigitHighlightMatch }
 export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
 type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
 
@@ -18,7 +57,9 @@ type PuzzleTabs = {
   showStrongLinks: boolean
   solutionView: SolutionView | null
 }
-type PlaySession = PuzzleTabs & { puzzleId: string | null; launchPaused: boolean }
+export type PlaySession = PuzzleTabs & { puzzleId: string | null; launchPaused: boolean }
+export type PlaySessionField = keyof Omit<PlaySession, 'puzzleId'>
+export type PlaySessionUpdate<K extends PlaySessionField> = PlaySession[K] | ((previous: PlaySession[K]) => PlaySession[K])
 type SavedPuzzleTabs = Partial<PuzzleTabs> & { mobileInput?: Partial<ToolPanels> }
 type ToolLayout = Pick<ToolPanels, 'open' | 'active'>
 const defaultTabs: PuzzleTabs = {
@@ -132,8 +173,7 @@ export function createPlaySession(storage?: PlayStorage, persistentStorage?: Pla
     activate(puzzleId: string | null) {
       if (current.puzzleId !== puzzleId) commit(forPuzzle(puzzleId), true)
     },
-    set<K extends keyof Omit<PlaySession, 'puzzleId'>>(puzzleId: string, field: K,
-      value: PlaySession[K] | ((previous: PlaySession[K]) => PlaySession[K])) {
+    set<K extends PlaySessionField>(puzzleId: string, field: K, value: PlaySessionUpdate<K>) {
       const session = forPuzzle(puzzleId)
       const next = typeof value === 'function' ? value(session[field]) : value
       if (current === session && Object.is(next, session[field])) return
