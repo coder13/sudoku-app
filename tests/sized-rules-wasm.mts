@@ -732,10 +732,48 @@ test('labeled ratios use the digit range and report precise positive and negativ
   }
   const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
   assert.equal(candidates?.[1], 1 << 15)
-  assert.equal((candidates?.[16] ?? 0) & (1 << 1), 0)
+  assert.equal((candidates?.[16] ?? 0) & (1 << 15), 0, 'an unmarked 1:16 edge is forbidden')
+  assert.notEqual((candidates?.[16] ?? 0) & (1 << 1), 0, 'an unmarked 1:2 edge remains allowed')
   const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 16 })
   assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 1 && step.pair.value === 16))
-  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 2 && step.pair.negative))
+  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 16 && step.pair.negative))
+})
+
+test('Coach Ratio layers with different labels keep their negative settings independent in Play', async () => {
+  const code = coachCode({ gridSize: 4, givenDigits: '1' + '0'.repeat(15), givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [0, 1], parameters: { ratio: 2 } },
+    ] },
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [
+      ...[[0, 4], [2, 6], [9, 13], [11, 15]].map(cells => ({ cells, parameters: { ratio: 3 } })),
+    ] },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', ratioTwo: { pairs: [[0, 1]], negative: false } },
+    { type: 'labeled-dots', relation: 'ratio', marks: [
+      { cells: [0, 4], value: 3 }, { cells: [2, 6], value: 3 },
+      { cells: [9, 13], value: 3 }, { cells: [11, 15], value: 3 },
+    ], negative: true },
+  ])
+
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  const solution = '1234341221434321'
+  const withBlack = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.slice(0, 1), digits: [...solution].map(Number),
+  } })
+  const withRatio3 = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.slice(1), digits: [...solution].map(Number),
+  } })
+  assert.equal(withBlack, 'unique')
+  assert.equal(withRatio3, 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: [...solution].map(Number),
+  } }), 'unique', 'the complete control satisfies both ratio layers')
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.ok(Array.isArray(candidates))
+  assert.equal(candidates[1], 1 << 1, 'the marked 1:2 edge stays valid under the separate negative 1:3 layer')
+  assert.equal(candidates[4], 1 << 2, 'the marked 1:3 edge remains active')
 })
 
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {

@@ -252,7 +252,7 @@ test('an X-Sums declaration rejects ambiguous totals, markings and unsupported c
   })
   try {
     for (const [id, error] of [
-      ['Extra', /has author instructions/], [terrain.sudoku_id, /has author instructions/],
+      ['Extra', /has author instructions/], [terrain.sudoku_id, /Terrain puzzle uses transformed values/],
       ['Empty', /has no outside totals/], ['Corner', /beside a row or column/], ['Interior', /beside a row or column/],
       ['Fraction', /beside a row or column/], ['BadTotal', /1 through 45/], ['Duplicate', /multiple X-Sums/],
       ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings|invalid authored colors/],
