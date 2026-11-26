@@ -339,6 +339,48 @@ test('#388 imports the published zero-based 10 × 10 Mountain Climbing export', 
   assert.equal(imported.authoredSolution?.length, 100)
 })
 
+test('#439 parses the published 6 × 6 10K product cage and corner requirement', async () => {
+  const code = readFileSync(new URL('./fixtures/sudokupad-10k.scl', import.meta.url), 'utf8').trim()
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, '10K')
+  assert.equal(imported.authoredSolution, '314265265314652143143652431526526431')
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3 })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'product-cage', cells: [8, 10, 13, 14, 15, 16, 22, 26, 27, 28], product: 10_000, color: '#ffbfffff' },
+    { type: 'digit-count', cells: [0, 5, 30, 35], digit: 3, minimum: 1 },
+  ])
+})
+
+test('#439 parses an exact zero-product cage on a zero-based grid', async () => {
+  const size = 6
+  const source = {
+    metadata: {
+      title: 'Zero Product',
+      rules: 'Normal 6x6 sudoku rules apply, using the digits 0-5. Place the digits 0-5 once in every row, column, and 2x3 box.\n\n' +
+        'The product of the digits inside the cage is equal to 0. Digits can repeat within the cage if allowed by other rules.',
+    },
+    cells: Array.from({ length: size }, () => Array.from({ length: size }, () => ({}))),
+    regions: Array.from({ length: size }, (_, box) => Array.from({ length: size }, (_, cell) => [
+      Math.floor(box / 2) * 2 + Math.floor(cell / 3), box % 2 * 3 + cell % 3,
+    ])),
+    cages: [{ cells: [[0,0],[1,1]], value: '0' }],
+    underlays: [[0,0],[1,1]].map(([row, column]) => ({
+      center: [row + .5, column + .5], width: 1, height: 1, backgroundColor: '#ffbfffff',
+    })),
+  }
+  const imported = await detectPuzzle(encode(source))
+  assert.deepEqual(imported.grid, { size: 6, boxRows: 2, boxColumns: 3, notation: 'zero-based' })
+  assert.deepEqual(imported.sizedRules, [{ type: 'product-cage', cells: [0, 7], product: 0, color: '#ffbfffff' }])
+
+  const positive = await detectPuzzle(encode({
+    ...source,
+    metadata: { ...source.metadata, rules: source.metadata.rules.replace('equal to 0.', 'equal to 1.') },
+    cages: [{ cells: [[0,0],[1,1]], value: '1' }],
+  }))
+  assert.deepEqual(positive.sizedRules, [{ type: 'product-cage', cells: [0, 7], product: 1, color: '#ffbfffff' }])
+})
+
 test('#388 synthetic zero-based export parses a 17-cell Arrow and colored companion pairs', () => {
   const size = 10
   const source = {

@@ -537,6 +537,13 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
     (fields(rule, { type: oneOf('digit-restriction'), cells: list(cell, 1, size * size),
       digits: list(integer(1, size), 1, size), shape: oneOf('circle', 'cross', 'square') }) &&
       new Set(rule.cells).size === rule.cells.length && new Set(rule.digits).size === rule.digits.length) ||
+    (fields(rule, { type: oneOf('product-cage'), cells: list(cell, 1, size * size),
+      product: value => Number.isSafeInteger(value) && value >= (notation === 'zero-based' ? 0 : 1) },
+      { color: clueColor }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('digit-count'), cells: list(cell, 1, size * size), digit: integer(1, size),
+      minimum: value => Number.isInteger(value) && value >= 1 && value <= rule.cells.length },
+      { maximum: value => Number.isInteger(value) && value >= rule.minimum && value <= rule.cells.length }) &&
+      new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('zipper'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('entropic'), cells: list(cell, 3, size * size + 1), groups: entropyGroups }) && new Set(rule.groups.flat()).size === size) ||
     (fields(rule, { type: oneOf('parity-line'), cells: list(cell, 2, size * size) }) && new Set(rule.cells).size === rule.cells.length &&

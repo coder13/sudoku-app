@@ -5,6 +5,7 @@ import { fogView, playVariantPuzzle } from './fog.ts'
 import { linkedDoubleArrowCells, linkedDoubleArrowConflicts } from './sized-linked-double-arrow.ts'
 import { STARTER } from './formats.ts'
 import { sizedKillerState } from './sized-killer.ts'
+import { sizedProductState } from './sized-product.ts'
 import { variantPlacedRuleState } from './variant-placed-rules.ts'
 import { CLASSIC_GRID, gridHouseCells, gridRegionIndex, isGridText, sizedGridIdentity, gridDiagonalCells, gridValueOffset, sizedArrowState, sizedDigitExclusions, type SizedGrid, type PlayGrid, type JigsawGrid } from './grid.ts'
 import { positionDigit, positionSymbol } from './digit-symbols.ts'
@@ -337,6 +338,7 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
     variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size, gridValueOffset(grid)),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
+    sizedProductState(rules, values, grid.size, gridValueOffset(grid)),
     sizedQuadrupleState(sizedRules, values, grid.size),
     nonogramState(sizedRules, values, grid.size),
     sizedSkyscrapersState(sizedRules, values, grid.size),

@@ -20,6 +20,8 @@ mod skyscrapers;
 mod x_sum;
 mod zipper;
 
+use std::collections::HashSet;
+
 use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 use crate::{Analysis, Candidate, ClueDirection, HintAction, House};
@@ -38,6 +40,114 @@ pub use self::line_assignments::SizedLineType;
 use self::linked_double_arrow::LinkedDoubleArrow;
 pub use self::linked_double_arrow::SizedSumEnd;
 use self::little_killer::LittleKiller;
+
+fn product_cage_support(
+    cells: &[usize],
+    product: u64,
+    domains: &[u16],
+    value_offset: u8,
+    supported: &mut [u16],
+) -> bool {
+    if product == 0 {
+        if value_offset != 1 || !cells.iter().any(|&cell| domains[cell] & 1 != 0) {
+            return false;
+        }
+        for &cell in cells {
+            let zero_elsewhere = cells
+                .iter()
+                .any(|&other| other != cell && domains[other] & 1 != 0);
+            supported[cell] = domains[cell] & if zero_elsewhere { u16::MAX } else { 1 };
+        }
+        return cells.iter().all(|&cell| supported[cell] != 0);
+    }
+    let mut suffix = vec![HashSet::new(); cells.len() + 1];
+    suffix[cells.len()].insert(1u64);
+    for index in (0..cells.len()).rev() {
+        let domain = domains[cells[index]];
+        let tail = suffix[index + 1].iter().copied().collect::<Vec<_>>();
+        for rank in 1..=16u64 {
+            let digit = rank - u64::from(value_offset);
+            if digit == 0 || domain & (1 << (rank - 1)) == 0 || product % digit != 0 {
+                continue;
+            }
+            for &rest in &tail {
+                if rest <= product / digit && product % (digit * rest) == 0 {
+                    suffix[index].insert(digit * rest);
+                }
+            }
+        }
+    }
+    if !suffix[0].contains(&product) {
+        return false;
+    }
+
+    let mut prefix = HashSet::from([1u64]);
+    for (index, &cell) in cells.iter().enumerate() {
+        let domain = domains[cell];
+        for rank in 1..=16u64 {
+            let digit = rank - u64::from(value_offset);
+            let bit = 1 << (rank - 1);
+            if digit == 0 || domain & bit == 0 || product % digit != 0 {
+                continue;
+            }
+            if prefix.iter().any(|&before| {
+                before <= product / digit
+                    && product % (before * digit) == 0
+                    && suffix[index + 1].contains(&(product / (before * digit)))
+            }) {
+                supported[cell] |= bit;
+            }
+        }
+        let mut next = HashSet::new();
+        for &before in &prefix {
+            for rank in 1..=16u64 {
+                let digit = rank - u64::from(value_offset);
+                if digit == 0 || domain & (1 << (rank - 1)) == 0 || before > product / digit {
+                    continue;
+                }
+                let value = before * digit;
+                if product % value == 0 {
+                    next.insert(value);
+                }
+            }
+        }
+        prefix = next;
+    }
+    cells.iter().all(|&cell| supported[cell] != 0)
+}
+
+fn digit_count_support(
+    cells: &[usize],
+    digit: u8,
+    minimum: u8,
+    maximum: u8,
+    domains: &[u16],
+    supported: &mut [u16],
+) -> bool {
+    let bit = 1u16 << (digit - 1);
+    for &cell in cells {
+        for candidate in 1..=16u8 {
+            let candidate_bit = 1u16 << (candidate - 1);
+            if domains[cell] & candidate_bit == 0 {
+                continue;
+            }
+            let fixed = u8::from(candidate == digit)
+                + cells
+                    .iter()
+                    .filter(|&&other| other != cell && domains[other] == bit)
+                    .count() as u8;
+            let possible = u8::from(candidate == digit)
+                + cells
+                    .iter()
+                    .filter(|&&other| other != cell && domains[other] & bit != 0)
+                    .count() as u8;
+            if possible >= minimum && fixed <= maximum {
+                supported[cell] |= candidate_bit;
+            }
+        }
+    }
+    cells.iter().all(|&cell| supported[cell] != 0)
+}
 use self::nonogram::NonogramLine;
 pub use self::nonogram::RunAxis;
 use self::pairs::{RowColumnSum, SizedPairLink, UnmarkedSumSupport, compile_pairs};
@@ -100,6 +210,16 @@ pub enum SizedConstraint {
     DigitRestriction {
         cells: Vec<usize>,
         digits: Vec<u8>,
+    },
+    ProductCage {
+        cells: Vec<usize>,
+        product: u64,
+    },
+    DigitCount {
+        cells: Vec<usize>,
+        digit: u8,
+        minimum: u8,
+        maximum: u8,
     },
     Thermometer {
         cells: Vec<usize>,
@@ -438,6 +558,8 @@ pub struct SizedConstraintGrid {
     little_killers: Vec<Option<LittleKiller>>,
     quadruples: Vec<Option<SizedQuadruple>>,
     cages: Vec<Vec<Cage>>,
+    product_cages: Vec<Option<(Vec<usize>, u64)>>,
+    digit_counts: Vec<Option<(Vec<usize>, u8, u8, u8)>>,
     linked_double_arrows: Vec<Option<LinkedDoubleArrow>>,
     pair_links: Vec<Vec<SizedPairLink>>,
     row_column_sums: Vec<Option<RowColumnSum>>,
@@ -506,6 +628,8 @@ impl SizedConstraintGrid {
         let mut equal_sums = Vec::new();
         let mut line_assignments = Vec::new();
         let mut cages = Vec::new();
+        let mut product_cages = Vec::new();
+        let mut digit_counts = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
             match rule {
@@ -556,6 +680,48 @@ impl SizedConstraintGrid {
                         }
                         *parity.get_mut(cell)? &= mask;
                     }
+                }
+                SizedConstraint::ProductCage { cells, product } => {
+                    if cells.is_empty()
+                        || cells.len() > layout.cell_count()
+                        || *product == 0 && !zero_based
+                    {
+                        return None;
+                    }
+                    let mut seen = [false; MAX_CELLS];
+                    if cells.iter().any(|&cell| {
+                        cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
+                    }) {
+                        return None;
+                    }
+                    product_cages.resize_with(index + 1, || None);
+                    product_cages[index] = Some((cells.clone(), *product));
+                }
+                SizedConstraint::DigitCount {
+                    cells,
+                    digit,
+                    minimum,
+                    maximum,
+                } => {
+                    if cells.is_empty()
+                        || cells.len() > layout.cell_count()
+                        || *digit == 0
+                        || usize::from(*digit) > size
+                        || *minimum == 0
+                        || usize::from(*minimum) > cells.len()
+                        || *maximum < *minimum
+                        || usize::from(*maximum) > cells.len()
+                    {
+                        return None;
+                    }
+                    let mut seen = [false; MAX_CELLS];
+                    if cells.iter().any(|&cell| {
+                        cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
+                    }) {
+                        return None;
+                    }
+                    digit_counts.resize_with(index + 1, || None);
+                    digit_counts[index] = Some((cells.clone(), *digit, *minimum, *maximum));
                 }
                 SizedConstraint::Thermometer { cells } => {
                     if !(2..=size).contains(&cells.len())
@@ -851,6 +1017,8 @@ impl SizedConstraintGrid {
             little_killers,
             quadruples,
             cages,
+            product_cages,
+            digit_counts,
             linked_double_arrows,
             pair_links,
             row_column_sums,
@@ -1047,6 +1215,39 @@ impl SizedConstraintGrid {
                 for (&cell, mask) in cage.cells.iter().zip(support) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
+                }
+            }
+            for (cells, product) in self.product_cages.iter().flatten() {
+                let mut supported = [0; MAX_CELLS];
+                if !product_cage_support(
+                    cells,
+                    *product,
+                    candidates,
+                    self.value_offset,
+                    &mut supported,
+                ) {
+                    return false;
+                }
+                for &cell in cells {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
+                }
+            }
+            for (cells, digit, minimum, maximum) in self.digit_counts.iter().flatten() {
+                let mut supported = [0; MAX_CELLS];
+                if !digit_count_support(
+                    cells,
+                    *digit,
+                    *minimum,
+                    *maximum,
+                    candidates,
+                    &mut supported,
+                ) {
+                    return false;
+                }
+                for &cell in cells {
+                    changed |= candidates[cell] != supported[cell];
+                    candidates[cell] = supported[cell];
                 }
             }
             for line in self.region_sums.iter().flatten() {
@@ -1491,6 +1692,39 @@ impl SizedConstraintGrid {
                                 break;
                             }
                         }
+                    }
+                }
+                SizedConstraint::ProductCage { .. } => {
+                    let (cells, product) = self.product_cages[rule].as_ref()?;
+                    let mut support = [0; MAX_CELLS];
+                    if !product_cage_support(
+                        cells,
+                        *product,
+                        &domains,
+                        self.value_offset,
+                        &mut support,
+                    ) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !support[cell], &mut actions);
+                    }
+                }
+                SizedConstraint::DigitCount { .. } => {
+                    let (cells, digit, minimum, maximum) = self.digit_counts[rule].as_ref()?;
+                    let mut support = [0; MAX_CELLS];
+                    if !digit_count_support(
+                        cells,
+                        *digit,
+                        *minimum,
+                        *maximum,
+                        &domains,
+                        &mut support,
+                    ) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !support[cell], &mut actions);
                     }
                 }
                 SizedConstraint::RegionSum { cells, .. } => {
@@ -2033,6 +2267,29 @@ impl SizedConstraintGrid {
                         return Some(SizedConstraintFailure::KillerCage { rule, cage });
                     }
                     false
+                }
+                SizedConstraint::ProductCage { .. } => {
+                    let (cells, product) = self.product_cages[rule].as_ref()?;
+                    let mut supported = [0; MAX_CELLS];
+                    !product_cage_support(
+                        cells,
+                        *product,
+                        &domains,
+                        self.value_offset,
+                        &mut supported,
+                    )
+                }
+                SizedConstraint::DigitCount { .. } => {
+                    let (cells, digit, minimum, maximum) = self.digit_counts[rule].as_ref()?;
+                    let mut supported = [0; MAX_CELLS];
+                    !digit_count_support(
+                        cells,
+                        *digit,
+                        *minimum,
+                        *maximum,
+                        &domains,
+                        &mut supported,
+                    )
                 }
                 SizedConstraint::Quadruple { .. } => {
                     self.quadruples[rule].as_ref()?.support(&domains).is_none()

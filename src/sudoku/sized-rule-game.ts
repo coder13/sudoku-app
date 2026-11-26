@@ -183,6 +183,25 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       const digits = rule.groups.flat() as number[]
       return digits.length === size && new Set(digits).size === size
     }
+    if (rule.type === 'product-cage') {
+      const valueOffset = gridValueOffset(grid)
+      return Object.keys(rule).every(key => ['type', 'cells', 'product', 'color'].includes(key)) && Array.isArray(rule.cells) && rule.cells.length > 0 &&
+        rule.cells.length <= size ** 2 && rule.cells.every((cell: unknown) =>
+          Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(rule.cells).size === rule.cells.length && Number.isSafeInteger(rule.product) &&
+        Number(rule.product) >= (valueOffset ? 0 : 1) &&
+        (rule.color === undefined || typeof rule.color === 'string' && /^#[\da-f]{3,8}$/i.test(rule.color))
+    }
+    if (rule.type === 'digit-count') {
+      return Object.keys(rule).every(key => ['type', 'cells', 'digit', 'minimum', 'maximum'].includes(key)) &&
+        Array.isArray(rule.cells) && rule.cells.length > 0 && rule.cells.length <= size ** 2 &&
+        rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+        new Set(rule.cells).size === rule.cells.length && Number.isInteger(rule.digit) &&
+        rule.digit >= 1 && rule.digit <= size && Number.isInteger(rule.minimum) &&
+        rule.minimum >= 1 && rule.minimum <= rule.cells.length &&
+        (rule.maximum === undefined || Number.isInteger(rule.maximum) &&
+          rule.maximum >= rule.minimum && rule.maximum <= rule.cells.length)
+    }
     if (rule.type === 'killer-cages') return validSizedKillerRule(rule, size, occupiedCages)
     if (rule.type === 'quadruple') return validSizedQuadruple(rule, size)
     if (rule.type === 'nonogram') return validNonogramRule(rule, size)
@@ -510,6 +529,14 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     if (rule.type === 'diagonal') clues.add(`Place each digit from 1 to ${grid.size} once on the ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal.`)
     else if (rule.type === 'extra-house') clues.add(`Place each digit from 1 to ${grid.size} once in each marked extra region.`)
     else if (rule.type === 'killer-cages') clues.add('Digits in a cage add to its printed total and cannot repeat.')
+    else if (rule.type === 'product-cage') clues.add(`The digits in each shaded product cage multiply to ${rule.product}. Repeats are allowed when other rules permit them.`)
+    else if (rule.type === 'digit-count') {
+      const corners = [0, grid.size - 1, grid.size * (grid.size - 1), grid.size ** 2 - 1].sort((a, b) => a - b)
+      if (rule.cells.length === corners.length && [...rule.cells].sort((a, b) => a - b).every((cell, index) => cell === corners[index]) &&
+        rule.minimum === 1 && (rule.maximum === undefined || rule.maximum === rule.cells.length)) {
+        clues.add(`At least one of the four corner cells must contain ${rule.digit}.`)
+      } else clues.add(`At least ${rule.minimum} ${rule.minimum === 1 ? 'cell' : 'cells'} in the marked group${rule.minimum > 1 ? `, and no more than ${rule.maximum ?? rule.cells.length}` : ''} contain${rule.minimum === 1 ? 's' : ''} ${rule.digit}.`)
+    }
     else if (rule.type === 'quadruple') clues.add(PUZZLE_VARIANTS.quadruple.rule)
     else if (rule.type === 'parity') clues.add(rule.parity === 'odd' ? 'A circle marks an odd digit.' : 'A square marks an even digit.')
     else if (rule.type === 'digit-restriction') clues.add(`Marked ${rule.shape} cells can contain only ${new Intl.ListFormat('en').format(rule.digits.map(String))}.`)
@@ -547,6 +574,14 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'sandwich') {
       const valueOffset = gridValueOffset(grid)
       clues.add(`The digits between ${1 - valueOffset} and ${grid.size - valueOffset} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    }
+    else if (rule.type === 'minimum' || rule.type === 'maximum') {
+      const minimum = rule.type === 'minimum'
+      if (rule.shaded && !minimum) clues.add('Each shaded cell has a higher digit than every unshaded cell that shares an edge with it.')
+      else {
+        clues.add(`Each ${minimum ? 'Minimum' : 'Maximum'} cell has a ${minimum ? 'lower' : 'higher'} digit than every orthogonally adjacent cell.`)
+        if (rule.ignoreMarkedNeighbors) clues.add(`Adjacent cells with the same ${minimum ? 'Minimum' : 'Maximum'} mark skip this comparison.`)
+      }
     }
     else if (rule.type === 'x-sum') clues.add(`The first digit seen from the ${rule.direction} side tells how many digits to add, including that first digit. The total equals the outside clue.`)
     else if (rule.type === 'x-sum-dot') clues.add(rule.relation === 'consecutive'

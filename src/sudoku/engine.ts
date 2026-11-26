@@ -206,6 +206,8 @@ export type SizedXSumDot = { type: 'x-sum-dot'; ends: readonly [SizedSumEnd, Siz
 export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; index: number; digits: readonly number[]; runs: readonly number[] }
 export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
 export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
+export type SizedProductCageRule = { type: 'product-cage'; cells: readonly number[]; product: number; color?: string }
+export type SizedDigitCountRule = { type: 'digit-count'; cells: readonly number[]; digit: number; minimum: number; maximum?: number }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
 export type SizedLineType =
   | { type: 'entropic'; groups: readonly (readonly number[])[] }
@@ -223,6 +225,7 @@ export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'par
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedXSumDot | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule
+  | SizedProductCageRule | SizedDigitCountRule
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
   | { type: 'row-equation'; cells: readonly number[]; operators: readonly EquationOperator[] }
