@@ -211,6 +211,11 @@ pub enum SizedConstraint {
         cells: Vec<usize>,
         digits: Vec<u8>,
     },
+    SumModulo {
+        cells: Vec<usize>,
+        modulus: u8,
+        remainder: u8,
+    },
     ProductCage {
         cells: Vec<usize>,
         product: u64,
@@ -543,6 +548,7 @@ pub struct SizedConstraintGrid {
     value_offset: u8,
     rules: Vec<SizedConstraint>,
     parity: Vec<(usize, u16)>,
+    sum_parities: Vec<Option<(Vec<usize>, u8, u8)>>,
     diagonals: Vec<Vec<usize>>,
     extra_houses: Vec<Vec<usize>>,
     thermometers: Vec<(Vec<usize>, bool)>,
@@ -581,6 +587,74 @@ fn parity_mask(parity: SizedParity, value_offset: u8) -> u16 {
     } else {
         0xaaaa
     }
+}
+
+fn sum_modulo_support(
+    cells: &[usize],
+    domains: &[u16],
+    size: usize,
+    value_offset: u8,
+    modulus: usize,
+    expected: usize,
+    supported: &mut [u16],
+) -> bool {
+    let mut prefix = vec![[false; 16]; cells.len() + 1];
+    let mut suffix = vec![[false; 16]; cells.len() + 1];
+    prefix[0][0] = true;
+    suffix[cells.len()][0] = true;
+    for (index, &cell) in cells.iter().enumerate() {
+        for rank in 1..=size {
+            if domains[cell] & (1 << (rank - 1)) == 0 {
+                continue;
+            }
+            let residue = (rank - usize::from(value_offset)) % modulus;
+            for before in 0..modulus {
+                if prefix[index][before] {
+                    prefix[index + 1][(before + residue) % modulus] = true;
+                }
+            }
+        }
+    }
+    for index in (0..cells.len()).rev() {
+        let cell = cells[index];
+        for rank in 1..=size {
+            if domains[cell] & (1 << (rank - 1)) == 0 {
+                continue;
+            }
+            let residue = (rank - usize::from(value_offset)) % modulus;
+            for after in 0..modulus {
+                if suffix[index + 1][after] {
+                    suffix[index][(residue + after) % modulus] = true;
+                }
+            }
+        }
+    }
+    if !prefix[cells.len()][expected] {
+        return false;
+    }
+    for (index, &cell) in cells.iter().enumerate() {
+        let mut mask = 0;
+        for rank in 1..=size {
+            let bit = 1 << (rank - 1);
+            if domains[cell] & bit == 0 {
+                continue;
+            }
+            let residue = (rank - usize::from(value_offset)) % modulus;
+            if (0..modulus).any(|before| {
+                prefix[index][before]
+                    && (0..modulus).any(|after| {
+                        suffix[index + 1][after] && (before + residue + after) % modulus == expected
+                    })
+            }) {
+                mask |= bit;
+            }
+        }
+        supported[cell] = mask;
+        if mask == 0 {
+            return false;
+        }
+    }
+    true
 }
 
 impl SizedConstraintGrid {
@@ -630,6 +704,7 @@ impl SizedConstraintGrid {
         let mut cages = Vec::new();
         let mut product_cages = Vec::new();
         let mut digit_counts = Vec::new();
+        let mut sum_parities = Vec::new();
         let mut occupied = [false; MAX_SIZE * MAX_SIZE];
         for (index, rule) in rules.iter().enumerate() {
             match rule {
@@ -680,6 +755,28 @@ impl SizedConstraintGrid {
                         }
                         *parity.get_mut(cell)? &= mask;
                     }
+                }
+                SizedConstraint::SumModulo {
+                    cells,
+                    modulus,
+                    remainder,
+                } => {
+                    if cells.is_empty()
+                        || cells.len() > layout.cell_count()
+                        || *modulus < 2
+                        || *modulus > 16
+                        || *remainder >= *modulus
+                    {
+                        return None;
+                    }
+                    let mut seen = [false; MAX_CELLS];
+                    if cells.iter().any(|&cell| {
+                        cell >= layout.cell_count() || std::mem::replace(&mut seen[cell], true)
+                    }) {
+                        return None;
+                    }
+                    sum_parities.resize_with(index + 1, || None);
+                    sum_parities[index] = Some((cells.clone(), *modulus, *remainder));
                 }
                 SizedConstraint::ProductCage { cells, product } => {
                     if cells.is_empty()
@@ -1002,6 +1099,7 @@ impl SizedConstraintGrid {
             value_offset,
             rules: rules.to_vec(),
             parity,
+            sum_parities,
             diagonals,
             extra_houses,
             thermometers,
@@ -1132,6 +1230,25 @@ impl SizedConstraintGrid {
         }
         loop {
             let mut changed = false;
+            for (cells, modulus, remainder) in self.sum_parities.iter().flatten() {
+                let mut support = [0; MAX_CELLS];
+                if !sum_modulo_support(
+                    cells,
+                    candidates,
+                    self.layout.size(),
+                    self.value_offset,
+                    usize::from(*modulus),
+                    usize::from(*remainder),
+                    &mut support,
+                ) {
+                    return false;
+                }
+                for &cell in cells {
+                    let allowed = candidates[cell] & support[cell];
+                    changed |= candidates[cell] != allowed;
+                    candidates[cell] = allowed;
+                }
+            }
             for cells in &self.extra_houses {
                 let support = extra_house_support(cells, candidates, self.layout.full_mask);
                 for (&cell, mask) in cells.iter().zip(support) {
@@ -1590,6 +1707,29 @@ impl SizedConstraintGrid {
                     let excluded = !parity_mask(*parity, self.value_offset);
                     for &cell in cells {
                         eliminations_for(cell, candidates[cell] & excluded, &mut actions);
+                    }
+                    actions.sort_unstable();
+                    actions.dedup();
+                }
+                SizedConstraint::SumModulo {
+                    cells,
+                    modulus,
+                    remainder,
+                } => {
+                    let mut support = [0; MAX_CELLS];
+                    if !sum_modulo_support(
+                        cells,
+                        &domains,
+                        self.layout.size(),
+                        self.value_offset,
+                        usize::from(*modulus),
+                        usize::from(*remainder),
+                        &mut support,
+                    ) {
+                        return None;
+                    }
+                    for &cell in cells {
+                        eliminations_for(cell, candidates[cell] & !support[cell], &mut actions);
                     }
                     actions.sort_unstable();
                     actions.dedup();
@@ -2195,6 +2335,22 @@ impl SizedConstraintGrid {
                     };
                     cells.iter().any(|&cell| domains[cell] & allowed == 0)
                 }
+                SizedConstraint::SumModulo {
+                    cells,
+                    modulus,
+                    remainder,
+                } => {
+                    if digits.iter().any(|&digit| digit == 0) {
+                        false
+                    } else {
+                        cells
+                            .iter()
+                            .map(|&cell| usize::from(digits[cell]) - usize::from(self.value_offset))
+                            .sum::<usize>()
+                            % usize::from(*modulus)
+                            != usize::from(*remainder)
+                    }
+                }
                 SizedConstraint::DigitRestriction { cells, digits } => {
                     let allowed = digits
                         .iter()
@@ -2488,6 +2644,19 @@ impl SizedConstraintGrid {
                 }
                 true
             })
+            && self
+                .sum_parities
+                .iter()
+                .flatten()
+                .all(|(cells, modulus, remainder)| {
+                    cells.iter().any(|&cell| digits[cell] == 0)
+                        || cells
+                            .iter()
+                            .map(|&cell| usize::from(digits[cell]) - usize::from(self.value_offset))
+                            .sum::<usize>()
+                            % usize::from(*modulus)
+                            == usize::from(*remainder)
+                })
             && self.between_lines.iter().all(|cells| {
                 if cells.iter().any(|&cell| digits[cell] == 0) {
                     return true;

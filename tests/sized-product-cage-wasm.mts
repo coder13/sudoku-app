@@ -6,6 +6,8 @@ import { positionText } from '../src/sudoku/digit-symbols.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { sizedRuleHintChoice, sizedRuleHintChoices } from '../src/sudoku/sized-rule-play.ts'
+import { verifySizedRulePuzzle } from '../src/sudoku/sized-rule-game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { readFileSync } from 'node:fs'
@@ -19,9 +21,24 @@ const solution = Array.from(puzzle.authoredSolution ?? '', Number)
 
 test('#439 the engine verifies the 10K product cage and authored corner rule', async () => {
   assert.ok(puzzle.grid && puzzle.sizedRules)
+  const productRule = puzzle.sizedRules.find(rule => rule.type === 'product-cage')
+  assert.ok(productRule?.type === 'product-cage')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: puzzle.grid, rules: [productRule], digits: Array.from(puzzle.givens, Number),
+  } }), 'multiple', 'the authored corner rule is necessary alongside the product cage')
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     version: 2, grid: puzzle.grid, rules: puzzle.sizedRules, digits: solution,
   } }), 'unique')
+
+  const game = await verifySizedRulePuzzle({ grid: puzzle.grid, givens: puzzle.givens, rules: puzzle.sizedRules,
+    authoredSolution: puzzle.authoredSolution })
+  const hints = await sizedRuleHintChoices(game, puzzle.grid, puzzle.givens)
+  const productHint = hints?.choices.find(choice => choice.technique === 'sized-product-cage')
+  assert.ok(productHint)
+  assert.match(productHint.evidence.variant.description, /digits in this shaded product cage multiply to 10000/)
+  assert.match(productHint.evidence.variant.reason, /other cells can complete the product/)
+  assert.match(productHint.evidence.variant.reason, /Repeats are allowed/)
+  assert.doesNotMatch(productHint.evidence.variant.description, /thermometer/)
 
   const badCorners = solution.map(digit => digit === 3 ? 2 : digit === 2 ? 3 : digit)
   const cornerRule = puzzle.sizedRules.find(rule => rule.type === 'digit-count')
@@ -47,6 +64,8 @@ test('#439 the engine verifies the 10K product cage and authored corner rule', a
 
 test('#439 the engine propagates an at-least-one corner digit to the last possible corner', async () => {
   assert.ok(puzzle.grid && puzzle.sizedRules)
+  const cornerRule = puzzle.sizedRules.find(rule => rule.type === 'digit-count')
+  assert.ok(cornerRule?.type === 'digit-count')
   const digits = Array(36).fill(0)
   digits[0] = 2
   digits[5] = 5
@@ -56,6 +75,13 @@ test('#439 the engine propagates an at-least-one corner digit to the last possib
   } })
   assert.ok(Array.isArray(candidates))
   assert.equal(candidates[35], 1 << 2)
+
+  const cornerHint = sizedRuleHintChoice({ solution: puzzle.authoredSolution!, rules: [cornerRule] }, {
+    type: 'rule', rule: 0, actions: [{ eliminate: { cell: 35, digit: 3 } }],
+  }, puzzle.grid)
+  assert.equal(cornerHint.technique, 'sized-digit-count')
+  assert.match(cornerHint.evidence.variant.description, /At least 1 of the marked cells must contain 3/)
+  assert.match(cornerHint.evidence.variant.reason, /remaining marked cells can still meet that count/)
 })
 
 test('#439 sized product cages support repeated digits on a wide grid', async () => {

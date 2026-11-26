@@ -4,7 +4,7 @@ import { PUZZLE_VARIANTS } from './variants.ts'
 import { isSizedSumEnd, linkedDoubleArrowConflicts, sizedSumEndCells, sizedSumEndKey } from './sized-linked-double-arrow.ts'
 import { nonogramState, validNonogramRule } from './sized-nonogram.ts'
 import { skyscrapersState, validSizedSkyscrapersRule } from './sized-skyscrapers.ts'
-import { runEngine, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
+import { runEngine, type EngineRequest, type EngineResult, type EngineRunner, type MarkedPairs, type SizedConstraintPosition, type SizedConstraintRule } from './engine.ts'
 import { conflictsOf } from './game.ts'
 import { isGridText, gridCellsShareEdge, gridDiagonalCells, gridValueOffset, kropkiDigitExclusions, rowColumnSumTotal, sizedClassicPosition, type SizedGrid } from './grid.ts'
 import { positionDigit, positionText } from './digit-symbols.ts'
@@ -54,6 +54,32 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
   const occupiedCages = new Set<number>()
   return value.every(rule => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return false
+    if (rule.type === 'constraint-alternatives') {
+      return Object.keys(rule).every(key => ['type', 'family', 'choices', 'choiceLabels', 'displayRules'].includes(key)) &&
+        typeof rule.family === 'string' && /^[a-z][a-z0-9-]{0,31}$/i.test(rule.family) &&
+        Array.isArray(rule.choices) && rule.choices.length >= 2 && rule.choices.length <= 16 &&
+        (rule.choiceLabels === undefined || Array.isArray(rule.choiceLabels) && rule.choiceLabels.length === rule.choices.length &&
+          rule.choiceLabels.every((label: unknown) => typeof label === 'string' && !!label.trim() && label.length <= 96)) &&
+        rule.choices.every((choice: unknown) => Array.isArray(choice) && choice.length > 0 && choice.length <= 128 &&
+          choice.every((item: unknown) => !!item && typeof item === 'object' && !Array.isArray(item) &&
+            (item as { type?: unknown }).type !== 'constraint-alternatives') && isSizedRuleList(choice, grid)) &&
+        (rule.displayRules === undefined || Array.isArray(rule.displayRules) && rule.displayRules.length > 0 &&
+          rule.displayRules.every((item: unknown) => !!item && typeof item === 'object' && !Array.isArray(item) &&
+            (item as { type?: unknown }).type !== 'constraint-alternatives') && isSizedRuleList(rule.displayRules, grid))
+    }
+    if (rule.type === 'outside-text') {
+      const cells = Array.isArray(rule.cells) ? rule.cells as number[] : []
+      if (Object.keys(rule).length !== 4 || typeof rule.label !== 'string' || !rule.label.trim() || rule.label.length > 16 ||
+        !['north-east', 'south-east', 'south-west', 'north-west'].includes(String(rule.direction)) ||
+        cells.length < 1 || cells.length > size || cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
+        new Set(cells).size !== cells.length) return false
+      const [dr, dc] = rule.direction === 'north-east' ? [-1, 1] : rule.direction === 'south-east' ? [1, 1]
+        : rule.direction === 'south-west' ? [1, -1] : [-1, -1]
+      const first = cells[0], row = Math.floor(first / size), column = first % size
+      return (row - dr < 0 || row - dr >= size || column - dc < 0 || column - dc >= size) &&
+        cells.every((cell, index) => cell === (row + dr * index) * size + column + dc * index) &&
+        (row + dr * cells.length < 0 || row + dr * cells.length >= size || column + dc * cells.length < 0 || column + dc * cells.length >= size)
+    }
     if (rule.type === 'minimum' || rule.type === 'maximum') {
       const allowedKeys = rule.type === 'maximum'
         ? ['type', 'cells', 'ignoreMarkedNeighbors', 'shaded'] : ['type', 'cells', 'ignoreMarkedNeighbors']
@@ -81,6 +107,19 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       return cells.every((cell: number, index: number) => cell === (row + dr * index) * size + column + dc * index) &&
         (row + dr * rule.cells.length < 0 || row + dr * rule.cells.length >= size ||
           column + dc * rule.cells.length < 0 || column + dc * rule.cells.length >= size)
+    }
+    if (rule.type === 'sum-modulo') {
+      const cells = Array.isArray(rule.cells) ? rule.cells as number[] : []
+      if (Object.keys(rule).length !== 4 || !Number.isInteger(rule.modulus) || rule.modulus < 2 || rule.modulus > 16 ||
+        !Number.isInteger(rule.remainder) || rule.remainder < 0 || rule.remainder >= rule.modulus ||
+        cells.length === 0 || cells.length > size ||
+        cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) || new Set(cells).size !== cells.length) return false
+      if (cells.length === 1) return true
+      const first = cells[0], row = Math.floor(first / size), column = first % size
+      const dr = Math.sign(Math.floor(cells[1] / size) - row), dc = Math.sign(cells[1] % size - column)
+      return Math.abs(Math.floor(cells[1] / size) - row) === 1 && Math.abs(cells[1] % size - column) === 1 &&
+        cells.every((cell, index) => cell === (row + dr * index) * size + column + dc * index) &&
+        (row + dr * cells.length < 0 || row + dr * cells.length >= size || column + dc * cells.length < 0 || column + dc * cells.length >= size)
     }
     if (rule.type === 'crust') {
       if (Object.keys(rule).some(key => !['type', 'clues', 'sharedRegion', 'fixedEdges'].includes(key)) ||
@@ -369,6 +408,39 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
   })
 }
 
+export function expandSizedRuleAlternatives(rules: readonly SizedConstraintRule[], limit = 256): SizedConstraintRule[][] | undefined {
+  return expandSizedRuleAlternativeBranches(rules, limit)?.map(branch => branch.rules)
+}
+
+export function expandSizedRuleAlternativeBranches(
+  rules: readonly SizedConstraintRule[], limit = 256,
+): { rules: SizedConstraintRule[]; choices: number[] }[] | undefined {
+  let branches: { rules: SizedConstraintRule[]; choices: number[] }[] = [{ rules: [], choices: [] }]
+  for (const rule of rules) {
+    if (rule.type !== 'constraint-alternatives') {
+      for (const branch of branches) branch.rules.push(rule)
+      continue
+    }
+    if (branches.length * rule.choices.length > limit) return undefined
+    branches = branches.flatMap(branch => rule.choices.map((choice, index) => ({
+      rules: [...branch.rules, ...choice], choices: [...branch.choices, index],
+    })))
+  }
+  return branches
+}
+
+export async function runSizedRuleAlternatives<T extends EngineRequest>(
+  request: T, run: EngineRunner = runEngine,
+): Promise<EngineResult<T>[]> {
+  if (!('position' in request) || !('rules' in request.position)) return [await run(request)]
+  const rules = request.position.rules as readonly SizedConstraintRule[]
+  const branches = expandSizedRuleAlternatives(rules)
+  if (!branches) throw new Error('This puzzle has too many clue interpretations to check safely.')
+  return Promise.all(branches.map(branch => run({
+    ...request, position: { ...request.position, rules: branch },
+  } as T)))
+}
+
 export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame, 'rules'>, values: string): SizedConstraintPosition {
   return { ...sizedClassicPosition(grid, values), rules,
     ...('notation' in grid && grid.notation === 'zero-based' && { zeroBased: true }) }
@@ -387,10 +459,18 @@ export async function verifySizedRulePuzzle({ grid, givens, rules, author, autho
     return { rules, solution: authoredSolution, ...(isSizedRuleAuthor(author) && { author }) }
   }
   const position = sizedRulePosition(grid, { rules }, givens)
-  const result = await run({ type: 'sized-variant', operation: 'solve-unique', position })
-  if (result.status === 'conflict') throw new Error('This puzzle has conflicting givens or rules.')
-  if (result.status !== 'unique') throw new Error(validation[result.status].text)
-  const solution = positionText(result.solution.digits)
+  const results = await runSizedRuleAlternatives({ type: 'sized-variant', operation: 'solve-unique', position }, run)
+  const unique = results.flatMap(result => result.status === 'unique' ? [result.solution.digits] : [])
+  const distinctSolutions = new Map(unique.map(digits => [digits.join(''), digits]))
+  if (results.some(result => result.status === 'multiple') || distinctSolutions.size > 1) {
+    throw new Error(validation.multiple.text)
+  }
+  if (results.some(result => result.status === 'search-limit')) throw new Error(validation['search-limit'].text)
+  if (!distinctSolutions.size) {
+    if (results.some(result => result.status === 'unsolvable')) throw new Error(validation.unsolvable.text)
+    throw new Error('This puzzle has conflicting givens or rules.')
+  }
+  const solution = positionText([...distinctSolutions.values()][0])
   if (authoredSolution !== undefined && solution !== authoredSolution) {
     throw new Error('The authored solution conflicts with the puzzle’s rules.')
   }
@@ -404,7 +484,12 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
   for (const rule of rules) {
-    if (rule.type === 'adjacent-total') {
+    if (rule.type === 'constraint-alternatives') {
+      if (!rule.choices.some(choice => restoreSizedRuleGame({ rules: choice, solution, author }, grid, givens))) return
+    } else if (rule.type === 'sum-modulo') {
+      const sum = rule.cells.reduce((total, cell) => total + digit(cell), 0)
+      if (sum % rule.modulus !== rule.remainder) return
+    } else if (rule.type === 'adjacent-total') {
       if (digit(rule.cells[0]) + digit(rule.cells[1]) !== rule.sum) return
     } else if (rule.type === 'corner-kropki') {
       for (const kind of cornerKropkiKinds) for (const corner of rule[kind] ?? []) {

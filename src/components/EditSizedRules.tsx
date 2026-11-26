@@ -1,7 +1,7 @@
-import { sizedSumEndKey, sizedSumEndLabel, sizedXSumDirections } from '../sudoku/sized-linked-double-arrow'
+import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumDirections, type SizedXSumEnd } from '../sudoku/sized-linked-double-arrow'
 import { Fragment, useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { MarkedPairs, SizedConstraintRule, SizedLabeledDotsRule, SizedSumEnd } from '../sudoku/engine'
-import { gridCellsShareEdge, rowColumnSumTotal, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
+import { gridCellsShareEdge, gridValueOffset, rowColumnSumTotal, sizedGridIdentity, type SizedGrid } from '../sudoku/grid'
 import { move, valuesOf, type Game } from '../sudoku/game'
 import { isSizedRuleList } from '../sudoku/sized-rule-game'
 import { roomStore } from '../sudoku/storage'
@@ -27,15 +27,20 @@ const ruleNames = {
   arrow: 'Arrow',
   'double-arrow': 'Double Arrow',
   'linked-double-arrow': 'Double Arrow with X-Sum ends',
+  'x-sum': 'Outside X-Sum',
   'region-sum': 'Region Sum line',
   quadruple: 'Quadruple circle',
   'extra-house': 'Extra region',
   'killer-cages': 'Killer cages',
+  'product-cage': 'Product cage',
+  'digit-count': 'Digit count',
 }
 
 type RuleChoice = keyof typeof ruleNames
 const ruleChoice = (rule: SizedConstraintRule): RuleChoice =>
-  rule.type === 'diagonal'
+  rule.type === 'constraint-alternatives'
+    ? 'thermometer'
+    : rule.type === 'diagonal'
     ? rule.diagonal
     : rule.type === 'parity'
       ? rule.parity
@@ -45,10 +50,18 @@ const ruleChoice = (rule: SizedConstraintRule): RuleChoice =>
           ? 'thermometer'
           : (rule.type as RuleChoice)
 
-function ruleLabel(rule: SizedConstraintRule) {
+function ruleLabel(rule: SizedConstraintRule, size: number, valueOffset = 0) {
+  if (rule.type === 'constraint-alternatives') return `Exact-one ${rule.family} clue group · ${rule.choices.length} interpretations`
   if (rule.type === 'whispers') return `Whispers, minimum difference ${rule.minDifference}`
   if (rule.type === 'xv') return 'X/V markers'
   if (rule.type === 'sandwich') return `Sandwich, total ${rule.sum}`
+  if (rule.type === 'x-sum') {
+    const vertical = rule.direction === 'north' || rule.direction === 'south'
+    const index = vertical ? rule.cells[0] % size : Math.floor(rule.cells[0] / size)
+    return `Outside X-Sum ${rule.sum} · ${sizedSumEndLabel({ direction: rule.direction, index }, size)}`
+  }
+  if (rule.type === 'product-cage') return `Product cage · ${rule.product}`
+  if (rule.type === 'digit-count') return `Digit count · ${rule.digit - valueOffset} at least ${rule.minimum}`
   return ruleNames[ruleChoice(rule)]
 }
 
@@ -71,15 +84,24 @@ const emptyDotLayer: SizedLabeledDotsRule = {
 }
 
 function draftRule(
-  kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum' | 'quadruple'>,
+  kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum' | 'quadruple' | 'x-sum'>,
   cells: readonly number[],
   marks: KropkiMarks,
   difference: number,
   groupByRegion: boolean,
   labeled: SizedLabeledDotsRule,
-  killer: KillerRule
+  killer: KillerRule,
+  product: number,
+  countDigit: number,
+  countMinimum: number,
+  countMaximum?: number,
 ): SizedConstraintRule {
   if (kind === 'killer-cages') return killer
+  if (kind === 'product-cage') return { type: kind, cells, product }
+  if (kind === 'digit-count') return {
+    type: kind, cells, digit: countDigit, minimum: countMinimum,
+    ...(countMaximum !== undefined && { maximum: countMaximum }),
+  }
   if (kind === 'labeled-dots') return labeled
   if (kind === 'region-sum') return { type: kind, cells, ...(groupByRegion && { groupByRegion }) }
   if (kind === 'double-arrow')
@@ -109,11 +131,17 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [editing, setEditing] = useState(-1)
   const [kind, setKind] = useState<RuleChoice>('thermometer')
   const [linkedEnds, setLinkedEnds] = useState(defaultLinkedEnds)
+  const [xSumEnd, setXSumEnd] = useState<SizedXSumEnd>({ direction: 'south', index: 0 })
+  const [xSumTotal, setXSumTotal] = useState('')
   const [quadrupleDigits, setQuadrupleDigits] = useState('')
   const [cells, setCells] = useState<readonly number[]>([])
   const [cages, setCages] = useState<KillerRule['cages']>([])
   const [cageIndex, setCageIndex] = useState(-1)
   const [cageTotal, setCageTotal] = useState('')
+  const [productTotal, setProductTotal] = useState('')
+  const [countDigit, setCountDigit] = useState(1)
+  const [countMinimum, setCountMinimum] = useState('1')
+  const [countMaximum, setCountMaximum] = useState('')
   const [marks, setMarks] = useState<KropkiMarks>({})
   const [dotKind, setDotKind] = useState<KropkiKind>('consecutive')
   const [difference, setDifference] = useState(1)
@@ -122,12 +150,14 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [labeled, setLabeled] = useState(emptyDotLayer)
   const [dotValue, setDotValue] = useState(1)
   const [groupByRegion, setGroupByRegion] = useState(false)
+  const [alternativeChoices, setAlternativeChoices] = useState<readonly boolean[]>([])
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
   const previous = rules[editing]
   const readOnlyImported = previous && ['whispers', 'xv', 'sandwich'].includes(previous.type)
+  const editingAlternatives = previous?.type === 'constraint-alternatives'
   const editingCage = cageIndex >= 0 || cells.length > 0 || cageTotal !== ''
   const nextCages = [...cages]
   if (kind === 'killer-cages' && editingCage) {
@@ -142,8 +172,13 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     ...(previous?.type === 'killer-cages' && previous.coverGrid && cages.reduce((count, cage) => count + cage.cells.length, 0) === size ** 2 && { coverGrid: true }),
   })
   const killer = killerLayer(nextCages)
-  let rule: SizedConstraintRule =
-    kind === 'linked-double-arrow'
+  let rule: SizedConstraintRule = previous?.type === 'constraint-alternatives'
+    ? {
+        ...previous,
+        choices: previous.choices.filter((_, index) => alternativeChoices[index]),
+        ...(previous.choiceLabels && { choiceLabels: previous.choiceLabels.filter((_, index) => alternativeChoices[index]) }),
+      }
+    : kind === 'linked-double-arrow'
       ? { type: kind, ends: linkedEnds, cells }
       : kind === 'anti-sum'
         ? { type: kind, sum: forbiddenSum }
@@ -155,7 +190,13 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
                 topLeft: cells[0] ?? -1,
                 digits: [...quadrupleDigits].map(Number),
               }
-            : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer)
+              : kind === 'x-sum'
+                ? { type: kind, direction: xSumEnd.direction, cells: sizedSumEndCells(xSumEnd, size), sum: Number(xSumTotal) }
+            : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer,
+              Number(productTotal), countDigit, Number(countMinimum), countMaximum === '' ? undefined : Number(countMaximum))
+  if (kind === 'product-cage' && rule.type === 'product-cage' && previous?.type === 'product-cage' && previous.color) {
+    rule = { ...rule, color: previous.color }
+  }
   if (kind === 'renban' && previous?.type === 'renban' && cells === previous.cells) {
     rule = previous
   } else if (kind === 'region-sum' && previous?.type === 'region-sum' && cells === previous.cells) {
@@ -164,7 +205,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const previewRule = kind === 'killer-cages' && !isSizedRuleList([...otherRules, rule], layout) ? killerLayer(cages) : rule
   const preview = isSizedRuleList([...otherRules, previewRule], layout) ? [...otherRules, previewRule] : otherRules
   const canSelectCells =
-    !readOnlyImported && ('cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum' || kind === 'quadruple')
+    kind !== 'x-sum' && !readOnlyImported && !editingAlternatives && ('cells' in rule || kind === 'kropki' || kind === 'labeled-dots' || kind === 'killer-cages' || kind === 'row-column-sum' || kind === 'quadruple')
   const selectedEdge = cells.length === 2 && gridCellsShareEdge(cells[0], cells[1], size)
   const matchesEdge = ([a, b]: readonly [number, number]) => cells.includes(a) && cells.includes(b)
   const markedDiamond = selectedEdge && diamonds.pairs.some(matchesEdge)
@@ -204,9 +245,12 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   function selectRule(index: number) {
     const previous = rules[index]
     setEditing(index)
-    setKind(previous ? ruleChoice(previous) : 'thermometer')
+    setKind(previous && previous.type !== 'constraint-alternatives' ? ruleChoice(previous) : 'thermometer')
+    setAlternativeChoices(previous?.type === 'constraint-alternatives' ? previous.choices.map(() => true) : [])
     const selected =
-      previous?.type === 'arrow'
+      previous?.type === 'x-sum'
+        ? []
+        : previous?.type === 'arrow'
         ? [previous.circle, ...previous.cells]
         : previous?.type === 'double-arrow'
           ? [previous.ends[0], ...previous.cells, previous.ends[1]]
@@ -218,9 +262,21 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setQuadrupleDigits(previous?.type === 'quadruple' ? previous.digits.join('') : '')
     setCells(selected)
     setLinkedEnds(previous?.type === 'linked-double-arrow' ? previous.ends : defaultLinkedEnds)
+    if (previous?.type === 'x-sum') {
+      const vertical = previous.direction === 'north' || previous.direction === 'south'
+      setXSumEnd({ direction: previous.direction, index: vertical ? previous.cells[0] % size : Math.floor(previous.cells[0] / size) })
+      setXSumTotal(String(previous.sum))
+    } else {
+      setXSumEnd({ direction: 'south', index: 0 })
+      setXSumTotal('')
+    }
     setCages(previous?.type === 'killer-cages' ? previous.cages : [])
     setCageIndex(-1)
     setCageTotal('')
+    setProductTotal(previous?.type === 'product-cage' ? String(previous.product) : '')
+    setCountDigit(previous?.type === 'digit-count' ? previous.digit : 1)
+    setCountMinimum(previous?.type === 'digit-count' ? String(previous.minimum) : '1')
+    setCountMaximum(previous?.type === 'digit-count' && previous.maximum !== undefined ? String(previous.maximum) : '')
     setMarks(previous?.type === 'kropki' ? { consecutive: previous.consecutive, ratioTwo: previous.ratioTwo } : {})
     setDotKind('consecutive')
     setLabeled(previous?.type === 'labeled-dots' ? previous : emptyDotLayer)
@@ -242,6 +298,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       if ((kind === 'kropki' || kind === 'difference' || kind === 'labeled-dots' || kind === 'row-column-sum') && current.length === 2) return [cell]
       if ((kind === 'thermometer' || kind === 'slow-thermometer' || kind === 'renban' || kind === 'extra-house' || kind === 'killer-cages') && current.length === size)
         return current
+      if ((kind === 'product-cage' || kind === 'digit-count') && current.length === size ** 2) return current
       if (kind === 'arrow' && current.length === size + 1) return current
       if (kind === 'double-arrow' && current.length === 2 * size + 2) return current
       return [...current, cell]
@@ -299,8 +356,32 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
       setError('Add a dot or enable a negative rule.')
       return
     }
+    if (kind === 'x-sum' && xSumTotal === '') {
+      setError('Enter the outside X-Sum total.')
+      return
+    }
+    if (kind === 'product-cage' && productTotal === '') {
+      setError('Enter the product for the selected cells.')
+      return
+    }
+    if (kind === 'digit-count' && (countMinimum === '' || countMaximum !== '' && Number(countMaximum) < Number(countMinimum))) {
+      setError('Enter a valid minimum and maximum count for the selected cells.')
+      return
+    }
     if (kind === 'difference' && !selectedEdge) {
       setError('Select two cells that share an edge.')
+      return
+    }
+    if (previous?.type === 'constraint-alternatives' && rule.type === 'constraint-alternatives' && rule.choices.length < 2) {
+      setError('Keep at least two possible clue interpretations in this group.')
+      return
+    }
+    if (kind === 'x-sum' && otherRules.some(other => other.type === 'x-sum' &&
+      other.direction === xSumEnd.direction &&
+      (other.direction === 'north' || other.direction === 'south'
+        ? other.cells[0] % size
+        : Math.floor(other.cells[0] / size)) === xSumEnd.index)) {
+      setError('There is already an X-Sum on that side of this row or column.')
       return
     }
     if (!isSizedRuleList(next, layout)) {
@@ -331,6 +412,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
                 ? `Select a path that crosses at least one ${group} border.`
                 : kind === 'extra-house'
                   ? `Select ${size} cells for the extra region.`
+                  : kind === 'product-cage'
+                    ? 'Select the cells in this product cage.'
+                    : kind === 'digit-count'
+                      ? 'Select the cells included in this digit count.'
                   : kind === 'killer-cages'
                     ? 'Add at least one cage with a possible total. Each cell can belong to one cage.'
                     : 'Select the cells for this rule.'
@@ -348,7 +433,7 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
           <option value={-1}>New clue</option>
           {rules.map((rule, index) => (
             <option key={index} value={index}>
-              {ruleLabel(rule)}
+              {ruleLabel(rule, size, gridValueOffset(layout))}
               {rule.type === 'arrow' ? ` from ${cellName(rule.circle)}` : ''}
               {rule.type === 'quadruple' ? ` with ${rule.digits.join(', ')} below and to the right of ${cellName(rule.topLeft)}` : ''}
               {rule.type === 'double-arrow' ? ` from ${cellName(rule.ends[0])} to ${cellName(rule.ends[1])}` : ''}
@@ -360,8 +445,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
           ))}
         </SelectControl>
         <label htmlFor={`${id}-rule`}>Rule</label>
-        {readOnlyImported ? (
-          <p>This imported clue can be viewed or removed here. It cannot be edited yet.</p>
+        {readOnlyImported || editingAlternatives ? (
+          <p>{editingAlternatives
+            ? 'Choose which clue interpretations are allowed. The solver checks each remaining choice against the grid.'
+            : 'This imported clue can be viewed or removed here. It cannot be edited yet.'}</p>
         ) : (
           <SelectControl
             id={`${id}-rule`}
@@ -370,9 +457,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               setKind(event.currentTarget.value as RuleChoice)
               setCells([])
               setLinkedEnds(defaultLinkedEnds)
+              setXSumEnd({ direction: 'south', index: 0 })
+              setXSumTotal('')
               setCages([])
               setCageIndex(-1)
               setCageTotal('')
+              setProductTotal('')
+              setCountDigit(1)
+              setCountMinimum('1')
+              setCountMaximum('')
               setMarks({})
               setDotKind('consecutive')
               setDifference(1)
@@ -393,6 +486,24 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
                 </option>
               ))}
           </SelectControl>
+        )}
+        {editingAlternatives && editing === rules.indexOf(previous) && (
+          <fieldset className="dialog-fieldset">
+            <legend>Allowed clue interpretations</legend>
+            {previous.choices.map((_, index) => (
+              <label key={index}>
+                <input
+                  type="checkbox"
+                  checked={alternativeChoices[index] ?? true}
+                  onChange={event => {
+                    const checked = event.currentTarget.checked
+                    setAlternativeChoices(current => current.map((enabled, item) => item === index ? checked : enabled))
+                  }}
+                />
+                {previous.choiceLabels?.[index] ?? `${previous.family} interpretation ${index + 1}`}
+              </label>
+            ))}
+          </fieldset>
         )}
         {kind === 'linked-double-arrow' &&
           (() => {
@@ -430,8 +541,51 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               </>
             )
           })()}
+        {kind === 'x-sum' && (
+          <>
+            <label htmlFor={`${id}-x-sum-direction`}>Viewing direction</label>
+            <SelectControl
+              id={`${id}-x-sum-direction`}
+              value={xSumEnd.direction}
+              onChange={event => {
+                setXSumEnd({ ...xSumEnd, direction: event.currentTarget.value as SizedXSumEnd['direction'] })
+                setError('')
+              }}
+            >
+              <option value="south">From the top</option>
+              <option value="west">From the right</option>
+              <option value="north">From the bottom</option>
+              <option value="east">From the left</option>
+            </SelectControl>
+            <label htmlFor={`${id}-x-sum-index`}>{xSumEnd.direction === 'north' || xSumEnd.direction === 'south' ? 'Column' : 'Row'}</label>
+            <SelectControl
+              id={`${id}-x-sum-index`}
+              value={xSumEnd.index}
+              onChange={event => {
+                setXSumEnd({ ...xSumEnd, index: Number(event.currentTarget.value) })
+                setError('')
+              }}
+            >
+              {Array.from({ length: size }, (_, index) => <option key={index} value={index}>{index + 1}</option>)}
+            </SelectControl>
+            <label htmlFor={`${id}-x-sum-total`}>Outside total</label>
+            <input
+              id={`${id}-x-sum-total`}
+              type="number"
+              inputMode="numeric"
+              min={1 - gridValueOffset(layout)}
+              max={size * (size + 1 - 2 * gridValueOffset(layout)) / 2}
+              value={xSumTotal}
+              onChange={event => {
+                setXSumTotal(event.currentTarget.value)
+                setError('')
+              }}
+            />
+            <p id={`${id}-instructions`}>The first digit from this side gives the count of digits to add, including the first digit.</p>
+          </>
+        )}
         {kind === 'double-arrow' && <p id={`${id}-instructions`}>Select the first end circle, the cells along the line in order, and the second end circle.</p>}
-        {'cells' in rule && kind !== 'double-arrow' && kind !== 'linked-double-arrow' && (
+        {'cells' in rule && kind !== 'double-arrow' && kind !== 'linked-double-arrow' && kind !== 'x-sum' && (
           <p id={`${id}-instructions`}>
             {kind === 'thermometer' || kind === 'slow-thermometer'
               ? 'Select the cells in order, from the bulb to the tip.'
@@ -443,6 +597,10 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
                     ? 'Select the bulb first, then select the cells along the arrow in order.'
                     : kind === 'extra-house'
                       ? `Select ${size} cells that contain each digit once.`
+                      : kind === 'product-cage'
+                        ? 'Select the cells in this product cage.'
+                        : kind === 'digit-count'
+                          ? 'Select the cells included in this digit count.'
                       : 'Select the cells that should have a marker.'}
           </p>
         )}
@@ -475,6 +633,71 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               }}
             />
             <p id={`${id}-instructions`}>Select the cells in the cage and enter their total.</p>
+          </>
+        )}
+        {kind === 'product-cage' && (
+          <>
+            <label htmlFor={`${id}-product-total`}>Product</label>
+            <input
+              id={`${id}-product-total`}
+              type="number"
+              inputMode="numeric"
+              min={gridValueOffset(layout) ? 0 : 1}
+              max={Number.MAX_SAFE_INTEGER}
+              step={1}
+              value={productTotal}
+              onChange={event => {
+                setProductTotal(event.currentTarget.value)
+                setError('')
+              }}
+            />
+            <p>The displayed digits in the selected cells multiply to this product. Repeats are allowed when other rules permit them.</p>
+          </>
+        )}
+        {kind === 'digit-count' && (
+          <>
+            <label htmlFor={`${id}-count-digit`}>Digit to count</label>
+            <SelectControl
+              id={`${id}-count-digit`}
+              value={countDigit}
+              onChange={event => {
+                setCountDigit(Number(event.currentTarget.value))
+                setError('')
+              }}
+            >
+              {Array.from({ length: size }, (_, index) => (
+                <option key={index + 1} value={index + 1}>{index + 1 - gridValueOffset(layout)}</option>
+              ))}
+            </SelectControl>
+            <label htmlFor={`${id}-count-minimum`}>Minimum count</label>
+            <input
+              id={`${id}-count-minimum`}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={Math.max(1, cells.length)}
+              step={1}
+              value={countMinimum}
+              onChange={event => {
+                setCountMinimum(event.currentTarget.value)
+                setError('')
+              }}
+            />
+            <label htmlFor={`${id}-count-maximum`}>Maximum count (optional)</label>
+            <input
+              id={`${id}-count-maximum`}
+              type="number"
+              inputMode="numeric"
+              min={countMinimum || 1}
+              max={Math.max(1, cells.length)}
+              step={1}
+              value={countMaximum}
+              onChange={event => {
+                setCountMaximum(event.currentTarget.value)
+                setError('')
+              }}
+            />
+            <p>The selected cells must contain the chosen digit the required number of times.</p>
           </>
         )}
         {kind === 'region-sum' && (

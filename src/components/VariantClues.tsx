@@ -74,7 +74,7 @@ function InsideGridClue({ rows }: Extract<VariantRule, { type: 'inside-grid' }>)
   </g>
 }
 
-function ExtremumMarks({ rules }: { rules: readonly VariantRule[] }) {
+function ExtremumMarks({ rules, size = 9 }: { rules: readonly (VariantRule | SizedConstraintRule)[]; size?: number }) {
   const marks = new Map<number, Set<'minimum' | 'maximum'>>()
   for (const rule of rules) if (rule.type === 'minimum' || rule.type === 'maximum') {
     for (const cell of rule.cells) {
@@ -84,8 +84,8 @@ function ExtremumMarks({ rules }: { rules: readonly VariantRule[] }) {
     }
   }
   return [...marks].flatMap(([cell, kinds]) => [...kinds].map(type => {
-    const cx = x(cell) + (type === 'minimum' && kinds.size > 1 ? .57 : .8)
-    const cy = y(cell) + .18
+    const cx = x(cell, size) + (type === 'minimum' && kinds.size > 1 ? .57 : .8)
+    const cy = y(cell, size) + .18
     const offset = type === 'minimum' ? .068 : -.068
     const points = `${cx - .09},${cy - offset} ${cx},${cy + offset} ${cx + .09},${cy - offset}`
     return <g key={`${cell}-${type}`} className="variant-extremum" data-extremum={type} data-extremum-cell={cell}>
@@ -270,6 +270,11 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
         return <line key={edge} className="variant-fractional-region-edge" x1={x1} y1={y1} x2={x2} y2={y2} />
       })}
     </g>)}
+    {rules.map((rule, index) => rule.type === 'product-cage' && <g key={index} className="variant-product-cage" data-product-cage={rule.product}>
+      {rule.cells.map(cell => <rect key={cell} className="variant-product-cage-fill" data-product-cage-cell={cell}
+        x={x(cell, size)} y={y(cell, size)} width="1" height="1" fill={rule.color ?? '#ffbfff'} fillOpacity=".4" />)}
+      <Cage cells={rule.cells} captionWidth={.72} captionInset={cageLabelInset(Math.min(...rule.cells), rules, size)} size={size} />
+    </g>)}
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
     {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
       {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
@@ -356,6 +361,7 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
         x={cx - side / 2} y={cy - side / 2} width={side} height={side}
         transform={`rotate(45 ${cx} ${cy})`} />
     })}
+    <ExtremumMarks rules={rules} size={size} />
     {rules.map((rule, index) => rule.type === 'quadruple' && <QuadrupleClue key={index} {...rule} size={size} />)}
     {rules.map((rule, index) => rule.type === 'row-equation' && <g key={index} className="variant-row-equation" data-row-equation>
       {rule.operators.map((operator, step) => {

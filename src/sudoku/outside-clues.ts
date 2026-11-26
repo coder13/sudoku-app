@@ -1,12 +1,13 @@
 import type { VariantRule } from './engine.ts'
-import type { SizedConstraintRule } from './engine.ts'
+import type { SizedConstraintRule, SizedOutsideTextRule } from './engine.ts'
 
 type CrustOutsideClue = { type: 'crust-clue'; direction: Direction; cells: readonly number[]; sum: number; crossed?: number }
 export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' | 'skyscrapers' }>
   | Extract<VariantRule, { type: 'digit-order' }>
   | Extract<SizedConstraintRule, { type: 'nonogram' }>
+  | SizedOutsideTextRule
   | CrustOutsideClue
-export type OutsideRuleSource = VariantRule | Extract<SizedConstraintRule, { type: 'sandwich' | 'nonogram' }> | CrustOutsideClue
+export type OutsideRuleSource = VariantRule | Extract<SizedConstraintRule, { type: 'sandwich' | 'nonogram' | 'x-sum' | 'outside-text' }> | CrustOutsideClue
 const ORTHOGONAL_CLUES = {
   sandwich: { prefix: 'S', name: 'Sandwich' },
   'x-sum': { prefix: 'X', name: 'X-Sums' },
@@ -74,6 +75,8 @@ export function outsideClueLabel(rule: OutsideRule, size = 9) {
   }
   if (rule.type === 'little-killer')
     return `Little Killer ${rule.sum}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}: all indicated digits sum to ${rule.sum}. Digits may repeat if the other puzzle rules allow it.`
+  if (rule.type === 'outside-text')
+    return `Little Killer ${rule.label}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}: the indicated digits have an ${rule.label} sum.`
   const side =
     rule.direction === 'south'
       ? 'top'
@@ -151,14 +154,14 @@ export function outsideClueLayout(rules?: readonly OutsideRuleSource[], size = 9
       anchors.set(key, { lane: prior.lane + 1, extent })
       continue
     }
-    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers' && rule.type !== 'crust-clue') continue
+    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'outside-text' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers' && rule.type !== 'crust-clue') continue
     const [dr, dc] = clueDelta(rule.direction),
       first = rule.cells[0]
     const ox = (first % size) + 0.5 - dc,
       oy = Math.floor(first / size) + 0.5 - dr
     const key = `${ox},${oy}`,
       prior = anchors.get(key) ?? { lane: 0, extent: 0 }
-    if (rule.type !== 'little-killer') {
+    if (rule.type !== 'little-killer' && rule.type !== 'outside-text') {
       const x = (first % size) + 0.5 - dc * (0.85 + prior.extent),
         y = Math.floor(first / size) + 0.5 - dr * (0.85 + prior.extent)
       const family = rule.type === 'crust-clue' ? 'crust-clue' : rule.type
@@ -181,7 +184,7 @@ export function outsideClueLayout(rules?: readonly OutsideRuleSource[], size = 9
         ...label,
         dr,
         dc,
-        label: String(rule.sum),
+        label: rule.type === 'outside-text' ? rule.label : String(rule.sum),
         arrow: { x1: x + dc * 0.2, y1: y + dr * 0.2, x2: x + dc * 0.45, y2: y + dr * 0.45 },
       })
       // Include the complete glyph and arrow in the gutters, including corner clues.

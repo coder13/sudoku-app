@@ -307,12 +307,16 @@ export function Board(props: BoardProps) {
     [highlightedRule, variantRules]
   )
   const linkedDoubleArrows = useMemo(() => sizedRules?.filter((rule) => rule.type === 'linked-double-arrow') ?? [], [sizedRules])
+  const sizedClueRules = useMemo(() => sizedRules?.flatMap(rule =>
+    rule.type === 'constraint-alternatives' ? rule.displayRules ?? [] : [rule]) ?? [], [sizedRules])
   const outsideRules = useMemo<readonly OutsideRuleSource[]>(() => [
     ...(variantRules ?? []),
-    ...(sizedRules?.filter((rule): rule is Extract<SizedConstraintRule, { type: 'sandwich' }> => rule.type === 'sandwich') ?? []),
-    ...(sizedRules?.filter((rule): rule is Extract<SizedConstraintRule, { type: 'nonogram' }> => rule.type === 'nonogram') ?? []),
-    ...(sizedRules?.flatMap(rule => rule.type === 'crust' ? rule.clues.map(clue => ({ type: 'crust-clue' as const, ...clue })) : []) ?? []),
-    ...(sizedRules?.filter((rule): rule is Extract<SizedConstraintRule, { type: 'skyscrapers' }> => rule.type === 'skyscrapers')
+    ...sizedClueRules.filter((rule): rule is Extract<SizedConstraintRule, { type: 'little-killer' | 'x-sum' | 'outside-text' }> =>
+      rule.type === 'little-killer' || rule.type === 'x-sum' || rule.type === 'outside-text'),
+    ...sizedClueRules.filter((rule): rule is Extract<SizedConstraintRule, { type: 'sandwich' }> => rule.type === 'sandwich'),
+    ...sizedClueRules.filter((rule): rule is Extract<SizedConstraintRule, { type: 'nonogram' }> => rule.type === 'nonogram'),
+    ...sizedClueRules.flatMap(rule => rule.type === 'crust' ? rule.clues.map(clue => ({ type: 'crust-clue' as const, ...clue })) : []),
+    ...sizedClueRules.filter((rule): rule is Extract<SizedConstraintRule, { type: 'skyscrapers' }> => rule.type === 'skyscrapers')
       .map(rule => {
         const side = { north: 'south', east: 'west', south: 'north', west: 'east' } as const
         const cells = Array.from({ length: gridSize }, (_, offset) => rule.direction === 'north'
@@ -321,8 +325,8 @@ export function Board(props: BoardProps) {
             : rule.direction === 'west' ? rule.index * gridSize + offset
               : rule.index * gridSize + gridSize - offset - 1)
         return { type: 'skyscrapers' as const, direction: side[rule.direction], cells, count: rule.count }
-      }) ?? []),
-  ], [gridSize, sizedRules, variantRules])
+      }),
+  ], [gridSize, sizedClueRules, variantRules])
   const outside = useMemo(() => {
     const layout = outsideClueLayout(outsideRules, gridSize)
     for (const rule of linkedDoubleArrows)
@@ -357,7 +361,7 @@ export function Board(props: BoardProps) {
   const rectangularBoxes = !regionsAt && 'boxRows' in grid
   const cellClues = useMemo(() => (variantRules ? variantCellLabels(variantRules, variantPuzzle?.regions) : undefined), [variantRules, variantPuzzle?.regions])
   const fragments = useMemo(() => (clipCells && drawingRules ? fogFragmentLabels(drawingRules, clipCells) : undefined), [clipCells, drawingRules])
-  const sizedLabels = useMemo(() => (sizedGrid && sizedRules ? sizedRuleClueLabels(sizedRules, sizedGrid) : undefined), [sizedRules, sizedGrid])
+  const sizedLabels = useMemo(() => (sizedGrid && sizedClueRules ? sizedRuleClueLabels(sizedClueRules, sizedGrid) : undefined), [sizedClueRules, sizedGrid])
   const cageTotals = useMemo(
     () =>
       new Map(
@@ -367,6 +371,11 @@ export function Board(props: BoardProps) {
                 const corner = Math.min(...cells)
                 return !clipCells || clipCells.has(corner) ? [[corner, sum] as const] : []
               })
+            : rule.type === 'product-cage'
+              ? (() => {
+                  const corner = Math.min(...rule.cells)
+                  return !clipCells || clipCells.has(corner) ? [[corner, rule.product] as const] : []
+                })()
             : []
         )
       ),
@@ -817,7 +826,7 @@ export function Board(props: BoardProps) {
         <BoardMarks items={variantClues} />
         {sizedGrid && sizedRules && sizedRules.length > 0 && (
           <div className="board-variant-clues">
-            <MemoSizedRuleClues rules={sizedRules} size={gridSize} values={values} />
+            <MemoSizedRuleClues rules={sizedClueRules} size={gridSize} values={values} />
           </div>
         )}
         {algebraicCages && algebraicCages.length > 0 && (

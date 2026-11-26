@@ -24,8 +24,25 @@ export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid:
       labels[first].add(`Between line endpoint, other endpoint at ${at(last)}`)
       labels[last].add(`Between line endpoint, other endpoint at ${at(first)}`)
       for (const cell of rule.cells.slice(1, -1)) labels[cell].add(`Between line interior with endpoints at ${at(first)} and ${at(last)}`)
+    } else if (rule.type === 'minimum' || rule.type === 'maximum') {
+      const minimum = rule.type === 'minimum'
+      const name = minimum ? 'Minimum' : 'Maximum'
+      const description = rule.shaded && !minimum
+        ? `Shaded ${name} mark, larger than each orthogonally adjacent unshaded cell`
+        : `${name} mark, ${minimum ? 'smaller' : 'larger'} than each orthogonally adjacent cell`
+      for (const cell of rule.cells) labels[cell].add(description)
     } else if (rule.type === 'killer-cages') {
       for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
+    } else if (rule.type === 'product-cage') {
+      for (const cell of rule.cells) labels[cell].add(`product cage with product ${rule.product}`)
+    } else if (rule.type === 'digit-count') {
+      const corners = [0, size - 1, size * (size - 1), size ** 2 - 1].sort((a, b) => a - b)
+      const isCornerGroup = rule.cells.length === corners.length && [...rule.cells].sort((a, b) => a - b)
+        .every((cell, index) => cell === corners[index]) && rule.minimum === 1 &&
+        (rule.maximum === undefined || rule.maximum === rule.cells.length)
+      for (const cell of rule.cells) labels[cell].add(isCornerGroup
+        ? `corner cell, at least one corner contains ${rule.digit}`
+        : `marked digit-count cell, at least ${rule.minimum} of ${rule.cells.length} contain ${rule.digit}`)
     } else if (rule.type === 'quadruple') {
       const description = 'Quadruple circle with ' + rule.digits.join(', ')
       for (const cell of quadrupleCells(rule.topLeft, size)) labels[cell].add(description)

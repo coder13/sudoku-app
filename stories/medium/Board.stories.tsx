@@ -18,11 +18,13 @@ import coachCrust from '../../tests/fixtures/sudoku-coach-crust.json'
 import coachRowEquations from '../../tests/fixtures/coach-row-equations.json'
 import coachFractionalRegions from '../../tests/fixtures/coach-fractional-regions.json'
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
+import irregularFortress from '../../tests/fixtures/aspartagcus-irregular-fortress.json'
 import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-neighbors.json'
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
 import zipperRegionSum from '../../tests/fixtures/zipper-region-sum.json'
+import doubledCluesCode from '../../tests/fixtures/sudokupad-double-clues.ctc?raw'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
@@ -69,6 +71,23 @@ function BoardExample({
 }
 
 export const ReadOnly: Story = {}
+
+function DoubledCluesBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(doubledCluesCode.trim()).then(imported => {
+      if (imported.grid && imported.sizedRules && imported.authoredSolution) setPuzzle({
+        givens: imported.givens, solution: imported.authoredSolution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return null
+  return <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+    sizedRules={puzzle.rules} showGuides={false} />
+}
+
+export const DoubleTheCluesUnfinished: Story = { render: () => <DoubledCluesBoard /> }
+export const DoubleTheCluesFinished: Story = { render: () => <DoubledCluesBoard finished /> }
 
 
 function CoachNonogramBoard({ finished = false }: { finished?: boolean }) {
@@ -226,6 +245,29 @@ function CoachWrappedJigsawBoard({ finished = false }: { finished?: boolean }) {
       sizedRules={puzzle.rules} showGuides selected={finished ? [] : [5]} />
   </div>
 }
+
+function FortressBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    const example = irregularFortress.puzzles.find(puzzle => puzzle.size === 4)
+    if (!example) return
+    const code = decodeURIComponent(new URL(example.url).pathname.slice(1))
+    void detectPuzzle(code).then(imported => {
+      if (imported.grid && 'regions' in imported.grid && imported.sizedRules) setPuzzle({
+        givens: imported.givens, solution: example.solution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published 4 × 4 Fortress puzzle…</p>
+  return <Width width={350}>
+    <p>{sizedRuleDescriptions(puzzle.grid, puzzle.rules).join(' ')}</p>
+    <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides selected={finished ? [] : [2]} />
+  </Width>
+}
+
+export const FortressUnfinished: Story = { render: () => <FortressBoard /> }
+export const FortressFinished: Story = { render: () => <FortressBoard finished /> }
 
 export const CoachWrappedJigsawUnfinished: Story = { render: () => <CoachWrappedJigsawBoard /> }
 export const CoachWrappedJigsawFinished: Story = { render: () => <CoachWrappedJigsawBoard finished /> }

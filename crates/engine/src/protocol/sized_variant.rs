@@ -47,6 +47,11 @@ enum SizedRule {
         cells: Vec<usize>,
         groups: Vec<Vec<u8>>,
     },
+    SumModulo {
+        cells: Vec<usize>,
+        modulus: u8,
+        remainder: u8,
+    },
     LineAssignments {
         paths: Vec<Vec<usize>>,
         types: Vec<SizedLineType>,
@@ -204,6 +209,15 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Clone { groups }) => Self::Clone { groups },
             Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
+            Rule::Sized(SizedRule::SumModulo {
+                cells,
+                modulus,
+                remainder,
+            }) => Self::SumModulo {
+                cells,
+                modulus,
+                remainder,
+            },
             Rule::Sized(SizedRule::LineAssignments { paths, types }) => {
                 Self::LineAssignments { paths, types }
             }

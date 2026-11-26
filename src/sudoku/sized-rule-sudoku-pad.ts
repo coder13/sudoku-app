@@ -4,6 +4,7 @@ import { readCornerKropki } from './corner-kropki.ts'
 import type { SizedConstraintRule, SizedDigitCountRule, SizedLinkedDoubleArrow, SizedLineType, SizedProductCageRule, SizedSumEnd } from './engine.ts'
 import { FIVE_BOXLESS_GRID, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isMiniGrid, isRectangularSize, matchesRectangularRegions, MINI_GRID, rectangularGridFromRegions, regionsFromMembership } from './grid.ts'
 import { isSizedRuleList } from './sized-rule-game.ts'
+import { readDoubleTheCluesSudokuPad } from './sized-doubled-clues.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -503,6 +504,8 @@ export function readSudokuPadXSumDots(data: Record<string, unknown>) {
 }
 
 export function readSizedRuleSudokuPad(data: Record<string, unknown>) {
+  const doubledClues = readDoubleTheCluesSudokuPad(data)
+  if (doubledClues) return doubledClues
   const fields = ['id', 'metadata', 'cages', 'cellSize', 'cells', 'regions', 'lines', 'underlays', 'overlays', 'arrows']
   const { cells, metadata, regions, cages, lines, underlays, overlays, arrows } = data
   if (Object.keys(data).some(key => !fields.includes(key)) ||

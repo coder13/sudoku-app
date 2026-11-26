@@ -415,6 +415,13 @@ function numberedDotRule(rule, size) {
 function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, notation }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
+  const occupiedCages = new Set()
+  const isolatedRuleList = rules => {
+    const previous = [...occupiedCages]
+    occupiedCages.clear()
+    try { return list(valid, 1, 128)(rules) }
+    finally { occupiedCages.clear(); previous.forEach(cell => occupiedCages.add(cell)) }
+  }
   const maxArrowCells = notation === 'zero-based' ? 2 * size - 1 : size
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
   const outsideHouse = (cells, direction) => {
@@ -434,6 +441,31 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
     return isOutside(row - dr, column - dc) && cells.every((index, offset) => index === (row + dr * offset) * size + column + dc * offset) &&
       isOutside(row + dr * cells.length, column + dc * cells.length)
   }
+  const outsideText = rule => fields(rule, { type: oneOf('outside-text'), direction: diagonalDirection,
+    cells: value => littleKillerRay(value, rule.direction), label: value => typeof value === 'string' && value.trim().length > 0 && value.length <= 16 })
+  const sumModulo = rule => {
+    if (!fields(rule, { type: oneOf('sum-modulo'), cells: list(cell, 1, size),
+      modulus: integer(2, 16), remainder: value => Number.isInteger(value) && value >= 0 && value < rule.modulus }) ||
+      new Set(rule.cells).size !== rule.cells.length) return false
+    if (rule.cells.length === 1) return true
+    const first = rule.cells[0], row = Math.floor(first / size), column = first % size
+    const dr = Math.sign(Math.floor(rule.cells[1] / size) - row), dc = Math.sign(rule.cells[1] % size - column)
+    return Math.abs(Math.floor(rule.cells[1] / size) - row) === 1 && Math.abs(rule.cells[1] % size - column) === 1 &&
+      rule.cells.every((index, offset) => index === (row + dr * offset) * size + column + dc * offset) &&
+      (row + dr * rule.cells.length < 0 || row + dr * rule.cells.length >= size ||
+        column + dc * rule.cells.length < 0 || column + dc * rule.cells.length >= size)
+  }
+  let valid
+  const alternatives = rule => fields(rule, { type: oneOf('constraint-alternatives'),
+    family: value => typeof value === 'string' && /^[a-z][a-z0-9-]{0,31}$/i.test(value),
+    choices: list(choice => Array.isArray(choice) && choice.length <= 128 &&
+      choice.every(item => item && typeof item === 'object' && !Array.isArray(item) && item.type !== 'constraint-alternatives') &&
+      isolatedRuleList(choice), 2, 16) }, {
+    choiceLabels: value => list(label => typeof label === 'string' && label.trim().length > 0 && label.length <= 96, 2, 16)(value) &&
+      value.length === rule.choices.length,
+    displayRules: rules => Array.isArray(rules) && rules.every(item => item && typeof item === 'object' &&
+      !Array.isArray(item) && item.type !== 'constraint-alternatives') && isolatedRuleList(rules),
+  })
   const drawing = list(list(cell, 1, 128), 1, 128)
   const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
@@ -517,7 +549,6 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
     return rule.paths.every((path, index) => rule.paths.slice(0, index).every(previous =>
       !samePath(path, previous) && !samePath(path, [...previous].reverse())))
   }
-  const occupiedCages = new Set()
   const validCage = cage => {
     if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
     const count = cage.cells.length
@@ -528,7 +559,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
     }
     return true
   }
-  const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+  valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+    outsideText(rule) || sumModulo(rule) || alternatives(rule) ||
     fields(rule, { type: oneOf('anti-king', 'anti-knight') }) ||
     (fields(rule, { type: oneOf('inequality'), less: cell, greater: cell }) && rule.less !== rule.greater && sharesGridEdge(rule.less, rule.greater, size)) ||
     (fields(rule, { type: oneOf('minimum', 'maximum'), cells: list(cell, 1, size * size) },
