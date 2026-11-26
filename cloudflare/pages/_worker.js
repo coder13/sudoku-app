@@ -629,7 +629,7 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
     (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, maxArrowCells) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('whispers'), cells: list(cell, 2, size * size), minDifference: integer(1, size - 1) }) &&
-      new Set(rule.cells).size === rule.cells.length) ||
+      rule.cells.every((cell, index) => index === 0 || cell !== rule.cells[index - 1])) ||
     (fields(rule, { type: oneOf('linked-double-arrow'), ends: list(sumEnd, 2, 2), cells: list(cell, 1, size * size) }) &&
       new Set(rule.cells).size === rule.cells.length && rule.ends.some(end => !cell(end)) &&
       rule.ends.every(end => !cell(end) || !rule.cells.includes(end)) &&
