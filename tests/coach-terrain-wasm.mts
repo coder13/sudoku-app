@@ -33,6 +33,11 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   } })
   assert.notEqual(altered.status, 'unique', 'the Wasm engine must enforce every imported Terrain maximum')
 
+  const ratioTwoCompanion = { type: 'kropki' as const, ratioTwo: { pairs: [[6, 15] as [number, number]] } }
+  const combinedPuzzle = { ...parsed.variant.puzzle, rules: [...rules, ratioTwoCompanion] }
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combinedPuzzle } }),
+    { status: 'unique', solution: source.source.solution })
+
   const { game } = await prepareImportedPuzzle(source.source.sudoku)
   assert.equal(game.variant?.solution, source.source.solution)
   assert.equal(game.givenCellColors && Object.keys(game.givenCellColors).length > 0, true)
@@ -45,7 +50,8 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   const { sqlite, fetcher } = syncDatabase()
   try {
     const api = syncRequest(undefined, fetcher)
-    const definition = puzzleDefinitionForSharing(game)
+    const combinedGame = { ...game, variant: { ...game.variant!, puzzle: combinedPuzzle } }
+    const definition = puzzleDefinitionForSharing(combinedGame)
     const { id } = await api<{ id: string }>('shares', 'POST', definition)
     assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
 
