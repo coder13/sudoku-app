@@ -239,6 +239,34 @@ test('published Coach rule additions round-trip through the public share API', a
       try { ({ id } = await api<{ id: string }>('shares', 'POST', definition)) }
       catch (error) { assert.fail(`${example.title} share failed: ${String(error)}`) }
       assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)), example.title)
+
+      const malformed = JSON.parse(JSON.stringify(definition))
+      const rules = malformed.variant.puzzle.rules
+      if (example.type === 'magic-square') {
+        rules.find((rule: { type: string }) => rule.type === example.type).cells = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Magic Square must be one 3×3 block')
+
+        const invalidShowSum = JSON.parse(JSON.stringify(definition))
+        const cages = invalidShowSum.variant.puzzle.rules.find((rule: { type: string }) => rule.type === 'killer-cages')
+        cages.cages[0].showSum = 'hidden'
+        await assert.rejects(api('shares', 'POST', invalidShowSum), { status: 400 }, 'Killer cage showSum must be boolean')
+      } else if (example.type === 'unknown-cage-sums') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.cages[0][0] = rule.cages[1][0]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Unknown cages must cover each cell once')
+      } else if (example.type === 'distant-neighbors') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.markedCells[8] = 77
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Distant Neighbors needs one marker per box')
+      } else if (example.type === 'forbidden-entropic-connection') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.cells[1] = rule.cells[0] + 2
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Entropic breaks must stay orthogonally adjacent')
+      } else if (example.type === 'digit-order') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.digits = [1, 2, 4]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Digit Order needs a full entropy group')
+      }
     }
   } finally { sqlite.close() }
 })
