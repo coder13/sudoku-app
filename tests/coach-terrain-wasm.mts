@@ -18,7 +18,10 @@ const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsu
   source: { sudoku: string; solution: string }
 }
 
-function terrainSandwichSupports(rule: Extract<NonNullable<NonNullable<Awaited<ReturnType<typeof detectPuzzle>>['variant']>['puzzle']['rules']>[number], { type: 'terrain-sandwich' }>) {
+function terrainSandwichSupports(
+  rule: Extract<NonNullable<NonNullable<Awaited<ReturnType<typeof detectPuzzle>>['variant']>['puzzle']['rules']>[number], { type: 'terrain-sandwich' }>,
+  domains = Array<number>(rule.cells.length).fill(0x1ff),
+) {
   const support = Array<number>(rule.cells.length).fill(0)
   const digits = Array<number>(rule.cells.length)
   const visit = (index: number, used: number) => {
@@ -38,7 +41,7 @@ function terrainSandwichSupports(rule: Extract<NonNullable<NonNullable<Awaited<R
     }
     for (let digit = 1; digit <= 9; digit++) {
       const bit = 1 << (digit - 1)
-      if (used & bit) continue
+      if (used & bit || !(domains[index] & bit)) continue
       digits[index] = digit
       visit(index + 1, used | bit)
     }
@@ -153,6 +156,22 @@ test('#196 Terrain hint evidence names the actual value changes', async () => {
   assert.match(hint.evidence.variant.description, /add 3 to the digits in/)
   assert.match(hint.evidence.variant.description, /subtract 3 from the digits in/)
   assert.match(hint.evidence.variant.description, /greatest total/)
+
+  assert.equal(deduction.evidence.type, 'constraint')
+  const terrainIndex = deduction.evidence.rules.find(index => puzzle.rules?.[index]?.type === 'terrain-sandwich')!
+  const terrainRule = puzzle.rules![terrainIndex]
+  assert.equal(terrainRule.type, 'terrain-sandwich')
+  const domainsByCell = new Map(deduction.evidence.cells.map((cell, index) => [cell, deduction.evidence.domains[index]]))
+  const ruleDomains = terrainRule.cells.map(cell => domainsByCell.get(cell) ?? 0x1ff)
+  const independentlySupported = terrainSandwichSupports(terrainRule, ruleDomains)
+  const eliminations = deduction.actions.filter((action): action is Extract<typeof action, { eliminate: unknown }> => 'eliminate' in action)
+  assert.ok(eliminations.length, 'Terrain hint should provide at least one candidate elimination to replay')
+  for (const action of eliminations) {
+    const offset = terrainRule.cells.indexOf(action.eliminate.cell)
+    assert.notEqual(offset, -1, 'Terrain elimination target belongs to the independently checked clue')
+    assert.equal(independentlySupported[offset] & (1 << (action.eliminate.digit - 1)), 0,
+      `Terrain clue ${terrainIndex + 1} must reject the eliminated digit under the evidence domains`)
+  }
 
   const doubledIndex = puzzle.rules?.findIndex(rule => rule.type === 'terrain-sandwich' &&
     rule.transforms.some(transform => transform.multiplier === 2)) ?? -1
