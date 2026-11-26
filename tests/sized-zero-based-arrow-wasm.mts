@@ -10,6 +10,7 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { playCandidates } from '../src/sudoku/variant-play.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -134,8 +135,7 @@ test('#388 published Mountain Climbing has one completion with its 17-cell Arrow
 
   const { game } = await prepareImportedPuzzle(code)
   assert.equal(game.sized?.solution, puzzle.authoredSolution)
-  const playMasks = await runEngine({ type: 'sized-variant', operation: 'candidates',
-    position: sizedRulePosition(game.grid!, { rules: game.sized!.rules }, game.givens) })
+  const playMasks = await playCandidates(game)
   assert.ok(playMasks)
   for (let cell = 0; cell < 100; cell++) {
     if (game.givens[cell] !== '0') continue
