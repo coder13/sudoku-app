@@ -4,7 +4,7 @@ import lzString from 'lz-string'
 import { runEngine, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { readSizedRuleSudokuPad } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { isSizedRuleList, restoreSizedRuleGame, sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { verifySizedRulePuzzle } from '../src/sudoku/sized-rule-game.ts'
 import { conflictsOf, enter, makeGame, valuesOf } from '../src/sudoku/game.ts'
 import { sizedRegionSumState } from '../src/sudoku/region-sum.ts'
@@ -206,4 +206,29 @@ test('zero-based Region Sum accepts filled zero and unequal segment lengths', as
   palindromeValues[10] = '2'
   assert.deepEqual(conflictsOf(palindromeValues.join(''), undefined, grid,
     [{ type: 'palindrome', cells: [0, 1, 2, 6, 10] }]), new Set([0, 10]))
+})
+
+test('zero-based Sandwich uses displayed totals and the zero/highest endpoint symbols', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 }
+  const appGrid = { ...grid, notation: 'zero-based' as const }
+  const solution = Array.from('123456456123234561561234345612612345', Number)
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid,
+    zeroBased: true,
+    digits: solution,
+    rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 10 }],
+  }
+  assert.equal(isSizedRuleList(position.rules, appGrid), true)
+  assert.equal(isSizedRuleList([{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 11 }], appGrid), false)
+  assert.deepEqual(restoreSizedRuleGame({ rules: position.rules, solution: solution.join('') }, appGrid, solution.join('')),
+    { rules: position.rules, solution: solution.join('') })
+  const { zeroBased: _zeroBased, ...oneBasedPosition } = position
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...oneBasedPosition, rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 14 }],
+  } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 11 }],
+  } }))
 })

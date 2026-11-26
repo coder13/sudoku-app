@@ -21,13 +21,13 @@ export function isSizedRuleAuthor(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= 72
 }
 
-function validSizedSandwich(rule: Record<string, unknown>, size: number) {
+function validSizedSandwich(rule: Record<string, unknown>, size: number, valueOffset: number) {
   if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) || Object.keys(rule).length !== 4 ||
     !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
     !Array.isArray(rule.cells) || rule.cells.length !== size ||
     rule.cells.some(cell => !Number.isInteger(cell) || Number(cell) < 0 || Number(cell) >= size ** 2) ||
     new Set(rule.cells).size !== size || !Number.isInteger(rule.sum) || Number(rule.sum) < 0 ||
-    Number(rule.sum) > size * (size + 1) / 2 - size - 1) return false
+    Number(rule.sum) > (size - 2) * (size + 1 - 2 * valueOffset) / 2) return false
   const cells = rule.cells as number[]
   const first = cells[0]
   const direction = rule.direction
@@ -253,7 +253,7 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
         cells.every(cell => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell < size ** 2) &&
         cells.every((cell, index) => index === 0 || cell !== cells[index - 1])
     }
-    if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size)
+    if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size, gridValueOffset(grid))
     if (rule.type === 'x-sum') {
       if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) ||
         Object.keys(rule).length !== 4 || !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
@@ -479,8 +479,8 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
           }
         }
       } else {
-        const one = rule.cells.findIndex(cell => digit(cell) === 1)
-        const high = rule.cells.findIndex(cell => digit(cell) === grid.size)
+        const one = rule.cells.findIndex(cell => positionDigit(solution[cell]) === 1)
+        const high = rule.cells.findIndex(cell => positionDigit(solution[cell]) === grid.size)
         if (one < 0 || high < 0 || rule.cells.slice(Math.min(one, high) + 1, Math.max(one, high))
           .reduce((sum, cell) => sum + digit(cell), 0) !== rule.sum) return
       }
@@ -542,7 +542,10 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'thermometer') clues.add('Digits strictly increase from the bulb to the tip of each thermometer.')
     else if (rule.type === 'slow-thermometer') clues.add('Digits increase or stay the same from the bulb to the tip of each slow thermometer.')
     else if (rule.type === 'whispers') clues.add(`Neighboring digits on each Whispers line differ by at least ${rule.minDifference}.`)
-    else if (rule.type === 'sandwich') clues.add(`The digits between 1 and ${grid.size} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    else if (rule.type === 'sandwich') {
+      const valueOffset = gridValueOffset(grid)
+      clues.add(`The digits between ${1 - valueOffset} and ${grid.size - valueOffset} in the marked ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to the outside clue.`)
+    }
     else if (rule.type === 'x-sum') clues.add(`The first digit seen from the ${rule.direction} side tells how many digits to add, including that first digit. The total equals the outside clue.`)
     else if (rule.type === 'x-sum-dot') clues.add(rule.relation === 'consecutive'
       ? 'The totals shown by the two connected X-Sum clues are consecutive.'

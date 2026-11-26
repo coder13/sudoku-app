@@ -3,7 +3,7 @@ import { linkedDoubleArrowCells, sizedSumEndCells } from './sized-linked-double-
 import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
-import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
+import { gridDiagonalCells, gridValueOffset, rowColumnSumTotal, type SizedGrid } from './grid.ts'
 import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
 import { positionDigit, positionText } from './digit-symbols.ts'
 
@@ -172,7 +172,8 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     description = 'Digits joined by V add to 5. Digits joined by X add to 10.'
     reason = 'Remove each candidate that cannot fit the total shown by the marker.'
   } else if (rule.type === 'sandwich') {
-    description = `The digits between 1 and ${size} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
+    const valueOffset = gridValueOffset(grid)
+    description = `The digits between ${1 - valueOffset} and ${size - valueOffset} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
     reason = 'Remove each candidate that cannot fit a row or column arrangement with the printed sandwich total.'
   } else if (rule.type === 'minimum' || rule.type === 'maximum') {
     const lower = rule.type === 'minimum'

@@ -789,7 +789,13 @@ impl SizedConstraintGrid {
                     sum,
                 } => {
                     sandwiches.resize_with(index + 1, || None);
-                    sandwiches[index] = Some(Sandwich::compile(size, cells, *direction, *sum)?);
+                    sandwiches[index] = Some(Sandwich::compile(
+                        size,
+                        cells,
+                        *direction,
+                        *sum,
+                        value_offset,
+                    )?);
                 }
                 SizedConstraint::Crust {
                     clues,
