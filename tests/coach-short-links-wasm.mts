@@ -90,6 +90,9 @@ test('XXIV retains its authored region colors through import, save and sharing',
       assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: incomplete } })).status,
         'multiple', `removing source rule family ${index} must leave multiple completions`)
     }
+    const incompatible = { ...puzzle, rules: [...puzzle.rules!, { type: 'extra-house' as const, cells: [13, 72, 0, 1, 2, 3, 4, 5, 6] }] }
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: { puzzle: incompatible } }), 'conflict',
+      'an added house containing two fixed sixes must expose an inconsistent combination')
 
     const { game } = await prepareImportedPuzzle(url)
     assert.equal(game.title, title)
