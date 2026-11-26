@@ -739,6 +739,31 @@ test('labeled ratios use the digit range and report precise positive and negativ
   assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 16 && step.pair.negative))
 })
 
+test('every sized Ratio and Difference label has exact positive and negative edge support', async () => {
+  const size = 16
+  const fullMask = (1 << size) - 1
+  const makePosition = (relation: 'ratio' | 'difference', value: number): SizedConstraintPosition => ({
+    version: 2, grid: { size, boxRows: 4, boxColumns: 4 },
+    digits: [1, ...Array(size * size - 1).fill(0)],
+    rules: [{ type: 'labeled-dots', relation, marks: [{ cells: [0, 1], value }], negative: true }],
+  })
+
+  for (let value = 2; value <= size; value++) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: makePosition('ratio', value) })
+    assert.ok(candidates)
+    assert.equal(candidates[1], 1 << (value - 1), `marked 1:${value} edge`)
+    assert.equal(candidates[16] & (1 << (value - 1)), 0, `unmarked 1:${value} edge`)
+    assert.equal(candidates[16], fullMask & ~(1 | 1 << (value - 1)), `unmarked Ratio ${value} keeps every other peer-legal digit`)
+  }
+  for (let value = 1; value < size; value++) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: makePosition('difference', value) })
+    assert.ok(candidates)
+    assert.equal(candidates[1], 1 << value, `marked Difference ${value} edge`)
+    assert.equal(candidates[16] & (1 << value), 0, `unmarked Difference ${value} edge`)
+    assert.equal(candidates[16], fullMask & ~(1 | 1 << value), `unmarked Difference ${value} keeps every other peer-legal digit`)
+  }
+})
+
 test('Coach Ratio layers with different labels keep their negative settings independent in Play', async () => {
   const code = coachCode({ gridSize: 4, givenDigits: '1' + '0'.repeat(15), givenConstraints: [
     { type: 'ratio', settings: { negativeConstraint: false }, segments: [
