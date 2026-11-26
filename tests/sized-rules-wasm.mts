@@ -458,7 +458,7 @@ test('#382 solves the published boxless Skyscrapers puzzle with clues from every
 })
 
 test('#382 the complete published Skyscrapers import solves with its parsed clue set', async ({ mock }) => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
     metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
   }
   const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
@@ -478,11 +478,17 @@ test('#382 the complete published Skyscrapers import solves with its parsed clue
   const game = preview.game
   assert.ok(game.grid?.size === 7 && game.sized)
   assert.equal(game.sized.rules.filter(rule => rule.type === 'skyscrapers').length, 12)
+  const copiedCode = await prepareImportedPuzzle(source.metadata.sudoku)
+  assert.deepEqual(copiedCode.game.sized?.rules, game.sized.rules)
   const result = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     version: 2, grid: game.grid, rules: game.sized.rules,
     digits: Array.from(source.metadata.solution, Number),
   } })
   assert.equal(result, 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: copiedCode.game.grid!, rules: copiedCode.game.sized!.rules,
+    digits: Array.from(source.metadata.solution, Number),
+  } }), 'unique')
   const definition = puzzleDefinitionForSharing(game)
   assert.deepEqual(definition.sizedRules, game.sized.rules)
   const reopened = await prepareImportedPuzzle(JSON.stringify({ ...definition, format: 'sudoku-app-puzzle' }))

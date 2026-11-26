@@ -195,8 +195,8 @@ test('GEnq imports its encoded 6×6 rules when the exact note only sets a solve-
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
 
-test('#382 imports the published 7×7 Coach Skyscrapers clues only with their authored rules', async ({ mock }) => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+test('#382 imports the published 7×7 Coach Skyscrapers clues from code and short link', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
     metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
   }
   const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
@@ -228,7 +228,9 @@ test('#382 imports the published 7×7 Coach Skyscrapers clues only with their au
     ['east', 1, 3], ['east', 2, 3], ['east', 6, 5], ['south', 5, 4], ['south', 0, 4],
     ['west', 5, 5], ['west', 0, 3],
   ])
-  await assert.rejects(detectPuzzle(source.metadata.sudoku), /unsupported active rule/)
+  const copiedCode = await detectPuzzle(source.metadata.sudoku)
+  assert.deepEqual(copiedCode.grid, imported.grid)
+  assert.deepEqual(copiedCode.sizedRules, imported.sizedRules)
   description += '\nA decorative label was changed.'
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })

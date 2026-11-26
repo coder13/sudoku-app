@@ -9,7 +9,7 @@ import { SEVEN_BOXLESS_GRID } from '../src/sudoku/grid.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { sizedRuleDescriptions } from '../src/sudoku/sized-rule-game.ts'
 
-const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; description: string; solution: string }
 }
 let server: ViteDevServer
