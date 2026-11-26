@@ -1,42 +1,11 @@
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import { restoreSizedRuleGame } from '../src/sudoku/sized-rule-game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 
-type Source = { code: string; solution: string; references: string[] }
-const fixtureRoot = new URL('./fixtures/', import.meta.url)
-const fixturePath = new URL(fixtureRoot).pathname
-const sources = new Map<string, Source>()
-
-function collect(value: unknown, file: string, keyPath = '$') {
-  if (!value || typeof value !== 'object') return
-  if (!Array.isArray(value)) {
-    const record = value as Record<string, unknown>
-    if (typeof record.code === 'string' && record.code.startsWith('SCv') && typeof record.solution === 'string') {
-      const source = sources.get(record.code) ?? { code: record.code, solution: record.solution, references: [] }
-      source.references.push(`${file}:${keyPath}`)
-      assert.equal(source.solution, record.solution, 'Repeated source exports must use the same published completion.')
-      sources.set(record.code, source)
-    }
-  }
-  if (Array.isArray(value)) value.forEach((item, index) => collect(item, file, `${keyPath}[${index}]`))
-  else for (const [key, item] of Object.entries(value)) collect(item, file, `${keyPath}.${key}`)
-}
-
-for (const name of readdirSync(fixturePath).filter(name => name.endsWith('.json')).sort()) {
-  const path = join(fixturePath, name)
-  collect(JSON.parse(readFileSync(path, 'utf8')), relative(fixturePath, path))
-}
-
-const standaloneSources = new Set([
-  'coach-calcudoku.json:$',
-  'modular-coach.json:$.examples[6]',
-  'sudoku-coach-boxless-diagonal.json:$',
-  'sudoku-coach-boxless-modular.json:$',
-])
+const sources = readCoachSolutionSources()
 
 function assertClassicCompletion(givens: string, solution: string, source: string) {
   assert.match(solution, /^[1-9]{81}$/, source)
@@ -59,7 +28,7 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
     const sourceName = source.references[0]
 
     if (imported.futoshiki || imported.calcudoku) {
-      assert.ok(source.references.every(reference => standaloneSources.has(reference)), sourceName)
+      assert.ok(source.references.every(reference => standaloneCoachSolutionSources.has(reference)), sourceName)
       for (const reference of source.references) standaloneSeen.add(reference)
       continue
     }
@@ -77,5 +46,5 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
     }
   }
 
-  assert.deepEqual([...standaloneSeen].sort(), [...standaloneSources].sort())
+  assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
