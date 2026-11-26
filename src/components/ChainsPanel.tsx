@@ -47,6 +47,9 @@ function pointName(point: BoardLink['from'], nameCell = cellName) {
 function chainNodeNotation(node: ChainNode) {
   const members = chainNodeCandidates(node)
   if (isAlsChainNode(node)) return `(${members[0].digit})${compactCells(members.map(({ cell }) => cell))}`
+  if (members.some(({ digit }) => digit !== members[0].digit)) {
+    return `(${members.map(({ cell, digit }) => `${digit}${cellName(cell).toLowerCase()}`).join('|')})`
+  }
   return typeof node === 'number'
     ? `${members[0].digit}${cellName(members[0].cell).toLowerCase()}`
     : `${members[0].digit}(${members.map(({ cell }) => cellName(cell).toLowerCase()).join('|')})`

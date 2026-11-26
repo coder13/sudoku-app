@@ -168,6 +168,7 @@ import { usePlayHintActions } from './play/usePlayHintActions'
 import { usePlaySubsets } from './play/usePlaySubsets'
 import { SubsetsPanel, subsetMembershipMessage } from './SubsetsPanel'
 import { BoardContextMenu, type BoardContextMenuAnchor } from './BoardContextMenu'
+import type { ChainLinkChoice } from './useChainSketch'
 import { subsetMembershipProblem, type SubsetContext } from '../sudoku/subsets'
 import { usePlayDigitActions } from './play/usePlayDigitActions'
 import { usePlayColorActions } from './play/usePlayColorActions'
@@ -408,6 +409,15 @@ export function Worktable({
   const [puzzleMenuOpen, setPuzzleMenuOpen] = useState(false)
   const [boardContext, setBoardContext] = useState<{ anchor: BoardContextMenuAnchor; cells: readonly number[] }>()
   const closeBoardContext = useCallback(() => setBoardContext(undefined), [])
+  const [candidateLinks, setCandidateLinks] = useState<{
+    anchor: BoardContextMenuAnchor
+    choices: readonly ChainLinkChoice[]
+    gameId: string
+    position: Game['position']
+    sketch: Game['chainSketch']
+    subsets: Game['subsetWorkspace']
+  }>()
+  const closeCandidateLinks = useCallback(() => setCandidateLinks(undefined), [])
   const [puzzleDetailsOpen, setPuzzleDetailsOpen] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
@@ -2406,7 +2416,7 @@ export function Worktable({
     const index = Number(cell.dataset.cell)
     const cells = selected.includes(index) ? selected : [index]
     const bounds = cell.getBoundingClientRect()
-    setBoardContext({ anchor: { ...(point ?? { x: bounds.left, y: bounds.bottom }), cell }, cells })
+    setBoardContext({ anchor: { ...(point ?? { x: bounds.left, y: bounds.bottom }), focusTarget: cell }, cells })
     return true
   }
   // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
@@ -2451,6 +2461,34 @@ export function Worktable({
     ? mergeBoardAnnotations(subsets.annotations, chainAndAlsAnnotations)
     : mergeBoardAnnotations(chainAndAlsAnnotations, subsets.annotations)
   const visibleSetsForDrawing = openPuzzlePanels.includes('subsets') ? subsets.highlightedIds : undefined
+  const candidateLinksOpen = candidateLinks && sketch.drawing && candidateLinks.gameId === game.id &&
+    candidateLinks.position === game.position && candidateLinks.sketch === game.chainSketch &&
+    candidateLinks.subsets === game.subsetWorkspace
+  useEffect(() => {
+    if (!candidateLinksOpen) closeCandidateLinks()
+  }, [candidateLinksOpen, closeCandidateLinks])
+  function selectChainCandidate(candidate: Candidate) {
+    if (strongLinksVisible) {
+      selectStrongLinkCandidate(candidate)
+      return
+    }
+    const choices = sketch.candidateChoices(candidate, visibleSetsForDrawing)
+    if (choices.length === 1) {
+      choices[0].run()
+      return
+    }
+    if (choices.length > 1) {
+      const cell = boardRef.current?.querySelector<HTMLElement>(`[data-cell="${candidate.cell}"]`)
+      const focusTarget = cell?.querySelector<HTMLElement>(`[data-candidate-digit="${candidate.digit}"]`) ?? cell
+      if (focusTarget) {
+        const { right: x, bottom: y } = focusTarget.getBoundingClientRect()
+        setCandidateLinks({ anchor: { x, y, focusTarget }, choices, gameId: game.id,
+          position: game.position, sketch: game.chainSketch, subsets: game.subsetWorkspace })
+        return
+      }
+    }
+    sketch.select(candidate)
+  }
   const highlightedRule = variantRulesOpen ? dialogRule : pinnedRule
   const boardContent = {
     grid,
@@ -2530,11 +2568,7 @@ export function Worktable({
       interaction={{
         boardRef: boardRef,
         linkDrawing: sketch.drawing,
-        onCandidate: candidate => {
-          if (sketch.selectSubsetCandidate(candidate, visibleSetsForDrawing)) return
-          if (strongLinksVisible) selectStrongLinkCandidate(candidate)
-          else sketch.select(candidate)
-        },
+        onCandidate: selectChainCandidate,
         onGroupCandidate: sketch.groupCandidate,
         onGiven: strongLinksVisible ? (digit) => setStrongLinkHighlights(1 << (digit - 1)) : undefined,
         onLinkSelect: strongLinksVisible ? startStrongLinkChain : undefined,
@@ -2957,6 +2991,10 @@ export function Worktable({
             if (subsets.saveCells(boardContext.cells)) showPuzzleTool('subsets')
           },
         }]} />}
+        {candidateLinksOpen && <BoardContextMenu anchor={candidateLinks.anchor} label="Choose chain link" className="board-link-menu"
+          onClose={closeCandidateLinks} actions={candidateLinks.choices.map(choice => ({
+            label: choice.label, icon: choice.kind === 'candidate' ? Link2 : Layers, run: choice.run,
+          }))} />}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values} active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
         <PinnedActionBar actions={visiblePinnedControls} disabled={disabled} />
         {presentationDraft && (

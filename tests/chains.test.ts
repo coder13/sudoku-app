@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainGroup, chainNodeCandidates, chainPoint, validChainNode, chainExtensionStrength, colorStrongLinks, completeChainLoop, completeMedusa, highlightedStrongLinks, makeChainGraph, weakLinkRun, type ChainEdge, type ChainNode } from '../src/sudoku/chains.ts'
+import { alsChainNode, analyzeChainPaths, analyzeChains, analyzeMedusa, candidateId, chainCandidate, chainGroup, chainNodeCandidates, chainPoint, validChainNode, chainExtensionStrength, colorStrongLinks, completeChainLoop, completeMedusa, highlightedStrongLinks, makeChainGraph, weakLinkRun, type ChainEdge, type ChainNode } from '../src/sudoku/chains.ts'
 import { applyChainDeduction, CHAIN_COLOR_PAIRS, cycleChainPairs, newChainSketch, nextChainId, pruneChainsAfterMove, undoChainEdit, updateChainEdges, validChainSketchState, type ChainSketchState } from '../src/sudoku/chain-sketch.ts'
 import { applyDeduction, EMPTY, enter, makeGame, paintCandidate, paintCandidateStroke, redo, replaceCandidates, STARTER_GAME, undo, type Game } from '../src/sudoku/game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -497,7 +497,7 @@ test('grouped sketches survive save, Undo and puzzle Undo without changing their
 })
 
 
-test('automatic extensions can use known groups without generating arbitrary groups', () => {
+test('loop completion discovers house intersection groups and excludes nodes already in use', () => {
   const group = chainGroup(1, [0, 1])!
   const simple = graph({ 0: [1], 1: [1], 4: [1] })
   assert.deepEqual(completeMedusa(simple, [], id(4)), [])
@@ -506,9 +506,71 @@ test('automatic extensions can use known groups without generating arbitrary gro
   const links = graph({ 0: [1], 1: [1], 4: [1], 9: [1], 36: [1], 40: [1] })
   const path = [id(4), id(40), id(36), id(9)]
   const excluded = new Set<ChainNode>([id(0), id(1)])
-  assert.deepEqual(completeChainLoop(links, path, excluded), { status: 'exhausted' })
-  assert.deepEqual(completeChainLoop(links, path, excluded, [group]), {
+  assert.deepEqual(completeChainLoop(links, path, excluded), {
     status: 'found', edges: [[id(9), group], [group, id(4)]],
   })
-  assert.deepEqual(completeChainLoop(links, path, new Set([...excluded, group]), [group]), { status: 'exhausted' })
+  const allGroups = [...links.houseGroups(), ...links.patternLinks().keys()].filter(node => typeof node === 'string')
+  assert.deepEqual(completeChainLoop(links, path, new Set([...excluded, ...allGroups]), [group]), { status: 'exhausted' })
+})
+
+
+test('a continuous loop with an ALS-to-cell link locks a digit the weak links do not eliminate', () => {
+  const masks = [
+    69, 0, 5, 116, 0, 0, 0, 112, 37,
+    197, 0, 0, 0, 0, 68, 133, 192, 0,
+    194, 198, 0, 116, 0, 100, 180, 240, 0,
+    0, 193, 165, 0, 96, 0, 164, 162, 166,
+    0, 0, 166, 0, 38, 38, 164, 0, 0,
+    70, 70, 38, 0, 102, 0, 0, 0, 0,
+    0, 135, 0, 68, 22, 70, 0, 146, 131,
+    150, 0, 134, 36, 54, 0, 0, 0, 130,
+    19, 3, 0, 0, 0, 0, 49, 0, 35,
+  ]
+  const links = makeChainGraph(masks, undefined, [
+    { id: 1, cells: [0, 9, 18, 45, 63] },
+    { id: 2, cells: [8, 62, 71, 80] },
+    { id: 3, cells: [72, 73, 80] },
+  ])
+  const port = alsChainNode(2, 3, [8])
+  const outside = id(61, 5)
+  const target = id(35, 6)
+  assert.equal(links.strength(port, outside), 'strong')
+  assert.equal(links.conflicts(port, outside), false)
+  assert.ok(links.lockedAlsTargets(port, outside).includes(target))
+  const loop = pathEdges(id(72), alsChainNode(1, 1, [0, 9]), id(2), id(2, 3),
+    port, outside, id(78, 5), alsChainNode(3, 5, [72]), id(72))
+  const [proof] = analyzeChains(links, loop)
+  assert.equal(proof.loop, 'continuous')
+  assert.deepEqual(proof.actions.flatMap(action => 'eliminate' in action ? [candidateId(action.eliminate)] : []).sort(),
+    [id(0, 3), id(3, 3), target, id(72, 2)].sort())
+  for (const [i, strength] of proof.strengths.entries()) {
+    if (strength === 'weak') {
+      assert.equal(links.conflicts(target, proof.nodes[i]) && links.conflicts(target, proof.nodes[i + 1]), false)
+    }
+  }
+})
+
+test('Firework and verified Unique Rectangle links use the same graph as candidate links', () => {
+  const firework = graph({ 1: [6], 3: [6], 4: [6], 9: [6], 12: [6], 27: [6] })
+  const row = chainGroup(6, [3, 4])!
+  const column = id(27, 6)
+  const fireworkSource = firework.patternSource(row, column)
+  assert.deepEqual(fireworkSource, { kind: 'firework', pivot: 0, digit: 6 })
+  assert.equal(firework.strength(row, column), 'strong')
+  assert.equal(firework.conflicts(row, column), false)
+  assert.deepEqual(colorStrongLinks(firework, [[row, column]]), [])
+
+  const cells = { 0: [1, 2], 3: [1, 2, 3], 9: [1, 2, 4, 5], 12: [1, 2] }
+  const masks = Array.from({ length: 81 }, (_, cell) => (cells[cell as keyof typeof cells] ?? [])
+    .reduce((mask, digit) => mask | (1 << (digit - 1)), 0))
+  const verified = makeChainGraph(masks, undefined, [], true)
+  const guard = id(3, 3)
+  const others = 'p:84,85'
+  assert.equal(makeChainGraph(masks).available(others), false)
+  assert.equal(verified.available(others), true)
+  assert.deepEqual(verified.patternSource(guard, others), { kind: 'rectangle', corners: [0, 3, 9, 12], digits: [1, 2] })
+  assert.equal(verified.strength(guard, others), 'strong')
+  assert.equal(verified.conflicts(guard, others), false)
+  assert.equal(validChainNode(others), true)
+  assert.equal(validChainNode('p:85,84'), false)
 })

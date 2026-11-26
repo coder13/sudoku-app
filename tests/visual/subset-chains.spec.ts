@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import type { LessonExample } from '../../src/sudoku/engine'
 
 const workbench = (story = 'subset-workbench') => `/iframe.html?id=large-play-worktable--${story}&viewMode=story`
 const cell = (page: Page, index: number) => page.locator(`[role="gridcell"][data-cell="${index}"]`)
@@ -298,6 +300,125 @@ test('clicking candidates in four saved subsets reproduces the ALS chain from th
   const originalSet = chainPanel.getByRole('listitem').first().getByText('r3c8 {34}', { exact: true })
   await originalSet.hover()
   await expect(firstTint).toHaveCSS('filter', 'brightness(1.12)')
+})
+
+test('clicking an outside candidate and a saved ALS draws a strong link', async ({ page }) => {
+  await page.goto(workbench('als-forces-outside-cell'))
+  const panel = chains(page)
+  const notation = panel.locator('.chain-notation')
+  await expect(notation).toHaveText('(8)r9c3 = 6r5c3', { timeout: 20000 })
+  await panel.getByRole('button', { name: 'Draw links' }).click()
+  await panel.getByRole('button', { name: 'Undo edit' }).click()
+  const grid = page.getByRole('grid', { name: 'Sudoku grid for drawing links' })
+  await grid.locator('[data-cell="38"] button[data-candidate-digit="6"]').click()
+  await grid.locator('[data-cell="74"] button[data-candidate-digit="8"]').click()
+  await expect(notation).toHaveText('6r5c3 = (8)r9c3')
+
+  await panel.getByRole('button', { name: 'Undo edit' }).click()
+  await panel.getByRole('button', { name: 'End path' }).click()
+  await grid.locator('[data-cell="74"] button[data-candidate-digit="8"]').click()
+  await grid.locator('[data-cell="38"] button[data-candidate-digit="6"]').click()
+  await expect(notation).toHaveText('(8)r9c3 = 6r5c3')
+})
+
+function chainCandidateControl(page: Page, index: number, digit: number) {
+  return cell(page, index).locator(`button[data-candidate-digit="${digit}"]`)
+}
+
+async function expectPracticeEliminations(page: Page, technique: string) {
+  const examples: Record<string, LessonExample> = JSON.parse(
+    readFileSync(new URL('../../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'),
+  )
+  const eliminated = examples[technique].practice.deduction.actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
+  const expected = eliminated.map(({ cell, digit }) => `${cell}:${digit}`).sort()
+  await showEliminations(page, 'Chain')
+  const marks = page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).locator('[data-mark="strike"], [data-strike="true"]')
+  await expect.poll(() => marks.evaluateAll(elements => elements.map(el =>
+    `${el.closest('[data-cell]')?.getAttribute('data-cell')}:${el.textContent?.trim()}`).sort())).toEqual(expected)
+  return eliminated
+}
+
+test('a Firework drawn from the solver practice puzzle reports the same elimination', async ({ page }) => {
+  await page.goto(workbench('draw-firework-aic'))
+  const editor = chains(page)
+  await editor.getByRole('button', { name: 'Draw links' }).click({ timeout: 20000 })
+  await expect(editor.locator('.chain-notation')).toHaveCount(0)
+  await chainCandidateControl(page, 15, 6).click()
+  await chainCandidateControl(page, 57, 6).click()
+  await page.getByRole('menu', { name: 'Choose chain link' })
+    .getByRole('menuitem', { name: 'Firework at r2c4 · 6r7c4 or 6r9c4', exact: true }).click()
+  for (const [index, digit] of [[77, 6], [73, 2], [63, 2], [63, 6]]) {
+    await chainCandidateControl(page, index, digit).click()
+  }
+  await expect(editor.locator('.chain-notation'))
+    .toHaveText('6r2c7 = 6(r7c4|r9c4) − (6)r9c6 = (2)r9c23 − (2)r8c123 = (6)r8c1')
+  await expectPracticeEliminations(page, 'firework-aic')
+  await expect(editor.getByRole('button', { name: 'Chain 1', exact: true })).toContainText('Firework AIC')
+})
+
+test('a Unique Rectangle drawn with a mixed guardian group reports the solver elimination', async ({ page }) => {
+  await page.goto(workbench('draw-unique-rectangle-aic'))
+  const editor = chains(page)
+  await editor.getByRole('button', { name: 'Draw links' }).click({ timeout: 20000 })
+  await expect(editor.locator('.chain-notation')).toHaveCount(0)
+  for (const [index, digit] of [[65, 9], [66, 9], [66, 7], [74, 1]]) {
+    await chainCandidateControl(page, index, digit).click()
+  }
+  await expect(editor.locator('.chain-notation')).toHaveText('9r8c3 = 9r8c4 − 7r8c4 = (1r9c3|5r9c3)')
+  await expectPracticeEliminations(page, 'unique-rectangle-aic')
+  await expect(editor.getByRole('button', { name: 'Chain 1', exact: true })).toContainText('Unique Rectangle AIC')
+})
+
+test('completing a loop finds a saved ALS and puzzle Undo restores the loop and candidates', async ({ page }) => {
+  await page.goto(workbench('complete-als-loop'))
+  const editor = chains(page)
+  const notation = editor.locator('.chain-notation')
+  const prefix = '2(r9c5|r9c6) = 2r9c8 − 4r9c8 = 4r4c8'
+  await expect(notation).toHaveText(prefix, { timeout: 20000 })
+  await chooseChainAction(page, 'Complete loop')
+  const completed = '2(r9c5|r9c6) = 2r9c8 − 4r9c8 = 4r4c8 − (4)r4c4 = (2)r8c4 − 2(r9c5|r9c6)'
+  await expect(notation).toHaveText(completed)
+  const eliminated = await expectPracticeEliminations(page, 'als-continuous-nice-loop')
+
+  await editor.getByRole('button', { name: 'Apply edits' }).click()
+  await expect(notation).toHaveCount(0)
+  for (const { cell: index, digit } of eliminated) {
+    await expect(cell(page, index)).not.toHaveAttribute('aria-label', new RegExp(`candidates [^,]*\\b${digit}\\b`))
+  }
+  const input = page.getByRole('tablist', { name: 'Sudoku input' })
+  const digits = input.getByRole('tab', { name: 'Digits', exact: true })
+  const switchInput = await digits.isVisible()
+  if (switchInput) await digits.click()
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  if (switchInput) await input.getByRole('tab', { name: 'Chains', exact: true }).click()
+  await expect(notation).toHaveText(completed)
+  for (const { cell: index, digit } of eliminated) {
+    await expect(cell(page, index)).toHaveAttribute('aria-label', new RegExp(`candidates [^,]*\\b${digit}\\b`))
+  }
+})
+
+test('overlapping ALSes offer a keyboard-accessible choice beside the candidate', async ({ page }) => {
+  await page.goto(workbench())
+  await cell(page, 24).click()
+  await cell(page, 25).click({ modifiers: ['Shift'] })
+  await cell(page, 24).click({ button: 'right' })
+  await boardMenu(page).getByRole('menuitem', { name: 'Make subset' }).click()
+  await cell(page, 23).click()
+  await cell(page, 25).click()
+  await cell(page, 25).click({ button: 'right' })
+  await boardMenu(page).getByRole('menuitem', { name: 'Make subset' }).click()
+  await page.getByRole('tab', { name: 'Chains', exact: true }).click()
+  await chains(page).getByRole('button', { name: 'Draw links' }).click()
+  const pick = cell(page, 25).locator('button[data-candidate-digit="2"]')
+  await pick.click()
+  const menu = page.getByRole('menu', { name: 'Choose chain link' })
+  await expect(menu.getByRole('menuitem', { name: 'Set 1' })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(menu.getByRole('menuitem', { name: 'Set 2' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeHidden()
+  await expect(pick).toBeFocused()
+  await expect(chains(page).locator('.chain-notation')).toHaveText('r3c8 {27}')
 })
 
 test('one AIC can enter and leave two ALSes and still prove its endpoint eliminations', async ({ page }) => {

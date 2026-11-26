@@ -208,3 +208,17 @@ test('an ALS can replace the candidate end of a drawn chain and shares its undo 
   assert.deepEqual(readGame(game.id, JSON.stringify(game))?.chainSketch, linked)
   assert.deepEqual(undoChainEdit(linked, true), drawn)
 })
+
+
+test('ALS attachment uses the full guardian group when it spans different digits', () => {
+  const board = context({ 0: [1, 2], 3: [1, 2, 3], 9: [1, 2, 4, 5], 12: [1, 2], 36: [4, 6], 39: [3, 4] })
+  const saved = sets([[36], [39]], board)
+  const graph = makeChainGraph(board.masks!, undefined, saved, true)
+  const guard = candidateId({ cell: 3, digit: 3 })
+  const group = 'p:84,85'
+  assert.equal(graph.strength(guard, group), 'strong')
+  assert.deepEqual(subsetEndpointChoices([guard, group], saved, board, graph), [])
+  const [attachment] = subsetEndpointChoices([group, guard], saved, board, graph)
+  assert.deepEqual(attachment.target, { set: 2, digit: 3 })
+  assert.deepEqual(analyzeSubsetProof(attachment.proof, saved, board, graph).actions, [])
+})

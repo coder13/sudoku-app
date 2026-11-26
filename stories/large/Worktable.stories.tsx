@@ -9,8 +9,8 @@ import { Worktable, type WorktableActions } from '../../src/components/Worktable
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
-import { candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, enter, fillEntries, makeGame, paintCells, peer, puzzleIdentity, replaceCandidates, valuesOf, type Game } from '../../src/sudoku/game'
+import { alsChainNode, candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
+import { EMPTY, enter, fillEntries, makeGame, paintCells, peer, puzzleIdentity, replaceCandidates, uniquenessKey, valuesOf, type Game } from '../../src/sudoku/game'
 import { recordAction } from '../../src/sudoku/action-history'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
@@ -20,7 +20,7 @@ import {
   DEFAULT_WORKSPACE_MODE, MAX_GRID_TEXT_SCALE,
 } from '../../src/sudoku/preferences'
 import { medusaRemovalGame } from '../support/chain-fixtures'
-import { inProgress, namedDraft, solved, starter } from '../support/fixtures'
+import { inProgress, lessonExamples, namedDraft, solved, starter } from '../support/fixtures'
 import { roomStore, seedRoom } from '../support/story-room'
 
 const meta = {
@@ -1606,6 +1606,76 @@ export const SubsetShowcase: Story = {
   },
   render: args => <WorktableExample {...args} withTopbar resizable />,
 }
+
+// The solver's ALS AIC example also has a strong inference to an outside cell.
+const alsOutsideValues = '567000214000564387384271596000000069000000835000050042032095471100340928000002653'
+const alsOutsideId = 'als-forces-outside-cell'
+const alsOutsideGame: Game = {
+  ...replaceCandidates(makeGame(alsOutsideId, 'ALS forces an outside cell', alsOutsideValues, 'imported'),
+    [...alsOutsideValues].map((value, cell) => value === '0'
+      ? [...alsOutsideValues].reduce((mask, digit, other) =>
+        digit !== '0' && peer(cell, other) ? mask & ~(1 << (Number(digit) - 1)) : mask, 511)
+      : 0), { recordHistory: false }),
+  subsetWorkspace: { nextId: 2, sets: [{ id: 1, cells: [11, 74] }] },
+  chainSketch: {
+    sketches: [{ ...newChainSketch(1), history: [[], [[alsChainNode(1, 8, [74]), candidateId({ cell: 38, digit: 6 })]]] }],
+    activeId: 1,
+    pending: null,
+  },
+}
+
+export const AlsForcesOutsideCell: Story = {
+  args: { game: alsOutsideGame, games: [alsOutsideGame] },
+  parameters: {
+    docs: { description: { story: 'If Set 1 skips 8, its cells in column 3 must use 1 and 9. That leaves 6 in the outside cell R5C3.' } },
+  },
+  beforeEach: () => {
+    playSession.set(alsOutsideId, 'toolPanels', { open: ['subsets', 'chains'], active: 'chains' })
+  },
+}
+
+function chainPracticeGame(technique: string, title: string, members: number[][] = []): Game {
+  const { givens, entries, candidates, eliminations } = lessonExamples[technique].practice
+  const game = makeGame(`draw-${technique}`, title, givens, 'imported')
+  const position = { ...game.position, entries, eliminations }
+  return {
+    ...replaceCandidates({ ...game, position }, candidates, { recordHistory: false }),
+    subsetWorkspace: { nextId: members.length + 1, sets: members.map((cells, index) => ({ id: index + 1, cells })) },
+  }
+}
+
+function chainPracticeStory(game: Game): Story {
+  return {
+    args: { game, games: [game] },
+    beforeEach: () => {
+      playSession.set(game.id, 'toolPanels', { open: ['subsets', 'chains'], active: 'chains' })
+    },
+  }
+}
+
+export const DrawFireworkAic = chainPracticeStory(chainPracticeGame('firework-aic', 'Draw a Firework AIC', [
+  [73, 74, 77, 80], [63, 64, 65],
+]))
+
+// The engine verifies that this practice puzzle has a unique solution.
+const rectangleChainPractice = chainPracticeGame('unique-rectangle-aic', 'Draw a Unique Rectangle AIC')
+export const DrawUniqueRectangleAic = chainPracticeStory({
+  ...rectangleChainPractice,
+  uniquenessProof: uniquenessKey(rectangleChainPractice),
+})
+
+const loopPractice = chainPracticeGame('als-continuous-nice-loop', 'Complete a loop through an ALS', [[30, 48, 66]])
+const [startLoopGroup, loopTwo, loopFour, loopEnd] = [
+  chainGroup(2, [76, 77])!, candidateId({ cell: 79, digit: 2 }),
+  candidateId({ cell: 79, digit: 4 }), candidateId({ cell: 34, digit: 4 }),
+]
+export const CompleteAlsLoop = chainPracticeStory({
+  ...loopPractice,
+  chainSketch: {
+    activeId: 1, pending: null,
+    sketches: [{ ...newChainSketch(1), history: [[], [[startLoopGroup, loopTwo], [loopTwo, loopFour], [loopFour, loopEnd]]] }],
+  },
+})
 
 const subsetEliminationValues = [
   '000005000', '070290040', '000708102', '458300000', '006800401',

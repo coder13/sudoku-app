@@ -157,19 +157,24 @@ function analyzeEndpoint(proof: SubsetEndpoint, set: SubsetDescription | undefin
     return { links: [], actions: [], problem: 'invalid-link' }
   }
   const endpoint = path.at(-1)!
-  const restricted = chainNodeDigit(endpoint)
+  const last = chainNodeCandidates(endpoint)
+  const restricted = last[0].digit
   const inSet = subsetOccurrences(set.cells, restricted, context.masks!)
-  if (!inSet.length || !chainNodeCandidates(endpoint).every(({ cell }) => inSet.every(other => subsetPeers(cell, other, context)))) {
+  if (!inSet.length || !last.every(({ cell, digit }) =>
+    digit === restricted && inSet.every(other => subsetPeers(cell, other, context)))) {
     return { links: [], actions: [], problem: 'invalid-link' }
   }
   const links = [{ fromNode: endpoint, to: set.id, digit: restricted }]
-  const digit = chainNodeDigit(path[0])
-  if (digit === restricted || !hasCandidate(set.digitMask, digit)) return { links, actions: [] }
-  const first = chainNodeCandidates(path[0]).map(({ cell }) => cell)
+  const start = chainNodeCandidates(path[0])
+  const digit = start[0].digit
+  if (digit === restricted || !hasCandidate(set.digitMask, digit) || start.some(candidate => candidate.digit !== digit)) {
+    return { links, actions: [] }
+  }
+  const first = start.map(({ cell }) => cell)
   const members = new Set([...set.cells, ...path.flatMap(node => chainNodeCandidates(node).map(({ cell }) => cell))])
   const removed = eliminations(context, [set], members, 1 << (digit - 1), first)
   const pair = path.length === 2 && typeof path[0] === 'number' && typeof endpoint === 'number' &&
-    first[0] === chainNodeCandidates(endpoint)[0].cell
+    first[0] === last[0].cell
   return { links, ...summarizeEliminations(removed), ...(removed.length && { technique: pair ? 'als-xz' : 'aic' }) }
 }
 

@@ -37,7 +37,7 @@ export function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): Cha
 }
 
 function recognizedPath(chain: ChainAnalysis) {
-  if (chain.title === 'AIC with ALS nodes') return chain.title
+  if (['AIC with ALS nodes', 'Firework AIC', 'Unique Rectangle AIC'].includes(chain.title)) return chain.title
   const grouped = chain.nodes.some(node => typeof node === 'string')
   if (chain.loop) return grouped ? 'Grouped Nice Loop' : 'Nice Loop'
   const { strengths } = chain
@@ -74,7 +74,7 @@ export function analyzeChainSketches(graph: ChainGraph, sketches: readonly Chain
     const proof = currentSubsetProof(sketch)
     const subset = proof && subsets ? { proof, analysis: analyzeSubsetProof(proof, subsets.sets, subsets.context, graph) } : undefined
     const paths = sketchPaths(graph, edges).map(path => {
-      if (!path.nodes.some(isAlsChainNode)) return path
+      if (!path.nodes.some(isAlsChainNode) && !path.nodes.slice(1).some((node, i) => graph.patternSource(path.nodes[i], node))) return path
       for (const chain of chains) {
         if (chain.strengths.length !== path.strengths.length) continue
         if (path.nodes.every((node, index) => node === chain.nodes[index])) return { ...path, strengths: chain.strengths }

@@ -7,7 +7,7 @@ import {
 } from '../sudoku/chain-sketch'
 import {
   candidateId, chainAlsId, chainCandidate, chainComponents, chainGroup, chainNodeCandidates, chainNodeDigit, chainPoint, completeChainLoop, completeMedusa, isAlsChainNode, sameEdge, weakLinkRun,
-  type ChainAnalysis, type ChainEdge, type ChainGraph, type ChainGroup, type ChainNode, type LinkStrength,
+  type ChainAnalysis, type ChainEdge, type ChainGraph, type ChainNode, type LinkStrength,
 } from '../sudoku/chains'
 import type { Game } from '../sudoku/game'
 import { cellName } from '../sudoku/lesson-diagram'
@@ -21,6 +21,12 @@ import { buildChainSketchAnnotations } from './play/chain-sketch-annotations'
 import { buildSubsetChainAnnotations, type SubsetChainFocus } from './play/subset-chain-annotations'
 
 export type ChainNotationPart = { sketchId: number; pathIndex: number; kind: 'node' | 'edge'; index: number }
+
+export type ChainLinkChoice = {
+  label: string
+  kind: 'candidate' | 'group' | 'set'
+  run: () => void
+}
 
 type ChainRedo = {
   gameId: string
@@ -36,15 +42,15 @@ const EMPTY_GROUP_SELECTION: number[] = []
 
 function inferenceLinks(graph: ChainGraph, edges: readonly ChainEdge[], pending: ChainNode, target: ChainNode): ChainEdge[] | undefined {
   if (pending === target || edges.some(edge => sameEdge(edge, [pending, target]))) return
+  if (graph.alsCellLink(pending, target) !== undefined) return [[pending, target]]
   const previous = edges.filter(edge => edge.includes(pending)).at(-1)
   const justUsedStrong = previous && graph.strength(...previous) === 'strong'
-  if (!isAlsChainNode(pending)) return justUsedStrong && graph.strength(pending, target) === 'weak' ? [[pending, target]] : undefined
-  if (justUsedStrong) return graph.strength(pending, target) === 'weak' ? [[pending, target]] : undefined
+  if (!isAlsChainNode(pending) || justUsedStrong) return justUsedStrong && graph.conflicts(pending, target) ? [[pending, target]] : undefined
   const exit = graph.alsNodes.get(chainAlsId(pending))?.get(chainNodeDigit(target))
   if (!exit || exit === pending) return
   const inside = exit === target || (typeof target === 'number' && graph.members(exit).includes(target))
   if (inside) return [[pending, exit]]
-  if (graph.strength(exit, target) === 'weak') return [[pending, exit], [exit, target]]
+  if (graph.conflicts(exit, target)) return [[pending, exit], [exit, target]]
 }
 
 export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent, updateGame, subsetContext }: {
@@ -86,7 +92,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     return group && graph.available(group) ? group : null
   }, [grouping, groupSelection, graph])
   const groups = useMemo(() => [...new Set([...allDrawnEdges.flat(), ...(pending === null ? [] : [pending])])]
-    .filter((node): node is ChainGroup => typeof node === 'string' && !isAlsChainNode(node) && Boolean(graph?.available(node))), [allDrawnEdges, pending, graph])
+    .filter(node => typeof node === 'string' && !isAlsChainNode(node) && Boolean(graph?.available(node))), [allDrawnEdges, pending, graph])
   const exceedsWeakLinkLimit = useMemo(() => graph && weakLinkRun(graph, allDrawnEdges), [graph, allDrawnEdges])
 
   const savedSets = (game.subsetWorkspace ?? EMPTY_SUBSET_WORKSPACE).sets
@@ -266,12 +272,6 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     setSubsetFocus(null)
   }
 
-  function subsetLinkAt(candidate: Candidate, visibleSets: ReadonlySet<number> | undefined) {
-    if (!visibleSets?.size) return
-    const choices = directSubsetTargets.get(candidateId(candidate))?.filter(({ set }) => visibleSets.has(set))
-    if (choices?.length === 1) return choices[0].proof
-  }
-
   function changeEdges(next: ChainEdge[], endpoint: ChainNode | null = null, highlightedDigit?: number, reveal = false) {
     const weakAdditions = graph ? next.filter(edge => graph.strength(...edge) === 'weak' &&
       !edges.some(existing => sameEdge(edge, existing))) : []
@@ -297,7 +297,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     if (!path) return false
     const { exit } = path
     const chosenInside = typeof target === 'number' && graph.members(exit).includes(target)
-    if (!chosenInside && graph.strength(exit, target) !== 'weak') return false
+    if (!chosenInside && !graph.strength(exit, target)) return false
     const next: ChainEdge[] = chosenInside ? path.edges : [...path.edges, [exit, target]]
     changeEdges(next, chosenInside ? exit : target, digit)
     return true
@@ -401,11 +401,11 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       select(candidate)
       return
     }
-    if (chainNodeDigit(pending) !== candidate.digit) {
+    const members = chainNodeCandidates(pending)
+    if (members.some(({ digit }) => digit !== candidate.digit)) {
       setStatus(groupDigitStatus)
       return
     }
-    const members = chainNodeCandidates(pending)
     if (members.some(({ cell }) => cell === candidate.cell)) return
     const group = chainGroup(candidate.digit, [...members.map(({ cell }) => cell), candidate.cell])
     if (!group || !graph.available(group)) {
@@ -444,6 +444,104 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     setStatus('')
   }
 
+  function savedSetLinkChoices(graph: ChainGraph, candidate: Candidate, visibleSets: ReadonlySet<number> | undefined) {
+    const id = candidateId(candidate)
+    const choices: ChainLinkChoice[] = []
+    const label = (set: number) => `Set ${subsetSets.find(item => item.id === set)?.number ?? set}`
+    const directOptions = directSubsetTargets.get(id)?.filter(({ set }) => visibleSets?.has(set)) ?? []
+    for (const { set, proof } of directOptions) {
+      choices.push({ label: label(set), kind: 'set', run: () => changeSubset(proof) })
+    }
+    for (const set of visibleSets ?? []) {
+      if (directOptions.some(option => option.set === set)) continue
+      const node = graph.alsNodes.get(set)?.get(candidate.digit)
+      if (!node || !graph.members(node).includes(id)) continue
+      if (subsetProof?.kind === 'endpoint' && set !== subsetProof.set) {
+        const path = expandAlsPath(subsetProof, candidate.digit, graph)
+        if (path && graph.strength(path.exit, node)) {
+          choices.push({ label: label(set), kind: 'set', run: () => continueSavedSetPath(node) })
+        }
+        continue
+      }
+      if (pending === null || subsetProof) continue
+      const links = mixed || graph.alsCellLink(pending, node) !== undefined
+        ? inferenceLinks(graph, edges, pending, node) : undefined
+      if (links) choices.push({ label: label(set), kind: 'set', run: () => advanceInference(node, links) })
+    }
+
+    if (subsetProof?.kind === 'path' || subsetProof?.kind === 'endpoint') {
+      const set = subsetProof.kind === 'path' ? subsetProof.sets.at(-1)! : subsetProof.set
+      for (const [digit, port] of graph.alsNodes.get(set) ?? []) {
+        if (graph.alsCellLink(port, id) === undefined) continue
+        const path = subsetProof.kind === 'path' && subsetProof.sets.length === 1
+          ? [] : expandAlsPath(subsetProof, digit, graph)?.edges
+        if (!path) continue
+        choices.push({ label: `${label(set)} · skip ${digit} to force ${candidate.digit}`, kind: 'set',
+          run: () => changeEdges([...path, [port, id]], id, candidate.digit) })
+      }
+    }
+    return choices
+  }
+
+  function candidateChoices(candidate: Candidate, visibleSets: ReadonlySet<number> | undefined): ChainLinkChoice[] {
+    if (!drawing || grouping || active.hidden || !graph) return []
+    const id = candidateId(candidate)
+    const choices = savedSetLinkChoices(graph, candidate, visibleSets)
+    if (pending === null || pending === id || subsetProof) return choices
+    const direct: ChainEdge = [pending, id]
+    const canAppend = (edge: ChainEdge) => !edges.some(existing => sameEdge(existing, edge)) && !exceedsWeakLinkLimit?.(edge)
+    const ordinary = isAlsChainNode(pending)
+      ? inferenceLinks(graph, edges, pending, id)?.at(-1)
+      : graph.strength(...direct) && canAppend(direct) ? direct : undefined
+    const groupLabel = (node: ChainNode) => chainNodeCandidates(node)
+      .map(({ cell, digit }) => `${digit}${cellName(cell).toLowerCase()}`).join(' or ')
+    const includeCandidate = () => choices.unshift({
+      label: `Candidate ${groupLabel(id)}`, kind: 'candidate', run: () => select(candidate),
+    })
+    if (choices.length) {
+      if (ordinary && choices.length > 1) includeCandidate()
+      return choices
+    }
+    if (ordinary && graph.strength(...ordinary) === 'strong') return choices
+    const sourceLabel = (from: ChainNode, to: ChainNode) => {
+      const source = graph.patternSource(from, to)
+      if (source?.kind === 'firework') return `Firework at ${cellName(source.pivot).toLowerCase()}`
+      if (source?.kind === 'rectangle') return `Unique Rectangle ${source.digits.join('/')}`
+      return 'Group'
+    }
+    const endpoints = new Set([...groups, ...graph.houseGroups()])
+    if (!ordinary) for (const node of graph.patternLinks().get(pending)?.keys() ?? []) endpoints.add(node)
+    for (const node of endpoints) {
+      if (typeof node === 'number' || node === pending || !graph.members(node).includes(id)) continue
+      const strength = graph.strength(pending, node)
+      const edge: ChainEdge = [pending, node]
+      if (!strength || !canAppend(edge)) continue
+      if (ordinary && (strength !== 'strong' || graph.patternSource(...edge))) continue
+      choices.push({ label: `${sourceLabel(...edge)} · ${groupLabel(node)}`, kind: 'group',
+        run: () => advanceInference(node, [edge]) })
+    }
+    if (ordinary) {
+      if (choices.length) includeCandidate()
+      return choices
+    }
+
+    // A pattern link may join two multi-candidate groups. Treat the selected
+    // candidate as a member of its group when the existing path can join it.
+    if (typeof pending === 'number') for (const [from, targets] of graph.patternLinks()) {
+      if (from === pending || typeof from === 'number' || !graph.members(from).includes(pending)) continue
+      const promote = ([a, b]: ChainEdge): ChainEdge => [a === pending ? from : a, b === pending ? from : b]
+      const upgraded = edges.map(promote)
+      if (upgraded.some(edge => !graph.strength(...edge)) || new Set(upgraded.flat()).size < new Set(edges.flat()).size) continue
+      for (const to of targets.keys()) {
+        if (!graph.members(to).includes(id) || upgraded.some(edge => sameEdge(edge, [from, to]))) continue
+        const fromLabel = groupLabel(from)
+        choices.push({ label: `${sourceLabel(from, to)} · (${fromLabel}) = (${groupLabel(to)})`, kind: 'group',
+          run: () => changeEdges([...upgraded, [from, to]], to, candidate.digit) })
+      }
+    }
+    return choices
+  }
+
   function stop() {
     setDrawingIntent(false)
     endPath()
@@ -469,23 +567,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     highlightSubsetNotation: setSubsetFocus,
     subsetSets, subsetChoices, changeSubset,
     drawingUnavailable,
-    selectSubsetCandidate(candidate: Candidate, visibleSets: ReadonlySet<number> | undefined) {
-      const proof = subsetLinkAt(candidate, visibleSets)
-      if (proof) { changeSubset(proof); return true }
-      if (!drawing || grouping || active.hidden || !graph || !visibleSets?.size ||
-        !mixed && subsetProof?.kind !== 'endpoint') return false
-      const id = candidateId(candidate)
-      const choices = [...visibleSets].flatMap<{ node: ChainNode; links?: ChainEdge[] }>(setId => {
-        const node = graph.alsNodes.get(setId)?.get(candidate.digit)
-        if (!node || !graph.members(node).includes(id)) return []
-        if (subsetProof?.kind === 'endpoint' && setId !== subsetProof.set) return [{ node, links: undefined }]
-        const links = pending === null ? undefined : inferenceLinks(graph, edges, pending, node)
-        return links ? [{ node, links }] : []
-      })
-      if (choices.length !== 1) return false
-      const { node, links } = choices[0]
-      return links ? advanceInference(node, links) : continueSavedSetPath(node)
-    },
+    candidateChoices,
     colorPairs, assignedColors: committed.assigned, usedColorPairs: committed.usedPairs,
     sketches: analyzed, active, status, pending, beginAt, select, groupCandidate, finishLoop, stop, endPath, setHighlightedDigit,
     suspend: () => { setDrawingIntent(false); setGroupSelection(null) },

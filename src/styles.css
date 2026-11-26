@@ -949,6 +949,9 @@ svg { flex-shrink: 0; }
 .puzzle-context-menu button:enabled:is(:hover, :focus-visible) { background: var(--surface-hover); }
 .puzzle-context-menu button:disabled { color: var(--muted); opacity: .65; }
 .board-context-menu { max-inline-size: calc(100vw - 12px); }
+.board-link-menu { width: max-content; max-inline-size: min(360px, calc(100vw - 12px)); max-block-size: calc(100dvh - 12px); overflow: auto; }
+.board-link-menu button { padding-block: 5px; }
+.board-link-menu button svg { flex: none; }
 .puzzle-column {
   position: relative;
   min-width: 0;
