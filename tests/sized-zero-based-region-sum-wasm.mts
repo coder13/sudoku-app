@@ -246,11 +246,15 @@ test('zero-based X-Sums count displayed values and expose displayed totals to li
   ]
   const position: SizedConstraintPosition = { version: 2, grid, zeroBased: true, digits: solution, rules }
   assert.equal(isSizedRuleList(rules, appGrid), true)
+  const solutionText = solution.join('')
+  assert.ok(restoreSizedRuleGame({ rules, solution: solutionText }, appGrid, '0'.repeat(solution.length)))
+  const changedRules = rules.map((rule, index) => index === 1
+    ? { type: 'x-sum' as const, direction: 'east' as const, cells: [12, 13, 14, 15, 16, 17], sum: 2 }
+    : rule)
+  assert.equal(restoreSizedRuleGame({ rules: changedRules, solution: solutionText }, appGrid, '0'.repeat(solution.length)), undefined)
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, rules: rules.slice(0, 4) } }), 'unique')
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
-    ...position, rules: rules.map((rule, index) => index === 1
-      ? { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 2 }
-      : rule),
+    ...position, rules: changedRules,
   } }), 'conflict')
 })
