@@ -428,7 +428,6 @@ impl PairCompiler {
                     return Err(invalid);
                 }
                 let ratio = *relation == SizedDotRelation::Ratio;
-                let mut layer_values = BTreeSet::new();
                 for mark in marks {
                     let [a, b] = mark.cells;
                     valid_cells(&mark.cells, 2..=2)?;
@@ -442,7 +441,6 @@ impl PairCompiler {
                         .entry((*relation, mark.value))
                         .or_default()
                         .insert(cells);
-                    layer_values.insert(mark.value);
                     self.clues.push(pair(&source, cells, |x, y| {
                         if ratio {
                             u16::from(x.max(y)) == u16::from(mark.value) * u16::from(x.min(y))
@@ -452,14 +450,10 @@ impl PairCompiler {
                     }));
                 }
                 if *negative {
-                    if layer_values.is_empty() {
-                        layer_values.insert(if ratio { 2 } else { 1 });
-                    }
-                    for value in layer_values {
-                        self.labeled_negative
-                            .entry((*relation, value))
-                            .or_insert(index);
-                    }
+                    let default_value = if ratio { 2 } else { 1 };
+                    self.labeled_negative
+                        .entry((*relation, default_value))
+                        .or_insert(index);
                 }
             }
             PuzzleRule::Xv { five, ten } => {
