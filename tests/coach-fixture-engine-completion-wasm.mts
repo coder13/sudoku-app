@@ -23,7 +23,8 @@ function coachProgress(givens: string, solution: string) {
   const emptyCells = [...givens].flatMap((digit, cell) => digit === '0' ? [cell] : [])
   const moves = Array(solution.length).fill('0')
   const values = [...givens]
-  for (const offset of new Set([Math.floor(emptyCells.length / 4), Math.floor(emptyCells.length / 2), Math.floor(emptyCells.length * 3 / 4)])) {
+  for (let tenth = 1; tenth < 10; tenth++) {
+    const offset = Math.floor(emptyCells.length * tenth / 10)
     const cell = emptyCells[offset]
     if (cell === undefined) continue
     moves[cell] = solution[cell]
