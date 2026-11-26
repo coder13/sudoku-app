@@ -220,10 +220,13 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
   } = appearance ?? {}
   const referenceAnnotations = useMemo(() => {
     if (!referenceHighlight) return undefined
+    if ('cells' in referenceHighlight) {
+      return { cells: new Map(referenceHighlight.cells.map(cell => [cell, { referenceHighlight: true }])) }
+    }
     if (referenceHighlight.digit) {
       const previous = baseAnnotations?.candidates?.get(referenceHighlight.cell)?.get(referenceHighlight.digit)
       return { candidates: new Map([[referenceHighlight.cell, new Map([[referenceHighlight.digit, {
-        ...previous, color: previous?.color ?? 'transparent', emphasized: true, referenceHighlight: true,
+        ...previous, referenceHighlight: true,
       }]])]]) }
     }
     return { cells: new Map([[referenceHighlight.cell, { referenceHighlight: true }]]) }
@@ -402,7 +405,7 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
   const focusDigit = filterCandidates ? null : activeHighlightDigit(values, selected, active, highlightedDigits[0] ?? highlightedDigit)
   const candidateAction = onPaintCandidate ?? onCandidate
   const layout = candidates ? 'grid' : candidateLayout
-  const annotationSlots = showAnnotatedCandidates ? annotations?.candidates : undefined
+  const annotationSlots = showAnnotatedCandidates ? baseAnnotations?.candidates : undefined
   const usesDigitSlots = (cell: number) => layout === 'grid' || Boolean(annotationSlots?.has(cell))
   // An outside total needs its complete row or column visible in teaching diagrams.
   const visibleRegion = hasOutside ? undefined : region
@@ -839,7 +842,7 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
       </div>}
       {groupDescriptions.length > 0 && (
         <p id={groupDescriptionId} className="sr-only">
-          Each outlined group is one chain endpoint. The group is true if at least one marked member is true. {groupDescriptions.join(' ')}
+          Each candidate group is one chain endpoint. The group is true if at least one member is true. {groupDescriptions.join(' ')}
         </p>
       )}
       {outside.legend.length > 0 && (

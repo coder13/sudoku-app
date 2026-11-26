@@ -1,7 +1,9 @@
-import { chainCandidate, candidateId, chainNodeCandidates, chainPoint, sameEdge, type ChainEdge, type ChainNode } from '../../sudoku/chains'
+import { chainAlsId, chainCandidate, candidateId, chainNodeCandidates, chainPoint, isAlsChainNode, sameEdge, type ChainEdge, type ChainNode } from '../../sudoku/chains'
+import { almostLockedSetColor } from '../../sudoku/als-highlighting'
 import { chainColor, type ChainColorPair } from '../../sudoku/chain-sketch'
 import { nextChainColorPair, type AnalyzedChainSketch, type ChainProof } from '../../sudoku/chain-sketch-analysis'
 import type { BoardAnnotations, BoardGroup, BoardLink, CandidateAnnotation, CellAnnotation } from '../BoardAnnotations'
+import type { SubsetDescription } from '../../sudoku/subsets'
 
 type Options = {
   sketches: readonly AnalyzedChainSketch[]
@@ -16,6 +18,7 @@ type Options = {
   grouping: boolean
   groupSelection: readonly number[] | null
   hoveredNotation: { sketchId: number; pathIndex: number; kind: 'node' | 'edge'; index: number } | null
+  sets: readonly SubsetDescription[]
 }
 
 type ChainColorAssignment = { pair: ChainColorPair; side: 0 | 1 }
@@ -24,8 +27,10 @@ type Coloring = Map<ChainNode, ChainColorAssignment>
 /** Project analyzed chain sketches into the annotations and assigned colors rendered on the board. */
 export function buildChainSketchAnnotations({
   sketches, activeId, activeHidden, activeAnalysis, canAnalyze, pending, colorPairs,
-  previewedProof, showEliminations, grouping, groupSelection, hoveredNotation,
+  previewedProof, showEliminations, grouping, groupSelection, hoveredNotation, sets,
 }: Options) {
+  const cells = new Map<number, CellAnnotation>()
+  const setsById = new Map(sets.map(set => [set.id, set]))
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
   const assigned = new Map<number, ChainColorAssignment>()
   const links: BoardLink[] = []
@@ -77,9 +82,9 @@ export function buildChainSketchAnnotations({
           : strength === 'strong' && proofNodes.has(from) && proofNodes.has(to)
         const notationFocus = hoveredNotation?.sketchId === sketch.id ? hoveredNotation : null
         const focused = notationFocus?.kind === 'edge' && notationFocus.pathIndex === pathIndex && notationFocus.index === i
-        const opacity = Math.min(proof && sketch.id === activeId && !inProof ? 0.5 : 1,
-          notationFocus && !focused ? 0.2 : 1)
+        const opacity = proof && sketch.id === activeId && !inProof && !focused ? 0.5 : 1
         links.push({ from: chainPoint(from), to: chainPoint(to), dashed: strength === 'weak', opacity, emphasized: focused,
+          hideGroupOutlines: isAlsChainNode(from) || isAlsChainNode(to),
           color: strength === 'strong' && color ? chainColor(color.pair[0]) : neutral })
       })
     }
@@ -90,27 +95,37 @@ export function buildChainSketchAnnotations({
     for (const node of sketch.components.flat()) {
       const color = coloring.get(node)
       const focused = node === focusedNode
-      const opacity = notationFocus && !focused ? 0.2 : undefined
-      if (typeof node === 'string') groupMarks.push({ point: chainPoint(node), emphasized: focused,
+      if (isAlsChainNode(node)) {
+        const set = setsById.get(chainAlsId(node))
+        if (set) {
+          const marker = { color: almostLockedSetColor(set.id - 1), label: `Set ${set.number}` }
+          for (const cell of set.cells) {
+            const current = cells.get(cell)
+            const setMarkers = current?.setMarkers ?? []
+            cells.set(cell, { ...current, referenceHighlight: focused || current?.referenceHighlight,
+              setMarkers: setMarkers.some(({ label }) => label === marker.label) ? setMarkers : [...setMarkers, marker] })
+          }
+        }
+      } else if (typeof node === 'string') groupMarks.push({ point: chainPoint(node), emphasized: focused,
         color: color ? chainColor(color.pair[color.side]) : neutral,
-        opacity: opacity ?? (proof && sketch.id === activeId && !proofNodes.has(node) ? 0.5 : undefined), label: 'Candidate group' })
+        opacity: proof && sketch.id === activeId && !proofNodes.has(node) && !focused ? 0.5 : undefined, label: 'Candidate group' })
       if (color) {
         for (const candidate of chainNodeCandidates(node)) assigned.set(candidateId(candidate), color)
         mark(node, { color: chainColor(color.pair[color.side]),
-          opacity, emphasized: focused, mark: 'emphasized', label: focused ? 'Highlighted chain node' : `${typeof node === 'string' ? 'Group' : 'Chain'} color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === activeId)
+          emphasized: focused, mark: 'emphasized', label: focused ? 'Highlighted chain node' : `${typeof node === 'string' ? 'Group' : 'Chain'} color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === activeId)
       } else {
         for (const candidate of chainNodeCandidates(node)) assigned.delete(candidateId(candidate))
-        mark(node, { color: neutral, opacity, emphasized: focused, mark: 'emphasized',
+        mark(node, { color: neutral, emphasized: focused, mark: 'emphasized',
           label: focused ? 'Highlighted chain node' : typeof node === 'string' ? 'Linked candidate group' : 'Linked candidate' }, sketch.id === activeId)
       }
     }
   }
 
   const visibleActive = canAnalyze && !activeHidden ? activeAnalysis : undefined
-  const contradictionCells = new Map<number, CellAnnotation>()
   for (const { contradictionCell } of showEliminations ? visibleActive?.medusas ?? [] : []) {
     if (contradictionCell === undefined) continue
-    contradictionCells.set(contradictionCell, {
+    cells.set(contradictionCell, {
+      ...cells.get(contradictionCell),
       fill: 'color-mix(in srgb, var(--chain-removal) 22%, var(--candidate-match-surface, var(--board-bg)))',
       label: 'Would have no candidates if the crossed-out color were true',
     })
@@ -136,7 +151,7 @@ export function buildChainSketchAnnotations({
     }
   }
   if (!activeHidden && pending !== null) {
-    if (typeof pending === 'string') groupMarks.push({ point: chainPoint(pending), color: neutral, label: 'Group selected for linking' })
+    if (typeof pending === 'string' && !isAlsChainNode(pending)) groupMarks.push({ point: chainPoint(pending), color: neutral, label: 'Group selected for linking' })
     for (const candidate of chainNodeCandidates(pending)) {
       if (!candidateMarks.get(candidate.cell)?.has(candidate.digit)) {
         mark(candidateId(candidate), { color: neutral, mark: 'emphasized', label: typeof pending === 'string' ? 'Group selected for linking' : 'Selected for linking' })
@@ -148,6 +163,6 @@ export function buildChainSketchAnnotations({
     groupMarks.push({ point: { candidates: groupSelection.map(chainCandidate) }, color: 'var(--chain-placement)', label: 'Selected group members' })
   }
 
-  const annotations: BoardAnnotations = { cells: contradictionCells, candidates: candidateMarks, links, groups: groupMarks }
+  const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links, groups: groupMarks }
   return { annotations, assigned, usedPairs }
 }

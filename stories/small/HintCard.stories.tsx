@@ -83,15 +83,17 @@ export const StagedHint: Story = {
   },
 }
 export const InteractiveCellReferences: Story = {
-  args: { hint: {
-    title: 'ALS-XZ',
-    text: 'Set 1 (blue) is at r2c6. Set 2 (purple) is at r2c1, r2c3, and r2c5.',
-  } },
+  args: {
+    hint: { title: 'ALS-XZ', text: 'Set 1 (blue) is at r2c6. Set 2 (purple) is at r2c1, r2c3, and r2c5. Compare 3r2c6 with 3r2c5. Check r2c9.' },
+    setReferences: [{ label: 'Set 1', cells: [14] }, { label: 'Set 2', cells: [9, 11, 13] }],
+  },
   parameters: { layout: 'padded', controls: { disable: true } },
-  render: ({ hint }) => <CellReferenceHighlightProvider>
+  render: ({ hint, setReferences }) => <CellReferenceHighlightProvider>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
-      <Board content={{ givens: '0'.repeat(81), values: '0'.repeat(81), candidates: Array(81).fill(0x1ff) }} />
-      <HintCard hint={hint} onClose={fn()} />
+      <Board content={{ givens: '0'.repeat(81), values: '0'.repeat(81), candidates: Array(81).fill(0x1ff) }}
+        appearance={{ annotations: { cells: new Map(setReferences?.flatMap(({ label, cells }, index) =>
+          cells.map(cell => [cell, { setMarkers: [{ label, color: index ? '#e6d4f3' : '#d5e4fa' }] }] as const))) } }} />
+      <HintCard hint={hint} setReferences={setReferences} onClose={fn()} />
     </div>
   </CellReferenceHighlightProvider>,
 }
@@ -114,7 +116,7 @@ function MobileHintPlacementDemo({ hint }: ComponentProps<typeof HintCard>) {
   const panels: Record<ToolPanelTab, ReactNode> = {
     digits: <div className="compact-controls">Digits input</div>,
     solution: <p>Solution</p>, techniques: <p>Techniques</p>, colors: <p>Colors</p>,
-    chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
+    subsets: <p>Subsets</p>, chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
   }
   const card = visible && <HintCard hint={hint} onClose={() => setVisible(false)} pinned={pinned}
     onTogglePinned={() => setPinned(value => !value)} />

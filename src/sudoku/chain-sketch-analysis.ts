@@ -1,6 +1,8 @@
 import type { DeductionAction } from './engine.ts'
-import { analyzeChainPaths, analyzeMedusa, chainComponents, chainNodeDigit, type ChainAnalysis, type ChainEdge, type ChainGraph, type ChainNode, type LinkStrength } from './chains.ts'
-import { cycleChainPairs, type ChainColorPair, type ChainSketch } from './chain-sketch.ts'
+import { analyzeChainPaths, analyzeMedusa, chainComponents, chainNodeDigit, isAlsChainNode, type ChainAnalysis, type ChainEdge, type ChainGraph, type ChainNode, type LinkStrength } from './chains.ts'
+import { currentSubsetProof, cycleChainPairs, type ChainColorPair, type ChainSketch } from './chain-sketch.ts'
+import { analyzeSubsetProof, type SubsetProofAnalysis } from './subset-proofs.ts'
+import type { SubsetContext, SubsetDescription, SubsetProof } from './subsets.ts'
 import { techniqueActionKey } from './technique-progress.ts'
 
 export type ChainPath = { nodes: readonly ChainNode[]; strengths: readonly LinkStrength[] }
@@ -17,6 +19,7 @@ export type AnalyzedChainSketch = ChainSketch & {
   paths: ChainPath[]
   medusas: MedusaProof[]
   components: ChainNode[][]
+  subset?: { proof: SubsetProof; analysis: SubsetProofAnalysis }
 }
 
 export function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): ChainPath[] {
@@ -34,6 +37,7 @@ export function sketchPaths(graph: ChainGraph, edges: readonly ChainEdge[]): Cha
 }
 
 function recognizedPath(chain: ChainAnalysis) {
+  if (chain.title === 'AIC with ALS nodes') return chain.title
   const grouped = chain.nodes.some(node => typeof node === 'string')
   if (chain.loop) return grouped ? 'Grouped Nice Loop' : 'Nice Loop'
   const { strengths } = chain
@@ -51,7 +55,8 @@ function titleMedusa(proof: ReturnType<typeof analyzeMedusa>[number]): string {
     ? '3D Medusa' : 'Strong-link coloring'
 }
 
-export function analyzeChainSketches(graph: ChainGraph, sketches: readonly ChainSketch[]): AnalyzedChainSketch[] {
+export function analyzeChainSketches(graph: ChainGraph, sketches: readonly ChainSketch[],
+  subsets?: { sets: readonly SubsetDescription[]; context: SubsetContext }): AnalyzedChainSketch[] {
   return sketches.map(sketch => {
     const edges = sketch.history.at(-1)!
     const medusas = analyzeMedusa(graph, edges).map(proof => ({ ...proof, title: titleMedusa(proof) }))
@@ -66,14 +71,28 @@ export function analyzeChainSketches(graph: ChainGraph, sketches: readonly Chain
       ...medusas.filter(proof => proof.sides.size && (proof.nodes.length >= 3 || proof.actions.length)).map(({ title }) => title),
       ...chains.flatMap(chain => recognizedPath(chain) ?? []),
     ])
+    const proof = currentSubsetProof(sketch)
+    const subset = proof && subsets ? { proof, analysis: analyzeSubsetProof(proof, subsets.sets, subsets.context, graph) } : undefined
+    const paths = sketchPaths(graph, edges).map(path => {
+      if (!path.nodes.some(isAlsChainNode)) return path
+      for (const chain of chains) {
+        if (chain.strengths.length !== path.strengths.length) continue
+        if (path.nodes.every((node, index) => node === chain.nodes[index])) return { ...path, strengths: chain.strengths }
+        if (path.nodes.every((node, index) => node === chain.nodes[chain.nodes.length - index - 1])) {
+          return { ...path, strengths: [...chain.strengths].reverse() }
+        }
+      }
+      return path
+    })
     return {
       ...sketch,
       edges,
       chains,
       types: [...types],
-      paths: sketchPaths(graph, edges),
+      paths,
       medusas,
       components: chainComponents(edges.filter(edge => graph.strength(...edge))).components,
+      subset,
     }
   })
 }
@@ -81,8 +100,8 @@ export function analyzeChainSketches(graph: ChainGraph, sketches: readonly Chain
 export function applicableChainActions(sketches: readonly AnalyzedChainSketch[], enabled: boolean) {
   const actions = new Map<string, DeductionAction>()
   const chainIds: number[] = []
-  if (enabled) for (const { id, chains, medusas } of sketches) {
-    const edits = [...chains, ...medusas].flatMap(({ actions }) => actions)
+  if (enabled) for (const { id, chains, medusas, subset } of sketches) {
+    const edits = [...chains, ...medusas].flatMap(({ actions }) => actions).concat(subset?.analysis.actions ?? [])
     if (edits.length) chainIds.push(id)
     for (const action of edits) actions.set(techniqueActionKey(action), action)
   }

@@ -4,6 +4,8 @@ import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
 import { cellReference, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
 import { variantHintChoice } from './variant-hints.ts'
+import { chainColor, CHAIN_COLOR_PAIRS } from './chain-sketch.ts'
+import { alsChainCandidateStates } from './subset-proofs.ts'
 
 type Pattern = {
   houses?: House[]
@@ -12,7 +14,8 @@ type Pattern = {
   contradictionCells?: number[]
   candidates: Candidate[]
   mainLabel?: string
-  accent?: { candidates: Candidate[]; label: string }
+  mainColor?: string
+  accent?: { candidates: Candidate[]; label: string; color?: string }
   links?: BoardLink[]
   description: string
   reason: string
@@ -93,16 +96,21 @@ function setLocations(sets: ReturnType<typeof styledSets>, nameCell: (cell: numb
 }
 
 function setAnnotations(sets: ReturnType<typeof styledSets>) {
-  const cells = new Map<number, CellAnnotation & { fill: string }>()
+  const cells = new Map<number, CellAnnotation>()
   for (const { cells: members, label, fill } of sets) {
     for (const cell of new Set(members)) {
-      const previous = cells.get(cell)
-      cells.set(cell, previous
-        ? { ...previous, label: `${previous.label} and ${label}`, fills: [...(previous.fills ?? [previous.fill]), fill] }
-        : { label, fill })
+      const setMarkers = cells.get(cell)?.setMarkers ?? []
+      cells.set(cell, { setMarkers: [...setMarkers, { label, color: fill }] })
     }
   }
   return cells
+}
+
+function subsetMembers(evidence: Evidence): readonly number[] {
+  if ('pair' in evidence) return evidence.pair.cells
+  if ('subset' in evidence) return evidence.subset.cells
+  if ('direct-placement' in evidence) return subsetMembers(evidence['direct-placement'].premise)
+  return []
 }
 
 export const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
@@ -225,9 +233,9 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
 
   const { evidence, pattern } = hint
   const sets = styledSets(proofCellSets(evidence))
-  if (sets.length && !('inference' in evidence)) return {
-    text: setLocations(sets, cell => cellReference(cell, style, difficulty, grid.size)),
-    annotations: { cells: setAnnotations(sets) },
+  if (sets.length && !('inference' in evidence)) {
+    const annotations: BoardAnnotations = { cells: setAnnotations(sets) }
+    return { text: setLocations(sets, cell => cellReference(cell, style, difficulty, grid.size)), annotations, setReferences: sets }
   }
   if (!pattern) return
   const coloring = 'coloring' in evidence ? evidence.coloring : undefined
@@ -240,6 +248,7 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
     for (const cell of houseCells(house, grid)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
   }
   for (const cell of focus) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
+  for (const cell of subsetMembers(evidence)) cells.set(cell, { setMarkers: [{ color: setColors[0].fill, label: 'Subset' }] })
   const roles = wingCellRoles(evidence, cell => pattern.candidates.filter(candidate => candidate.cell === cell).length)
   for (const cell of roles.wings) cells.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
   for (const cell of roles.pivots) cells.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
@@ -749,8 +758,9 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const alsXz = 'als-xz' in evidence
     const { sets, links } = alsXz ? evidence['als-xz'] : evidence['als-chain']
     const setLocation = (index: number) => list.format(sets[index].cells.map(nameCell))
+    const rccCells = (index: number, digit: number) => marks(sets[index].cells, [digit]).map(({ cell }) => cell)
     const linkConflict = (index: number, digit: number) => {
-      const locations = marks([...sets[index].cells, ...sets[index + 1].cells], [digit]).map(({ cell }) => cell)
+      const locations = [...rccCells(index, digit), ...rccCells(index + 1, digit)]
       const house = sharedHouse(locations)
       return house ? `The ${digit} candidates in sets ${index + 1} and ${index + 2} share ${houseName(house)}.`
         : `Each ${digit} candidate in set ${index + 1} shares a row, column, or box with every ${digit} candidate in set ${index + 2}.`
@@ -792,13 +802,29 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       }
       return { ...pattern, ...explainSteps(reasonSteps) }
     }
+    const states = alsChainCandidateStates(sets.map(set => set.cells), links, candidates, first.digit)
+    const [on, off] = CHAIN_COLOR_PAIRS[0]
     const reasonSteps = [
-      `Start with set 1 at ${setLocation(0)}. If it skips ${first.digit}, it must use ${links[0]}.`,
+      `Start with set 1 at ${setLocation(0)}. If it skips ${first.digit}, it must use ${links[0]}. ${on} shows digits a set must use in this case. ${off} shows digits a set must skip.`,
       ...links.map((digit, index) => `${linkConflict(index, digit)} Placing ${digit} in set ${index + 1} rules it out in set ${index + 2} (${setLocation(index + 1)}). This set must use ${links[index + 1] ?? first.digit}.`),
       `Either way, one of the end sets must use ${first.digit}.`,
       nameRemoval(first, marks(ends, [first.digit])),
     ]
-    return { ...pattern, ...explainSteps(reasonSteps) }
+    return {
+      ...pattern,
+      candidates: states.on,
+      mainLabel: 'ON in this case',
+      mainColor: chainColor(on),
+      accent: { candidates: states.off, label: 'OFF in this case', color: chainColor(off) },
+      links: links.map((digit, index) => ({
+        from: { cells: rccCells(index, digit), digit },
+        to: { cells: rccCells(index + 1, digit), digit },
+        color: 'var(--chain-neutral)',
+        dashed: true,
+        hideGroupOutlines: true,
+      })),
+      ...explainSteps(reasonSteps),
+    }
   }
   if ('death-blossom' in evidence) {
     const { stem, petals } = evidence['death-blossom']
@@ -1025,12 +1051,13 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
     for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
   }
   for (const [cell, annotation] of setCells) cells.set(cell, annotation)
-  for (const cell of pattern.contradictionCells ?? []) cells.set(cell, { fill: contradictionFill, label: 'contradiction cell' })
-  for (const cell of roles.wings) cells.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
-  for (const cell of roles.pivots) cells.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
-  for (const candidate of pattern.candidates) mark(candidate, patternColor, pattern.mainLabel ?? 'in the pattern')
+  for (const cell of subsetMembers(deduction.evidence)) cells.set(cell, { setMarkers: [{ color: setColors[0].fill, label: 'Subset' }] })
+  for (const cell of pattern.contradictionCells ?? []) cells.set(cell, { ...cells.get(cell), fill: contradictionFill, label: 'contradiction cell' })
+  for (const cell of roles.wings) cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
+  for (const cell of roles.pivots) cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
+  for (const candidate of pattern.candidates) mark(candidate, pattern.mainColor ?? patternColor, pattern.mainLabel ?? 'in the pattern')
   if (pattern.accent) {
-    for (const candidate of pattern.accent.candidates) mark(candidate, accentColor, pattern.accent.label)
+    for (const candidate of pattern.accent.candidates) mark(candidate, pattern.accent.color ?? accentColor, pattern.accent.label)
   }
   for (const action of showActions ? deduction.actions : []) {
     if ('place' in action) {
@@ -1047,13 +1074,14 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   }
   const results = deductionResults(deduction.actions, displayOptions)
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
-  const { description, mainLabel = 'Pattern candidate', accent, trace } = pattern
+  const { description, mainLabel = 'Pattern candidate', mainColor, accent, trace } = pattern
   const { reason, reasonSteps } = sets.length
     ? explainSteps([setLocations(sets, displayCellName(displayOptions)), ...(pattern.reasonSteps ?? [pattern.reason])])
     : pattern
   const focus = [...candidateMarks.keys(), ...setCells.keys(), ...(pattern.contradictionCells ?? []),
     ...('house' in deduction.evidence ? houseCells(deduction.evidence.house, grid) : [])]
-  return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()], grid.size), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
+  return { annotations, setReferences: sets, region: enclosingRegion(focus.length ? focus : [...cells.keys()], grid.size), description, reason, reasonSteps,
+    mainLabel, mainColor, accentLabel: accent?.label, accentColor: accent?.color, results, trace }
 }
 
 function enclosingRegion(cells: number[], gridSize: number): BoardRegion {

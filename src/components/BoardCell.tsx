@@ -119,13 +119,15 @@ function candidateColorClass(color: number | undefined, imported: string | undef
 function candidatePresentation({ digit, slotted, boxColumns, color, imported, annotation, annotationsOnTop, placeInGrid }:
   { digit: number; slotted: boolean; boxColumns: number; color?: number; imported?: string; annotation?: CandidateAnnotation;
     annotationsOnTop: boolean; placeInGrid: boolean }) {
+  const mark = annotation?.mark ?? (annotation?.color ? 'ring' : undefined)
   return {
-    colorClass: candidateColorClass(color, imported, annotation?.mark, annotationsOnTop),
+    mark,
+    colorClass: candidateColorClass(color, imported, mark, annotationsOnTop),
     style: {
       ...colorToneStyle(color),
       gridArea: placeInGrid && slotted
         ? `${Math.floor((digit - 1) / boxColumns) + 1} / ${(digit - 1) % boxColumns + 1}` : undefined,
-      opacity: annotation?.opacity,
+      opacity: annotation?.referenceHighlight || annotation?.emphasized ? undefined : annotation?.opacity,
       '--annotation-color': annotation?.color,
       '--imported-candidate-tone': imported && !color ? importedColorFill(imported) : undefined,
     } as CSSProperties,
@@ -224,6 +226,19 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       const descriptions = candidateMarkDescriptions({ annotation: candidateAnnotations?.get(digit), color, imported })
       return descriptions.length ? `${digit} ${descriptions.join(', ')}` : undefined
     }).filter(Boolean).join(', '), [candidateAnnotations, candidateColors, importedCandidateColors, gridCandidates, centerCandidates])
+  const setMarkers = fogged ? undefined : cellAnnotation?.setMarkers
+  const setStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!setMarkers?.length) return
+    const fills = setMarkers.map(({ color }) =>
+      `light-dark(color-mix(in srgb, ${color} 74%, transparent), color-mix(in srgb, ${color} 40%, transparent))`)
+    const borders = setMarkers.map(({ color }) => `color-mix(in srgb, ${color} 62%, var(--board-ink))`)
+    return {
+      backgroundColor: fills.length === 1 ? fills[0] : undefined,
+      backgroundImage: cellColorGradient(fills),
+      borderColor: borders[0],
+      borderImageSource: cellColorGradient(borders),
+    }
+  }, [setMarkers])
   const label = [
     `Row ${row}, column ${col}`,
     fogged && 'covered by fog',
@@ -234,6 +249,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     !color && importedColors?.length && `Cell colors ${importedColors.map(importedColorLabel).join(', ')}`,
     regionAtCell !== undefined && `region ${regionAtCell + 1}`,
     cellAnnotation?.label,
+    ...(setMarkers ? new Set(setMarkers.map(marker => marker.label)) : []),
     aqreShade,
     geometry.whispersLinks ? `Whispers neighbors need at least ${geometry.whispersLinks} distinct digit${geometry.whispersLinks === 1 ? '' : 's'}` : '',
     !fogged && geometry.clues,
@@ -255,13 +271,14 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
   const renderedCellStyle = useMemo(() => selected && selectionBoxShadow
     ? { ...cellStyle, boxShadow: selectionBoxShadow } as CSSProperties
     : cellStyle, [cellStyle, selected, selectionBoxShadow])
+  const hasAnnotationFill = Boolean(cellAnnotation?.fill || cellAnnotation?.fills?.length)
   const classes = [
     'cell', canSelectLinkCandidate ? 'chain-cell-target' : '', fixed ? 'given' : 'entry', related ? 'peer' : '', matching ? 'matching' : '',
     cellHighlight, countHighlighted ? 'candidate-count-match' : '', aqreShade && `aqre-${aqreShade}`,
     color ? `colored${colorShades && colorShades.length > 1 ? ' player-multi-colors' : ''}`
-      : importedColors && (!cellAnnotation || annotationsOnTop) ? 'colored imported-colors' : '',
+      : importedColors && (!hasAnnotationFill || annotationsOnTop) ? 'colored imported-colors' : '',
     !error && !annotationsOnTop && (cellAnnotation?.fills?.length ?? 0) > 1 ? 'cell-annotation-multi' : '',
-    annotationsOnTop && cellAnnotation ? 'hint-annotation-overlay' : '',
+    annotationsOnTop && hasAnnotationFill ? 'hint-annotation-overlay' : '',
     error ? 'conflict' : '', selected ? 'selected' : '',
   ].join(' ')
 
@@ -272,11 +289,11 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       const annotation = candidateAnnotations?.get(digit)
       const color = candidateColors?.[digit]
       const imported = importedCandidateColors?.[digit]
-      const { colorClass, style } = candidatePresentation({ digit, slotted: group === 0, boxColumns, color, imported,
+      const { mark, colorClass, style } = candidatePresentation({ digit, slotted: group === 0, boxColumns, color, imported,
         annotation, annotationsOnTop, placeInGrid: group === 0 })
       const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
       const normal = <span key={digit} className={className} style={style}
-        data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
+        data-mark={mark} data-strike={annotation?.strike || undefined}
         data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}>{digit}</span>
       return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const
   }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, importedCandidateColors, boxColumns, annotationsOnTop])
@@ -297,7 +314,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     const annotation = candidateAnnotations?.get(digit)
     const color = candidateColors?.[digit]
     const imported = importedCandidateColors?.[digit]
-    const { colorClass, style } = candidatePresentation({ digit, slotted, boxColumns, color, imported,
+    const { mark, colorClass, style } = candidatePresentation({ digit, slotted, boxColumns, color, imported,
       annotation, annotationsOnTop, placeInGrid: slotted && !gridCandidatesInOrder })
     const highlightClass = highlighted ? 'candidate-match' : undefined
     if (candidateAction) {
@@ -310,7 +327,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       return <button type="button" key={digit} className={classes} style={style}
         aria-label={candidateLabel} data-candidate-button="" data-candidate-digit={digit} data-paint-candidate={onPaintCandidate ? '' : undefined}
         data-link-target={linkTarget || undefined}
-        aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
+        aria-pressed={onCandidate ? pending : undefined} data-mark={mark}
         data-strike={annotation?.strike || undefined} data-chain-hover={annotation?.emphasized || undefined}
         data-reference-highlight={annotation?.referenceHighlight || undefined}
         tabIndex={tabCandidateDigit === digit && tabCandidateSlotted === slotted ? 0 : -1}
@@ -321,11 +338,11 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
         onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
         onFocus={() => onCandidateFocus({ ...candidate, slotted })}
         onClick={() => selectCandidate(digit, slotted)}>
-        <span className={['candidate-glyph', colorClass, !annotation && (highlighted || linkTarget) && 'candidate-match'].filter(Boolean).join(' ')}>{digit}</span>
+        <span className={['candidate-glyph', colorClass, !mark && (highlighted || linkTarget) && 'candidate-match'].filter(Boolean).join(' ')}>{digit}</span>
       </button>
     }
     return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
-      style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
+      style={style} data-mark={mark} data-strike={annotation?.strike || undefined}
       data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
   }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewEditMask, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
@@ -368,6 +385,8 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       selectCandidate(highlightedLinkDigit, visibleGridCandidates.includes(highlightedLinkDigit))
     } : undefined}
     onDoubleClick={onCellDoubleClick && ((event) => onCellDoubleClick(index, event))}>
+    {setStyle && <span className="cell-set-tint" aria-hidden="true" style={setStyle} />}
+    {cellAnnotation?.referenceHighlight && !setStyle && <span className="cell-reference-wash" aria-hidden="true" />}
     <BoardMarks items={gridItems} group={candidateAction ? INTERACTIVE_CANDIDATE_GROUP : HIDDEN_CANDIDATE_GROUP} />
     <BoardMarks items={labeledItems} />
   </Cell>

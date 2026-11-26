@@ -15,14 +15,22 @@ export type BoardLink = {
   opacity?: number
   muted?: boolean
   dashed?: boolean
+  hideGroupOutlines?: boolean
   emphasized?: boolean
   colorBreak?: boolean
   arrow?: boolean
   selectFrom?: Candidate
 }
 
-export type CellAnnotation = { fill?: string; fills?: readonly string[]; ink?: string; label?: string; referenceHighlight?: boolean }
-export type CandidateAnnotation = { color: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string }
+export type CellAnnotation = {
+  fill?: string
+  fills?: readonly string[]
+  setMarkers?: readonly { color: string; label?: string }[]
+  ink?: string
+  label?: string
+  referenceHighlight?: boolean
+}
+export type CandidateAnnotation = { color?: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string }
 export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; emphasized?: boolean; label?: string }
 
 export type BoardAnnotations = {
@@ -42,7 +50,15 @@ function mergeCellAnnotations(
     const current = cells.get(cell)
     const currentFills = current?.fills?.length ? current.fills : current?.fill ? [current.fill] : []
     const nextFills = annotation.fills?.length ? annotation.fills : annotation.fill ? [annotation.fill] : []
-    cells.set(cell, { ...current, ...annotation, fills: [...new Set([...currentFills, ...nextFills])] })
+    const setMarkers = current?.setMarkers && annotation.setMarkers
+      ? [...new Map([...current.setMarkers, ...annotation.setMarkers]
+        .map(marker => [`${marker.color}:${marker.label ?? ''}`, marker])).values()]
+      : annotation.setMarkers ?? current?.setMarkers
+    cells.set(cell, {
+      ...current, ...annotation, fills: [...new Set([...currentFills, ...nextFills])],
+      ...(setMarkers && { setMarkers }),
+      referenceHighlight: current?.referenceHighlight || annotation.referenceHighlight,
+    })
   }
   return cells
 }
@@ -56,14 +72,15 @@ function mergeCandidateAnnotations(
   for (const [cell, marks] of overlay) {
     const cellMarks = new Map(base?.get(cell))
     for (const [digit, mark] of marks) {
-      cellMarks.set(digit, { ...cellMarks.get(digit), ...mark })
+      const current = cellMarks.get(digit)
+      cellMarks.set(digit, { ...current, ...mark, referenceHighlight: current?.referenceHighlight || mark.referenceHighlight })
     }
     candidates.set(cell, cellMarks)
   }
   return candidates
 }
 
-/** Add marks from one board layer; overlay fields win when both layers mark the same candidate. */
+/** Merge board layers, preserving reference highlights contributed by either layer. */
 export function mergeBoardAnnotations(base: BoardAnnotations | undefined, overlay: BoardAnnotations | undefined): BoardAnnotations | undefined {
   if (!overlay) return base
   const cells = mergeCellAnnotations(base?.cells, overlay.cells)
@@ -110,14 +127,14 @@ export function BoardLinks({ links = NO_LINKS, groups = NO_GROUPS, region, candi
   const id = useId()
   const viewBox = region ? `${region.column * CELL} ${region.row * CELL} ${region.columns * CELL} ${region.rows * CELL}` : '0 0 90 90'
   const routes = useMemo(() => boardLinkRoutes(links, candidateInsets), [links, candidateInsets])
-  const grouped = useMemo(() => boardGroups(links, groups), [links, groups])
+  const grouped = useMemo(() => boardGroups(links.filter(link => !link.hideGroupOutlines), groups), [links, groups])
   const items = useMemo(() => {
     const counts = new Map<string, number>()
     const marks: BoardMark[] = grouped.map(([key, { point, color, opacity, label, emphasized }]) => {
       const points = boardGroupOutline(point, candidateInsets).map(({ x, y }) => `${x},${y}`).join(' ')
       return <g key={`group-${key}`} className="board-chain-group" data-chain-group={key} data-chain-hover={emphasized || undefined} opacity={opacity}>
         <title>{label ?? `Candidate group: ${boardGroupDescription(point)}`}</title>
-        <polygon points={points} fill={color} fillOpacity=".07" stroke={color} strokeWidth={emphasized ? '.55' : '.3'} strokeLinejoin="round" />
+        <polygon points={points} fill={color} fillOpacity=".07" stroke={color} strokeWidth=".3" strokeLinejoin="round" />
       </g>
     })
     for (const [index, { color, opacity, dashed, arrow, muted, colorBreak, selectFrom, emphasized }] of links.entries()) {
@@ -138,7 +155,7 @@ export function BoardLinks({ links = NO_LINKS, groups = NO_GROUPS, region, candi
           <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
         </marker>}
         <polyline points={vertices} fill="none"
-          stroke={color} strokeWidth={emphasized ? '.75' : muted ? ".3" : ".45"} strokeLinecap="round" strokeLinejoin="round"
+          stroke={color} strokeWidth={muted ? '.3' : '.45'} strokeLinecap="round" strokeLinejoin="round"
           strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
         {colorBreak && <circle className="chain-color-break" cx={(before.x + after.x) / 2} cy={(before.y + after.y) / 2}
           r=".9" fill="var(--board-bg)" stroke={color} strokeWidth=".42" />}

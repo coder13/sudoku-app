@@ -44,6 +44,20 @@ test('a link requires live candidates that conflict in a cell or house', () => {
   assert.equal(links.strength(id(0, 3), id(1, 3)), undefined)
 })
 
+test('a strong inference inside an ALS only supports a weak inference when its digits conflict', () => {
+  const masks = Array(81).fill(0)
+  masks[0] = 0b0110
+  masks[1] = 0b1100
+  const graph = makeChainGraph(masks, undefined, [{ id: 1, cells: [0, 1] }])
+  const [two, three, four] = [...graph.alsNodes.get(1)!.values()]
+  assert.equal(graph.strength(two, four), 'strong')
+  assert.equal(graph.conflicts(two, four), false)
+  assert.equal(validChainNode(three), true)
+  const [loop] = analyzeChains(graph, pathEdges(two, three, four, two))
+  assert.equal(loop.title, 'Non-alternating loop')
+  assert.deepEqual(loop.actions, [])
+})
+
 test('joining chains keeps the earlier number and Undo can restore both sketches after reload', () => {
   const first = { ...newChainSketch(1), history: [[], pathEdges(id(0), id(9))] }
   const second = { ...newChainSketch(2), history: [[], pathEdges(id(2, 3), id(2, 4))] }
@@ -65,6 +79,29 @@ test('joining chains keeps the earlier number and Undo can restore both sketches
   const resumed = undoChainEdit(restored, true)
   assert.equal(resumed.activeId, third.id)
   assert.equal(resumed.pending, id(18))
+})
+
+test('a disconnected link starts a separate sketch and Undo preserves the first chain', () => {
+  const firstLink = pathEdges(id(0), id(1))[0]
+  const independentLink = pathEdges(id(18, 3), id(18, 4))[0]
+  const first = { ...newChainSketch(1), history: [[], [firstLink]] }
+  const state = { sketches: [first], activeId: first.id, pending: independentLink[0] }
+  const second = updateChainEdges(state, [firstLink, independentLink], independentLink[1], 4)
+  assert.equal(second.activeId, 2)
+  assert.equal(second.sketches[0], first)
+  assert.deepEqual(second.sketches[1].history, [[], [independentLink]])
+  assert.deepEqual([second.sketches[1].color, second.sketches[1].secondColor], CHAIN_COLOR_PAIRS[1])
+
+  const undone = undoChainEdit(second, true)
+  assert.equal(undone.sketches[0], first)
+  assert.deepEqual(undone.sketches[1].history, [[]])
+  assert.equal(undone.pending, independentLink[0])
+
+  const extension = pathEdges(firstLink[1], id(10))[0]
+  const extended = updateChainEdges({ ...second, pending: firstLink[1] }, [independentLink, extension], extension[1], 1)
+  assert.equal(extended.activeId, first.id)
+  assert.deepEqual(extended.sketches[0].history.at(-1), [firstLink, extension])
+  assert.equal(extended.sketches[1], second.sketches[1])
 })
 
 test('Undo restores the selected branch endpoint for the next link', () => {

@@ -44,7 +44,7 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
   const jigsawRegions = example.variantPuzzle?.regions?.type === 'jigsaw' ? example.variantPuzzle.regions.regions : undefined
   const jigsawGrid = jigsawRegions ? { ...CLASSIC_GRID, regions: jigsawRegions } : null
   const grid: PlayGrid = jigsawGrid ?? CLASSIC_GRID
-  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } =
+  const { annotations, region, description, reason, reasonSteps, mainLabel, mainColor, accentLabel, accentColor, results: defaultResults, trace: defaultTrace } =
     lessonDiagram(example, undefined, { grid })
   const view = crop ?? (block && !example.variantPuzzle ? region : undefined)
   const results = copy?.results ?? defaultResults
@@ -70,8 +70,8 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
           : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}><CellReferenceText text={result} /></li>)}</ul>}
         {(accentLabel || strong || weak || hasCandidateRemovals) && <div className="lesson-legend" aria-label="Diagram key">
           {accentLabel && <>
-            <span><i className="lesson-key-pattern" aria-hidden="true" /><span>{copy?.patternLabel ?? mainLabel}</span></span>
-            <span><i className="lesson-key-accent" aria-hidden="true" /><span>{copy?.accentLabel ?? accentLabel}</span></span>
+            <span><i className="lesson-key-pattern" aria-hidden="true" style={mainColor ? { borderColor: mainColor } : undefined} /><span>{copy?.patternLabel ?? mainLabel}</span></span>
+            <span><i className="lesson-key-accent" aria-hidden="true" style={accentColor ? { borderColor: accentColor } : undefined} /><span>{copy?.accentLabel ?? accentLabel}</span></span>
           </>}
           {hasCandidateRemovals && <span><i className="lesson-key-removal" aria-hidden="true" /><span>Candidates to remove</span></span>}
           {strong && <span><i className="lesson-key-link" aria-hidden="true" /><span>{copy?.strongLabel ?? 'Strong link. At least one is true.'}</span></span>}

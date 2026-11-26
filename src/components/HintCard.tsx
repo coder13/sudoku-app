@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Pin, PinOff, X } from 'lu
 import { createContext, useContext, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
-import { CellReferenceText } from './CellReferenceHighlight'
+import { CellReferenceText, SetReferenceContext, type SetReference } from './CellReferenceHighlight'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintDetailNavigation = { first: boolean; last: boolean; onMove: (offset: -1 | 1) => void }
@@ -20,7 +20,7 @@ type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 /** Lets the desktop hint slot attach its resize control to the actual card border. */
 export const HintCardResizeContext = createContext<ReactNode>(null)
 
-export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinned, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, layoutAnchors, ...explanation }: {
+export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinned, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, layoutAnchors, setReferences, ...explanation }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
@@ -34,6 +34,7 @@ export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinn
   lesson?: { id: string; title: string }
   detail?: ReactNode
   removals?: readonly HintRemoval[]
+  setReferences?: readonly SetReference[]
   layoutAnchors?: {
     card: RefObject<HTMLElement | null>
     heading: RefObject<HTMLDivElement | null>
@@ -109,9 +110,11 @@ export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinn
         </div>}
       </div>
       <div className="hint-card-body">
-        <DeductionExplanation {...explanation} />
-        {detail}
-        <DeductionOutcome removals={removals} text={hint.text} />
+        <SetReferenceContext.Provider value={setReferences}>
+          <DeductionExplanation {...explanation} />
+          {detail}
+          <DeductionOutcome removals={removals} text={hint.text} />
+        </SetReferenceContext.Provider>
       </div>
     </aside>
   )

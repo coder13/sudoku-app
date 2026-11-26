@@ -24,6 +24,7 @@ import type { ActionHistoryEntry } from './action-history.ts'
 import { createUuid } from '../uuid.ts'
 import type { CollectionReference } from './collection-reference.ts'
 import type { ChainSketchState } from './chain-sketch.ts'
+import type { SubsetWorkspace } from './subsets.ts'
 import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
 import type { CustomModeDefinition } from './custom-modes.ts'
@@ -99,6 +100,7 @@ export type Game = {
   bookmarks?: readonly PuzzleBookmark[]
   actionHistory?: ActionHistoryEntry[]
   chainSketch?: ChainSketchState
+  subsetWorkspace?: SubsetWorkspace
   elapsed: number
   timeUntracked?: true
   started: boolean
@@ -179,6 +181,7 @@ export function restartGame(game: Game): Game {
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,
     ...(game.bookmarks && { bookmarks: game.bookmarks }),
+    ...(game.subsetWorkspace && { subsetWorkspace: game.subsetWorkspace }),
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
       timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,

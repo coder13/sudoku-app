@@ -274,8 +274,8 @@ test('Singly linked ALS-XZ distinguishes the restricted common candidate from th
     assert.equal(annotations.candidates?.get(cell)?.get(4)?.color, 'var(--lesson-pattern)')
   }
   assert.equal(annotations.candidates?.get(18)?.has(3), false)
-  const set1 = { fill: 'var(--lesson-pattern-fill)', label: 'Set 1' }
-  const set2 = { fill: 'var(--lesson-als-second-set-fill)', label: 'Set 2' }
+  const set1 = { setMarkers: [{ color: 'var(--lesson-pattern-fill)', label: 'Set 1' }] }
+  const set2 = { setMarkers: [{ color: 'var(--lesson-als-second-set-fill)', label: 'Set 2' }] }
   const expectedCells = new Map([[18, set1], [19, set1], [15, set2], [24, set2]])
   assert.deepEqual(annotations.cells, expectedCells)
   assert.match(reason, /Set 1 \(blue\) is at R3C1 and R3C2\. Set 2 \(purple\) is at R2C7 and R3C7/)
@@ -323,17 +323,49 @@ test('ALS-XY-Wing names the middle set and the digit passed to the last set', ()
     ], links: [1, 2] } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.equal(diagram.annotations.cells?.get(0)?.label, 'Set 1')
-  assert.equal(diagram.annotations.cells?.get(3)?.label, 'Set 2')
-  assert.deepEqual(diagram.annotations.cells?.get(12), { label: 'Set 3', fill: 'var(--lesson-set-teal)' })
-  assert.equal(diagram.annotations.candidates?.get(3)?.get(2)?.color, 'var(--lesson-accent)')
-  assert.equal(diagram.annotations.candidates?.get(12)?.get(8)?.color, 'var(--lesson-pattern)')
+  assert.equal(diagram.annotations.cells?.get(0)?.setMarkers?.[0]?.label, 'Set 1')
+  assert.equal(diagram.annotations.cells?.get(3)?.setMarkers?.[0]?.label, 'Set 2')
+  assert.deepEqual(diagram.annotations.cells?.get(12), { setMarkers: [{ label: 'Set 3', color: 'var(--lesson-set-teal)' }] })
+  assert.equal(diagram.annotations.candidates?.get(3)?.get(2)?.color, 'var(--chain-blue)')
+  assert.equal(diagram.annotations.candidates?.get(12)?.get(2)?.color, 'var(--chain-orange)')
+  assert.equal(diagram.annotations.candidates?.get(12)?.get(8)?.color, 'var(--chain-blue)')
   assert.match(diagram.reason, /If it skips 8, it must use 1/)
   assert.match(diagram.reason, /The 1 candidates in sets 1 and 2 share row 1/)
   assert.match(diagram.reason, /rules it out in set 2 \(R1C4\)\. This set must use 2/)
   assert.match(diagram.reason, /The 2 candidates in sets 2 and 3 share column 4/)
   assert.match(diagram.reason, /rules it out in set 3 \(R2C4\)\. This set must use 8/)
   assert.match(diagram.reason, /At least one of R1C1 and R2C4 must be 8/)
+})
+
+test('ALS chains draw weak links between grouped occurrences without extra group outlines', () => {
+  const candidates = Array(81).fill(0)
+  candidates[25] = mask(3, 4)
+  candidates[21] = mask(4, 6)
+  candidates[12] = candidates[13] = mask(2, 6, 9)
+  candidates[4] = candidates[5] = mask(3, 4, 9)
+  candidates[7] = mask(3, 4, 9)
+  const deduction: HintChoice = {
+    technique: 'als-chain', actions: [{ eliminate: { cell: 7, digit: 3 } }],
+    evidence: { 'als-chain': { sets: [
+      { cells: [25], digits: [3, 4] }, { cells: [21], digits: [4, 6] },
+      { cells: [12, 13], digits: [2, 6, 9] }, { cells: [4, 5], digits: [3, 4, 9] },
+    ], links: [4, 6, 9] } },
+  }
+  const { annotations } = lessonDiagram({ deduction, candidates })
+  const weakLink = { color: 'var(--chain-neutral)', dashed: true, hideGroupOutlines: true }
+  assert.deepEqual(annotations.links, [
+    { from: { cells: [25], digit: 4 }, to: { cells: [21], digit: 4 }, ...weakLink },
+    { from: { cells: [21], digit: 6 }, to: { cells: [12, 13], digit: 6 }, ...weakLink },
+    { from: { cells: [12, 13], digit: 9 }, to: { cells: [4, 5], digit: 9 }, ...weakLink },
+  ])
+  for (const cell of [12, 13]) {
+    assert.deepEqual(annotations.candidates?.get(cell)?.get(6), { color: 'var(--chain-orange)', mark: 'ring', label: 'OFF in this case' })
+    assert.deepEqual(annotations.candidates?.get(cell)?.get(9), { color: 'var(--chain-blue)', mark: 'ring', label: 'ON in this case' })
+  }
+  assert.equal(annotations.candidates?.get(25)?.get(3)?.color, 'var(--chain-orange)')
+  assert.equal(annotations.candidates?.get(5)?.get(3)?.color, 'var(--chain-blue)')
+  assert.equal(annotations.candidates?.get(7)?.get(3)?.mark, 'strike')
+  assert.equal(hintLocation(deduction, 'concise')?.annotations.links, undefined)
 })
 
 test('Sue de Coq distinguishes the line set, box set, and intersection at both hint stages', () => {
@@ -360,8 +392,8 @@ test('Sue de Coq distinguishes the line set, box set, and intersection at both h
     [[54, 56], 'Intersection', 'var(--lesson-set-teal)'],
   ] as const) {
     for (const cell of cells) {
-      assert.deepEqual(diagram.annotations.cells?.get(cell), { label, fill })
-      assert.deepEqual(location?.annotations.cells?.get(cell), { label, fill })
+      assert.deepEqual(diagram.annotations.cells?.get(cell), { setMarkers: [{ label, color: fill }] })
+      assert.deepEqual(location?.annotations.cells?.get(cell), { setMarkers: [{ label, color: fill }] })
     }
   }
   assert.match(diagram.reason, /Line set \(blue\).*Box set \(purple\).*Intersection \(teal\)/)

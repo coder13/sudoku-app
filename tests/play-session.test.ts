@@ -187,6 +187,6 @@ test('saved mobile tools restore in display order and keep the selected tab', ()
     toolPanels: { open: ['subsets', 'techniques', 'chains', 'solution', 'colors'], active: 'techniques' },
   }))
   assert.deepEqual(createPlaySession(storage).getSnapshot().toolPanels, {
-    open: ['solution', 'techniques', 'colors', 'chains'], active: 'techniques',
+    open: ['solution', 'techniques', 'colors', 'subsets', 'chains'], active: 'techniques',
   })
 })

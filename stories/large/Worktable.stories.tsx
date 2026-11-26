@@ -10,7 +10,7 @@ import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPl
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
-import { EMPTY, enter, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates, valuesOf, type Game } from '../../src/sudoku/game'
+import { EMPTY, enter, fillEntries, makeGame, paintCells, peer, puzzleIdentity, replaceCandidates, valuesOf, type Game } from '../../src/sudoku/game'
 import { recordAction } from '../../src/sudoku/action-history'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
@@ -446,17 +446,22 @@ export const GroupedLoopTypeSummary: Story = {
     await expect(within(chain).getByText('Grouped Nice Loop', { exact: true })).toBeVisible()
     await expect(chain).not.toHaveTextContent(/strong-link coloring|Grouped AIC/)
     await expect(chain).toHaveAccessibleDescription(/^Grouped Nice Loop /)
-    const notation = canvasElement.querySelector<HTMLElement>('.chain-editor .chain-notation')!
-    const controls = canvasElement.querySelector('.chain-editor .chain-draw-tools')!
+    const notation = canvasElement.querySelector<HTMLElement>('.tool-item-editor .chain-notation')!
+    const controls = canvasElement.querySelector('.tool-item-editor .chain-draw-tools')!
     expect(notation.getBoundingClientRect().top).toBeGreaterThan(controls.getBoundingClientRect().bottom)
     const notationTokens = within(notation)
     const firstNode = notationTokens.getAllByText('4r1c9', { exact: true })[0]
     await userEvent.hover(firstNode)
-    await expect(canvasElement.querySelector('[data-cell="8"] .board-candidate')).toHaveAttribute('data-chain-hover', 'true')
+    const candidate = canvasElement.querySelector('[data-cell="8"] .board-candidate')!
+    await expect(candidate).toHaveAttribute('data-chain-hover', 'true')
+    expect(getComputedStyle(candidate).filter).toBe('brightness(1.25)')
     await userEvent.unhover(firstNode)
     const strongLink = notationTokens.getAllByText('=', { exact: true })[0]
     await userEvent.hover(strongLink)
     await waitFor(() => expect(canvasElement.querySelectorAll('.board-links g[data-chain-hover="true"]')).toHaveLength(1))
+    const otherLink = canvasElement.querySelector('.board-links g:not([data-chain-hover]):has(polyline)')!
+    expect(getComputedStyle(otherLink).opacity).toBe('1')
+    expect(getComputedStyle(otherLink).filter).toBe('none')
     await userEvent.unhover(strongLink)
     const groupNode = notationTokens.getByText('4(r2c7|r3c7)', { exact: true })
     groupNode.focus()
@@ -1559,6 +1564,137 @@ export const AnalyzeMoves: Story = {
     await expect(navigation).toHaveTextContent(`2/${count}`)
   },
 }
+
+const subsetCandidates = new Map<number, number[]>([
+  [3, [2, 9]], [22, [4, 7, 9]], [24, [2, 4, 7]], [25, [2, 7]], [8, [2, 6]], [17, [2, 3]],
+])
+const subsetWorkbenchGame = replaceCandidates(makeGame('subset-workbench', 'Subset practice', EMPTY, 'imported'),
+  Array.from({ length: 81 }, (_, cell) => subsetCandidates.get(cell)?.reduce((mask, digit) => mask | (1 << (digit - 1)), 0) ?? 511))
+
+export const SubsetWorkbench: Story = {
+  args: { game: subsetWorkbenchGame, games: [subsetWorkbenchGame] },
+  beforeEach: () => {
+    playSession.set(subsetWorkbenchGame.id, 'toolPanels', { open: ['subsets', 'chains'], active: 'subsets' })
+  },
+}
+
+export const DockedSubsetWorkbench: Story = {
+  ...SubsetWorkbench,
+  args: { ...SubsetWorkbench.args, workspaceMode: 'advanced' },
+}
+
+const showcaseGivens = [
+  '180000530', '000310089', '063805001', '006423817', '314000000',
+  '000100000', '605700140', '071600005', '000001000',
+].join('')
+const subsetShowcaseGame: Game = {
+  ...replaceCandidates(makeGame('subset-showcase', 'Saved subsets example', showcaseGivens, 'imported'),
+    [...showcaseGivens].map((value, cell) => value === '0'
+      ? [...showcaseGivens].reduce((mask, digit, other) =>
+        digit !== '0' && peer(cell, other) ? mask & ~(1 << (Number(digit) - 1)) : mask, 511)
+      : 0), { recordHistory: false }),
+  subsetWorkspace: {
+    nextId: 3,
+    sets: [{ id: 1, cells: [3] }, { id: 2, cells: [22, 24, 25] }],
+  },
+}
+
+export const SubsetShowcase: Story = {
+  args: { game: subsetShowcaseGame, games: [subsetShowcaseGame] },
+  beforeEach: () => {
+    playSession.set(subsetShowcaseGame.id, 'toolPanels', { open: ['subsets', 'chains'], active: 'subsets' })
+  },
+  render: args => <WorktableExample {...args} withTopbar resizable />,
+}
+
+const subsetEliminationValues = [
+  '000005000', '070290040', '000708102', '458300000', '006800401',
+  '200000080', '000904518', '000180070', '189567004',
+].join('')
+const subsetEliminationGame: Game = {
+  ...replaceCandidates(makeGame('subset-eliminations', 'ALS-XZ example', subsetEliminationValues, 'imported'),
+    [...subsetEliminationValues].map((value, cell) => value === '0'
+      ? [...subsetEliminationValues].reduce((mask, digit, other) =>
+        digit !== '0' && peer(cell, other) ? mask & ~(1 << (Number(digit) - 1)) : mask, 511)
+      : 0), { recordHistory: false }),
+  subsetWorkspace: {
+    nextId: 3,
+    sets: [{ id: 1, cells: [0, 3, 6, 7, 8] }, { id: 2, cells: [22] }],
+  },
+}
+
+export const SubsetEliminations: Story = {
+  args: { game: subsetEliminationGame, games: [subsetEliminationGame] },
+  beforeEach: () => {
+    playSession.set(subsetEliminationGame.id, 'toolPanels', { open: ['subsets', 'chains'], active: 'subsets' })
+  },
+  render: args => <WorktableExample {...args} withTopbar resizable />,
+}
+
+const alsChainValues = [
+  '576100802', '834005071', '192000005', '708050100', '015800726',
+  '023710058', '059301287', '281500060', '307000510',
+].join('')
+const alsChainGame = replaceCandidates(makeGame('als-chain-from-hint', 'ALS chain from hint', alsChainValues, 'imported'),
+  [...alsChainValues].map((value, cell) => value === '0'
+    ? [...alsChainValues].reduce((mask, digit, other) =>
+      digit !== '0' && peer(cell, other) ? mask & ~(1 << (Number(digit) - 1)) : mask, 511)
+    : 0), { recordHistory: false })
+
+export const AlsChainFromHint: Story = {
+  args: { game: alsChainGame, games: [alsChainGame] },
+  beforeEach: () => {
+    playSession.set(alsChainGame.id, 'toolPanels', { open: ['techniques', 'subsets', 'chains'], active: 'subsets' })
+  },
+}
+
+const [subsetFirst, subsetMiddle, subsetLast] = [
+  { cell: 22, digit: 3 }, { cell: 22, digit: 4 }, { cell: 3, digit: 4 },
+].map(candidateId)
+const subsetEndpointGame: Game = {
+  ...subsetEliminationGame,
+  id: 'subset-endpoint-chain',
+  chainSketch: {
+    activeId: 1, pending: null,
+    sketches: [{ ...newChainSketch(1), history: [[], [[subsetFirst, subsetMiddle], [subsetMiddle, subsetLast]]] }],
+  },
+}
+
+export const SubsetEndpointChain: Story = {
+  args: { game: subsetEndpointGame, games: [subsetEndpointGame] },
+  beforeEach: () => {
+    playSession.set(subsetEndpointGame.id, 'toolPanels', { open: ['subsets', 'chains'], active: 'chains' })
+  },
+  render: args => <WorktableExample {...args} withTopbar resizable />,
+}
+
+function subsetProofStory(id: string, title: string, candidates: Record<number, number[]>, members: number[][]): Story {
+  const game: Game = {
+    ...replaceCandidates(makeGame(id, title, EMPTY, 'imported'), Array.from({ length: 81 }, (_, cell) =>
+      candidates[cell]?.reduce((mask, digit) => mask | (1 << (digit - 1)), 0) ?? 511)),
+    subsetWorkspace: { nextId: members.length + 1, sets: members.map((cells, index) => ({ id: index + 1, cells })) },
+  }
+  return {
+    args: { game, games: [game] },
+    beforeEach: () => {
+      playSession.set(id, 'toolPanels', { open: ['subsets', 'chains'], active: 'chains' })
+    },
+  }
+}
+
+export const SubsetBlossomChain = subsetProofStory('subset-blossom-chain', 'Death Blossom example',
+  { 0: [1, 2], 3: [1, 3], 4: [3, 4], 5: [2, 3], 7: [3, 4, 8] }, [[3, 4], [4, 5]])
+
+export const MixedAlsChain = subsetProofStory('mixed-als-chain', 'AIC through two ALSes',
+  { 0: [1, 2], 1: [2, 3], 2: [3, 4], 29: [4, 5], 30: [5, 6], 31: [6, 7], 58: [1, 7] }, [[1, 2], [30, 31]])
+
+export const SubsetWingPattern = subsetProofStory('subset-wing-pattern', 'WXYZ-Wing example',
+  { 0: [1, 2, 3, 4], 1: [4, 5], 2: [4, 5], 4: [2, 4], 6: [3, 4], 10: [1, 4] }, [[0, 4, 6], [10]])
+
+export const SubsetIntersectionPattern = subsetProofStory('subset-intersection-pattern', 'Sue de Coq example', {
+  0: [1, 2, 3, 4], 1: [1, 2, 3, 4], 3: [1, 5], 4: [2, 5], 9: [3, 5], 10: [4, 5],
+  6: [1, 5, 6], 18: [3, 5, 6],
+}, [[0, 1], [3, 4], [9, 10]])
 
 function WorktableExample({ withTopbar, resizable, ...args }: ComponentProps<typeof Worktable> & { withTopbar?: boolean; resizable?: boolean }) {
   const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
