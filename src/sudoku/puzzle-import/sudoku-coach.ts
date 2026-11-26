@@ -12,6 +12,7 @@ import { coachSkyscrapersRules } from '../coach-skyscrapers.ts'
 import { parseCoachEntropyWindowGroups } from '../entropy-window-groups.ts'
 import { coachConnectedLines, coachConsecutiveRuns } from '../coach-lines.ts'
 import { readCoachColouredLines } from '../coach-coloured-lines.ts'
+import { readReviewedCoachTerrain } from './coach-terrain.ts'
 import { isCoachWhispersGuide } from '../coach-whispers-guide.ts'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, VariantPuzzle, VariantRule } from '../engine.ts'
 import { isFogDefinition, type FogDefinition } from '../fog.ts'
@@ -763,6 +764,8 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
+  const terrain = await readReviewedCoachTerrain(code, data)
+  if (terrain) throw new Error('This Sudoku Coach Terrain puzzle uses transformed values that the engine does not support yet.')
   const crust = await readReviewedCoachCrust(code, data)
   if (crust) {
     const grid = crust.size === 7 ? SEVEN_BOXLESS_GRID : NINE_BOXLESS_GRID
