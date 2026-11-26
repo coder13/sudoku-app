@@ -131,4 +131,23 @@ test('#388 published Mountain Climbing has one completion with its 17-cell Arrow
     position: sizedRulePosition(puzzle.grid!, definition, puzzle.authoredSolution!),
   })
   assert.equal(authoredCompletion, 'unique')
+
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.sized?.solution, puzzle.authoredSolution)
+  const playMasks = await runEngine({ type: 'sized-variant', operation: 'candidates',
+    position: sizedRulePosition(game.grid!, { rules: game.sized!.rules }, game.givens) })
+  assert.ok(playMasks)
+  for (let cell = 0; cell < 100; cell++) {
+    if (game.givens[cell] !== '0') continue
+    assert.ok(playMasks[cell] & (1 << (positionDigit(puzzle.authoredSolution![cell]) - 1)),
+      `Play candidates must retain the authored value at cell ${cell}`)
+  }
+
+  let completed = game
+  for (let cell = 0; cell < 100; cell++) {
+    if (completed.givens[cell] === '0') {
+      completed = enter(completed, [cell], 'value', positionDigit(puzzle.authoredSolution![cell]))
+    }
+  }
+  assert.equal(isSolved(completed), true, 'the app Play state must accept the published completion')
 })
