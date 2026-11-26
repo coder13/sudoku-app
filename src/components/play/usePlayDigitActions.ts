@@ -1,13 +1,14 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { candidateCount, digitsFromMask, hasCandidate, paintCandidateGroup, type Game } from '../../sudoku/game'
+import { candidateCount, digitsFromMask, hasCandidate, onlyCandidate, paintCandidateGroup, type Game } from '../../sudoku/game'
 import { defaultDigitHighlight, type DigitHighlight } from '../../sudoku/play-session'
-import type { DigitHighlightMatch } from '../../sudoku/highlighting'
+import { previewPinnedDigit, togglePinnedDigit, type DigitHighlightMatch } from '../../sudoku/highlighting'
 
 type Options = {
   puzzle: { gridSize: number }
   selection: {
     selectedDigit: number | null
     highlightedDigitMask: number
+    pinnedDigitMask: number
     cellDrivenHighlight: boolean
     brush: number | null
   }
@@ -25,7 +26,7 @@ type Options = {
 
 /** Own digit selection and candidate-paint operations shared by the keypad and board. */
 export function usePlayDigitActions({ puzzle: { gridSize }, selection, capability: { canPaint }, actions }: Options) {
-  const { selectedDigit, highlightedDigitMask, cellDrivenHighlight, brush } = selection
+  const { selectedDigit, highlightedDigitMask, pinnedDigitMask, cellDrivenHighlight, brush } = selection
   const { setDigitHighlight, setSelectedDigit, setHighlightCandidatePairs, setSelected, setColorBrush, setEraseMode, edit } = actions
 
   function paintCandidateDigits(digits: readonly number[], color: number) {
@@ -66,6 +67,7 @@ export function usePlayDigitActions({ puzzle: { gridSize }, selection, capabilit
 
   function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
     if (cellDrivenHighlight) setSelected([])
+    if (showPinnedDigitPreview(digit)) return
     const previous = selectedDigit ? 1 << (selectedDigit - 1) : 0
     if (brush !== null) {
       const currentMask = highlightedDigitMask || previous
@@ -77,6 +79,23 @@ export function usePlayDigitActions({ puzzle: { gridSize }, selection, capabilit
       return
     }
     showDigitHighlights(current => (current || previous) ^ (1 << (digit - 1)), match)
+  }
+
+  function pinDigit(digit: number, match?: DigitHighlightMatch) {
+    const activeDigit = selectedDigit ?? onlyCandidate(highlightedDigitMask)
+    setDigitHighlight(current => togglePinnedDigit(current, digit, activeDigit, match))
+    setSelected([])
+    setSelectedDigit(null)
+    setHighlightCandidatePairs(false)
+    setEraseMode(false)
+  }
+
+  function showPinnedDigitPreview(digit: number) {
+    if (!pinnedDigitMask || digit < 1 || digit > gridSize) return false
+    setDigitHighlight(current => previewPinnedDigit(current, digit))
+    setSelectedDigit(null)
+    setHighlightCandidatePairs(false)
+    return true
   }
 
   function changeDigitHighlightMatch(match: DigitHighlightMatch) {
@@ -91,6 +110,8 @@ export function usePlayDigitActions({ puzzle: { gridSize }, selection, capabilit
     clearDigitSelection,
     showDigitHighlights,
     toggleDigitHighlight,
+    pinDigit,
+    showPinnedDigitPreview,
     changeDigitHighlightMatch,
   }
 }

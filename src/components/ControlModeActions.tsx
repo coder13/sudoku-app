@@ -42,7 +42,7 @@ export function ControlModeActions({ digits, tools, layout, mobile, showColorBut
         {!layout.draft && (
           <IconButton
             className="pencil-button"
-            title={`Pencil mode · Use ${penPencilKeys.join(' / ')} to cycle Pen, Pencil, and Highlight · Hold keypad digits or use Shift+digit to select a group, then tap a cell to toggle it`}
+            title={`Pencil mode · Use ${penPencilKeys.join(' / ')} to cycle Pen, Pencil, and Highlight · Hold a digit or use Shift+digit to pin it. Select another digit to preview the combination.`}
             aria-label="Pencil mode"
             aria-pressed={!tools.chainDrawing && digits.pencil && !tools.colorMode}
             onClick={tools.togglePencil}
@@ -91,7 +91,7 @@ export function ControlModeActions({ digits, tools, layout, mobile, showColorBut
         </IconButton>
       </div>
       <div className="right-actions-secondary">
-        {tools.clearDigitHighlightsAvailable && hasMultipleHighlights && tools.onClearDigitHighlights && (
+        {tools.clearDigitHighlightsAvailable && tools.onClearDigitHighlights && (
           <IconButton
             className="clear-digit-highlights-button"
             title="Clear digit highlights"

@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties, type MouseEvent } from 'react'
+import { Pin } from 'lucide-react'
 import { candidateCount, COLORS, DIGITS, hasCandidate, placedDigitCounts } from '../sudoku/game'
 import { colorCursor } from './color-cursor'
 import { colorTone, colorToneStyle } from './color-tone'
@@ -14,11 +15,12 @@ export type DigitSelectorProps = {
 
 /** Keep digit selection available in every mode, including candidate painting. */
 export function DigitSelector(props: DigitSelectorProps) {
-  const toggleDigitHighlight = !props.layout.disabled && !props.tools.chainDrawing ? props.digits.onToggleDigitHighlight : undefined
+  const highlightEnabled = !props.layout.disabled && !props.tools.chainDrawing
+  const togglePin = highlightEnabled ? props.digits.onTogglePinnedDigit : undefined
+  const toggleDigitHighlight = togglePin ?? (highlightEnabled ? props.digits.onToggleDigitHighlight : undefined)
   const canHighlightDigits = Boolean(toggleDigitHighlight)
   const highlightedDigitMask = props.digits.highlightedDigitMask ?? 0
-  const digitHighlightMatch = props.digits.digitHighlightMatch ?? 'all'
-  const digitHold = useTouchHold(canHighlightDigits)
+  const digitHold = useTouchHold(canHighlightDigits, Boolean(togglePin))
   const gridSize = props.digits.gridSize ?? 9
   const counts = useMemo(() => placedDigitCounts(props.digits.values), [props.digits.values])
   const digitPaintCursor = props.digits.digitPaintColor ? colorCursor(props.digits.digitPaintColor) : undefined
@@ -68,6 +70,7 @@ export function DigitSelector(props: DigitSelectorProps) {
       <PuzzleKeypad variant={gridSize === 4 ? 'mini' : gridSize === 6 ? 'six' : undefined} label="Digit pad">
         {DIGITS.slice(0, gridSize).map((digit) => {
           const highlighted = hasCandidate(highlightedDigitMask, digit)
+          const pinned = Boolean(togglePin && hasCandidate(props.digits.pinnedDigitMask ?? 0, digit))
           const singleHighlight = highlightedDigitMask === 1 << (digit - 1)
           const armed = props.digits.selectedDigit === digit || (props.tools.chainDrawing ? highlighted : canHighlightDigits && singleHighlight)
           const pressed = armed || (canHighlightDigits && highlighted)
@@ -89,26 +92,33 @@ export function DigitSelector(props: DigitSelectorProps) {
                 ? `Paint candidates for ${digit}`
                 : props.digits.mode === 'color'
                   ? `${armed ? 'Deselect' : 'Select'} ${digit}`
-                  : `${props.digits.hasCellSelection ? 'Enter' : armed ? 'Deselect' : 'Select'} ${digit}`
+                  : `${props.digits.hasCellSelection ? 'Enter' : armed && !pinned ? 'Deselect' : 'Select'} ${digit}`
           return (
             <button
               type="button"
               key={digit}
               className={`key ${candidateColor ? 'tone-key candidate-color-key' : mixedCandidateColors ? 'candidate-multi-color-key' : ''} ${progress === 'dim' && counts[digit] === gridSize ? 'all-placed' : ''} ${pressed ? 'selected-key' : ''}`}
               style={{ ...colorToneStyle(candidateColor ?? undefined), cursor: digitPaintCursor }}
-              aria-label={`${progress === 'count' ? `${digitLabel}, ${remaining} remaining` : digitLabel}${candidateColor ? `, candidates colored ${COLORS[candidateColor - 1].toLowerCase()}` : candidateColorLabel}`}
+              aria-label={`${progress === 'count' ? `${digitLabel}, ${remaining} remaining` : digitLabel}${pinned ? ', pinned' : ''}${candidateColor ? `, candidates colored ${COLORS[candidateColor - 1].toLowerCase()}` : candidateColorLabel}`}
               aria-keyshortcuts={[props.tools.chainDrawing && digit, `Shift+${digit}`, `F${digit}`, canHighlightDigits && !props.tools.eraseMode && `Control+${digit} Meta+${digit}`]
                 .filter(Boolean)
                 .join(' ')}
               aria-pressed={pressed}
               disabled={props.layout.disabled}
               data-no-panel-hold={canHighlightDigits || undefined}
-              onPointerDown={(event) => digitHold.start(event, toggleDigitHighlight && (() => toggleDigitHighlight(digit, props.layout.compact ? digitHighlightMatch : 'all')))}
+              data-pinned-digit={pinned || undefined}
+              title={togglePin ? `Hold to ${pinned ? 'unpin' : 'pin'} ${digit}` : undefined}
+              onPointerDown={(event) => digitHold.start(event, toggleDigitHighlight && (() => {
+                if (togglePin) togglePin(digit)
+                else toggleDigitHighlight(digit, props.layout.compact ? props.digits.digitHighlightMatch ?? 'all' : 'all')
+              }))}
               onPointerMove={digitHold.move}
+              onPointerLeave={(event) => { if (event.pointerType !== 'touch') digitHold.cancel() }}
               onContextMenu={(event) => digitContextMenu(event, digit)}
               onClick={(event) => clickDigit(event, digit)}
             >
               <span>{digit}</span>
+              {pinned && <Pin className="key-pin" size="0.47em" aria-hidden="true" />}
               {mixedCandidateColors && (
                 <span className="key-color-summary" aria-hidden="true">
                   {mixedCandidateColors.map(({ color, count }) => (

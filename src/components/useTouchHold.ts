@@ -14,7 +14,7 @@ type Hold = {
   nativeFeedback: boolean
 }
 
-export function useTouchHold(enabled: boolean) {
+export function useTouchHold(enabled: boolean, allPointers = false) {
   const hold = useRef<Hold | null>(null)
   const consumedClick = useRef<Element | null>(null)
 
@@ -32,7 +32,7 @@ export function useTouchHold(enabled: boolean) {
       const current = hold.current
       if (current?.id !== event.pointerId) return
       cancel()
-      if (event.type === 'pointerup' && current.completed && !current.nativeFeedback) navigator.vibrate?.(HOLD_VIBRATION_MS)
+      if (event.type === 'pointerup' && event.pointerType === 'touch' && current.completed && !current.nativeFeedback) navigator.vibrate?.(HOLD_VIBRATION_MS)
     }
     window.addEventListener('pointerdown', cancelOtherPress, true)
     window.addEventListener('pointerup', finish)
@@ -52,7 +52,8 @@ export function useTouchHold(enabled: boolean) {
   function start(event: ReactPointerEvent, action?: () => void) {
     if (!event.isPrimary) return
     consumedClick.current = null
-    if (!enabled || !action || event.pointerType !== 'touch' || event.button !== 0) return
+    if (!enabled || !action || (!allPointers && event.pointerType !== 'touch') || event.button !== 0 ||
+      (allPointers && (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey))) return
     cancel()
     const target = event.currentTarget
     const timer = window.setTimeout(() => {
