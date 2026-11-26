@@ -465,7 +465,9 @@ mod tests {
             }
 
             let totals = dot.ends.each_ref().map(|end| match end {
-                DotEnd::Digit(cell) => Some(usize::from(digits[*cell])),
+                DotEnd::Digit(cell) => {
+                    Some(usize::from(digits[*cell]) - usize::from(dot.value_offset))
+                }
                 DotEnd::XSum(x_sum) => {
                     let used = x_sum
                         .cells
@@ -474,11 +476,12 @@ mod tests {
                     if used.count_ones() != dot.size as u32 {
                         return None;
                     }
-                    let prefix_length = usize::from(digits[x_sum.cells[0]]);
+                    let prefix_length =
+                        usize::from(digits[x_sum.cells[0]]) - usize::from(dot.value_offset);
                     Some(
                         x_sum.cells[..prefix_length]
                             .iter()
-                            .map(|&cell| usize::from(digits[cell]))
+                            .map(|&cell| usize::from(digits[cell]) - usize::from(dot.value_offset))
                             .sum(),
                     )
                 }
@@ -806,5 +809,50 @@ mod tests {
             2, 6, 1, 2, 3, 4, 5,
         ];
         assert!(dot.permits(&digits));
+    }
+
+    #[test]
+    fn zero_based_x_sum_dot_support_matches_exhaustive_assignments() {
+        let layout = SizedGrid::new(crate::GridSpec {
+            size: 4,
+            box_rows: 2,
+            box_columns: 2,
+        })
+        .unwrap();
+        let end_pairs = [
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::South,
+                    index: 0,
+                },
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::South,
+                    index: 1,
+                },
+            ],
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::East,
+                    index: 1,
+                },
+                SizedSumEnd::Digit(4),
+            ],
+        ];
+
+        for ends in end_pairs {
+            for relation in [XSumDotRelation::Consecutive, XSumDotRelation::Ratio] {
+                let dot = XSumDot::compile(&layout, ends, relation, 1).unwrap();
+                for seed in 0..5 {
+                    let mut domains = [0b1111; MAX_SIZE * MAX_SIZE];
+                    if seed != 0 {
+                        for (offset, cell) in dot.cells().enumerate() {
+                            let mask = (seed * 7 + offset * 11) & 0b1111;
+                            domains[cell] = if mask == 0 { 0b1111 } else { mask as u16 };
+                        }
+                    }
+                    assert_support_matches_exhaustive(&dot, &domains);
+                }
+            }
+        }
     }
 }
