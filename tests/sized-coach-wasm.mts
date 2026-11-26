@@ -93,6 +93,11 @@ test('#7 keeps both Between paths and validates the published 6 × 6 completion 
   }
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: blank }), 'unique')
   assert.equal(imported.sizedRules.filter(rule => rule.type === 'little-killer').length, 3)
+
+  const preview = await prepareImportedPuzzle(coachBetween.metadata.sudoku)
+  assert.equal(preview.format, 'Sudoku Coach')
+  assert.deepEqual(preview.game.sized?.rules, imported.sizedRules)
+  assert.equal(preview.game.sized?.solution, coachBetween.metadata.solution)
 })
 
 test('sized Coach current-state progress reaches Preview, Play and saved reload', async () => {
