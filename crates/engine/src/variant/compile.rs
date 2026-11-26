@@ -254,6 +254,7 @@ impl VariantPuzzle {
                 | PuzzleRule::Lockout { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }
+                | PuzzleRule::TerrainSandwich { .. }
                 | PuzzleRule::LittleKiller { .. }
                 | PuzzleRule::XSum { .. }
                 | PuzzleRule::Skyscrapers { .. } => {

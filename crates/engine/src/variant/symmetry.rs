@@ -384,6 +384,9 @@ impl SquareTransform {
             Sandwich {
                 cells, direction, ..
             }
+            | TerrainSandwich {
+                cells, direction, ..
+            }
             | LittleKiller {
                 cells, direction, ..
             }
