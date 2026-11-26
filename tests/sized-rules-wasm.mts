@@ -802,6 +802,32 @@ test('Coach Difference layers with different labels keep their negative settings
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
 })
 
+test('Coach negative mixed Ratio labels reject each unmarked value in the same layer', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const marks = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat().flatMap(([a, b]) => {
+    const small = Math.min(digits[a], digits[b])
+    const large = Math.max(digits[a], digits[b])
+    return large % small === 0 && [2, 3].includes(large / small)
+      ? [{ cells: [a, b], value: large / small }]
+      : []
+  })
+  assert.ok(marks.some(mark => mark.value === 2) && marks.some(mark => mark.value === 3))
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: marks.map(mark => ({
+      cells: mark.cells, parameters: { ratio: mark.value },
+    })) },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [{
+    type: 'labeled-dots', relation: 'ratio', marks, negative: true,
+  }])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
   url: string; title: string; coach: string; solution: string
 }[]
