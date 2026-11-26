@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import worker from '../cloudflare/pages/_worker.js'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 const request = (path: string, options?: RequestInit) =>
@@ -118,7 +119,7 @@ test('plain published Coach grids are read only from the matching publication an
   }
 })
 
-test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set', async ({ mock }) => {
+test('#381 imports the published 6×6 Coach Nonogram from code and short link', async ({ mock }) => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-nonogram.json', import.meta.url), 'utf8')) as {
     sudoku_id: string; sudoku: string; name: string; description: string; solution: string; givenDigits?: string
   }
@@ -149,7 +150,14 @@ test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set
   assert.ok(imported.sizedRules?.some(rule => rule.type === 'xv'))
   assert.ok(!imported.sizedRules?.some(rule => rule.type === 'little-killer'))
   assert.ok(imported.grid && imported.sizedRules)
-  await assert.rejects(detectPuzzle(source.sudoku), /6 × 6 Jigsaw grid/)
+  const copiedCode = await detectPuzzle(source.sudoku)
+  assert.deepEqual(copiedCode.grid, imported.grid)
+  assert.deepEqual(copiedCode.sizedRules, imported.sizedRules)
+  const altered = structuredClone(await decodeSudokuCoachPayload(source.sudoku)) as {
+    givenConstraints: { type: string; segments: { parameters: Record<string, unknown> }[] }[]
+  }
+  altered.givenConstraints.find(layer => layer.type === 'cosmeticText')!.segments[0]!.parameters.text = '1'
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, ...altered })))
   description += '\nThe rows also obey another rule.'
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })

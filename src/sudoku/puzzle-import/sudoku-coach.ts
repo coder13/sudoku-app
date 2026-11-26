@@ -57,6 +57,9 @@ const coachWrappedJigsawExport = '501832fec680e8fa268be297919615522b2a9150da212c
 // Its exact export is enough to establish the meaning when users paste the code
 // directly, without the author description supplied by the short-link resolver.
 const coachSkyscrapersExport = 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e99613f57e06f03121'
+// The original 6×6 Nonogram also states the rule in its published description.
+// Recognize only that exact export when users paste its puzzle code directly.
+const coachNonogramExport = 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932'
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'cells', 'acid', 'givenColours', 'user_like',
@@ -807,13 +810,15 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
       await sourceHash(code, data) === coachSkyscrapersExport
+    const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||
+      await sourceHash(code, data) === coachNonogramExport
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
       publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     const { givens, grid, rules, progress, givenCellColors, reviewedTitle } = await readCoachSized(data, code,
-      publication?.authoredRule === 'sized-nonogram', reviewedSkyscrapers,
+      reviewedNonogram, reviewedSkyscrapers,
       publication?.authoredRule === 'x-sum')
     if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
