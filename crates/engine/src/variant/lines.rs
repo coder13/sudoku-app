@@ -1984,6 +1984,15 @@ mod terrain_sandwich_tests {
                 })
             })
             .expect("the published solution has an orthogonal non-ratio-two pair");
+        let mut terrain_only = puzzle.clone();
+        terrain_only.rules.pop();
+        assert!(
+            terrain_only
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_ok()
+        );
         let mut contradictory = puzzle.clone();
         let Some(PuzzleRule::Kropki { ratio_two, .. }) = contradictory.rules.last_mut() else {
             unreachable!();
