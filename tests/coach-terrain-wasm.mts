@@ -7,6 +7,7 @@ import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { parsePuzzleExport, puzzleDefinitionForSharing, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
+import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -136,4 +137,32 @@ test('#196 Terrain candidates match an independent permutation oracle for every 
     assert.deepEqual(rule.cells.map(cell => actual[cell]), expected,
       `Terrain clue ${index + 1} candidate support must match all distinct-digit assignments`)
   }
+})
+
+test('#196 Terrain hint evidence names the actual value changes', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  const puzzle = parsed.variant.puzzle
+  const deductions = await runEngine({ type: 'variant', operation: 'hints', position: { puzzle },
+    techniqueOrder: ['sandwich'], limit: 10 })
+  const deduction = deductions.find(item => item.evidence.type === 'constraint' &&
+    item.evidence.rules.some(index => puzzle.rules?.[index]?.type === 'terrain-sandwich'))
+  assert.ok(deduction, 'a published Terrain clue should produce an independently checkable hint')
+  const hint = variantHintChoice(deduction, puzzle)
+  assert.ok('variant' in hint.evidence)
+  assert.match(hint.evidence.variant.description, /add 3 to the digits in/)
+  assert.match(hint.evidence.variant.description, /subtract 3 from the digits in/)
+  assert.match(hint.evidence.variant.description, /greatest total/)
+
+  const doubledIndex = puzzle.rules?.findIndex(rule => rule.type === 'terrain-sandwich' &&
+    rule.transforms.some(transform => transform.multiplier === 2)) ?? -1
+  assert.notEqual(doubledIndex, -1)
+  const doubledRule = puzzle.rules![doubledIndex]
+  assert.equal(doubledRule.type, 'terrain-sandwich')
+  const doubledHint = variantHintChoice({
+    ...deduction,
+    evidence: { type: 'constraint', rules: [doubledIndex], cells: [...doubledRule.cells], domains: Array(9).fill(0x1ff) },
+  }, puzzle)
+  assert.ok('variant' in doubledHint.evidence)
+  assert.match(doubledHint.evidence.variant.description, /double the digits in/)
 })
