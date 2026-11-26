@@ -7,7 +7,7 @@ import type { AdvancedModes } from '../../sudoku/preferences'
 export type PlayCandidateNotes = {
   gameId: string
   values: string
-  eliminations: Game['position']['eliminations']
+  eliminationKey: string | undefined
   variant?: Game['variant']
   algebraic?: Game['algebraic']
   sized?: Game['sized']
@@ -25,9 +25,15 @@ type Options = {
   solved: boolean
 }
 
+/** Classic notes come from placed digits. The board applies Classic eliminations separately. */
+export function candidateNotesEliminationKey({ grid, variant, algebraic, position }: Game) {
+  return grid || variant || algebraic ? position.eliminations?.join(',') : undefined
+}
+
 /** Keep solver-derived candidate notes tied to the puzzle position they describe. */
 export function usePlayCandidateNotes({ game, values, generateCandidateVariants, draft, solved }: Options) {
   const [notes, setNotes] = useState<PlayCandidateNotes>()
+  const eliminationKey = candidateNotesEliminationKey(game)
   const [retryVersion, setRetryVersion] = useState(0)
   const retry = useCallback(() => {
     setNotes(undefined)
@@ -46,10 +52,10 @@ export function usePlayCandidateNotes({ game, values, generateCandidateVariants,
     })
 
     void playCandidates(game, run, generateCandidateVariants).then(masks => {
-      if (current) setNotes({ gameId: game.id, values, eliminations: game.position.eliminations,
+      if (current) setNotes({ gameId: game.id, values, eliminationKey,
         variant: game.variant, algebraic: game.algebraic, sized: game.sized, masks })
     }).catch(() => {
-      if (current) setNotes({ gameId: game.id, values, eliminations: game.position.eliminations,
+      if (current) setNotes({ gameId: game.id, values, eliminationKey,
         variant: game.variant, algebraic: game.algebraic, sized: game.sized, masks: null, failed: true })
     }).finally(() => {
       clearTimeout(timeout)
@@ -62,7 +68,7 @@ export function usePlayCandidateNotes({ game, values, generateCandidateVariants,
       engine.close()
     }
   }, [game.id, draft, solved, game.paused, values, game.variant, game.algebraic, game.sized, game.grid,
-    game.position.eliminations, generateCandidateVariants, retryVersion])
+    eliminationKey, generateCandidateVariants, retryVersion])
 
-  return { notes, retry }
+  return { notes, eliminationKey, retry }
 }

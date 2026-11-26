@@ -179,7 +179,7 @@ import { usePlaySolutionModel } from './play/usePlaySolutionModel'
 import { usePlaySolutionLoader } from './play/usePlaySolutionLoader'
 import { usePlayRatingEvents } from './play/usePlayRatingEvents'
 import { usePlayPuzzleRating } from './play/usePlayPuzzleRating'
-import { usePlayCandidateNotes } from './play/usePlayCandidateNotes'
+import { candidateNotesEliminationKey, usePlayCandidateNotes } from './play/usePlayCandidateNotes'
 import { usePlayNakedSingles } from './play/usePlayNakedSingles'
 import { usePlayChainModel } from './play/usePlayChainModel'
 import { usePlayChainActions } from './play/usePlayChainActions'
@@ -670,7 +670,7 @@ export function Worktable({
     capturePointer: (pointerId) => boardRef.current?.setPointerCapture(pointerId),
   })
   const colorsActive = brush !== null || colorMode
-  const { notes, retry: retryCandidateNotes } = usePlayCandidateNotes({
+  const { notes, eliminationKey, retry: retryCandidateNotes } = usePlayCandidateNotes({
     game,
     values,
     generateCandidateVariants: advancedModes.generateCandidateVariants,
@@ -678,7 +678,7 @@ export function Worktable({
     solved,
   })
   const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
-  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminations === game.position.eliminations ? puzzleNotes : undefined
+  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminationKey === eliminationKey ? puzzleNotes : undefined
   const masks = currentNotes?.masks
   const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations), [masks, values, displayedCandidates, eliminations])
   const alsHighlight = useAlsHighlight({
@@ -1044,7 +1044,7 @@ export function Worktable({
               current.grid ||
               current.givens !== givens ||
               current.variant !== variant ||
-              (variant && current.position.eliminations !== puzzleNotes.eliminations)
+              candidateNotesEliminationKey(current) !== puzzleNotes.eliminationKey
             )
               return null
             const currentValues = valuesOf(current)

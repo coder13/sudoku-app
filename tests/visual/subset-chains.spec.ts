@@ -378,6 +378,25 @@ test('completing a loop finds a saved ALS and puzzle Undo restores the loop and 
   await chooseChainAction(page, 'Complete loop')
   const completed = '2(r9c5|r9c6) = 2r9c8 − 4r9c8 = 4r4c8 − (4)r4c4 = (2)r8c4 − 2(r9c5|r9c6)'
   await expect(notation).toHaveText(completed)
+  const board = await page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).elementHandle()
+  const loading = await page.evaluateHandle(() => {
+    const notices: string[] = []
+    const observer = new MutationObserver(records => {
+      for (const { addedNodes } of records) for (const node of addedNodes) {
+        if (node.textContent?.includes('Loading candidates')) notices.push(node.textContent)
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    return { notices, observer }
+  })
+
+  for (let step = 0; step < 2; step++) {
+    await editor.getByRole('button', { name: 'Undo edit', exact: true }).click()
+    await expect(notation).toHaveText(prefix)
+    await editor.getByRole('button', { name: 'Redo edit', exact: true }).click()
+    await expect(notation).toHaveText(completed)
+  }
+  expect(await board?.evaluate(grid => grid.isConnected)).toBe(true)
   const eliminated = await expectPracticeEliminations(page, 'als-continuous-nice-loop')
 
   await editor.getByRole('button', { name: 'Apply edits' }).click()
@@ -395,6 +414,17 @@ test('completing a loop finds a saved ALS and puzzle Undo restores the loop and 
   for (const { cell: index, digit } of eliminated) {
     await expect(cell(page, index)).toHaveAttribute('aria-label', new RegExp(`candidates [^,]*\\b${digit}\\b`))
   }
+  if (switchInput) await digits.click()
+  await page.getByRole('button', { name: 'Redo', exact: true }).click()
+  if (switchInput) await input.getByRole('tab', { name: 'Chains', exact: true }).click()
+  await expect(notation).toHaveCount(0)
+  for (const { cell: index, digit } of eliminated) {
+    await expect(cell(page, index)).not.toHaveAttribute('aria-label', new RegExp(`candidates [^,]*\\b${digit}\\b`))
+  }
+  expect(await loading.evaluate(({ observer, notices }) => {
+    observer.disconnect()
+    return notices
+  })).toEqual([])
 })
 
 test('overlapping ALSes offer a keyboard-accessible choice beside the candidate', async ({ page }) => {
