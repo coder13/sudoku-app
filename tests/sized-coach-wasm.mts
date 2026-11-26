@@ -4,12 +4,13 @@ import { test } from 'node:test'
 import { applyDeduction, fillEntries, isSolved, makeGame, puzzleIdentity, restartGame, undo } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
-import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
+import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
 import { runEngine, type SizedConstraintRule } from '../src/sudoku/engine.ts'
 import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import worker from '../cloudflare/pages/_worker.js'
 
@@ -18,6 +19,9 @@ useWasmWorker(process.env.SIZED_COACH_WASM)
 const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.scl', import.meta.url), 'utf8').trim()
 const easyThermoSolution = '1234341223414123'
 const coachBetween = JSON.parse(readFileSync(new URL('./fixtures/little-killer-between-GJBz.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string }
+}
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
 }
 
@@ -414,4 +418,30 @@ test('#457 solves the published Janko Chaos 001 control through Import Preview',
     version: 2, grid: game.grid, digits: Array.from(source.givens, Number), rules: game.sized.rules,
   } })
   assert.equal(result, 'unique')
+})
+
+test('DLeM outside digit groups survive Cloudflare sharing and reopen', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    mock.method(globalThis, 'fetch', (path: string | URL, options?: RequestInit) => fetcher(path, options))
+    const { game } = await prepareImportedPuzzle(coachInsideDigitGroups.metadata.sudoku)
+    const malformed = JSON.parse(JSON.stringify(puzzleDefinitionForSharing(game))) as {
+      sizedRules: Array<{ type: string; firstThreeDigits?: number[] }>
+    }
+    const malformedClue = malformed.sizedRules.find(rule => rule.type === 'outside-text')
+    assert.ok(malformedClue)
+    assert.ok(malformedClue.firstThreeDigits?.length)
+    malformedClue.firstThreeDigits = [malformedClue.firstThreeDigits[0] % 9 + 1]
+    const rejected = await fetcher('/api/v1/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(malformed),
+    })
+    assert.equal(rejected.status, 400)
+
+    const shareId = await publishSharedPuzzle(game)
+    const reopened = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
+    assert.deepEqual(reopened.game.sized?.rules, game.sized?.rules)
+    assert.equal(reopened.game.sized?.solution, coachInsideDigitGroups.metadata.solution)
+  } finally {
+    sqlite.close()
+  }
 })

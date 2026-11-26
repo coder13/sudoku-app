@@ -369,6 +369,7 @@ const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const rectangularGrid = value => fields(value, { size: oneOf(6, 8), boxRows: oneOf(2, 3, 4), boxColumns: oneOf(2, 3, 4) }) &&
   value.boxRows * value.boxColumns === value.size
+const classicGrid = value => fields(value, { size: oneOf(9), boxRows: oneOf(3), boxColumns: oneOf(3) })
 const zeroBasedGrid = value => fields(value, { size: oneOf(10), boxRows: oneOf(2, 5), boxColumns: oneOf(2, 5), notation: oneOf('zero-based') }) &&
   value.boxRows * value.boxColumns === value.size
 const sharesGridEdge = (a, b, size) =>
@@ -404,7 +405,7 @@ function connectedCells(cells, size) {
   return connected.size === cells.length
 }
 const boxlessGrid = value => fields(value, { size: oneOf(5, 6, 7, 9), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || zeroBasedGrid(value) || jigsawGrid(value) || boxlessGrid(value)
+const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || classicGrid(value) || zeroBasedGrid(value) || jigsawGrid(value) || boxlessGrid(value)
 function numberedDotRule(rule, size) {
   const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
@@ -442,7 +443,11 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, nota
       isOutside(row + dr * cells.length, column + dc * cells.length)
   }
   const outsideText = rule => fields(rule, { type: oneOf('outside-text'), direction: diagonalDirection,
-    cells: value => littleKillerRay(value, rule.direction), label: value => typeof value === 'string' && value.trim().length > 0 && value.length <= 16 })
+    cells: value => littleKillerRay(value, rule.direction), label: value => typeof value === 'string' && value.trim().length > 0 && value.length <= 16 }, {
+    firstThreeDigits: value => list(integer(1, size), 1, 3)(value) && new Set(value).size === value.length &&
+      /^[1-9]{1,3}$/.test(rule.label) &&
+      JSON.stringify([...new Set(Array.from(rule.label, Number))]) === JSON.stringify(value),
+  })
   const sumModulo = rule => {
     if (!fields(rule, { type: oneOf('sum-modulo'), cells: list(cell, 1, size),
       modulus: integer(2, 16), remainder: value => Number.isInteger(value) && value >= 0 && value < rule.modulus }) ||
