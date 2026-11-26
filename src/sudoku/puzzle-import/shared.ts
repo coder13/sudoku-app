@@ -6,6 +6,23 @@ import type { ImportResult } from './types.ts'
 export const MAX_IMPORT_LENGTH = 20_000
 export const MAX_DECODED_LENGTH = 128_000
 
+const sourceHashes = new WeakMap<object, { code: string; hash: Promise<string> }>()
+
+/** Hash a decoded source once across the reviewed-import checks for that payload. */
+export function sourceHash(code: string, payload: object): Promise<string | undefined> {
+  if (!globalThis.crypto?.subtle) return Promise.resolve(undefined)
+  const cached = sourceHashes.get(payload)
+  if (cached?.code === code) return cached.hash
+  const digest = crypto.subtle.digest('SHA-256', new TextEncoder().encode(code)).then(bytes =>
+    Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join(''))
+  const hash = digest.catch(error => {
+    if (sourceHashes.get(payload)?.hash === hash) sourceHashes.delete(payload)
+    throw error
+  })
+  sourceHashes.set(payload, { code, hash })
+  return hash
+}
+
 export function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

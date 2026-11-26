@@ -1,5 +1,6 @@
 import type { AuthoredMark } from '../authored-artwork.ts'
 import type { VariantRule } from '../engine.ts'
+import { sourceHash } from './shared.ts'
 
 type Point = readonly [number, number]
 
@@ -35,9 +36,8 @@ export async function readReviewedCoachTextClues(code: string, data: Record<stri
   artwork: readonly AuthoredMark[]
   title: string
 } | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  const hash = await sourceHash(code, data)
+  if (!hash) return
   if (hash !== '03e7bc424d19df4aef06c805c6b97c6a75b7f3cd9e46f22470cd5a9acd198d31') return
   if (!Array.isArray(data.givenConstraints) || !data.givenConstraints.every(record)) return
   const constraints = data.givenConstraints

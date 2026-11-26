@@ -38,7 +38,7 @@ import { closedRegionSumCells, regionIndex } from '../region-sum.ts'
 import { isSizedRuleList } from '../sized-rule-game.ts'
 import { cellsShareEdge } from '../variants.ts'
 import { fetchPublishedExport } from './published-link.ts'
-import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record } from './shared.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record, sourceHash } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
@@ -220,7 +220,7 @@ const distantNeighborsCoachExport = 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b
 const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0f199b5a29ba8382c499e53'
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== magicSquareCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 1) return
   const [layer] = data.givenConstraints
   if (!record(layer) || layer.type !== 'cage' || !Array.isArray(layer.segments) || layer.segments.length !== 13) return
@@ -231,7 +231,7 @@ async function readCoachMagicSquare(code: string, data: Record<string, unknown>)
 }
 
 async function readCoachUnknownCageSums(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints)) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length || layers.length !== 4) return
@@ -300,7 +300,7 @@ async function readCoachUnknownCageSums(code: string, data: Record<string, unkno
 }
 
 async function readCoachDistantNeighbors(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 2) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length) return
@@ -666,12 +666,6 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
-async function coachExportHash(code: string) {
-  if (!globalThis.crypto?.subtle) return
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
-}
-
 // Coach leaves this rule out of a pasted Quad-Arrows export.
 const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
 const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
@@ -806,7 +800,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
-      await coachExportHash(code) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
+      await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
       publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
@@ -861,7 +855,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('The Aqre export does not match its published shading rules.')
   }
   if (publication?.authoredRule === 'xv-empty-cosmetic-cage' &&
-    await coachExportHash(code) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
+    await sourceHash(code, data) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
     throw new Error('The XV Entropy export does not match its reviewed empty cage layer.')
   }
   if (aqre) {
@@ -889,7 +883,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const entropyGroupOrder = await readReviewedCoachEntropyGroupOrder(code, data)
   const entropyBreaks = await readReviewedCoachEntropyBreaks(code, data)
   if (publication?.authoredRule === 'entropy-window-groups' &&
-    await coachExportHash(code) !== sunnyEntropyExport) {
+    await sourceHash(code, data) !== sunnyEntropyExport) {
     throw new Error('The Global Entropy export does not match its reviewed shape clues.')
   }
   if (publication?.authoredRule === 'entropic-breaks' && !entropyBreaks) {
@@ -903,9 +897,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unknownCageSums = await readCoachUnknownCageSums(code, data)
   const distantNeighbors = await readCoachDistantNeighbors(code, data)
   const authoredAsnFXSums = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticText') &&
-    await coachExportHash(code) === authoredAsnFXSumsCoachExport
+    await sourceHash(code, data) === authoredAsnFXSumsCoachExport
   const reviewed220VLineLegend = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticLine') &&
-    await coachExportHash(code) === coach220VLineColoursExport
+    await sourceHash(code, data) === coach220VLineColoursExport
   if (publication?.authoredRule === 'unknown-cage-sums' && !unknownCageSums) {
     throw new Error('The Sudoku Coach export does not match its published unknown cage totals.')
   }
@@ -932,7 +926,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
   const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
   const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || hasShapeLayer || !fog && cellColours?.some(Boolean))
-    ? await coachExportHash(code) : undefined
+    ? await sourceHash(code, data) : undefined
   const entropyLayers = exportHash === sunnyEntropyExport
     ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
   const entropyGroups = entropyLayers.length ? parseCoachEntropyWindowGroups(entropyLayers) : undefined
@@ -1524,7 +1518,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   const distinct = isJigsawSize(size) && labels ? [...new Set<number>(labels)] : []
   const explicit = isJigsawSize(size) && labels?.length === size ** 2 && distinct.length === size
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const wrappedExplicit = code && await coachExportHash(code) === coachWrappedJigsawExport && explicit &&
+  const wrappedExplicit = code && await sourceHash(code, data) === coachWrappedJigsawExport && explicit &&
     explicit.regions.some(region => !connectedGridCells(region, Number(size))) &&
     explicit.regions.every(region => connectedGridCells(region, Number(size), true))
     ? { ...explicit, wrapAround: true as const } satisfies JigsawGrid

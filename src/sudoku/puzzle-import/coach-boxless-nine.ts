@@ -1,5 +1,5 @@
 import type { AuthoredMark } from '../authored-artwork.ts'
-import { record } from './shared.ts'
+import { record, sourceHash } from './shared.ts'
 
 const reviewedExport = '421cc5cddbddfac039e2c1761f09a71af89f5837c8512653091639712a579070'
 
@@ -13,10 +13,7 @@ export async function readReviewedCoachBoxlessNine(
   code: string,
   data: Record<string, unknown>,
 ): Promise<ReviewedCoachBoxlessNine | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
-  if (hash !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.regions) || data.regions.length !== 0 ||
+  if (await sourceHash(code, data) !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.regions) || data.regions.length !== 0 ||
     data.givenDigits !== undefined && data.givenDigits !== '0'.repeat(81) || !Array.isArray(data.givenConstraints)) return
 
   const layers = data.givenConstraints
