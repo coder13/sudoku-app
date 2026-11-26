@@ -151,6 +151,10 @@ pub enum SizedConstraint {
         five: MarkedPairs,
         ten: MarkedPairs,
     },
+    AdjacentTotal {
+        cells: [usize; 2],
+        sum: u8,
+    },
     Sandwich {
         cells: Vec<usize>,
         direction: crate::ClueDirection,
@@ -772,7 +776,8 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Clone { .. }
                 | SizedConstraint::Modular { .. }
                 | SizedConstraint::Quadruple { .. }
-                | SizedConstraint::Xv { .. } => {}
+                | SizedConstraint::Xv { .. }
+                | SizedConstraint::AdjacentTotal { .. } => {}
                 SizedConstraint::RowColumnSum {
                     pairs,
                     require_unmarked,
@@ -1699,6 +1704,7 @@ impl SizedConstraintGrid {
                     }
                 }
                 SizedConstraint::Xv { .. }
+                | SizedConstraint::AdjacentTotal { .. }
                 | SizedConstraint::Whispers { .. }
                 | SizedConstraint::ParityLine { .. }
                 | SizedConstraint::Palindrome { .. }
@@ -1981,6 +1987,7 @@ impl SizedConstraintGrid {
                 | SizedConstraint::Minimum { .. }
                 | SizedConstraint::Maximum { .. }
                 | SizedConstraint::Xv { .. }
+                | SizedConstraint::AdjacentTotal { .. }
                 | SizedConstraint::AntiKnight
                 | SizedConstraint::AntiKing
                 | SizedConstraint::Modular { .. } => self.pair_links[rule]
