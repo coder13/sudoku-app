@@ -11,6 +11,21 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
+test('negative Coach Ratio layers with custom values only negate the default 2:1 ratio', async () => {
+  const imported = await detectPuzzle(coachCode({ givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [
+      { cells: [0, 1], parameters: { ratio: 2 } },
+      { cells: [1, 2], parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  assert.ok(imported.variant)
+  const position = variantPosition(imported.variant, { entries: '0001' + '0'.repeat(77) })
+  const candidates = await runEngine({ type: 'variant', operation: 'candidates', position })
+  assert.ok(candidates)
+  assert.ok(candidates[4] & (1 << 2), 'an unmarked 1:3 edge remains allowed')
+  assert.equal(candidates[12] & (1 << 1), 0, 'an unmarked 1:2 edge remains forbidden')
+})
+
 test('negative Coach Ratio 3 checks its own marker values on classic Sudoku', async () => {
   const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
   const digits = [...solution].map(Number)
