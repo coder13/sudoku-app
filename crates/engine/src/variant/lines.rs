@@ -20,6 +20,9 @@ use crate::{
     hints::{digit_bit, digits},
 };
 
+const TERRAIN_SANDWICH_MAX_ROWS: usize = 362_880;
+const TERRAIN_SANDWICH_MAX_WORDS: usize = TERRAIN_SANDWICH_MAX_ROWS.div_ceil(u64::BITS as usize);
+
 #[derive(Clone, Debug)]
 pub(super) struct LineConstraint {
     pub cells: Vec<usize>,
@@ -51,8 +54,25 @@ enum LineKind {
     Lockout,
     Outside(OutsideClue),
     TerrainSandwich {
-        satisfying_rows: Vec<u64>,
+        satisfying_rows: TerrainSandwichRows,
     },
+}
+
+/// Bit-sliced set of satisfying digit permutations for one transformed clue.
+#[derive(Clone, Debug, Default)]
+struct TerrainSandwichRows {
+    row_count: usize,
+    words_per_set: usize,
+    /// One bit set for each cell and each of the nine underlying digits.
+    by_cell_digit: Vec<u64>,
+    full_support: [u16; 9],
+}
+
+impl TerrainSandwichRows {
+    fn digit_set(&self, cell: usize, digit: u8) -> &[u64] {
+        let start = (cell * 9 + usize::from(digit - 1)) * self.words_per_set;
+        &self.by_cell_digit[start..start + self.words_per_set]
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -616,7 +636,10 @@ impl TerrainSandwichState {
     }
 }
 
-fn terrain_sandwich_rows(target: i16, transforms: &[TerrainValueTransform; 9]) -> Vec<u64> {
+fn terrain_sandwich_rows(
+    target: i16,
+    transforms: &[TerrainValueTransform; 9],
+) -> TerrainSandwichRows {
     let mut rows = Vec::with_capacity(4096);
     terrain_sandwich_collect_rows(
         target,
@@ -626,7 +649,25 @@ fn terrain_sandwich_rows(target: i16, transforms: &[TerrainValueTransform; 9]) -
         &mut [0; 9],
         &mut rows,
     );
-    rows
+    let words_per_set = rows.len().div_ceil(u64::BITS as usize);
+    let mut by_cell_digit = vec![0; 81 * words_per_set];
+    let mut full_support = [0; 9];
+    for (row_index, &row) in rows.iter().enumerate() {
+        let word = row_index / u64::BITS as usize;
+        let bit = 1_u64 << (row_index % u64::BITS as usize);
+        for (cell, supported) in full_support.iter_mut().enumerate() {
+            let digit = ((row >> (cell * 4)) & 0xf) as u8;
+            *supported |= digit_bit(digit);
+            let set = (cell * 9 + usize::from(digit - 1)) * words_per_set + word;
+            by_cell_digit[set] |= bit;
+        }
+    }
+    TerrainSandwichRows {
+        row_count: rows.len(),
+        words_per_set,
+        by_cell_digit,
+        full_support,
+    }
 }
 
 fn terrain_sandwich_collect_rows(
@@ -661,27 +702,55 @@ fn terrain_sandwich_collect_rows(
     }
 }
 
-fn terrain_sandwich_support(rows: &[u64], domains: &[u16], support: &mut [u16]) {
+fn terrain_sandwich_support(rows: &TerrainSandwichRows, domains: &[u16], support: &mut [u16]) {
     debug_assert_eq!(domains.len(), 9);
-    for &row in rows {
-        let mut matches = true;
-        for index in 0..9 {
-            let bit = digit_bit(((row >> (index * 4)) & 0xf) as u8);
-            if domains[index] & bit == 0 {
-                matches = false;
-                break;
+    if rows
+        .full_support
+        .iter()
+        .zip(domains)
+        .all(|(&possible, &domain)| possible & !domain == 0)
+    {
+        for (supported, &possible) in support.iter_mut().zip(&rows.full_support) {
+            *supported |= possible;
+        }
+        return;
+    }
+
+    let words = rows.words_per_set;
+    debug_assert!(words <= TERRAIN_SANDWICH_MAX_WORDS);
+    let mut matching_rows = [u64::MAX; TERRAIN_SANDWICH_MAX_WORDS];
+    let last_word_mask = if rows.row_count % u64::BITS as usize == 0 {
+        u64::MAX
+    } else {
+        (1_u64 << (rows.row_count % u64::BITS as usize)) - 1
+    };
+    matching_rows[words - 1] = last_word_mask;
+    let mut filtered = false;
+    for (cell, &domain) in domains.iter().enumerate() {
+        let excluded = rows.full_support[cell] & !domain;
+        if excluded == 0 {
+            continue;
+        }
+        filtered = true;
+        for digit in digits(excluded) {
+            for (word_index, matching) in matching_rows[..words].iter_mut().enumerate() {
+                *matching &= !rows.digit_set(cell, digit)[word_index];
             }
         }
-        if matches {
-            for index in 0..9 {
-                support[index] |= digit_bit(((row >> (index * 4)) & 0xf) as u8);
-            }
-            if support
+        if matching_rows[..words].iter().all(|&word| word == 0) {
+            return;
+        }
+    }
+    debug_assert!(filtered);
+
+    for cell in 0..9 {
+        for digit in digits(domains[cell] & rows.full_support[cell]) {
+            if matching_rows[..words]
                 .iter()
-                .zip(domains)
-                .all(|(&supported, &domain)| supported & domain == domain)
+                .zip(rows.digit_set(cell, digit))
+                .any(|(&matching, &digit_rows)| matching & digit_rows != 0)
             {
-                break;
+                support[cell] |= digit_bit(digit);
             }
         }
     }
@@ -1607,6 +1676,17 @@ mod terrain_sandwich_tests {
         let satisfying_rows = terrain_sandwich_rows(target, &transforms);
         terrain_sandwich_support(&satisfying_rows, &domains, &mut actual);
         assert_eq!(actual, expected);
+        for salt in 0..6 {
+            let narrowed: [u16; 9] = std::array::from_fn(|index| {
+                digit_bit(authored[index])
+                    | digit_bit(((authored[index] + salt + index as u8) % 9) + 1)
+                    | digit_bit(((authored[index] + salt + index as u8 + 4) % 9) + 1)
+            });
+            let expected = brute_support(target, &transforms, &narrowed);
+            let mut actual = [0; 9];
+            terrain_sandwich_support(&satisfying_rows, &narrowed, &mut actual);
+            assert_eq!(actual, expected, "salt {salt}");
+        }
 
         let mut wrong = [0; 9];
         let wrong_rows = terrain_sandwich_rows(target + 1, &transforms);
@@ -1857,13 +1937,8 @@ mod terrain_sandwich_tests {
 
         let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
         puzzle.rules = rules;
-        assert!(
-            puzzle
-                .compile()
-                .unwrap()
-                .candidates(&solution, &[0; 81])
-                .is_ok()
-        );
+        let compiled = puzzle.compile().unwrap();
+        assert!(compiled.candidates(&solution, &[0; 81]).is_ok());
 
         let PuzzleRule::TerrainSandwich { maximum, .. } = &mut puzzle.rules[0] else {
             unreachable!();
