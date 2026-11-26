@@ -666,6 +666,43 @@ test('the published X-Sums declaration must describe the complete rules', async 
   while (codes.length) assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(), expected)
 })
 
+test('#404 the public Coach import worker connects a sized X-Sums declaration to its structured clues', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regions = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 2.5]], parameters: { text: '5' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [0, 1, 2], parameters: {} }] },
+  ] })
+  const description = [
+    'Variant Rules (X-Sums):',
+    '- Clues outside the grid indicate the sum of the first X digits in the corresponding direction.',
+    '- X is the first digit in the corresponding direction.',
+  ].join('\n')
+  const publication = {
+    sudoku_id: 'Ab12', sudoku: code, name: 'Six by six X-Sums', description,
+    blocked: false, custom_constraints: true,
+  }
+  const page = '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: publication }) + '</script>'
+  mock.method(globalThis, 'fetch', async (url: string | URL, options?: RequestInit) => {
+    if (String(url) === 'https://sudoku.coach/en/s/Ab12') return new Response(page)
+    if (String(url) === '/api/v1/import/sudoku-coach/Ab12') {
+      return worker.fetch(new Request(new URL(String(url), 'https://sudoku.example'), options), {}, {})
+    }
+    assert.fail(`Unexpected fetch ${String(url)}`)
+  })
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.title, publication.name)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 5 },
+    { type: 'thermometer', cells: [0, 1, 2] },
+  ])
+})
+
 
 test('a Coach legend can declare already encoded rules without accepting extra instructions', async ({ mock }) => {
   const { examples } = JSON.parse(readFileSync(new URL('./fixtures/global-entropy-coach.json', import.meta.url), 'utf8'))
