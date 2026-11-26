@@ -580,6 +580,24 @@ mod tests {
     }
 
     #[test]
+    fn zero_based_sixteen_by_sixteen_x_sum_keeps_the_maximum_displayed_total() {
+        let cells = (0..MAX_SIZE).collect::<Vec<_>>();
+        let x_sum = XSum::compile(MAX_SIZE, ClueDirection::East, &cells, 120, 1).unwrap();
+        let digits: [u8; MAX_SIZE] = [16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1];
+        let mut domains = [u16::MAX; MAX_SIZE * MAX_SIZE];
+        for (cell, digit) in digits.into_iter().enumerate() {
+            domains[cell] = 1 << (digit - 1);
+        }
+        let mut supported = [0; MAX_SIZE * MAX_SIZE];
+
+        assert!(x_sum.support(&domains, &mut supported));
+        assert_eq!(
+            supported[..MAX_SIZE],
+            digits.map(|digit| 1u16 << (digit - 1))
+        );
+    }
+
+    #[test]
     fn consecutive_dot_supports_two_derived_column_x_sums() {
         let layout = SizedGrid::new(crate::GridSpec {
             size: 4,
