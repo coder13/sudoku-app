@@ -13,13 +13,18 @@ useWasmWorker()
 test('synthetic Coach Ratio 3 keeps its marked relation and negative constraint in Play and engine analysis', async () => {
   const { game } = await prepareImportedPuzzle(coachCode({
     givenConstraints: [
-      { type: 'ratio', segments: [{ cells: [0, 1], parameters: { ratio: 3 } }], settings: { negativeConstraint: true } },
+      { type: 'ratio', segments: [
+        { cells: [0, 1], parameters: { ratio: 3 } },
+        { cells: [1, 2], parameters: { ratio: 2 } },
+      ], settings: { negativeConstraint: true } },
       { type: 'diagonalPositive', segments: [] },
     ],
   }))
 
   assert.deepEqual(game.variant?.puzzle.rules, [
-    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 3 }], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [
+      { cells: [0, 1], value: 3 }, { cells: [1, 2], value: 2 },
+    ], negative: true },
     { type: 'diagonal', diagonal: 'anti' },
   ])
 
@@ -32,6 +37,8 @@ test('synthetic Coach Ratio 3 keeps its marked relation and negative constraint 
   const candidates = await playCandidates(afterOne)
   assert.ok(candidates)
   assert.deepEqual([...Array(9).keys()].filter(digit => candidates[1] & 1 << digit), [2])
+  assert.deepEqual([...Array(9).keys()].filter(digit => candidates[2] & 1 << digit), [5],
+    'a default 1:2 dot stays marked beside the custom 1:3 dot')
   assert.equal(candidates[9] & (1 << 1), 0, 'unmarked orthogonal neighbors cannot form a 1:2 ratio')
 
   const impossible = await runEngine({
