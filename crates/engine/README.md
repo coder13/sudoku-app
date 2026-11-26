@@ -523,6 +523,9 @@ The projected position retains the player's placed digits and public regions. Pr
 | `global-entropy` | Every 2 × 2 area contains a low, medium and high digit, including areas across region boundaries. |
 | `region-sum` | Supply distinct `cells` in logical order. The active regions divide the line into parts. Set `groupByRegion` to true to combine separate visits to the same region. Optional `segments` preserve visible paths, including closing edges; their union must equal `cells` and they do not change the sums. Rust callers use `segments: None` for an ordinary line. |
 | `sandwich`, `x-sum`, `skyscrapers`, `little-killer` | Supply `cells` from the clue toward the far edge in the declared `direction`. Use `count` for Skyscrapers and `sum` for the other clues. |
+| `terrain-sandwich` | Supply a complete row or column and one `transforms` entry per cell. Each transform multiplies the underlying digit, then adds its signed offset. `maximum` is the greatest sum strictly between any transformed 1 and transformed 9 pair. |
+
+Terrain transformations affect arithmetic only. Rows, columns, and regions still require distinct underlying Sudoku digits. The engine accepts the source transformations ×2, +3, −3, and identity.
 
 Palindrome pairs the distinct `cells` from opposite ends. The middle cell of an odd-length list has no extra restriction. Optional `segments` preserve the drawing paths of a clue with several branches or revisits. Their union must equal the logical cells. Drawing order does not change the mirrored pairs. Old JSON omits `segments` and retains its original behavior. Rust callers set `segments: None` for an ordinary line.
 
