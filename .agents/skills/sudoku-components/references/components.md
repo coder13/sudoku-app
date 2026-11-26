@@ -141,6 +141,7 @@ For cross-host recipes covering panels, commands, layout anchors, state lifetime
 
 | Source | When to use it |
 | --- | --- |
+| [AboutPage](../../../../src/components/AboutPage.tsx) | `AboutPage` lists classic generation techniques and typical sampled ratings. Use it in the About route with the normal application header. Technique links open Learn. The Narrow story checks access to all ten tiers and the limited SE sample. |
 | [__root](../../../../src/routes/__root.tsx) | `App` composes the app shell and routed content. `RootDocument` supplies the document, head, and scripts. |
 | [decode](../../../../src/routes/decode.tsx) | `DecodePage` inspects puzzle imports at `/decode`: the left column shows input, extracted details, difficulty, a parsed preview or import errors, and a GitHub issue link; the right column shows the formatted payload. `HighlightedJson` colors JSON keys, strings, numbers, and literals. It stays out of app navigation. |
 | [import](../../../../src/routes/import.tsx) | `ImportPage` mounts the import experience at its route. |

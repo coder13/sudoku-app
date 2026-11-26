@@ -1,0 +1,37 @@
+.puzzles-page.about-page {
+  max-width: 980px;
+  overflow-y: auto;
+  padding-block-end: var(--space-28);
+}
+.about-page .puzzles-back { display: inline-flex; }
+.about-page h1:focus { outline: none; }
+
+.about-difficulties, .about-tier-list { display: grid; gap: var(--space-12); }
+.about-intro { max-width: 70ch; }
+.about-intro h2 { margin: 0; font-size: 1.25rem; }
+.about-intro p { margin-block: var(--space-8) var(--space-12); color: var(--muted); line-height: 1.55; }
+
+.about-tier {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-20);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.about-tier-heading { display: grid; gap: var(--space-8); }
+.about-tier-heading h3 { margin: 0; font-size: 1.125rem; }
+.about-scores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); margin: 0; }
+.about-scores dt, .about-scores small { color: var(--muted); font-size: .75rem; }
+.about-scores dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.about-scores small { display: block; font-weight: 400; }
+.about-techniques { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding: 0; margin: 0; list-style: none; }
+.about-techniques a { display: inline-block; padding-block: var(--space-4); color: var(--ink); text-decoration: underline; text-underline-offset: .15em; }
+
+@media (max-width: 650px) {
+  .about-tier { grid-template-columns: minmax(0, 1fr); gap: var(--space-10); }
+  .about-scores { grid-template-columns: repeat(2, minmax(0, 9rem)); }
+}

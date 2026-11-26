@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as DecodeRouteImport } from './routes/decode'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as LearnRouteImport } from './routes/learn'
@@ -45,6 +46,11 @@ import { Route as SettingsDeviceSyncStepRouteImport } from './routes/settings.de
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DecodeRoute = DecodeRouteImport.update({
@@ -205,6 +211,7 @@ const SettingsDeviceSyncStepRoute = SettingsDeviceSyncStepRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/puzzles': typeof PuzzlesRouteWithChildren
@@ -273,6 +281,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/decode': typeof DecodeRoute
   '/import': typeof ImportRoute
   '/learn': typeof LearnRouteWithChildren
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/decode'
     | '/import'
     | '/learn'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/decode'
     | '/import'
     | '/puzzles'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/decode'
     | '/import'
     | '/learn'
@@ -411,6 +423,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   DecodeRoute: typeof DecodeRoute
   ImportRoute: typeof ImportRoute
   LearnRoute: typeof LearnRouteWithChildren
@@ -427,6 +440,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/decode': {
@@ -753,6 +773,7 @@ const SyncRouteWithChildren = SyncRoute._addFileChildren(SyncRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   DecodeRoute: DecodeRoute,
   ImportRoute: ImportRoute,
   LearnRoute: LearnRouteWithChildren,
