@@ -1150,6 +1150,19 @@ fn pattern_masks(candidates: &[(usize, &[u8])]) -> Masks {
 }
 
 #[test]
+fn als_xz_does_not_report_a_naked_pair_as_two_linked_sets() {
+    let masks = pattern_masks(&[(27, &[5, 9]), (28, &[5, 9]), (45, &[2, 5, 7, 8, 9])]);
+
+    let pairs = find_technique(&EMPTY, &masks, Technique::NakedPair);
+    assert!(
+        pairs
+            .iter()
+            .any(|pair| pair.actions == remove_digits([45], &[5, 9]))
+    );
+    assert!(find_technique(&EMPTY, &masks, Technique::AlsXz).is_empty());
+}
+
+#[test]
 fn als_xz_requires_every_occurrence_of_the_restricted_digit_to_see_the_other_set() {
     let masks = pattern_masks(&[(0, &[1, 3]), (3, &[1, 4]), (30, &[3, 4]), (27, &[3, 7, 8])]);
     let mut near_miss = masks;

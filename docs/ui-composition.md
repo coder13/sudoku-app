@@ -89,7 +89,7 @@ Keep puzzle mutations in the Play host when a confirmation dialog only presents 
 
 ## Give layout owners explicit anchors
 
-If a host measures or resizes a region, pass a named ref for that region. `PlayLayoutHintLayout` names the hint card, toolbar, and grid frame that Standard desktop measures. `PlayLayoutAnchors` names the main puzzle, input, divider, and layout regions used by the Advanced workspace.
+If a host measures or resizes a region, pass a named ref for that region. `PlayLayoutHintLayout` names the puzzle and its column, the hint card, its heading, and the toolbar that Standard desktop measures. `PlayLayoutAnchors` names the main puzzle, input, divider, and layout regions used by the Advanced workspace.
 
 Keep measurement and resize policy in the host. A content component should not need a particular ancestor class or descendant selector to participate in layout. Put persistent choices in the appropriate preference; keep pointer preview values transient and clean them up on cancellation or unmount. `desktop-hint-sizing.ts` shares the spacing and available-height calculations used by Standard desktop hint fitting and resize limits. On mobile Play, `useMobilePuzzleFit` owns the `ResizeObserver` fitting loop and derives temporary geometry from the host-provided panel, board, and gap refs.
 

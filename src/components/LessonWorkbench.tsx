@@ -595,6 +595,7 @@ export function LessonWorkbench({
                 : undefined,
             linkDrawing: sketch.drawing,
             onCandidate: usingChains ? selectChainCandidate : undefined,
+            onGroupCandidate: sketch.groupCandidate,
             onCandidateHover: sketch.drawing ? sketch.hover : undefined,
             onLinkSelect: strongLinksVisible ? beginStrongLinkChain : undefined,
             onGiven: strongLinksVisible ? chooseChainDigit : undefined,

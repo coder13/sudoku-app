@@ -40,7 +40,8 @@ const temporary = await mkdtemp(resolve(tmpdir(), 'sudoku-desktop-resize-'))
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
   'src/components/DesktopPlayLayout.tsx', 'src/components/desktop-resize-preview.ts', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
-  'src/components/HintCard.tsx', 'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
+  'src/components/HintCard.tsx', 'src/components/desktop-hint-sizing.ts', 'src/components/usePointerResizePreview.ts',
+  'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
   'src/components/VariantClues.tsx', 'src/components/VariantClueLabels.ts',
   'src/components/Controls.tsx', 'src/components/ModeBadge.tsx', 'src/components/Modal.tsx',
   'src/components/ResizeStepControls.tsx', 'src/components/Presence.tsx', 'src/components/usePlayPreference.ts',
@@ -545,9 +546,10 @@ async function checkHintDivider(page) {
   assert.ok(title.y >= action.y && title.y + title.height <= action.y + action.height, 'actions and title must share a row')
 
   const roomyBoard = await board.boundingBox()
+  await divider.press('ArrowDown')
+  assert.ok((await card.boundingBox()).height < cardBox.height, 'Down Arrow must make room below the board')
   await divider.press('ArrowUp')
-  await ready(page)
-  assert.ok((await card.boundingBox()).height > cardBox.height, 'Up Arrow must grow the hint')
+  assert.equal((await card.boundingBox()).height, cardBox.height, 'Up Arrow must recover available hint space')
   assert.equal((await board.boundingBox()).width, roomyBoard.width, 'the board must use the spare room before shrinking')
   await divider.press('Home')
   await ready(page)
@@ -555,23 +557,40 @@ async function checkHintDivider(page) {
   await page.setViewportSize({ width: viewport.width, height: 760 })
   await ready(page)
   const before = { card: await card.boundingBox(), board: await board.boundingBox() }
-  const handle = await divider.boundingBox()
-  const x = handle.x + handle.width / 2, y = handle.y + handle.height / 2
-  await page.mouse.move(x, y)
-  await page.mouse.down()
-  await page.mouse.move(x, y - 96, { steps: 10 })
-  await frames(page)
-  assert.ok((await card.boundingBox()).height > before.card.height + 48, 'drag must grow the card during the gesture')
-  assert.ok((await board.boundingBox()).width < before.board.width, 'the board must shrink once it needs the space')
-  const liveHeight = (await card.boundingBox()).height
-  await page.mouse.up()
+  const bottom = box => box.y + box.height
+  const dragHint = async delta => {
+    const start = await card.boundingBox()
+    const handle = await divider.boundingBox()
+    assert.ok(Math.abs(handle.x - start.x) <= 1 && Math.abs(handle.width - start.width) <= 1,
+      'the handle must span the card border')
+    const x = handle.x + handle.width / 2, y = handle.y + handle.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    let live = start
+    for (const fraction of [.25, .5, .75, 1]) {
+      await page.mouse.move(x, y + delta * fraction)
+      await frames(page, 1)
+      live = await card.boundingBox()
+      assert.ok(Math.abs(bottom(live) - bottom(start)) <= 1, 'the card bottom must stay fixed during the drag')
+      assert.ok(Math.abs(live.y - start.y - delta * fraction) <= 2, 'the card top must follow the pointer during the drag')
+    }
+    await page.mouse.up()
+    assert.deepEqual(await card.boundingBox(), live, 'release must keep the preview geometry immediately')
+    return live
+  }
+  await dragHint(-96)
+  const smallBoard = await board.boundingBox()
+  assert.ok(smallBoard.width < before.board.width, 'the board must shrink once the hint needs its space')
+  const chosen = await dragHint(48)
+  assert.ok((await board.boundingBox()).width > smallBoard.width, 'the board must grow when the hint shrinks')
+  await page.reload()
   await ready(page)
-  assert.equal((await card.boundingBox()).height, liveHeight, 'release must keep the chosen height')
+  assert.deepEqual(await card.boundingBox(), chosen, 'reload must restore the chosen height')
   assert.equal(await card.locator('.hint-card-body').evaluate(body => body.scrollHeight > body.clientHeight), true)
 
   await divider.press('ArrowDown')
   await ready(page)
-  assert.ok((await card.boundingBox()).height < liveHeight, 'Down Arrow must shrink the card')
+  assert.ok((await card.boundingBox()).height < chosen.height, 'Down Arrow must shrink the card')
   await divider.press('Home')
   await ready(page)
   assert.equal((await card.boundingBox()).height, before.card.height, 'Home must restore the compact height')

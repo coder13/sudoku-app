@@ -12,7 +12,7 @@ import { getVariantPlayOrder, variantHintOrder, variantPosition } from './varian
 import { variantHouseMasks } from './variants.ts'
 
 export type HintPosition = Pick<Game, 'givens' | 'grid' | 'algebraic' | 'sized'> &
-  Pick<Position, 'center' | 'corner' | 'eliminations'> & {
+  Pick<Position, 'center' | 'corner' | 'eliminations' | 'shades'> & {
     gameId: string
     values: string
     puzzle?: NonNullable<Game['variant']>['puzzle']
@@ -20,10 +20,10 @@ export type HintPosition = Pick<Game, 'givens' | 'grid' | 'algebraic' | 'sized'>
 
 /** Proofs and removals are valid only for the puzzle definition and inputs used to find them. */
 export function matchesHintPosition(game: Game, position: HintPosition) {
-  const { center, corner, eliminations } = game.position
+  const { center, corner, eliminations, shades } = game.position
   return game.id === position.gameId && game.givens === position.givens && game.variant?.puzzle === position.puzzle &&
     game.grid === position.grid && game.algebraic === position.algebraic && game.sized === position.sized &&
-    center === position.center && corner === position.corner && eliminations === position.eliminations &&
+    center === position.center && corner === position.corner && eliminations === position.eliminations && shades === position.shades &&
     valuesOf(game) === position.values
 }
 

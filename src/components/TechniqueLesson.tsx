@@ -21,6 +21,7 @@ import { ConceptCheck } from './ConceptCheck'
 import { FoundationVisual } from './FoundationVisual'
 import { hasPracticePuzzles } from '../sudoku/practice-play'
 import { usePuzzleGeneration } from './usePuzzleGeneration'
+import { CellReferenceHighlightProvider, CellReferenceText } from './CellReferenceHighlight'
 
 const lessonExamples = JSON.parse(examplesJson) as Record<string, EngineLessonExample>
 const techniqueAliases: Readonly<Record<string, readonly string[]>> = aliasesJson
@@ -43,7 +44,7 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
   const jigsawRegions = example.variantPuzzle?.regions?.type === 'jigsaw' ? example.variantPuzzle.regions.regions : undefined
   const jigsawGrid = jigsawRegions ? { ...CLASSIC_GRID, regions: jigsawRegions } : null
   const grid: PlayGrid = jigsawGrid ?? CLASSIC_GRID
-  const { annotations, region, description, reason, reasonSteps, mainLabel, accentLabel, results: defaultResults, trace: defaultTrace } =
+  const { annotations, region, description, reason, reasonSteps, mainLabel, mainColor, accentLabel, accentColor, results: defaultResults, trace: defaultTrace } =
     lessonDiagram(example, undefined, { grid })
   const view = crop ?? (block && !example.variantPuzzle ? region : undefined)
   const results = copy?.results ?? defaultResults
@@ -58,19 +59,19 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
     <figure className="lesson-diagram" data-lesson-block={blockIndex}>
       <LessonWorkbench puzzle={example} region={view} annotations={annotations} label="Sudoku diagram" preview />
       <figcaption>
-        {(summary || editorPreview) && <p className="lesson-diagram-summary">{summary}</p>}
-        {reasonSteps && !copy?.reason && <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}>{step}</li>)}</ol>}
-        {(explanation || editorPreview) && <p className="lesson-diagram-reason">{explanation}</p>}
+        {(summary || editorPreview) && <p className="lesson-diagram-summary"><CellReferenceText text={summary ?? ''} /></p>}
+        {reasonSteps && !copy?.reason && <ol className="lesson-reason-steps">{reasonSteps.map((step, index) => <li key={index}><CellReferenceText text={step} /></li>)}</ol>}
+        {(explanation || editorPreview) && <p className="lesson-diagram-reason"><CellReferenceText text={explanation ?? ''} /></p>}
         {notes && <div className="lesson-example-notes" id={notes.id}>
           {notes.title && <h3>{notes.title}</h3>}
-          {notes.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+          {notes.paragraphs.map((paragraph, index) => <p key={index}><CellReferenceText text={paragraph} /></p>)}
         </div>}
-        {results.length === 1 ? <p className="lesson-outcomes">{results[0]}</p>
-          : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}>{result}</li>)}</ul>}
+        {results.length === 1 ? <p className="lesson-outcomes"><CellReferenceText text={results[0]} /></p>
+          : <ul className="lesson-outcomes">{results.map((result, index) => <li key={index}><CellReferenceText text={result} /></li>)}</ul>}
         {(accentLabel || strong || weak || hasCandidateRemovals) && <div className="lesson-legend" aria-label="Diagram key">
           {accentLabel && <>
-            <span><i className="lesson-key-pattern" aria-hidden="true" /><span>{copy?.patternLabel ?? mainLabel}</span></span>
-            <span><i className="lesson-key-accent" aria-hidden="true" /><span>{copy?.accentLabel ?? accentLabel}</span></span>
+            <span><i className="lesson-key-pattern" aria-hidden="true" style={mainColor ? { borderColor: mainColor } : undefined} /><span>{copy?.patternLabel ?? mainLabel}</span></span>
+            <span><i className="lesson-key-accent" aria-hidden="true" style={accentColor ? { borderColor: accentColor } : undefined} /><span>{copy?.accentLabel ?? accentLabel}</span></span>
           </>}
           {hasCandidateRemovals && <span><i className="lesson-key-removal" aria-hidden="true" /><span>Candidates to remove</span></span>}
           {strong && <span><i className="lesson-key-link" aria-hidden="true" /><span>{copy?.strongLabel ?? 'Strong link. At least one is true.'}</span></span>}
@@ -79,9 +80,9 @@ export function Diagram({ example, block, blockIndex, editorPreview, fallbackRea
         {trace && <details className="lesson-proof">
           <summary><span>{copy?.proofTitle ?? 'Read the proof step by step'}</span></summary>
           {trace.map(({ assumption, steps, conclusion }, index) => <div key={index}>
-            <p>{assumption}</p>
-            <ol>{steps.map((step, stepIndex) => <li key={stepIndex}>{step}</li>)}</ol>
-            <p>{conclusion}</p>
+            <p><CellReferenceText text={assumption} /></p>
+            <ol>{steps.map((step, stepIndex) => <li key={stepIndex}><CellReferenceText text={step} /></li>)}</ol>
+            <p><CellReferenceText text={conclusion} /></p>
           </div>)}
         </details>}
       </figcaption>
@@ -295,14 +296,14 @@ export function ExplanationBlock({ block, index, drills }: { block: LessonBlock;
         <AlternateNames names={alternateNames(block.id, block.title)} />}
     </>
     case 'text': return <>{block.paragraphs.map((paragraph, paragraphIndex) =>
-      <p className="article-paragraph" key={paragraphIndex} data-lesson-block={index}>{paragraph}</p>)}</>
+      <p className="article-paragraph" key={paragraphIndex} data-lesson-block={index}><CellReferenceText text={paragraph} /></p>)}</>
     case 'list': return <ul className="article-list" data-lesson-block={index}>
-      {block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+      {block.items.map((item, itemIndex) => <li key={itemIndex}><CellReferenceText text={item} /></li>)}
     </ul>
     case 'table': return <div className="lesson-table-scroll" data-lesson-block={index}><table className="lesson-table">
-      <caption>{block.caption}</caption>
-      <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead>
-      <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody>
+      <caption><CellReferenceText text={block.caption} /></caption>
+      <thead><tr>{block.columns.map((column, i) => <th scope="col" key={i}><CellReferenceText text={column} /></th>)}</tr></thead>
+      <tbody>{block.rows.map((row, i) => <tr key={i}>{row.map((cell, column) => <td key={column}><CellReferenceText text={cell} /></td>)}</tr>)}</tbody>
     </table></div>
     case 'concept-check': return <div data-lesson-block={index}><ConceptCheck block={block} /></div>
     case 'foundation-visual': return <div data-lesson-block={index}><FoundationVisual visual={block.visual} /></div>
@@ -347,7 +348,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
     : <a className={buttonClassName('primary')} href="#trainer">Practice</a>)
 
   return (
-    <article className="technique-lesson">
+    <CellReferenceHighlightProvider><article className="technique-lesson">
       <LearnHeading title={lesson.title} difficulty={lessonDifficultyLabels.get(lesson.id)} action={practiceAction}>
         {practiceFromHeading && practiceError && <p role="alert" className="lesson-new-example-error">{practiceError}</p>}
         <div className="lesson-metadata">
@@ -366,7 +367,7 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
 
       <div className="lesson-article">
         <section className="lesson-explanation" id="explanation" aria-label="Explanation">
-          <p className="article-paragraph" data-lesson-intro>{lesson.summary}</p>
+          <p className="article-paragraph" data-lesson-intro><CellReferenceText text={lesson.summary} /></p>
           {lesson.blocks.map((block, index) => <ExplanationBlock key={index} block={block} index={index} drills={drills} />)}
         </section>
         {practice && <>
@@ -396,6 +397,6 @@ export function TechniqueLesson({ lesson, variant, editorPreview = false }: {
           {next.title} <ArrowRight size={16} aria-hidden="true" />
         </Link>}
       </nav>
-    </article>
+    </article></CellReferenceHighlightProvider>
   )
 }

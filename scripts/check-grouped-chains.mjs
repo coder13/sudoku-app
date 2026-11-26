@@ -123,23 +123,47 @@ async function run(profile) {
   async function ready() {
     await page.getByRole('grid', { name: 'Sudoku grid for drawing links' }).waitFor()
     await resumeIfPaused()
-    await page.getByRole('button', { name: 'Create group', exact: true }).waitFor()
-    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create group' && !button.disabled))
+    await page.getByRole('button', { name: 'Done drawing', exact: true }).waitFor()
   }
   async function addGroup(cells, digit, expectedCount, keyboard = false) {
-    phase = `select group ${cells.join(',')}`
-    await click(page.getByRole('button', { name: 'Create group', exact: true }))
-    await click(candidate(cells[0], digit))
-    equal(await page.getByRole('button', { name: 'Use group', exact: true }).isDisabled(), true, 'a group requires two candidates')
-    for (const cell of cells.slice(1)) {
-      if (keyboard && cell === cells[1]) { await candidate(cell, digit).focus(); await page.keyboard.press('Enter') }
-      else await click(candidate(cell, digit))
+    phase = `select the first group candidate ${cells[0]}`
+    const first = candidate(cells[0], digit)
+    await click(first)
+    const choices = page.getByRole('menu', { name: 'Choose chain link' })
+    if (await choices.isVisible()) await click(choices.getByRole('menuitem', { name: /^Candidate / }))
+    equal(await first.getAttribute('aria-pressed'), 'true', 'the first group candidate is selected')
+
+    const touch = profile.hasTouch ? await context.newCDPSession(page) : undefined
+    try {
+      for (const cell of cells.slice(1)) {
+        phase = `add group member ${cell}`
+        const member = candidate(cell, digit)
+        if (touch) {
+          const bounds = await member.boundingBox()
+          assert.ok(bounds, 'the group candidate is visible')
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [
+            { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
+          ] })
+          try {
+            await member.and(page.locator('[aria-pressed="true"]')).waitFor()
+          } finally {
+            await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+          }
+        } else if (keyboard && cell === cells[1]) {
+          await member.press('Shift+Enter')
+        } else {
+          await member.click({ modifiers: ['Shift'] })
+        }
+      }
+    } finally {
+      await touch?.detach()
     }
-    for (const cell of cells) equal(await candidate(cell, digit).getAttribute('aria-pressed'), 'true', 'all selected group members are pressed')
-    phase = `use group ${cells.join(',')}`
-    await click(page.getByRole('button', { name: 'Use group', exact: true }))
-    await waitForEdges(page, expectedCount)
-    equal((await savedGame(page)).chainSketch.pending, chainGroup(digit, cells), 'the exact group is the endpoint')
+
+    phase = 'check group membership'
+    const saved = await waitForSavedPuzzle(page, game => game.id === fixture.id &&
+      game.chainSketch?.pending === chainGroup(digit, cells) &&
+      game.chainSketch.sketches[0].history.at(-1)?.length === expectedCount)
+    equal(saved.chainSketch.pending, chainGroup(digit, cells), 'the exact group is the endpoint')
     for (const cell of cells) equal(await candidate(cell, digit).getAttribute('aria-pressed'), 'true', 'all pending group members remain pressed')
   }
   try {
@@ -215,12 +239,10 @@ async function run(profile) {
     equal(await reloadedShowEliminations.getAttribute('aria-checked'), 'true', 'chain eliminations remain visible after reload')
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
 
-    phase = 'cancel group selection'
-    await click(page.getByRole('button', { name: 'Create group', exact: true }))
-    await click(candidate(start.cell, start.digit))
-    await click(page.getByRole('button', { name: 'Cancel group', exact: true }))
-    equal(await page.getByRole('button', { name: 'Use group', exact: true }).count(), 0, 'cancel closes group selection')
-    equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'cancel preserves links')
+    phase = 'end the grouped path'
+    await click(page.getByRole('button', { name: 'End path', exact: true }))
+    const ended = await waitForSavedPuzzle(page, game => game.id === fixture.id && game.chainSketch?.pending === null)
+    equal(ended.chainSketch.sketches[0].history.at(-1), expectedEdges, 'ending the path preserves its links')
     phase = 'apply grouped deductions'
     const beforeApply = await savedGame(page)
     await click(page.getByRole('button', { name: 'Apply edits', exact: true }))

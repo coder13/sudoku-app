@@ -347,6 +347,22 @@ test('ALS chains and both Nice Loops are selectable and expose replayable proofs
     const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
     assert.ok(trace.steps.length > 0)
     assert.ok(trace.rating.score.points > 0)
+    if (technique === 'als-discontinuous-nice-loop') {
+      const { annotations } = lessonDiagram({ deduction, candidates })
+      const sets = deduction.evidence.inference.links.flatMap(({ source }) =>
+        'almost-locked-set' in source ? [source['almost-locked-set'].cells] : [])
+      assert.equal(sets.length, 2)
+      const [firstSet, secondSet] = sets
+      assert.ok(firstSet.some(cell => secondSet.includes(cell)), 'The exercise should cover overlapping sets')
+      const markers = [
+        { color: 'var(--lesson-pattern-fill)', label: 'Set 1' },
+        { color: 'var(--lesson-als-second-set-fill)', label: 'Set 2' },
+      ]
+      for (let cell = 0; cell < candidates.length; cell += 1) {
+        const expected = markers.filter((_, index) => sets[index].includes(cell))
+        assert.deepEqual(annotations.cells?.get(cell)?.setMarkers ?? [], expected, `Cell ${cell}`)
+      }
+    }
     if (technique === 'als-continuous-nice-loop') {
       assert.ok(deduction.actions.length)
       const diagram = lessonDiagram({ deduction, candidates })

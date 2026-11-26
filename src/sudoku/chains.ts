@@ -1,11 +1,16 @@
 import type { Candidate, DeductionAction, VariantPuzzle } from './engine.ts'
+import { visitFireworkLinks, visitRectangleLinks, type PatternLinkSource } from './chain-pattern-links.ts'
 import { candidateCount, hasCandidate, marksOf, peer } from './game.ts'
 import { cellReference } from './hints.ts'
 import { techniqueActionKey } from './technique-progress.ts'
 import { regionMembership, variantHouseCells } from './variants.ts'
 
 export type ChainGroup = `g:${number}:${string}`
-export type ChainNode = number | ChainGroup
+/** The proposition that a digit occurs in one of its candidate cells in a saved ALS. */
+export type ChainAls = `a:${number}:${number}:${string}`
+/** A disjunction whose members need not share one digit or one house. */
+export type ChainPatternGroup = `p:${string}`
+export type ChainNode = number | ChainGroup | ChainAls | ChainPatternGroup
 export type ChainEdge<Node extends ChainNode = ChainNode> = readonly [from: Node, to: Node]
 export type LinkStrength = 'strong' | 'weak'
 
@@ -29,25 +34,48 @@ export function chainGroup(digit: number, cells: readonly number[]): ChainGroup 
   return `g:${digit}:${[...cells].sort((a, b) => a - b).join(',')}`
 }
 
+const isPatternGroup = (node: ChainNode): node is ChainPatternGroup => typeof node === 'string' && node.startsWith('p:')
+const patternGroup = (ids: readonly number[]): ChainPatternGroup => `p:${[...ids].sort((a, b) => a - b).join(',')}`
+
 export function validChainNode(node: unknown): node is ChainNode {
   if (typeof node === 'number') return Number.isInteger(node) && node >= 0 && node < 729
+  if (typeof node === 'string' && /^p:\d+(?:,\d+){1,27}$/.test(node)) {
+    const ids = node.slice(2).split(',').map(Number)
+    return ids.every((id, i) => id < 729 && (!i || id > ids[i - 1])) && patternGroup(ids) === node
+  }
+  if (typeof node === 'string' && /^a:[1-9]\d*:[1-9]:\d+(?:,\d+){0,7}$/.test(node)) {
+    const [, id, digit, cells] = node.split(':')
+    const members = cells.split(',').map(Number)
+    return Number.isSafeInteger(Number(id)) && members.every((cell, index) => cell < 81 && (!index || cell > members[index - 1])) &&
+      alsChainNode(Number(id), Number(digit), members) === node
+  }
   if (typeof node !== 'string' || !/^g:[1-9]:\d+(?:,\d+){1,8}$/.test(node)) return false
   const [, digit, list] = node.split(':')
   return chainGroup(Number(digit), list.split(',').map(Number)) === node
 }
 
-export function chainPoint(node: ChainNode): Candidate | { digit: number; cells: number[] } {
+export const alsChainNode = (id: number, digit: number, cells: readonly number[]): ChainAls =>
+  `a:${id}:${digit}:${[...cells].sort((a, b) => a - b).join(',')}`
+export const isAlsChainNode = (node: ChainNode): node is ChainAls => typeof node === 'string' && node.startsWith('a:')
+export const chainAlsId = (node: ChainAls) => Number(node.split(':')[1])
+
+export function chainPoint(node: ChainNode): Candidate | { digit: number; cells: number[] } | { candidates: Candidate[] } {
   if (typeof node === 'number') return chainCandidate(node)
-  const [, digit, cells] = node.split(':')
+  if (isPatternGroup(node)) return { candidates: node.slice(2).split(',').map(id => chainCandidate(Number(id))) }
+  const [digit, cells] = node.split(':').slice(-2)
   return { digit: Number(digit), cells: cells.split(',').map(Number) }
 }
 
 export function chainNodeCandidates(node: ChainNode): Candidate[] {
   const point = chainPoint(node)
+  if ('candidates' in point) return point.candidates
   return 'cells' in point ? point.cells.map(cell => ({ cell, digit: point.digit })) : [point]
 }
 
-export const chainNodeDigit = (node: ChainNode) => chainPoint(node).digit
+export const chainNodeDigit = (node: ChainNode) => {
+  const point = chainPoint(node)
+  return 'candidates' in point ? point.candidates[0].digit : point.digit
+}
 const compareNodes = (a: ChainNode, b: ChainNode) => typeof a === 'number' && typeof b === 'number'
   ? a - b : String(a).localeCompare(String(b))
 
@@ -64,15 +92,17 @@ function housesAt(cell: number, regions?: readonly number[]) {
   return region === undefined ? [row, 9 + column] : [row, 9 + column, 18 + region]
 }
 
-export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle) {
+export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle,
+  sets: readonly { id: number; cells: readonly number[] }[] = [], unique = false) {
   const cellCandidates = masks.map((mask, cell) => marksOf(mask).map((digit) => candidateId({ cell, digit })))
   const candidates = cellCandidates.flat()
   const houseCandidates = Array.from({ length: 27 }, () => Array.from({ length: 9 }, () => [] as number[]))
   const regions = puzzle?.regions && puzzle.regions.type !== 'boxes' ? regionMembership(puzzle.regions.regions) : undefined
   const houses = masks.map((_, cell) => housesAt(cell, regions))
   for (const rule of puzzle?.rules ?? []) {
-    if (rule.type !== 'diagonal' && rule.type !== 'extra-house') continue
-    const cells = rule.type === 'extra-house' ? rule.cells : variantHouseCells({ diagonal: rule.diagonal }, puzzle!)
+    const cells = rule.type === 'diagonal' ? variantHouseCells({ diagonal: rule.diagonal }, puzzle!)
+      : rule.type === 'extra-house' || rule.type === 'distinct-cells' && rule.cells.length === 9 ? rule.cells : undefined
+    if (!cells) continue
     const house = houseCandidates.push(Array.from({ length: 9 }, () => [])) - 1
     for (const cell of cells) houses[cell].push(house)
   }
@@ -92,10 +122,21 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
   }
 
   const knownCandidates = new Set(candidates)
-  const groupMembers = new Map<ChainGroup, number[]>()
+  const alsNodes = new Map<number, Map<number, ChainAls>>()
+  const alsCells = new Map<number, ReadonlySet<number>>()
+  for (const { id, cells } of sets) {
+    if (!cells.length || cells.some(cell => !masks[cell]) ||
+      !houses[cells[0]].some(house => cells.every(cell => houses[cell].includes(house)))) continue
+    const digits = marksOf(cells.reduce((union, cell) => union | masks[cell], 0))
+    if (digits.length !== cells.length + 1) continue
+    alsCells.set(id, new Set(cells))
+    alsNodes.set(id, new Map(digits.map(digit => [digit, alsChainNode(id, digit, cells.filter(cell => hasCandidate(masks[cell], digit)))])))
+  }
+  const groupMembers = new Map<ChainGroup | ChainPatternGroup, number[]>()
   const availableGroups = new Map<ChainGroup, boolean>()
   function members(node: ChainNode): number[] {
     if (typeof node === 'number') return [node]
+    if (isAlsChainNode(node)) return available(node) ? chainNodeCandidates(node).map(candidateId) : []
     let result = groupMembers.get(node)
     if (!result) {
       result = validChainNode(node) ? chainNodeCandidates(node).map(candidateId) : []
@@ -106,6 +147,8 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
 
   function available(node: ChainNode) {
     if (typeof node === 'number') return knownCandidates.has(node)
+    if (isAlsChainNode(node)) return alsNodes.get(chainAlsId(node))?.get(chainNodeDigit(node)) === node
+    if (isPatternGroup(node)) return patternLinks().has(node)
     const cached = availableGroups.get(node)
     if (cached !== undefined) return cached
     const ids = members(node)
@@ -123,25 +166,146 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle)
     return first.length > 0 && second.length > 0 && first.every(from => second.every(to => candidateConflicts(from, to)))
   }
 
-  function strength(a: ChainNode, b: ChainNode): LinkStrength | undefined {
-    if (!available(a) || !available(b) || !conflicts(a, b)) return
-    if (typeof a === 'number' && typeof b === 'number') {
-      const first = chainCandidate(a)
-      const second = chainCandidate(b)
-      if (first.cell === second.cell) return candidateCount(masks[first.cell]) === 2 ? 'strong' : 'weak'
-      return houses[first.cell].some(house => houses[second.cell].includes(house) &&
-        houseCandidates[house][first.digit - 1].length === 2) ? 'strong' : 'weak'
+  let patternIndex: Map<ChainNode, Map<ChainNode, PatternLinkSource>> | undefined
+  function patternLinks() {
+    if (patternIndex) return patternIndex
+    const links = new Map<ChainNode, Map<ChainNode, PatternLinkSource>>()
+    patternIndex = links
+    if (puzzle) return links
+
+    function endpoint(ids: readonly number[]): ChainNode {
+      if (ids.length === 1) return ids[0]
+      const { digit } = chainCandidate(ids[0])
+      if (ids.length <= 9 && ids.every(id => chainCandidate(id).digit === digit)) {
+        const group = chainGroup(digit, ids.map(id => chainCandidate(id).cell))
+        if (group && available(group)) return group
+      }
+      return patternGroup(ids)
     }
-    const first = chainCandidate(members(a)[0])
-    const second = chainCandidate(members(b)[0])
-    if (first.digit !== second.digit) return 'weak'
-    const all = [...members(a), ...members(b)]
-    return houses[first.cell].some(house => all.every(id => houses[chainCandidate(id).cell].includes(house)) &&
-      houseCandidates[house][first.digit - 1].every(id => all.includes(id))) ? 'strong' : 'weak'
+    function add(first: readonly number[], second: readonly number[], source: PatternLinkSource) {
+      const a = endpoint(first)
+      const b = endpoint(second)
+      if (conflicts(a, b) && ordinaryStrong(a, b)) return
+      for (const [from, to] of [[a, b], [b, a]] as const) {
+        const targets = links.get(from) ?? new Map<ChainNode, PatternLinkSource>()
+        if (!targets.has(to)) targets.set(to, source)
+        links.set(from, targets)
+      }
+    }
+    const groupWitnesses = new Map<string, boolean>()
+    function useful(ids: readonly number[]) {
+      if (ids.length === 1) return true
+      const key = ids.join(',')
+      const cached = groupWitnesses.get(key)
+      if (cached !== undefined) return cached
+      const { cell, digit } = chainCandidate(ids[0])
+      const hasWitness = houses[cell].some(house => houseCandidates[house][digit - 1].some(candidate =>
+        ids.every(member => candidateConflicts(candidate, member))))
+      groupWitnesses.set(key, hasWitness)
+      return hasWitness
+    }
+    visitFireworkLinks(masks, (a, b, source) => {
+      if (useful(a) && useful(b)) add(a, b, source)
+    })
+    if (unique) visitRectangleLinks(masks, add)
+    return links
   }
 
-  return { candidates, cellCandidates, peers, conflicts, strength, constraints, available, members }
+  // An ALS can force a digit in an outside cell when the ALS skips a digit.
+  // Each blocked digit must be visible at all its possible positions in the set.
+  const alsCellLinks = new Map<ChainAls, Map<number, number>>()
+  for (const [id, ports] of alsNodes) {
+    const inside = alsCells.get(id)!
+    if (inside.size < 2) continue
+    for (let cell = 0; cell < masks.length; cell++) {
+      const live = masks[cell]
+      if (inside.has(cell) || candidateCount(live) < 3) continue
+      let blocked = 0
+      for (const digit of marksOf(live)) {
+        const port = ports.get(digit)
+        if (port && conflicts(port, candidateId({ cell, digit }))) blocked |= 1 << (digit - 1)
+      }
+      if (candidateCount(blocked) < 2) continue
+      for (const [digit, port] of ports) {
+        const remaining = live & (~blocked | (1 << (digit - 1)))
+        if (candidateCount(remaining) !== 1) continue
+        const forced = candidateId({ cell, digit: marksOf(remaining)[0] })
+        const links = alsCellLinks.get(port) ?? new Map<number, number>()
+        links.set(forced, (live ^ remaining) | (1 << (digit - 1)))
+        alsCellLinks.set(port, links)
+      }
+    }
+  }
 
+  function alsCellLink(a: ChainNode, b: ChainNode) {
+    if (isAlsChainNode(a) && typeof b === 'number') return alsCellLinks.get(a)?.get(b)
+    if (isAlsChainNode(b) && typeof a === 'number') return alsCellLinks.get(b)?.get(a)
+  }
+
+  function lockedAlsTargets(a: ChainNode, b: ChainNode): number[] {
+    const port = isAlsChainNode(a) ? a : isAlsChainNode(b) ? b : null
+    if (!port) return []
+    const id = chainAlsId(port)
+    const sameSet = isAlsChainNode(a) && isAlsChainNode(b) && chainAlsId(a) === chainAlsId(b)
+    const unlocked = sameSet ? (1 << (chainNodeDigit(a) - 1)) | (1 << (chainNodeDigit(b) - 1)) : alsCellLink(a, b)
+    if (unlocked === undefined) return []
+    const inside = alsCells.get(id)!
+    return [...alsNodes.get(id)!].flatMap(([digit, node]) => hasCandidate(unlocked, digit) ? [] :
+      candidates.filter(target => chainNodeDigit(target) === digit &&
+        !inside.has(chainCandidate(target).cell) && conflicts(target, node)))
+  }
+
+  function patternSource(a: ChainNode, b: ChainNode) { return patternLinks().get(a)?.get(b) }
+
+  function ordinaryStrong(a: ChainNode, b: ChainNode) {
+    if (isAlsChainNode(a) || isAlsChainNode(b) || isPatternGroup(a) || isPatternGroup(b)) return false
+    const first = chainCandidate(members(a)[0])
+    const second = chainCandidate(members(b)[0])
+    if (typeof a === 'number' && typeof b === 'number' && first.cell === second.cell) {
+      return candidateCount(masks[first.cell]) === 2
+    }
+    if (first.digit !== second.digit) return false
+    const ids = [...members(a), ...members(b)]
+    return houses[first.cell].some(house =>
+      ids.every(id => houses[chainCandidate(id).cell].includes(house)) &&
+      houseCandidates[house][first.digit - 1].every(id => ids.includes(id)))
+  }
+
+  function strength(a: ChainNode, b: ChainNode): LinkStrength | undefined {
+    if (a === b || !available(a) || !available(b)) return
+    if (isAlsChainNode(a) && isAlsChainNode(b) && chainAlsId(a) === chainAlsId(b)) return 'strong'
+    if (alsCellLink(a, b) !== undefined) return 'strong'
+    const exclusive = conflicts(a, b)
+    if (exclusive && ordinaryStrong(a, b)) return 'strong'
+    if (!isAlsChainNode(a) && !isAlsChainNode(b) && patternSource(a, b)) return 'strong'
+    return exclusive ? 'weak' : undefined
+  }
+
+  let intersections: ChainGroup[] | undefined
+  function houseGroups() {
+    if (intersections) return intersections
+    const groups = new Set<ChainGroup>()
+    for (const house of houseCandidates) for (const [index, ids] of house.entries()) {
+      if (ids.length < 2) continue
+      const cells = ids.map(id => chainCandidate(id).cell)
+      const shared = new Map<number, number[]>()
+      for (const cell of cells) for (const other of houses[cell]) {
+        const intersection = shared.get(other) ?? []
+        intersection.push(cell)
+        shared.set(other, intersection)
+      }
+      for (const [other, intersection] of shared) {
+        if (intersection.length < 2 || houseCandidates[other] === house) continue
+        const group = chainGroup(index + 1, intersection)
+        if (group) groups.add(group)
+      }
+    }
+    intersections = [...groups]
+    return intersections
+  }
+
+  return { candidates, cellCandidates, peers, conflicts, strength, constraints, available, members, alsNodes,
+    houseGroups, lockedAlsTargets, alsCellLink, patternLinks, patternSource }
 }
 
 export type ChainGraph = ReturnType<typeof makeChainGraph>
@@ -162,19 +326,24 @@ export function highlightedStrongLinks(graph: ChainGraph, digitMask: number): Ch
   return links
 }
 
-function alternate(links: readonly LinkStrength[], first: LinkStrength) {
+function linkRoles(graph: ChainGraph, from: ChainNode, to: ChainNode): LinkStrength[] {
+  const strength = graph.strength(from, to)
+  if (!strength) return []
+  return strength === 'strong' && graph.conflicts(from, to)
+    ? ['strong', 'weak'] : [strength]
+}
+
+function alternate(links: readonly LinkStrength[][], first: LinkStrength) {
   const roles = links.map((_, i) => i % 2 === 0 ? first : opposite(first))
-  return roles.every((role, i) => role === 'weak' || links[i] === 'strong') ? roles : undefined
+  return roles.every((role, i) => links[i].includes(role)) ? roles : undefined
 }
 
 type LoopPrefix = { first: LinkStrength; last: LinkStrength; discontinuous: boolean }
 
-function loopPrefixes(links: readonly LinkStrength[]) {
-  let prefixes: LoopPrefix[] = [{ first: 'weak', last: 'weak', discontinuous: false }]
-  if (links[0] === 'strong') prefixes.push({ first: 'strong', last: 'strong', discontinuous: false })
-  for (const strength of links.slice(1)) {
+function loopPrefixes(links: readonly LinkStrength[][]) {
+  let prefixes: LoopPrefix[] = links[0].map(first => ({ first, last: first, discontinuous: false }))
+  for (const roles of links.slice(1)) {
     const next = new Map<string, LoopPrefix>()
-    const roles: LinkStrength[] = strength === 'strong' ? ['strong', 'weak'] : ['weak']
     for (const prefix of prefixes) {
       for (const role of roles) {
         const repeats = role === prefix.last
@@ -196,6 +365,11 @@ function commonEliminations(graph: ChainGraph, pairs: readonly ChainEdge[]): Ded
 }
 
 function openTitle(graph: ChainGraph, nodes: ChainNode[], strengths: LinkStrength[]) {
+  const pattern = strengths.flatMap((strength, i) =>
+    strength === 'strong' ? [graph.patternSource(nodes[i], nodes[i + 1])] : [])
+  if (pattern.some(source => source?.kind === 'rectangle')) return 'Unique Rectangle AIC'
+  if (pattern.some(source => source?.kind === 'firework')) return 'Firework AIC'
+  if (nodes.some(isAlsChainNode)) return 'AIC with ALS nodes'
   if (strengths.length === 1) return strengths[0] === 'strong' ? 'Strong link' : 'Weak link'
   if (strengths[0] !== 'strong' || strengths.at(-1) !== 'strong') return nodes.some(node => typeof node === 'string') ? 'Grouped alternating chain' : 'Alternating chain'
   if (nodes.some(node => typeof node === 'string')) return 'Grouped alternating inference chain'
@@ -213,13 +387,13 @@ function openTitle(graph: ChainGraph, nodes: ChainNode[], strengths: LinkStrengt
 }
 
 function analyzePath(graph: ChainGraph, nodes: ChainNode[]): ChainAnalysis {
-  const links = nodes.slice(1).map((node, i) => graph.strength(nodes[i], node)!)
+  const links = nodes.slice(1).map((node, i) => linkRoles(graph, nodes[i], node))
   const first = nodes[0]
   const last = nodes.at(-1)!
   if (first !== last) {
     const strengths = alternate(links, 'strong') ?? alternate(links, 'weak')
     if (!strengths) {
-      return { nodes, strengths: links, title: 'Non-alternating chain', actions: [], canComplete: loopPrefixes(links).length > 0 }
+      return { nodes, strengths: links.map(roles => roles[0]), title: 'Non-alternating chain', actions: [], canComplete: loopPrefixes(links).length > 0 }
     }
     const hasStrongEnds = strengths[0] === 'strong' && strengths.at(-1) === 'strong'
     return {
@@ -235,12 +409,18 @@ function analyzePath(graph: ChainGraph, nodes: ChainNode[]): ChainAnalysis {
     const strengths = alternate(links, 'strong') ?? alternate(links, 'weak')
     if (strengths) {
       const pairs: ChainEdge[] = strengths.flatMap((strength, i) => strength === 'weak' ? [[nodes[i], nodes[i + 1]]] : [])
+      const locked = strengths.flatMap((strength, i) => strength === 'strong' ? graph.lockedAlsTargets(nodes[i], nodes[i + 1]) : [])
+      const actions = [...new Map([
+        ...commonEliminations(graph, pairs), ...locked.map(target => ({ eliminate: chainCandidate(target) })),
+      ].map(action => [techniqueActionKey(action), action])).values()]
       return {
         nodes, strengths, title: nodes.some(node => typeof node === 'string') ? 'Grouped continuous nice loop' : 'Continuous nice loop', loop: 'continuous', canComplete: false,
-        explanation: nodes.some(node => typeof node === 'string')
+        explanation: locked.length
+          ? 'Each weak link has a true endpoint. The loop also locks the remaining digits in its almost locked sets. Remove candidates that see all possible positions of a locked digit.'
+          : nodes.some(node => typeof node === 'string')
           ? 'At least one end of each weak link must be true. Remove candidates that conflict with every candidate at both ends of a weak link.'
           : 'At least one end of each weak link must be true. Remove candidates that conflict with both ends of any weak link.',
-        actions: commonEliminations(graph, pairs),
+        actions,
       }
     }
   } else {
@@ -267,7 +447,7 @@ function analyzePath(graph: ChainGraph, nodes: ChainNode[]): ChainAnalysis {
       }
     }
   }
-  return { nodes, strengths: links, title: 'Non-alternating loop', actions: [], canComplete: false }
+  return { nodes, strengths: links.map(roles => roles[0]), title: 'Non-alternating loop', actions: [], canComplete: false }
 }
 
 export function chainComponents<Node extends ChainNode>(edges: readonly ChainEdge<Node>[]) {
@@ -370,8 +550,7 @@ export function analyzeChainPaths(graph: ChainGraph, edges: readonly ChainEdge[]
       const from = path.at(-1)!
       for (const to of neighbors.get(from)!) {
         if (visitsLeft <= 0) break
-        const strength = graph.strength(from, to)
-        if (next === 'strong' && strength !== 'strong') continue
+        if (!linkRoles(graph, from, to).includes(next)) continue
         if (to === start && path.length >= 3) {
           report([...path, start], true)
         } else if (!used.has(to)) {
@@ -396,7 +575,7 @@ export function analyzeChainPaths(graph: ChainGraph, edges: readonly ChainEdge[]
 
 /** Only strong links carry the two-color relationship between candidates. */
 export function colorStrongLinks<Node extends ChainNode>(graph: ChainGraph, edges: readonly ChainEdge<Node>[]) {
-  const { neighbors, components } = chainComponents(edges.filter(edge => graph.strength(...edge) === 'strong'))
+  const { neighbors, components } = chainComponents(edges.filter(edge => !edge.some(isAlsChainNode) && graph.strength(...edge) === 'strong' && graph.conflicts(...edge)))
   return components.map((nodes) => {
     const sides = new Map<Node, 0 | 1>([[nodes[0], 0]])
     for (const from of nodes) {
@@ -455,8 +634,10 @@ export function analyzeMedusa(graph: ChainGraph, edges: readonly ChainEdge[]): M
   })
 }
 
-export function completeMedusa(graph: ChainGraph, edges: readonly ChainEdge[], start: ChainNode, groups: readonly ChainGroup[] = []): ChainEdge[] {
-  const { neighbors } = chainComponents(edges.filter(([a, b]) => graph.strength(a, b) === 'strong'))
+export function completeMedusa(graph: ChainGraph, edges: readonly ChainEdge[], start: ChainNode, groups: readonly ChainNode[] = []): ChainEdge[] {
+  if (isAlsChainNode(start)) return []
+  const { neighbors } = chainComponents(edges.filter(edge => !edge.some(isAlsChainNode) &&
+    graph.strength(...edge) === 'strong' && graph.conflicts(...edge)))
   const reached = new Set<ChainNode>()
   const queue: ChainNode[] = []
   const additions: ChainEdge[] = []
@@ -479,7 +660,7 @@ export function completeMedusa(graph: ChainGraph, edges: readonly ChainEdge[], s
   includeDrawnBranch(start)
   for (const from of queue) {
     for (const to of availableNodes) {
-      if (reached.has(to) || graph.strength(from, to) !== 'strong') continue
+      if (reached.has(to) || isAlsChainNode(to) || graph.strength(from, to) !== 'strong' || !graph.conflicts(from, to)) continue
       additions.push([from, to])
       includeDrawnBranch(to)
     }
@@ -504,14 +685,17 @@ type LoopSearch = { status: 'found'; edges: ChainEdge[] } | { status: 'exhausted
 const LOOP_SEARCH_LIMIT = 12_000
 
 export function completeChainLoop(graph: ChainGraph, path: readonly ChainNode[], excluded: ReadonlySet<ChainNode> = new Set(),
-  groups: readonly ChainGroup[] = []): LoopSearch {
+  groups: readonly ChainNode[] = []): LoopSearch {
   if (path.length < 2 || new Set(path).size !== path.length) return { status: 'exhausted' }
-  const links = path.slice(1).map((node, i) => graph.strength(path[i], node))
-  if (!links.every((link) => link !== undefined)) return { status: 'exhausted' }
+  const links = path.slice(1).map((node, i) => linkRoles(graph, path[i], node))
+  if (!links.every(link => link.length)) return { status: 'exhausted' }
   const start = path[0]
   const end = path.at(-1)!
   const used = new Set(path)
-  const extensions = [...graph.candidates, ...groups.filter(group => graph.available(group))].filter((node) => !used.has(node) && !excluded.has(node))
+  const extensions = [...new Set([
+    ...graph.candidates, ...groups, ...graph.houseGroups(), ...graph.patternLinks().keys(),
+    ...[...graph.alsNodes.values()].flatMap(ports => [...ports.values()]),
+  ])].filter(node => !used.has(node) && !excluded.has(node) && graph.available(node))
   const queue: { nodes: ChainNode[]; next: LinkStrength; first: LinkStrength; discontinuous: boolean }[] = []
   for (const { first, last, discontinuous } of loopPrefixes(links)) {
     queue.push({ nodes: [end], next: opposite(last), first, discontinuous })
@@ -522,8 +706,7 @@ export function completeChainLoop(graph: ChainGraph, path: readonly ChainNode[],
   let limited = false
   for (const { nodes, next, first, discontinuous } of queue) {
     const from = nodes.at(-1)!
-    const closing = graph.strength(from, start)
-    if (path.length + nodes.length > 3 && closing && (next === 'weak' || closing === 'strong') &&
+    if (path.length + nodes.length > 3 && linkRoles(graph, from, start).includes(next) &&
       (!discontinuous || next !== first)) {
       const closed = [...nodes, start]
       return { status: 'found', edges: closed.slice(1).map((node, i) => [closed[i], node]) }
@@ -532,10 +715,7 @@ export function completeChainLoop(graph: ChainGraph, path: readonly ChainNode[],
     const key = `${from}:${next}`
     let choices = neighbors.get(key)
     if (!choices) {
-      choices = extensions.filter((to) => {
-        const strength = graph.strength(from, to)
-        return strength && (next === 'weak' || strength === 'strong')
-      })
+      choices = extensions.filter(to => linkRoles(graph, from, to).includes(next))
       neighbors.set(key, choices)
     }
     for (const to of choices) {

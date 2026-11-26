@@ -99,9 +99,19 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
   const hintColumn = useRef<HTMLDivElement>(null)
   const hintFrame = useRef<HTMLDivElement>(null)
   const hintCard = useRef<HTMLElement>(null)
-  const hintBody = useRef<HTMLDivElement>(null)
+  const hintHeading = useRef<HTMLDivElement>(null)
   const hintToolbar = useRef<HTMLDivElement>(null)
-  const hintLayout = { column: hintColumn, frame: hintFrame, card: hintCard, body: hintBody, toolbar: hintToolbar }
+  const hintSize = useRef<number | undefined>(
+    Number(sessionStorage.getItem('desktop-resize-fixture:hint-size')) || undefined
+  )
+  const hintLayout = {
+    column: hintColumn, puzzle, card: hintCard, heading: hintHeading, toolbar: hintToolbar,
+    size: hintSize,
+    onSizeChange(size: number | undefined) {
+      if (size === undefined) sessionStorage.removeItem('desktop-resize-fixture:hint-size')
+      else sessionStorage.setItem('desktop-resize-fixture:hint-size', String(size))
+    },
+  }
   const modeBadge = !query.has('solved') && (
     <ModeBadge
       mode="pencil"
@@ -241,7 +251,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
         detailNavigation={{ first: false, last: true, onMove: noop }}
         action={{ label: 'Apply hint', onClick: noop }}
         explanation={Array(8).fill('The four wing cells have four possible digits between them. Compare their candidates to find the elimination.')}
-        layoutAnchors={{ card: hintCard, body: hintBody, toolbar: hintToolbar }}
+        layoutAnchors={hintLayout}
         onClose={() => setShowHint(false)}
       />
     </PlayHint>
@@ -258,7 +268,7 @@ function PlayContents({ badge, setBadge }: { badge: ModeBadgePosition; setBadge:
       desktop
       puzzle={puzzlePanel}
       input={inputPanel}
-      hintLayout={hintLayout}
+      hintLayout={query.has('hint-detail') ? hintLayout : undefined}
       hint={hint}
       mobile={{
         puzzleId: 'desktop-resize',

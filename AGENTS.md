@@ -15,6 +15,8 @@ When adding, choosing, or changing UI components, use the [Sudoku components ski
 
 When adding or changing UI motion, follow the [animation guidelines](docs/animation-guidelines.md). For pointer-driven motion, keep previews frame-coalesced, honor reduced motion, and verify both snap directions at a mobile viewport.
 
+Keep panel copy focused on the current state, controls, and instructions the player needs. Use a toast for temporary action feedback when a visible message is useful. Omit routine confirmations when the result is already visible and empty-state copy that only restates the display.
+
 When changing UI behavior or content for mobile, make the equivalent change on Standard desktop and Advanced desktop unless the user explicitly approves a mobile-only change. Responsive differences may change placement, sizing, or density, but should preserve the same feature content and behavior.
 
 # Shipping

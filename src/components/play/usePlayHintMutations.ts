@@ -22,6 +22,7 @@ type Options = {
   puzzle: {
     currentPosition: HintPosition
     savedChainSketch: Game['chainSketch']
+    savedSubsets: Game['subsetWorkspace']
     completed: boolean
   }
   state: {
@@ -33,6 +34,8 @@ type Options = {
     chainMasks: readonly number[] | null
     chainActions: readonly DeductionAction[]
     chainIds: readonly number[]
+    subsetActions?: readonly DeductionAction[]
+    subsetMasks: readonly number[] | null
   }
   modes: Pick<AdvancedModes, 'autoRemoveCandidates' | 'autoRemoveCandidateVariants'>
   actions: {
@@ -47,19 +50,22 @@ type Options = {
 
 /** Apply hint, recovery, and chain deductions against the position they were derived from. */
 export function usePlayHintMutations({ puzzle, state, modes, actions }: Options) {
-  const { currentPosition, savedChainSketch, completed } = puzzle
-  const { recovery, visibleHint, deduction, hintCandidates, canApplyChainEdits, chainMasks, chainActions, chainIds } = state
+  const { currentPosition, savedChainSketch, savedSubsets, completed } = puzzle
+  const { recovery, visibleHint, deduction, hintCandidates, canApplyChainEdits, chainMasks, chainActions, chainIds, subsetActions, subsetMasks } = state
   const { edit, setHint, setHintRevealed, setFailedChainActions, suspendChain, focusPuzzleActions } = actions
 
   function applyToCurrentPosition(
     deductionActions: readonly DeductionAction[],
     candidates: readonly number[],
-    { hintSnapshot, technique, chainIds }: { hintSnapshot?: HintPosition; technique?: string; chainIds?: readonly number[] } = {},
+    { hintSnapshot, technique, chainIds, usesSubsets }: {
+      hintSnapshot?: HintPosition; technique?: string; chainIds?: readonly number[]; usesSubsets?: boolean
+    } = {},
   ) {
     let applied = false
     edit(current => {
       if (!matchesHintPosition(current, hintSnapshot ?? currentPosition) ||
-        (chainIds && current.chainSketch !== savedChainSketch)) return current
+        (chainIds && current.chainSketch !== savedChainSketch) ||
+        ((chainIds || usesSubsets) && current.subsetWorkspace !== savedSubsets)) return current
       const next = chainIds
         ? applyChainDeduction(current, chainIds, deductionActions, candidates, modes.autoRemoveCandidates, modes.autoRemoveCandidateVariants)
         : applyDeduction(current, deductionActions, candidates, modes.autoRemoveCandidates, modes.autoRemoveCandidateVariants)
@@ -101,5 +107,9 @@ export function usePlayHintMutations({ puzzle, state, modes, actions }: Options)
     if (applied) suspendChain()
   }
 
-  return { applyCandidateRecovery, applyHint, applyChainEdits }
+  function applySubsetEdits() {
+    if (subsetActions?.length && subsetMasks) applyToCurrentPosition(subsetActions, subsetMasks, { usesSubsets: true })
+  }
+
+  return { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits }
 }

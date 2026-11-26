@@ -8,10 +8,14 @@ import {
 import type { SizedConstraintRule, VariantRule } from '../../../src/sudoku/engine'
 import { MINI_GRID, SEVEN_BOXLESS_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
 import { WINDOKU_REGIONS } from '../../../src/sudoku/variants'
+import type { BoardAnnotations as BaselineBoardAnnotations } from '../baseline/BoardAnnotations'
 import { createFixture, type BoardState } from './model'
 
 /** Flat fixture props keep the historical renderer and optimized renderer comparable. */
-export type BoardProps = BoardContent & BoardAppearance & BoardInteraction & BoardLayout & { showGuides: boolean }
+export type BoardProps = BoardContent & BoardAppearance & BoardInteraction & BoardLayout & {
+  showGuides: boolean
+  annotations?: BaselineBoardAnnotations
+}
 export type Scenario = { id: string; states: BoardProps[] }
 export const noopCell = () => {}
 

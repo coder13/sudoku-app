@@ -10,6 +10,7 @@ import type { LessonExercise } from '../sudoku/lesson-examples'
 import { DeductionExplanation, DeductionOutcome } from './HintCard'
 import { LessonWorkbench } from './LessonWorkbench'
 import type { BoardAnnotations } from './BoardAnnotations'
+import { CellReferenceHighlightProvider, CellReferenceText } from './CellReferenceHighlight'
 
 function actionText(action: DeductionAction) {
   return 'place' in action
@@ -91,7 +92,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide, 
     </div>
     <div className="lesson-practice-step" tabIndex={0} role="group" aria-label="Step details" ref={stepBody}>
       <div aria-live="polite">
-        {clue ? <><h3>{clue.title}</h3><p>{clue.text}</p></>
+        {clue ? <><h3>{clue.title}</h3><p><CellReferenceText text={clue.text} /></p></>
           : solution ? <h3>Solution</h3> : <p className="lesson-practice-instruction">{instruction ?? defaultInstruction}</p>}
       </div>
       {solutionDiagram && <>
@@ -111,7 +112,7 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide, 
     })),
   } : solutionDiagram?.annotations ?? clue?.annotations
 
-  return <LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
+  return <CellReferenceHighlightProvider><LessonWorkbench puzzle={puzzle} label={`Practice grid for ${technique}`} annotations={annotations}
     initialPencil={canRemove && !canPlace}
     preview={solution} showTools showChainTools={showChainTools} guide={guide}
     toolsWidth={toolsWidth} onToolsWidthChange={onToolsWidthChange}
@@ -129,9 +130,9 @@ export function PracticePuzzle({ puzzle, technique, instruction, practiceGuide, 
           }}>{result ? 'Reset puzzle' : 'Check move'}</Button>}
       </div>
       <p className="lesson-practice-feedback" role="status" data-result={result ? 'correct' : undefined}>
-        {result ? `${result.revealed ? 'One possible move.' : 'Correct.'} ${result.actions.map(actionText).join(' ')}`
-          : guidance ?? actions.map(actionText).join(' ')}
+        <CellReferenceText text={result ? `${result.revealed ? 'One possible move.' : 'Correct.'} ${result.actions.map(actionText).join(' ')}`
+          : guidance ?? actions.map(actionText).join(' ')} />
       </p>
     </>}
-  </LessonWorkbench>
+  </LessonWorkbench></CellReferenceHighlightProvider>
 }

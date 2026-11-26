@@ -16,7 +16,7 @@ export function usePlayGameModel(game: Game) {
   const start = fog && !fog.cells.has(40) ? [...fog.cells].find(cell => visibleGivens[cell] === '0') ?? 40
     : visibleGivens[40] === '0' ? 40 : Math.max(0, visibleGivens.indexOf('0'))
   const values = useMemo(() => valuesOf(game), [givens, game.position.entries, variant])
-  const { center, corner, eliminations } = game.position
+  const { center, corner, eliminations, shades } = game.position
   const aqreShades = useMemo(() => variant ? variantPosition(variant, game.position).shades : undefined,
     [variant, game.position.entries, game.position.shades])
   const displayedCandidates = useMemo(() => completeCandidateMasks(game), [values, center, corner])
@@ -25,8 +25,8 @@ export function usePlayGameModel(game: Game) {
   [values, displayedCandidates, game.position.candidateColors, gridSize, fog?.cells])
   const puzzle = fog?.puzzle ?? variant?.puzzle
   const hintPosition = useMemo<HintPosition>(() => ({
-    gameId: id, givens, values, puzzle: variant?.puzzle, grid, algebraic, sized, center, corner, eliminations,
-  }), [id, givens, values, variant?.puzzle, grid, algebraic, sized, center, corner, eliminations])
+    gameId: id, givens, values, puzzle: variant?.puzzle, grid, algebraic, sized, center, corner, eliminations, shades,
+  }), [id, givens, values, variant?.puzzle, grid, algebraic, sized, center, corner, eliminations, shades])
   const conflicts = useMemo(() => conflictsOf(values, puzzle, grid, sized?.rules), [values, puzzle, grid, sized])
   const draft = game.source === 'draft'
   const mixedVariant = !grid && variant?.id === 'mixed'
