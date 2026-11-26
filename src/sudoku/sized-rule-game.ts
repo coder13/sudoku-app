@@ -212,7 +212,9 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       Number.isInteger(rule.greater) && rule.greater >= 0 && rule.greater < size ** 2 && rule.less !== rule.greater &&
       gridCellsShareEdge(rule.less, rule.greater, size)
     if (rule.type === 'anti-sum') {
-      return Object.keys(rule).length === 2 && Number.isInteger(rule.sum) && rule.sum >= 2 && rule.sum <= 2 * size
+      const valueOffset = gridValueOffset(grid)
+      return Object.keys(rule).length === 2 && Number.isInteger(rule.sum) &&
+        rule.sum >= 2 * (1 - valueOffset) && rule.sum <= 2 * (size - valueOffset)
     }
     if (rule.type === 'row-column-sum') {
       return Object.keys(rule).every(key => key === 'type' || key === 'pairs' || key === 'requireUnmarked') &&

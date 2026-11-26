@@ -394,11 +394,13 @@ pub(super) fn compile_pairs(
             continue;
         }
         if let SizedConstraint::AntiSum { sum } = *rule {
-            if !(2..=2 * size as u8).contains(&sum) {
+            let displayed_total = sum + 2 * value_offset;
+            if !(2..=2 * size as u8).contains(&displayed_total) {
                 return None;
             }
-            let constraint =
-                PairConstraint::from_relation([0, 1], size, |x, y| x != y && x + y != sum);
+            let constraint = PairConstraint::from_relation([0, 1], size, |x, y| {
+                x != y && x + y != displayed_total
+            });
             groups[index].extend(orthogonal_edges(size).map(|cells| {
                 let mut constraint = constraint.clone();
                 constraint.cells = cells;
