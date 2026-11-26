@@ -365,7 +365,7 @@ export function Board(props: BoardProps) {
   const cageTotals = useMemo(
     () =>
       new Map(
-        (drawingRules ?? sizedRules)?.flatMap((rule) =>
+        (drawingRules ?? sizedClueRules)?.flatMap((rule) =>
           rule.type === 'killer-cages'
             ? rule.cages.flatMap(({ cells, sum }) => {
                 const corner = Math.min(...cells)
@@ -379,7 +379,7 @@ export function Board(props: BoardProps) {
             : []
         )
       ),
-    [clipCells, drawingRules, sizedRules]
+    [clipCells, drawingRules, sizedClueRules]
   )
   const algebraicLabels = useMemo(() => {
     const captions = new Map<number, string>()
@@ -507,7 +507,7 @@ export function Board(props: BoardProps) {
           column = (index % gridSize) + 1
         const regionAtCell = regionsAt?.[index]
         const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
-        const cageRules = drawingRules ?? sizedRules
+        const cageRules = drawingRules ?? sizedClueRules
         const cageInset = cageTotal !== undefined && cageRules ? cageLabelInset(index, cageRules, gridSize) : undefined
         return {
           index,

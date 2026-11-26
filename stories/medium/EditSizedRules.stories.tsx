@@ -51,10 +51,15 @@ export const EditDoubledClueGroups: Story = {
   play: async ({ canvas, userEvent }) => {
     const dialog = await canvas.findByRole('dialog', { name: 'Edit 6 × 6 rules' })
     const editor = within(dialog)
-    await userEvent.selectOptions(editor.getByRole('combobox', { name: 'Clue' }), '1')
+    await userEvent.selectOptions(editor.getByRole('combobox', { name: 'Clue' }), '0')
     await expect(editor.getByText('Choose which clue interpretations are allowed. The solver checks each remaining choice against the grid.')).toBeVisible()
-    await expect(within(editor.getByRole('group', { name: 'Allowed clue interpretations' })).getAllByRole('checkbox')).toHaveLength(2)
-    const choice = editor.getByRole('checkbox', { name: 'Double the white dot between R4C5 and R4C6' })
+    const choices = within(editor.getByRole('group', { name: 'Allowed clue interpretations' })).getAllByRole('checkbox')
+    await expect(choices).toHaveLength(2)
+    const grid = editor.getByRole('grid', { name: 'Rule editor' })
+    const cageTotal = grid.querySelector('.variant-cage-total')
+    await expect(cageTotal).toBeVisible()
+    await expect(cageTotal).toHaveTextContent('6')
+    const choice = choices[0]
     await userEvent.click(choice)
     await expect(choice).not.toBeChecked()
     await userEvent.click(choice)
