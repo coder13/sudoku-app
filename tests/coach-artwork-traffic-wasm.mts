@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { runEngine } from '../src/sudoku/engine.ts'
 import { enter, restartGame, valuesOf } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
@@ -76,6 +77,30 @@ test('#547 imports the complete CS1G rule set without treating shape artwork as 
   assert.deepEqual(game.authoredArtwork, direct.authoredArtwork)
   assert.equal(game.variant.solution.length, 81)
   assertVariantCompletion(game.variant.puzzle, game.variant.solution)
+})
+
+test('#542 and #547 Coach combinations rely on their active rule families', async () => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  for (const [issue, necessaryRules] of [
+    [542, ['global-entropy', 'entropic']],
+    [547, ['palindrome', 'kropki']],
+  ] as const) {
+    const source = examples.find(example => example.issue === issue)
+    assert.ok(source)
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.ok(game.variant)
+    const complete = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: game.variant.puzzle } })
+    assert.equal(complete.status, 'unique', `#${issue} should be unique with every imported rule family active`)
+    assert.equal(complete.solution, game.variant.solution)
+
+    for (const type of necessaryRules) {
+      const withoutFamily = { ...game.variant.puzzle, rules: game.variant.puzzle.rules?.filter(rule => rule.type !== type) }
+      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutFamily } })
+      assert.equal(result.status, 'multiple', `#${issue} should have multiple solutions without ${type}`)
+    }
+  }
 })
 
 test('#544 verifies the XV Entropy puzzle with its empty cosmetic cage omitted', async () => {
