@@ -1084,6 +1084,7 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     throw new Error('This Sudoku Coach X-Sums layer uses unsupported settings.')
   }
   const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
+  const outsideLines = new Set<string>()
   const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= size - 0.5 && Number.isInteger(coordinate - 0.5)
   for (const segment of segments) {
     if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
@@ -1103,7 +1104,11 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     if (!side || !/^[1-9][0-9]?$/.test(text) || sum > maximum) {
       throw new Error(`This Sudoku Coach X-Sum needs a total from 1 through ${maximum} beside a row or column.`)
     }
-    clues.push({ type: 'x-sum', ...coachOutsideRay(side, (side === 'top' || side === 'bottom' ? x : y) - 0.5, size), sum })
+    const index = (side === 'top' || side === 'bottom' ? x : y) - 0.5
+    const line = `${side}:${index}`
+    if (outsideLines.has(line)) throw new Error('This Sudoku Coach X-Sums puzzle has multiple totals for the same outside line.')
+    outsideLines.add(line)
+    clues.push({ type: 'x-sum', ...coachOutsideRay(side, index, size), sum })
   }
   return clues
 }
