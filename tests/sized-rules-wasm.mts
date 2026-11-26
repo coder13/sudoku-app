@@ -9,10 +9,22 @@ import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
+import { conflictsOf } from '../src/sudoku/game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
+
+test('sized Anti-Knight and Anti-King rules report equal-digit Play conflicts', () => {
+  const grid = { size: 4, noRegions: true } as const
+  const knightValues = Array(16).fill('0')
+  knightValues[0] = knightValues[9] = '1'
+  assert.deepEqual(conflictsOf(knightValues.join(''), undefined, grid, [{ type: 'anti-knight' }]), new Set([0, 9]))
+
+  const kingValues = Array(16).fill('0')
+  kingValues[0] = kingValues[5] = '1'
+  assert.deepEqual(conflictsOf(kingValues.join(''), undefined, grid, [{ type: 'anti-king' }]), new Set([0, 5]))
+})
 
 test('#393 sized Clone groups constrain corresponding cells in the sized engine', async () => {
   const position: SizedConstraintPosition = {

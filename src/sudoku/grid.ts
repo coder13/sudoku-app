@@ -287,7 +287,15 @@ export function kropkiDigitExclusions(rules: readonly (SizedConstraintRule | Var
 export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number, size: number, valueOffset = 0) {
   if (!rules) return 0
   let excluded = kropkiDigitExclusions(rules, cell, other, digit, size, valueOffset)
+  const rowDistance = Math.abs(Math.floor(cell / size) - Math.floor(other / size))
+  const columnDistance = Math.abs(cell % size - other % size)
   for (const rule of rules) {
+    if (
+      (rule.type === 'anti-knight' && rowDistance * columnDistance === 2) ||
+      (rule.type === 'anti-king' && rowDistance === 1 && columnDistance === 1)
+    ) {
+      excluded |= 1 << (digit - 1)
+    }
     if (rule.type === 'adjacent-total' &&
       (rule.cells[0] === cell && rule.cells[1] === other || rule.cells[1] === cell && rule.cells[0] === other)) {
       const partner = rule.sum + 2 * valueOffset - digit
