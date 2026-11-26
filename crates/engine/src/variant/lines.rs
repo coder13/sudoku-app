@@ -1741,6 +1741,126 @@ mod terrain_sandwich_tests {
         );
     }
 
+    #[cfg(feature = "wasm-api")]
+    #[test]
+    fn terrain_sandwich_accepts_the_published_d8hp_solution_and_rejects_a_changed_clue() {
+        let source: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/sandwich-terrain-unsupported.json"
+        ))
+        .unwrap();
+        let solution: [u8; 81] = source["source"]["solution"]
+            .as_str()
+            .unwrap()
+            .bytes()
+            .map(|digit| digit - b'0')
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let colors: Vec<_> = source["payload"]["givenColours"]
+            .as_str()
+            .unwrap()
+            .split(',')
+            .collect();
+        assert_eq!(colors.len(), 81);
+
+        let transform_for = |color: &str| match color {
+            "0" => TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            "1" => TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            "2" => TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            "" => TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            color => panic!("unexpected Terrain color {color:?}"),
+        };
+        let clues = source["payload"]["givenConstraints"][0]["segments"]
+            .as_array()
+            .unwrap();
+        assert_eq!(clues.len(), 15);
+        let rules: Vec<_> = clues
+            .iter()
+            .map(|clue| {
+                let [x, y]: [f64; 2] = clue["cells"][0]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|coordinate| coordinate.as_f64().unwrap())
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                let maximum: i16 = clue["parameters"]["text"]
+                    .as_str()
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                let (cells, direction) = if x == -0.5 {
+                    let row = (y - 0.5) as usize;
+                    (
+                        (row * 9..row * 9 + 9).collect::<Vec<_>>(),
+                        ClueDirection::East,
+                    )
+                } else {
+                    let column = (x - 0.5) as usize;
+                    (
+                        (0..9).map(|row| row * 9 + column).collect::<Vec<_>>(),
+                        ClueDirection::South,
+                    )
+                };
+                let transforms: Vec<_> = cells
+                    .iter()
+                    .map(|&cell| transform_for(colors[cell]))
+                    .collect();
+                let row: [u8; 9] = cells
+                    .iter()
+                    .map(|&cell| solution[cell])
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                assert_eq!(
+                    transformed_sandwich_maximum(&row, transforms.as_slice().try_into().unwrap()),
+                    Some(maximum)
+                );
+                PuzzleRule::TerrainSandwich {
+                    cells,
+                    direction,
+                    maximum,
+                    transforms,
+                }
+            })
+            .collect();
+
+        let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
+        puzzle.rules = rules;
+        assert!(
+            puzzle
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_ok()
+        );
+
+        let PuzzleRule::TerrainSandwich { maximum, .. } = &mut puzzle.rules[0] else {
+            unreachable!();
+        };
+        *maximum += 1;
+        assert!(
+            puzzle
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_err()
+        );
+    }
+
     #[test]
     fn terrain_sandwich_rejects_invalid_geometry_transforms_and_bounds() {
         let identity = TerrainValueTransform {
