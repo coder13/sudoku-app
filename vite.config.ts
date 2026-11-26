@@ -61,6 +61,7 @@ function prerenderPages() {
   return [
     '/',
     '/puzzles',
+    '/about',
     '/import',
     '/decode',
     '/sync',
