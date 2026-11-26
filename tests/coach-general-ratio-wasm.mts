@@ -114,6 +114,24 @@ test('an empty negative default Difference layer remains active beside custom Di
   } }), 'conflict')
 })
 
+test('empty negative default Ratio layers exempt matching clues from other labeled layers', async () => {
+  const imported = await detectPuzzle(coachCode({ givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [0, 1], parameters: { ratio: 2 } },
+    ] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [8, 17], parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  assert.ok(imported.variant)
+  const position = variantPosition(imported.variant, { entries: '1' + '0'.repeat(80) })
+  const candidates = await runEngine({ type: 'variant', operation: 'candidates', position })
+  assert.ok(candidates)
+  assert.equal(candidates[1], 1 << 1, 'the separately marked 1:2 edge remains allowed')
+  assert.equal(candidates[9] & (1 << 1), 0, 'an unmarked 1:2 edge remains forbidden')
+})
+
 test('negative Coach Difference 2 checks its own marker values on classic Sudoku', async () => {
   const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const digits = [...solution].map(Number)
