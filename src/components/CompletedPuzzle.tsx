@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight, Check, CircleHelp, Lightbulb, Search } from 'lucide-react'
 import { isCustomDifficulty } from '../sudoku/custom-modes'
 import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
+import { pointsPerSecondForSolve } from '../sudoku/difficulty-statistics'
 import { formatTime, isSolved, type Game } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
 import { practiceTechniqueResult } from '../sudoku/action-history'
@@ -27,6 +28,12 @@ function activePuzzleSummary(game: Game) {
     : game.source === 'generated' && rating ? game.variant && variantName(game.variant) : game.title
   const progress = !game.started ? 'Not started' : game.timeUntracked ? 'In progress' : `${formatTime(game.elapsed)} played`
   return [name, rating, progress].filter(Boolean).join(' · ')
+}
+
+function formatRateChange(before: number, after: number) {
+  const change = Number(after.toFixed(2)) - Number(before.toFixed(2))
+  if (change === 0) return 'No change'
+  return `${change > 0 ? '+' : '−'}${Math.abs(change).toFixed(2)}`
 }
 
 function PracticeTechniqueResult({ technique, game, cellReferenceStyle }: {
@@ -200,13 +207,23 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     </div>
   </div>
 
+  const solveRate = ratingPending ? null : pointsPerSecondForSolve(game, games)
   const resultFacts: CompletionFact[] = [
     ...(!game.timeUntracked ? [{ label: 'Solve time', value: formatTime(game.elapsed) }] : []),
     { label: 'Difficulty', value: <>
       {ratingPending ? <span role="status">Rating…</span> : ratingLabel}
-      {game.generatedWithAuto && <small className="completion-mode">Auto</small>}
+      {game.generatedWithAuto && <small>Auto</small>}
     </> },
   ]
+  if (solveRate) {
+    resultFacts.push(
+      { label: 'Points per second', value: solveRate.puzzle.toFixed(2) },
+      { label: 'Overall points per second', value: <>
+        {solveRate.after.toFixed(2)}
+        {solveRate.before !== null && <small>{formatRateChange(solveRate.before, solveRate.after)}</small>}
+      </> },
+    )
+  }
   const rating = result?.event.finish === 'solved' && ratingChange !== undefined ? <div className="completion-player-rating">
     <strong>Player rating {Math.round(result.after)} ({ratingChange >= 0 ? '+' : '−'}{Math.abs(ratingChange)})</strong>
     {result.speedBonus >= 0.05 && <small>Speed bonus +{Number(result.speedBonus.toFixed(1))}</small>}

@@ -2986,11 +2986,12 @@ svg { flex-shrink: 0; }
   text-align: center;
 }
 .completion-result > div { padding: var(--space-10) var(--space-6); }
-.completion-result > div + div { border-inline-start: 1px solid var(--border); }
+.completion-result > div:nth-child(even) { border-inline-start: 1px solid var(--border); }
+.completion-result > div:nth-child(n+3) { border-block-start: 1px solid var(--border); }
 .completion dt { color: var(--muted); font-size: 0.75rem; line-height: 1.35; }
 .completion dd { margin: var(--space-2) 0 0; font-weight: 730; font-variant-numeric: tabular-nums; }
 .completion-result dd { font-size: calc(clamp(16px, 4cqw, 20px) * var(--app-text-scale)); letter-spacing: -.02em; }
-.completion-mode { display: block; color: var(--muted); font-size: 0.75rem; letter-spacing: normal; }
+.completion-result small { display: block; color: var(--muted); font-size: 0.75rem; letter-spacing: normal; }
 .completion-stats { gap: var(--space-14); padding-inline: var(--space-4); }
 .completion-stats dd { font-size: 1.1875rem; }
 .completion-player-rating { display: grid; gap: 3px; padding-inline: var(--space-4); }

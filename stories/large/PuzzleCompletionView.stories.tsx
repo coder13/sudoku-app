@@ -19,6 +19,8 @@ export const Sudoku: Story = {
     results: [
       { label: 'Solve time', value: '08:42' },
       { label: 'Difficulty', value: 'Hard' },
+      { label: 'Points per second', value: '1.86' },
+      { label: 'Overall points per second', value: <>1.42<small>+0.04</small></> },
     ],
     stats: [
       { label: 'Puzzles solved', value: 18 },

@@ -5,9 +5,11 @@ import { ActionHistoryPanel } from '../../src/components/ActionHistoryPanel'
 import { fillEntries, makeGame, type Game } from '../../src/sudoku/game'
 import { MINI_GRID } from '../../src/sudoku/grid'
 import { calculatePlayerRating, initialPlayerRating } from '../../src/sudoku/player-rating'
-import { inProgress, quicker, solved } from '../support/fixtures'
+import { inProgress, quicker, solved as completed } from '../support/fixtures'
 import { PreviewRouter, Width } from '../support/frames'
 import { seedPlayerRating, seedRoom } from '../support/story-room'
+
+const solved = { ...completed, created: quicker.created + 1 }
 
 const meta = {
   title: 'Large/Play/Completion results',
@@ -18,7 +20,14 @@ const meta = {
 } satisfies Meta<typeof CompletedPuzzle>
 export default meta
 type Story = StoryObj<typeof meta>
-export const Rated: Story = {}
+export const Rated: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText('Points per second', { exact: true })).toBeVisible()
+    await expect(canvas.getByText('0.53', { exact: true })).toBeVisible()
+    await expect(canvas.getByText('Overall points per second', { exact: true })).toBeVisible()
+    await expect(canvas.getByText('−0.07', { exact: true })).toBeVisible()
+  },
+}
 export const RatedWithHints: Story = {
   beforeEach: () => {
     seedPlayerRating(calculatePlayerRating([{
@@ -72,7 +81,7 @@ export const NextActivePuzzleOnMobile: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
 export const RatingPending: Story = { args: { ratingPending: true, game: { ...solved, difficulty: undefined } } }
-export const Unrated: Story = { args: { showGuides: false, game: { ...solved, difficulty: null } } }
+export const Unrated: Story = { args: { showGuides: false, game: { ...solved, difficulty: null, score: null } } }
 
 const recentActive: Game = { ...inProgress, id: 'playlist-medium', title: 'Medium puzzle', source: 'generated', difficulty: 'medium', score: 428, created: 2 }
 const olderActive: Game = { ...makeGame('playlist-easy', 'Easy puzzle', quicker.givens, 'generated', 1), difficulty: 'easy' }
