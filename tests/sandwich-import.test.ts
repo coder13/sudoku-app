@@ -62,7 +62,12 @@ test('Coach Sandwich decoding preserves all four sides, zero and companion therm
   const terrain = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8'))
   const code = terrain.metadata?.sudoku ?? terrain.source?.sudoku ?? terrain.sudoku
   assert.equal(typeof code, 'string')
-  await assert.rejects(detectPuzzle(code), /transformed values.*engine does not support/i)
+  const terrainImport = await detectPuzzle(code)
+  assert.equal(terrainImport.format, 'Sudoku Coach')
+  assert.equal(terrainImport.variant?.puzzle.givens, empty)
+  const terrainRules = terrainImport.variant?.puzzle.rules ?? []
+  assert.equal(terrainRules.length, 15)
+  assert.ok(terrainRules.every(rule => rule.type === 'terrain-sandwich'))
 })
 
 test('local placed-digit support agrees with direct nine-digit permutations for every total and varied partial rows', () => {
