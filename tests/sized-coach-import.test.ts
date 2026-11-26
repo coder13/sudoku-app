@@ -139,6 +139,12 @@ test('published sized Coach X-Sums parse outside labels against the grid size', 
   }] })
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /multiple totals for the same outside line/)
 
+  responseCode = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [{ cells: [[0.5, -0.5]], parameters: { text: '5' } }] },
+    { type: 'cosmeticText', settings: {}, segments: [{ cells: [[0.5, -0.5]], parameters: { text: '6' } }] },
+  ] })
+  await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/Ab12'), /multiple totals for the same outside line/)
+
   const impossible = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
     type: 'cosmeticText', settings: {}, segments: [{ cells: [[0.5, -0.5]], parameters: { text: '22' } }],
   }] })

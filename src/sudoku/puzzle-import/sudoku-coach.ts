@@ -1634,6 +1634,15 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   if (rowEquations) rules.push(...rowEquations)
   rules.push(...nonogramRules, ...skyscrapersRules)
   if (fractionalRegions) rules.push(fractionalRegions.rule)
+  const xSumLines = new Set<string>()
+  for (const rule of rules) {
+    if (rule.type !== 'x-sum') continue
+    const line = rule.direction === 'north' || rule.direction === 'south'
+      ? `${rule.direction}:${rule.cells[0] % grid.size}`
+      : `${rule.direction}:${Math.floor(rule.cells[0] / grid.size)}`
+    if (xSumLines.has(line)) throw new Error('This Sudoku Coach X-Sums puzzle has multiple totals for the same outside line.')
+    xSumLines.add(line)
+  }
   if (publishedXSums && !rules.some(rule => rule.type === 'x-sum')) {
     throw new Error('This Sudoku Coach X-Sums puzzle has no outside totals.')
   }
