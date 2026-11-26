@@ -828,6 +828,31 @@ test('Coach negative mixed Ratio labels reject each unmarked value in the same l
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
 })
 
+test('Coach negative Ratio markers join same-value clues split across layers', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const ratioThreePairs = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat().flatMap(([a, b]) => Math.max(digits[a], digits[b]) === 3 * Math.min(digits[a], digits[b])
+    ? [[a, b] as const] : [])
+  assert.ok(ratioThreePairs.length > 1)
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: ratioThreePairs.slice(0, -1).map(cells => ({
+      cells, parameters: { ratio: 3 },
+    })) },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [{
+      cells: ratioThreePairs.at(-1)!, parameters: { ratio: 3 },
+    }] },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: ratioThreePairs.slice(0, -1).map(cells => ({ cells, value: 3 })), negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: ratioThreePairs.at(-1)!, value: 3 }], negative: false },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
   url: string; title: string; coach: string; solution: string
 }[]

@@ -167,6 +167,8 @@ pub(super) struct DigitRestrictionClue {
 pub(super) struct PairCompiler {
     clues: Vec<PairClue>,
     kropki: Markers,
+    labeled_marked: BTreeMap<(SizedDotRelation, u8), BTreeSet<[usize; 2]>>,
+    labeled_negative: BTreeMap<(SizedDotRelation, u8), usize>,
     xv: Markers,
 }
 
@@ -426,7 +428,6 @@ impl PairCompiler {
                     return Err(invalid);
                 }
                 let ratio = *relation == SizedDotRelation::Ratio;
-                let mut layer_marked = BTreeSet::new();
                 let mut layer_values = BTreeSet::new();
                 for mark in marks {
                     let [a, b] = mark.cells;
@@ -437,7 +438,10 @@ impl PairCompiler {
                         return Err(invalid);
                     }
                     let cells = [a.min(b), a.max(b)];
-                    layer_marked.insert(cells);
+                    self.labeled_marked
+                        .entry((*relation, mark.value))
+                        .or_default()
+                        .insert(cells);
                     layer_values.insert(mark.value);
                     self.clues.push(pair(&source, cells, |x, y| {
                         if ratio {
@@ -449,17 +453,9 @@ impl PairCompiler {
                 }
                 if *negative {
                     for value in layer_values {
-                        for cells in orthogonal_pairs().filter(|edge| !layer_marked.contains(edge))
-                        {
-                            self.clues.push(pair(&source, cells, |a, b| {
-                                let matches = if ratio {
-                                    u16::from(a.max(b)) == u16::from(value) * u16::from(a.min(b))
-                                } else {
-                                    a.abs_diff(b) == value
-                                };
-                                a != b && !matches
-                            }));
-                        }
+                        self.labeled_negative
+                            .entry((*relation, value))
+                            .or_insert(index);
                     }
                 }
             }
@@ -537,6 +533,24 @@ impl PairCompiler {
             KROPKI,
         );
         finish_markers(&mut self.clues, self.xv, VariantTechnique::Xv, XV);
+        for ((relation, value), index) in std::mem::take(&mut self.labeled_negative) {
+            let marked = &self.labeled_marked[&(relation, value)];
+            let source = Arc::new(RuleSource {
+                technique: VariantTechnique::Kropki,
+                indices: vec![index],
+            });
+            let ratio = relation == SizedDotRelation::Ratio;
+            for cells in orthogonal_pairs().filter(|edge| !marked.contains(edge)) {
+                self.clues.push(pair(&source, cells, |a, b| {
+                    let matches = if ratio {
+                        u16::from(a.max(b)) == u16::from(value) * u16::from(a.min(b))
+                    } else {
+                        a.abs_diff(b) == value
+                    };
+                    a != b && !matches
+                }));
+            }
+        }
         let mut allowed = BTreeMap::<_, Allowed>::new();
         for clue in &self.clues {
             // The chess rules already contribute to the exact solver's peer table.
