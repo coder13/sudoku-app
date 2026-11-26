@@ -1,11 +1,13 @@
 import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import type { Difficulty, LogicalSolution, MoveAvailability, PuzzleRating } from '../sudoku/engine'
 import type { MiniSolutionTrace } from '../sudoku/mini-play'
 import { techniqueLabel, type CellReferenceStyle, type PuzzleHint } from '../sudoku/hints'
 import { deductionResults } from '../sudoku/lesson-diagram'
 import { Modal } from './Modal'
+import { usePanelActivity } from './PanelActivity'
+import { mergeRefs } from './merge-refs'
 
 type SudokuSolutionTrace = LogicalSolution | MiniSolutionTrace
 export type NumberSolutionTrace = { status: 'solved' | 'stalled'; steps: readonly PuzzleHint[] }
@@ -27,6 +29,7 @@ type Props = {
   cellReferenceStyle?: CellReferenceStyle
   gridSize?: number
   techniqueDifficulties?: Readonly<Partial<Record<string, Difficulty>>>
+  resizeOverflowRef?: Ref<HTMLOListElement>
 }
 
 export function solutionStatus(trace: SolutionTrace) {
@@ -77,8 +80,10 @@ function bottleneckLabel(availability?: MoveAvailability) {
 }
 
 export function SolutionPath({ state, index, onSelect, onRetry, onClose, onReveal, embedded = false,
-  cellReferenceStyle, gridSize, techniqueDifficulties }: Props) {
+  cellReferenceStyle, gridSize, techniqueDifficulties, resizeOverflowRef }: Props) {
+  const activity = usePanelActivity()
   const list = useRef<HTMLOListElement>(null)
+  const listRef = useMemo(() => mergeRefs(list, resizeOverflowRef), [resizeOverflowRef])
   const close = useRef<HTMLButtonElement>(null)
   const trace = state.status === 'ready' ? state.trace : undefined
   const count = trace?.steps.length ?? 0
@@ -97,8 +102,8 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   }, [embedded])
 
   useLayoutEffect(() => {
-    if (endIndex > 0 || exact) onReveal?.()
-  }, [endIndex, exact, onReveal])
+    if (activity === 'active' && (endIndex > 0 || exact)) onReveal?.()
+  }, [activity, endIndex, exact, onReveal])
 
   useEffect(() => {
     const viewport = list.current
@@ -122,7 +127,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
   }
 
   return (
-    <section className="surface solution-path" aria-label={title} onKeyDown={(event) => {
+    <section className="surface solution-path" aria-label={title} data-grid-click-away-controls onKeyDown={(event) => {
       if (event.key === 'Escape') {
         event.stopPropagation()
         onClose()
@@ -144,7 +149,7 @@ export function SolutionPath({ state, index, onSelect, onRetry, onClose, onRevea
         <Button type="button" onClick={onRetry}>Try again</Button>
       </div>}
       {trace && last && <>
-        <ol className="solution-path-steps" ref={list} role="list" aria-label="Solving steps" onKeyDown={navigate}>
+        <ol className="solution-path-steps" ref={listRef} role="list" aria-label="Solving steps" onKeyDown={navigate}>
           {trace.steps.map((step, stepIndex) => {
             const bottleneck = bottleneckLabel(moveAvailability?.[stepIndex])
             const title = 'title' in step ? step.title : techniqueLabel(step.technique)

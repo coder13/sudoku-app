@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { ThemeSettings } from '../../src/components/Settings'
+import { ThemeSettings } from '../../src/components/SettingsAppearance'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 

@@ -5,12 +5,21 @@ import type { MiniGrid } from './grid.ts'
 
 export type VisualMark = 'pattern' | 'accent' | 'removal' | 'result'
 export type VisualKey = VisualMark | 'strong' | 'weak' | 'arrow'
-export type VisualBranch = { assumption: string; result: string; children?: VisualBranch[] }
+export type VisualBranch = {
+  assumption: string
+  result: string
+  children?: VisualBranch[]
+}
 export type VisualStep = {
   title: string
   description: string
   marks?: { cell: number; digit: number; kind: VisualMark }[]
-  links?: { from: BoardLink['from']; to: BoardLink['to']; kind: 'strong' | 'weak'; arrow?: boolean }[]
+  links?: {
+    from: BoardLink['from']
+    to: BoardLink['to']
+    kind: 'strong' | 'weak'
+    arrow?: boolean
+  }[]
   filled?: Record<string, number>
   candidates?: Record<string, number[]>
   states?: string[]
@@ -32,8 +41,10 @@ export type FoundationVisualId = keyof typeof definitions
 export const foundationVisuals: Record<FoundationVisualId, FoundationVisualDefinition> = definitions as Record<FoundationVisualId, FoundationVisualDefinition>
 
 export const visualColors: Record<VisualMark, string> = {
-  pattern: 'var(--lesson-pattern)', accent: 'var(--lesson-accent)',
-  removal: 'var(--lesson-removal)', result: 'var(--lesson-result)',
+  pattern: 'var(--lesson-pattern)',
+  accent: 'var(--lesson-accent)',
+  removal: 'var(--lesson-removal)',
+  result: 'var(--lesson-result)',
 }
 
 export function foundationBoard(visual: FoundationVisualDefinition, step: VisualStep) {
@@ -48,12 +59,29 @@ export function foundationBoard(visual: FoundationVisualDefinition, step: Visual
   const marks = new Map<number, Map<number, CandidateAnnotation>>()
   for (const { cell, digit, kind } of step.marks ?? []) {
     const cellMarks = marks.get(cell) ?? new Map<number, CandidateAnnotation>()
-    cellMarks.set(digit, { color: visualColors[kind], mark: kind === 'removal' ? 'strike' : 'ring', label: kind })
+    cellMarks.set(digit, {
+      color: visualColors[kind],
+      mark: kind === 'removal' ? 'strike' : 'ring',
+      label: kind,
+    })
     marks.set(cell, cellMarks)
   }
   const annotations: BoardAnnotations = {
     candidates: marks,
-    links: step.links?.map(({ kind, ...link }) => ({ ...link, color: visualColors.pattern, dashed: kind === 'weak' })),
+    links: step.links?.map(({ kind, ...link }) => ({
+      ...link,
+      color: visualColors.pattern,
+      dashed: kind === 'weak',
+    })),
   }
-  return { grid, algebraicCages, givens: '0'.repeat(cellCount), values: values.join(''), candidates, annotations }
+  return {
+    content: {
+      grid,
+      algebraicCages,
+      givens: '0'.repeat(cellCount),
+      values: values.join(''),
+      candidates,
+    },
+    appearance: { annotations },
+  }
 }

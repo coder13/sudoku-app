@@ -1,17 +1,18 @@
-import { sizedSumEndCells, sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
+import { sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import { memo, useId, useMemo, type CSSProperties } from 'react'
-import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantPuzzle, VariantRule } from '../sudoku/engine'
-import { disjointGroupRuleIndices, extraRegionName, isQuadrupleRule, palindromePartner, quadrupleCells, sumLabel } from '../sudoku/variants'
+import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantRule } from '../sudoku/engine'
+import { isQuadrupleRule, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
-import { regionSumParts, sizedRegionSumParts } from '../sudoku/region-sum'
-import { fractionalRegionEdges, fractionalRegionWeights } from '../sudoku/fractional-regions'
-import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from '../sudoku/grid'
-import { cloneLayout } from '../sudoku/clone'
+import { sizedRegionSumParts } from '../sudoku/region-sum'
+import { fractionalRegionEdges } from '../sudoku/fractional-regions'
+import { buildVariantClueModel, kropkiDots, pairKey } from './variant-clue-model'
+
+// Keep these exports available to the frozen renderer used for performance comparisons.
+export { sizedRuleClueLabels, variantCellLabels } from './VariantClueLabels'
 
 const x = (cell: number, size = 9) => cell % size
 const y = (cell: number, size = 9) => Math.floor(cell / size)
 const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) + 0.5] as const
-const pairKey = (a: number, b: number, size = 9) => Math.min(a, b) * size ** 2 + Math.max(a, b)
 const points = (cells: readonly number[], size = 9) => cells.map(cell => center(cell, size).join(',')).join(' ')
 
 function ParityClue({ parity, cells, size = 9 }: Extract<SizedConstraintRule, { type: 'parity' }> & { size?: number }) {
@@ -131,15 +132,13 @@ function AqreRegionClue({ regions }: { regions: Extract<VariantRule, { type: 'aq
 
 function sharedCageEdge(cages: readonly (readonly number[])[], firstCage: number, secondCage: number) {
   const secondCells = new Set(cages[secondCage])
-  const edges: [number, number][] = []
   for (const cell of cages[firstCage]) {
     const row = y(cell), column = x(cell)
     for (const neighbor of [column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1,
       row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1]) {
-      if (neighbor >= 0 && secondCells.has(neighbor)) edges.push([cell, neighbor])
+      if (neighbor >= 0 && secondCells.has(neighbor)) return [cell, neighbor] as const
     }
   }
-  return edges.sort(([a1, a2], [b1, b2]) => a1 - b1 || a2 - b2)[0]
 }
 
 function UnknownCagesClue({ rule }: { rule: Extract<VariantRule, { type: 'unknown-cage-sums' }> }) {
@@ -151,10 +150,8 @@ function UnknownCagesClue({ rule }: { rule: Extract<VariantRule, { type: 'unknow
       const edge = sharedCageEdge(rule.cages, first, second)
       if (!edge) return null
       const [ax, ay] = center(edge[0]), [bx, by] = center(edge[1])
-      const cx = (ax + bx) / 2, cy = (ay + by) / 2
-      return <g key={`${first}-${second}`} data-consecutive-cage-link={`${first + 1}-${second + 1}`}>
-        <text className="variant-cage-consecutive-label" x={cx} y={cy}>C</text>
-      </g>
+      return <text key={`${first}-${second}`} className="variant-cage-consecutive-label"
+        data-consecutive-cage-link={`${first + 1}-${second + 1}`} x={(ax + bx) / 2} y={(ay + by) / 2}>C</text>
     })}
   </g>
 }
@@ -164,27 +161,6 @@ function DistantNeighborsClue({ markedCells }: Extract<VariantRule, { type: 'dis
     {markedCells.map((cell, index) => <rect key={cell} className="variant-distant-neighbor-identity"
       data-distant-neighbor-identity={index + 1} x={x(cell)} y={y(cell)} width="1" height="1" />)}
   </g>
-}
-
-function kropkiDots(rules: readonly (VariantRule | SizedConstraintRule)[], size = 9) {
-  const dots = new Map<number, number>()
-  for (const rule of rules) {
-    if (rule.type === 'labeled-dots') {
-      const mask = rule.relation === 'ratio' ? 2 : 1
-      for (const { cells: [a, b] } of rule.marks) {
-        const key = pairKey(a, b, size)
-        dots.set(key, (dots.get(key) ?? 0) | mask)
-      }
-    }
-    if (rule.type !== 'kropki') continue
-    for (const [kind, marks] of [rule.consecutive, rule.ratioTwo].entries()) {
-      for (const [a, b] of marks?.pairs ?? []) {
-        const key = pairKey(a, b, size)
-        dots.set(key, (dots.get(key) ?? 0) | (1 << kind))
-      }
-    }
-  }
-  return dots
 }
 
 function renderKropkiDot(a: number, b: number, kind: number, paired: boolean, compact: boolean, size: number, value?: number) {
@@ -286,13 +262,12 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
       {fractionalRegionEdges(rule.pieces, size).map(([rawX1, rawY1, rawX2, rawY2], edge) => {
         let x1 = rawX1 / 2, y1 = rawY1 / 2, x2 = rawX2 / 2, y2 = rawY2 / 2
         const dx = x2 - x1, dy = y2 - y1
-        const trimCellCenter = (x: number, y: number) => Number.isInteger(x - .5) && Number.isInteger(y - .5) &&
-          values?.[Math.floor(y) * size + Math.floor(x)] !== undefined && values[Math.floor(y) * size + Math.floor(x)] !== '0'
+        const trimCellCenter = (px: number, py: number) => Number.isInteger(px - .5) && Number.isInteger(py - .5) &&
+          values?.[Math.floor(py) * size + Math.floor(px)] !== undefined && values[Math.floor(py) * size + Math.floor(px)] !== '0'
         const gap = .3
         if (trimCellCenter(x1, y1)) { x1 += dx * gap / .5; y1 += dy * gap / .5 }
         if (trimCellCenter(x2, y2)) { x2 -= dx * gap / .5; y2 -= dy * gap / .5 }
-        return <line key={edge} className="variant-fractional-region-edge"
-          x1={x1} y1={y1} x2={x2} y2={y2} />
+        return <line key={edge} className="variant-fractional-region-edge" x1={x1} y1={y1} x2={x2} y2={y2} />
       })}
     </g>)}
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
@@ -335,14 +310,16 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
       return <SumClue key={edge} a={pair[0]} b={pair[1]}
         sums={[...marks].sort(([a], [b]) => a - b)} dots={dots.get(edge) ?? 0} size={size} />
     })}
-    {rules.map((rule, index) => {
-      if (rule.type !== 'zipper') return null
-      const middle = rule.cells.length / 2
-      const [cx, cy] = Number.isInteger(middle)
-        ? pairCenter(rule.cells[middle - 1], rule.cells[middle], 0, size)
-        : center(rule.cells[Math.floor(middle)], size)
-      return <polyline key={index} className="variant-zipper" data-zipper-line points={points(rule.cells, size)} />
-    })}
+    {rules.map((rule, index) => rule.type === 'zipper' && <g key={index} data-zipper>
+      <polyline className="variant-zipper" data-zipper-line points={points(rule.cells, size)} />
+      {(() => {
+        const middle = rule.cells.length / 2
+        const [cx, cy] = Number.isInteger(middle)
+          ? pairCenter(rule.cells[middle - 1], rule.cells[middle], 0, size)
+          : center(rule.cells[Math.floor(middle)], size)
+        return <circle className="variant-zipper-center" data-zipper-center cx={cx} cy={cy} r=".12" />
+      })()}
+    </g>)}
     {colored.map(({ rule, number, color }, index) => rule.type === 'renban'
       ? <RenbanClue key={index} {...rule} number={number} size={size} />
       : <RegionSumClue key={index} rule={rule} color={color} number={number} size={size} />)}
@@ -354,14 +331,6 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
         data-region-sum={rule.type === 'region-sum' ? number : undefined}>
         {edges.map((edge, i) => <ColoredLineLane key={i} {...edge} size={size} color={color} dashed={dashed} />)}
       </g>
-    })}
-    {rules.map((rule, index) => {
-      if (rule.type !== 'zipper') return null
-      const middle = rule.cells.length / 2
-      const [cx, cy] = Number.isInteger(middle)
-        ? pairCenter(rule.cells[middle - 1], rule.cells[middle], 0, size)
-        : center(rule.cells[Math.floor(middle)], size)
-      return <circle key={index} className="variant-zipper-center" data-zipper-center cx={cx} cy={cy} r=".12" />
     })}
     {rules.map((rule, index) => rule.type === 'arrow' && <ArrowClue key={index} {...rule} size={size} marker={marker} />)}
     {doubleArrows.map(({ ends: [start, finish], cells }, index) =>
@@ -428,140 +397,6 @@ export function LinkedDoubleArrowClues({ rules, size, hidden }: {
       })}
     </g>
   </svg>
-}
-
-export function sizedRuleClueLabels(rules: readonly SizedConstraintRule[], grid: SizedGrid) {
-  const { size } = grid
-  const labels: Set<string>[] = Array.from({ length: size * size }, () => new Set())
-  const at = (cell: number) => `row ${y(cell, size) + 1}, column ${x(cell, size) + 1}`
-  let renbanNumber = 0, regionSumNumber = 0, doubleArrowNumber = 0
-  for (const rule of rules) {
-    if (rule.type === 'diagonal') {
-      for (const cell of gridDiagonalCells(size, rule.diagonal)) labels[cell].add(rule.diagonal === 'main' ? 'top-left diagonal' : 'top-right diagonal')
-    } else if (rule.type === 'extra-house') {
-      for (const cell of rule.cells) labels[cell].add('extra region')
-    } else if (rule.type === 'between') {
-      const [first, last] = [rule.cells[0], rule.cells.at(-1)!]
-      labels[first].add(`Between line endpoint, other endpoint at ${at(last)}`)
-      labels[last].add(`Between line endpoint, other endpoint at ${at(first)}`)
-      for (const cell of rule.cells.slice(1, -1)) labels[cell].add(`Between line interior with endpoints at ${at(first)} and ${at(last)}`)
-    } else if (rule.type === 'killer-cages') {
-      for (const { cells, sum } of rule.cages) for (const cell of cells) labels[cell].add(`cage total ${sum}`)
-    } else if (rule.type === 'quadruple') {
-      const description = 'Quadruple circle with ' + rule.digits.join(', ')
-      for (const cell of quadrupleCells(rule.topLeft, size)) labels[cell].add(description)
-    } else if (rule.type === 'parity') {
-      const odd = rule.parity === 'odd'
-      const digits = Array.from({ length: Math.floor((size + Number(odd)) / 2) }, (_, index) => String(index * 2 + (odd ? 1 : 2)))
-      const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(digits)
-      for (const cell of rule.cells) labels[cell].add(`${odd ? 'odd circle' : 'even square'}, digit must be ${allowed}`)
-    } else if (rule.type === 'digit-restriction') {
-      const allowed = new Intl.ListFormat('en', { type: 'disjunction' }).format(rule.digits.map(String))
-      for (const cell of rule.cells) labels[cell].add(`${rule.shape} digit restriction, allowed ${allowed}`)
-    } else if (rule.type === 'zipper') {
-      const centerCell = rule.cells.length % 2 ? rule.cells[Math.floor(rule.cells.length / 2)] : undefined
-      const total = centerCell === undefined ? 'has the same total as the other pairs' : `adds up to ${at(centerCell)}`
-      if (centerCell !== undefined) labels[centerCell].add('Zipper center, gives the total for every pair')
-      for (let index = 0; index < Math.floor(rule.cells.length / 2); index++) {
-        const left = rule.cells[index], right = rule.cells[rule.cells.length - index - 1]
-        labels[left].add(`Zipper pair with ${at(right)}, ${total}`)
-        labels[right].add(`Zipper pair with ${at(left)}, ${total}`)
-      }
-    } else if (rule.type === 'renban') {
-      renbanNumber++
-      for (const cell of rule.cells) labels[cell].add(`Renban line ${renbanNumber}, ${rule.cells.length === 1
-        ? `one cell, any digit from 1 to ${size}` : `${rule.cells.length} different consecutive digits in any order`}`)
-    } else if (rule.type === 'region-sum') {
-      regionSumNumber++
-      for (const [part, cells] of sizedRegionSumParts(rule, grid).entries()) for (const cell of cells) {
-        labels[cell].add(`Region Sum line ${regionSumNumber}, ${rule.groupByRegion ? ('regions' in grid ? 'region group' : 'box group') : 'segment'} ${part + 1}`)
-      }
-    } else if (rule.type === 'arrow') {
-      labels[rule.circle].add(`arrow bulb for ${rule.cells.map(at).join('; ')}`)
-      for (const cell of rule.cells) labels[cell].add(`arrow shaft from the bulb at ${at(rule.circle)}`)
-    } else if (rule.type === 'linked-double-arrow') {
-      doubleArrowNumber++
-      for (const cell of rule.cells) labels[cell].add(`Double Arrow ${doubleArrowNumber} line`)
-      for (const end of rule.ends) {
-        if (typeof end === 'number') labels[end].add(`Double Arrow ${doubleArrowNumber} end circle`)
-        else labels[sizedSumEndCells(end, size)[0]].add(`First cell of ${sizedSumEndLabel(end, size)}`)
-      }
-    } else if (rule.type === 'double-arrow') {
-      doubleArrowNumber++
-      const [a, b] = rule.ends
-      labels[a].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(b)}`)
-      labels[b].add(`Double Arrow ${doubleArrowNumber} end circle paired with ${at(a)}`)
-      for (const cell of rule.cells) labels[cell].add(`Double Arrow ${doubleArrowNumber} line`)
-    } else if (rule.type === 'adjacent-total') {
-      const [a, b] = rule.cells
-      labels[a].add(`sum ${rule.sum} with ${at(b)}`)
-      labels[b].add(`sum ${rule.sum} with ${at(a)}`)
-    } else if (rule.type === 'row-column-sum') {
-      for (const [a, b] of rule.pairs) {
-        const total = rowColumnSumTotal([a, b], size)
-        labels[a].add(`sum diamond with ${at(b)}, total ${total}`)
-        labels[b].add(`sum diamond with ${at(a)}, total ${total}`)
-      }
-    } else if (rule.type === 'difference') {
-      const [a, b] = rule.cells
-      labels[a].add(`difference of ${rule.difference} with ${at(b)}`)
-      labels[b].add(`difference of ${rule.difference} with ${at(a)}`)
-    } else if (rule.type === 'labeled-dots') {
-      for (const { cells: [a, b], value } of rule.marks) {
-        const relation = rule.relation === 'ratio' ? `ratio of 1 to ${value}` : `difference of ${value}`
-        labels[a].add(`${relation} with ${at(b)}`)
-        labels[b].add(`${relation} with ${at(a)}`)
-      }
-    } else if (rule.type === 'kropki') {
-      for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
-        for (const [a, b] of marks?.pairs ?? []) {
-          labels[a].add(`${color} dot with ${at(b)}`)
-          labels[b].add(`${color} dot with ${at(a)}`)
-        }
-      }
-    } else if (rule.type === 'crust') {
-      if (rule.sharedRegion) {
-        const [a, b] = rule.sharedRegion
-        labels[a].add(`Crust region A, also at ${at(b)}`)
-        labels[b].add(`Crust region A, also at ${at(a)}`)
-      }
-      for (const [a, b] of rule.fixedEdges ?? []) {
-        labels[a].add(`fixed Crust region edge with ${at(b)}`)
-        labels[b].add(`fixed Crust region edge with ${at(a)}`)
-      }
-    } else if (rule.type === 'thermometer') {
-      rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'thermometer bulb' : index === rule.cells.length - 1 ? 'thermometer tip' : 'thermometer'))
-    } else if (rule.type === 'slow-thermometer') {
-      rule.cells.forEach((cell, index) => labels[cell].add(index === 0 ? 'slow thermometer bulb' : index === rule.cells.length - 1 ? 'slow thermometer tip' : 'slow thermometer'))
-    } else if (rule.type === 'whispers') {
-      for (const cell of rule.cells) labels[cell].add(`Whispers line, neighboring digits differ by at least ${rule.minDifference}`)
-    } else if (rule.type === 'xv') {
-      for (const [pairs, total, marker] of [[rule.five?.pairs ?? [], 5, 'V'], [rule.ten?.pairs ?? [], 10, 'X']] as const) {
-        for (const [a, b] of pairs) {
-          labels[a].add(`${marker} marker totals ${total} with ${at(b)}`)
-          labels[b].add(`${marker} marker totals ${total} with ${at(a)}`)
-        }
-      }
-    } else if (rule.type === 'nonogram') {
-      const line = rule.axis === 'row'
-        ? Array.from({ length: size }, (_, column) => rule.index * size + column)
-        : Array.from({ length: size }, (_, row) => row * size + rule.index)
-      const description = `${rule.axis} ${rule.index + 1} Nonogram clue: selected digits ${rule.digits.join(', ')} form consecutive groups of lengths ${rule.runs.join(', ')}`
-      for (const cell of line) labels[cell].add(description)
-    } else if (rule.type === 'row-equation') {
-      const symbols = { add: '+', subtract: 'minus', multiply: 'times', divide: 'divided by', equals: 'equals', join: 'joined to' }
-      const explanation = rule.operators.map((operator, index) => `${symbols[operator]} ${at(rule.cells[index + 1])}`).join(', ')
-      for (const cell of rule.cells) labels[cell].add(`row equation from ${at(rule.cells[0])}: ${explanation}`)
-    } else if (rule.type === 'fractional-regions') {
-      rule.pieces.forEach((piece, index) => {
-        const name = `fractional region ${String.fromCharCode(65 + index)}`
-        for (const [cell, quarters] of fractionalRegionWeights(piece.quarters, size)) {
-          labels[cell].add(`${name}, ${quarters}/4 of the cell`)
-        }
-      })
-    }
-  }
-  return labels.map(items => [...items].join(', '))
 }
 
 // Use the same side of an edge even when a directed clue reverses its endpoints.
@@ -864,54 +699,11 @@ export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
 const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
   rules: readonly VariantRule[]; marker: string
 }) {
-  const clones = cloneLayout(rules)
-  const cloneIndices = new Map<number, number>()
-  rules.forEach((rule, index) => { if (rule.type === 'clone') cloneIndices.set(index, cloneIndices.size) })
-  const disjoint = useMemo(() => disjointGroupRuleIndices(rules), [rules])
-  const shared = useMemo(() => sharedPalindromeEdges(rules), [rules])
-  const coloredLanes = useMemo(() => coloredLineOverlapLanes(rules), [rules])
-  const sumEnds = useMemo(() => sharedRegionSumEnds(rules), [rules])
-  const renbanIndices = new Map<number, number>()
-  rules.forEach((rule, index) => { if (rule.type === 'renban') renbanIndices.set(index, renbanIndices.size) })
+  const model = useMemo(() => buildVariantClueModel(rules), [rules])
+  const { clones, cloneIndices, disjoint, shared, coloredLanes, sumEnds, renbanIndices, regionSumIndices, drawingOrder, dots, sums, markedEdges } = model
   const renbanColor = (index: number) => renbanColors[renbanIndices.get(index)! % renbanColors.length]
-  const regionSumIndices = new Map<number, number>()
-  rules.forEach((rule, index) => { if (rule.type === 'region-sum') regionSumIndices.set(index, regionSumIndices.size) })
   const regionSumColor = (index: number) => regionSumColors[regionSumIndices.get(index)! % regionSumColors.length]
-  // Cell markers sit behind lines; intersection circles remain above cage edges.
-  const layer = (rule: VariantRule) => rule.type === 'inside-grid' ? -4 : rule.type === 'clone' ? -3 : rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'distinct-cells' || rule.type === 'entropy-window-group' || rule.type === 'distant-neighbors' ? -2 : rule.type === 'aqre' ? -1.8 : rule.type === 'renban' ? -1.5 : rule.type === 'palindrome' ? -1 :
-    rule.type === 'inequality' ? 2 : rule.type === 'xv' || rule.type === 'adjacent-total' ? 1.5 : isQuadrupleRule(rule) || rule.type === 'lettered-quadruples' || rule.type === 'kropki' || rule.type === 'labeled-dots' ? 1 : rule.type === 'between' || rule.type === 'lockout' ? .3 : rule.type === 'region-sum' ? .15 : 0
-  const drawingOrder = rules.flatMap((rule, index) => [
-    { rule, index, overlay: undefined as 'palindrome' | 'colored-line' | 'whispers-label' | 'endpoints' | undefined, layer: layer(rule) },
-    ...(shared.has(index) ? [{ rule, index, overlay: 'palindrome' as const, layer: .5 }] : []),
-    ...(coloredLanes.has(index) ? [{ rule, index, overlay: 'colored-line' as const, layer: .4 }] : []),
-    ...(rule.type === 'whispers' && rule.minDifference !== 5 ? [{ rule, index, overlay: 'whispers-label' as const, layer: .75 }] : []),
-    ...(rule.type === 'between' || rule.type === 'lockout' ? [{ rule, index, overlay: 'endpoints' as const, layer: .65 }] : []),
-  ]).sort((a, b) => a.layer - b.layer)
-  const dots = kropkiDots(rules)
-  const sums = new Map<number, Map<number, SumKind>>()
-  const addSum = (a: number, b: number, sum: number, kind: SumKind) => {
-    const key = pairKey(a, b), marks = sums.get(key) ?? new Map<number, SumKind>()
-    if (kind === 'xv' || !marks.has(sum)) marks.set(sum, kind)
-    sums.set(key, marks)
-  }
-  for (const rule of rules) {
-    if (rule.type === 'adjacent-total') addSum(rule.cells[0], rule.cells[1], rule.sum, 'adjacent-total')
-    if (rule.type === 'xv') {
-      for (const [kind, marks] of [rule.five, rule.ten].entries()) for (const [a, b] of marks?.pairs ?? []) {
-        addSum(a, b, kind === 0 ? 5 : 10, 'xv')
-      }
-    }
-  }
   const drawnSums = new Set<number>()
-  const markedEdges = new Set([...dots.keys(), ...sums.keys()])
-  for (const rule of rules) {
-    if (rule.type === 'inequality') markedEdges.add(pairKey(rule.less, rule.greater))
-    const circles = isQuadrupleRule(rule) ? [rule] : rule.type === 'lettered-quadruples' ? rule.clues : []
-    for (const { topLeft } of circles) {
-      markedEdges.add(pairKey(topLeft, topLeft + 10))
-      markedEdges.add(pairKey(topLeft + 1, topLeft + 9))
-    }
-  }
   return <>
     {drawingOrder.map(({ rule, index, overlay }) => {
       if (overlay === 'endpoints' && (rule.type === 'between' || rule.type === 'lockout')) return <EndpointLineClue key={`${index}-endpoints`} cells={rule.cells} endpoints lockout={rule.type === 'lockout'} />
@@ -1049,199 +841,3 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
     </g>)}
   </>
 })
-
-const reference = (cell: number) => `row ${y(cell) + 1}, column ${x(cell) + 1}`
-
-export function variantCellLabels(rules: readonly VariantRule[], regions?: VariantPuzzle['regions']) {
-  const labels: string[][] = Array.from({ length: 81 }, () => [])
-  for (const set of cloneLayout(rules).sets) for (const cell of set.cells) labels[cell].push(
-    `Clone ${set.label}, same digit as ${set.cells.filter(other => other !== cell).map(reference).join('; ')}`)
-  for (const [index, rule] of rules.entries()) {
-    switch (rule.type) {
-      case 'minimum': case 'maximum': {
-        const minimum = rule.type === 'minimum'
-        const label = minimum ? 'Minimum mark, smaller than its compared edge neighbors' : 'Maximum mark, larger than its compared edge neighbors'
-        for (const cell of rule.cells) labels[cell].push(label)
-        break
-      }
-      case 'labeled-dots':
-        for (const { cells: [a, b], value } of rule.marks) {
-          const clue = rule.relation === 'ratio' ? `black dot, ratio ${value} to 1` : `white dot, difference ${value}`
-          labels[a].push(`${clue} with ${reference(b)}`)
-          labels[b].push(`${clue} with ${reference(a)}`)
-        }
-        break
-      case 'inequality':
-        labels[rule.less].push(`inequality, smaller than ${reference(rule.greater)}`)
-        labels[rule.greater].push(`inequality, larger than ${reference(rule.less)}`)
-        break
-      case 'adjacent-total': {
-        const [a, b] = rule.cells
-        const describe = (cell: number) => `${sumLabel(rule.sum)} clue, sum ${rule.sum} with ${reference(cell)}`
-        if (!labels[a].includes(describe(b))) labels[a].push(describe(b))
-        if (!labels[b].includes(describe(a))) labels[b].push(describe(a))
-        break
-      }
-      case 'xv':
-        for (const [sum, marks] of [[5, rule.five], [10, rule.ten]] as const) for (const [a, b] of marks?.pairs ?? []) {
-          const describe = (cell: number) => `${sum === 5 ? 'V' : 'X'} clue, sum ${sum} with ${reference(cell)}`
-          if (!labels[a].includes(describe(b))) labels[a].push(describe(b))
-          if (!labels[b].includes(describe(a))) labels[b].push(describe(a))
-        }
-        break
-      case 'non-consecutive':
-        for (const [a, b] of rule.except ?? []) {
-          labels[a].push(`Non-Consecutive exception with ${reference(b)}`)
-          labels[b].push(`Non-Consecutive exception with ${reference(a)}`)
-        }
-        break
-      case 'parity':
-        for (const cell of rule.cells) labels[cell].push(rule.parity === 'odd'
-          ? 'odd circle, digit must be 1, 3, 5, 7, or 9'
-          : 'even square, digit must be 2, 4, 6, or 8')
-        break
-      case 'digit-restriction':
-        for (const cell of rule.cells) labels[cell].push(`${rule.shape} shape, only digits ${rule.digits.join(', ')}`)
-        break
-      case 'entropy-window-group': {
-        const [low, high] = rule.group === 'low' ? [1, 3] : rule.group === 'middle' ? [4, 6] : [7, 9]
-        for (const cell of rule.cells) labels[cell].push(`Global Entropy 2 by 2 window, digits ${low} to ${high} appear twice`)
-        break
-      }
-      case 'lettered-quadruples':
-        for (const { topLeft, letters } of rule.clues) for (const cell of quadrupleCells(topLeft)) {
-          labels[cell].push(`Lettered Quadruple ${[...letters].join(', ')}, circle touching ${reference(topLeft)} and its three neighbors`)
-        }
-        break
-      case 'quadruple': case 'quadruple-sum':
-        for (const cell of quadrupleCells(rule.topLeft)) labels[cell].push(
-          `${rule.type === 'quadruple-sum' ? 'Quad-Arrows' : 'Quadruple'} ${rule.digits.join(', ')}, circle touching ${reference(rule.topLeft)} and its three neighbors; repeated digits need separate cells` +
-          (rule.type === 'quadruple-sum' ? '; largest digit equals the sum of the other three' : ''))
-        break
-      case 'diagonal': {
-        const main = rule.diagonal === 'main'
-        for (let i = 0; i < 9; i++) {
-          labels[main ? i * 10 : i * 8 + 8].push(main ? 'top-left diagonal' : 'top-right diagonal')
-        }
-        break
-      }
-      case 'distinct-cells':
-        for (const cell of rule.cells) labels[cell].push('Shaded group, all digits differ')
-        break
-      case 'inside-grid':
-        rule.rows.forEach((row, i) => row.forEach((cell, j) =>
-          labels[cell].push(`Inside Grid row ${i + 1}, column ${j + 1}`)))
-        break
-      case 'consecutive-run':
-        for (const cell of rule.cells) labels[cell].push(rule.fromBulb
-          ? `Consecutive Thermometer from the bulb at ${reference(rule.cells[0])}, digits increase by one at each step`
-          : `Consecutive Line from ${reference(rule.cells[0])} to ${reference(rule.cells.at(-1)!)}, digits increase by one from one end to the other`)
-        break
-      case 'extra-house':
-        for (const cell of rule.cells) labels[cell].push(`${extraRegionName(rules, index)}, digits 1–9 once each`)
-        break
-      case 'killer-cages':
-        for (const { cells, sum } of rule.cages) {
-          const corner = reference(Math.min(...cells))
-          for (const cell of cells) labels[cell].push(`cage totaling ${sum}, starting at ${corner}`)
-        }
-        break
-      case 'distant-neighbors':
-        for (let box = 0; box < rule.markedCells.length; box++) {
-          const cell = rule.markedCells[box]
-          labels[cell].push(`Distant Neighbors identity cell for box row ${Math.floor(box / 3) + 1}, box column ${box % 3 + 1}; its digit identifies that box`)
-          const row = y(cell), column = x(cell)
-          for (const neighbor of [column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1,
-            row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1]) {
-            if (neighbor >= 0) labels[neighbor].push(`Distant Neighbors: cannot be consecutive to the identity digit at ${reference(cell)}`)
-          }
-        }
-        break
-      case 'unknown-cage-sums':
-        rule.cages.forEach((cells, cage) => {
-          const pairLabels = rule.consecutivePairs.flatMap(([first, second]) => first === cage ? [second] : second === cage ? [first] : [])
-            .map(other => `C link to cage ${other + 1}; the two unknown totals differ by 1`)
-          for (const cell of cells) labels[cell].push(`Unknown-sum cage ${cage + 1}, digits do not repeat${pairLabels.length ? `; ${pairLabels.join('; ')}` : ''}`)
-        })
-        break
-      case 'whispers':
-        for (const cell of new Set(rule.cells)) {
-          const neighbors = new Set(rule.cells.flatMap((other, i) => i > 0
-            ? other === cell ? [rule.cells[i - 1]] : rule.cells[i - 1] === cell ? [other] : [] : []))
-          labels[cell].push(`Whispers line, minimum difference ${rule.minDifference} with ${[...neighbors].map(reference).join(' and ')}`)
-        }
-        break
-      case 'entropic': {
-        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'entropic').length
-        for (const cell of new Set(rule.cells)) labels[cell].push(`Entropic line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different low (1–3), medium (4–6) or high (7–9) groups' : 'every three successive positions contain a low (1–3), medium (4–6) and high (7–9) digit'}`)
-        break
-      }
-      case 'forbidden-entropic-connection':
-        for (const cell of rule.cells.slice(1, 3)) labels[cell].push(`Broken Entropic connection to ${reference(rule.cells[rule.cells[1] === cell ? 2 : 1])}; the two adjacent triples may not both contain one low, one middle, and one high digit`)
-        break
-      case 'modular': {
-        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'modular').length
-        for (const cell of new Set(rule.cells)) labels[cell].push(`Modular line ${number}, ${rule.cells.length === 1 ? 'one-cell path, any digit 1–9' : rule.cells.length === 2 ? 'two positions from different groups {1, 4, 7}, {2, 5, 8} or {3, 6, 9}' : 'every three successive positions contain one digit from each group {1, 4, 7}, {2, 5, 8} and {3, 6, 9}'}`)
-        break
-      }
-      case 'renban':
-        for (const cell of rule.cells) labels[cell].push(`Renban line ${rules.slice(0, index + 1).filter(rule => rule.type === 'renban').length}, ${rule.cells.length === 1 ? 'one-cell set, any digit 1–9' : `${rule.cells.length} different consecutive digits in any order`}`)
-        break
-      case 'palindrome':
-        for (const cell of rule.cells) {
-          const partner = palindromePartner(rule.cells, cell)
-          labels[cell].push(partner === undefined ? 'Palindrome middle cell, no matching partner'
-            : `Palindrome line, same digit as ${reference(partner)}`)
-        }
-        break
-      case 'region-sum': {
-        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
-        for (const [part, cells] of regionSumParts(rule, regions).entries()) for (const cell of cells) labels[cell].push(
-          `Region Sum line ${number}, part ${part + 1}, same total as the other parts; ${rule.groupByRegion ? 'visits to each region are combined' : 'separate visits stay separate'}`)
-        break
-      }
-      case 'between': {
-        const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
-        const number = rules.slice(0, index + 1).filter(rule => rule.type === 'between').length
-        for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
-          ? `Between line ${number} endpoint circle, other endpoint at ${reference(ends.find(end => end !== cell)!)}`
-          : `Between line ${number} interior, digit strictly between the circles at ${ends.map(reference).join(' and ')}`)
-        break
-      }
-      case 'lockout': {
-        const ends = [rule.cells[0], rule.cells.at(-1)!]
-        for (const cell of rule.cells) labels[cell].push(ends.includes(cell)
-          ? `Lockout diamond, difference of at least 4 with ${reference(ends.find(end => end !== cell)!)}`
-          : `Lockout interior, digit below both or above both diamonds at ${ends.map(reference).join(' and ')}`)
-        break
-      }
-      case 'thermometer':
-        rule.cells.forEach((cell, index) => {
-          labels[cell].push(index === 0 ? 'thermometer bulb' :
-            `thermometer cell ${index + 1} of ${rule.cells.length} from the bulb at ${reference(rule.cells[0])}`)
-        })
-        break
-      case 'arrow':
-        labels[rule.circle].push(`arrow circle, path through ${rule.cells.map(reference).join('; ')}`)
-        for (const cell of rule.cells) labels[cell].push(`arrow path from the circle at ${reference(rule.circle)}`)
-        break
-      case 'pill-arrow': {
-        const [tens, ones] = rule.pill
-        labels[tens].push(`Pill Arrow tens digit, ones digit at ${reference(ones)}`)
-        labels[ones].push(`Pill Arrow ones digit, tens digit at ${reference(tens)}`)
-        for (const cell of rule.cells) labels[cell].push(`Pill Arrow path, sum equals the two-digit number in ${reference(tens)} and ${reference(ones)}`)
-        break
-      }
-      case 'kropki':
-        for (const [marks, color] of [[rule.consecutive, 'white'], [rule.ratioTwo, 'black']] as const) {
-          for (const [a, b] of marks?.pairs ?? []) {
-            labels[a].push(`${color} dot with ${reference(b)}`)
-            labels[b].push(`${color} dot with ${reference(a)}`)
-          }
-        }
-        break
-      default: break
-    }
-  }
-  return labels
-}

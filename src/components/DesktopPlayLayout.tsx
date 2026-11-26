@@ -1,14 +1,15 @@
-import { type CSSProperties, type PointerEvent, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type PointerEvent, type ReactNode, type Ref, type RefObject, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import {
   DEFAULT_DESKTOP_INPUT_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES,
   MIN_DESKTOP_INPUT_WIDTH, MIN_DESKTOP_LAYOUT_WIDTH, MIN_DESKTOP_PUZZLE_WIDTH,
 } from '../sudoku/play-preferences'
-import { Button } from './Button'
-import { Modal } from './Modal'
-import { RESIZE_STEP, ResizeStepControls } from './ResizeStepControls'
+import { RESIZE_STEP } from './ResizeStepControls'
+import { ResizeOptionsDialog } from './ResizeOptionsDialog'
 import { usePlayPreference } from './usePlayPreference'
 import { previewDesktopBoards, rememberInlineStyles } from './desktop-resize-preview'
+import { mergeRefs } from './merge-refs'
+import { isPlayLayoutResizing, PlayLayoutAnchorsContext, usePlayLayoutAnchors, type PlayLayoutAnchors } from './play-layout-anchors'
 
 const HANDLE_CARD_GAP = 6
 const DRAG_SLOP = 4
@@ -37,7 +38,7 @@ function describeWidth(element: HTMLElement | null, width: number) {
   element?.setAttribute('aria-valuetext', `${width} pixels`)
 }
 
-function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset }: {
+function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset, handleRef }: {
   edge?: 'left' | 'right'
   width: number
   min: number
@@ -45,8 +46,11 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
   beginPreview: () => WidthPreview | null
   onSave: (width: number) => void
   onReset: () => void
+  handleRef?: Ref<HTMLDivElement>
 }) {
   const handle = useRef<HTMLDivElement>(null)
+  const anchors = usePlayLayoutAnchors()
+  const combinedHandleRef = useMemo(() => mergeRefs(handle, handleRef), [handleRef])
   const drag = useRef<WidthDrag | null>(null)
   const suppressClick = useRef(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -66,8 +70,7 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || !event.isPrimary || drag.current) return
-    const layout = event.currentTarget.closest('.desktop-play-resizable')
-    if (layout?.hasAttribute('data-layout-resizing') || layout?.querySelector('.workspace[data-layout-resizing]')) return
+    if (isPlayLayoutResizing(anchors)) return
     suppressClick.current = false
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -137,7 +140,7 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
     }
   }, [])
 
-  return <><div ref={handle} className={edge ? 'desktop-layout-edge' : 'desktop-layout-divider'} data-edge={edge}
+  return <><div ref={combinedHandleRef} className={edge ? 'desktop-layout-edge' : 'desktop-layout-divider'} data-grid-click-away-exempt data-edge={edge}
     role="separator" tabIndex={0} aria-orientation="vertical"
     aria-label={edge ? `Resize play layout from the ${edge}` : 'Resize puzzle and digit input panels'}
     aria-haspopup={edge ? undefined : 'dialog'} title={edge ? 'Drag to resize play layout' : 'Drag to resize or click for size options'}
@@ -170,28 +173,38 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
         stepWidth(direction * (event.key === 'ArrowLeft' ? -RESIZE_STEP : RESIZE_STEP))
       }
     }} />
-    {!edge && <Modal title="Resize input panel" className="resize-options-dialog"
-      open={optionsOpen} onClose={() => setOptionsOpen(false)} returnFocus={() => handle.current}>
-      <ResizeStepControls axis="width" onStep={stepWidth} atMin={width <= min} atMax={width >= max} />
-      <Button className="resize-options-reset" onClick={onReset}>Reset size</Button>
-    </Modal>}
+    {!edge && <ResizeOptionsDialog title="Resize input panel" axis="width" value={width} min={min} max={max}
+      onStep={stepWidth} onReset={onReset} open={optionsOpen} onClose={() => setOptionsOpen(false)}
+      returnFocus={() => handle.current} />}
   </>
 }
 
-export function DesktopPlayLayout({ enabled, className, children }: {
+export function DesktopPlayLayout({ enabled, className, pageRef, children }: {
   enabled: boolean
   className: string
+  pageRef: RefObject<HTMLElement | null>
   children: ReactNode
 }) {
   const root = useRef<HTMLDivElement>(null)
   const resizeBounds = useRef<HTMLDivElement>(null)
+  const workspace = useRef<HTMLDivElement>(null)
+  const divider = useRef<HTMLDivElement>(null)
+  const puzzleStack = useRef<HTMLDivElement>(null)
+  const puzzleCard = useRef<HTMLElement>(null)
+  const inputStack = useRef<HTMLDivElement>(null)
+  const controls = useRef<HTMLElement>(null)
+  const hintSlot = useRef<HTMLDivElement>(null)
+  const hint = useRef<HTMLElement>(null)
+  const outerEdgeHandles = useRef<Array<HTMLDivElement | null>>([])
+  const anchors = useMemo<PlayLayoutAnchors>(() => ({ layoutRoot: root, page: pageRef, edges: resizeBounds,
+    workspace, divider, puzzleStack, puzzleCard, inputStack, controls, hintSlot, hint }), [pageRef])
   const [savedWidth, saveWidth] = usePlayPreference('desktopLayoutWidth')
   const [availableWidth, setAvailableWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH)
   const [contentWidth, setContentWidth] = useState(DEFAULT_DESKTOP_LAYOUT_WIDTH)
 
   useLayoutEffect(() => {
     if (!enabled) return
-    const page = root.current?.querySelector<HTMLElement>('.standard-workspace-page')
+    const page = pageRef.current
     const bounds = resizeBounds.current
     if (!bounds) return
     const measure = () => {
@@ -204,7 +217,7 @@ export function DesktopPlayLayout({ enabled, className, children }: {
     observer.observe(bounds, { box: 'border-box' })
     if (page) observer.observe(page, { box: 'border-box' })
     return () => observer.disconnect()
-  }, [enabled])
+  }, [enabled, pageRef])
 
   const maxScale = availableWidth / contentWidth
   const maxWidth = Math.max(MIN_DESKTOP_LAYOUT_WIDTH, Math.floor(maxScale * DEFAULT_DESKTOP_LAYOUT_WIDTH))
@@ -219,14 +232,14 @@ export function DesktopPlayLayout({ enabled, className, children }: {
   function beginPreview(): WidthPreview | null {
     const layout = root.current
     const edges = resizeBounds.current
-    const page = layout?.querySelector<HTMLElement>('.standard-workspace-page')
+    const page = pageRef.current
     if (!layout || !edges || !page) return null
     const scale = scaleAtWidth(width)
     const height = page.getBoundingClientRect().height / scale
     if (!(scale > 0 && height > 0)) return null
     const restorePage = rememberInlineStyles(page, ['scale', 'transform-origin', 'will-change', 'height', 'flex'])
     const restoreEdges = rememberInlineStyles(edges, ['--desktop-layout-scale'])
-    const handles = edges.querySelectorAll<HTMLElement>('.desktop-layout-edge')
+    const handles = outerEdgeHandles.current.filter((handle): handle is HTMLDivElement => handle !== null)
     layout.setAttribute('data-layout-resizing', '')
     page.style.transformOrigin = 'center top'
     page.style.willChange = 'scale'
@@ -252,18 +265,22 @@ export function DesktopPlayLayout({ enabled, className, children }: {
     }
   }
 
-  return <div ref={root} className={`${className}${enabled ? ' desktop-play-resizable' : ''}`} style={layoutStyle}>
-    {children}
-    {enabled && <div ref={resizeBounds} className="desktop-layout-edges">
-      {(['left', 'right'] as const).map((edge) => <PlayResizeHandle key={edge} edge={edge} width={width}
-        min={MIN_DESKTOP_LAYOUT_WIDTH} max={maxWidth} beginPreview={beginPreview} onSave={saveWidth}
-        onReset={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)} />)}
-    </div>}
-  </div>
+  return <PlayLayoutAnchorsContext.Provider value={anchors}>
+    <div ref={root} className={`${className}${enabled ? ' desktop-play-resizable' : ''}`} style={layoutStyle}>
+      {children}
+      {enabled && <div ref={resizeBounds} className="desktop-layout-edges">
+        {(['left', 'right'] as const).map((edge, index) => <PlayResizeHandle key={edge} edge={edge} width={width}
+          min={MIN_DESKTOP_LAYOUT_WIDTH} max={maxWidth} beginPreview={beginPreview} onSave={saveWidth}
+          onReset={() => saveWidth(DEFAULT_DESKTOP_LAYOUT_WIDTH)} handleRef={handle => { outerEdgeHandles.current[index] = handle }} />)}
+      </div>}
+    </div>
+  </PlayLayoutAnchorsContext.Provider>
 }
 
 export function PlayWorkspace({ resizable, children }: { resizable: boolean; children: ReactNode }) {
-  const workspaceRef = useRef<HTMLDivElement>(null)
+  const anchors = usePlayLayoutAnchors()
+  const localWorkspace = useRef<HTMLDivElement>(null)
+  const workspaceRef = anchors?.workspace ?? localWorkspace
   const [savedWidths, saveWidths] = usePlayPreference('desktopPanelWidths')
   const [maxWidth, setMaxWidth] = useState(DEFAULT_DESKTOP_INPUT_WIDTH)
 
@@ -271,16 +288,15 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const workspace = workspaceRef.current
     if (!resizable || !workspace) return
     const gap = parseFloat(getComputedStyle(workspace).columnGap)
-    const puzzle = workspace.querySelector('.standard-puzzle-stack .puzzle')
-    const inputStack = workspace.querySelector('.standard-input-stack')
-    const input = inputStack?.querySelector('.controls')
-    const divider = workspace.querySelector<HTMLElement>(':scope > .desktop-layout-divider')
-    const page = workspace.closest<HTMLElement>('.standard-workspace-page')
-    const layout = page?.closest('.desktop-play-resizable')
-    const edges = layout?.querySelector<HTMLElement>(':scope > .desktop-layout-edges')
+    const puzzle = anchors?.puzzleCard.current
+    const inputStack = anchors?.inputStack.current
+    const input = anchors?.controls.current
+    const divider = anchors?.divider.current
+    const page = anchors?.page.current
+    const edges = anchors?.edges.current
     const measure = () => {
       // Outer resizing previews a transformed surface, not new layout bounds.
-      if (layout?.hasAttribute('data-layout-resizing')) return
+      if (isPlayLayoutResizing(anchors)) return
       setMaxWidth(Math.max(MIN_DESKTOP_INPUT_WIDTH, workspace.clientWidth - gap - MIN_DESKTOP_PUZZLE_WIDTH))
       if (puzzle && input && inputStack && divider) {
         const scale = Number(getComputedStyle(workspace).getPropertyValue('--desktop-layout-scale')) || 1
@@ -310,7 +326,7 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       edges?.style.removeProperty('--play-left-edge-offset')
       edges?.style.removeProperty('--play-right-edge-offset')
     }
-  }, [resizable])
+  }, [resizable, anchors])
 
   const width = clampWidth(savedWidths.input, MIN_DESKTOP_INPUT_WIDTH, maxWidth)
   const savedColumnsWidth = savedWidths.puzzle === null ? null : savedWidths.puzzle + savedWidths.input
@@ -327,11 +343,13 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
 
   function beginPreview(): WidthPreview | null {
     const workspace = workspaceRef.current
-    const inputStack = workspace?.querySelector<HTMLElement>(':scope > .standard-input-stack')
+    const inputStack = anchors?.inputStack.current
     if (!workspace || !inputStack) return null
     const restoreWorkspace = rememberInlineStyles(workspace, ['grid-template-columns'])
     const restoreInput = rememberInlineStyles(inputStack, ['--play-input-scale'])
-    const widthPreviews = [...workspace.querySelectorAll<HTMLElement>('.standard-puzzle-stack .puzzle-flat')].flatMap(element => {
+    const puzzle = anchors?.puzzleCard.current
+    const hint = anchors?.hint.current
+    const widthPreviews = puzzle?.matches('[data-resize-preview-content]') ? [puzzle].flatMap(element => {
       const parent = element.parentElement
       if (!parent) return []
       const parentStyle = getComputedStyle(parent), elementStyle = getComputedStyle(element)
@@ -341,13 +359,12 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
       const available = parseFloat(parentStyle.width) - (parentStyle.boxSizing === 'border-box' ? horizontalSpace(parentStyle) : 0)
       const actual = parseFloat(elementStyle.width) + (elementStyle.boxSizing === 'content-box' ? horizontalSpace(elementStyle) : 0)
       if (!(available > 0 && actual > 0)) return []
-      const hint = parent.parentElement?.querySelector<HTMLElement>(':scope > .standard-hint-slot .hint-dock')
       return [{ element, hint, inset: Math.max(0, available - actual),
         restore: rememberInlineStyles(element, ['max-inline-size']),
         restoreHint: hint && rememberInlineStyles(hint, ['max-inline-size']),
       }]
-    })
-    const clearBoards = previewDesktopBoards(workspace)
+    }) : []
+    const clearBoards = puzzle ? previewDesktopBoards(puzzle) : () => {}
     // Both surfaces follow the live column with the same gutters.
     for (const { element, hint, inset } of widthPreviews) {
       element.style.maxInlineSize = `calc(100% - ${inset}px)`
@@ -357,17 +374,23 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     const update = (input: number) => {
       // Native track sizing does not change inherited variables on every cell.
       workspace.style.gridTemplateColumns = `minmax(0, 1fr) ${input}px`
+      // Keep the board's width constraint in step with the live input track.
+      // Otherwise the grid grows only after React commits the saved width.
+      workspace.style.setProperty('--play-input-width', `${input}px`)
       inputStack.style.setProperty('--play-input-scale', String(input / DEFAULT_DESKTOP_INPUT_WIDTH))
     }
     return {
       update,
-      clear() {
+      clear(nextInputWidth) {
         clearBoards()
         for (const { restore, restoreHint } of widthPreviews) {
           restore()
           restoreHint?.()
         }
         restoreWorkspace()
+        // The preview temporarily owns this variable. Restore it to the saved
+        // track width on commit, or the original width when the drag cancels.
+        workspace.style.setProperty('--play-input-width', `${nextInputWidth}px`)
         restoreInput()
         workspace.removeAttribute('data-layout-resizing')
       },
@@ -378,6 +401,6 @@ export function PlayWorkspace({ resizable, children }: { resizable: boolean; chi
     {children}
     {resizable && <PlayResizeHandle width={width} min={MIN_DESKTOP_INPUT_WIDTH} max={maxWidth}
       beginPreview={beginPreview} onSave={saveSplit}
-      onReset={() => saveWidths(DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)} />}
+      onReset={() => saveWidths(DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)} handleRef={anchors?.divider} />}
   </div>
 }

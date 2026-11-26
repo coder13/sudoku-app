@@ -81,7 +81,7 @@ export function checkedGroupAdditions(root: HTMLElement, props: BoardProps) {
   for (const svg of root.querySelectorAll('svg.board-links')) {
     if (svg.children.length && [...svg.children].every(child => ignored.has(child))) {
       const region = props.region
-      requireMatch([...svg.attributes].map(attribute => attribute.name).sort(), ['aria-hidden', 'class', 'viewBox'], 'group overlay attributes')
+      requireMatch([...svg.attributes].map(attribute => attribute.name).filter(name => !name.startsWith('data-board-')).sort(), ['aria-hidden', 'class', 'viewBox'], 'group overlay attributes')
       requireMatch(svg.getAttribute('class'), 'board-links', 'group overlay class')
       requireMatch(svg.getAttribute('viewBox'), region
         ? `${region.column * 10} ${region.row * 10} ${region.columns * 10} ${region.rows * 10}` : '0 0 90 90', 'group overlay viewBox')

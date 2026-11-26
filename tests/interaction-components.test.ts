@@ -24,7 +24,12 @@ before(async () => {
   ;({ Board } = await server.ssrLoadModule('/src/components/Board.tsx'))
   ;({ ModeBadge } = await server.ssrLoadModule('/src/components/ModeBadge.tsx'))
   ;({ Controls } = await server.ssrLoadModule('/src/components/Controls.tsx'))
-  settings = await server.ssrLoadModule('/src/components/Settings.tsx')
+  const [general, appearance, panels] = await Promise.all([
+    server.ssrLoadModule('/src/components/SettingsGeneral.tsx'),
+    server.ssrLoadModule('/src/components/SettingsAppearance.tsx'),
+    server.ssrLoadModule('/src/components/SettingsPanels.tsx'),
+  ])
+  settings = { ...general, ...appearance, ...panels } as typeof settings
   preferences = await server.ssrLoadModule('/src/sudoku/preferences.ts')
 })
 
@@ -139,7 +144,7 @@ test('imported candidate colors label and shade visible digits in read-only and 
 
   const painted = boardTree({ ...props, onPaintCandidate() {} })
   const buttons = painted.filter(({ props }) => String(props.className).includes('paint-candidate'))
-  assert.deepEqual(buttons.map(({ props }) => props['aria-label']), ['2 in row 1, column 1, deep blue', '5 in row 1, column 2, cyan'])
+  assert.deepEqual(buttons.map(({ props }) => props['aria-label']), ['2 in row 1, column 1, deep blue color', '5 in row 1, column 2, cyan color'])
   assert.ok(buttons.every(({ props }) => String((props.children as ReactElement<{ className: string }>).props.className).includes('imported-candidate-color')))
   assert.ok(!boardTree({ ...props, showImportedAnnotations: false }).some(({ props }) => String(props.className).includes('imported-candidate-color')))
 })
@@ -211,7 +216,9 @@ test('mobile mode outline and badge attach to the Sudoku grid, not the card', ()
   const body = tree.find(({ props }) => String(props.className) === 'board-body')
   assert.ok(body)
   assert.equal(body.props['data-input-mode'], 'pencil')
-  assert.equal(body.props.ref, boundary)
+  assert.equal(typeof body.props.ref, 'function')
+  ;(body.props.ref as (node: HTMLDivElement | null) => void)({} as HTMLDivElement)
+  assert.ok(boundary.current)
   const children = elements(body.props.children)
   assert.ok(children.some(({ props }) => String(props.className).includes('sudoku-grid')))
   assert.ok(children.some(({ props }) => props.className === 'puzzle-mode-tab'))
@@ -312,6 +319,7 @@ test('chain candidate arrows and Home/End move focus without leaking grid key ev
     readonly y: number
     constructor(index: number, x: number, y: number) { this.index = index; this.x = x; this.y = y }
     matches() { return true }
+    hasAttribute(name: string) { return name === 'data-candidate-button' }
     closest() { return null }
     getBoundingClientRect() { return { x: this.x, y: this.y } }
     focus() { focused = this.index }
@@ -434,27 +442,30 @@ test('desktop and mobile workspace-mode controls use independent radio groups', 
 
 test('puzzle Undo and Redo stay enabled during chain drawing when history exists', () => {
   const defaults = {
-    mode: 'value', pencil: false, togglePencil() {},
-    candidateKind: 'center', setCandidateKind() {}, advancedModes: preferences.DEFAULT_ADVANCED_MODES,
-    colorMode: false, colorTarget: 'cell', setColorTarget() {}, onSwitchShade() {},
-    eraseMode: false, toggleEraseMode() {}, highlightMode: false, toggleHighlightMode() {},
-    selectedDigit: null, hasCellSelection: false, values: '0'.repeat(81),
-    input() {}, undo() {}, redo() {}, disabled: false, draft: false,
-    inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {},
-    multi: false, toggleMulti() {}, compact: true, chainDrawing: true,
+    digits: { mode: 'value', pencil: false, candidateKind: 'center', setCandidateKind() {},
+      selectedDigit: null, hasCellSelection: false, values: '0'.repeat(81), input() {} },
+    tools: { togglePencil() {}, colorMode: false, colorTarget: 'cell', setColorTarget() {}, onSwitchShade() {},
+      eraseMode: false, toggleEraseMode() {}, highlightMode: false, toggleHighlightMode() {},
+      multi: false, toggleMulti() {}, chainDrawing: true },
+    history: { undo() {}, redo() {}, canUndo: true, canRedo: true },
+    actions: {},
+    layout: { advancedModes: preferences.DEFAULT_ADVANCED_MODES, compact: true, disabled: false, draft: false,
+      inputSize: 210, panelHeight: 280, setPanelHeight() {}, beginResize() {} },
   }
   const buttonTag = (html: string, label: string) => [...html.matchAll(/<button\b[^>]*>/g)]
     .map(([tag]) => tag).find(tag => tag.includes(`aria-label="${label}"`)) ?? ''
 
-  const available = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true }))
+  const available = renderToStaticMarkup(createElement(Controls, defaults))
   assert.doesNotMatch(buttonTag(available, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
   assert.doesNotMatch(buttonTag(available, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 
-  const noHistory = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: false, canRedo: false }))
+  const noHistory = renderToStaticMarkup(createElement(Controls, { ...defaults,
+    history: { ...defaults.history, canUndo: false, canRedo: false } }))
   assert.match(buttonTag(noHistory, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
   assert.match(buttonTag(noHistory, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 
-  const locked = renderToStaticMarkup(createElement(Controls, { ...defaults, canUndo: true, canRedo: true, disabled: true }))
+  const locked = renderToStaticMarkup(createElement(Controls, { ...defaults,
+    layout: { ...defaults.layout, disabled: true } }))
   assert.match(buttonTag(locked, 'Undo'), /(?:^|\s)disabled(?:\s|=|>)/)
   assert.match(buttonTag(locked, 'Redo'), /(?:^|\s)disabled(?:\s|=|>)/)
 })

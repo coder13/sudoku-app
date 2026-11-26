@@ -45,6 +45,8 @@ export type Position = {
   center: number[]
   corner: number[]
   colors: number[]
+  /** Additional player shades for cells with more than one shade. `colors` remains the primary shade for compatibility. */
+  cellColors?: Record<number, readonly number[]>
   importedCellColors?: ImportedCellColors
   candidateColors?: CandidateColors<number>
   importedCandidateColors?: CandidateColors<string>
@@ -116,6 +118,8 @@ export const EMPTY = '0'.repeat(81)
 export const COLOR_FAMILIES = ['Rose', 'Peach', 'Yellow', 'Mint', 'Blue', 'Lavender']
 // Keep IDs 1–6 unchanged so saved puzzles retain their original shades.
 export const COLORS = [...COLOR_FAMILIES, ...COLOR_FAMILIES.map((name) => `Dark ${name.toLowerCase()}`)]
+export const COLOR_TONES = ['#f5c7d4', '#f7d4b8', '#f8e8a8', '#c4ebd4', '#cce1fc', '#e3d2fa',
+  '#e285a2', '#eaa065', '#e0bf4b', '#73bd95', '#83afe9', '#ae91da']
 
 export function alternateColorShade(color: number): number | null {
   if (!Number.isInteger(color) || color < 1 || color > COLORS.length) return null
@@ -560,20 +564,58 @@ export function paintCandidate(game: Game, candidate: Candidate, color: number):
   return paintCandidates(game, [{ ...candidate, color }])
 }
 
+/** Toggle one candidate's selected shade, preserving explicit paintCandidate set and erase semantics. */
+export function toggleCandidateColor(game: Game, candidate: Candidate, color: number): Game {
+  if (!Number.isInteger(color) || color < 0 || color > COLORS.length) return game
+  const current = game.position.candidateColors?.[candidate.cell]?.[candidate.digit] ?? 0
+  return paintCandidate(game, candidate, color > 0 && current === color ? 0 : color)
+}
+
+const NO_CELL_COLORS: readonly number[] = []
+const SINGLE_CELL_COLOR_SHADES = COLORS.map((_, index) => [index + 1] as const)
+
+export function cellColorShades(position: Pick<Position, 'colors' | 'cellColors'>, cell: number): readonly number[] {
+  const shades = position.cellColors?.[cell]
+  return shades ?? (position.colors[cell] ? SINGLE_CELL_COLOR_SHADES[position.colors[cell] - 1] : NO_CELL_COLORS)
+}
+
+export function sameCellColors(a: Pick<Position, 'colors' | 'cellColors'>, b: Pick<Position, 'colors' | 'cellColors'>): boolean {
+  return a.colors.length === b.colors.length && a.colors.every((_, cell) => {
+    const left = cellColorShades(a, cell), right = cellColorShades(b, cell)
+    return left.length === right.length && left.every((shade, index) => shade === right[index])
+  })
+}
+
 export function withCellColors(position: Position, marks: readonly { cell: number; color: number }[]): Position {
   const colors = [...position.colors]
+  let cellColors: Record<number, readonly number[]> = position.cellColors ?? {}
+  let copiedCellColors = false
   let imported = position.importedCellColors
   for (const { cell, color } of marks) {
     if (!Number.isInteger(cell) || cell < 0 || cell >= colors.length ||
       !Number.isInteger(color) || color < 0 || color > COLORS.length) continue
-    colors[cell] = color
+    const current = cellColorShades({ colors, cellColors }, cell)
+    const next = color === 0 ? NO_CELL_COLORS : current.includes(color)
+      ? current.filter(shade => shade !== color) : [...current, color]
+    const changed = current.length !== next.length || current.some((shade, index) => shade !== next[index])
+    if (changed) {
+      colors[cell] = next[0] ?? 0
+      if (!copiedCellColors) {
+        cellColors = { ...cellColors }
+        copiedCellColors = true
+      }
+      if (next.length > 1) cellColors[cell] = next
+      else delete cellColors[cell]
+    }
     if (imported?.[cell]) {
       if (imported === position.importedCellColors) imported = { ...imported }
       delete imported[cell]
     }
   }
-  if (imported === position.importedCellColors && colors.every((color, cell) => color === position.colors[cell])) return position
+  if (imported === position.importedCellColors && !copiedCellColors && colors.every((color, cell) => color === position.colors[cell])) return position
   const next = { ...position, colors }
+  if (copiedCellColors && Object.keys(cellColors).length) next.cellColors = cellColors
+  else if (copiedCellColors) delete next.cellColors
   if (imported && Object.keys(imported).length) next.importedCellColors = imported
   else delete next.importedCellColors
   return next
@@ -615,6 +657,28 @@ export function paintCandidates(game: Game, marks: readonly (Candidate & { color
   if (imported && Object.keys(imported).length) position.importedCandidateColors = imported
   else delete position.importedCandidateColors
   return move(game, position)
+}
+
+export function digitsFromMask(mask: number, gridSize: number = CLASSIC_GRID.size): number[] {
+  return Array.from({ length: gridSize }, (_, index) => index + 1).filter(digit => hasCandidate(mask, digit))
+}
+
+/** Paint every available candidate for a digit set, toggling the shade off when all already match. */
+export function paintCandidateGroup(game: Game, digits: readonly number[], color: number): Game {
+  const gridSize = (game.grid ?? CLASSIC_GRID).size
+  const selected = new Set(digits.filter(digit => Number.isInteger(digit) && digit >= 1 && digit <= gridSize))
+  if (!selected.size) return game
+  const marks: (Candidate & { color: number })[] = []
+  for (let cell = 0; cell < game.position.entries.length; cell++) {
+    if (game.givens[cell] !== '0' || game.position.entries[cell] !== '0') continue
+    const candidates = game.position.center[cell] | game.position.corner[cell]
+    for (const digit of selected) {
+      if (hasCandidate(candidates, digit)) marks.push({ cell, digit, color })
+    }
+  }
+  if (!marks.length) return game
+  const removeColor = color > 0 && marks.every(({ cell, digit }) => game.position.candidateColors?.[cell]?.[digit] === color)
+  return paintCandidates(game, marks.map(mark => ({ ...mark, color: removeColor ? 0 : color })))
 }
 
 export function clearCandidateColors(game: Game): Game {
@@ -691,8 +755,7 @@ export function restorePuzzleBookmark(game: Game, bookmark: PuzzleBookmark): Gam
 export function enter(game: Game, selection: number[], mode: Mode, digit: number, options: EnterOptions = {}): Game {
   if (mode === 'color') {
     if (!Number.isInteger(digit) || digit < 0 || digit > COLORS.length) return game
-    const color = digit !== 0 && selection.some(i => game.position.colors[i] !== digit) ? digit : 0
-    return paintCells(game, selection.map(cell => ({ cell, color })))
+    return paintCells(game, selection.map(cell => ({ cell, color: digit })))
   }
   let { entries, center, corner } = game.position
   let replacedEntry = false

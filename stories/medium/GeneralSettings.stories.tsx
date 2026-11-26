@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { GeneralSettings } from '../../src/components/Settings'
+import { GeneralSettings } from '../../src/components/SettingsGeneral'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 
@@ -25,5 +25,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Input: Story = {}
 export const Solving: Story = { args: { section: 'solving' } }
+export const SolvingWithExperimentalAls: Story = {
+  args: { section: 'solving', advancedModes: { ...advancedModes, experimentalAlsHighlighting: true } },
+}
 export const SolvingInDraft: Story = { args: { section: 'solving', draft: true } }
 export const Hints: Story = { args: { section: 'hints' } }

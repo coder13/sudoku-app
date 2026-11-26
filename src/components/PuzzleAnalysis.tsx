@@ -17,6 +17,7 @@ import { variantPosition } from '../sudoku/variant-play'
 import { Modal } from './Modal'
 import { HIDE_ZERO_TECHNIQUES_KEY } from '../sudoku/preferences'
 import { notifySettingsEdit } from '../sudoku/settings-events'
+import { usePanelActivity } from './PanelActivity'
 
 const SCAN_DEBOUNCE_MS = 1000
 
@@ -95,7 +96,10 @@ type ContentsProps = { game: Game; active?: boolean; onSelectTechnique?: (techni
 const algebraicTechniques = [...MINI_TECHNIQUES, ALGEBRAIC_CAGE_TECHNIQUE]
 
 export function PuzzleAnalysisContents(props: ContentsProps) {
-  return props.game.grid ? <SizedAnalysis {...props} /> : <StandardAnalysis {...props} />
+  const activity = usePanelActivity()
+  const active = props.active ?? activity === 'active'
+  const activeProps = { ...props, active }
+  return props.game.grid ? <SizedAnalysis {...activeProps} /> : <StandardAnalysis {...activeProps} />
 }
 
 function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps) {

@@ -41,6 +41,7 @@ const sha256 = value => createHash('sha256').update(value).digest('hex')
 const sourceFiles = [
   'src/components/DesktopPlayLayout.tsx', 'src/components/desktop-resize-preview.ts', 'src/components/PlayLayout.tsx', 'src/components/Worktable.tsx',
   'src/components/HintCard.tsx', 'src/components/Board.tsx', 'src/components/BoardMarks.tsx', 'src/components/BoardAnnotations.tsx',
+  'src/components/VariantClues.tsx', 'src/components/VariantClueLabels.ts',
   'src/components/Controls.tsx', 'src/components/ModeBadge.tsx', 'src/components/Modal.tsx',
   'src/components/ResizeStepControls.tsx', 'src/components/Presence.tsx', 'src/components/usePlayPreference.ts',
   'src/sudoku/play-preferences.ts', 'src/sudoku/themes.ts', 'src/styles.css', 'package-lock.json',
@@ -652,7 +653,22 @@ try {
       report.baselineHashes[name] = sha256(source)
       if (name.endsWith('.tsx')) {
         const destination = resolve(temporary, basename(name))
-        const rewritten = source.replace(/from\s+(['"])(\.[^'"]+)\1/g, (_, quote, path) =>
+        // The pinned Board predates the split of clue labels into their own
+        // module. Keep the historical renderer while resolving that API move
+        // against the current shared sources used by this fixture.
+        const compatible = name.endsWith('/Board.tsx') ? source.replace(
+          /import \{([^}]+)\} from ['"]\.\/VariantClues['"]/,
+          (_, importedNames) => {
+            const names = importedNames.split(',').map(value => value.trim())
+            const moved = names.filter(value => value === 'sizedRuleClueLabels' || value === 'variantCellLabels')
+            const retained = names.filter(value => !moved.includes(value))
+            return [
+              retained.length && `import { ${retained.join(', ')} } from './VariantClues'`,
+              moved.length && `import { ${moved.join(', ')} } from './VariantClueLabels'`,
+            ].filter(Boolean).join('\n')
+          },
+        ) : source
+        const rewritten = compatible.replace(/from\s+(['"])(\.[^'"]+)\1/g, (_, quote, path) =>
           `from ${quote}${resolve(root, 'src/components', path)}${quote}`)
         await writeFile(destination, rewritten)
         if (name.endsWith('/Board.tsx')) baselineBoard = destination

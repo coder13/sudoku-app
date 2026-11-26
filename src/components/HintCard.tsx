@@ -1,6 +1,6 @@
 import { Button, IconButton } from './Button'
-import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ChevronUp, Eye, EyeOff, Lightbulb, X } from 'lucide-react'
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Pin, PinOff, X } from 'lucide-react'
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 
@@ -16,13 +16,13 @@ type ExplanationProps = {
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
 
-export function HintCard({ compact = false, hint, onClose, onShown, visuals, reserveVisuals, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, ...explanation }: {
-  compact?: boolean
+export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinned, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, layoutAnchors, ...explanation }: {
   hint: PuzzleHint
   onClose: () => void
   onShown?: () => void
   visuals?: { visible: boolean; onToggle: () => void }
-  reserveVisuals?: boolean
+  pinned?: boolean
+  onTogglePinned?: () => void
   navigation?: HintNavigation
   action?: HintAction
   detailNavigation?: HintDetailNavigation
@@ -30,15 +30,26 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
   lesson?: { id: string; title: string }
   detail?: ReactNode
   removals?: readonly HintRemoval[]
+  layoutAnchors?: {
+    card: RefObject<HTMLElement | null>
+    body: RefObject<HTMLDivElement | null>
+    toolbar: RefObject<HTMLDivElement | null>
+  }
 } & ExplanationProps) {
-  const card = useRef<HTMLElement>(null)
+  const internalCard = useRef<HTMLElement>(null)
+  const card = layoutAnchors?.card ?? internalCard
   useLayoutEffect(() => {
     if (card.current?.getClientRects().length) onShown?.()
   }, [onShown])
   const reserveAction = detailNavigation && !detailNavigation.last
 
-  const closeButton = <IconButton type="button" variant="quiet" className="hint-card-close" aria-label="Close hint" onClick={onClose}>
+  const closeButton = <IconButton type="button" variant="quiet" className="hint-card-close" data-hint-card-close aria-label="Close hint" onClick={onClose}>
     <X size={18} aria-hidden="true" />
+  </IconButton>
+  const pinButton = onTogglePinned && <IconButton type="button" variant="quiet" className="hint-card-pin" data-hint-card-pin
+    aria-label={pinned ? 'Show hint above the input' : 'Pin hint in input tabs'} aria-pressed={pinned}
+    title={pinned ? 'Show hint separately' : 'Pin hint in input tabs'} onClick={onTogglePinned}>
+    {pinned ? <PinOff size={18} aria-hidden="true" /> : <Pin size={18} aria-hidden="true" />}
   </IconButton>
   const hintNavigation = navigation && <div className="hint-card-navigation" role="group" aria-label="Hint navigation">
     <IconButton type="button" aria-label="Previous hint"
@@ -52,62 +63,56 @@ export function HintCard({ compact = false, hint, onClose, onShown, visuals, res
     </IconButton>
   </div>
   const lessonLink = lesson && <a className="hint-card-lesson" href={`/learn/${lesson.id}`} aria-label={`Review ${lesson.title} lesson`}
-    title={compact ? 'Review lesson' : undefined}>
-    <BookOpen size={14} aria-hidden="true" />{!compact && ' Review lesson'}
+    title="Review lesson">
+    <BookOpen size={14} aria-hidden="true" />
   </a>
 
   const content = (
-    <aside className="hint-card" aria-label="Puzzle hint" data-compact={compact || undefined}
-      data-staged={Boolean(detailNavigation) || undefined} ref={card}>
+    <aside className="hint-card" aria-label="Puzzle hint" data-staged={Boolean(detailNavigation) || undefined} ref={card}>
       <div className="hint-card-heading">
-        {!compact && <span className="hint-card-icon" aria-hidden="true"><Lightbulb size={19} /></span>}
         <div className="hint-card-summary">
           <div className="hint-card-title">
-            {!compact && <small>Hint</small>}
             <h2>{hint.title}</h2>
-            {!compact && lessonLink}
           </div>
-          {compact && lessonLink}
-          {visuals ? <IconButton type="button" variant="quiet" className="hint-card-visuals"
+          {lessonLink}
+          {visuals ? <IconButton type="button" variant="quiet" className="hint-card-visuals" data-candidate-paint-focus-keep
             aria-label="Hint visuals" aria-pressed={visuals.visible} title={visuals.visible ? 'Hide hint visuals' : 'Show hint visuals'}
             onClick={visuals.onToggle}>
             {visuals.visible ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
-          </IconButton> : reserveVisuals && <span className="hint-card-visuals-space" aria-hidden="true" />}
+          </IconButton> : <span className="hint-card-visuals-space" aria-hidden="true" />}
         </div>
-        {!compact && closeButton}
-        {((!compact && navigation) || action || detailNavigation || secondaryAction) && <div className="hint-card-actions">
-          {!compact && hintNavigation}
+        {(action || detailNavigation || secondaryAction) && <div className="hint-card-actions">
           {secondaryAction && <Button type="button" aria-expanded={secondaryAction.expanded} data-reserved={secondaryAction.reserved || undefined}
             disabled={secondaryAction.reserved}
             onClick={secondaryAction.onClick}>{secondaryAction.label}</Button>}
           {(action || detailNavigation) && <div className="hint-card-detail-actions" role="group" aria-label="Hint detail">
-            {detailNavigation && <>
-              <IconButton aria-label="Less detail" title="Less detail" aria-disabled={detailNavigation.first || undefined}
-                tabIndex={detailNavigation.first ? -1 : undefined} onClick={detailNavigation.first ? undefined : () => detailNavigation.onMove(-1)}>
-                <ChevronUp size={18} aria-hidden="true" />
-              </IconButton>
-              <IconButton aria-label="More detail" title="More detail" aria-disabled={detailNavigation.last || undefined}
-                tabIndex={detailNavigation.last ? -1 : undefined} onClick={detailNavigation.last ? undefined : () => detailNavigation.onMove(1)}>
-                <ChevronDown size={18} aria-hidden="true" />
-              </IconButton>
-            </>}
             {action && <Button type="button" variant="primary" disabled={reserveAction} data-reserved={reserveAction || undefined}
               onClick={action.onClick} aria-keyshortcuts={action.shortcut}
               title={action.shortcut ? `${action.label} (${action.shortcut})` : undefined}>{action.label}</Button>}
+            {detailNavigation && <>
+              <IconButton aria-label="Less detail" title="Less detail" aria-disabled={detailNavigation.first || undefined}
+                tabIndex={detailNavigation.first ? -1 : undefined} onClick={detailNavigation.first ? undefined : () => detailNavigation.onMove(-1)}>
+                <ArrowLeft size={18} aria-hidden="true" />
+              </IconButton>
+              <IconButton aria-label="More detail" title="More detail" aria-disabled={detailNavigation.last || undefined}
+                tabIndex={detailNavigation.last ? -1 : undefined} onClick={detailNavigation.last ? undefined : () => detailNavigation.onMove(1)}>
+                <ArrowRight size={18} aria-hidden="true" />
+              </IconButton>
+            </>}
           </div>}
         </div>}
       </div>
-      <div className="hint-card-body">
+      <div className="hint-card-body" ref={layoutAnchors?.body}>
         <DeductionExplanation {...explanation} />
         {detail}
         <DeductionOutcome removals={removals} text={hint.text} />
       </div>
     </aside>
   )
-  return compact ? <>
-    <div className="hint-toolbar">{hintNavigation}{closeButton}</div>
+  return <>
+    <div className="hint-toolbar" ref={layoutAnchors?.toolbar}>{hintNavigation}<div className="hint-toolbar-actions">{pinButton}{closeButton}</div></div>
     {content}
-  </> : content
+  </>
 }
 
 export function DeductionExplanation({ explanation, explanationSteps, collapseExplanation, trace }: ExplanationProps) {

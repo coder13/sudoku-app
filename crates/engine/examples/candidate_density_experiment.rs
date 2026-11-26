@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fs};
 
 use sudoku_app_engine::{
-    candidates, parse_givens, solve_logically, Difficulty, HintEvidence, PositionSnapshot,
+    Difficulty, HintEvidence, PositionSnapshot, candidates, parse_givens, solve_logically,
 };
 
 #[derive(Clone)]
@@ -249,7 +249,9 @@ fn main() {
     let mut base_scores = Vec::new();
     let mut absolute_scores = Vec::new();
     let mut relative_scores = Vec::new();
-    println!("tier,n,base_min,base_med,base_max,absolute_med,relative_med,base_p90,absolute_p90,relative_p90,median_abs_change_pct,median_steps,median_givens");
+    println!(
+        "tier,n,base_min,base_med,base_max,absolute_med,relative_med,base_p90,absolute_p90,relative_p90,median_abs_change_pct,median_steps,median_givens"
+    );
     for (tier_rank, tier) in tiers.into_iter().enumerate() {
         let sample: Vec<_> = runs.iter().filter(|run| run.tier == tier).collect();
         let base: Vec<_> = sample.iter().map(|run| run.base).collect();

@@ -1,16 +1,19 @@
 import { useEffect, useId, useState } from 'react'
 import type { VariantRuleSection, VariantRuleSectionId } from '../sudoku/variants'
+import { usePanelActivity } from './PanelActivity'
 
 /** List the active Sudoku rule families and report the section a player is inspecting. */
 export function VariantRules({ sections, active, onHighlight }: {
   sections: readonly VariantRuleSection[]
-  active: boolean
+  active?: boolean
   onHighlight: (id: VariantRuleSectionId | null) => void
 }) {
+  const activity = usePanelActivity()
+  const isActive = active ?? activity === 'active'
   const headingId = useId()
   const [hovered, setHovered] = useState<VariantRuleSectionId | null>(null)
   const [focused, setFocused] = useState<VariantRuleSectionId | null>(null)
-  const highlighted = active ? hovered ?? focused : null
+  const highlighted = isActive ? hovered ?? focused : null
 
   useEffect(() => {
     onHighlight(highlighted)
@@ -18,10 +21,10 @@ export function VariantRules({ sections, active, onHighlight }: {
   }, [highlighted, onHighlight])
 
   useEffect(() => {
-    if (active) return
+    if (isActive) return
     setHovered(null)
     setFocused(null)
-  }, [active])
+  }, [isActive])
 
   return <div className="variant-rules-copy variant-rule-list">
     {sections.map(({ id, title, descriptions }) => <section key={id} className="variant-rule-section"

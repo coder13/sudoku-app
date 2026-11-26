@@ -25,6 +25,7 @@ const accentColor = 'var(--lesson-accent)'
 const resultColor = 'var(--lesson-result)'
 const removalColor = 'var(--lesson-removal)'
 const contradictionFill = `color-mix(in srgb, ${removalColor} 24%, var(--board-bg))`
+type Evidence = Deduction['evidence']
 const list = new Intl.ListFormat('en')
 const either = new Intl.ListFormat('en', { type: 'disjunction' })
 export const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
@@ -32,6 +33,38 @@ export const lessonValues = ({ givens, entries }: Pick<PositionSnapshot, 'givens
   [...givens].map((digit, cell) => digit === '0' ? entries[cell] : digit).join('')
 const labelCandidate = ({ cell, digit }: Candidate, nameCell: (cell: number) => string) => `${digit} in ${nameCell(cell)}`
 export const candidateName = (candidate: Candidate) => labelCandidate(candidate, cellName)
+export const candidateCount = (mask: number) => {
+  let count = 0
+  while (mask) {
+    mask &= mask - 1
+    count++
+  }
+  return count
+}
+
+export function wingCellRoles(evidence: Evidence, countAtCell: (cell: number) => number = () => 0) {
+  if ('wing' in evidence) return { pivots: [evidence.wing.pivot], wings: [...evidence.wing.pincers] }
+  if ('wxyz-wing' in evidence) {
+    const { cells } = evidence['wxyz-wing']
+    const pivot = cells.reduce((best, cell) => countAtCell(cell) > countAtCell(best) ? cell : best, cells[0])
+    return { pivots: [pivot], wings: cells.filter(cell => cell !== pivot) }
+  }
+  if ('w-wing' in evidence) return { pivots: [], wings: [...evidence['w-wing'].wings] }
+  if ('firework' in evidence) return {
+    pivots: evidence.firework.pivots.map(({ cell }) => cell), wings: [...evidence.firework.wings],
+  }
+  if ('firework-w-wing' in evidence) return {
+    pivots: [evidence['firework-w-wing'].pivot], wings: evidence['firework-w-wing'].wings.flat(),
+  }
+  if ('firework-l-wing' in evidence) return {
+    pivots: [evidence['firework-l-wing'].pivot], wings: [...evidence['firework-l-wing'].wings],
+  }
+  if ('firework-als-wing' in evidence) return {
+    pivots: [...evidence['firework-als-wing'].pivots], wings: evidence['firework-als-wing'].wings.flat(2),
+  }
+  return { pivots: [], wings: [] }
+}
+
 const candidatesConflict = (a: Candidate, b: Candidate) =>
   a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && peer(a.cell, b.cell)
 const capital = (phrase: string) => phrase[0].toUpperCase() + phrase.slice(1)
@@ -57,6 +90,21 @@ export function houseName(house: House) {
 }
 
 export const houseCells = gridHouseCells
+
+function placementPeers(cell: number, grid: PlayGrid) {
+  const { size } = grid
+  const row = Math.floor(cell / size)
+  const column = cell % size
+  const houses: House[] = [{ row }, { column }]
+  if ('regions' in grid) {
+    const box = grid.regions.findIndex(region => region.includes(cell))
+    if (box >= 0) houses.push({ box })
+  } else if (!('noRegions' in grid)) {
+    const boxesAcross = size / grid.boxColumns
+    houses.push({ box: Math.floor(row / grid.boxRows) * boxesAcross + Math.floor(column / grid.boxColumns) })
+  }
+  return [...new Set(houses.flatMap(house => houseCells(house, grid)))].filter(other => other !== cell)
+}
 
 function sharedHouse(cells: readonly number[]) {
   const [first] = cells
@@ -110,6 +158,9 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
     for (const cell of houseCells(house, grid)) cells.set(cell, { fill: 'var(--lesson-area-fill)', label: 'hint area' })
   }
   for (const cell of focus) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'hint cell' })
+  const roles = wingCellRoles(evidence, cell => pattern.candidates.filter(candidate => candidate.cell === cell).length)
+  for (const cell of roles.wings) cells.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
+  for (const cell of roles.pivots) cells.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
 
   const references = focus.length ? focus.map((cell) => cellReference(cell, style, difficulty, grid.size)) : houses.map(houseName)
   const text = references.length > 0 && references.length <= 4 ? `Look in ${list.format(references)}.`
@@ -299,11 +350,13 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const restrictedDigits = list.format(restricted.map(String))
     const limits = restricted.map((digit) => {
       const locations = marks(cells, [digit]).map(({ cell }) => cell)
-      if (locations.length === 1) return `In the wing, ${digit} can go only in ${nameCell(locations[0])}.`
+      if (locations.length === 1) return `Candidate ${digit} is restricted; it can go only in ${nameCell(locations[0])}.`
       const house = sharedHouse(locations)
-      return house ? `The candidates for ${digit} share ${houseName(house)}.`
-        : `Any two cells with candidate ${digit} share a row, column, or box.`
+      return house ? `Candidate ${digit} is restricted; all its cells share ${houseName(house)}.`
+        : `Candidate ${digit} is restricted; every pair of its cells shares a row, column, or box.`
     })
+    const unrestrictedDescription = unrestricted === null ? [] :
+      [`Candidate ${unrestricted} is unrestricted because a pair of its candidate cells does not share a row, column, or box.`]
     const targets = new Map<number, number[]>()
     for (const action of actions) {
       if (!('eliminate' in action)) continue
@@ -314,20 +367,24 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     }
     const blocked = Array.from(targets, ([digit, targetCells]) => {
       const locations = marks(cells, [digit]).map(({ cell }) => nameCell(cell))
-      const placement = targetCells.length === 1 ? `${digit} in ${nameCell(targetCells[0])}` : `any crossed-out ${digit}`
-      return `Placing ${placement} would rule out every ${digit} in the wing (${list.format(locations)}).`
+      const placement = targetCells.length === 1 ? `If ${nameCell(targetCells[0])} is ${digit}`
+        : `If ${digit} is placed in any of ${list.format(targetCells.map(nameCell))}`
+      return `${placement}, it rules out every ${digit} in the wing (${list.format(locations)}).`
     })
-    const remaining = unrestricted === null ? 'only three digits' : `only ${restrictedDigits}`
-    const consequence = actions.length === 1 ? 'That leaves' : 'Each of those moves would leave'
+    const consequence = actions.length === 1 ? 'That leaves' : 'Each such placement leaves'
+    const remaining = unrestricted === null ? 'only three restricted candidates' : `only the three restricted candidates (${restrictedDigits})`
+    const result = unrestricted === null
+      ? 'They cannot fill all four cells, so the crossed-out digit must appear in the wing.'
+      : 'They can fill at most three cells, so the unrestricted candidate must appear in the wing.'
     return {
       cells, candidates: marks(cells, restricted),
-      mainLabel: 'Digits that cannot repeat',
-      accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Digit the wing must use' },
-      description: `The four wing cells have just four possible digits between them, ${list.format(digits.map(String))}.`,
+      mainLabel: 'Restricted candidates',
+      accent: unrestricted === null ? undefined : { candidates: marks(cells, [unrestricted]), label: 'Unrestricted candidate' },
+      description: `The four wing cells have four candidate digits between them: ${list.format(digits.map(String))}. At least three are restricted candidates.`,
       ...explainSteps([
-        [...limits, 'If you place one of these digits in a wing cell, it rules out the same digit in the other wing cells.'].join(' '),
+        [...limits, ...unrestrictedDescription, 'A restricted candidate can appear at most once in the wing.'].join(' '),
         ...blocked,
-        `${consequence} ${remaining} for four cells. These three digits can fill at most three cells.`,
+        `${consequence} ${remaining} for four cells. ${result}`,
       ]),
     }
   }
@@ -856,6 +913,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
   const cells = new Map<number, CellAnnotation>()
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
+  const roles = wingCellRoles(deduction.evidence, cell => candidateCount(candidates[cell] ?? 0))
   const tint = (houses: House[] | undefined, fill: string) => {
     for (const house of houses ?? []) {
       for (const cell of houseCells(house, grid)) cells.set(cell, { fill })
@@ -870,6 +928,8 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   tint(pattern.houses, 'var(--lesson-area-fill)')
   for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
   for (const cell of pattern.contradictionCells ?? []) cells.set(cell, { fill: contradictionFill, label: 'contradiction cell' })
+  for (const cell of roles.wings) cells.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
+  for (const cell of roles.pivots) cells.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
   for (const candidate of pattern.candidates) mark(candidate, patternColor, pattern.mainLabel ?? 'in the pattern')
   if (pattern.accent) {
     for (const candidate of pattern.accent.candidates) mark(candidate, accentColor, pattern.accent.label)
@@ -879,6 +939,10 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
       const { cell } = action.place
       cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-result-fill)' })
       mark(action.place, resultColor, 'to place')
+      const bit = 1 << (action.place.digit - 1)
+      for (const peer of placementPeers(cell, grid)) {
+        if ((candidates[peer] ?? 0) & bit) mark({ cell: peer, digit: action.place.digit }, removalColor, 'to remove after this placement', true)
+      }
     } else {
       mark(action.eliminate, removalColor, 'to remove', true)
     }

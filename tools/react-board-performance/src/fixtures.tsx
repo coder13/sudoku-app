@@ -1,13 +1,50 @@
-import type { ComponentProps } from 'react'
-import { Board } from '../../../src/components/Board'
+import {
+  type BoardAppearance,
+  type BoardContent,
+  type BoardInteraction,
+  type BoardLayout,
+  type BoardProps as GroupedBoardProps,
+} from '../../../src/components/Board'
 import type { SizedConstraintRule, VariantRule } from '../../../src/sudoku/engine'
 import { MINI_GRID, SEVEN_BOXLESS_GRID, sevenJigsawForSeed, sixGridForBoxRows } from '../../../src/sudoku/grid'
 import { WINDOKU_REGIONS } from '../../../src/sudoku/variants'
 import { createFixture, type BoardState } from './model'
 
-export type BoardProps = ComponentProps<typeof Board>
+/** Flat fixture props keep the historical renderer and optimized renderer comparable. */
+export type BoardProps = BoardContent & BoardAppearance & BoardInteraction & BoardLayout & { showGuides: boolean }
 export type Scenario = { id: string; states: BoardProps[] }
 export const noopCell = () => {}
+
+const contentKeys = [
+  'variantPuzzle', 'fog', 'whispersGuide', 'givenCellColors', 'grid', 'algebraicCages', 'sizedRules',
+  'givens', 'values', 'aqreShades', 'position', 'candidates',
+] as const satisfies readonly (keyof BoardProps)[]
+const appearanceKeys = [
+  'authoredArtwork', 'highlightedRule', 'errors', 'candidateLayout', 'annotations', 'annotationsOnTop',
+  'showAnnotatedCandidates', 'showPlayerColors', 'showImportedAnnotations', 'colorPreview', 'region', 'label',
+  'descriptionId', 'showGuides', 'overlay', 'highlightedDigit', 'highlightedDigitMask', 'highlightedDigitMatch',
+  'highlightCandidateCells', 'fullCandidateCellHighlight', 'highlightCandidateCount', 'highlighting',
+] as const satisfies readonly (keyof BoardProps)[]
+const interactionKeys = [
+  'candidatePreview', 'candidateGroupPreview', 'selected', 'active', 'pointerFocusedCell', 'boardRef', 'onCell',
+  'onGiven', 'onGridKeyDown', 'onCellDoubleClick', 'linkDrawing', 'onCandidate', 'onLinkSelect',
+  'onPaintCandidate', 'onCandidateHover', 'isLinkTarget', 'selectedCandidate', 'selectedCandidates', 'dragSelect',
+  'onCellPointerDown', 'onCellPointerMove', 'onGridPointerLeave', 'onAqreShade',
+] as const satisfies readonly (keyof BoardProps)[]
+const layoutKeys = ['layoutBoundaryRef', 'modeBorder', 'modeBoundaryRef', 'frameRef', 'modeBadge'] as const satisfies readonly (keyof BoardProps)[]
+
+function pickProps<K extends keyof BoardProps>(props: BoardProps, keys: readonly K[]): Pick<BoardProps, K> {
+  return Object.fromEntries(keys.map(key => [key, props[key]])) as Pick<BoardProps, K>
+}
+
+export function groupedBoardProps(props: BoardProps): GroupedBoardProps {
+  return {
+    content: pickProps(props, contentKeys) as BoardContent,
+    appearance: pickProps(props, appearanceKeys) as BoardAppearance,
+    interaction: pickProps(props, interactionKeys) as BoardInteraction,
+    layout: pickProps(props, layoutKeys) as BoardLayout,
+  }
+}
 
 export function propsFromState(state: BoardState): BoardProps {
   return {

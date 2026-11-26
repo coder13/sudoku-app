@@ -5,6 +5,8 @@ use crate::{
     LinkStrength::{Strong, Weak},
     Technique, candidates, technique_deductions_at,
 };
+#[cfg(all(feature = "wasm-api", feature = "teaching"))]
+use crate::{PositionSnapshot, parse_givens};
 use Technique::*;
 use std::collections::BTreeSet;
 
@@ -351,10 +353,10 @@ fn practice_chain_protocol_preserves_actions_and_ordered_link_evidence() {
             .unwrap_or_else(|| panic!("{technique:?}: {response}"));
         let examples = technique.practice_examples();
         assert_eq!(cases.len(), examples.len());
-        for (wire, example) in cases.iter().zip(examples) {
+        for (case_index, (wire, example)) in cases.iter().zip(examples).enumerate() {
             let proof = &wire["deduction"];
-            assert_eq!(proof["technique"], technique.id());
-            assert_eq!(proof["actions"], json!(example.expected_actions));
+            let context = format!("{technique:?} practice case {case_index}");
+            assert_eq!(proof["technique"], technique.id(), "{context}");
             assert_eq!(wire["suggestion"], proof["actions"][0]);
             assert!(
                 wire["answers"]
@@ -362,13 +364,32 @@ fn practice_chain_protocol_preserves_actions_and_ordered_link_evidence() {
                     .unwrap()
                     .contains(&wire["suggestion"])
             );
-            let position = example.position().unwrap();
+            let source_position = example.position().unwrap();
+            assert!(
+                technique_deductions_at(&source_position, technique)
+                    .unwrap()
+                    .iter()
+                    .any(|hint| hint.actions == example.expected_actions),
+                "{context} source example must retain its authored deduction"
+            );
+
+            // The teaching protocol focuses the example after earlier solving
+            // steps. Those steps can expose a different deduction for the same
+            // technique than the static fixture's original action list.
+            let position = PositionSnapshot {
+                givens: parse_givens(wire["givens"].as_str().unwrap()).unwrap(),
+                entries: parse_givens(wire["entries"].as_str().unwrap()).unwrap(),
+                eliminations: serde_json::from_value::<Vec<u16>>(wire["eliminations"].clone())
+                    .unwrap()
+                    .try_into()
+                    .unwrap(),
+            };
             let original = technique_deductions_at(&position, technique)
                 .unwrap()
                 .into_iter()
-                .find(|hint| hint.actions == example.expected_actions)
+                .find(|hint| &serde_json::to_value(hint).unwrap() == proof)
                 .unwrap();
-            assert_eq!(*proof, serde_json::to_value(original).unwrap());
+            assert_eq!(*proof, serde_json::to_value(original).unwrap(), "{context}");
 
             let evidence = &proof["evidence"];
             let key = match (technique, shape) {

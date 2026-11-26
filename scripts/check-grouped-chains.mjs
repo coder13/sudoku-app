@@ -40,8 +40,16 @@ const initial = replaceCandidates(unnotedGame, completePracticeCandidates, { rec
 const fixture = { ...initial, started: true, difficulty: 'master', score: 4000,
   position: { ...initial.position, entries: practice.entries, eliminations: practice.eliminations } }
 const gameKey = 'sudoku-app:v1:game:' + fixture.id
-const nodes = [candidateId({ cell: 0, digit: 3 }), chainGroup(3, [9, 11]), candidateId({ cell: 15, digit: 3 }),
-  candidateId({ cell: 78, digit: 3 }), chainGroup(3, [76, 77]), chainGroup(3, [67, 68])]
+const exampleLinks = practice.deduction.evidence.inference.links
+const exampleNode = value => {
+  if (value.candidate) return candidateId(value.candidate)
+  if (value.group) return chainGroup(value.group.digit, value.group.cells)
+  throw new Error(`Unknown grouped-chain node: ${JSON.stringify(value)}`)
+}
+const nodes = [exampleNode(exampleLinks[0].from), ...exampleLinks.map(link => exampleNode(link.to))]
+const nodePoint = node => typeof node === 'number'
+  ? { cell: Math.floor(node / 9), digit: node % 9 + 1 }
+  : (() => { const [, digit, cells] = node.split(':'); return { digit: Number(digit), cells: cells.split(',').map(Number) } })()
 const expectedEdges = nodes.slice(1).map((node, index) => [nodes[index], node])
 const files = ['src/sudoku/chains.ts', 'src/sudoku/chain-sketch.ts', 'src/components/useChainSketch.ts',
   'src/components/ChainsPanel.tsx', 'src/components/Board.tsx', 'src/components/BoardAnnotations.tsx',
@@ -98,7 +106,7 @@ async function run(profile) {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   const click = locator => profile.hasTouch ? locator.tap() : locator.click()
-  const candidate = (cell, digit = 3) => page.getByRole('grid', { name: 'Sudoku grid for drawing links' })
+  const candidate = (cell, digit) => page.getByRole('grid', { name: 'Sudoku grid for drawing links' })
     .getByRole('button', { name: new RegExp(`^${digit} in row ${Math.floor(cell / 9) + 1}, column ${cell % 9 + 1}(?:\\D|$)`) })
   let assertions = 0
   let phase = 'open fixture'
@@ -118,38 +126,42 @@ async function run(profile) {
     await page.getByRole('button', { name: 'Create group', exact: true }).waitFor()
     await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create group' && !button.disabled))
   }
-  async function addGroup(cells, expectedCount, keyboard = false) {
+  async function addGroup(cells, digit, expectedCount, keyboard = false) {
     phase = `select group ${cells.join(',')}`
     await click(page.getByRole('button', { name: 'Create group', exact: true }))
-    await click(candidate(cells[0]))
+    await click(candidate(cells[0], digit))
     equal(await page.getByRole('button', { name: 'Use group', exact: true }).isDisabled(), true, 'a group requires two candidates')
-    if (keyboard) { await candidate(cells[1]).focus(); await page.keyboard.press('Enter') }
-    else await click(candidate(cells[1]))
-    for (const cell of cells) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'all selected group members are pressed')
+    for (const cell of cells.slice(1)) {
+      if (keyboard && cell === cells[1]) { await candidate(cell, digit).focus(); await page.keyboard.press('Enter') }
+      else await click(candidate(cell, digit))
+    }
+    for (const cell of cells) equal(await candidate(cell, digit).getAttribute('aria-pressed'), 'true', 'all selected group members are pressed')
     phase = `use group ${cells.join(',')}`
     await click(page.getByRole('button', { name: 'Use group', exact: true }))
     await waitForEdges(page, expectedCount)
-    equal((await savedGame(page)).chainSketch.pending, chainGroup(3, cells), 'the exact group is the endpoint')
-    for (const cell of cells) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'all pending group members remain pressed')
+    equal((await savedGame(page)).chainSketch.pending, chainGroup(digit, cells), 'the exact group is the endpoint')
+    for (const cell of cells) equal(await candidate(cell, digit).getAttribute('aria-pressed'), 'true', 'all pending group members remain pressed')
   }
   try {
     await page.goto(report.url + '/?puzzle=' + fixture.id)
     await ready()
     phase = 'select first candidate'
-    await click(candidate(0))
-    await addGroup([9, 11], 1, !profile.hasTouch)
-    phase = 'link group to R2C7'
-    await click(candidate(15))
-    await waitForEdges(page, 2)
-    phase = 'link R2C7 to R9C7'
-    await click(candidate(78))
-    await waitForEdges(page, 3)
-    await addGroup([76, 77], 4)
-    await addGroup([67, 68], 5)
+    const start = nodePoint(nodes[0])
+    await click(candidate(start.cell, start.digit))
+    for (let index = 1; index < nodes.length; index++) {
+      const point = nodePoint(nodes[index])
+      const edgeCount = index
+      if (point.cells) await addGroup(point.cells, point.digit, edgeCount, !profile.hasTouch && index === 2)
+      else {
+        phase = `link candidate ${point.cell}:${point.digit}`
+        await click(candidate(point.cell, point.digit))
+        await waitForEdges(page, edgeCount)
+      }
+    }
     phase = 'check complete grouped chain'
     const drawn = await savedGame(page)
     equal(drawn.chainSketch.sketches[0].history.at(-1), expectedEdges, 'drawing includes the group-to-group link')
-    equal(await page.locator('.board-chain-group').count(), 3, 'each group has one enclosure')
+    equal(await page.locator('.board-chain-group').count(), nodes.filter(node => typeof node === 'string').length, 'each group has one enclosure')
     const visibleMasks = await page.locator('.candidate-button').evaluateAll(buttons => {
       const masks = Array(81).fill(0)
       for (const button of buttons) {
@@ -182,18 +194,21 @@ async function run(profile) {
 
     phase = 'undo chain edit'
     await click(page.getByRole('button', { name: 'Undo edit', exact: true }))
-    await waitForEdges(page, 4)
-    equal((await savedGame(page)).chainSketch.pending, nodes[4], 'Undo restores the previous group endpoint')
+    await waitForEdges(page, expectedEdges.length - 1)
+    equal((await savedGame(page)).chainSketch.pending, nodes.at(-2), 'Undo restores the previous endpoint')
     phase = 'redo chain edit'
     await click(page.getByRole('button', { name: 'Redo edit', exact: true }))
-    await waitForEdges(page, 5)
+    await waitForEdges(page, expectedEdges.length)
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'Redo restores exact membership')
     phase = 'reload saved chain'
     await page.reload()
     await ready()
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'reload preserves exact membership')
-    equal((await savedGame(page)).chainSketch.pending, nodes[5], 'reload preserves the pending group')
-    for (const cell of [67, 68]) equal(await candidate(cell).getAttribute('aria-pressed'), 'true', 'reload keeps all group members selected')
+    equal((await savedGame(page)).chainSketch.pending, nodes.at(-1), 'reload preserves the pending endpoint')
+    const lastPoint = nodePoint(nodes.at(-1))
+    for (const cell of lastPoint.cells ?? [lastPoint.cell]) {
+      equal(await candidate(cell, lastPoint.digit).getAttribute('aria-pressed'), 'true', 'reload keeps the endpoint selected')
+    }
     await click(page.getByRole('button', { name: 'Chain display options', exact: true }))
     const reloadedShowEliminations = page.getByRole('menuitemcheckbox', { name: 'Show eliminations', exact: true })
     if (await reloadedShowEliminations.getAttribute('aria-checked') !== 'true') await click(reloadedShowEliminations)
@@ -202,29 +217,35 @@ async function run(profile) {
 
     phase = 'cancel group selection'
     await click(page.getByRole('button', { name: 'Create group', exact: true }))
-    await click(candidate(0))
+    await click(candidate(start.cell, start.digit))
     await click(page.getByRole('button', { name: 'Cancel group', exact: true }))
     equal(await page.getByRole('button', { name: 'Use group', exact: true }).count(), 0, 'cancel closes group selection')
     equal((await savedGame(page)).chainSketch.sketches[0].history.at(-1), expectedEdges, 'cancel preserves links')
     phase = 'apply grouped deductions'
     const beforeApply = await savedGame(page)
     await click(page.getByRole('button', { name: 'Apply edits', exact: true }))
-    await waitForSavedPuzzle(page, game => game.id === fixture.id && Boolean(game.position.eliminations?.[63] & 4))
+    const firstAction = practice.deduction.actions[0].eliminate
+    await waitForSavedPuzzle(page, game => game.id === fixture.id && Boolean(game.position.eliminations?.[firstAction.cell] & (1 << (firstAction.digit - 1))))
     const applied = await savedGame(page)
-    equal(Boolean(applied.position.eliminations[63] & 4), true, 'the grouped AIC removes 3 from R8C1')
+    for (const action of practice.deduction.actions) {
+      equal(Boolean(applied.position.eliminations[action.eliminate.cell] & (1 << (action.eliminate.digit - 1))), true,
+        `the grouped AIC removes ${action.eliminate.digit} from cell ${action.eliminate.cell}`)
+    }
     equal(applied.chainSketch, undefined, 'applied chains are removed')
     equal(applied.past.length, beforeApply.past.length + 1, 'all deductions form one puzzle undo step')
     phase = 'undo puzzle deductions'
     const inputTabs = page.getByRole('tablist', { name: 'Sudoku input', exact: true })
     if (profile.isMobile) await click(inputTabs.getByRole('tab', { name: 'Digits', exact: true }))
     await click(page.getByRole('button', { name: 'Undo', exact: true }))
-    await waitForEdges(page, 5)
+    await waitForEdges(page, expectedEdges.length)
     const undone = await savedGame(page)
     equal(undone.position, beforeApply.position, 'puzzle Undo restores all candidates')
     equal(undone.chainSketch, beforeApply.chainSketch, 'puzzle Undo restores grouped links and endpoint')
     phase = 'show restored grouped chain'
     if (profile.isMobile) {
       await click(inputTabs.getByRole('tab', { name: 'Chains', exact: true }))
+      const drawLinks = page.getByRole('button', { name: 'Draw links', exact: true })
+      if (await drawLinks.isVisible()) await click(drawLinks)
       await ready()
     }
     await screenshot(page, profile.name, 'undo-restored')

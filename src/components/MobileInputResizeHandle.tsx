@@ -1,10 +1,8 @@
-import { type PointerEvent, useLayoutEffect, useRef, useState } from 'react'
+import { type PointerEvent, type RefObject, useLayoutEffect, useRef, useState } from 'react'
 
-import { Button } from './Button'
-import { Modal } from './Modal'
-import { ResizeStepControls } from './ResizeStepControls'
 import { animatePanelLayout, motionDuration } from './Presence'
 import { MOBILE_RESIZE_STEP } from '../sudoku/mobile-input-sizing'
+import { ResizeOptionsDialog } from './ResizeOptionsDialog'
 
 const MIN_INPUT_CONTENT_SCALE = 0.65
 const MIN_GRID_WIDTH = 220
@@ -15,7 +13,20 @@ const DOUBLE_TAP_DISTANCE = 24
 
 type Split = { input: number; naturalInput: number; naturalPuzzle: number; min: number; max: number }
 type Tap = { time: number; x: number; y: number; pointerType: string }
-type BoardPreview = { element: HTMLElement; grid: HTMLElement; width: number; limit: number; minimum: number; maximum: number }
+type BoardPreview = { element: HTMLElement; grid: HTMLElement }
+export type MobileInputResizeRefs = {
+  puzzle: RefObject<HTMLElement | null>
+  puzzleColumn: RefObject<HTMLDivElement | null>
+  boardViewport: RefObject<HTMLDivElement | null>
+  boardFrame: RefObject<HTMLDivElement | null>
+  inputTabs: RefObject<HTMLDivElement | null>
+  inputToolbar: RefObject<HTMLDivElement | null>
+  inputPanels: RefObject<HTMLDivElement | null>
+  digitsPanel: RefObject<HTMLDivElement | null>
+  digitControls: RefObject<HTMLDivElement | null>
+  activeInputPanel: RefObject<HTMLDivElement | null>
+  overflowRegions: readonly RefObject<HTMLElement | null>[]
+}
 type Drag = {
   pointerId: number
   startX: number
@@ -33,17 +44,11 @@ function blockSize(element: HTMLElement) {
   return parseFloat(getComputedStyle(element).blockSize)
 }
 
-function measureBoardPreview(layout: HTMLElement, withHint: boolean): BoardPreview | null {
-  const element = layout.querySelector<HTMLElement>('[data-mobile-panel="puzzle"] .puzzle')
-  const stage = element?.querySelector<HTMLElement>('.puzzle-stage')
-  const board = stage?.querySelector<HTMLElement>('.puzzle-zoom, .board-frame')
-  const limit = parseFloat(layout.style.getPropertyValue('--mobile-fit-board-height'))
-  if (!element || !stage || !board?.offsetWidth || !Number.isFinite(limit)) return null
-  return {
-    element, grid: board, width: board.offsetWidth, limit,
-    minimum: withHint ? MIN_GRID_WIDTH_WITH_HINT : MIN_GRID_WIDTH,
-    maximum: stage.clientWidth,
-  }
+function measureBoardPreview(refs: MobileInputResizeRefs): BoardPreview | null {
+  const element = refs.puzzle.current
+  const board = refs.boardViewport.current ?? refs.boardFrame.current
+  if (!element || !board?.offsetWidth) return null
+  return { element, grid: board }
 }
 
 function animateBoardSnap({ element, grid }: BoardPreview, before: DOMRect, duration: number) {
@@ -64,10 +69,10 @@ function animateBoardSnap({ element, grid }: BoardPreview, before: DOMRect, dura
   ], { duration, easing })
 }
 
-function measureSplit(layout: HTMLElement, withHint: boolean): Split | null {
-  const input = layout.querySelector<HTMLElement>('.mobile-input-tabs')
-  const puzzle = layout.querySelector<HTMLElement>('[data-mobile-panel="puzzle"] .puzzle')
-  const grid = puzzle?.querySelector<HTMLElement>('.puzzle-zoom') ?? puzzle?.querySelector<HTMLElement>('.puzzle-stage .board-frame')
+function measureSplit(layout: HTMLElement, refs: MobileInputResizeRefs, withHint: boolean): Split | null {
+  const input = refs.inputPanels.current
+  const puzzle = refs.puzzle.current
+  const grid = refs.boardViewport.current ?? refs.boardFrame.current
   if (!input || !puzzle || !grid?.offsetWidth) return null
 
   // The snap animation transforms the card visually. Measure its layout
@@ -124,25 +129,30 @@ function clampHeight(split: Split, height: number) {
   return Math.min(split.max, Math.max(split.min, height))
 }
 
-function inputOverflow(layout: HTMLElement) {
-  const panel = layout.querySelector<HTMLElement>('.mobile-input-track > :not([inert], [hidden])')
+function inputOverflow(refs: MobileInputResizeRefs) {
+  const panel = refs.activeInputPanel.current ?? refs.digitsPanel.current
   if (!panel) return 0
-  // The solution steps and next-puzzle actions scroll inside the active tab.
-  const nested = panel.querySelectorAll<HTMLElement>(
-    '.solution-path, .solution-path-steps, .mobile-completion-actions:not([hidden])',
-  )
+  // Nested scroll regions opt in through host-provided refs. Only the active
+  // panel contributes so mounted swipe neighbors cannot change the fit height.
+  const nested = refs.overflowRegions.map(ref => ref.current)
+    .filter((element): element is HTMLElement => Boolean(element && panel.contains(element)
+      && !element.hidden && !element.closest('[hidden]')))
   return [panel, ...nested].reduce((pixels, element) => pixels + Math.max(0, element.scrollHeight - element.clientHeight), 0)
 }
 
-export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fitContent = false, hasOpenTabs = false, savedHeight, onHeightChange, onResizeSettled }: {
+export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, refs, edge, disabled, withHint, fitContent = false, savedHeight, onHeightChange, onResizingChange, onResizePreview, onResizeSettled }: {
   inputId: string
+  layoutRef: RefObject<HTMLDivElement | null>
+  inputPanelRef: RefObject<HTMLDivElement | null>
+  refs: MobileInputResizeRefs
   edge: 'top' | 'bottom'
   disabled: boolean
   withHint: boolean
   fitContent?: boolean
-  hasOpenTabs?: boolean
   savedHeight?: number
   onHeightChange?: (height: number | undefined) => void
+  onResizingChange?: (resizing: boolean) => void
+  onResizePreview?: () => void
   onResizeSettled?: () => void
 }) {
   const handle = useRef<HTMLDivElement>(null)
@@ -163,7 +173,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     optionsTimer.current = null
   }
 
-  function getLayout() { return handle.current?.closest<HTMLElement>('.mobile-panel-layout') }
+  function getLayout() { return layoutRef.current ?? undefined }
 
   function cancelSnapAnimation() {
     snapAnimations.current.forEach(animation => animation.cancel())
@@ -192,7 +202,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
 
   function openSizeOptions() {
     const layout = getLayout()
-    const split = layout && measureSplit(layout, withHint)
+    const split = layout && measureSplit(layout, refs, withHint)
     if (split) setOptions({ input: split.input, min: split.min, max: split.max })
   }
 
@@ -204,16 +214,16 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       clearSplit(layout)
       onHeightChange?.(undefined)
     }
-    const split = measureSplit(layout, withHint)
+    const split = measureSplit(layout, refs, withHint)
     if (!split) return
     if (change === 'reset') { describe(split); return }
     commitHeight(layout, split, change === 'maximum' ? split.max : clampHeight(split, split.input + change))
   }
 
   function fitInput(layout: HTMLElement) {
-    const split = measureSplit(layout, withHint)
+    const split = measureSplit(layout, refs, withHint)
     if (!split) return
-    const overflow = inputOverflow(layout)
+    const overflow = inputOverflow(refs)
     if (overflow > 0) commitHeight(layout, split, clampHeight(split, Math.ceil(split.input) + overflow))
   }
 
@@ -223,8 +233,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     drag.current = null
     if (current.frame !== null) cancelAnimationFrame(current.frame)
     const element = handle.current
-    current.board?.element.style.removeProperty('--mobile-input-resize-puzzle-scale')
-    current.layout.removeAttribute('data-input-resizing')
+    onResizingChange?.(false)
     if (element?.hasPointerCapture(current.pointerId)) element.releasePointerCapture(current.pointerId)
   }
 
@@ -245,7 +254,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       cancelSizeOptions()
       lastTap.current = null
       clearSplit(layout)
-      const split = measureSplit(layout, hintOpen.current)
+      const split = measureSplit(layout, refs, hintOpen.current)
       if (!split) return
       const preferred = preferredHeight.current
       if (preferred === undefined) describe(split)
@@ -253,27 +262,26 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       else updateHeight(layout, split, hintOpen.current ? Math.max(split.min, preferred) : clampHeight(split, preferred))
     }
     fitToLayout()
-    const page = layout.closest<HTMLElement>('.standard-workspace-page')
     const observer = new ResizeObserver(entries => {
       if (drag.current) return
-      if (entries.some(entry => entry.target === page)) {
+      if (entries.some(entry => entry.target === layout)) {
         fitToLayout()
         return
       }
-      const split = measureSplit(layout, hintOpen.current)
+      const split = measureSplit(layout, refs, hintOpen.current)
       if (!split) return
       // Layout constraints can temporarily change the visible size. Only an
       // explicit resize should overwrite the player's saved height.
       if (preferredHeight.current !== undefined && split.input < split.min - 1) updateHeight(layout, split, split.min)
       else describe(split)
     })
-    const input = layout.querySelector('.mobile-input-tabs')
-    const keypad = input?.querySelector('.mobile-input-digits > .workspace-controls')
+    const input = refs.inputTabs.current
+    const keypad = refs.digitControls.current
     if (input) observer.observe(input)
     if (keypad) observer.observe(keypad)
-    const board = layout.querySelector('[data-mobile-panel="puzzle"] .puzzle-zoom, [data-mobile-panel="puzzle"] .puzzle-stage .board-frame')
+    const board = refs.boardViewport.current ?? refs.boardFrame.current
     if (board) observer.observe(board)
-    if (page) observer.observe(page)
+    observer.observe(layout)
     window.addEventListener('resize', fitToLayout)
     return () => {
       cancelSnapAnimation()
@@ -283,7 +291,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       stopResize()
       clearSplit(layout)
     }
-  }, [fitContent, edge, hasOpenTabs])
+  }, [fitContent, edge, layoutRef, refs])
 
   useLayoutEffect(() => {
     const current = drag.current
@@ -302,10 +310,10 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     if (savedHeight === undefined) {
       if (!layout.hasAttribute('data-input-sized')) return
       clearSplit(layout)
-      const split = measureSplit(layout, withHint)
+      const split = measureSplit(layout, refs, withHint)
       if (split) describe(split)
     } else if (!Number.isFinite(appliedHeight) || Math.abs(appliedHeight - savedHeight) > 1) {
-      const split = measureSplit(layout, withHint)
+      const split = measureSplit(layout, refs, withHint)
       if (split) updateHeight(layout, split, clampHeight(split, savedHeight))
     }
   }, [savedHeight])
@@ -333,12 +341,12 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     cancelSnapAnimation()
     suppressClick.current = false
     const layout = getLayout()
-    const split = layout && measureSplit(layout, withHint)
+    const split = layout && measureSplit(layout, refs, withHint)
     if (!layout || !split || split.min === split.max) return
-    const board = measureBoardPreview(layout, withHint)
+    const board = measureBoardPreview(refs)
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
-    layout.setAttribute('data-input-resizing', '')
+    onResizingChange?.(true)
     drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, startedAt: event.timeStamp,
       moved: false, layout, split, height: split.input, frame: null, board }
   }
@@ -358,14 +366,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     current.frame ??= requestAnimationFrame(() => {
       current.frame = null
       applySplit(current.layout, current.split, current.height)
-      if (current.board) {
-        const { element, width, limit, minimum, maximum } = current.board
-        const target = Math.min(maximum, Math.max(minimum, limit + current.split.input - current.height))
-        const value = String(target / width)
-        if (element.style.getPropertyValue('--mobile-input-resize-puzzle-scale') !== value) {
-          element.style.setProperty('--mobile-input-resize-puzzle-scale', value)
-        }
-      }
+      onResizePreview?.()
     })
   }
 
@@ -383,7 +384,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
           ? current.split.max
           : clampHeight(current.split, current.split.input + Math.round((rawHeight - current.split.input) / MOBILE_RESIZE_STEP) * MOBILE_RESIZE_STEP)
       : current.split.input
-    const inputPanel = layout.querySelector<HTMLElement>('[data-mobile-panel="input"]')
+    const inputPanel = inputPanelRef.current
     const before = inputPanel?.getBoundingClientRect()
     const boardBefore = current.board?.grid.getBoundingClientRect()
     stopResize()
@@ -412,7 +413,7 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
     else lastTap.current = tap
   }
 
-  return <><div ref={handle} className="mobile-input-resize" role="separator" aria-orientation="horizontal"
+  return <><div ref={handle} className="mobile-input-resize" data-grid-click-away-exempt role="separator" aria-orientation="horizontal"
     aria-label="Resize puzzle and input panels" aria-controls={inputId}
     aria-haspopup="dialog" aria-keyshortcuts="Enter Space Shift+Enter" title="Tap for size options. Double-tap to fit."
     aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : 0} data-no-panel-hold
@@ -445,11 +446,9 @@ export function MobileInputResizeHandle({ inputId, edge, disabled, withHint, fit
       else if (event.key === 'End') adjustSize('maximum')
       else adjustSize(direction * (event.key === 'ArrowUp' ? -MOBILE_RESIZE_STEP : MOBILE_RESIZE_STEP))
     }} />
-    <Modal title="Resize input panel" className="resize-options-dialog" open={options !== null}
-      onClose={() => setOptions(null)} returnFocus={() => handle.current}>
-      <ResizeStepControls axis="height" step={MOBILE_RESIZE_STEP} onStep={adjustSize} atMin={Boolean(options && options.input <= options.min)}
-        atMax={Boolean(options && options.input >= options.max)} />
-      <Button className="resize-options-reset" onClick={() => adjustSize('reset')}>Reset size</Button>
-    </Modal>
+    <ResizeOptionsDialog title="Resize input panel" axis="height" step={MOBILE_RESIZE_STEP}
+      value={options?.input ?? 0} min={options?.min ?? 0} max={options?.max ?? 0}
+      onStep={(delta) => adjustSize(delta)} onReset={() => adjustSize('reset')}
+      open={options !== null} onClose={() => setOptions(null)} returnFocus={() => handle.current} />
   </>
 }

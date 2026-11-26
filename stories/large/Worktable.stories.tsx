@@ -200,7 +200,7 @@ export const MobileInputTools: Story = {
     await expect(trigger).toHaveFocus()
     const tabs = canvas.getByRole('tablist', { name: 'Sudoku input' })
     await expect(within(tabs).getByRole('tab', { name: 'Colors' })).toHaveAttribute('aria-selected', 'true')
-    await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toBeInTheDocument()
+    await expect(within(tabs).getByRole('tab', { name: 'Chains' })).toHaveAttribute('aria-selected', 'false')
     const colors = within(tabs).getByRole('tab', { name: 'Colors' })
     const digits = within(tabs).getByRole('tab', { name: 'Digits' })
     const cell = () => canvas.getByRole('gridcell', { name: /^Row 1, column 3,/ })
@@ -212,7 +212,7 @@ export const MobileInputTools: Story = {
     await userEvent.click(colors)
     await userEvent.click(canvas.getByRole('button', { name: 'Close colors panel' }))
     await expect(digits).toHaveAttribute('aria-selected', 'true')
-    await expect(cell()).not.toHaveClass('color-4')
+    await expect(cell()).toHaveClass('color-4')
     await userEvent.keyboard('{Enter}')
     await expect(tabs).not.toBeInTheDocument()
   },
@@ -1088,7 +1088,10 @@ export const DesktopPanelsAfterSolve: Story = {
     await expect(chains).toHaveAttribute('aria-selected', 'true')
     await userEvent.click(colors)
     await expect(colors).toHaveAttribute('aria-selected', 'true')
+    await expect(chains).toHaveAttribute('aria-selected', 'false')
     await expect(canvas.getByRole('button', { name: 'Light mint' })).toBeDisabled()
+    await userEvent.click(chains)
+    await expect(chains).toHaveAttribute('aria-selected', 'true')
   },
 }
 
@@ -1351,28 +1354,7 @@ export const DesktopHintFits: Story = {
     const grid = canvas.getByRole('grid', { name: 'Sudoku grid' })
     const width = () => grid.getBoundingClientRect().width
     const initialWidth = width()
-    async function recordWidths(action: () => Promise<void>) {
-      const widths: number[] = []
-      let frame = 0
-      function record() {
-        widths.push(width())
-        frame = requestAnimationFrame(record)
-      }
-      record()
-      try {
-        await action()
-        return widths
-      } finally {
-        cancelAnimationFrame(frame)
-      }
-    }
-    const openingWidths = await recordWidths(async () => {
-      await userEvent.click(showHint)
-      await waitFor(() => {
-        const hint = canvas.getByRole('complementary', { name: 'Puzzle hint' })
-        expect(hint.getBoundingClientRect().bottom).toBeLessThanOrEqual(stack.getBoundingClientRect().bottom + 1)
-      })
-    })
+    await userEvent.click(showHint)
     const more = await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
     const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
     const slot = card.closest('.standard-hint-slot')!
@@ -1382,7 +1364,7 @@ export const DesktopHintFits: Story = {
       const hintBounds = card.getBoundingClientRect()
       const puzzleBounds = puzzle.getBoundingClientRect()
       expect(grid.getBoundingClientRect().bottom).toBeLessThan(hintBounds.top)
-      expect(hintBounds.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
+      expect(hintBounds.bottom).toBeCloseTo(bounds.bottom, 0)
       expect(hintBounds.left).toBeCloseTo(puzzleBounds.left, 0)
       expect(hintBounds.right).toBeCloseTo(puzzleBounds.right, 0)
       expect(hintBounds.right).toBeLessThanOrEqual(divider.getBoundingClientRect().left)
@@ -1394,16 +1376,9 @@ export const DesktopHintFits: Story = {
     await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
     expectFit()
 
-    const fittedWidth = width()
-    const closingWidths = await recordWidths(async () => {
-      await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
-      await waitFor(() => expect(width()).toBeCloseTo(initialWidth, 0))
-    })
-    if (initialWidth - fittedWidth > 4 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const isInMotion = (value: number) => value < initialWidth - 2 && value > fittedWidth + 2
-      expect(openingWidths.some(isInMotion)).toBe(true)
-      expect(closingWidths.some(isInMotion)).toBe(true)
-    }
+    expect(getComputedStyle(slot).transitionDuration).toBe('0s')
+    await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
+    await waitFor(() => expect(width()).toBeCloseTo(initialWidth, 0))
   },
 }
 
@@ -1526,13 +1501,14 @@ function WorktableExample({ withTopbar, resizable, ...args }: ComponentProps<typ
   const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
   const [height, setHeight] = useState(args.panelHeight)
   const [multi, setMulti] = useState(args.multi)
+  const pageRef = useRef<HTMLElement>(null)
   const actionsRef = useRef<WorktableActions | null>(null)
   const game = room.games.find(({ id }) => id === room.active) ?? args.game
   const mobile = useMobileLayout()
   const desktopResize = Boolean(resizable && !mobile)
-  return <DesktopPlayLayout enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
+  return <DesktopPlayLayout pageRef={pageRef} enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
     {withTopbar && <header className="topbar"><div className="topbar-inner"><span className="wordmark">Sudoku</span></div></header>}
-    <main id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
+    <main ref={pageRef} id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
       <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games}
         actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
         toggleMulti={() => setMulti((value) => !value)} />

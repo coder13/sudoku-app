@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
-import { SizeSettings } from '../../src/components/Settings'
+import { SizeSettings } from '../../src/components/SettingsAppearance'
 import { MAX_INPUT_SIZE, MIN_INPUT_SIZE } from '../../src/sudoku/preferences'
 import { Width } from '../support/frames'
 import { settingArgs } from '../support/settings-example'
 
-const { appearance, setAppearance, inputSize, setInputSize, workspaceMode, onResetLayout } = settingArgs
+const { appearance, setAppearance, inputSize, setInputSize, onResetLayout } = settingArgs
 const meta = {
   title: 'Medium/Settings/Input size',
   component: SizeSettings,
-  args: { appearance, setAppearance, inputSize, setInputSize, workspaceMode, onResetLayout },
+  args: { appearance, setAppearance, inputSize, setInputSize, onResetLayout },
   decorators: [(Story) => <Width><Story /></Width>],
   render: (args) => {
     const [size, setSize] = useState(args.inputSize)

@@ -163,7 +163,8 @@ export async function generateVariantPracticePuzzle(
       puzzle = { ...puzzle, givens: withPlacements(puzzle.givens, start.end.entries) }
       const path = await run({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder })
       const { rating } = path
-      if (path.steps[0]?.technique !== technique || rating.hardest !== technique || rating.status === 'stalled') return
+      // The chosen technique must open the path; later single moves may have a higher rating cost.
+      if (path.steps[0]?.technique !== technique || rating.status === 'stalled') return
       const verified = await run({ type: 'variant', operation: 'solve-unique', position: { puzzle } })
       if (verified.status !== 'unique') return
       return { puzzle, rating, solution: verified.solution, followedBySingles: path.steps.slice(1).every(step => singles.has(step.technique)) }

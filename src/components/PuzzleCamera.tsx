@@ -1,46 +1,15 @@
 import { Button } from './Button'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { imageCanvas } from '../sudoku/photo-image'
+import { useCameraStream } from './useCameraStream'
 
 export function PuzzleCamera({ onCapture, onCancel }: {
   onCapture: (photo: Blob) => void
   onCancel: () => void
 }) {
-  const video = useRef<HTMLVideoElement>(null)
-  const active = useRef(false)
-  const [ready, setReady] = useState(false)
+  const { videoRef: video, active, ready, failed: cameraFailed } = useCameraStream({ width: 1920, height: 1080 })
   const [capturing, setCapturing] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    let closed = false
-    let stream: MediaStream | undefined
-    active.current = true
-    const element = video.current
-    async function start() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: {
-          facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 },
-        } })
-        if (closed || !element) {
-          stream.getTracks().forEach(track => track.stop())
-          return
-        }
-        element.srcObject = stream
-        await element.play()
-      } catch {
-        stream?.getTracks().forEach(track => track.stop())
-        if (!closed) setError('The camera could not open. Check camera permissions or choose an image.')
-      }
-    }
-    void start()
-    return () => {
-      closed = true
-      active.current = false
-      stream?.getTracks().forEach(track => track.stop())
-      if (element) element.srcObject = null
-    }
-  }, [])
 
   function capture() {
     const frame = video.current
@@ -66,10 +35,10 @@ export function PuzzleCamera({ onCapture, onCancel }: {
 
   return <section className="photo-import">
     <p>Hold the camera straight over the puzzle and fit the full grid in the frame.</p>
-    <video ref={video} className="photo-camera" autoPlay muted playsInline onCanPlay={() => setReady(true)}
+    <video ref={video} className="photo-camera" autoPlay muted playsInline
       aria-label="Camera preview" />
-    {error && <p className="form-error" role="alert">{error}</p>}
-    {!ready && !error && <p role="status">Opening camera…</p>}
+    {(error || cameraFailed) && <p className="form-error" role="alert">{error || 'The camera could not open. Check camera permissions or choose an image.'}</p>}
+    {!ready && !error && !cameraFailed && <p role="status">Opening camera…</p>}
     <div className="dialog-actions">
       <Button type="button" onClick={onCancel}>Cancel</Button>
       <Button type="button" variant="primary" onClick={capture}
