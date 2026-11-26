@@ -157,13 +157,16 @@ test('#430 explains when placed digits force a doubled clue', async () => {
   assert.match(interpretationHint.evidence.variant.reason, /each remaining interpretation/)
 })
 
-test('#430 retains doubled-clue interpretations through saved reload and sharing', async ({ mock }) => {
+test('#430 retains doubled-clue interpretations and a product cage through saved reload and sharing', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()
   try {
     mock.method(globalThis, 'fetch', (path: string | URL, options?: RequestInit) =>
       fetcher(new URL(String(path), 'https://sudoku.test'), options))
     const { game } = await prepareImportedPuzzle(code)
     assert.ok(game.sized)
+    // The imported puzzle already has several exact-one groups. Add a repeatable
+    // product cage so this roundtrip also covers the combined rule composition.
+    game.sized.rules.push({ type: 'product-cage', cells: [0, 9, 20], product: 36 })
     const finished = fillEntries(game, game.sized.solution)
     assert.equal(isSolved(finished), true)
     const saved = readGame(finished.id, JSON.stringify(finished))
@@ -185,6 +188,9 @@ test('#430 retains doubled-clue interpretations through saved reload and sharing
     assert.deepEqual(shared.game.sized, game.sized)
     assert.equal(shared.game.givens, game.givens)
     assert.equal(shared.game.sized?.rules.filter(rule => rule.type === 'constraint-alternatives').length, 4)
+    assert.deepEqual(shared.game.sized?.rules.find(rule => rule.type === 'product-cage'), {
+      type: 'product-cage', cells: [0, 9, 20], product: 36,
+    })
   } finally {
     sqlite.close()
   }
