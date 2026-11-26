@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { expect } from 'storybook/test'
 import { Board, type BoardAppearance, type BoardContent, type BoardInteraction, type BoardLayout, type BoardProps } from '../../src/components/Board'
 import type { SizedConstraintRule, VariantPuzzle } from '../../src/sudoku/engine'
 import type { ImportedCellColors } from '../../src/sudoku/imported-colors'
@@ -88,7 +89,13 @@ function DoubledCluesBoard({ finished = false }: { finished?: boolean }) {
     sizedRules={puzzle.rules} showGuides={false} />
 }
 
-export const DoubleTheCluesUnfinished: Story = { render: () => <DoubledCluesBoard /> }
+export const DoubleTheCluesUnfinished: Story = {
+  render: () => <DoubledCluesBoard />,
+  play: async ({ canvas }) => {
+    const cageTotal = await canvas.findByRole('cell', { name: /Row 2, column 2, empty, cage total 6/ })
+    await expect(cageTotal).toBeInTheDocument()
+  },
+}
 export const DoubleTheCluesFinished: Story = { render: () => <DoubledCluesBoard finished /> }
 
 
