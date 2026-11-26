@@ -5,7 +5,7 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { createGameId, enter, makeGame, restartGame, type Game } from '../src/sudoku/game.ts'
 import { findSharedAttempt, isSharedPuzzleId, puzzleDefinitionForSharing, puzzleExportText, sharedPuzzleLink } from '../src/sudoku/puzzle-sharing.ts'
-import { MINI_GRID } from '../src/sudoku/grid.ts'
+import { CLASSIC_GRID, MINI_GRID } from '../src/sudoku/grid.ts'
 import { GAME_PREFIX, readGame } from '../src/sudoku/storage.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -76,6 +76,22 @@ test('Mini Sudoku shares keep the four-by-four grid specification', async () => 
     })
     await assert.rejects(api('shares', 'POST', { ...definition, grid: undefined }), { status: 400 })
     await assert.rejects(api('shares', 'POST', { ...definition, givens: STARTER }), { status: 400 })
+  } finally { sqlite.close() }
+})
+
+test('the share worker preserves closed Whispers paths and rejects adjacent repeated cells', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const rule = { type: 'whispers' as const, cells: [0, 10, 20, 0], minDifference: 3 }
+    const game = { ...makeGame('closed-whispers-share', 'Closed Whispers', '0'.repeat(81), 'imported', 0, CLASSIC_GRID),
+      sized: { rules: [rule] } }
+    const definition = puzzleDefinitionForSharing(game)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+    await assert.rejects(api('shares', 'POST', {
+      ...definition, sizedRules: [{ ...rule, cells: [0, 10, 10, 0] }],
+    }), { status: 400 })
   } finally { sqlite.close() }
 })
 
