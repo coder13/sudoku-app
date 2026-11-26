@@ -6,6 +6,7 @@ import { ArrowRight, BarChart3, CalendarRange, Check, ChevronLeft, ChevronRight,
 import {
   DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
+import { pointsPerSecond } from '../sudoku/difficulty-statistics'
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
@@ -441,6 +442,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
 
 function Statistics({ games }: { games: Game[] }) {
   const { rating, recommended, count } = usePlayerRating()
+  const overallRate = pointsPerSecond(games)
   const solved = games.filter(isSolved)
   const inProgress = games.filter((game) => game.started && !isSolved(game) && game.source !== 'draft')
   const timedGames = games.filter((game) => !game.timeUntracked && game.source !== 'draft' && (game.started || game.elapsed > 0))
@@ -457,6 +459,7 @@ function Statistics({ games }: { games: Game[] }) {
       <div><Trophy size={18} aria-hidden="true" /><dt>Puzzles solved</dt><dd>{solved.length}</dd></div>
       <div><Grid3X3 size={18} aria-hidden="true" /><dt>In progress</dt><dd>{inProgress.length}</dd></div>
       {timedGames.length > 0 && <div><Clock3 size={18} aria-hidden="true" /><dt>Total solving time</dt><dd>{formatTime(totalTime)}</dd></div>}
+      <div><BarChart3 size={18} aria-hidden="true" /><dt>Points per second</dt><dd>{overallRate === null ? '—' : overallRate.toFixed(2)}</dd></div>
       <div><BarChart3 size={18} aria-hidden="true" /><dt>Saved puzzles</dt><dd>{games.filter(isPuzzleSaved).length}</dd></div>
     </dl>
     <div className="difficulty-statistics" role="table" aria-label="Statistics by difficulty">
