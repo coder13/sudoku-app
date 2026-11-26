@@ -41,7 +41,7 @@ test('an endpoint-only hint shows its group without revealing any chain links', 
   assert.equal([...html.matchAll(/class="board-chain-group"/g)].length, 1)
   assert.equal(html.includes('<polyline'), false)
   assert.match(html, /Chain start: 7 in row 4, column 4 or 7 in row 4, column 5/)
-  assert.match(html, /The group is true if at least one marked member is true/)
+  assert.match(html, /The group is true if at least one member is true/)
 })
 
 test('mixed groups retain every digit and explicit styling while ordinary links have no group outline', () => {
