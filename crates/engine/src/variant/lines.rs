@@ -1719,13 +1719,30 @@ mod terrain_sandwich_tests {
             maximum,
             transforms: transforms.clone(),
         });
-        assert!(
-            puzzle
-                .compile()
-                .unwrap()
-                .candidates(&entries, &[0; 81])
-                .is_ok()
-        );
+        let compiled = puzzle.compile().unwrap();
+        assert!(compiled.candidates(&entries, &[0; 81]).is_ok());
+        let deductions = compiled
+            .deductions(&[0; 81], &[0; 81], VariantTechnique::Sandwich)
+            .unwrap();
+        assert!(!deductions.is_empty());
+        for deduction in deductions {
+            assert_eq!(deduction.technique, VariantTechnique::Sandwich);
+            let crate::VariantEvidence::Constraint {
+                rules,
+                cells,
+                domains,
+            } = deduction.evidence
+            else {
+                panic!("Terrain Sandwich deductions must include constraint evidence");
+            };
+            assert_eq!(rules, [0]);
+            assert_eq!(cells, (0..9).collect::<Vec<_>>());
+            assert_eq!(domains.len(), 9);
+            for action in deduction.actions {
+                let candidate = action.candidate();
+                assert_ne!(row[candidate.cell], candidate.digit);
+            }
+        }
         puzzle.rules[0] = PuzzleRule::TerrainSandwich {
             cells: (0..9).collect(),
             direction: ClueDirection::East,
