@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { isSudokuModeId } from '../sudoku/custom-modes'
+import { isCustomDifficultyId, type CustomDifficultyId } from '../sudoku/custom-difficulties'
 import { isDifficultyPreference, type DifficultyPreference } from '../sudoku/difficulty'
 import type { RectangularBoxRows } from '../sudoku/grid'
 import { isNewPuzzleId, isSizedPuzzleId, rectangularBoxRows, type NewPuzzleId } from '../sudoku/new-puzzle'
@@ -10,6 +11,7 @@ type NewPuzzleSearch = {
   mode?: string
   variant?: NewPuzzleId
   difficulty?: DifficultyPreference
+  customDifficulty?: CustomDifficultyId
   ruleset?: GenerationRulesetId
   boxRows?: RectangularBoxRows
 }
@@ -26,6 +28,7 @@ export const Route = createFileRoute('/puzzles/new')({
       if (!isSizedPuzzleId(search.variant) && isGenerationRulesetId(search.variant, search.ruleset)) choice.ruleset = search.ruleset
     }
     if (isDifficultyPreference(search.difficulty)) choice.difficulty = search.difficulty
+    if (choice.variant === 'classic' && isCustomDifficultyId(search.customDifficulty)) choice.customDifficulty = search.customDifficulty
     return choice
   },
   beforeLoad: ({ search, location }) => {

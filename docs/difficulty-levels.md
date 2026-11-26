@@ -66,6 +66,12 @@ Each difficulty shows personal results from saved games on this device: puzzles 
 
 Auto is a separate checkbox, not an eleventh difficulty. It uses the same profiles and acceptance checks. Selecting a row or using an arrow returns to a fixed choice. Controls have mobile-friendly targets. The Start button keeps the same size across selections and during generation.
 
+### Custom difficulties
+
+On the Classic difficulty picker, choose **New custom difficulty**. Give it a name, allow the techniques you want the solver to use, and require the techniques you want to practice. A generated puzzle has one solution and a complete solve path that uses only allowed techniques and includes every required technique. A particular combination can exhaust the search.
+
+Saved custom difficulties appear after Impossible on desktop and in the mobile stepper. To rename, edit, or delete one, select it and choose **Edit difficulty**. Linked devices sync each saved difficulty independently. A puzzle keeps the profile it was generated with for hints, walkthroughs, and the next puzzle.
+
 ## Learning order
 
 Overview, sidebar, and previous/next article links share the course order in `learn-content.json`. Every technique article has an explicit starting level and prerequisite links. Practice variants show their own tier, because a family article can contain later extensions.

@@ -16,6 +16,7 @@ import {
 import { createPlayPreferenceStore, PLAY_PREFERENCES_KEY } from '../src/sudoku/play-preferences.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { syncSettings } from '../src/sudoku/sync-settings.ts'
+import { deleteCustomDifficulty, readCustomDifficulties, saveCustomDifficulty, type CustomDifficultyProfile } from '../src/sudoku/custom-difficulties.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 
@@ -530,6 +531,32 @@ test('linked devices sync saved play preferences and puzzle button order', async
     assert.deepEqual(computerPrefs.getSnapshot().pinnedActions, ['redo', 'chain'])
     const { settings } = await computer<{ settings: Record<string, string> }>('changes?settings=1')
     assert.equal(settings[pins], newerPins)
+  } finally { sqlite.close() }
+})
+
+test('linked devices merge new custom difficulties, update a profile, and sync its deletion', async () => {
+  const { sqlite, creator, phone, second, computer } = await library()
+  try {
+    const a = client(creator, phone), b = client(second, computer)
+    const singles: CustomDifficultyProfile = { id: 'difficulty-00000000-0000-4000-8000-000000000001',
+      name: 'Singles practice', created: 1, allowed: ['full-house', 'naked-single'], required: ['full-house'] }
+    const fish: CustomDifficultyProfile = { id: 'difficulty-00000000-0000-4000-8000-000000000002',
+      name: 'Fish practice', created: 2, allowed: ['naked-single', 'x-wing', 'swordfish'], required: ['x-wing', 'swordfish'] }
+    await a.run(); await b.run()
+    saveCustomDifficulty(singles, a.storage)
+    saveCustomDifficulty(fish, b.storage)
+    await Promise.all([a.run(), b.run()])
+    await a.run(); await b.run()
+    assert.deepEqual(readCustomDifficulties(a.storage), [singles, fish])
+    assert.deepEqual(readCustomDifficulties(b.storage), [singles, fish])
+
+    const edited = { ...singles, name: 'Mixed singles', required: ['full-house', 'naked-single'] }
+    saveCustomDifficulty(edited, a.storage)
+    deleteCustomDifficulty(fish.id, b.storage)
+    await Promise.all([a.run(), b.run()])
+    await a.run(); await b.run()
+    assert.deepEqual(readCustomDifficulties(a.storage), [edited])
+    assert.deepEqual(readCustomDifficulties(b.storage), [edited])
   } finally { sqlite.close() }
 })
 

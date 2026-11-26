@@ -11,12 +11,15 @@ import { readSolverProfile, SOLVER_PROFILE_KEY } from './solver-profile.ts'
 import { PLAY_PREFERENCES_KEY, readPlayPreferences } from './play-preferences.ts'
 import { parsePinnedActions } from './pinned-actions.ts'
 import { CUSTOM_MODES_KEY, readSudokuModes, type SudokuMode } from './custom-modes.ts'
+import { CUSTOM_DIFFICULTIES_KEY, isCustomDifficultyId, readCustomDifficulties, readCustomDifficultyProfile } from './custom-difficulties.ts'
 import type { SyncRequest } from './sync-engine.ts'
 
 export type SettingsValues = Record<string, string>
-type Group = { key: string; fields: Record<string, unknown>; format: 'text' | 'json' | 'fields'; metadata?: Record<string, number> }
-function groups(storage: Pick<Storage, 'getItem'>): Group[] {
+type Group = { key: string; fields: Record<string, unknown>; format: 'text' | 'json' | 'fields' | 'profiles'; metadata?: Record<string, number> }
+function groups(storage: Pick<Storage, 'getItem'>, syncedProfiles: readonly string[] = []): Group[] {
   const prefs = readPreferences(storage)
+  const customProfiles: Record<string, unknown> = Object.fromEntries(syncedProfiles.map(id => [id, null]))
+  for (const profile of readCustomDifficulties(storage)) customProfiles[profile.id] = profile
   const single = (key: string, value: unknown, format: 'text' | 'json' = 'text'): Group => ({ key, fields: { '': value }, format })
   return [
     { key: APPEARANCE_KEY, fields: prefs.appearance, format: 'fields', metadata: { themeDefaultsVersion: 2 } },
@@ -38,11 +41,26 @@ function groups(storage: Pick<Storage, 'getItem'>): Group[] {
     single(DISABLED_HINTS_KEY, readDisabledHintTechniques(storage), 'json'),
     single(SOLVER_PROFILE_KEY, readSolverProfile(storage) ?? null, 'json'),
     single(CUSTOM_MODES_KEY, readSudokuModes(storage), 'json'),
+    { key: CUSTOM_DIFFICULTIES_KEY, fields: customProfiles, format: 'profiles' },
   ]
 }
 
 function fieldId(key: string, field: string) {
   return key.slice('sudoku-app:v1:'.length) + (field ? '.' + field : '')
+}
+
+const profilePrefix = fieldId(CUSTOM_DIFFICULTIES_KEY, '') + '.'
+
+function profileId(field: string) {
+  const id = field.slice(profilePrefix.length)
+  return field.startsWith(profilePrefix) && isCustomDifficultyId(id) ? id : undefined
+}
+
+function syncedProfileIds(...snapshots: SettingsValues[]) {
+  return [...new Set(snapshots.flatMap(values => Object.keys(values).flatMap(field => {
+    const id = profileId(field)
+    return id ? [id] : []
+  })))]
 }
 function snapshot(groups: Group[]): SettingsValues {
   const values: SettingsValues = {}
@@ -54,11 +72,18 @@ function snapshot(groups: Group[]): SettingsValues {
 const defaults = snapshot(groups({ getItem: () => null }))
 
 function normalizeSettings(values: SettingsValues): SettingsValues {
+  const profiles = Object.fromEntries(Object.entries(values).flatMap(([field, value]) => {
+    const id = profileId(field)
+    if (!id) return []
+    const profile = readCustomDifficultyProfile(JSON.parse(value))
+    return [[field, JSON.stringify(profile?.id === id ? profile : null)]]
+  }))
   const shortcuts = fieldId(SHORTCUTS_KEY, '')
   const pinned = fieldId(PLAY_PREFERENCES_KEY, 'pinnedActions')
   const customModes = fieldId(CUSTOM_MODES_KEY, '')
   return {
     ...values,
+    ...profiles,
     ...(values[shortcuts] === undefined ? {} : {
       [shortcuts]: JSON.stringify(storedShortcutPreferences(readShortcuts({ getItem: () => values[shortcuts] }))),
     }),
@@ -106,12 +131,12 @@ export async function syncSettings(storage: Storage, checkpoint: string, request
   remote = normalizeSettings(remote)
   // An old default in the checkpoint does not represent a local choice.
   if (previous['error-mode'] === '"all"' && storage.getItem(ERROR_MODE_KEY) === null) delete previous['error-mode']
-  const before = snapshot(groups(storage))
+  const before = snapshot(groups(storage, syncedProfileIds(previous, remote)))
   const seeds: SettingsValues = {}, edits: SettingsValues = {}
   for (const [id, value] of Object.entries(before)) {
     if (Object.hasOwn(previous, id)) {
       if (value !== previous[id] && value !== remote[id]) edits[id] = value
-    } else if (value !== defaults[id] && !Object.hasOwn(remote, id)) {
+    } else if (value !== (profileId(id) ? 'null' : defaults[id]) && !Object.hasOwn(remote, id)) {
       seeds[id] = value
     }
   }
@@ -127,14 +152,16 @@ export async function syncSettings(storage: Storage, checkpoint: string, request
   }
   const next: SettingsValues = {}
   const changed = []
-  for (const group of groups(storage)) {
+  for (const group of groups(storage, syncedProfileIds(previous, before, remote))) {
     const fields = { ...group.fields }
     let dirty = false
     for (const [field, value] of Object.entries(group.fields)) {
       const id = fieldId(group.key, field)
-      next[id] = remote[id] ?? defaults[id]
+      const profileDefault = group.format === 'profiles' ? 'null' : undefined
+      next[id] = remote[id] ?? profileDefault ?? defaults[id]
       // Preserve edits made in this tab or another tab while the request was in flight.
-      if (JSON.stringify(value) === before[id] && before[id] !== next[id]) {
+      const original = before[id] ?? profileDefault
+      if (JSON.stringify(value) === original && original !== next[id]) {
         fields[field] = JSON.parse(next[id])
         dirty = true
       }
@@ -145,6 +172,8 @@ export async function syncSettings(storage: Storage, checkpoint: string, request
       let old
       try { old = JSON.parse(storage.getItem(group.key) ?? '{}') } catch { /* Repair unreadable saved settings. */ }
       storage.setItem(group.key, JSON.stringify({ ...old, ...fields, ...group.metadata }))
+    } else if (group.format === 'profiles') {
+      storage.setItem(group.key, JSON.stringify(Object.values(fields).filter(Boolean)))
     } else if (value === null) storage.removeItem(group.key)
     else storage.setItem(group.key, group.format === 'text' ? String(value) : JSON.stringify(value))
     changed.push(group.key)

@@ -104,6 +104,11 @@ export async function puzzleHints(game: Game, limit: 10 | 'all' = 10, technique?
   if (!technique) {
     const request = { type: 'hints', values, eliminations, limit, collection, includePatterns: true,
       preferProgress: true, difficulty: game.difficulty ?? 'medium' } as const
+    if (game.customDifficulty) {
+      const { allowed } = game.customDifficulty
+      const { techniques } = await run({ type: 'techniques' })
+      return run({ ...request, disabledTechniques: techniques.filter(({ id }) => !allowed.includes(id)).map(({ id }) => id) })
+    }
     if (practiceOpening) {
       const { techniques } = await run({ type: 'techniques' })
       const opening = await run({ ...request, disabledTechniques: techniques.filter(({ id }) => id !== practiceOpening).map(({ id }) => id) })
@@ -135,8 +140,8 @@ export async function puzzleSolution(game: Game, run = runEngine) {
   if (game.variant?.fog) return solveFogPath(game.variant, run, true)
   const { variant } = game
   if (!variant) {
-    const techniqueOrder = game.practiceTechnique
-      ? practiceTechniqueOrder(await run({ type: 'techniques' }), game.practiceTechnique) : undefined
+    const techniqueOrder = game.customDifficulty?.allowed ?? (game.practiceTechnique
+      ? practiceTechniqueOrder(await run({ type: 'techniques' }), game.practiceTechnique) : undefined)
     return run({ type: 'logical-solve', values: game.givens, complete: true, techniqueOrder,
       includeStepDetails: true, includeMoveAvailability: true })
   }

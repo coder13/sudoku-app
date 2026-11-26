@@ -27,7 +27,7 @@ export function difficultyStatistics(games: readonly Game[], variant: GameVarian
   const totals: DifficultyTotals<Difficulty> = new Map()
   for (const game of games) {
     // Keep historical grades separate, and do not count an already-filled import as a solve.
-    if (!game.difficulty || !game.started || gameVariantId(game) !== variant || !isSolved(game)) continue
+    if (!game.difficulty || game.customDifficulty || !game.started || gameVariantId(game) !== variant || !isSolved(game)) continue
     recordDifficultySolve(totals, game.difficulty, game.elapsed)
   }
   return summarizeDifficultySolves(totals)

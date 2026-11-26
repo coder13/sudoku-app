@@ -22,6 +22,7 @@ type MatchingOptions = {
   maxAttempts: number
   clues: number | readonly [number, number]
   technique?: TechniqueTarget
+  requiredTechniques?: readonly string[]
   exclude?: readonly string[]
 } & RatingTarget & SolverOptions
 

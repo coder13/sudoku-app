@@ -3,6 +3,8 @@ import { type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { createEngineSession, EngineError, type EngineRunner, type EngineSession } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
+import type { CustomDifficultyProfile } from '../sudoku/custom-difficulties'
+import { generateCustomDifficulty } from '../sudoku/custom-difficulty-generation'
 import { isCustomDifficulty, type CustomModeDefinition } from '../sudoku/custom-modes'
 import { createGameId, makeGame, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
@@ -90,6 +92,20 @@ export function usePuzzleGeneration() {
       if (!active() || rating.status === 'stalled') return
       const game = makeGame(createGameId(), title, board, 'generated')
       roomStore.add({ ...game, practiceTechnique: technique, difficulty: rating.status.solved, score: rating.score.points })
+    })
+  }
+
+  function generateWithCustomDifficulty(profile: CustomDifficultyProfile, onGenerated?: () => void) {
+    return withGeneration(async (seed, run, active) => {
+      const controller = new AbortController()
+      customSearch.current = controller
+      const exclude = roomStore.getSnapshot().games.filter(game => !game.variant && !game.grid).map(game => game.givens)
+      const { board, rating } = await generateCustomDifficulty(profile, seed, exclude, run, controller.signal)
+      if (!active() || controller.signal.aborted || rating.status === 'stalled') return
+      const game = makeGame(createGameId(), nextPuzzleTitle(`${profile.name} `), board, 'generated')
+      roomStore.add({ ...game, pendingSave: true, difficulty: rating.status.solved, score: rating.score.points,
+        customDifficulty: { ...profile, allowed: rating.techniqueOrder } })
+      onGenerated?.()
     })
   }
 
@@ -194,7 +210,7 @@ export function usePuzzleGeneration() {
       : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.')
   }
 
-  return { busy, error, generate, generatePractice, cancelGeneration: () => customSearch.current?.abort() }
+  return { busy, error, generate, generatePractice, generateWithCustomDifficulty, cancelGeneration: () => customSearch.current?.abort() }
 }
 
 

@@ -165,34 +165,55 @@ struct MatchingPlan {
     rating: Option<GenerationRating>,
     technique: Option<(Technique, TechniqueTargetMode)>,
     technique_order: Vec<Technique>,
+    required_techniques: Vec<Technique>,
 }
 
 impl MatchingPlan {
     fn new(
         criteria: &GenerationCriteria<'_>,
         mode: TechniqueTargetMode,
+        required_techniques: Vec<Technique>,
     ) -> Result<Self, GenerationError> {
         criteria.validate(mode)?;
+        let technique_order = match &criteria.rating {
+            Some(GenerationRating::Difficulty(level)) => {
+                difficulty_order(*level, criteria.technique_order)
+            }
+            _ => criteria.technique_order.to_vec(),
+        };
+        if let Some(&technique) = required_techniques.iter().find(|id| !technique_order.contains(id)) {
+            return Err(GenerationError::IncompatibleTargets(
+                GenerationConflict::DisabledTechnique(technique),
+            ));
+        }
+        if !required_techniques.is_empty() && *criteria.clues.start() == CELLS {
+            return Err(GenerationError::IncompatibleTargets(
+                GenerationConflict::TechniqueOnFilledGrid,
+            ));
+        }
         Ok(Self {
             clues: criteria.clues.clone(),
             rating: criteria.rating.clone(),
             technique: criteria.technique.map(|technique| (technique, mode)),
-            technique_order: match &criteria.rating {
-                Some(GenerationRating::Difficulty(level)) => {
-                    difficulty_order(*level, criteria.technique_order)
-                }
-                _ => criteria.technique_order.to_vec(),
-            },
+            technique_order,
+            required_techniques,
         })
     }
 
     fn match_path(&self, board: &Board) -> Option<MatchedPath> {
-        logical::match_generation_path(
+        let path = logical::match_generation_path(
             board,
             &self.technique_order,
             self.rating.as_ref(),
             self.technique,
-        )
+        )?;
+        if !self.required_techniques.is_empty() {
+            let MatchedPath::Rated(rating) = &path else { return None };
+            if !self.required_techniques.iter().all(|technique| rating.score.counts.contains_key(technique)) {
+                return None;
+            }
+        }
+        Some(path)
     }
 }
 
@@ -269,7 +290,8 @@ pub fn start_matching<'a>(
     templates: Cow<'a, [Board]>,
     max_attempts: u32,
 ) -> Result<GenerationSearch<'a, Board>, GenerationError> {
-    Ok(start_matching_path(seed, criteria, mode, templates, max_attempts)?.map(|(board, _)| board))
+    Ok(start_matching_path(seed, criteria, mode, templates, max_attempts, Vec::new())?
+        .map(|(board, _)| board))
 }
 
 pub(crate) fn start_matching_path<'a>(
@@ -278,8 +300,9 @@ pub(crate) fn start_matching_path<'a>(
     mode: TechniqueTargetMode,
     templates: Cow<'a, [Board]>,
     max_attempts: u32,
+    required_techniques: Vec<Technique>,
 ) -> Result<GenerationSearch<'a, (Board, MatchedPath)>, GenerationError> {
-    let plan = MatchingPlan::new(criteria, mode)?;
+    let plan = MatchingPlan::new(criteria, mode, required_techniques)?;
     let mut random = Random::from_seed(seed);
     if !templates.is_empty() {
         let mut attempts =
@@ -410,7 +433,7 @@ pub fn start_from_pool<'a>(
     templates: &'a [VerifiedTemplate],
     max_attempts: u32,
 ) -> Result<GenerationSearch<'a, GeneratedPuzzle>, GenerationError> {
-    let plan = MatchingPlan::new(criteria, mode)?;
+    let plan = MatchingPlan::new(criteria, mode, Vec::new())?;
     Ok(start_verified_templates(
         seed,
         plan,
@@ -429,8 +452,9 @@ pub(crate) fn start_builtin_pool(
     criteria: &GenerationCriteria<'_>,
     mode: TechniqueTargetMode,
     max_attempts: u32,
+    required_techniques: Vec<Technique>,
 ) -> Result<GenerationSearch<'static, GeneratedPuzzle>, GenerationError> {
-    let plan = MatchingPlan::new(criteria, mode)?;
+    let plan = MatchingPlan::new(criteria, mode, required_techniques)?;
     let templates = if max_attempts == 0 {
         &[]
     } else {

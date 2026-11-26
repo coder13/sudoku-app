@@ -18,7 +18,7 @@ type Options = {
 export function usePlayPuzzleRating({ game, givens, variant, nonUnique, draft, completed, gridPuzzle }: Options) {
   const [failure, setFailure] = useState<{ gameId: string; source: Game['source'] } | null>(null)
   const needsRating = needsPuzzleGrade(game)
-  const needsAttempt = !gridPuzzle && !completed && !game.practiceTechnique && !game.ratingAttempt &&
+  const needsAttempt = !gridPuzzle && !completed && !game.practiceTechnique && !game.customDifficulty && !game.ratingAttempt &&
     (!variant?.fog || game.score !== null)
   const ratingFailed = failure?.gameId === game.id && failure.source === game.source
 

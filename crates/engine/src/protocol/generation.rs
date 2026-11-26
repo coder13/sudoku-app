@@ -32,6 +32,8 @@ pub(super) struct MatchingRequest {
     technique: Option<TechniqueRequest>,
     technique_order: Option<Vec<String>>,
     #[serde(default)]
+    required_techniques: Vec<String>,
+    #[serde(default)]
     exclude: Vec<String>,
 }
 
@@ -149,7 +151,11 @@ impl MatchingRequest {
         self,
         templates: Option<Vec<String>>,
     ) -> ResultValue<(SolverProfile, ActiveGeneration)> {
-        let rating = rating_target(self.score, self.difficulty)?;
+        let required = self.required_techniques.iter()
+            .map(|id| Technique::from_id(id).ok_or(INVALID_TECHNIQUE))
+            .collect::<Result<Vec<_>, _>>()?;
+        let rating = rating_target(self.score, self.difficulty)?
+            .or_else(|| (!required.is_empty()).then(|| GenerationRating::Score(0..=u32::MAX)));
         let (technique, mode) = match self.technique {
             None => (None, TechniqueTargetMode::Anywhere),
             Some(technique) => {
@@ -178,12 +184,13 @@ impl MatchingRequest {
                 mode,
                 Cow::Owned(templates),
                 self.max_attempts,
+                required,
             )
             .map_err(generation_error)?;
             let search = generation_output(search, self.include_rating, &profile);
             return Ok((profile, exclude_puzzles(search, self.exclude)?));
         }
-        let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts)
+        let search = start_builtin_pool(self.seed, &criteria, mode, self.max_attempts, required)
             .map_err(generation_error)?;
         Ok((
             profile,

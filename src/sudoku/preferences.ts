@@ -1,4 +1,5 @@
 import { notifySettingsEdit } from './settings-events.ts'
+import { isCustomDifficultyId, type CustomDifficultyId } from './custom-difficulties.ts'
 import { clampAppTextZoom, DEFAULT_APP_TEXT_ZOOM } from './app-text-zoom.ts'
 import { DEFAULT_DIFFICULTY, currentDifficulty, isDifficultyPreference, type DifficultyPreference } from './difficulty.ts'
 import type { CandidateLayout, ErrorMode } from './game.ts'
@@ -211,7 +212,8 @@ export function saveDifficulty(value: DifficultyPreference) {
   catch { /* The setting remains active for this session. */ }
 }
 
-export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId; boxRows?: import('./grid.ts').RectangularBoxRows }
+export type NewPuzzlePreference = { variant: NewPuzzleId; difficulty: DifficultyPreference; ruleset?: GenerationRulesetId;
+  boxRows?: import('./grid.ts').RectangularBoxRows; customDifficulty?: CustomDifficultyId }
 
 export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): NewPuzzlePreference | null {
   try {
@@ -223,6 +225,7 @@ export function readNewPuzzlePreference(storage?: Pick<Storage, 'getItem'>): New
       }
       const ruleset = generationRuleset(value.variant, value.ruleset)
       return { variant: value.variant, difficulty: variantDifficulty(value.variant, value.difficulty),
+        ...(value.variant === 'classic' && isCustomDifficultyId(value.customDifficulty) ? { customDifficulty: value.customDifficulty } : {}),
         ...(ruleset ? { ruleset: ruleset.id } : {}) }
     }
   } catch { /* Use the variant picker when the preference is unavailable. */ }

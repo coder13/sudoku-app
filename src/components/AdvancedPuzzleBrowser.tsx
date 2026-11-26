@@ -12,7 +12,7 @@ export type PuzzleBrowserView = 'active' | 'past' | 'saved'
 
 function puzzleStatus(game: Game) {
   if (game.source === 'draft') return game.editingId ? 'Editing saved puzzle' : 'Draft puzzle'
-  const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : 'Unrated'
+  const rating = game.difficulty ? formatPuzzleRating(game.difficulty, game.score, game.customDifficulty?.name) : 'Unrated'
   if (isSolved(game)) return game.timeUntracked ? `${rating} · Solved` : `${rating} · Solved in ${formatTime(game.elapsed)}`
   if (game.started) return `${rating} · ${game.timeUntracked ? 'In progress' : formatTime(game.elapsed)}`
   return `${rating} · Not started`

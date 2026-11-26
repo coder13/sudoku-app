@@ -2488,6 +2488,27 @@ svg { flex-shrink: 0; }
 .main-menu-section > header { display: grid; gap: 3px; }
 .new-puzzle-step { width: min(100%, 520px); }
 .new-puzzle-step .button { min-height: 44px; }
+.custom-difficulty-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.custom-difficulty-editor > label { display: grid; gap: var(--space-4); font-weight: 650; }
+.custom-difficulty-editor > label > input {
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  font: inherit;
+  color: var(--ink);
+}
+.custom-difficulty-techniques { border-bottom: 1px solid var(--border); }
+.custom-difficulty-techniques summary { cursor: pointer; padding-block: var(--space-8); font-weight: 700; }
+.custom-difficulty-techniques label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-8);
+  align-items: center;
+  padding-block: var(--space-4);
+}
 .sudoku-mode-list { display: grid; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
 .sudoku-mode-list li { display: flex; align-items: center; gap: var(--space-8); }
 .sudoku-mode-list li > a:first-child {
