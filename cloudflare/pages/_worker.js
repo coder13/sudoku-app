@@ -369,7 +369,7 @@ const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
 function jigsawGrid(value) {
   const size = value?.size
-  if (size !== 4 && size !== 5 && size !== 7) return false
+  if (![3, 4, 5, 6, 7].includes(size)) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) },
     { wrapAround: oneOf(true) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
