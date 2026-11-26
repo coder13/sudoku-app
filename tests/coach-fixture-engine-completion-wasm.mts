@@ -19,6 +19,19 @@ function assertSolutionCandidates(candidates: readonly number[], givens: string,
   }
 }
 
+function coachProgress(givens: string, solution: string) {
+  const emptyCells = [...givens].flatMap((digit, cell) => digit === '0' ? [cell] : [])
+  const moves = Array(solution.length).fill('0')
+  const values = [...givens]
+  for (const offset of new Set([Math.floor(emptyCells.length / 4), Math.floor(emptyCells.length / 2), Math.floor(emptyCells.length * 3 / 4)])) {
+    const cell = emptyCells[offset]
+    if (cell === undefined) continue
+    moves[cell] = solution[cell]
+    values[cell] = solution[cell]
+  }
+  return { entries: moves.join(''), values: values.join('') }
+}
+
 test('published Sudoku Coach completions pass the Rust engine with every imported rule combination', async () => {
   assert.equal(sources.size, 80)
   const standaloneSeen = new Set<string>()
@@ -27,6 +40,7 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   for (const source of sources.values()) {
     const imported = await detectPuzzle(source.code)
     const sourceName = source.references[0]
+    const progress = coachProgress(imported.givens, source.solution)
 
     if (imported.futoshiki || imported.calcudoku) {
       assert.ok(source.references.every(reference => standaloneCoachSolutionSources.has(reference)), sourceName)
@@ -41,12 +55,20 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
       } }), 'unique', sourceName)
       const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: imported.variant.puzzle } })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
+      const progressed = await runEngine({ type: 'variant', operation: 'candidates', position: {
+        puzzle: imported.variant.puzzle,
+        entries: progress.entries,
+      } })
+      assertSolutionCandidates(progressed, progress.values, source.solution, `${sourceName} after player entries`)
     } else if (imported.grid) {
       const position = sizedRulePosition(imported.grid, { rules: imported.sizedRules ?? [] }, source.solution)
       assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique', sourceName)
       const startingPosition = sizedRulePosition(imported.grid, { rules: imported.sizedRules ?? [] }, imported.givens)
       const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: startingPosition })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
+      const progressed = await runEngine({ type: 'sized-variant', operation: 'candidates', position:
+        sizedRulePosition(imported.grid, { rules: imported.sizedRules ?? [] }, progress.values) })
+      assertSolutionCandidates(progressed, progress.values, source.solution, `${sourceName} after player entries`)
     } else {
       assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
         puzzle: { version: 1, givens: imported.givens, rules: [] },
@@ -56,6 +78,11 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
         puzzle: { version: 1, givens: imported.givens, rules: [] },
       } })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
+      const progressed = await runEngine({ type: 'variant', operation: 'candidates', position: {
+        puzzle: { version: 1, givens: imported.givens, rules: [] },
+        entries: progress.entries,
+      } })
+      assertSolutionCandidates(progressed, progress.values, source.solution, `${sourceName} after player entries`)
     }
     checked++
   }
