@@ -358,12 +358,18 @@ function fields(value, required, optional = {}) {
 
 const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max
 const list = (valid, min, max = Infinity) => value => Array.isArray(value) && value.length >= min && value.length <= max && value.every(valid)
+const digitRank = digit => {
+  const code = digit.toUpperCase().charCodeAt(0)
+  return code >= 48 && code <= 57 ? code - 48 : code >= 65 && code <= 71 ? code - 55 : -1
+}
 const givens = (value, size = 9) => typeof value === 'string' && value.length === size ** 2 &&
-  [...value].every(digit => digit >= '0' && digit <= String(size))
+  [...value].every(digit => digitRank(digit) >= 0 && digitRank(digit) <= size)
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const rectangularGrid = value => fields(value, { size: oneOf(6, 8), boxRows: oneOf(2, 3, 4), boxColumns: oneOf(2, 3, 4) }) &&
+  value.boxRows * value.boxColumns === value.size
+const zeroBasedGrid = value => fields(value, { size: oneOf(10), boxRows: oneOf(2, 5), boxColumns: oneOf(2, 5), notation: oneOf('zero-based') }) &&
   value.boxRows * value.boxColumns === value.size
 const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
@@ -398,7 +404,7 @@ function connectedCells(cells, size) {
   return connected.size === cells.length
 }
 const boxlessGrid = value => fields(value, { size: oneOf(5, 6, 7, 9), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || boxlessGrid(value)
+const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || zeroBasedGrid(value) || jigsawGrid(value) || boxlessGrid(value)
 function numberedDotRule(rule, size) {
   const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
@@ -406,9 +412,10 @@ function numberedDotRule(rule, size) {
     marks: list(mark, 0, 2 * size * (size - 1)) }, { negative: boolean }) && (rule.marks.length > 0 || rule.negative === true)
 }
 
-function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
+function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, notation }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
+  const maxArrowCells = notation === 'zero-based' ? 2 * size - 1 : size
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
   const outsideHouse = (cells, direction) => {
     if (!list(cell, size, size)(cells) || new Set(cells).size !== size) return false
@@ -570,11 +577,12 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
       rule.topLeft % size < size - 1) ||
     numberedDotRule(rule, size) ||
     fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
+    fields(rule, { type: oneOf('adjacent-total'), cells: pair, sum: integer(3, 2 * size - 1) }) ||
     (fields(rule, { type: oneOf('row-column-sum'), pairs: list(pair, 0, 2 * size * (size - 1)) }, { requireUnmarked: boolean }) &&
       (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
       new Set(rule.pairs.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.pairs.length) ||
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
-    (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
+    (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, maxArrowCells) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('whispers'), cells: list(cell, 2, size * size), minDifference: integer(1, size - 1) }) &&
       new Set(rule.cells).size === rule.cells.length) ||

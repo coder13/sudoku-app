@@ -7,10 +7,12 @@ import { runEngine } from '../src/sudoku/engine.ts'
 import { rectangularGridForBoxRows, sizedArrowState } from '../src/sudoku/grid.ts'
 import { isSolved, enter } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -150,4 +152,23 @@ test('#388 published Mountain Climbing has one completion with its 17-cell Arrow
     }
   }
   assert.equal(isSolved(completed), true, 'the app Play state must accept the published completion')
+})
+
+test('#388 shares and reopens the published zero-based 10 × 10 puzzle', async ({ mock }) => {
+  const code = readFileSync(new URL('./fixtures/sudokupad-mountain-climbing.scl', import.meta.url), 'utf8').trim()
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    mock.method(globalThis, 'fetch', (path: string | URL, options?: RequestInit) =>
+      fetcher(new URL(String(path), 'https://sudoku.test'), options))
+    const { game } = await prepareImportedPuzzle(code)
+    const solvedGame = { ...game, givens: game.sized!.solution }
+    assert.ok(solvedGame.givens.includes('A'), 'the rank for displayed 9 must be part of the shared givens')
+    const shareId = await publishSharedPuzzle(solvedGame)
+    const reopened = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
+    assert.deepEqual(reopened.game.grid, game.grid)
+    assert.deepEqual(reopened.game.sized?.rules, game.sized?.rules)
+    assert.equal(reopened.game.givens, solvedGame.givens)
+  } finally {
+    sqlite.close()
+  }
 })
