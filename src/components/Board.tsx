@@ -108,6 +108,7 @@ export type BoardInteraction = {
   onGridKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   linkDrawing?: boolean
+  eraseChainNodes?: boolean
   onCandidate?: (candidate: Candidate) => void
   onGroupCandidate?: (candidate: Candidate) => void
   onLinkSelect?: (candidate: Candidate) => void
@@ -248,6 +249,7 @@ export function Board(props: BoardProps) {
     onGridKeyDown,
     onCellDoubleClick,
     linkDrawing,
+    eraseChainNodes,
     onCandidate,
     onGroupCandidate,
     onLinkSelect,
@@ -267,7 +269,7 @@ export function Board(props: BoardProps) {
   const { modeBorder, modeBoundaryRef, frameRef, modeBadge, layoutBoundaryRef } = boardLayout ?? {}
   const groupDescriptionId = useId()
   const [aqreMode, setAqreMode] = useState<'unshaded' | 'shaded' | 'unknown' | null>(null)
-  const groupCandidate = linkDrawing ? onGroupCandidate : undefined
+  const groupCandidate = linkDrawing && !eraseChainNodes ? onGroupCandidate : undefined
   const groupHold = useTouchHold(Boolean(groupCandidate))
   const groupDescriptions = useMemo(
     () => boardGroups(annotations?.links, annotations?.groups).map(([, { point, label }], index) => `${label ?? `Group ${index + 1}`}: ${boardGroupDescription(point)}.`),
@@ -650,6 +652,7 @@ export function Board(props: BoardProps) {
                   linkTargetMask,
                   highlightsLinkTargetCell,
                   canSelectLinkCandidate,
+                  eraseChainNodes,
                   highlightedLinkDigit,
                   selectedCandidateMask: selectedCandidateMasks.get(index) ?? 0,
                 }}
@@ -732,6 +735,7 @@ export function Board(props: BoardProps) {
       Boolean(onPaintCandidate),
       Boolean(onCandidateHover),
       linkDrawing,
+      eraseChainNodes,
     ]
   )
 
@@ -758,6 +762,7 @@ export function Board(props: BoardProps) {
       <div
         className={`board-body${variantPuzzle || algebraicCages?.length || sizedRules?.length ? ' variant-board' : ''}${regionsAt ? ' jigsaw-board' : ''}${houseFills.size ? ' shaded-houses-board' : ''}`}
         data-board-body
+        data-chain-eraser={eraseChainNodes || undefined}
         data-highlighted-rule={highlightedRule ?? undefined}
         data-input-mode={modeBorder}
         data-annotations-on-top={annotationsOnTop || undefined}
