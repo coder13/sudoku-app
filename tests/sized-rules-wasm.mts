@@ -198,12 +198,16 @@ test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async
     hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sum and Thermometer',
   } }), { headers: { 'content-type': 'application/json' } }))
 
-  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
-  assert.deepEqual(imported.sizedRules, [
+  const preview = await prepareImportedPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.equal(preview.format, 'Sudoku Coach')
+  const { game } = preview
+  assert.equal(game.grid?.size, 6)
+  assert.deepEqual(game.sized?.rules, [
     { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 5 },
     { type: 'thermometer', cells: [0, 1, 2] },
   ])
-  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(game.sized?.solution, solution)
+  const position = sizedRulePosition(game.grid!, { rules: game.sized!.rules }, game.givens)
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
   const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: {
     ...position, digits: Array(36).fill(0),
