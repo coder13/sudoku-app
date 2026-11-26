@@ -129,6 +129,10 @@ test('#547 preserves CS1G authored shape artwork without dropping its active rul
     return counts
   }, {}), { palindrome: 5, entropic: 10, kropki: 2 })
 
+  const caseInsensitive = await detectPuzzle(source.code.toUpperCase())
+  assert.deepEqual(caseInsensitive.authoredArtwork, artwork)
+  assert.deepEqual(caseInsensitive.variant?.puzzle, imported.variant?.puzzle)
+
   assert.ok(imported.variant)
   const game = {
     ...makeGame('coach-cs1g', imported.title ?? 'Thank RP you', imported.givens, 'imported', 1),
@@ -299,8 +303,13 @@ test('#545 imports authored neighbor-match clues with calibrated text positions'
   assert.deepEqual(imported.variant?.puzzle.rules.filter(rule => rule.type === 'neighbor-match'), [parsed.rule])
 })
 
-test('#542 rejects a changed export rather than guessing from its shape layer', async () => {
+test('#542 recognizes case-insensitive Base32hex and rejects changed puzzle data', async () => {
   const source = fixture.examples.find(example => example.issue === 542)
   assert.ok(source)
-  await assert.rejects(detectPuzzle(source.code.toUpperCase()), /unsupported or invalid digit restrictions/)
+  const original = await detectPuzzle(source.code)
+  const upperCase = await detectPuzzle(source.code.toUpperCase())
+  assert.deepEqual(upperCase.variant?.puzzle, original.variant?.puzzle)
+
+  const changed = source.code.slice(0, 10) + (source.code[10] === '0' ? '1' : '0') + source.code.slice(11)
+  await assert.rejects(detectPuzzle(changed))
 })

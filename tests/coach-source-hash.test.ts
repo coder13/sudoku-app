@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { test } from 'node:test'
 import { sourceHash } from '../src/sudoku/puzzle-import/shared.ts'
 
-test('reviewed Sudoku Coach recognizers share one source digest per code and decoded payload', async t => {
+test('reviewed Sudoku Coach recognizers share one case-insensitive source digest per payload', async t => {
   const payload = {}
   let calls = 0
   const digest = globalThis.crypto.subtle.digest.bind(globalThis.crypto.subtle)
@@ -15,6 +15,7 @@ test('reviewed Sudoku Coach recognizers share one source digest per code and dec
   const first = sourceHash('SCv7_32_source', payload)
   assert.strictEqual(sourceHash('SCv7_32_source', payload), first)
   assert.equal(await first, createHash('sha256').update('SCv7_32_source').digest('hex'))
+  assert.equal(await sourceHash('SCV7_32_SOURCE', payload), await first)
   assert.equal(await sourceHash('SCv7_32_source', payload), await first)
   assert.equal(calls, 1)
 
