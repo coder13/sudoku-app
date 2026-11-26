@@ -97,6 +97,32 @@ test('#430 parses and uniquely solves the original exact-one-doubled puzzle', as
   assert.equal(await sizedRuleSingles(game, definition.grid, definition.givens), imported.authoredSolution)
 })
 
+test('#430 exact-one clue groups compose with a repeatable product cage', async () => {
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
+  const productCells = [0, 9, 20]
+  assert.deepEqual(productCells.map(cell => Number(imported.authoredSolution![cell])), [3, 4, 3],
+    'the product cage intentionally repeats a digit outside the shared Sudoku houses')
+  const product = productCells.reduce((total, cell) => total * Number(imported.authoredSolution![cell]), 1)
+  const rules = [...imported.sizedRules, { type: 'product-cage' as const, cells: productCells, product }]
+  const definition: SizedRuleDefinition = { grid: imported.grid, givens: imported.givens, rules,
+    authoredSolution: imported.authoredSolution }
+
+  assert.equal(product, 36)
+  assert.equal(await solveAcrossInterpretations(definition), 'unique')
+
+  const game = await verifySizedRulePuzzle(definition)
+  assert.ok(await sizedRuleCandidates(game, definition.grid, imported.givens))
+  assert.ok(await sizedRuleHintChoices(game, definition.grid, imported.givens))
+
+  const invalidRules = rules.map(rule => rule.type === 'product-cage' ? { ...rule, product: product - 1 } : rule)
+  const wrongProduct = await runSizedRuleAlternatives({ type: 'sized-variant', operation: 'solve-unique', position: {
+    version: 2, grid: definition.grid, digits: Array.from(imported.authoredSolution, Number), rules: invalidRules,
+  } })
+  assert.ok(wrongProduct.every(branch => branch.status === 'conflict' || branch.status === 'unsolvable'),
+    wrongProduct.map(branch => branch.status).join(', '))
+})
+
 test('#430 exact-one groups reject impossible clues and expose ambiguity controls', async () => {
   const imported = await detectPuzzle(code)
   assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
