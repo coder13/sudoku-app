@@ -1969,6 +1969,34 @@ mod terrain_sandwich_tests {
                 .all(|(cell, digit)| { candidates[cell] & (1 << (digit - 1)) != 0 })
         );
 
+        let incompatible_pair = (0..81)
+            .find_map(|cell| {
+                let row = cell / 9;
+                let column = cell % 9;
+                let neighbors = [
+                    (column < 8).then_some(cell + 1),
+                    (row < 8).then_some(cell + 9),
+                ];
+                neighbors.into_iter().flatten().find_map(|other| {
+                    let left = solution[cell];
+                    let right = solution[other];
+                    (left.max(right) != 2 * left.min(right)).then_some([cell, other])
+                })
+            })
+            .expect("the published solution has an orthogonal non-ratio-two pair");
+        let mut contradictory = puzzle.clone();
+        let Some(PuzzleRule::Kropki { ratio_two, .. }) = contradictory.rules.last_mut() else {
+            unreachable!();
+        };
+        ratio_two.pairs = vec![incompatible_pair];
+        assert!(
+            contradictory
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_err()
+        );
+
         let PuzzleRule::TerrainSandwich { maximum, .. } = &mut puzzle.rules[0] else {
             unreachable!();
         };
