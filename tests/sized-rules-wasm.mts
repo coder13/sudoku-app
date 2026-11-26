@@ -853,6 +853,33 @@ test('Coach negative Ratio markers join same-value clues split across layers', a
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
 })
 
+test('an empty negative default Ratio layer remains active beside sized custom Ratio labels', async () => {
+  const solution = '1234341221434321'
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [2, 6], parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', ratioTwo: { pairs: [], negative: true } },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [2, 6], value: 3 }], negative: false },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position,
+    rules: [{ type: 'labeled-dots', relation: 'ratio', marks: [], negative: true }],
+  } }), 'conflict', 'an empty labeled Ratio layer uses the default 1:2 relation')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position,
+    rules: [
+      { type: 'labeled-dots', relation: 'difference', marks: [], negative: true },
+      { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 4], value: 2 }] },
+    ],
+  } }), 'conflict', 'an empty labeled Difference layer uses the default difference 1')
+})
+
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
   url: string; title: string; coach: string; solution: string
 }[]

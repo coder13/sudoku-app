@@ -5,6 +5,7 @@ import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -65,6 +66,52 @@ test('negative Coach Ratio markers join same-value clues split across classic la
     { type: 'labeled-dots', relation: 'ratio', marks: positiveLayerMarks.map(cells => ({ cells, value: 3 })) },
   ])
   assert.equal(game.variant?.solution, solution)
+})
+
+test('an empty negative default Ratio layer remains active beside custom Ratio labels', async () => {
+  const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
+  const imported = await detectPuzzle(coachCode({ givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [8, 17], parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  assert.ok(imported.variant)
+  assert.deepEqual(imported.variant.puzzle.rules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: [], negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [8, 17], value: 3 }] },
+  ])
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle, entries: solution,
+  } }), 'conflict')
+})
+
+test('an empty negative default Difference layer remains active beside custom Difference labels', async () => {
+  const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  const digits = [...solution].map(Number)
+  const differenceTwoPair: [number, number] | undefined = (() => {
+    for (let cell = 0; cell < digits.length; cell++) {
+      for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
+        if (next >= 0 && Math.abs(digits[cell] - digits[next]) === 2) return [cell, next]
+      }
+    }
+    return undefined
+  })()
+  assert.ok(differenceTwoPair)
+  const imported = await detectPuzzle(coachCode({ givenDigits: solution, givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'difference', settings: { negativeConstraint: false }, segments: [
+      { cells: differenceTwoPair, parameters: { difference: 2 } },
+    ] },
+  ] }))
+  assert.ok(imported.variant)
+  assert.deepEqual(imported.variant.puzzle.rules, [
+    { type: 'labeled-dots', relation: 'difference', marks: [], negative: true },
+    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: differenceTwoPair, value: 2 }] },
+  ])
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle, entries: solution,
+  } }), 'conflict')
 })
 
 test('negative Coach Difference 2 checks its own marker values on classic Sudoku', async () => {

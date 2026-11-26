@@ -452,6 +452,9 @@ impl PairCompiler {
                     }));
                 }
                 if *negative {
+                    if layer_values.is_empty() {
+                        layer_values.insert(if ratio { 2 } else { 1 });
+                    }
                     for value in layer_values {
                         self.labeled_negative
                             .entry((*relation, value))
@@ -534,7 +537,11 @@ impl PairCompiler {
         );
         finish_markers(&mut self.clues, self.xv, VariantTechnique::Xv, XV);
         for ((relation, value), index) in std::mem::take(&mut self.labeled_negative) {
-            let marked = &self.labeled_marked[&(relation, value)];
+            let marked = self
+                .labeled_marked
+                .get(&(relation, value))
+                .cloned()
+                .unwrap_or_default();
             let source = Arc::new(RuleSource {
                 technique: VariantTechnique::Kropki,
                 indices: vec![index],

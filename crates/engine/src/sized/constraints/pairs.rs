@@ -465,6 +465,9 @@ pub(super) fn compile_pairs(
                 });
             }
             if *negative {
+                if layer_values.is_empty() {
+                    layer_values.insert(if ratio { 2 } else { 1 });
+                }
                 for value in layer_values {
                     labeled_negative.entry((*relation, value)).or_insert(index);
                 }
@@ -627,11 +630,15 @@ pub(super) fn compile_pairs(
         }
     }
     for ((relation, value), index) in labeled_negative {
+        let labeled_marked = labeled_marked
+            .get(&(relation, value))
+            .cloned()
+            .unwrap_or_default();
         add_unmarked_labeled_links(
             size,
             relation,
             value,
-            &labeled_marked[&(relation, value)],
+            &labeled_marked,
             &mut groups[index],
             value_offset,
         );
