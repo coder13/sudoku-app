@@ -1937,6 +1937,28 @@ mod terrain_sandwich_tests {
 
         let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
         puzzle.rules = rules;
+        let ratio_pair = (0..81)
+            .find_map(|cell| {
+                let row = cell / 9;
+                let column = cell % 9;
+                let neighbors = [
+                    (column < 8).then_some(cell + 1),
+                    (row < 8).then_some(cell + 9),
+                ];
+                neighbors.into_iter().flatten().find_map(|other| {
+                    let left = solution[cell];
+                    let right = solution[other];
+                    (left.max(right) == 2 * left.min(right)).then_some([cell, other])
+                })
+            })
+            .expect("the published solution has an orthogonal 1:2 pair");
+        puzzle.rules.push(PuzzleRule::Kropki {
+            consecutive: Default::default(),
+            ratio_two: super::super::MarkedPairs {
+                pairs: vec![ratio_pair],
+                negative: false,
+            },
+        });
         let compiled = puzzle.compile().unwrap();
         assert!(compiled.candidates(&solution, &[0; 81]).is_ok());
 
