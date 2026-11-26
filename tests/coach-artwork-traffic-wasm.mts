@@ -174,8 +174,11 @@ test('#543 and #546 solve and preserve the complete Aqre imports through save an
       assert.ok(game.variant && direct.variant)
       assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
       assert.equal(game.variant.solution.length, 81)
-      assertVariantCompletion({ ...game.variant.puzzle,
-        rules: game.variant.puzzle.rules?.filter(rule => rule.type !== 'aqre') }, game.variant.solution)
+      const digitPuzzle = { ...game.variant.puzzle,
+        rules: game.variant.puzzle.rules?.filter(rule => rule.type !== 'aqre') }
+      assertVariantCompletion(digitPuzzle, game.variant.solution)
+      assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: digitPuzzle } })).status,
+        'multiple', `#${issue} digit completions are not unique before solving the Aqre shading layer`)
       const aqre = game.variant.puzzle.rules?.find(rule => rule.type === 'aqre')
       assert.ok(aqre?.type === 'aqre' && aqre.kind === kind)
       assert.equal(aqre?.type === 'aqre' ? aqre.givenShades.length : -1, issue === 543 ? 16 : 0)
