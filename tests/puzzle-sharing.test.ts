@@ -9,6 +9,7 @@ import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { GAME_PREFIX, readGame } from '../src/sudoku/storage.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 
@@ -267,6 +268,41 @@ test('published Coach rule additions round-trip through the public share API', a
         rule.digits = [1, 2, 4]
         await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Digit Order needs a full entropy group')
       }
+    }
+  } finally { sqlite.close() }
+})
+
+test('Coach digit-restriction shapes survive public sharing and malformed restrictions are rejected', async () => {
+  const shapeLayer = {
+    type: 'cosmeticShape', settings: { gridSnapToCentres: true }, segments: [
+      { cells: [[0.5, 0.5]], parameters: { shape: 'circle' } },
+      { cells: [[1.5, 0.5]], parameters: { shape: 'cross' } },
+      { cells: [[2.5, 0.5]], parameters: { shape: 'square' } },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode({ gridSize: 9, givenDigits: '0'.repeat(81), givenConstraints: [shapeLayer] }))
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'digit-restriction', shape: 'circle', cells: [0], digits: [1, 2, 3] },
+    { type: 'digit-restriction', shape: 'cross', cells: [1], digits: [4, 5, 6, 7] },
+    { type: 'digit-restriction', shape: 'square', cells: [2], digits: [8, 9] },
+  ])
+  const game = { ...makeGame(createGameId(), 'Coach digit restrictions', imported.givens, 'imported'), variant: imported.variant }
+  const definition = puzzleDefinitionForSharing(game)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+
+    for (const edit of [
+      (rule: { digits: number[] }) => { rule.digits[0] = 10 },
+      (rule: { digits: number[] }) => { rule.digits[1] = rule.digits[0] },
+      (rule: { shape: string }) => { rule.shape = 'triangle' },
+      (rule: { cells: number[] }) => { rule.cells.push(81) },
+    ]) {
+      const malformed = JSON.parse(JSON.stringify(definition))
+      edit(malformed.variant.puzzle.rules[0])
+      await assert.rejects(api('shares', 'POST', malformed), { status: 400 })
     }
   } finally { sqlite.close() }
 })

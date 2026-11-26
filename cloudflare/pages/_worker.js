@@ -787,6 +787,7 @@ const ruleFields = {
   lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
   'digit-order': [{ cells: house, digits: list(integer(1, 9), 3, 3) }],
+  'digit-restriction': [{ cells: uniqueCells(1, 81), digits: list(integer(1, 9), 1, 9), shape: oneOf('circle', 'cross', 'square') }],
   'distant-neighbors': [{ markedCells: house }],
   entropic: [{ cells: list(cell, 1) }],
   'entropy-window-group': [{ cells: list(cell, 4, 4), group: oneOf('low', 'middle', 'high') }],
@@ -844,6 +845,7 @@ const rule = value => {
       value.cells.every((cell, index) => cell === index * 9 + column) ||
       value.cells.every((cell, index) => cell === (8 - index) * 9 + column)
   }
+  if (value.type === 'digit-restriction') return new Set(value.digits).size === value.digits.length
   if (value.type === 'distant-neighbors') {
     const boxes = Array.from({ length: 9 }, () => 0)
     return new Set(value.markedCells).size === 9 && value.markedCells.every(cell =>
