@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import type { VariantPuzzle } from '../src/sudoku/engine.ts'
+import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, completeCandidateMasks, enter, hintEliminations, redo, replaceCandidates, restartGame, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
 import { jigsawRegionColors, kropkiDigitExclusions } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -79,6 +79,17 @@ test('XXIV retains its authored region colors through import, save and sharing',
     }
     assert.equal(new Set(jigsawRegionColors(membership, 9)).size, 9)
     assertVariantCompletion(puzzle, solution)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
+      { status: 'unique', solution }, 'the full Jigsaw, Killer and Little Killer composition must be enforced together')
+    const withoutEachRule = [
+      { ...puzzle, regions: { type: 'boxes' as const } },
+      { ...puzzle, rules: puzzle.rules!.filter(rule => rule.type !== 'killer-cages') },
+      { ...puzzle, rules: puzzle.rules!.filter(rule => rule.type !== 'little-killer') },
+    ]
+    for (const [index, incomplete] of withoutEachRule.entries()) {
+      assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: incomplete } })).status,
+        'multiple', `removing source rule family ${index} must leave multiple completions`)
+    }
 
     const { game } = await prepareImportedPuzzle(url)
     assert.equal(game.title, title)
