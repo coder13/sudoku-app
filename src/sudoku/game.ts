@@ -28,6 +28,7 @@ import type { SubsetWorkspace } from './subsets.ts'
 import type { SizedRuleGame } from './sized-rule-game.ts'
 import type { AlgebraicGame } from './algebraic-game.ts'
 import type { CustomModeDefinition } from './custom-modes.ts'
+import type { CustomDifficultyProfile } from './custom-difficulties.ts'
 import type { AlgebraicCage } from './algebraic-cages.ts'
 import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
 import type { ImportedDrawing } from './imported-drawings.ts'
@@ -89,6 +90,7 @@ export type Game = {
   algebraic?: AlgebraicGame
   sized?: SizedRuleGame
   customMode?: CustomModeDefinition
+  customDifficulty?: CustomDifficultyProfile
   practiceTechnique?: string
   generatedWithAuto?: true
   ratingAttempt?: RatingAttempt
@@ -177,6 +179,7 @@ export function restartGame(game: Game): Game {
     algebraic: game.algebraic,
     sized: game.sized,
     customMode: game.customMode,
+    ...(game.customDifficulty && { customDifficulty: game.customDifficulty }),
     ...(game.practiceTechnique && { practiceTechnique: game.practiceTechnique }),
     generatedWithAuto: game.generatedWithAuto,
     analysisUsed: game.analysisUsed,

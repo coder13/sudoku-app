@@ -1,4 +1,5 @@
 import { readCustomModeDefinition } from './custom-modes.ts'
+import { readCustomDifficultyProfile } from './custom-difficulties.ts'
 import { CLASSIC_GRID, MINI_GRID, isGridText, isSizedGrid, isJigsawGrid, sizedGridIdentity, type JigsawGrid, type PlayGrid, type SizedGrid } from './grid.ts'
 import { activityPrefix, rememberPuzzleActivity } from './puzzle-activity.ts'
 import { GAME_PREFIX, indexedPuzzleSaves, type PuzzleSave, type PuzzleVersion } from './puzzle-saves.ts'
@@ -194,6 +195,11 @@ export function readGame(id: string, data: string | Game | null): Game | undefin
         const definition = value.source === 'generated' && value.variant ? readCustomModeDefinition(value.customMode) : undefined
         if (definition) value.customMode = definition
         else delete value.customMode
+      }
+      if (value.customDifficulty !== undefined) {
+        const profile = value.source === 'generated' && !value.grid && !value.variant && readCustomDifficultyProfile(value.customDifficulty)
+        if (profile) value.customDifficulty = profile
+        else delete value.customDifficulty
       }
       if (value.source !== 'generated' || value.generatedWithAuto !== true) delete value.generatedWithAuto
       if (value.practiceTechnique !== undefined &&

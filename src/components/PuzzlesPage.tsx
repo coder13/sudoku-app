@@ -1,5 +1,6 @@
 import { Button, IconButton, buttonClassName, iconButtonClassName } from './Button'
 import { DifficultySelector, PuzzleDifficultyStep } from './DifficultySelector'
+import { CustomDifficultyEditor } from './CustomDifficultyEditor'
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getRouteApi, Link, useCanGoBack, useLocation, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { ArrowRight, BarChart3, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, SlidersHorizontal, Trophy } from 'lucide-react'
@@ -13,6 +14,8 @@ import {
   selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
 import { techniqueLabel } from '../sudoku/hints'
+import { CUSTOM_DIFFICULTIES_KEY, deleteCustomDifficulty, readCustomDifficulties, saveCustomDifficulty,
+  type CustomDifficultyId, type CustomDifficultyProfile } from '../sudoku/custom-difficulties'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
 import type { NewPuzzlePreference } from '../sudoku/preferences'
 import { techniqueHistory } from '../sudoku/technique-history'
@@ -58,7 +61,7 @@ function PuzzleRows({ puzzles, active, manage }: {
   return <List className="game-list main-puzzle-list" role="list">
       {puzzles.map(game => {
         const manageable = manage && game.source !== 'draft'
-        const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score)
+        const rating = game.difficulty && formatPuzzleRating(game.difficulty, game.score, game.customDifficulty?.name)
         const useRatingTitle = manageable && game.source === 'generated' && /\bPuzzle \d+$/.test(game.title)
         const name = useRatingTitle ? rating || 'Unrated' : game.title
         const variant = gameVariantId(game)
@@ -399,24 +402,29 @@ function NewPuzzleVariant({ variant, ruleset, difficulty }: {
   </section>
 }
 
-function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
+function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save, customProfiles, customDifficulty }: {
   variant: NewPuzzleId
   ruleset?: GenerationRulesetId
   difficulty: DifficultyPreference
   boxRows?: RectangularBoxRows
   save: (preference: NewPuzzlePreference) => void
+  customProfiles: readonly CustomDifficultyProfile[]
+  customDifficulty?: CustomDifficultyId
 }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, error, generate, generateWithCustomDifficulty, cancelGeneration } = usePuzzleGeneration()
   const navigate = useNavigate()
   const sized = isSizedPuzzleId(variant)
   const preset = sized ? undefined : generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const autoLabel = variantDifficultyLabel(sized ? undefined : variant, 'auto', recommended)
+  const selectedCustom = variant === 'classic' ? customProfiles.find(profile => profile.id === customDifficulty) : undefined
   function start() {
     const onGenerated = () => {
-      save({ variant, difficulty, boxRows, ...(preset ? { ruleset: preset.id } : {}) })
+      save({ variant, difficulty, boxRows, ...(preset ? { ruleset: preset.id } : {}),
+        ...(selectedCustom && { customDifficulty: selectedCustom.id }) })
     }
-    void generate(difficulty, onGenerated, variant, { ruleset: preset?.id, boxRows })
+    if (selectedCustom) void generateWithCustomDifficulty(selectedCustom, onGenerated)
+    else void generate(difficulty, onGenerated, variant, { ruleset: preset?.id, boxRows })
   }
 
   const coreMode = coreSudokuModes.find(id => id === variant)
@@ -425,17 +433,32 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   const layout = rectangularSize ? rectangularGridForBoxRows(rectangularSize, boxRows) : undefined
   return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
     busy={busy} error={error} onStart={start}
-    startLabel={difficulty === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle`}>
+    disabled={Boolean(customDifficulty && !selectedCustom && variant === 'classic')}
+    actions={busy && selectedCustom && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
+    startLabel={selectedCustom ? 'Start puzzle' : difficulty === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle`}>
     {coreMode && <p>{VARIANTS[coreMode].rule}</p>}
     {layout && <p>{layout.boxRows} × {layout.boxColumns} boxes</p>}
     {!sized && <VariantRulesetSelector variant={variant} value={ruleset} disabled={busy} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset: next, difficulty },
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />}
-    <DifficultySelector value={difficulty} recommended={recommended} variant={variant} disabled={busy} onChange={next => {
+    <DifficultySelector value={difficulty} recommended={recommended} variant={variant} disabled={busy}
+      custom={variant === 'classic' ? { profiles: customProfiles, selected: customDifficulty, onSelect: id => {
+        void navigate({ to: '/puzzles/new/difficulty', search: { variant, difficulty, customDifficulty: id },
+          replace: true, state: true, resetScroll: false, viewTransition: false })
+      } } : undefined} onChange={next => {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset, boxRows, difficulty: next },
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />
+    {variant === 'classic' && customDifficulty && !selectedCustom && <div>
+      <p role="status">This difficulty is unavailable on this device.</p>
+      <Link className={buttonClassName('quiet')} to="/puzzles/new/difficulty" search={{ variant, difficulty }} replace>Use {DIFFICULTY_LABELS[difficulty === 'auto' ? recommended : difficulty]}</Link>
+    </div>}
+    {variant === 'classic' && !busy && <div className="custom-difficulty-actions">
+      <Link to="/puzzles/new/custom-difficulty" search={{ variant, difficulty }} className={buttonClassName('quiet')}>New custom difficulty</Link>
+      {selectedCustom && <Link to="/puzzles/new/custom-difficulty" search={{ variant, difficulty, customDifficulty: selectedCustom.id }}
+        className={buttonClassName('quiet')}>Edit difficulty</Link>}
+    </div>}
   </PuzzleDifficultyStep>
 }
 
@@ -505,10 +528,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const managing = games.find((game) => game.id === managingId)
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
   const difficultyScreen = routeId === '/puzzles/new/difficulty'
+  const customDifficultyScreen = routeId === '/puzzles/new/custom-difficulty'
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const customGrid = isSizedPuzzleId(newPuzzleSearch?.variant) ? newPuzzleSearch.variant : undefined
   const customScreen = routeId === '/puzzles/new/custom' || routeId === '/puzzles/new' && Boolean(customGrid)
-  const section = difficultyScreen || customScreen ? 'new'
+  const section = difficultyScreen || customScreen || customDifficultyScreen ? 'new'
     : (Object.keys(puzzleSections) as PuzzleSection[]).find((id) => puzzleSections[id].to === routeId) ?? 'puzzles'
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
@@ -516,20 +540,22 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const collectionDifficulty = collectionPuzzle?.difficulty ?? (collection && collectionSearch?.difficulty &&
     collectionDifficulties(collection).includes(collectionSearch.difficulty) ? collectionSearch.difficulty : undefined)
   const [savedModes, setSavedModes] = useState<readonly SudokuMode[] | null>(null)
+  const [customProfiles, setCustomProfiles] = useState<readonly CustomDifficultyProfile[] | null>(null)
   useEffect(() => {
-    const refreshModes = (event: StorageEvent) => {
-      if (event.key && event.key !== CUSTOM_MODES_KEY) return
-      setSavedModes(readSudokuModes())
+    const refresh = (event?: StorageEvent) => {
+      if (!event?.key || event.key === CUSTOM_MODES_KEY) setSavedModes(readSudokuModes())
+      if (!event?.key || event.key === CUSTOM_DIFFICULTIES_KEY) setCustomProfiles(readCustomDifficulties())
     }
-    setSavedModes(readSudokuModes())
-    window.addEventListener('storage', refreshModes)
-    return () => window.removeEventListener('storage', refreshModes)
+    refresh()
+    window.addEventListener('storage', refresh)
+    return () => window.removeEventListener('storage', refresh)
   }, [])
   const modes = savedModes ?? []
   const mode = modes.find(item => item.id === newPuzzleSearch?.mode)
-  const openRemembered = section === 'new' && !difficultyScreen && !customScreen && !newPuzzleSearch?.mode
+  const openRemembered = section === 'new' && !difficultyScreen && !customScreen && !customDifficultyScreen && !newPuzzleSearch?.mode
     && !newPuzzleSearch?.variant && newPuzzleSearch?.step !== 'variant'
-  const screen = section === 'new' ? difficultyScreen || openRemembered ? 'difficulty' : customScreen ? 'custom' : 'variant' : undefined
+  const screen = section === 'new' ? difficultyScreen || openRemembered ? 'difficulty'
+    : customDifficultyScreen ? 'custom-difficulty' : customScreen ? 'custom' : 'variant' : undefined
   function saveMode(saved: SudokuMode) {
     const current = readSudokuModes()
     const next = current.some(item => item.id === saved.id) ? current.map(item => item.id === saved.id ? saved : item) : [...current, saved]
@@ -537,7 +563,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     setSavedModes(next)
     return saved
   }
-  const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
+  const variant = customDifficultyScreen ? 'classic' : newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const rememberedVariant = variant === newPuzzlePreference.variant ? newPuzzlePreference : undefined
   const ruleset = isSizedPuzzleId(variant) ? undefined : generationRuleset(variant, newPuzzleSearch?.ruleset ?? rememberedVariant?.ruleset)?.id
   const boxRows = rectangularBoxRows(variant, newPuzzleSearch?.boxRows ?? rememberedVariant?.boxRows)
@@ -547,18 +573,21 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     && !coreSudokuModes.some(mode => mode === variant)
   const requestedDifficulty = newPuzzleSearch?.difficulty ?? newPuzzlePreference.difficulty
   const difficulty = newPuzzleDifficulty(variant, requestedDifficulty)
+  const customDifficulty = newPuzzleSearch?.customDifficulty
+  const editingDifficulty = customProfiles?.find(profile => profile.id === customDifficulty)
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
-    : screen === 'custom' ? 'Generate a custom puzzle'
+    : screen === 'custom-difficulty' ? (customDifficulty ? 'Edit custom difficulty' : 'New custom difficulty')
+      : screen === 'custom' ? 'Generate a custom puzzle'
       : screen === 'variant' ? newPuzzleSearch?.variant ? 'Choose a variant' : 'Choose a Sudoku mode'
       : section === 'puzzles' ? 'Puzzles'
         : collectionPuzzle?.title ?? (collectionDifficulty ? `${DIFFICULTY_LABELS[collectionDifficulty]} puzzles` : collection?.title) ?? puzzleSections[section].label
 
   useEffect(() => {
     if (openRemembered && preferencesReady) {
-      void router.navigate({ to: '/puzzles/new/difficulty', search: { variant, difficulty, ruleset, boxRows },
+      void router.navigate({ to: '/puzzles/new/difficulty', search: { variant, difficulty, ruleset, boxRows, customDifficulty: newPuzzlePreference.customDifficulty },
         replace: true, viewTransition: false })
     }
-  }, [openRemembered, preferencesReady, router, variant, difficulty, ruleset, boxRows])
+  }, [openRemembered, preferencesReady, router, variant, difficulty, ruleset, boxRows, newPuzzlePreference.customDifficulty])
 
   useEffect(() => {
     if (screen) heading.current?.focus({ preventScroll: true })
@@ -575,6 +604,18 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
       games={games} />
     if (current === 'new') {
+      if (customDifficultyScreen) {
+        if (customProfiles === null) return <p className="main-menu-empty" role="status">Loading saved difficulties…</p>
+        if (customDifficulty && !editingDifficulty) return <p role="status">This difficulty is unavailable on this device.</p>
+        const returnToDifficulties = (id?: CustomDifficultyId) => {
+          setCustomProfiles(readCustomDifficulties())
+          void router.navigate({ to: '/puzzles/new/difficulty', search: { variant: 'classic', difficulty, customDifficulty: id }, replace: true })
+        }
+        return <CustomDifficultyEditor key={customDifficulty ?? 'new'} profile={editingDifficulty}
+          names={customProfiles.filter(profile => profile.id !== customDifficulty).map(profile => profile.name)}
+          onSave={profile => { saveCustomDifficulty(profile); returnToDifficulties(profile.id) }}
+          onDelete={editingDifficulty && (() => { deleteCustomDifficulty(editingDifficulty.id); returnToDifficulties() })} />
+      }
       if ((customScreen || difficultyScreen) && newPuzzleSearch?.mode) {
         if (savedModes === null) return <p className="main-menu-empty" role="status">Loading saved mode…</p>
         if (!mode) return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
@@ -590,7 +631,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
       if (!preferencesReady || openRemembered) return <p className="main-menu-empty" role="status">Loading…</p>
       if (difficultyScreen) {
         return <NewPuzzleDifficulty key={variant} variant={variant} ruleset={ruleset} boxRows={boxRows}
-          difficulty={difficulty} save={savePuzzlePreference} />
+          difficulty={difficulty} save={savePuzzlePreference} customProfiles={customProfiles ?? []} customDifficulty={customDifficulty} />
       }
       if (!isSizedPuzzleId(variant)) return <NewPuzzleVariant variant={variant} ruleset={ruleset} difficulty={requestedDifficulty} />
     }
@@ -605,6 +646,10 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
           className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
             : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
+          : customDifficultyScreen ? (canGoBack
+            ? <IconButton className="puzzles-back" aria-label="Back" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
+            : <Link to="/puzzles/new/difficulty" search={{ variant: 'classic', difficulty, customDifficulty }} replace
+              className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to difficulties"><ChevronLeft size={21} /></Link>)
           : difficultyScreen || customScreen ? (fromVariantPicker && canGoBack
             ? <IconButton className="puzzles-back" aria-label="Back" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
             : <Link to={sizedDifficulty ? '/puzzles/new/custom' : '/puzzles/new'}

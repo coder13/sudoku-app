@@ -6,6 +6,7 @@ import { buildBrowserEngine } from './build-wasm.mjs'
 const outputs = [
   'src/sudoku/generated/engine.wasm',
   'src/sudoku/generated/engine-profile.json',
+  'src/sudoku/generated/classic-generation-techniques.json',
   'src/sudoku/generated/lesson-examples.json',
   'src/sudoku/generated/lesson-difficulties.json',
   'src/sudoku/generated/lesson-aliases.json',

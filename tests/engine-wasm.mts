@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
-import { replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern, type VariantPuzzle } from '../src/sudoku/engine.ts'
+import { EngineError, replayStep, runEngine, runGeneration, type EngineRequest, type EngineResponse, type EngineResult, type RankPattern, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { DIFFICULTY_LEVELS, difficultyIndex } from '../src/sudoku/difficulty.ts'
 import { generateClassic } from '../src/sudoku/classic-generation.ts'
+import { generateCustomDifficulty } from '../src/sudoku/custom-difficulty-generation.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { applyDeduction, completeCandidateMasks, isSolved, restartGame, valuesOf, enter, hasCandidate, hintEliminations, makeGame, replaceCandidates, singleFromCandidates, undo } from '../src/sudoku/game.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
@@ -38,6 +39,36 @@ function engineRequests() {
   }
   return { raw, run }
 }
+
+test('custom difficulty generation completes with every required technique in the allowed profile', async () => {
+  const { raw, run } = engineRequests()
+  const profile = { id: 'difficulty-00000000-0000-4000-8000-000000000001', name: 'Singles practice', created: 1,
+    allowed: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'], required: ['full-house', 'naked-single'] } as const
+  const puzzle = await generateCustomDifficulty(profile, 127, [], run)
+  assert.equal(await run({ type: 'analyze', values: puzzle.board }), 'unique')
+  assert.notEqual(puzzle.rating.status, 'stalled')
+  for (const id of profile.required) assert.ok(puzzle.rating.score.counts[id] > 0)
+  assert.ok(Object.keys(puzzle.rating.score.counts).every(id => profile.allowed.some(allowed => allowed === id)))
+  assert.equal((await raw({ type: 'generate-constrained', seed: 2, maxAttempts: 1, clues: 30,
+    techniqueOrder: profile.allowed, requiredTechniques: ['x-wing'] })).code, 'incompatible-targets')
+  const noFish = await raw({ type: 'generate-constrained', seed: 2, maxAttempts: 4, clues: 30, templates: [STARTER],
+    techniqueOrder: [...profile.allowed, 'x-wing'], requiredTechniques: ['full-house', 'x-wing'] })
+  assert.equal(noFish.code, 'search-limit')
+  const next = await generateCustomDifficulty(profile, 127, [puzzle.board], run)
+  assert.notDeepEqual(await run({ type: 'canonical-puzzles', values: [next.board] }), await run({ type: 'canonical-puzzles', values: [puzzle.board] }))
+
+  const fishProfile = { ...profile, name: 'X-Wing and Pointing',
+    allowed: [...profile.allowed, 'pointing', 'claiming', 'naked-pair', 'x-wing'], required: ['x-wing', 'pointing'] }
+  const fishPuzzle = await generateCustomDifficulty(fishProfile, 17, [], async <Request extends EngineRequest>(request: Request) => {
+    const response = await raw(request)
+    if ('error' in response) throw new EngineError(response.error, response.code)
+    return response.value as EngineResult<Request>
+  })
+  assert.equal(await run({ type: 'analyze', values: fishPuzzle.board }), 'unique')
+  assert.notEqual(fishPuzzle.rating.status, 'stalled')
+  for (const id of fishProfile.required) assert.ok(fishPuzzle.rating.score.counts[id] > 0)
+  assert.ok(Object.keys(fishPuzzle.rating.score.counts).every(id => fishProfile.allowed.includes(id)))
+})
 
 test('sized Classic requests use the structured worker protocol', async () => {
   const { raw, run } = engineRequests()

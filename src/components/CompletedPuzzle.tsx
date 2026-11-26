@@ -77,7 +77,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   onChooseVariant: () => void
 }) {
   const shortcuts = useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getServerSnapshot)
-  const { busy, error, generate, generatePractice, cancelGeneration } = usePuzzleGeneration()
+  const { busy, error, generate, generatePractice, generateWithCustomDifficulty, cancelGeneration } = usePuzzleGeneration()
   const { recommended, results } = usePlayerRating()
   const [collectionError, setCollectionError] = useState('')
   const [loadingNext, setLoadingNext] = useState(false)
@@ -97,7 +97,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const ruleset = puzzleGenerationRuleset(game.variant?.puzzle)
   const boxRows = game.grid && !isJigsawGrid(game.grid) && 'boxRows' in game.grid && (game.grid.size === 6 || game.grid.size === 8)
     ? game.grid.boxRows : undefined
-  const needsChoice = !inCollection && !recipe && !game.customMode
+  const needsChoice = !inCollection && !recipe && !game.customMode && !game.customDifficulty
   const nextCollectionAttempt = collectionNext && findCollectionGame(collectionNext, games)
   const nextActive = catchUpPuzzle ?? inProgress(games).find(puzzle =>
     puzzle.id !== game.id && puzzle.id !== nextCollectionAttempt?.id && puzzle.source !== 'draft')
@@ -109,11 +109,12 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     : sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
   const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
   const nextLabel = game.practiceTechnique ? 'Next practice puzzle'
-    : needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
+    : game.customDifficulty ? 'Next puzzle at this difficulty'
+      : needsChoice ? 'Choose another puzzle' : `Next ${DIFFICULTY_LABELS[nextGrade].toLowerCase()} puzzle`
   const result = results.get(game.id)
   const ratingChange = result && Math.round(result.after) - Math.round(result.before)
   const difficultyLabel = game.difficulty ? DIFFICULTY_LABELS[game.difficulty] : 'Unrated'
-  const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score) : difficultyLabel
+  const ratingLabel = game.difficulty ? formatPuzzleRating(game.difficulty, game.score, game.customDifficulty?.name) : difficultyLabel
   const solved = games.filter(isSolved)
   const bestTime = solved.reduce((best, puzzle) =>
     !puzzle.timeUntracked && puzzle.difficulty === game.difficulty && gameVariantId(puzzle) === gameVariantId(game)
@@ -124,6 +125,10 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
     if (!canPlayNext) return
     if (game.practiceTechnique) {
       void generatePractice(game.practiceTechnique, game)
+      return
+    }
+    if (game.customDifficulty) {
+      void generateWithCustomDifficulty(game.customDifficulty)
       return
     }
     if (needsChoice) {
@@ -144,7 +149,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
       })
     } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows, customMode: game.customMode })
   }, [canPlayNext, inCollection, needsChoice, game, recipe, ruleset, boxRows,
-    generate, generatePractice, onChooseVariant, online, nextDifficulty])
+    generate, generatePractice, generateWithCustomDifficulty, onChooseVariant, online, nextDifficulty])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext
@@ -188,7 +193,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
           {loadingNext ? 'Loading puzzle…' : collectionEntry ? 'Next puzzle in collection' : busy ? 'Generating…' : nextLabel}
           {!busy && !loadingNext && <ArrowRight size={18} aria-hidden="true" />}
         </Button>}
-      {busy && game.customMode && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
+      {busy && (game.customMode || game.customDifficulty) && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
       {inCollection && resumeAction}
       {collectionEntry ? <>
         <Link className={buttonClassName(nextActive ? 'quiet' : 'secondary')} to="/puzzles/collections" search={{ collection: collectionEntry.collection.id }}>Change collection difficulty</Link>

@@ -31,7 +31,7 @@ export function difficultyIndex(value: Difficulty): number {
 export function difficultyOptionLabel(value: DifficultyPreference, recommended: Difficulty): string {
   return value === 'auto' ? `Auto (${DIFFICULTY_LABELS[recommended]})` : DIFFICULTY_LABELS[value]
 }
-export function formatPuzzleRating(difficulty: Difficulty, score?: number | null): string {
-  const label = DIFFICULTY_LABELS[difficulty]
+export function formatPuzzleRating(difficulty: Difficulty, score?: number | null, customName?: string): string {
+  const label = customName ?? DIFFICULTY_LABELS[difficulty]
   return score == null ? label : `${label} (${score})`
 }

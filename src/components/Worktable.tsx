@@ -1011,7 +1011,8 @@ export function Worktable({
   const hintPositionKey = useMemo(() => JSON.stringify([
     solutionIdentity, hintPosition.values, hintPosition.center, hintPosition.corner,
     hintPosition.eliminations, hintPosition.shades, game.difficulty, game.practiceTechnique,
-  ]), [solutionIdentity, hintPosition, game.difficulty, game.practiceTechnique])
+    ...(game.customDifficulty ? [game.customDifficulty.allowed] : []),
+  ]), [solutionIdentity, hintPosition, game.difficulty, game.practiceTechnique, game.customDifficulty])
   const savedHintView = savedPlayState?.hintView
   useLayoutEffect(() => {
     if (!visibleHint || session || savedPlayState?.puzzleId !== game.id) return
@@ -2766,7 +2767,7 @@ export function Worktable({
       {difficulty && (
         <span className="puzzle-difficulty">
           <span className="sr-only">Puzzle difficulty </span>
-          {formatPuzzleRating(difficulty, score)}
+          {formatPuzzleRating(difficulty, score, game.customDifficulty?.name)}
         </span>
       )}
       {game.generatedWithAuto && <span className="puzzle-auto-mode">Auto</span>}
@@ -3248,7 +3249,7 @@ export function Worktable({
         },
         {
           label: 'Difficulty',
-          value: difficulty ? formatPuzzleRating(difficulty, score) : 'Unrated',
+          value: difficulty ? formatPuzzleRating(difficulty, score, game.customDifficulty?.name) : 'Unrated',
         },
         ...(!grid && !draft && !placeholder
           ? [
