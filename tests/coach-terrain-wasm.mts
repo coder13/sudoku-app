@@ -38,6 +38,20 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combinedPuzzle } }),
     { status: 'unique', solution: source.source.solution })
 
+  const firstRow = Array.from({ length: 9 }, (_, cell) => cell)
+  const firstDigit = Number(source.source.solution[0])
+  const firstRowXSum = {
+    type: 'x-sum' as const,
+    direction: 'east' as const,
+    cells: firstRow,
+    sum: [...source.source.solution.slice(0, firstDigit)].reduce((sum, digit) => sum + Number(digit), 0),
+  }
+  const terrainWithXSums = { ...parsed.variant.puzzle, rules: [...rules, ratioTwoCompanion, firstRowXSum] }
+  assertVariantCompletion(terrainWithXSums, source.source.solution)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: terrainWithXSums } }),
+    { status: 'unique', solution: source.source.solution },
+    'Terrain transforms, a marked ratio edge, and a source-derived X-Sum must compose in the engine')
+
   const { game } = await prepareImportedPuzzle(source.source.sudoku)
   assert.equal(game.variant?.solution, source.source.solution)
   assert.equal(game.givenCellColors && Object.keys(game.givenCellColors).length > 0, true)
