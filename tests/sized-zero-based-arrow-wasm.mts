@@ -161,13 +161,19 @@ test('#388 shares and reopens the published zero-based 10 × 10 puzzle', async (
     mock.method(globalThis, 'fetch', (path: string | URL, options?: RequestInit) =>
       fetcher(new URL(String(path), 'https://sudoku.test'), options))
     const { game } = await prepareImportedPuzzle(code)
-    const solvedGame = { ...game, givens: game.sized!.solution }
-    assert.ok(solvedGame.givens.includes('A'), 'the rank for displayed 9 must be part of the shared givens')
-    const shareId = await publishSharedPuzzle(solvedGame)
+    const shareId = await publishSharedPuzzle(game)
     const reopened = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
     assert.deepEqual(reopened.game.grid, game.grid)
     assert.deepEqual(reopened.game.sized?.rules, game.sized?.rules)
-    assert.equal(reopened.game.givens, solvedGame.givens)
+    assert.equal(reopened.game.givens, game.givens)
+
+    const solvedGame = { ...game, givens: game.sized!.solution }
+    assert.ok(solvedGame.givens.includes('A'), 'the rank for displayed 9 must be part of the shared givens')
+    const solvedShareId = await publishSharedPuzzle(solvedGame)
+    const reopenedSolved = await prepareSharedPuzzle(solvedShareId, [], new AbortController().signal)
+    assert.deepEqual(reopenedSolved.game.grid, game.grid)
+    assert.deepEqual(reopenedSolved.game.sized?.rules, game.sized?.rules)
+    assert.equal(reopenedSolved.game.givens, solvedGame.givens)
   } finally {
     sqlite.close()
   }
