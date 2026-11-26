@@ -527,6 +527,8 @@ The projected position retains the player's placed digits and public regions. Pr
 
 Terrain transformations affect arithmetic only. Rows, columns, and regions still require distinct underlying Sudoku digits. The engine accepts the source transformations ×2, +3, −3, and identity.
 
+Reproduce the published D8HP compile and blank-board candidate timings with `cargo bench -p sudoku-app-engine --bench variants --features wasm-api,variants,generation,teaching -- --terrain-sandwich`. The benchmark reads the preserved Coach source fixture and checks its published completion before timing both operations.
+
 Palindrome pairs the distinct `cells` from opposite ends. The middle cell of an odd-length list has no extra restriction. Optional `segments` preserve the drawing paths of a clue with several branches or revisits. Their union must equal the logical cells. Drawing order does not change the mirrored pairs. Old JSON omits `segments` and retains its original behavior. Rust callers set `segments: None` for an ordinary line.
 
 Each marker type accepts a list of adjacent `pairs` and an optional `negative` flag. With that flag, an adjacent pair without any marker from the same family cannot use the specified relationship. The default is false. A Kropki pair with digits 1 and 2 can carry either dot. [WPF Kropki rules](https://gp.worldpuzzle.org/sites/default/files/Puzzles/2020/2020_SudokuRound4.pdf)
