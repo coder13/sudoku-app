@@ -626,6 +626,39 @@ test('Kropki negative rules exempt any marked edge across authored rule records'
   assert.equal((masks?.[6] ?? 0) & (1 << 1), 0)
 })
 
+test('sized AdjacentTotal 5 and 10 edges are exempt from matching negative XV layers', async () => {
+  const cases: SizedConstraintPosition[] = [
+    {
+      version: 2,
+      grid: { size: 4, boxRows: 2, boxColumns: 2 },
+      digits: [1, ...Array(15).fill(0)],
+      rules: [
+        { type: 'xv', five: { pairs: [], negative: true } },
+        { type: 'adjacent-total', cells: [0, 1], sum: 5 },
+      ],
+    },
+    {
+      version: 2,
+      grid: { size: 6, boxRows: 2, boxColumns: 3 },
+      digits: [4, ...Array(35).fill(0)],
+      rules: [
+        { type: 'xv', ten: { pairs: [], negative: true } },
+        { type: 'adjacent-total', cells: [0, 1], sum: 10 },
+      ],
+    },
+  ]
+  for (const [index, position] of cases.entries()) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+    assert.ok(candidates)
+    const sum = index === 0 ? 5 : 10
+    const firstDigit = position.digits[0]
+    const matching = sum - firstDigit
+    assert.equal(candidates[1], 1 << (matching - 1), `marked total-${sum} edge stays allowed`)
+    assert.equal(candidates[position.grid.size] & (1 << (matching - 1)), 0,
+      `unmarked total-${sum} edge remains forbidden`)
+  }
+})
+
 test('Difference markers can use the largest valid gap at each supplied size', async () => {
   for (const [size, boxRows, boxColumns] of [[4, 2, 2], [8, 2, 4], [16, 4, 4]]) {
     const digits = Array<number>(size * size).fill(0)

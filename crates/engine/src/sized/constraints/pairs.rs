@@ -553,6 +553,11 @@ pub(super) fn compile_pairs(
                 return None;
             }
             let cells = adjacent_edge(*cells, size)?;
+            if *sum == 5 {
+                xv_marked[0].insert(cells);
+            } else if *sum == 10 {
+                xv_marked[1].insert(cells);
+            }
             let displayed_total = *sum + 2 * value_offset;
             groups[index].push(SizedPairLink {
                 constraint: PairConstraint::from_relation(cells, size, |x, y| {
