@@ -69,10 +69,18 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     }
     if (rule.type === 'outside-text') {
       const cells = Array.isArray(rule.cells) ? rule.cells as number[] : []
-      if (Object.keys(rule).length !== 4 || typeof rule.label !== 'string' || !rule.label.trim() || rule.label.length > 16 ||
+      if (Object.keys(rule).some(key => !['type', 'direction', 'cells', 'label', 'firstThreeDigits'].includes(key)) ||
+        Object.keys(rule).length !== (rule.firstThreeDigits === undefined ? 4 : 5) ||
+        typeof rule.label !== 'string' || !rule.label.trim() || rule.label.length > 16 ||
         !['north-east', 'south-east', 'south-west', 'north-west'].includes(String(rule.direction)) ||
         cells.length < 1 || cells.length > size || cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
-        new Set(cells).size !== cells.length) return false
+        new Set(cells).size !== cells.length ||
+        rule.firstThreeDigits !== undefined && (!Array.isArray(rule.firstThreeDigits) ||
+          rule.firstThreeDigits.length < 1 || rule.firstThreeDigits.length > 3 ||
+          rule.firstThreeDigits.some((digit: unknown) => !Number.isInteger(digit) || Number(digit) < 1 || Number(digit) > size) ||
+          new Set(rule.firstThreeDigits).size !== rule.firstThreeDigits.length ||
+          cells.length < 3 || !/^[1-9]{1,3}$/.test(rule.label) ||
+          JSON.stringify([...new Set(Array.from(rule.label, Number))]) !== JSON.stringify(rule.firstThreeDigits))) return false
       const [dr, dc] = rule.direction === 'north-east' ? [-1, 1] : rule.direction === 'south-east' ? [1, 1]
         : rule.direction === 'south-west' ? [1, -1] : [-1, -1]
       const first = cells[0], row = Math.floor(first / size), column = first % size
@@ -442,8 +450,18 @@ export async function runSizedRuleAlternatives<T extends EngineRequest>(
 }
 
 export function sizedRulePosition(grid: SizedGrid, { rules }: Pick<SizedRuleGame, 'rules'>, values: string): SizedConstraintPosition {
-  return { ...sizedClassicPosition(grid, values), rules,
+  return { ...sizedClassicPosition(grid, values), rules: rules.filter(rule => rule.type !== 'outside-text'),
     ...('notation' in grid && grid.notation === 'zero-based' && { zeroBased: true }) }
+}
+
+/** Display-only outside text is omitted from engine requests; map its rule IDs back to the saved list. */
+export function sizedRuleSourceIndex(rules: SizedRuleGame['rules'], engineIndex: number) {
+  let index = -1
+  for (let sourceIndex = 0; sourceIndex < rules.length; sourceIndex++) {
+    if (rules[sourceIndex].type === 'outside-text') continue
+    if (++index === engineIndex) return sourceIndex
+  }
+  throw new RangeError('The sized engine returned an unknown rule index.')
 }
 
 export async function verifySizedRulePuzzle({ grid, givens, rules, author, authoredSolution, authoredSolutionOnly }: SizedRuleDefinition, run: EngineRunner = runEngine): Promise<SizedRuleGame> {

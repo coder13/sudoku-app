@@ -4,7 +4,7 @@ import { EngineError, runEngine, type EngineRunner, type HintChoice, type House,
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
 import { gridDiagonalCells, gridValueOffset, rowColumnSumTotal, type SizedGrid } from './grid.ts'
-import { expandSizedRuleAlternativeBranches, expandSizedRuleAlternatives, runSizedRuleAlternatives, sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
+import { expandSizedRuleAlternativeBranches, expandSizedRuleAlternatives, runSizedRuleAlternatives, sizedRulePosition, sizedRuleSourceIndex, type SizedRuleGame } from './sized-rule-game.ts'
 import { positionDigit, positionText } from './digit-symbols.ts'
 
 export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-minimum', 'sized-maximum', 'sized-clue-interpretation', 'sized-contradiction'] as const
@@ -31,7 +31,7 @@ export function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstra
       candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
   }
   if (step.type === 'quadruple-overlap') {
-    const [first, second] = step.rules.map(index => rules[index])
+    const [first, second] = step.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     if (first?.type !== 'quadruple' || (second?.type !== 'quadruple' && second?.type !== 'region-sum')) {
       throw new Error('Invalid overlapping Quadruple hint.')
     }
@@ -63,7 +63,7 @@ export function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstra
     }
   }
   if (step.type === 'coupled-sums') {
-    const [first, second] = step.rules.map(index => rules[index])
+    const [first, second] = step.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     if (!first || !second || !('cells' in first) || !('cells' in second)) throw new Error('Invalid shared path totals hint.')
     const describe = (rule: typeof first) => rule.type === 'zipper' ? 'the Zipper line'
       : rule.type === 'region-sum' ? 'the Region Sum line' : 'the equal-total line'
@@ -84,7 +84,7 @@ export function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstra
     }
   }
   const { actions, rule: index } = step
-  const rule = rules[index]
+  const rule = rules[sizedRuleSourceIndex(rules, index)]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
   const cells = step.type === 'anti-sum' || step.type === 'row-column-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
@@ -215,7 +215,7 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     locations.push(failure.cell)
     conflict = `${reference(failure.cell)} has no candidate left.`
   } else if (failure.type === 'rule') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     if (rule.type === 'diagonal') {
       locations.push(...gridDiagonalCells(size, rule.diagonal))
       conflict = `The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal cannot contain every digit once.`
@@ -249,7 +249,7 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
                     : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
   } else if (failure.type === 'killer-cage') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     const cage = rule.type === 'killer-cages' ? rule.cages[failure.cage] : undefined
     if (cage) locations.push(...cage.cells)
     conflict = cage ? `The cage at ${reference(Math.min(...cage.cells))} cannot reach ${cage.sum} with different digits.`
@@ -263,11 +263,11 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       conflict = 'No unmarked edge can reach its row or column sum.'
     }
   } else if (failure.type === 'coupled-sums') {
-    const [first, second] = failure.rules.map(index => rules[index])
+    const [first, second] = failure.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     for (const rule of [first, second]) if (rule && 'cells' in rule) locations.push(...rule.cells)
     conflict = 'The equal-total rules on these shared cells cannot use compatible totals.'
   } else if (failure.type === 'anti-sum') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     locations.push(...failure.cells)
     conflict = rule.type === 'anti-sum'
       ? `No pair of different digits in ${reference(failure.cells[0])} and ${reference(failure.cells[1])} can avoid a sum of ${rule.sum}.`

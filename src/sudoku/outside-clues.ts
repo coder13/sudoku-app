@@ -77,7 +77,9 @@ export function outsideClueLabel(rule: OutsideRule, size = 9) {
   if (rule.type === 'little-killer')
     return `Little Killer ${rule.sum}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}: all indicated digits sum to ${rule.sum}. Digits may repeat if the other puzzle rules allow it.`
   if (rule.type === 'outside-text')
-    return `Little Killer ${rule.label}, ${rule.direction.replace('-', ' ')} from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}: the indicated digits have an ${rule.label} sum.`
+    return rule.firstThreeDigits
+      ? `Outside clue ${rule.label}: each listed digit (${rule.firstThreeDigits.join(', ')}) must appear in the first three cells of the diagonal from ${cellName(rule.cells[0], size)}.`
+      : `Outside clue text “${rule.label}” marks the diagonal from ${cellName(rule.cells[0], size)} to ${cellName(rule.cells[rule.cells.length - 1], size)}.`
   const side =
     rule.direction === 'south'
       ? 'top'

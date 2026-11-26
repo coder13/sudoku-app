@@ -15,6 +15,27 @@ import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string }
+}
+
+test('DLeM uses its outside labels as first-three-cell digit rules, not Little Killer sums', async () => {
+  const imported = await detectPuzzle(coachInsideDigitGroups.metadata.sudoku)
+  assert.deepEqual(imported.sizedRules?.filter(rule => rule.type === 'outside-text').map(rule => rule.firstThreeDigits), [
+    [2, 5, 7], [1, 6, 8], [6, 7, 8], [2, 5, 6], [1, 5, 8], [5, 8, 9], [3, 6, 7], [3], [2], [1],
+  ])
+  const prepared = await prepareImportedPuzzle(coachInsideDigitGroups.metadata.sudoku)
+  assert.equal(prepared.game.sized?.solution, coachInsideDigitGroups.metadata.solution)
+  assert.deepEqual(conflictsOf(coachInsideDigitGroups.metadata.solution, undefined, imported.grid, imported.sizedRules), new Set())
+  const partial = Array(81).fill('0')
+  partial[8] = '5'
+  partial[16] = '2'
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates',
+    position: sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, partial.join('')) })
+  assert.deepEqual([...Array(9).keys()].filter(digit => candidates[24] & (1 << digit)), [6],
+    'after 5 and 2 are placed, the first outside clue forces 7 into its third cell')
+})
+
 test('sized Anti-Knight and Anti-King rules report equal-digit Play conflicts', () => {
   const grid = { size: 4, noRegions: true } as const
   const knightValues = Array(16).fill('0')

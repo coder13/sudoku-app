@@ -18,7 +18,7 @@ import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, Va
 import { isFogDefinition, type FogDefinition } from '../fog.ts'
 import { normalizeGivens } from '../formats.ts'
 import { EMPTY } from '../game.ts'
-import { connectedGridCells, FIVE_BOXLESS_GRID, gridCellsShareEdge, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, NINE_BOXLESS_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type JigsawGrid, type SizedGrid } from '../grid.ts'
+import { CLASSIC_GRID, connectedGridCells, FIVE_BOXLESS_GRID, gridCellsShareEdge, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, NINE_BOXLESS_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type JigsawGrid, type SizedGrid } from '../grid.ts'
 import { isHexColor, isImportedColor, validGivenCellColors, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../imported-colors.ts'
 import { readCoachQuickDraw } from '../imported-drawings.ts'
 import { createImportedFutoshiki } from '../../futoshiki/imported.ts'
@@ -60,6 +60,10 @@ const coachSkyscrapersExport = 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e9
 // The original 6×6 Nonogram also states the rule in its published description.
 // Recognize only that exact export when users paste its puzzle code directly.
 const coachNonogramExport = 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932'
+// DLeM's author description defines its outside digits as first-three-cell
+// membership clues. Its zero-valued Little Killer layers only draw arrows.
+const coachInsideDigitGroupsExport = '4df8f288447a88911a27cf695858ece85958b940e94afc536271946594ca3a8e'
+const coachInsideDigitGroupsSolution = '678243195953718624142965738487531962365492871291876453826157349534689217719324586'
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'cells', 'acid', 'givenColours', 'user_like',
@@ -228,6 +232,83 @@ const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0
 // K95q's description supplies the complete-black-dot rule, which is absent
 // from the copied SCv7 payload. Recognize only this reviewed source on raw-code imports.
 const allBlackDotsCoachExport = 'e03c0d40bdb9a3ab13512250b4920bd6d6f554da83d136d3e8105f29e713aa6e'
+
+async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
+  if (await sourceHash(code, data) !== coachInsideDigitGroupsExport) return
+  const invalid = () => new Error('The Symmetrical Inside export does not match its reviewed outside-digit clues.')
+  if (data.gridSize !== 9 || !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 3) throw invalid()
+  const [arrows, labels, renbans] = data.givenConstraints
+  if (!record(arrows) || arrows.type !== 'littleKiller' || Object.keys(arrows).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(arrows.settings) || Object.keys(arrows.settings).length !== 0 || !Array.isArray(arrows.segments) ||
+    !record(labels) || labels.type !== 'cosmeticText' || Object.keys(labels).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(labels.settings) || Object.keys(labels.settings).sort().join(',') !== 'textSize' || labels.settings.textSize !== 55 ||
+    !Array.isArray(labels.segments) || !record(renbans) || renbans.type !== 'renban' ||
+    Object.keys(renbans).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(renbans.settings) || Object.keys(renbans.settings).length !== 0 ||
+    !Array.isArray(arrows.segments) || arrows.segments.length !== 10 || labels.segments.length !== arrows.segments.length ||
+    data.regions !== undefined && (!Array.isArray(data.regions) || data.regions.length !== 0)) throw invalid()
+
+  const arrowAt = new Map<string, number[]>()
+  for (const segment of arrows.segments) {
+    if (!record(segment) || Object.keys(segment).sort().join(',') !== 'cells,parameters' ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+      segment.cells[0].length !== 2 || !segment.cells[0].every(value => Number.isInteger(value) && value >= -1 && value <= 9) ||
+      !record(segment.parameters) || Object.keys(segment.parameters).sort().join(',') !== 'positive,value' ||
+      typeof segment.parameters.positive !== 'boolean' || segment.parameters.value !== 0) throw invalid()
+    const [x, y] = segment.cells[0] as number[]
+    if (x >= 0 && x < 9 && y >= 0 && y < 9) throw invalid()
+    const inside = (row: number, column: number) => row >= 0 && row < 9 && column >= 0 && column < 9
+    let dr = segment.parameters.positive ? -1 : 1, dc = 1
+    if (!inside(y + dr, x + dc)) { dr = -dr; dc = -dc }
+    if (!inside(y + dr, x + dc)) throw invalid()
+    const cells: number[] = []
+    for (let offset = 0; offset < 3; offset++) {
+      const row = y + dr * (offset + 1), column = x + dc * (offset + 1)
+      if (!inside(row, column)) throw invalid()
+      cells.push(row * 9 + column)
+    }
+    arrowAt.set(`${x},${y}`, cells)
+  }
+  if (arrowAt.size !== arrows.segments.length) throw invalid()
+
+  const outsideRules: SizedConstraintRule[] = []
+  for (const segment of labels.segments) {
+    if (!record(segment) || Object.keys(segment).sort().join(',') !== 'cells,parameters' ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+      segment.cells[0].length !== 2 || !record(segment.parameters) ||
+      Object.keys(segment.parameters).sort().join(',') !== 'text' ||
+      typeof segment.parameters.text !== 'string' || !/^[1-9]{1,3}$/.test(segment.parameters.text)) throw invalid()
+    const [x, y] = segment.cells[0] as number[]
+    if (typeof x !== 'number' || typeof y !== 'number' || !Number.isInteger(x - .5) || !Number.isInteger(y - .5)) throw invalid()
+    const cells = arrowAt.get(`${x - .5},${y - .5}`)
+    if (!cells) throw invalid()
+    const inwardRow = Math.floor(cells[1] / 9) - Math.floor(cells[0] / 9)
+    const inwardColumn = cells[1] % 9 - cells[0] % 9
+    const direction = inwardRow < 0
+      ? inwardColumn < 0 ? 'north-west' : 'north-east'
+      : inwardColumn < 0 ? 'south-west' : 'south-east'
+    const clue = segment.parameters.text
+    const [dr, dc] = direction === 'north-east' ? [-1, 1] : direction === 'south-east' ? [1, 1]
+      : direction === 'south-west' ? [1, -1] : [-1, -1]
+    const rayCells: number[] = []
+    for (let row = Math.floor(cells[0] / 9), column = cells[0] % 9;
+      row >= 0 && row < 9 && column >= 0 && column < 9; row += dr, column += dc) rayCells.push(row * 9 + column)
+    const firstThreeDigits = [...new Set(Array.from(clue, Number))]
+    outsideRules.push({ type: 'outside-text', direction, cells: rayCells, label: clue, firstThreeDigits })
+    for (const digit of firstThreeDigits) {
+      outsideRules.push({ type: 'digit-count', cells, digit, minimum: 1 })
+    }
+    arrowAt.delete(`${x - .5},${y - .5}`)
+  }
+  if ([...arrowAt.keys()].length !== 0) throw invalid()
+  const renbanRules = readCoachRules([renbans], { grid: CLASSIC_GRID })
+  if (renbanRules.length !== 7 || renbanRules.some(rule => rule.type !== 'renban')) throw invalid()
+  const rules = [...renbanRules, ...outsideRules]
+  if (!isSizedRuleList(rules, CLASSIC_GRID)) throw invalid()
+  const givens = data.givenDigits === undefined ? '0'.repeat(81) : data.givenDigits
+  if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw invalid()
+  return { givens, grid: CLASSIC_GRID, sizedRules: rules, authoredSolution: coachInsideDigitGroupsSolution, authoredSolutionOnly: true as const }
+}
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
   if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
@@ -765,6 +846,8 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
+  const insideDigitGroups = await readCoachInsideDigitGroups(code, data)
+  if (insideDigitGroups) return { ...insideDigitGroups, title: publication?.title ?? 'Symmetrical Inside' }
   const terrain = await readReviewedCoachTerrain(code, data)
   if (terrain) {
     const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits

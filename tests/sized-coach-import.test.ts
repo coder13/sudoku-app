@@ -19,10 +19,64 @@ const jankoChaos = JSON.parse(readFileSync(new URL('./fixtures/janko-chaos-sudok
 const coachBoxlessCalcudoku = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-boxless-calcudoku.json', import.meta.url), 'utf8')) as {
   code: string
 }
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string }
+  decoded: Record<string, unknown>
+}
 
 const six = { gridSize: 6, givenDigits: '000000000000000000000000000030000400' }
 const rectangularRegions = (rows: number, columns: number) => Array.from({ length: 36 }, (_, cell) =>
   Math.floor(cell / 6 / rows) * (6 / columns) + Math.floor(cell % 6 / columns) + 1)
+
+test('published Symmetrical Inside imports outside-digit rules with its Renban paths', async () => {
+  const imported = await detectPuzzle(coachInsideDigitGroups.metadata.sudoku)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.deepEqual(imported.grid, { size: 9, boxRows: 3, boxColumns: 3 })
+  assert.equal(imported.authoredSolution, coachInsideDigitGroups.metadata.solution)
+  const rules = imported.sizedRules ?? []
+  const clues = rules.filter((rule): rule is Extract<typeof rule, { type: 'outside-text' }> => rule.type === 'outside-text')
+  assert.deepEqual(Object.fromEntries(clues.map(rule => [rule.label, [rule.direction, rule.cells]])), {
+    '257': ['south-west', [8, 16, 24, 32, 40, 48, 56, 64, 72]],
+    '168': ['south-west', [6, 14, 22, 30, 38, 46, 54]],
+    '678': ['south-east', [2, 12, 22, 32, 42, 52, 62]],
+    '256': ['south-east', [0, 10, 20, 30, 40, 50, 60, 70, 80]],
+    '158': ['south-east', [18, 28, 38, 48, 58, 68, 78]],
+    '589': ['north-east', [54, 46, 38, 30, 22, 14, 6]],
+    '367': ['north-east', [72, 64, 56, 48, 40, 32, 24, 16, 8]],
+    '3': ['north-east', [75, 67, 59, 51, 43, 35]],
+    '2': ['south-west', [35, 43, 51, 59, 67, 75]],
+    '1': ['north-west', [80, 70, 60, 50, 40, 30, 20, 10, 0]],
+  })
+  assert.equal(rules.filter(rule => rule.type === 'digit-count').length, 24)
+  assert.equal(rules.filter(rule => rule.type === 'renban').length, 7)
+  assert.equal(isSizedRuleList(rules, imported.grid!), true)
+  assert.deepEqual(conflictsOf(coachInsideDigitGroups.metadata.solution, undefined, imported.grid, rules), new Set())
+  const firstClue = clues[0]
+  assert.ok(firstClue)
+  for (const digit of new Set(Array.from(firstClue.label, Number))) {
+    assert.ok(rules.some(rule => rule.type === 'digit-count' && rule.digit === digit &&
+      rule.minimum === 1 && JSON.stringify(rule.cells) === JSON.stringify(firstClue.cells.slice(0, 3))))
+  }
+})
+
+test('Symmetrical Inside raw-code and short-link imports keep the same authored rules', async ({ mock }) => {
+  mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({
+    code: coachInsideDigitGroups.metadata.sudoku,
+    coach: { hasAuthorInstructions: true, title: 'Symmetrical Inside' },
+  }), { headers: { 'content-type': 'application/json' } }))
+  const linked = await detectPuzzle('https://sudoku.coach/en/s/DLeM')
+  assert.equal(linked.title, 'Symmetrical Inside')
+  assert.deepEqual(linked.grid, { size: 9, boxRows: 3, boxColumns: 3 })
+  assert.deepEqual(linked.sizedRules, (await detectPuzzle(coachInsideDigitGroups.metadata.sudoku)).sizedRules)
+})
+
+test('outside digit clues do not reinterpret unrelated zero-valued Little Killer arrows', async () => {
+  const changed = JSON.parse(JSON.stringify(coachInsideDigitGroups.decoded)) as {
+    givenConstraints: { type: string; segments: { parameters: Record<string, unknown> }[] }[]
+  }
+  changed.givenConstraints[1].segments[0].parameters.text = '258'
+  await assert.rejects(detectPuzzle(coachCode(changed)), /Little Killer|unsupported/)
+})
 
 test('six-by-six Coach decoding preserves the box orientation, clue order and both diagonals', async () => {
   const constraint = (type: string, paths: number[][]) => ({ type, segments: paths.map(cells => ({ cells, parameters: {} })), settings: {} })

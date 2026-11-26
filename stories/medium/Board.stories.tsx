@@ -23,6 +23,7 @@ import coachFractionalRegions from '../../tests/fixtures/coach-fractional-region
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
 import irregularFortress from '../../tests/fixtures/aspartagcus-irregular-fortress.json'
 import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-neighbors.json'
+import coachInsideDigitGroups from '../../tests/fixtures/little-killer-unsupported-DLeM.json'
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
@@ -98,6 +99,30 @@ export const DoubleTheCluesUnfinished: Story = {
 }
 export const DoubleTheCluesFinished: Story = { render: () => <DoubledCluesBoard finished /> }
 
+function CoachInsideDigitGroupsBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(coachInsideDigitGroups.metadata.sudoku).then(imported => {
+      if (imported.grid && imported.sizedRules && imported.authoredSolution) setPuzzle({
+        givens: imported.givens, solution: imported.authoredSolution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published Sudoku Coach puzzle…</p>
+  return <div>
+    <p>Each printed digit must appear in the first three cells of its diagonal. The arrows are visual markers.</p>
+    <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides={false} />
+  </div>
+}
+
+export const CoachInsideDigitGroupsUnfinished: Story = {
+  render: () => <CoachInsideDigitGroupsBoard />,
+  play: async ({ canvas }) => {
+    await canvas.findByRole('img', { name: /each listed digit.*first three cells/i })
+  },
+}
+export const CoachInsideDigitGroupsFinished: Story = { render: () => <CoachInsideDigitGroupsBoard finished /> }
 
 function CoachNonogramBoard({ finished = false }: { finished?: boolean }) {
   const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; rules: ReturnType<typeof coachNonogramRules> }>()

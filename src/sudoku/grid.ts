@@ -43,7 +43,7 @@ export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
 export const NINE_BOXLESS_GRID = { size: 9, noRegions: true } as const
 export const SIX_BOXLESS_GRID = { size: 6, noRegions: true } as const
 export type BoxlessGrid = typeof FIVE_BOXLESS_GRID | typeof SIX_BOXLESS_GRID | typeof SEVEN_BOXLESS_GRID | typeof NINE_BOXLESS_GRID
-export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | BoxlessGrid
+export type SizedGrid = typeof CLASSIC_GRID | MiniGrid | RectangularGrid | JigsawGrid | BoxlessGrid
 const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -87,8 +87,11 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 }
 
 export function isSizedGrid(value: unknown): value is SizedGrid {
-  if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if (value === null || typeof value !== 'object') return false
+  if (Object.keys(value).length === 3 && 'size' in value && value.size === CLASSIC_GRID.size &&
+    'boxRows' in value && value.boxRows === CLASSIC_GRID.boxRows && 'boxColumns' in value &&
+    value.boxColumns === CLASSIC_GRID.boxColumns) return true
+  if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && (value.size === 5 || value.size === 6 || value.size === 7 || value.size === 9) && value.noRegions === true
   const grid = value as Partial<RectangularGrid> & { notation?: unknown }
   const layout = isRectangularSize(grid.size) && rectangularLayouts(grid.size).some(item =>

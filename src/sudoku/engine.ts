@@ -219,6 +219,7 @@ export type SizedConstraintAlternativesRule = {
 export type SizedSumModuloRule = { type: 'sum-modulo'; cells: readonly number[]; modulus: number; remainder: number }
 export type SizedOutsideTextRule = {
   type: 'outside-text'; direction: 'north-east' | 'south-east' | 'south-west' | 'north-west'; cells: readonly number[]; label: string
+  firstThreeDigits?: readonly number[]
 }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
 export type SizedLineType =

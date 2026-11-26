@@ -24,7 +24,6 @@ for (const name of readdirSync(fixturePath).filter(name => name.endsWith('.json'
 }
 
 const expectedRejections = new Map([
-  ['little-killer-unsupported-DLeM.json:$.metadata.sudoku', /invalid or cosmetic Little Killer clue/],
   ['parity-coach.json:$.examples[0].coach', /3 × 3 Jigsaw grid needs three connected regions of three cells/],
   ['parity-coach.json:$.examples[1].coach', /3 × 3 Jigsaw grid needs three connected regions of three cells/],
 ])
