@@ -42,6 +42,18 @@ const entropySources: (Omit<Fixture, 'puzzle'> & { description: string })[] =
 const entropySums = entropySources.find(({ url }) => url.endsWith('HqJ9'))!
 const negativeBlackDots = entropySources.find(({ url }) => url.endsWith('K95q'))!
 const legacyEntropy = entropySources.find(({ url }) => url.endsWith('2j53'))!
+const completeEntropyInventories: Record<string, Record<string, number>> = {
+  A2s7: { 'global-entropy': 1, quadruple: 10 },
+  CJhv: { 'global-entropy': 1, quadruple: 14 },
+  AdoP: { 'global-entropy': 1, 'extra-house': 9 },
+  K95q: { diagonal: 2, 'non-consecutive': 1, 'global-entropy': 1, whispers: 1, kropki: 1 },
+  HqJ9: { 'adjacent-total': 27, 'global-entropy': 1, kropki: 1 },
+  FLAb: { 'global-entropy': 1, xv: 1, arrow: 1, 'pill-arrow': 1, whispers: 1, quadruple: 4, 'labeled-dots': 1, kropki: 1 },
+  Hu9m: { 'global-entropy': 1, 'adjacent-total': 23, modular: 5, thermometer: 5, kropki: 1 },
+  '2j53': { 'global-entropy': 1 },
+  LEjN: { 'global-entropy': 1, entropic: 18, 'forbidden-entropic-connection': 16 },
+  '7nms': { 'global-entropy': 1, entropic: 8, 'digit-order': 7 },
+}
 
 const xSum = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8')) as {
   source: string
@@ -60,6 +72,32 @@ function coachPage(id: string, code: string, name: string, details: Record<strin
   }
   return '<script>let mainInitData = ' + JSON.stringify({ specificSudoku }) + '</script>'
 }
+
+test('all ten published Coach Global Entropy codes preserve their complete rule inventories and unique solutions', async () => {
+  assert.equal(entropySources.length, Object.keys(completeEntropyInventories).length)
+  for (const source of entropySources) {
+    const id = source.url.split('/').at(-1)!
+    const { game, format } = await prepareImportedPuzzle(source.code)
+    assert.equal(format, 'Sudoku Coach', id)
+    assert.ok(game.variant, id)
+    assert.notEqual(game.nonUnique, true, id)
+    assert.ok(game.uniquenessProof, id)
+    const rules = game.variant.puzzle.rules ?? []
+    const inventory = rules.reduce<Record<string, number>>((counts, rule) => {
+      counts[rule.type] = (counts[rule.type] ?? 0) + 1
+      return counts
+    }, {})
+    assert.deepEqual(inventory, completeEntropyInventories[id], id)
+    assert.equal(game.variant.solution, source.solution, id)
+    assertVariantCompletion(game.variant.puzzle, source.solution)
+    if (id === 'FLAb') assert.equal(game.variant.puzzle.regions?.type, 'partial')
+    if (id === 'K95q') {
+      const black = rules.find(rule => rule.type === 'kropki')
+      assert.ok(black?.type === 'kropki')
+      assert.equal(black.ratioTwo?.negative, true)
+    }
+  }
+})
 
 test('XXIV retains its authored region colors through import, save and sharing', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()

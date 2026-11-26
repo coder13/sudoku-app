@@ -1519,7 +1519,7 @@ node --experimental-strip-types --test scripts/bench-entropic-app.mts
 
 ## Global Entropy integration evidence
 
-`global-entropy-newman.json` records Philip Newman’s twenty-given Ordered Entropy puzzle, its inspected puzzle/solution PDFs and their hashes. `global-entropy-coach.json` preserves ten original exports. Three have complete supported inventories and independently unique printed completions: A2s7, CJhv and AdoP. The other seven retain their authored-rule, companion, geometry or format gaps. Raw positive payloads do not establish complete authored-source support.
+`global-entropy-newman.json` records Philip Newman’s twenty-given Ordered Entropy puzzle, its inspected puzzle/solution PDFs and their hashes. `global-entropy-coach.json` preserves ten original Sudoku Coach exports. All ten raw codes now import with their complete decoded rule inventories and have uniqueness proofs against the combined rules: A2s7, CJhv, AdoP, K95q, HqJ9, FLAb, Hu9m, 2j53, LEjN and 7nms. FLAb retains its authored partial-region geometry; K95q’s “all possible black dots” metadata is restored from its exact reviewed export. These checks cover the raw code imports and do not claim broader support for unrepresented author metadata or formats.
 
 The independent counter directly enumerates digits and houses without production support tables. CJhv also retains two direct completion witnesses after removing only Global Entropy. Proof replay enumerates every four-cell numeric assignment from the declared domains. All eight square symmetries preserve complete source rules and exact completions through actual Wasm.
 
