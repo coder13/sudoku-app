@@ -73,7 +73,7 @@ export function checkedGroupAdditions(root: HTMLElement, props: BoardProps) {
     requireMatch(description.className, 'sr-only', 'description visibility')
     const references = [...expected.values()].map((group, index) => `${group.label ?? `Group ${index + 1}`}: ${describe(group)}.`)
     requireMatch(description.textContent?.replace(/\s+/g, ' ').trim(),
-      `Each outlined group is one chain endpoint. The group is true if at least one marked member is true. ${references.join(' ')}`,
+      `Each candidate group is one chain endpoint. The group is true if at least one member is true. ${references.join(' ')}`,
       'complete group description')
     ignored.add(description)
   }

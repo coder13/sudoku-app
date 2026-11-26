@@ -1220,22 +1220,31 @@ export function Worktable({
     cancelHintWork()
   }, [cancelPendingPuzzleWork, cancelHintWork])
 
-  // Pending actions belong to the full board revision, including colors and
-  // undo history. Clock ticks and rating metadata do not invalidate them.
-  useLayoutEffect(
-    () => cancelPendingPuzzleWork,
-    [cancelPendingPuzzleWork, id, game.source, givens, variant, grid, algebraic, sized, game.position, game.past, game.future, session]
-  )
-  // Completed hint pages remain valid after color-only edits. Their worker is
-  // retained only while the hint inputs, puzzle rules, and play session match.
-  useLayoutEffect(
-    () => () => {
+  const closeInvalidatedHint = useCallback(() => {
+    setHint(null)
+    setHintRevealed(false)
+    setPlaySessionState('hintView', undefined)
+  }, [setHintRevealed, setPlaySessionState])
+
+  // Pending actions belong to the full board revision, including colors and undo history.
+  // Close a canceled hint after an edit, while preserving saved hints across navigation.
+  useLayoutEffect(() => {
+    if (cancelPendingTask() && previousPlayGameId.current === id) closeInvalidatedHint()
+  }, [cancelPendingTask, closeInvalidatedHint, id, game.source, givens, variant, grid, algebraic, sized, game.position, game.past, game.future, session])
+  useLayoutEffect(() => cancelPendingPuzzleWork, [cancelPendingPuzzleWork])
+
+  // Completed hint pages remain valid after color-only edits.
+  const previousHintPosition = useRef(hintPosition)
+  useLayoutEffect(() => {
+    const previous = previousHintPosition.current
+    previousHintPosition.current = hintPosition
+    if (previous.gameId === id && previous !== hintPosition) closeInvalidatedHint()
+    return () => {
       cancelHintWork()
       resumedOpenHint.current = null
       setHint(null)
-    },
-    [cancelHintWork, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session]
-  )
+    }
+  }, [cancelHintWork, closeInvalidatedHint, id, game.source, givens, variant, grid, algebraic, sized, hintPosition, session])
   useLayoutEffect(() => {
     if (!hintRevealed) cancelHintWork()
   }, [hintRevealed, cancelHintWork])
