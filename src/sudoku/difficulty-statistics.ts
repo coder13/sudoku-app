@@ -1,6 +1,7 @@
 import type { Difficulty } from './engine.ts'
 import { isSolved, type Game } from './game.ts'
 import { gameVariantId, type GameVariantId } from './new-puzzle.ts'
+import { solvedHistory } from './puzzle-activity.ts'
 
 export type DifficultyStatistics = { solved: number; averageSeconds: number | null }
 
@@ -31,4 +32,41 @@ export function difficultyStatistics(games: readonly Game[], variant: GameVarian
     recordDifficultySolve(totals, game.difficulty, game.elapsed)
   }
   return summarizeDifficultySolves(totals)
+}
+
+function timedSolvePoints(game: Game): number | null {
+  if (!game.started || game.timeUntracked || game.elapsed <= 0 || game.score == null || !isSolved(game)) return null
+  return game.score
+}
+
+function ratedSolveTotals(games: readonly Game[]) {
+  let points = 0
+  let seconds = 0
+  for (const game of games) {
+    const score = timedSolvePoints(game)
+    if (score === null) continue
+    points += score
+    seconds += game.elapsed
+  }
+  return { points, seconds }
+}
+
+export function pointsPerSecond(games: readonly Game[]): number | null {
+  const { points, seconds } = ratedSolveTotals(games)
+  return seconds > 0 ? points / seconds : null
+}
+
+export function pointsPerSecondForSolve(game: Game, games: readonly Game[]) {
+  const points = timedSolvePoints(game)
+  if (points === null) return null
+
+  const history = solvedHistory([game, ...games.filter(puzzle => puzzle.id !== game.id)])
+  const index = history.findIndex(solve => solve.game.id === game.id)
+  const prior = ratedSolveTotals(history.slice(index + 1).map(solve => solve.game))
+
+  return {
+    puzzle: points / game.elapsed,
+    before: prior.seconds > 0 ? prior.points / prior.seconds : null,
+    after: (prior.points + points) / (prior.seconds + game.elapsed),
+  }
 }
