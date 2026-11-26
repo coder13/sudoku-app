@@ -26,42 +26,48 @@ test('negative Coach Ratio layers with custom values only negate the default 2:1
   assert.equal(candidates[12] & (1 << 1), 0, 'an unmarked 1:2 edge remains forbidden')
 })
 
-test('negative Coach Ratio 3 checks its own marker values on classic Sudoku', async () => {
+test('negative Coach Ratio with custom labels excludes only the default 2:1 relation', async () => {
   const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
   const digits = [...solution].map(Number)
+  const ratioTwoPairs: [number, number][] = []
   const ratioThreePairs: [number, number][] = []
   for (let cell = 0; cell < digits.length; cell++) {
     for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
-      if (next >= 0 && Math.max(digits[cell], digits[next]) === 3 * Math.min(digits[cell], digits[next])) {
-        ratioThreePairs.push([cell, next])
+      if (next >= 0) {
+        const ratio = Math.max(digits[cell], digits[next]) / Math.min(digits[cell], digits[next])
+        if (ratio === 2) ratioTwoPairs.push([cell, next])
+        if (ratio === 3) ratioThreePairs.push([cell, next])
       }
     }
   }
+  assert.ok(ratioTwoPairs.length > 0)
   assert.ok(ratioThreePairs.length > 0)
+  const negativeMarks = [...ratioTwoPairs, ...ratioThreePairs]
   const { game } = await prepareImportedPuzzle(coachCode({ givenDigits: solution, givenConstraints: [
-    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
-      { cells: [0, 1], parameters: { ratio: 2 } },
-    ] },
-    { type: 'ratio', settings: { negativeConstraint: true }, segments: ratioThreePairs.map(cells => ({
-      cells, parameters: { ratio: 3 },
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: negativeMarks.map(cells => ({
+      cells, parameters: { ratio: Math.max(digits[cells[0]], digits[cells[1]]) / Math.min(digits[cells[0]], digits[cells[1]]) },
     })) },
   ] }))
 
   assert.deepEqual(game.variant?.puzzle.rules, [
-    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [0, 1], value: 2 }] },
-    { type: 'labeled-dots', relation: 'ratio', marks: ratioThreePairs.map(cells => ({ cells, value: 3 })), negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: negativeMarks.map(cells => ({
+      cells, value: Math.max(digits[cells[0]], digits[cells[1]]) / Math.min(digits[cells[0]], digits[cells[1]]),
+    })), negative: true },
   ])
   assert.equal(game.variant?.solution, solution)
 })
 
-test('negative Coach Ratio markers join same-value clues split across classic layers', async () => {
+test('negative default Ratio joins same-value custom clues split across classic layers', async () => {
   const solution = '123456789456789123789123456234567891567891234891234567345678912678912345912345678'
   const digits = [...solution].map(Number)
+  const ratioTwoPairs: [number, number][] = []
   const ratioThreePairs: [number, number][] = []
   for (let cell = 0; cell < digits.length; cell++) {
     for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
-      if (next >= 0 && Math.max(digits[cell], digits[next]) === 3 * Math.min(digits[cell], digits[next])) {
-        ratioThreePairs.push([cell, next])
+      if (next >= 0) {
+        const ratio = Math.max(digits[cell], digits[next]) / Math.min(digits[cell], digits[next])
+        if (ratio === 2) ratioTwoPairs.push([cell, next])
+        if (ratio === 3) ratioThreePairs.push([cell, next])
       }
     }
   }
@@ -74,11 +80,15 @@ test('negative Coach Ratio markers join same-value clues split across classic la
     { type: 'ratio', settings: { negativeConstraint: false }, segments: positiveLayerMarks.map(cells => ({
       cells, parameters: { ratio: 3 },
     })) },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: ratioTwoPairs.map(cells => ({
+      cells, parameters: { ratio: 2 },
+    })) },
   ] }))
 
   assert.deepEqual(game.variant?.puzzle.rules, [
     { type: 'labeled-dots', relation: 'ratio', marks: negativeLayerMarks.map(cells => ({ cells, value: 3 })), negative: true },
     { type: 'labeled-dots', relation: 'ratio', marks: positiveLayerMarks.map(cells => ({ cells, value: 3 })) },
+    { type: 'labeled-dots', relation: 'ratio', marks: ratioTwoPairs.map(cells => ({ cells, value: 2 })) },
   ])
   assert.equal(game.variant?.solution, solution)
 })
@@ -165,34 +175,33 @@ test('empty negative default Difference layers exempt matching clues from other 
   assert.equal(candidates[9] & (1 << 1), 0, 'an unmarked difference-1 edge remains forbidden')
 })
 
-test('negative Coach Difference 2 checks its own marker values on classic Sudoku', async () => {
+test('negative default Difference joins custom 2 labels in classic Sudoku', async () => {
   const solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
   const digits = [...solution].map(Number)
-  const orthogonalPairs: [number, number][] = []
+  const differenceOnePairs: [number, number][] = []
   const differenceTwoPairs: [number, number][] = []
   for (let cell = 0; cell < digits.length; cell++) {
     for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
       if (next >= 0) {
-        orthogonalPairs.push([cell, next])
-        if (Math.abs(digits[cell] - digits[next]) === 2) differenceTwoPairs.push([cell, next])
+        const difference = Math.abs(digits[cell] - digits[next])
+        if (difference === 1) differenceOnePairs.push([cell, next])
+        if (difference === 2) differenceTwoPairs.push([cell, next])
       }
     }
   }
-  const differenceOnePair = orthogonalPairs.find(([a, b]) => Math.abs(digits[a] - digits[b]) === 1)
-  assert.ok(differenceOnePair)
+  assert.ok(differenceOnePairs.length > 0)
   assert.ok(differenceTwoPairs.length > 0)
+  const marks = [...differenceOnePairs, ...differenceTwoPairs]
   const { game } = await prepareImportedPuzzle(coachCode({ givenDigits: solution, givenConstraints: [
-    { type: 'difference', settings: { negativeConstraint: false }, segments: [
-      { cells: differenceOnePair, parameters: { difference: 1 } },
-    ] },
-    { type: 'difference', settings: { negativeConstraint: true }, segments: differenceTwoPairs.map(cells => ({
-      cells, parameters: { difference: 2 },
+    { type: 'difference', settings: { negativeConstraint: true }, segments: marks.map(cells => ({
+      cells, parameters: { difference: Math.abs(digits[cells[0]] - digits[cells[1]]) },
     })) },
   ] }))
 
   assert.deepEqual(game.variant?.puzzle.rules, [
-    { type: 'labeled-dots', relation: 'difference', marks: [{ cells: differenceOnePair, value: 1 }] },
-    { type: 'labeled-dots', relation: 'difference', marks: differenceTwoPairs.map(cells => ({ cells, value: 2 })), negative: true },
+    { type: 'labeled-dots', relation: 'difference', marks: marks.map(cells => ({
+      cells, value: Math.abs(digits[cells[0]] - digits[cells[1]]),
+    })), negative: true },
   ])
   assert.equal(game.variant?.solution, solution)
 })
